@@ -8,11 +8,12 @@ use App\Filament\Resources\Investors\Pages\ListInvestors;
 use App\Models\Investor;
 use BackedEnum;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -63,11 +64,50 @@ class InvestorResource extends Resource
 
                         TextInput::make('phone')
                             ->label('Telefone')
-                            ->maxLength(255),
+                            ->tel()
+                            ->placeholder('(xx) xxxx-xxxx')
+                            ->rule('regex:/^\(\d{2}\)\s\d{4}-\d{4}$/')
+                            ->validationMessages([
+                                'regex' => 'Informe o telefone no formato (xx) xxxx-xxxx.',
+                            ])
+                            ->maxLength(20),
 
-                        TextInput::make('document_number')
-                            ->label('Documento')
-                            ->maxLength(255),
+                        TextInput::make('mobile')
+                            ->label('Celular')
+                            ->tel()
+                            ->placeholder('(xx) xxxxx-xxxx')
+                            ->rule('regex:/^\(\d{2}\)\s\d{5}-\d{4}$/')
+                            ->validationMessages([
+                                'regex' => 'Informe o celular no formato (xx) xxxxx-xxxx.',
+                            ])
+                            ->maxLength(20),
+
+                        TextInput::make('cpf')
+                            ->label('CPF')
+                            ->placeholder('xxx.xxx.xxx-xx')
+                            ->rule('regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/')
+                            ->validationMessages([
+                                'regex' => 'Informe o CPF no formato xxx.xxx.xxx-xx.',
+                            ])
+                            ->maxLength(14),
+
+                        TextInput::make('rg')
+                            ->label('RG')
+                            ->placeholder('xx.xxx.xxx-x')
+                            ->rule('regex:/^\d{2}\.\d{3}\.\d{3}-[\dXx]$/')
+                            ->validationMessages([
+                                'regex' => 'Informe o RG no formato xx.xxx.xxx-x.',
+                            ])
+                            ->maxLength(12),
+
+                        Select::make('emissions')
+                            ->label('Emissões')
+                            ->relationship('emissions', 'title')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->placeholder('Nenhuma emissão vinculada no momento')
+                            ->columnSpanFull(),
 
                         Toggle::make('is_active')
                             ->label('Ativo')
@@ -101,12 +141,18 @@ class InvestorResource extends Resource
 
                 TextColumn::make('phone')
                     ->label('Telefone')
-                    ->searchable()
                     ->toggleable(),
 
-                TextColumn::make('document_number')
-                    ->label('Documento')
-                    ->searchable()
+                TextColumn::make('mobile')
+                    ->label('Celular')
+                    ->toggleable(),
+
+                TextColumn::make('cpf')
+                    ->label('CPF')
+                    ->toggleable(),
+
+                TextColumn::make('rg')
+                    ->label('RG')
                     ->toggleable(),
 
                 IconColumn::make('is_active')

@@ -16,7 +16,10 @@ return new class extends Migration
             $table->string('password');
 
             $table->string('phone')->nullable();
-            $table->string('document_number')->nullable();
+            $table->string('mobile')->nullable();
+            $table->string('cpf')->nullable();
+            $table->string('rg')->nullable();
+
             $table->boolean('is_active')->default(true);
             $table->timestamp('last_login_at')->nullable();
             $table->text('notes')->nullable();
