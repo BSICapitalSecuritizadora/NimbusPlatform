@@ -2,9 +2,40 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
-class Investor extends Model
+class Investor extends Authenticatable
 {
-    //
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'phone',
+        'document_number',
+        'is_active',
+        'last_login_at',
+        'notes',
+        'remember_token',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'last_login_at' => 'datetime',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    public function emissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Emission::class)->withTimestamps();
+    }
+
+    public function documents(): BelongsToMany
+    {
+        return $this->belongsToMany(Document::class)->withTimestamps();
+    }
 }
