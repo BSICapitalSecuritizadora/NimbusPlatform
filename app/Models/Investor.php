@@ -33,7 +33,7 @@ class Investor extends Authenticatable
 
     public function emissions(): BelongsToMany
     {
-        return $this->belongsToMany(Emission::class)->withTimestamps();
+        return $this->belongsToMany(Emission::class, 'investor_emission')->withTimestamps();
     }
 
     public function documents(): BelongsToMany
