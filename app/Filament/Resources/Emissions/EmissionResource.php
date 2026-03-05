@@ -99,7 +99,9 @@ class EmissionResource extends Resource
 
                         TextInput::make('issued_quantity')
                             ->label('Quantidade Emitida')
-                            ->numeric(),
+                            ->numeric()
+                            ->minValue(0)
+                            ->step(1),
 
                         TextInput::make('monetary_update_months')
                             ->label('Meses Atualização Monetária'),
@@ -115,14 +117,19 @@ class EmissionResource extends Resource
 
                         TextInput::make('issued_price')
                             ->label('Preço Emitido')
-                            ->numeric(),
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix('R$')
+                            ->placeholder('0,00'),
 
                         TextInput::make('amortization_frequency')
                             ->label('Periodicidade Amortização'),
 
                         TextInput::make('integralized_quantity')
                             ->label('Quantidade Integralizada')
-                            ->numeric(),
+                            ->numeric()
+                            ->minValue(0)
+                            ->step(1),
 
                         TextInput::make('trustee_agent')
                             ->label('Agente Fiduciário'),
@@ -141,7 +148,10 @@ class EmissionResource extends Resource
 
                         TextInput::make('issued_volume')
                             ->label('Volume Emitido')
-                            ->numeric(),
+                            ->numeric()
+                            ->minValue(0)
+                            ->prefix('R$')
+                            ->placeholder('0,00'),
 
                         Toggle::make('is_public')
                             ->label('Pública'),
