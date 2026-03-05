@@ -102,7 +102,7 @@ class InvestorResource extends Resource
 
                         Select::make('emissions')
                             ->label('Emissões')
-                            ->relationship('emissions', 'title')
+                            ->relationship('emissions', 'name')
                             ->multiple()
                             ->preload()
                             ->searchable()
