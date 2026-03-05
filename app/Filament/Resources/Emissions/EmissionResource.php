@@ -175,7 +175,7 @@ class EmissionResource extends Resource
 
                         Textarea::make('description')
                             ->label('Descrição')
-                            ->rows(4)
+                            ->rows(6)
                             ->columnSpanFull(),
                     ])
                     ->columns(2),

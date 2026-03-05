@@ -122,7 +122,7 @@ class InvestorResource extends Resource
 
                         Textarea::make('notes')
                             ->label('Observações')
-                            ->rows(4)
+                            ->rows(6)
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
