@@ -16,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Support\RawJs;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -79,8 +80,12 @@ class EmissionResource extends Resource
                         TextInput::make('issuer')
                             ->label('Emissor'),
 
-                        TextInput::make('fiduciary_regime')
-                            ->label('Regime Fiduciário'),
+                        Select::make('fiduciary_regime')
+                            ->label('Regime Fiduciário')
+                            ->options([
+                                'sim' => 'Sim',
+                                'nao' => 'Não',
+                            ]),
 
                         DatePicker::make('issue_date')
                             ->label('Data de emissão'),
@@ -99,9 +104,12 @@ class EmissionResource extends Resource
 
                         TextInput::make('issued_quantity')
                             ->label('Quantidade Emitida')
-                            ->numeric()
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.', 0)
+                            JS))
+                            ->stripCharacters(['.', ','])
                             ->minValue(0)
-                            ->step(1),
+                            ->placeholder('32.600'),
 
                         TextInput::make('monetary_update_months')
                             ->label('Meses Atualização Monetária'),
@@ -117,19 +125,25 @@ class EmissionResource extends Resource
 
                         TextInput::make('issued_price')
                             ->label('Preço Emitido')
-                            ->numeric()
-                            ->minValue(0)
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.', 2)
+                            JS))
+                            ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2, ',', '.') : null)
+                            ->dehydrateStateUsing(fn ($state) => (float) str_replace(['.', ','], ['', '.'], (string) $state))
                             ->prefix('R$')
-                            ->placeholder('0,00'),
+                            ->placeholder('1.000,00'),
 
                         TextInput::make('amortization_frequency')
                             ->label('Periodicidade Amortização'),
 
                         TextInput::make('integralized_quantity')
                             ->label('Quantidade Integralizada')
-                            ->numeric()
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.', 0)
+                            JS))
+                            ->stripCharacters(['.', ','])
                             ->minValue(0)
-                            ->step(1),
+                            ->placeholder('13.200'),
 
                         TextInput::make('trustee_agent')
                             ->label('Agente Fiduciário'),
@@ -148,10 +162,13 @@ class EmissionResource extends Resource
 
                         TextInput::make('issued_volume')
                             ->label('Volume Emitido')
-                            ->numeric()
-                            ->minValue(0)
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.', 2)
+                            JS))
+                            ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2, ',', '.') : null)
+                            ->dehydrateStateUsing(fn ($state) => (float) str_replace(['.', ','], ['', '.'], (string) $state))
                             ->prefix('R$')
-                            ->placeholder('0,00'),
+                            ->placeholder('32.000.000,00'),
 
                         Toggle::make('is_public')
                             ->label('Pública'),
