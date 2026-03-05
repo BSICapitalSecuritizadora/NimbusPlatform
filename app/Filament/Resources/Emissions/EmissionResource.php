@@ -62,10 +62,15 @@ class EmissionResource extends Resource
                             ->label('Código ISIN')
                             ->maxLength(255),
 
-                        TextInput::make('status')
+                        Select::make('status')
                             ->label('Status')
+                            ->options([
+                                'draft' => 'Rascunho',
+                                'active' => 'Ativa',
+                                'closed' => 'Encerrada',
+                            ])
                             ->default('draft')
-                            ->maxLength(255),
+                            ->required(),
                     ])
                     ->columns(2),
 
@@ -173,7 +178,8 @@ class EmissionResource extends Resource
 
                 TextColumn::make('status')
                     ->label('Status')
-                    ->badge(),
+                    ->badge()
+                    ->sortable(),
 
                 TextColumn::make('issuer')
                     ->label('Emissor')
