@@ -76,11 +76,20 @@ class DocumentForm
 
                     Toggle::make('is_published')
                         ->label('Publicado')
-                        ->default(false),
+                        ->helperText('Liberado para visualização no Portal do Investidor')
+                        ->default(false)
+                        ->live(),
 
                     Toggle::make('is_public')
                         ->label('Público')
-                        ->default(false),
+                        ->helperText('Disponível no site público (exige também estar publicado)')
+                        ->default(false)
+                        ->live()
+                        ->afterStateUpdated(function (bool $state, callable $set): void {
+                            if ($state) {
+                                $set('is_published', true);
+                            }
+                        }),
                 ])
                 ->columns(2),
 
