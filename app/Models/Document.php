@@ -11,11 +11,15 @@ class Document extends Model
         'title',
         'category',
         'file_path',
+        'file_name',
+        'mime_type',
+        'file_size',
         'is_published',
         'is_public',
     ];
 
     protected $casts = [
+        'file_size' => 'integer',
         'is_published' => 'boolean',
         'is_public' => 'boolean',
     ];
