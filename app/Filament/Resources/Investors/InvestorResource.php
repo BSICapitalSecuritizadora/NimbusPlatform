@@ -65,38 +65,42 @@ class InvestorResource extends Resource
                         TextInput::make('phone')
                             ->label('Telefone')
                             ->tel()
-                            ->placeholder('(xx) xxxx-xxxx')
+                            ->placeholder('(11) 3333-4444')
+                            ->mask('(99) 9999-9999')
                             ->rule('regex:/^\(\d{2}\)\s\d{4}-\d{4}$/')
                             ->validationMessages([
-                                'regex' => 'Informe o telefone no formato (xx) xxxx-xxxx.',
+                                'regex' => 'Use o formato (xx) xxxx-xxxx.',
                             ])
                             ->maxLength(20),
 
                         TextInput::make('mobile')
                             ->label('Celular')
                             ->tel()
-                            ->placeholder('(xx) xxxxx-xxxx')
+                            ->placeholder('(11) 98888-7777')
+                            ->mask('(99) 99999-9999')
                             ->rule('regex:/^\(\d{2}\)\s\d{5}-\d{4}$/')
                             ->validationMessages([
-                                'regex' => 'Informe o celular no formato (xx) xxxxx-xxxx.',
+                                'regex' => 'Use o formato (xx) xxxxx-xxxx.',
                             ])
                             ->maxLength(20),
 
                         TextInput::make('cpf')
                             ->label('CPF')
-                            ->placeholder('xxx.xxx.xxx-xx')
+                            ->placeholder('123.456.789-00')
+                            ->mask('999.999.999-99')
                             ->rule('regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/')
                             ->validationMessages([
-                                'regex' => 'Informe o CPF no formato xxx.xxx.xxx-xx.',
+                                'regex' => 'Use o formato xxx.xxx.xxx-xx.',
                             ])
                             ->maxLength(14),
 
                         TextInput::make('rg')
                             ->label('RG')
-                            ->placeholder('xx.xxx.xxx-x')
+                            ->placeholder('12.345.678-9')
+                            ->mask('99.999.999-*')
                             ->rule('regex:/^\d{2}\.\d{3}\.\d{3}-[\dXx]$/')
                             ->validationMessages([
-                                'regex' => 'Informe o RG no formato xx.xxx.xxx-x.',
+                                'regex' => 'Use o formato xx.xxx.xxx-x.',
                             ])
                             ->maxLength(12),
 
