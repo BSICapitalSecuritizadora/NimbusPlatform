@@ -47,6 +47,7 @@ class DocumentForm
                     FileUpload::make('file_path')
                         ->label('Arquivo')
                         ->required()
+                        ->disk('public')
                         ->directory('documents')
                         ->preserveFilenames()
                         ->openable()
