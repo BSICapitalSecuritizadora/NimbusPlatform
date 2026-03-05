@@ -38,6 +38,6 @@ class Investor extends Authenticatable
 
     public function documents(): BelongsToMany
     {
-        return $this->belongsToMany(Document::class)->withTimestamps();
+        return $this->belongsToMany(Document::class, 'investor_document')->withTimestamps();
     }
 }
