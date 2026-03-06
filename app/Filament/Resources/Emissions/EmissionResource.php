@@ -17,9 +17,12 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Support\RawJs;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class EmissionResource extends Resource
 {
@@ -226,7 +229,19 @@ class EmissionResource extends Resource
                     ->label('Pública')
                     ->boolean(),
             ])
+            ->actions([
+                EditAction::make()
+                    ->visible(fn (): bool => auth()->user()->can('emissions.update')),
+
+                DeleteAction::make()
+                    ->visible(fn (): bool => auth()->user()->can('emissions.delete')),
+            ])
             ->defaultSort('name');
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()->can('emissions.delete');
     }
 
     public static function getRelations(): array

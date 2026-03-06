@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Documents\Tables;
 
 use Filament\Actions\Action;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -61,6 +63,12 @@ class DocumentsTable
                         : null)
                     ->openUrlInNewTab()
                     ->visible(fn ($record): bool => (bool) $record->file_path),
+
+                EditAction::make()
+                    ->visible(fn (): bool => auth()->user()->can('documents.update')),
+
+                DeleteAction::make()
+                    ->visible(fn (): bool => auth()->user()->can('documents.delete')),
             ])
             ->defaultSort('created_at', 'desc');
     }

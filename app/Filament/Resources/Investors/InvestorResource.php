@@ -16,9 +16,12 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Hash;
 
 class InvestorResource extends Resource
@@ -175,7 +178,19 @@ class InvestorResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->actions([
+                EditAction::make()
+                    ->visible(fn (): bool => auth()->user()->can('investors.update')),
+
+                DeleteAction::make()
+                    ->visible(fn (): bool => auth()->user()->can('investors.delete')),
+            ])
             ->defaultSort('name');
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()->can('investors.delete');
     }
 
     public static function getRelations(): array

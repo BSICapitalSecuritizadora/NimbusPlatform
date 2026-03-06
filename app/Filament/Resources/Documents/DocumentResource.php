@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class DocumentResource extends Resource
 {
@@ -30,6 +31,11 @@ class DocumentResource extends Resource
     public static function table(Table $table): Table
     {
         return DocumentsTable::configure($table);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()->can('documents.delete');
     }
 
     public static function getRelations(): array
