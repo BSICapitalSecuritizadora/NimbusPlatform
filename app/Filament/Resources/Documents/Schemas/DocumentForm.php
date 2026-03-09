@@ -90,6 +90,13 @@ class DocumentForm
                             if ($state) {
                                 $set('is_published', true);
                             }
+                        })
+                        ->rule(function ($get) {
+                            return function (string $attribute, $value, \Closure $fail) use ($get): void {
+                                if ($value && ! $get('is_published')) {
+                                    $fail('Para marcar como Público, o documento precisa estar Publicado.');
+                                }
+                            };
                         }),
                 ])
                 ->columns(2),

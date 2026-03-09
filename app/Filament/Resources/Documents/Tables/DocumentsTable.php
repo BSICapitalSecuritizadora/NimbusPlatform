@@ -7,6 +7,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
@@ -69,6 +70,13 @@ class DocumentsTable
 
                 DeleteAction::make()
                     ->visible(fn (): bool => auth()->user()->can('documents.delete')),
+            ])
+            ->filters([
+                TernaryFilter::make('is_published')
+                    ->label('Publicado'),
+
+                TernaryFilter::make('is_public')
+                    ->label('Público'),
             ])
             ->defaultSort('created_at', 'desc');
     }
