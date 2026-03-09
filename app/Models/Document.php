@@ -64,16 +64,20 @@ class Document extends Model
     }
 
     /**
-     * Visível para um investidor no portal (publicado + vínculo ou público).
+     * Documentos que um investidor pode acessar no portal:
+     * - publicados
+     * - e (públicos OU vinculados diretamente ao investidor OU vinculados a emissões do investidor)
      *
      * @return Builder<self>
      */
-    public function scopeVisibleForInvestor(Builder $query, int $investorId): Builder
+    public function scopeVisibleToInvestor(Builder $query, int $investorId): Builder
     {
-        return $query->published()
+        return $query
+            ->published()
             ->where(function (Builder $q) use ($investorId): void {
-                $q->whereHas('investors', fn (Builder $qq) => $qq->where('investor_id', $investorId))
-                    ->orWhere('is_public', true);
+                $q->where('is_public', true) // Caminho 1: Público
+                    ->orWhereHas('investors', fn (Builder $qq) => $qq->where('investor_id', $investorId)) // Caminho 2: Vínculo direto
+                    ->orWhereHas('emissions.investors', fn (Builder $qq) => $qq->where('investor_id', $investorId)); // Caminho 3: Vínculo indireto (Série)
             });
     }
 

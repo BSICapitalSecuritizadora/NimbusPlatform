@@ -12,11 +12,11 @@ class InvestorDocumentsController extends Controller
     {
         $investor = auth('investor')->user();
 
-        // Somente documentos publicados e vinculados ao investidor
-        $documents = $investor->documents()
-            ->where('documents.is_published', true)
-            ->orderByDesc('documents.created_at')
-            ->get();
+        // Lista documentos através do escopo mestre de ACL validado
+        $documents = Document::query()
+            ->visibleToInvestor($investor->id)
+            ->latest()
+            ->paginate(20);
 
         return view('investor.documents.index', compact('documents'));
     }
@@ -25,10 +25,10 @@ class InvestorDocumentsController extends Controller
     {
         $investor = auth('investor')->user();
 
-        // Download seguro: publicado + vínculo
-        $allowed = $investor->documents()
-            ->where('documents.id', $document->id)
-            ->where('documents.is_published', true)
+        // Download seguro via escopo mestre de ACL validado
+        $allowed = Document::query()
+            ->whereKey($document->id)
+            ->visibleToInvestor($investor->id)
             ->exists();
 
         abort_unless($allowed, 403);

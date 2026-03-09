@@ -14,16 +14,11 @@ class DocumentDownloadController extends Controller
     {
         $investor = $request->user('investor');
 
-        // Regra recomendada:
-        // - precisa estar publicado
-        // - e precisa ter permissão: vinculado ao investidor OU (publicado + público, se você permitir)
-        if (! $document->is_published) {
-            abort(Response::HTTP_NOT_FOUND);
-        }
-
-        $canAccess =
-            $document->investors()->whereKey($investor->id)->exists()
-            || ($document->is_public === true); // opcional: permita docs públicos no portal
+        // Verifica se o documento está acessível para o investidor (usando a query com todos os vínculos de ACL + público)
+        $canAccess = Document::query()
+            ->whereKey($document->id)
+            ->visibleToInvestor($investor->id)
+            ->exists();
 
         if (! $canAccess) {
             abort(Response::HTTP_FORBIDDEN);
