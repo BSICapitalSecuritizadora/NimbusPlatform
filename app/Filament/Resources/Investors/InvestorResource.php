@@ -29,7 +29,7 @@ class InvestorResource extends Resource
 {
     protected static ?string $model = Investor::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
     protected static ?string $navigationLabel = 'Investidores';
 
