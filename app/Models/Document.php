@@ -5,9 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Document extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'title',
         'category',
@@ -24,6 +28,14 @@ class Document extends Model
         'is_published' => 'boolean',
         'is_public' => 'boolean',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnlyDirty()
+            ->logFillable()
+            ->dontSubmitEmptyLogs();
+    }
 
     /**
      * @return Builder<self>

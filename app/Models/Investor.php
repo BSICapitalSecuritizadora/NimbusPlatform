@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Investor extends Authenticatable
 {
+    use LogsActivity;
+
     protected $fillable = [
         'name',
         'email',
@@ -30,6 +34,14 @@ class Investor extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnlyDirty()
+            ->logFillable()
+            ->dontSubmitEmptyLogs();
+    }
 
     public function emissions(): BelongsToMany
     {

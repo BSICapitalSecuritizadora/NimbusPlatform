@@ -4,9 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Emission extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'name',
         'type',
@@ -46,6 +50,14 @@ class Emission extends Model
         'prepayment_possibility' => 'boolean',
         'is_public' => 'boolean',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnlyDirty()
+            ->logFillable()
+            ->dontSubmitEmptyLogs();
+    }
 
     public function investors(): BelongsToMany
     {
