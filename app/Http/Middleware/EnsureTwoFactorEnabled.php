@@ -26,7 +26,7 @@ class EnsureTwoFactorEnabled
         if (($user->hasRole('super-admin') || $user->hasRole('admin')) && ! $user->hasEnabledTwoFactorAuthentication()) {
 
             // Redireciona para a página de perfil oficial do Fortify/Jetstream para habilitar
-            return redirect()->route('profile.show')->with('warning', 'Você precisa habilitar a Autenticação de Dois Fatores (2FA) para acessar o painel.');
+            return redirect()->route('profile.edit')->with('warning', 'Você precisa habilitar a Autenticação de Dois Fatores (2FA) para acessar o painel.');
         }
 
         return $next($request);
