@@ -188,6 +188,16 @@ class InvestorResource extends Resource
             ->defaultSort('name');
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('investors.view');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->can('investors.create');
+    }
+
     public static function canDelete(Model $record): bool
     {
         return auth()->user()->can('investors.delete');

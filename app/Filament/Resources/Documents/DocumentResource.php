@@ -33,6 +33,16 @@ class DocumentResource extends Resource
         return DocumentsTable::configure($table);
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('documents.view');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->can('documents.create');
+    }
+
     public static function canDelete(Model $record): bool
     {
         return auth()->user()->can('documents.delete');

@@ -239,6 +239,16 @@ class EmissionResource extends Resource
             ->defaultSort('name');
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()->can('emissions.view');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()->can('emissions.create');
+    }
+
     public static function canDelete(Model $record): bool
     {
         return auth()->user()->can('emissions.delete');
