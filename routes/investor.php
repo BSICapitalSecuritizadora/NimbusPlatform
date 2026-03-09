@@ -11,7 +11,9 @@ Route::prefix('investidor')->name('investor.')->group(function () {
     // Auth
     Route::middleware('guest:investor')->group(function () {
         Route::get('/login', [InvestorAuthController::class, 'showLogin'])->name('login');
-        Route::post('/login', [InvestorAuthController::class, 'login'])->name('login.post');
+        Route::post('/login', [InvestorAuthController::class, 'login'])
+            ->name('login.post')
+            ->middleware('throttle:10,1');
     });
 
     Route::post('/logout', [InvestorAuthController::class, 'logout'])
@@ -26,6 +28,7 @@ Route::prefix('investidor')->name('investor.')->group(function () {
         Route::get('/documentos', [InvestorDocumentsController::class, 'index'])->name('documents');
 
         Route::get('/documentos/{document}/download', [InvestorDocumentsController::class, 'download'])
-            ->name('documents.download');
+            ->name('documents.download')
+            ->middleware('throttle:60,1');
     });
 });
