@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class DocumentResource extends Resource
 {
@@ -23,7 +24,7 @@ class DocumentResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'title';
 
-    protected static ?string $navigationGroup = 'Cadastro';
+    protected static string|UnitEnum|null $navigationGroup = 'Cadastro';
 
     protected static ?int $navigationSort = 30;
 
