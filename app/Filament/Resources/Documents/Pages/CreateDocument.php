@@ -25,6 +25,11 @@ class CreateDocument extends CreateRecord
             $data['file_size'] = $data['file_size'] ?? $disk->size($path);
         }
 
+        if (! empty($data['is_published'])) {
+            $data['published_at'] = $data['published_at'] ?? now();
+            $data['published_by'] = $data['published_by'] ?? auth()->id();
+        }
+
         return $data;
     }
 }

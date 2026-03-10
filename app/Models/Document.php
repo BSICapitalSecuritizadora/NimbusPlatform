@@ -26,12 +26,15 @@ class Document extends Model
         'version',
         'parent_document_id',
         'replaced_at',
+        'published_at',
+        'published_by',
     ];
 
     protected $casts = [
         'file_size' => 'integer',
         'is_published' => 'boolean',
         'is_public' => 'boolean',
+        'published_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
@@ -130,5 +133,10 @@ class Document extends Model
     public function versions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(self::class, 'parent_document_id');
+    }
+
+    public function publisher(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'published_by');
     }
 }

@@ -85,7 +85,17 @@ class DocumentsTable
                     ])
                     ->action(function (\App\Models\Document $record, array $data): void {
                         // Create the new version
-                        $newVersion = $record->replicate(['file_path', 'file_name', 'mime_type', 'file_size', 'version', 'parent_document_id', 'replaced_at']);
+                        $newVersion = $record->replicate([
+                            'file_path',
+                            'file_name',
+                            'mime_type',
+                            'file_size',
+                            'version',
+                            'parent_document_id',
+                            'replaced_at',
+                            'published_at',
+                            'published_by',
+                        ]);
                         $newVersion->file_path = $data['file_path'];
                         $newVersion->file_name = $data['file_name'] ?? null;
                         $newVersion->mime_type = $data['mime_type'] ?? null;

@@ -33,6 +33,13 @@ class EditDocument extends EditRecord
             $data['file_size'] = $data['file_size'] ?? $disk->size($path);
         }
 
+        $record = $this->record;
+
+        if (! empty($data['is_published']) && ! $record->is_published) {
+            $data['published_at'] = now();
+            $data['published_by'] = auth()->id();
+        }
+
         return $data;
     }
 }

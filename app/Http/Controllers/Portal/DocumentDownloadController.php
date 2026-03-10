@@ -31,6 +31,16 @@ class DocumentDownloadController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        \App\Models\DocumentDownload::create([
+            'document_id' => $document->id,
+            'investor_id' => $investor->id,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'referer' => $request->header('referer'),
+            'downloaded_at' => now(),
+            'session_id' => session()->getId(),
+        ]);
+
         if ($disk->providesTemporaryUrls()) {
             $url = $disk->temporaryUrl($path, now()->addMinutes(10));
 
