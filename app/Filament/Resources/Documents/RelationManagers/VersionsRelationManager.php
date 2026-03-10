@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Documents\RelationManagers;
 
+use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
-use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 

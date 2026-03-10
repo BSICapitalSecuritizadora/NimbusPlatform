@@ -56,7 +56,7 @@ class DocumentsTable
                     ->sortable(),
             ])
             ->actions([
-                \Filament\Tables\Actions\Action::make('new_version')
+                \Filament\Actions\Action::make('new_version')
                     ->label('Nova Versão')
                     ->icon('heroicon-o-document-duplicate')
                     ->color('info')
