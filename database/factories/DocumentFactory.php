@@ -59,4 +59,12 @@ class DocumentFactory extends Factory
             'is_public' => false,
         ]);
     }
+
+    public function replaced(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_published' => false,
+            'replaced_at' => now(),
+        ]);
+    }
 }

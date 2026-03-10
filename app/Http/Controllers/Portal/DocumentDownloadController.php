@@ -24,17 +24,21 @@ class DocumentDownloadController extends Controller
             abort(Response::HTTP_FORBIDDEN);
         }
 
-        // Se você guarda no disk "public":
-        $disk = config('filesystems.default'); // ou 'public'
+        $disk = Storage::disk(config('filesystems.default'));
         $path = $document->file_path;
 
-        if (! Storage::disk($disk)->exists($path)) {
+        if (! $disk->exists($path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        // Nome amigável:
+        if ($disk->providesTemporaryUrls()) {
+            $url = $disk->temporaryUrl($path, now()->addMinutes(10));
+
+            return redirect()->away($url);
+        }
+
         $downloadName = $document->file_name ?: basename($path);
 
-        return Storage::disk($disk)->download($path, $downloadName);
+        return $disk->download($path, $downloadName);
     }
 }

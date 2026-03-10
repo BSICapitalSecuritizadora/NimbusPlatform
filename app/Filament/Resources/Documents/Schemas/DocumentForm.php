@@ -47,15 +47,14 @@ class DocumentForm
                     FileUpload::make('file_path')
                         ->label('Arquivo')
                         ->required()
-                        ->disk('public')
+                        ->disk(config('filesystems.default'))
                         ->directory('documents')
-                        ->preserveFilenames()
                         ->openable()
                         ->downloadable()
                         ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file): string {
                             $safe = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $file->getClientOriginalName());
 
-                            return time().'_'.$safe;
+                            return now()->format('Y/m/').uniqid().'_'.$safe;
                         })
                         ->afterStateUpdated(function ($state, callable $set): void {
                             if ($state instanceof TemporaryUploadedFile) {
@@ -121,7 +120,7 @@ class DocumentForm
                         ->label('Link')
                         ->content(fn ($record) => $record?->file_path
                             ? new \Illuminate\Support\HtmlString(
-                                '<a href="'.Storage::disk('public')->url($record->file_path).'" target="_blank" class="text-primary-600 hover:underline">Abrir arquivo ↗</a>'
+                                '<a href="'.Storage::disk(config('filesystems.default'))->url($record->file_path).'" target="_blank" class="text-primary-600 hover:underline">Abrir arquivo ↗</a>'
                             )
                             : '—'),
                 ])

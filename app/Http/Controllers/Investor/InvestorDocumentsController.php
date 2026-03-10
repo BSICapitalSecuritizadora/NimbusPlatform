@@ -26,7 +26,6 @@ class InvestorDocumentsController extends Controller
     {
         $investor = auth('investor')->user();
 
-        // Download seguro via escopo mestre de ACL validado
         $allowed = Document::query()
             ->whereKey($document->id)
             ->visibleToInvestor($investor->id)
@@ -34,11 +33,19 @@ class InvestorDocumentsController extends Controller
 
         abort_unless($allowed, 403);
 
-        // Ajuste o disk conforme seu FileUpload (recomendo usar 'public' no FileUpload)
-        $disk = 'public';
+        $disk = Storage::disk(config('filesystems.default'));
+        $path = $document->file_path;
 
-        $fileName = $document->file_name ?: basename($document->file_path);
+        abort_unless($disk->exists($path), 404);
 
-        return Storage::disk($disk)->download($document->file_path, $fileName);
+        if ($disk->providesTemporaryUrls()) {
+            $url = $disk->temporaryUrl($path, now()->addMinutes(10));
+
+            return redirect()->away($url);
+        }
+
+        $fileName = $document->file_name ?: basename($path);
+
+        return $disk->download($path, $fileName);
     }
 }

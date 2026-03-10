@@ -23,6 +23,9 @@ class Document extends Model
         'file_size',
         'is_published',
         'is_public',
+        'version',
+        'parent_document_id',
+        'replaced_at',
     ];
 
     protected $casts = [
@@ -117,5 +120,15 @@ class Document extends Model
     public function emissions(): BelongsToMany
     {
         return $this->belongsToMany(Emission::class, 'emission_document')->withTimestamps();
+    }
+
+    public function parent(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_document_id');
+    }
+
+    public function versions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(self::class, 'parent_document_id');
     }
 }
