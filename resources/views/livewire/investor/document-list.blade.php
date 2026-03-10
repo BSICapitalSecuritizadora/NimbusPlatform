@@ -59,31 +59,52 @@
                     $docDate = $doc->published_at ?? $doc->created_at;
                     $isNew = $docDate > ($investor->last_portal_seen_at ?? '1970-01-01');
                 @endphp
-                <flux:card class="flex items-center justify-between p-4 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                <flux:card class="flex flex-col sm:flex-row sm:items-center justify-between p-4 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800/50 gap-4">
                     <div class="flex items-start gap-4">
                         <div class="flex-shrink-0 mt-1">
                             <flux:icon.document class="h-8 w-8 text-zinc-400" />
                         </div>
                         <div>
-                            <div class="flex items-center gap-2">
-                                <h3 class="font-medium text-zinc-900 dark:text-white">{{ $doc->title }}</h3>
+                            <div class="flex items-center flex-wrap gap-2">
+                                <h3 class="font-medium text-base text-zinc-900 dark:text-white">{{ $doc->title }}</h3>
                                 @if($isNew)
                                     <flux:badge color="blue" size="sm">Novo</flux:badge>
                                 @endif
                             </div>
-                            <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">
-                                <span>{{ $doc->category ?? 'Sem categoria' }}</span>
-                                <span class="hidden sm:inline">&bull;</span>
-                                <span>{{ $docDate->format('d/m/Y') }}</span>
+                            
+                            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-zinc-500">
+                                <!-- Categoria -->
+                                <flux:badge size="sm" color="zinc">{{ $doc->category ?? 'Documento' }}</flux:badge>
+                                
+                                <span class="hidden sm:inline text-zinc-300">&bull;</span>
+                                
+                                <!-- Emissão Vinculada (pega a primeira ou exibe se tiver múltiplas) -->
+                                @if($doc->emissions->isNotEmpty())
+                                    <span class="flex items-center gap-1">
+                                        <flux:icon.building-office-2 class="w-4 h-4 text-zinc-400"/>
+                                        @if($doc->emissions->count() === 1)
+                                            {{ $doc->emissions->first()->name }}
+                                        @else
+                                            {{ $doc->emissions->count() }} Emissões
+                                        @endif
+                                    </span>
+                                    <span class="hidden sm:inline text-zinc-300">&bull;</span>
+                                @endif
+
+                                <!-- Data de Publicação -->
+                                <span class="flex items-center gap-1">
+                                    <flux:icon.calendar-days class="w-4 h-4 text-zinc-400"/>
+                                    {{ $docDate->format('d/m/Y') }}
+                                </span>
                             </div>
                         </div>
                     </div>
                     
-                    <div>
+                    <div class="flex-shrink-0 sm:ml-auto w-full sm:w-auto">
                         <flux:button 
                             icon="arrow-down-tray" 
                             variant="primary" 
-                            size="sm"
+                            class="w-full sm:w-auto"
                             as="a" 
                             href="{{ route('investor.documents.download', $doc) }}" 
                             target="_blank"

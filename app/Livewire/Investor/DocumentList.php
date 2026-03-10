@@ -18,6 +18,14 @@ class DocumentList extends Component
     public $dateTo = '';
     public $onlyNew = false;
 
+    public function mount()
+    {
+        $investor = auth('investor')->user();
+        if ($investor) {
+            $investor->forceFill(['last_portal_seen_at' => now()])->save();
+        }
+    }
+
     public function updated($property)
     {
         if (in_array($property, ['search', 'category', 'emissionId', 'dateFrom', 'dateTo', 'onlyNew'])) {
