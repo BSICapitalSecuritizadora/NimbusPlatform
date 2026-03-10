@@ -44,14 +44,15 @@ class ActivityResource extends Resource
     {
         return $schema
             ->components([
-                \Filament\Schemas\Components\TextInput::make('log_name')
+                \Filament\Forms\Components\TextInput::make('log_name')
                     ->label('Log Name'),
-                \Filament\Schemas\Components\TextInput::make('description')
+                \Filament\Forms\Components\TextInput::make('description')
                     ->label('Descrição'),
-                \Filament\Schemas\Components\TextInput::make('subject_type')
+                \Filament\Forms\Components\TextInput::make('subject_type')
                     ->label('Entidade Afetada'),
-                \Filament\Schemas\Components\KeyValue::make('properties')
+                \Filament\Forms\Components\Textarea::make('properties')
                     ->label('Valores Alterados')
+                    ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT))
                     ->columnSpanFull(),
             ]);
     }
@@ -60,12 +61,16 @@ class ActivityResource extends Resource
     {
         return $schema
             ->components([
-                \Filament\Schemas\Components\TextEntry::make('log_name')->label('Log'),
-                \Filament\Schemas\Components\TextEntry::make('description')->label('Ação'),
-                \Filament\Schemas\Components\TextEntry::make('causer.name')->label('Autor (Causer)'),
-                \Filament\Schemas\Components\TextEntry::make('subject_type')->label('Modificou'),
-                \Filament\Schemas\Components\TextEntry::make('created_at')->label('Data')->dateTime(),
-                \Filament\Schemas\Components\KeyValueEntry::make('properties')->label('Detalhes'),
+                \Filament\Infolists\Components\TextEntry::make('log_name')->label('Log'),
+                \Filament\Infolists\Components\TextEntry::make('description')->label('Ação'),
+                \Filament\Infolists\Components\TextEntry::make('causer.name')->label('Autor (Causer)'),
+                \Filament\Infolists\Components\TextEntry::make('subject_type')->label('Modificou'),
+                \Filament\Infolists\Components\TextEntry::make('created_at')->label('Data')->dateTime(),
+                \Filament\Infolists\Components\TextEntry::make('properties')
+                    ->label('Detalhes (JSON)')
+                    ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
+                    ->fontFamily('mono')
+                    ->columnSpanFull(),
             ]);
     }
 

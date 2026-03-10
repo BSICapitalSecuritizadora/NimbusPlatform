@@ -48,19 +48,19 @@ class DocumentDownloadResource extends Resource
     {
         return $schema
             ->components([
-                \Filament\Schemas\Components\Select::make('document_id')
+                \Filament\Forms\Components\Select::make('document_id')
                     ->relationship('document', 'title')
                     ->label('Documento'),
-                \Filament\Schemas\Components\Select::make('investor_id')
+                \Filament\Forms\Components\Select::make('investor_id')
                     ->relationship('investor', 'name')
                     ->label('Investidor'),
-                \Filament\Schemas\Components\TextInput::make('ip')
+                \Filament\Forms\Components\TextInput::make('ip')
                     ->label('Endereço IP'),
-                \Filament\Schemas\Components\TextInput::make('user_agent')
+                \Filament\Forms\Components\TextInput::make('user_agent')
                     ->label('User Agent'),
-                \Filament\Schemas\Components\TextInput::make('referer')
+                \Filament\Forms\Components\TextInput::make('referer')
                     ->label('Referer'),
-                \Filament\Schemas\Components\DateTimePicker::make('downloaded_at')
+                \Filament\Forms\Components\DateTimePicker::make('downloaded_at')
                     ->label('Data do Download'),
             ]);
     }
@@ -70,11 +70,11 @@ class DocumentDownloadResource extends Resource
         // ... (Keep existing layout or add detailed view)
         return $schema
             ->components([
-                 \Filament\Schemas\Components\TextEntry::make('document.title')->label('Documento'),
-                 \Filament\Schemas\Components\TextEntry::make('investor.name')->label('Investidor'),
-                 \Filament\Schemas\Components\TextEntry::make('ip')->label('IP'),
-                 \Filament\Schemas\Components\TextEntry::make('user_agent')->label('User Agent'),
-                 \Filament\Schemas\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime(),
+                 \Filament\Infolists\Components\TextEntry::make('document.title')->label('Documento'),
+                 \Filament\Infolists\Components\TextEntry::make('investor.name')->label('Investidor'),
+                 \Filament\Infolists\Components\TextEntry::make('ip')->label('IP'),
+                 \Filament\Infolists\Components\TextEntry::make('user_agent')->label('User Agent'),
+                 \Filament\Infolists\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime(),
             ]);
     }
 
