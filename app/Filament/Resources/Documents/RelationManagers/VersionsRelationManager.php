@@ -51,7 +51,7 @@ class VersionsRelationManager extends RelationManager
                     ->label('Baixar')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn (\App\Models\Document $record): ?string => $record->file_path
-                        ? \Illuminate\Support\Facades\Storage::disk(config('filesystems.default'))->url($record->file_path)
+                        ? \Illuminate\Support\Facades\Storage::disk(config('filesystems.default') === 'local' ? 'public' : config('filesystems.default'))->url($record->file_path)
                         : null)
                     ->openUrlInNewTab()
                     ->visible(fn (\App\Models\Document $record): bool => (bool) $record->file_path),

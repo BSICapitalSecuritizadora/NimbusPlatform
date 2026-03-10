@@ -116,7 +116,7 @@ class DocumentsTable
                     ->label('Baixar')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn ($record): ?string => $record->file_path
-                        ? Storage::disk('public')->url($record->file_path)
+                        ? Storage::disk(config('filesystems.default') === 'local' ? 'public' : config('filesystems.default'))->url($record->file_path)
                         : null)
                     ->openUrlInNewTab()
                     ->visible(fn ($record): bool => (bool) $record->file_path),

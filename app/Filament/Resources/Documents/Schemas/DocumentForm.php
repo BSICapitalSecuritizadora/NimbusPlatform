@@ -47,7 +47,7 @@ class DocumentForm
                     FileUpload::make('file_path')
                         ->label('Arquivo')
                         ->required()
-                        ->disk(config('filesystems.default'))
+                        ->disk(config('filesystems.default') === 'local' ? 'public' : config('filesystems.default'))
                         ->directory('documents')
                         ->openable()
                         ->downloadable()
@@ -120,7 +120,7 @@ class DocumentForm
                         ->label('Link')
                         ->content(fn ($record) => $record?->file_path
                             ? new \Illuminate\Support\HtmlString(
-                                '<a href="'.Storage::disk(config('filesystems.default'))->url($record->file_path).'" target="_blank" class="text-primary-600 hover:underline">Abrir arquivo ↗</a>'
+                                '<a href="'.Storage::disk(config('filesystems.default') === 'local' ? 'public' : config('filesystems.default'))->url($record->file_path).'" target="_blank" class="text-primary-600 hover:underline">Abrir arquivo ↗</a>'
                             )
                             : '—'),
                 ])
