@@ -78,7 +78,12 @@ class DocumentForm
                         ->label('Publicado')
                         ->helperText('Liberado para visualização no Portal do Investidor')
                         ->default(false)
-                        ->live(),
+                        ->live()
+                        ->afterStateUpdated(function (bool $state, callable $set): void {
+                            if (! $state) {
+                                $set('is_public', false);
+                            }
+                        }),
 
                     Toggle::make('is_public')
                         ->label('Público')
