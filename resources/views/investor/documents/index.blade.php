@@ -3,26 +3,12 @@
 @section('title', 'Meus Documentos')
 
 @section('content')
-<div class="bg-white border rounded p-6">
-    <h1 class="text-xl font-semibold mb-4">Meus Documentos</h1>
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">Meus Documentos</h1>
+        <p class="mt-1 text-sm text-zinc-500">Acompanhe e baixe os documentos, relatórios e informativos relacionados aos seus investimentos.</p>
+    </div>
 
-    @if($documents->isEmpty())
-        <p class="text-gray-600">Nenhum documento publicado disponível.</p>
-    @else
-        <ul class="space-y-2">
-            @foreach($documents as $d)
-                <li class="p-3 border rounded flex items-center justify-between gap-4">
-                    <div>
-                        <div class="font-medium">{{ $d->title }}</div>
-                        <div class="text-sm text-gray-600">Categoria: {{ $d->category }}</div>
-                    </div>
-                    <a class="px-3 py-2 rounded bg-gray-900 text-white text-sm"
-                       href="{{ route('investor.documents.download', $d) }}">
-                        Baixar
-                    </a>
-                </li>
-            @endforeach
-        </ul>
-    @endif
+    <livewire:investor.document-list />
 </div>
 @endsection

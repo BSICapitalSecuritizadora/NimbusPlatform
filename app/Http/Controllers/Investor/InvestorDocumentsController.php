@@ -10,16 +10,7 @@ class InvestorDocumentsController extends Controller
 {
     public function index()
     {
-        $investor = auth('investor')->user();
-
-        // Lista documentos através do escopo mestre de ACL validado
-        $documents = Document::query()
-            ->visibleToInvestor($investor->id)
-            ->orderByVisibilityPriority($investor->id)
-            ->latest()
-            ->paginate(20);
-
-        return view('investor.documents.index', compact('documents'));
+        return view('investor.documents.index');
     }
 
     public function download(Document $document)

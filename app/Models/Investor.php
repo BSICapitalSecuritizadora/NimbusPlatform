@@ -23,6 +23,7 @@ class Investor extends Authenticatable
         'rg',
         'is_active',
         'last_login_at',
+        'last_portal_seen_at',
         'notes',
         'remember_token',
     ];
@@ -30,6 +31,7 @@ class Investor extends Authenticatable
     protected $casts = [
         'is_active' => 'boolean',
         'last_login_at' => 'datetime',
+        'last_portal_seen_at' => 'datetime',
     ];
 
     protected $hidden = [
