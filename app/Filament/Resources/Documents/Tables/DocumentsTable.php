@@ -42,13 +42,19 @@ class DocumentsTable
                     ->formatStateUsing(fn ($state): string => $state ? Number::fileSize($state) : '—')
                     ->toggleable(),
 
-                IconColumn::make('is_published')
-                    ->label('Publicado')
-                    ->boolean(),
-
-                IconColumn::make('is_public')
-                    ->label('Público')
-                    ->boolean(),
+                TextColumn::make('status_workflow')
+                    ->label('Status')
+                    ->getStateUsing(function ($record) {
+                        if ($record->is_public) return 'Público';
+                        if ($record->is_published) return 'Publicado';
+                        return 'Rascunho';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Rascunho' => 'gray',
+                        'Publicado' => 'info',
+                        'Público' => 'success',
+                    }),
 
                 TextColumn::make('created_at')
                     ->label('Criado em')
