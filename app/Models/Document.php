@@ -77,10 +77,36 @@ class Document extends Model
         return $query
             ->published()
             ->where(function (Builder $q) use ($investorId): void {
-                $q->where('is_public', true) // Caminho 1: Público
-                    ->orWhereHas('investors', fn (Builder $qq) => $qq->where('investor_id', $investorId)) // Caminho 2: Vínculo direto
-                    ->orWhereHas('emissions.investors', fn (Builder $qq) => $qq->where('investor_id', $investorId)); // Caminho 3: Vínculo indireto (Série)
+                $q->where('is_public', true)
+                    ->orWhereHas('investors', fn (Builder $qq) => $qq->whereKey($investorId))
+                    ->orWhereHas('emissions.investors', fn (Builder $qq) => $qq->whereKey($investorId));
             });
+    }
+
+    /**
+     * Ordena por prioridade de vínculo:
+     * 1 = direto ao investidor, 2 = via emissão, 3 = público.
+     *
+     * @return Builder<self>
+     */
+    public function scopeOrderByVisibilityPriority(Builder $query, int $investorId): Builder
+    {
+        return $query->orderByRaw('
+            CASE
+                WHEN EXISTS (
+                    SELECT 1 FROM investor_document
+                    WHERE investor_document.document_id = documents.id
+                    AND investor_document.investor_id = ?
+                ) THEN 1
+                WHEN EXISTS (
+                    SELECT 1 FROM emission_document
+                    JOIN investor_emission ON investor_emission.emission_id = emission_document.emission_id
+                    WHERE emission_document.document_id = documents.id
+                    AND investor_emission.investor_id = ?
+                ) THEN 2
+                ELSE 3
+            END
+        ', [$investorId, $investorId]);
     }
 
     public function investors(): BelongsToMany

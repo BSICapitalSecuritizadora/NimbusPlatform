@@ -15,6 +15,7 @@ class InvestorDocumentsController extends Controller
         // Lista documentos através do escopo mestre de ACL validado
         $documents = Document::query()
             ->visibleToInvestor($investor->id)
+            ->orderByVisibilityPriority($investor->id)
             ->latest()
             ->paginate(20);
 

@@ -97,3 +97,27 @@ it('does not duplicate documents when investor has both direct and emission link
 
     expect($visible)->toHaveCount(1);
 });
+
+it('orders documents by visibility priority: direct > emission > public', function () {
+    $investor = Investor::factory()->create();
+    $emission = Emission::factory()->create();
+    $investor->emissions()->attach($emission);
+
+    $publicDoc = Document::factory()->public()->create(['title' => 'Public Doc']);
+
+    $emissionDoc = Document::factory()->published()->create(['title' => 'Emission Doc']);
+    $emissionDoc->emissions()->attach($emission);
+
+    $directDoc = Document::factory()->published()->create(['title' => 'Direct Doc']);
+    $directDoc->investors()->attach($investor);
+
+    $visible = Document::query()
+        ->visibleToInvestor($investor->id)
+        ->orderByVisibilityPriority($investor->id)
+        ->get();
+
+    expect($visible)->toHaveCount(3)
+        ->and($visible[0]->title)->toBe('Direct Doc')
+        ->and($visible[1]->title)->toBe('Emission Doc')
+        ->and($visible[2]->title)->toBe('Public Doc');
+});
