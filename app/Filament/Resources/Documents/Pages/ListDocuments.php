@@ -16,4 +16,19 @@ class ListDocuments extends ListRecords
             CreateAction::make(),
         ];
     }
+
+    public function getTabs(): array
+    {
+        return [
+            'todos' => \Filament\Schemas\Components\Tabs\Tab::make('Todos'),
+            'rascunho' => \Filament\Schemas\Components\Tabs\Tab::make('Rascunho')
+                ->modifyQueryUsing(fn ($query) => $query->where('is_published', false)->where('is_public', false)),
+            'publicado' => \Filament\Schemas\Components\Tabs\Tab::make('Publicado')
+                ->modifyQueryUsing(fn ($query) => $query->where('is_published', true)->where('is_public', false)),
+            'publico' => \Filament\Schemas\Components\Tabs\Tab::make('Público')
+                ->modifyQueryUsing(fn ($query) => $query->where('is_public', true)),
+            'nao_publicado' => \Filament\Schemas\Components\Tabs\Tab::make('Não Publicado')
+                ->modifyQueryUsing(fn ($query) => $query->where('is_published', false)),
+        ];
+    }
 }

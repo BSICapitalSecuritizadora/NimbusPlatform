@@ -128,6 +128,34 @@ class DocumentsTable
                             ->send();
                     }),
 
+                Action::make('publish')
+                    ->label('Publicar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Publicar Documento')
+                    ->modalDescription('Tem certeza que deseja publicar este documento para os investidores vinculados?')
+                    ->modalSubmitActionLabel('Sim, publicar')
+                    ->action(function ($record) {
+                        $record->update(['is_published' => true]);
+                        \Filament\Notifications\Notification::make()->title('Documento publicado!')->success()->send();
+                    })
+                    ->visible(fn ($record): bool => ! $record->is_published && auth()->user()->can('documents.update')),
+
+                Action::make('make_public')
+                    ->label('Tornar Público')
+                    ->icon('heroicon-o-globe-americas')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Tornar Documento Público')
+                    ->modalDescription('Tem certeza que deseja deixar este documento aberto para o público em geral?')
+                    ->modalSubmitActionLabel('Sim, tornar público')
+                    ->action(function ($record) {
+                        $record->update(['is_published' => true, 'is_public' => true]);
+                        \Filament\Notifications\Notification::make()->title('Documento agora é público!')->success()->send();
+                    })
+                    ->visible(fn ($record): bool => ! $record->is_public && auth()->user()->can('documents.update')),
+
                 Action::make('download')
                     ->label('Baixar')
                     ->icon('heroicon-o-arrow-down-tray')
@@ -144,11 +172,7 @@ class DocumentsTable
                     ->visible(fn (): bool => auth()->user()->can('documents.delete')),
             ])
             ->filters([
-                TernaryFilter::make('is_published')
-                    ->label('Publicado'),
-
-                TernaryFilter::make('is_public')
-                    ->label('Público'),
+                // Filtros booleanos substituídos pelas Tabs no topo
             ])
             ->defaultSort('created_at', 'desc');
     }
