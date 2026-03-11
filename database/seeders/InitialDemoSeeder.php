@@ -68,7 +68,7 @@ class InitialDemoSeeder extends Seeder
             ]
         );
 
-        // 3) Documento exemplo
+        // 3) Documento exemplo (privado — vinculado ao investidor)
         $document = Document::firstOrCreate(
             ['title' => 'Relatório Anual - Exemplo'],
             [
@@ -82,6 +82,21 @@ class InitialDemoSeeder extends Seeder
 
                 'is_published' => true,
                 'is_public' => false,
+            ]
+        );
+
+        // 3b) Documento público (visível no site público /documentos-publicos)
+        Document::firstOrCreate(
+            ['title' => 'Informativo Trimestral - Público'],
+            [
+                'category' => 'informativos',
+                'file_path' => 'documents/demo/informativo-trimestral-publico.pdf',
+                'file_name' => 'informativo-trimestral-publico.pdf',
+                'mime_type' => 'application/pdf',
+                'file_size' => 98765,
+                'is_published' => true,
+                'is_public' => true,
+                'published_at' => now(),
             ]
         );
 

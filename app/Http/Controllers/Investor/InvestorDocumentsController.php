@@ -17,6 +17,10 @@ class InvestorDocumentsController extends Controller
     {
         $investor = auth('investor')->user();
 
+        if (! $document->is_published) {
+            abort(404);
+        }
+
         $allowed = Document::query()
             ->whereKey($document->id)
             ->visibleToInvestor($investor->id)
