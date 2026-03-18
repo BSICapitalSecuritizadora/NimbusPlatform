@@ -4,52 +4,53 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentDownloadController extends Controller
 {
-    public function __invoke(Request $request, Document $document): StreamedResponse|RedirectResponse
+    public function __invoke(Request $request, Document $document)
     {
         $investor = $request->user('investor');
 
-        $canAccess = Document::query()
+        // 1) Valida ACL usando o "motor" (scope)
+        $allowed = Document::query()
             ->whereKey($document->id)
             ->visibleToInvestor($investor->id)
             ->exists();
 
-        if (! $canAccess) {
+        if (! $allowed) {
+            // anti-leak: se não publicado, retornamos 404 (melhor segurança)
+            if (! $document->is_published) {
+                abort(Response::HTTP_NOT_FOUND);
+            }
+
             abort(Response::HTTP_FORBIDDEN);
         }
 
-        $disk = Storage::disk($document->resolved_storage_disk);
-        $path = $document->file_path;
-
-        if (! $disk->exists($path)) {
-            abort(Response::HTTP_NOT_FOUND);
-        }
-
+        // 2) Log de download (Auditoria de Acesso / Compliance)
         \App\Models\DocumentDownload::create([
             'document_id' => $document->id,
             'investor_id' => $investor->id,
             'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'referer' => $request->header('referer'),
+            'user_agent' => substr((string) $request->userAgent(), 0, 2000),
+            'referer' => $request->headers->get('referer'),
             'downloaded_at' => now(),
-            'session_id' => session()->getId(),
+            'session_id' => $request->session()->getId(),
         ]);
 
-        if ($disk->providesTemporaryUrls()) {
-            $url = $disk->temporaryUrl($path, now()->addMinutes(10));
+        // 3) Entrega o arquivo (local/disk atual)
+        $disk = config('filesystems.default'); // ou 'public', 's3' etc.
+        $path = $document->file_path;
 
-            return redirect()->away($url);
+        if (! Storage::disk($disk)->exists($path)) {
+            abort(Response::HTTP_NOT_FOUND);
         }
 
         $downloadName = $document->file_name ?: basename($path);
 
-        return $disk->download($path, $downloadName);
+        // Se estiver em S3/Azure e quiser URL temporária, depois trocamos aqui
+        return Storage::disk($disk)->download($path, $downloadName);
     }
 }

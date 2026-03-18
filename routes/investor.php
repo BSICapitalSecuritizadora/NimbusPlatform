@@ -27,7 +27,7 @@ Route::prefix('investidor')->name('investor.')->group(function () {
         Route::get('/emissoes', [InvestorEmissionsController::class, 'index'])->name('emissions');
         Route::get('/documentos', [InvestorDocumentsController::class, 'index'])->name('documents');
 
-        Route::get('/documentos/{document}/download', [InvestorDocumentsController::class, 'download'])
+        Route::get('/documentos/{document}/download', \App\Http\Controllers\Portal\DocumentDownloadController::class)
             ->name('documents.download')
             ->middleware('throttle:60,1');
     });
