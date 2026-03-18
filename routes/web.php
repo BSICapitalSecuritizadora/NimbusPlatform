@@ -1,9 +1,10 @@
 <?php
 
+use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\PublicDocumentsController;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('site.home');
 
 Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
     ->name('public-documents');
