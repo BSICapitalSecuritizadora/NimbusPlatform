@@ -21,7 +21,7 @@ it('allows investor to download a document they have access to', function () {
     $response = $this->actingAs($investor, 'investor')
         ->get(route('investor.documents.download', $document));
 
-    $response->assertRedirect();
+    $response->assertOk();
 });
 
 it('forbids investor from downloading a document they do not have access to', function () {

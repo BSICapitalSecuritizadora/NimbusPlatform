@@ -41,7 +41,7 @@ class DocumentDownloadController extends Controller
         ]);
 
         // 3) Entrega o arquivo (local/disk atual)
-        $disk = config('filesystems.default'); // ou 'public', 's3' etc.
+        $disk = $document->resolved_storage_disk;
         $path = $document->file_path;
 
         if (! Storage::disk($disk)->exists($path)) {

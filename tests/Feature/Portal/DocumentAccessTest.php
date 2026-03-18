@@ -12,7 +12,7 @@ function portalDownloadUrl(Document $doc): string {
 }
 
 it('blocks investor A from downloading document linked only to investor B (403)', function () {
-    Storage::fake(); // evita acessar filesystem real
+    Storage::fake(Document::defaultStorageDisk()); // evita acessar filesystem real
 
     $a = Investor::factory()->create(['email' => 'a@test.com']);
     $b = Investor::factory()->create(['email' => 'b@test.com']);
@@ -34,7 +34,7 @@ it('blocks investor A from downloading document linked only to investor B (403)'
 });
 
 it('returns 404 for unpublished documents even if linked (anti-leak)', function () {
-    Storage::fake();
+    Storage::fake(Document::defaultStorageDisk());
 
     $inv = Investor::factory()->create();
     $doc = Document::factory()->create([
@@ -52,8 +52,9 @@ it('returns 404 for unpublished documents even if linked (anti-leak)', function 
 });
 
 it('allows investor to download published document linked directly (200 or redirect)', function () {
-    Storage::fake();
-    Storage::put('documents/tests/ok.pdf', 'demo'); // simula arquivo
+    $disk = Document::defaultStorageDisk();
+    Storage::fake($disk);
+    Storage::disk($disk)->put('documents/tests/ok.pdf', 'demo'); // simula arquivo
 
     $inv = Investor::factory()->create();
     $doc = Document::factory()->create([
@@ -68,15 +69,13 @@ it('allows investor to download published document linked directly (200 or redir
 
     $res = $this->get(portalDownloadUrl($doc));
 
-    // depende da sua implementação:
-    // - download() => 200
-    // - temporaryUrl() => redirect 302
-    expect(in_array($res->status(), [200, 302]))->toBeTrue();
+    expect(in_array($res->getStatusCode(), [200, 302]))->toBeTrue();
 });
 
 it('allows public+published documents in portal only if your rule permits', function () {
-    Storage::fake();
-    Storage::put('documents/tests/pub.pdf', 'demo');
+    $disk = Document::defaultStorageDisk();
+    Storage::fake($disk);
+    Storage::disk($disk)->put('documents/tests/pub.pdf', 'demo');
 
     $inv = Investor::factory()->create();
     $doc = Document::factory()->create([
@@ -88,9 +87,7 @@ it('allows public+published documents in portal only if your rule permits', func
     $this->actingAs($inv, 'investor');
     $res = $this->get(portalDownloadUrl($doc));
 
-    // Se no seu ACL você permite "public" no portal, deve ser 200/302.
-    // Se NÃO permite, deve ser 403.
-    expect(in_array($res->status(), [200, 302, 403]))->toBeTrue();
+    expect(in_array($res->getStatusCode(), [200, 302, 403]))->toBeTrue();
 });
 
 it('does not allow guest to access portal download route', function () {

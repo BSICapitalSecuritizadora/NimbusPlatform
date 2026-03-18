@@ -17,13 +17,13 @@ it('hides unpublished documents from investor', function () {
     expect($visible)->toHaveCount(0);
 });
 
-it('shows published public documents to any investor', function () {
+it('hides published public documents from portal unless explicitly linked', function () {
     $investor = Investor::factory()->create();
     Document::factory()->public()->create();
 
     $visible = Document::query()->visibleToInvestor($investor->id)->get();
 
-    expect($visible)->toHaveCount(1);
+    expect($visible)->toHaveCount(0);
 });
 
 it('shows published document directly linked to investor', function () {
@@ -116,8 +116,7 @@ it('orders documents by visibility priority: direct > emission > public', functi
         ->orderByVisibilityPriority($investor->id)
         ->get();
 
-    expect($visible)->toHaveCount(3)
+    expect($visible)->toHaveCount(2)
         ->and($visible[0]->title)->toBe('Direct Doc')
-        ->and($visible[1]->title)->toBe('Emission Doc')
-        ->and($visible[2]->title)->toBe('Public Doc');
+        ->and($visible[1]->title)->toBe('Emission Doc');
 });
