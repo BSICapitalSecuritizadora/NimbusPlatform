@@ -37,27 +37,19 @@ class DocumentForm
                     Hidden::make('file_name'),
                     Hidden::make('mime_type'),
                     Hidden::make('file_size'),
-                    Hidden::make('storage_disk')
-                        ->default(Document::defaultStorageDisk()),
+                    Hidden::make('storage_disk'),
 
                     FileUpload::make('file_path')
                         ->label('Arquivo')
                         ->required()
-                        ->disk(fn (?Document $record): string => $record?->resolved_storage_disk ?? Document::defaultStorageDisk())
                         ->directory('documents')
-                        ->openable()
-                        ->downloadable()
-                        ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file): string {
-                            $safe = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $file->getClientOriginalName());
-
-                            return now()->format('Y/m/').uniqid().'_'.$safe;
-                        })
-                        ->afterStateUpdated(function ($state, callable $set): void {
+                        ->preserveFilenames()
+                        ->afterStateUpdated(function ($state, callable $set) {
                             if ($state instanceof TemporaryUploadedFile) {
                                 $set('file_name', $state->getClientOriginalName());
                                 $set('mime_type', $state->getMimeType());
                                 $set('file_size', $state->getSize());
-                                $set('storage_disk', Document::defaultStorageDisk());
+                                $set('storage_disk', config('filesystems.default'));
                             }
                         })
                         ->columnSpanFull(),
@@ -71,34 +63,32 @@ class DocumentForm
                         ->placeholder('Selecione uma ou mais séries')
                         ->required(false),
 
+                    /**
+                     * Workflow
+                     */
                     Toggle::make('is_published')
                         ->label('Publicado')
-                        ->helperText('Liberado para visualização no Portal do Investidor')
-                        ->default(false)
+                        ->helperText('Quando marcado, o documento fica disponível no Portal (respeitando permissões).')
                         ->live()
-                        ->afterStateUpdated(function (bool $state, callable $set): void {
-                            if (! $state) {
+                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                            // se despublicar, não pode continuar público
+                            if (! $state && $get('is_public')) {
                                 $set('is_public', false);
                             }
-                        }),
+                        })
+                        ->default(false),
 
                     Toggle::make('is_public')
                         ->label('Público')
-                        ->helperText('Disponível no site público (exige também estar publicado)')
-                        ->default(false)
+                        ->helperText('Quando marcado, o documento aparece no site público (somente se estiver publicado).')
                         ->live()
-                        ->afterStateUpdated(function (bool $state, callable $set): void {
-                            if ($state) {
+                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                            // se tornar público, força publicado
+                            if ($state && ! $get('is_published')) {
                                 $set('is_published', true);
                             }
                         })
-                        ->rule(function ($get) {
-                            return function (string $attribute, $value, \Closure $fail) use ($get): void {
-                                if ($value && ! $get('is_published')) {
-                                    $fail('Para marcar como Público, o documento precisa estar Publicado.');
-                                }
-                            };
-                        }),
+                        ->default(false),
                 ])
                 ->columns(2),
 

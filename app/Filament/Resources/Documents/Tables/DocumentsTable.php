@@ -11,6 +11,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
@@ -52,14 +53,23 @@ class DocumentsTable
                     ->formatStateUsing(fn (?string $state, Document $record): string => $state ?: $record->resolved_storage_disk)
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('workflow_status_label')
+                TextColumn::make('workflow_status')
                     ->label('Status')
+                    ->state(function ($record) {
+                        if (! $record->is_published) return 'Rascunho';
+                        if ($record->is_published && ! $record->is_public) return 'Publicado';
+                        return 'Público';
+                    })
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Rascunho' => 'gray',
                         'Publicado' => 'info',
                         'Público' => 'success',
                         default => 'gray',
+                    })
+                    ->sortable(query: function ($query, string $direction) {
+                        // opcional: ordenar por status; pode ser deixado sem sortable
+                        return $query->orderBy('is_published', $direction)->orderBy('is_public', $direction);
                     }),
 
                 IconColumn::make('is_public')
@@ -213,7 +223,17 @@ class DocumentsTable
                     ->visible(fn (): bool => auth()->user()->can('documents.delete')),
             ])
             ->filters([
-                //
+                Filter::make('rascunho')
+                    ->label('Rascunho')
+                    ->query(fn ($query) => $query->where('is_published', false)),
+
+                Filter::make('publicado')
+                    ->label('Publicado')
+                    ->query(fn ($query) => $query->where('is_published', true)->where('is_public', false)),
+
+                Filter::make('publico')
+                    ->label('Público')
+                    ->query(fn ($query) => $query->where('is_published', true)->where('is_public', true)),
             ])
             ->defaultSort('created_at', 'desc');
     }
