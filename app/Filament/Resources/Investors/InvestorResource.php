@@ -128,6 +128,9 @@ class InvestorResource extends Resource
                         DateTimePicker::make('last_login_at')
                             ->label('Último login'),
 
+                        DateTimePicker::make('last_portal_seen_at')
+                            ->label('Última visualização do portal'),
+
                         Textarea::make('notes')
                             ->label('Observações')
                             ->rows(6)
@@ -173,6 +176,12 @@ class InvestorResource extends Resource
 
                 TextColumn::make('last_login_at')
                     ->label('Último login')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('last_portal_seen_at')
+                    ->label('Última visualização do portal')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(),

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Storage::fake(config('filesystems.default'));
+    Storage::fake(Document::defaultStorageDisk());
 });
 
 it('can create a new document version via action', function () {
@@ -25,6 +25,7 @@ it('can create a new document version via action', function () {
     $original = Document::factory()->published()->create([
         'title' => 'Sample Doc',
         'file_path' => 'documents/original.pdf',
+        'storage_disk' => Document::defaultStorageDisk(),
         'version' => 1,
     ]);
     $original->investors()->attach($investor);
@@ -32,15 +33,28 @@ it('can create a new document version via action', function () {
 
     $newFile = UploadedFile::fake()->create('new_v2.pdf', 1024, 'application/pdf');
 
-    // Execute the clone logic directly (simulating the action's behavior)
-    $newVersion = $original->replicate(['file_path', 'file_name', 'mime_type', 'file_size', 'version', 'parent_document_id', 'replaced_at']);
-    $newVersion->file_path = $newFile->store('documents', config('filesystems.default'));
+    $newVersion = $original->replicate([
+        'file_path',
+        'file_name',
+        'mime_type',
+        'file_size',
+        'storage_disk',
+        'version',
+        'parent_document_id',
+        'replaced_at',
+        'published_at',
+        'published_by',
+    ]);
+    $newVersion->file_path = $newFile->store('documents', Document::defaultStorageDisk());
     $newVersion->file_name = $newFile->getClientOriginalName();
     $newVersion->mime_type = $newFile->getMimeType();
     $newVersion->file_size = $newFile->getSize();
+    $newVersion->storage_disk = Document::defaultStorageDisk();
     $newVersion->version = $original->version + 1;
     $newVersion->parent_document_id = $original->parent_document_id ?? $original->id;
     $newVersion->is_published = false;
+    $newVersion->published_at = null;
+    $newVersion->published_by = null;
     $newVersion->save();
 
     $newVersion->emissions()->sync($original->emissions->pluck('id'));
@@ -51,14 +65,11 @@ it('can create a new document version via action', function () {
         'replaced_at' => now(),
     ]);
 
-    // Refresh original
     $original->refresh();
 
-    // Verify original is archived
     expect($original->is_published)->toBeFalse()
         ->and($original->replaced_at)->not->toBeNull();
 
-    // Verify new version was created
     $newVersion = Document::where('parent_document_id', $original->id)->first();
 
     expect($newVersion)->not->toBeNull()
@@ -66,6 +77,9 @@ it('can create a new document version via action', function () {
         ->and($newVersion->version)->toBe(2)
         ->and($newVersion->parent_document_id)->toBe($original->id)
         ->and($newVersion->is_published)->toBeFalse()
+        ->and($newVersion->storage_disk)->toBe(Document::defaultStorageDisk())
+        ->and($newVersion->published_at)->toBeNull()
+        ->and($newVersion->published_by)->toBeNull()
         ->and($newVersion->investors)->toHaveCount(1)
         ->and($newVersion->emissions)->toHaveCount(1);
 });

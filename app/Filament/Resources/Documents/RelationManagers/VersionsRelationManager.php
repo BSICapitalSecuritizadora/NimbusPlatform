@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\Documents\RelationManagers;
 
+use App\Models\Document;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
 
 class VersionsRelationManager extends RelationManager
 {
@@ -36,6 +38,9 @@ class VersionsRelationManager extends RelationManager
                     ->label('Título'),
                 TextColumn::make('file_name')
                     ->label('Arquivo'),
+                TextColumn::make('storage_disk')
+                    ->label('Disco')
+                    ->formatStateUsing(fn (?string $state, Document $record): string => $state ?: $record->resolved_storage_disk),
                 TextColumn::make('replaced_at')
                     ->label('Substituído Em')
                     ->dateTime('d/m/Y H:i'),
@@ -50,14 +55,14 @@ class VersionsRelationManager extends RelationManager
                 Action::make('download')
                     ->label('Baixar')
                     ->icon('heroicon-o-arrow-down-tray')
-                    ->url(fn (\App\Models\Document $record): ?string => $record->file_path
-                        ? \Illuminate\Support\Facades\Storage::disk(config('filesystems.default') === 'local' ? 'public' : config('filesystems.default'))->url($record->file_path)
+                    ->url(fn (Document $record): ?string => $record->file_path
+                        ? Storage::disk($record->resolved_storage_disk)->url($record->file_path)
                         : null)
                     ->openUrlInNewTab()
-                    ->visible(fn (\App\Models\Document $record): bool => (bool) $record->file_path),
+                    ->visible(fn (Document $record): bool => (bool) $record->file_path),
             ])
             ->bulkActions([
-                // Remove delete for history retention
+                //
             ])
             ->defaultSort('version', 'desc');
     }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Documents\Pages;
 
 use App\Filament\Resources\Documents\DocumentResource;
+use App\Models\Document;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,8 +17,10 @@ class CreateDocument extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $data['storage_disk'] = $data['storage_disk'] ?? Document::defaultStorageDisk();
+
         if (! empty($data['file_path'])) {
-            $disk = Storage::disk('public');
+            $disk = Storage::disk($data['storage_disk']);
             $path = $data['file_path'];
 
             $data['file_name'] = $data['file_name'] ?? basename($path);

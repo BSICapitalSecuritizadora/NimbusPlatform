@@ -19,21 +19,16 @@ class DocumentFactory extends Factory
     {
         return [
             'title' => fake()->sentence(3),
-            'category' => fake()->randomElement([
-                'anuncios',
-                'assembleias',
-                'convocacoes_assembleias',
-                'demonstracoes_financeiras',
-                'documentos_operacao',
-                'fatos_relevantes',
-                'relatorios_anuais',
-            ]),
+            'category' => fake()->randomElement(array_keys(Document::CATEGORY_OPTIONS)),
             'file_path' => 'documents/'.fake()->uuid().'.pdf',
             'file_name' => fake()->word().'.pdf',
             'mime_type' => 'application/pdf',
             'file_size' => fake()->numberBetween(1024, 10485760),
+            'storage_disk' => Document::defaultStorageDisk(),
             'is_published' => false,
             'is_public' => false,
+            'published_at' => null,
+            'published_by' => null,
         ];
     }
 
@@ -41,6 +36,7 @@ class DocumentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_published' => true,
+            'published_at' => now(),
         ]);
     }
 
@@ -49,6 +45,7 @@ class DocumentFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'is_published' => true,
             'is_public' => true,
+            'published_at' => now(),
         ]);
     }
 
@@ -57,6 +54,8 @@ class DocumentFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'is_published' => false,
             'is_public' => false,
+            'published_at' => null,
+            'published_by' => null,
         ]);
     }
 

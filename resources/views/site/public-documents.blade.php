@@ -56,7 +56,7 @@
                             <div>
                                 <div class="doc-title">{{ $document->title }}</div>
                                 @if($document->category)
-                                    <div class="doc-category">{{ $document->category }}</div>
+                                    <div class="doc-category">{{ $document->category_label }}</div>
                                 @endif
                             </div>
                             <div class="doc-date">

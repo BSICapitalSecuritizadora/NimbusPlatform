@@ -13,6 +13,18 @@ class Emission extends Model
     /** @use HasFactory<\Database\Factories\EmissionFactory> */
     use HasFactory, LogsActivity;
 
+    public const TYPE_OPTIONS = [
+        'CR' => 'CR',
+        'CRA' => 'CRA',
+        'CRI' => 'CRI',
+    ];
+
+    public const STATUS_OPTIONS = [
+        'draft' => 'Rascunho',
+        'active' => 'Ativa',
+        'closed' => 'Encerrada',
+    ];
+
     protected $fillable = [
         'name',
         'type',
@@ -52,6 +64,11 @@ class Emission extends Model
         'prepayment_possibility' => 'boolean',
         'is_public' => 'boolean',
     ];
+
+    public function getStatusLabelAttribute(): string
+    {
+        return self::STATUS_OPTIONS[$this->status] ?? $this->status;
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

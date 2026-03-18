@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Storage::fake(config('filesystems.default'));
+    Storage::fake(Document::defaultStorageDisk());
 });
 
 it('allows investor to download a document they have access to', function () {
@@ -16,7 +16,7 @@ it('allows investor to download a document they have access to', function () {
     $document = Document::factory()->published()->create();
     $document->investors()->attach($investor);
 
-    Storage::disk(config('filesystems.default'))->put($document->file_path, 'fake-content');
+    Storage::disk($document->resolved_storage_disk)->put($document->file_path, 'fake-content');
 
     $response = $this->actingAs($investor, 'investor')
         ->get(route('investor.documents.download', $document));
@@ -28,7 +28,7 @@ it('forbids investor from downloading a document they do not have access to', fu
     $investor = Investor::factory()->create();
     $document = Document::factory()->published()->create(['is_public' => false]);
 
-    Storage::disk(config('filesystems.default'))->put($document->file_path, 'fake-content');
+    Storage::disk($document->resolved_storage_disk)->put($document->file_path, 'fake-content');
 
     $response = $this->actingAs($investor, 'investor')
         ->get(route('investor.documents.download', $document));

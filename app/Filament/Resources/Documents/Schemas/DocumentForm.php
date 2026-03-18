@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Documents\Schemas;
 
+use App\Models\Document;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -28,26 +30,20 @@ class DocumentForm
 
                     Select::make('category')
                         ->label('Categoria')
-                        ->options([
-                            'anuncios' => 'Anúncios',
-                            'assembleias' => 'Assembleias',
-                            'convocacoes_assembleias' => 'Convocações para Assembleias',
-                            'demonstracoes_financeiras' => 'Demonstrações Financeiras',
-                            'documentos_operacao' => 'Documentos da Operação',
-                            'fatos_relevantes' => 'Fatos Relevantes',
-                            'relatorios_anuais' => 'Relatórios Anuais',
-                        ])
+                        ->options(Document::CATEGORY_OPTIONS)
                         ->required()
                         ->searchable(),
 
                     Hidden::make('file_name'),
                     Hidden::make('mime_type'),
                     Hidden::make('file_size'),
+                    Hidden::make('storage_disk')
+                        ->default(Document::defaultStorageDisk()),
 
                     FileUpload::make('file_path')
                         ->label('Arquivo')
                         ->required()
-                        ->disk(config('filesystems.default') === 'local' ? 'public' : config('filesystems.default'))
+                        ->disk(fn (?Document $record): string => $record?->resolved_storage_disk ?? Document::defaultStorageDisk())
                         ->directory('documents')
                         ->openable()
                         ->downloadable()
@@ -61,6 +57,7 @@ class DocumentForm
                                 $set('file_name', $state->getClientOriginalName());
                                 $set('mime_type', $state->getMimeType());
                                 $set('file_size', $state->getSize());
+                                $set('storage_disk', Document::defaultStorageDisk());
                             }
                         })
                         ->columnSpanFull(),
@@ -121,11 +118,23 @@ class DocumentForm
                             ? Number::fileSize($record->file_size)
                             : '—'),
 
+                    Placeholder::make('storage_disk_display')
+                        ->label('Disco')
+                        ->content(fn ($record): string => $record?->resolved_storage_disk ?? Document::defaultStorageDisk()),
+
+                    Placeholder::make('published_at_display')
+                        ->label('Publicado em')
+                        ->content(fn ($record): string => $record?->published_at?->format('d/m/Y H:i') ?? '—'),
+
+                    Placeholder::make('published_by_display')
+                        ->label('Publicado por')
+                        ->content(fn ($record): string => $record?->publisher?->name ?? '—'),
+
                     Placeholder::make('download_link')
                         ->label('Link')
                         ->content(fn ($record) => $record?->file_path
-                            ? new \Illuminate\Support\HtmlString(
-                                '<a href="'.Storage::disk(config('filesystems.default') === 'local' ? 'public' : config('filesystems.default'))->url($record->file_path).'" target="_blank" class="text-primary-600 hover:underline">Abrir arquivo ↗</a>'
+                            ? new HtmlString(
+                                '<a href="'.Storage::disk($record->resolved_storage_disk)->url($record->file_path).'" target="_blank" class="text-primary-600 hover:underline">Abrir arquivo ↗</a>'
                             )
                             : '—'),
                 ])

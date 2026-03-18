@@ -5,7 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -14,6 +16,16 @@ class Document extends Model
     /** @use HasFactory<\Database\Factories\DocumentFactory> */
     use HasFactory, LogsActivity;
 
+    public const CATEGORY_OPTIONS = [
+        'anuncios' => 'Anúncios',
+        'assembleias' => 'Assembleias',
+        'convocacoes_assembleias' => 'Convocações para Assembleias',
+        'demonstracoes_financeiras' => 'Demonstrações Financeiras',
+        'documentos_operacao' => 'Documentos da Operação',
+        'fatos_relevantes' => 'Fatos Relevantes',
+        'relatorios_anuais' => 'Relatórios Anuais',
+    ];
+
     protected $fillable = [
         'title',
         'category',
@@ -21,6 +33,7 @@ class Document extends Model
         'file_name',
         'mime_type',
         'file_size',
+        'storage_disk',
         'is_published',
         'is_public',
         'version',
@@ -36,6 +49,36 @@ class Document extends Model
         'is_public' => 'boolean',
         'published_at' => 'datetime',
     ];
+
+    public static function defaultStorageDisk(): string
+    {
+        $defaultDisk = (string) config('filesystems.default', 'public');
+
+        return $defaultDisk === 'local' ? 'public' : $defaultDisk;
+    }
+
+    public function getResolvedStorageDiskAttribute(): string
+    {
+        return $this->storage_disk ?: self::defaultStorageDisk();
+    }
+
+    public function getCategoryLabelAttribute(): string
+    {
+        return self::CATEGORY_OPTIONS[$this->category] ?? $this->category;
+    }
+
+    public function getWorkflowStatusLabelAttribute(): string
+    {
+        if ($this->is_public) {
+            return 'Público';
+        }
+
+        if ($this->is_published) {
+            return 'Publicado';
+        }
+
+        return 'Rascunho';
+    }
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -62,8 +105,6 @@ class Document extends Model
     }
 
     /**
-     * Visível no site público (publicado + público).
-     *
      * @return Builder<self>
      */
     public function scopeVisibleOnPublicSite(Builder $query): Builder
@@ -72,10 +113,6 @@ class Document extends Model
     }
 
     /**
-     * Documentos que um investidor pode acessar no portal:
-     * - publicados
-     * - e (públicos OU vinculados diretamente ao investidor OU vinculados a emissões do investidor)
-     *
      * @return Builder<self>
      */
     public function scopeVisibleToInvestor(Builder $query, int $investorId): Builder
@@ -90,9 +127,6 @@ class Document extends Model
     }
 
     /**
-     * Ordena por prioridade de vínculo:
-     * 1 = direto ao investidor, 2 = via emissão, 3 = público.
-     *
      * @return Builder<self>
      */
     public function scopeOrderByVisibilityPriority(Builder $query, int $investorId): Builder
@@ -125,18 +159,18 @@ class Document extends Model
         return $this->belongsToMany(Emission::class, 'emission_document')->withTimestamps();
     }
 
-    public function parent(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_document_id');
     }
 
-    public function versions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function versions(): HasMany
     {
         return $this->hasMany(self::class, 'parent_document_id');
     }
 
-    public function publisher(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function publisher(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'published_by');
+        return $this->belongsTo(User::class, 'published_by');
     }
 }

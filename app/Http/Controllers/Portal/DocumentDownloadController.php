@@ -4,17 +4,18 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentDownloadController extends Controller
 {
-    public function __invoke(Request $request, Document $document)
+    public function __invoke(Request $request, Document $document): StreamedResponse|RedirectResponse
     {
         $investor = $request->user('investor');
 
-        // Verifica se o documento está acessível para o investidor (usando a query com todos os vínculos de ACL + público)
         $canAccess = Document::query()
             ->whereKey($document->id)
             ->visibleToInvestor($investor->id)
@@ -24,7 +25,7 @@ class DocumentDownloadController extends Controller
             abort(Response::HTTP_FORBIDDEN);
         }
 
-        $disk = Storage::disk(config('filesystems.default'));
+        $disk = Storage::disk($document->resolved_storage_disk);
         $path = $document->file_path;
 
         if (! $disk->exists($path)) {

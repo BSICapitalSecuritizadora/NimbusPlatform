@@ -16,7 +16,6 @@ class InitialDemoSeeder extends Seeder
     {
         $this->call(RolesAndPermissionsSeeder::class);
 
-        // 1) Admin super (Filament)
         $adminEmail = 'admin@bsi.local';
 
         $admin = User::firstOrCreate(
@@ -27,20 +26,17 @@ class InitialDemoSeeder extends Seeder
             ]
         );
 
-        // Se você já implementou Spatie Roles:
         if (method_exists($admin, 'assignRole')) {
             $admin->assignRole('super-admin');
         }
 
-        // 2) Emissão exemplo
         $emission = Emission::firstOrCreate(
-            ['name' => 'Série Exemplo - CRI 001'],
+            ['name' => 'Serie Exemplo - CRI 001'],
             [
                 'type' => 'CRI',
                 'if_code' => 'IF-EXEMPLO-001',
-                'isin_code' => 'BRB S IEXEMPLO01', // placeholder
+                'isin_code' => 'BRBSIEXEMPLO01',
                 'status' => 'active',
-
                 'issuer' => 'BSI Capital',
                 'fiduciary_regime' => 'Sim',
                 'issue_date' => now()->subDays(30)->toDateString(),
@@ -56,51 +52,49 @@ class InitialDemoSeeder extends Seeder
                 'issued_price' => 1000.00,
                 'amortization_frequency' => 'Mensal',
                 'integralized_quantity' => 1000,
-                'trustee_agent' => 'Agente Fiduciário Exemplo',
+                'trustee_agent' => 'Agente Fiduciario Exemplo',
                 'debtor' => 'Devedor Exemplo',
                 'remuneration' => 'CDI + 2,00% a.a.',
                 'prepayment_possibility' => true,
                 'segment' => 'Real Estate',
                 'issued_volume' => 1000000.00,
-
                 'is_public' => false,
-                'description' => 'Emissão de exemplo para desenvolvimento.',
+                'description' => 'Emissao de exemplo para desenvolvimento.',
             ]
         );
 
-        // 3) Documento exemplo (privado — vinculado ao investidor)
         $document = Document::firstOrCreate(
-            ['title' => 'Relatório Anual - Exemplo'],
+            ['title' => 'Relatorio Anual - Exemplo'],
             [
                 'category' => 'relatorios_anuais',
-                // como é seed de demo, file_path pode ser um placeholder:
                 'file_path' => 'documents/demo/relatorio-anual-exemplo.pdf',
-
                 'file_name' => 'relatorio-anual-exemplo.pdf',
                 'mime_type' => 'application/pdf',
                 'file_size' => 123456,
-
+                'storage_disk' => Document::defaultStorageDisk(),
                 'is_published' => true,
                 'is_public' => false,
+                'published_at' => now(),
+                'published_by' => $admin->id,
             ]
         );
 
-        // 3b) Documento público (visível no site público /documentos-publicos)
         Document::firstOrCreate(
-            ['title' => 'Informativo Trimestral - Público'],
+            ['title' => 'Informativo Trimestral - Publico'],
             [
-                'category' => 'informativos',
+                'category' => 'anuncios',
                 'file_path' => 'documents/demo/informativo-trimestral-publico.pdf',
                 'file_name' => 'informativo-trimestral-publico.pdf',
                 'mime_type' => 'application/pdf',
                 'file_size' => 98765,
+                'storage_disk' => Document::defaultStorageDisk(),
                 'is_published' => true,
                 'is_public' => true,
                 'published_at' => now(),
+                'published_by' => $admin->id,
             ]
         );
 
-        // 4) Investidor exemplo
         $investor = Investor::firstOrCreate(
             ['email' => 'investidor@demo.local'],
             [
@@ -112,19 +106,14 @@ class InitialDemoSeeder extends Seeder
                 'rg' => '12.345.678-9',
                 'is_active' => true,
                 'last_login_at' => null,
+                'last_portal_seen_at' => null,
                 'notes' => 'Conta demo para testes do portal.',
                 'remember_token' => Str::random(10),
             ]
         );
 
-        // 5) Vínculos (pivot)
-        // investidor ↔ emissão
         $investor->emissions()->syncWithoutDetaching([$emission->id]);
-
-        // investidor ↔ documento
         $investor->documents()->syncWithoutDetaching([$document->id]);
-
-        // documento ↔ emissão (série)
         $document->emissions()->syncWithoutDetaching([$emission->id]);
     }
 }

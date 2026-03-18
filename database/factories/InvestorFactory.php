@@ -24,12 +24,13 @@ class InvestorFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
-            'phone' => fake()->phoneNumber(),
-            'mobile' => fake()->phoneNumber(),
+            'phone' => fake()->numerify('(##) ####-####'),
+            'mobile' => fake()->numerify('(##) #####-####'),
             'cpf' => fake()->numerify('###.###.###-##'),
             'rg' => fake()->numerify('##.###.###-#'),
             'is_active' => true,
             'last_login_at' => null,
+            'last_portal_seen_at' => null,
             'notes' => null,
         ];
     }

@@ -13,7 +13,7 @@
             @foreach($emissions as $e)
                 <li class="p-3 border rounded">
                     <div class="font-medium">{{ $e->name }}</div>
-                    <div class="text-sm text-gray-600">Tipo: {{ $e->type }} | Status: {{ $e->status }}</div>
+                    <div class="text-sm text-gray-600">Tipo: {{ $e->type }} | Status: {{ $e->status_label }}</div>
                 </li>
             @endforeach
         </ul>

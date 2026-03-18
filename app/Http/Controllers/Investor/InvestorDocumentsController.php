@@ -4,16 +4,20 @@ namespace App\Http\Controllers\Investor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvestorDocumentsController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         return view('investor.documents.index');
     }
 
-    public function download(Document $document)
+    public function download(Document $document): StreamedResponse|RedirectResponse|Response
     {
         $investor = auth('investor')->user();
 
@@ -28,7 +32,7 @@ class InvestorDocumentsController extends Controller
 
         abort_unless($allowed, 403);
 
-        $disk = Storage::disk(config('filesystems.default'));
+        $disk = Storage::disk($document->resolved_storage_disk);
         $path = $document->file_path;
 
         abort_unless($disk->exists($path), 404);
