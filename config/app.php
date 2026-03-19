@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'portal_url' => env('APP_PORTAL_URL', '/investidor/login'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
