@@ -122,7 +122,8 @@
         ];
       @endphp
 
-      @foreach($cases as [$title,$desc,$tag])
+      @foreach($cases as $case)
+        @php [$title, $desc, $tag] = $case; @endphp
         <div class="col-md-6 col-lg-4">
           <div class="card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start mb-2">
