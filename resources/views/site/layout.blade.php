@@ -14,7 +14,7 @@
     <style>
         :root{
             --brand: #00205b;        /* azul marinho */
-            --gold: #ffc20e;         /* dourado (accent) */
+            --gold: #d4af37;         /* dourado mais elegante */
 
             /* Light (Opea-like) */
             --bg: #f7f8fb;
@@ -40,7 +40,7 @@
 
                 --nav-bg: rgba(11,15,23,.75);
                 --hero-1: rgba(255,255,255,.06);
-                --hero-2: rgba(255,194,14,.10);
+                --hero-2: rgba(212,175,55,.10);
             }
         }
 
@@ -63,7 +63,7 @@
             --border: rgba(255,255,255,.10);
             --nav-bg: rgba(11,15,23,.75);
             --hero-1: rgba(255,255,255,.06);
-            --hero-2: rgba(255,194,14,.10);
+            --hero-2: rgba(212,175,55,.10);
         }
 
         body{
@@ -75,8 +75,15 @@
         /* Navbar */
         .navbar{
             background: var(--nav-bg);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 40px rgba(0,0,0,.08);
+            border-radius: 50rem;
+            max-width: 1200px;
+            margin: 1.5rem auto;
+            top: 1.5rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
         }
 
         .navbar-brand{
@@ -96,12 +103,18 @@
         .card{
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 32px;
         }
 
         .text-muted{ color: var(--muted) !important; }
 
         /* Buttons */
+        .btn{
+            border-radius: 50rem;
+            padding: 0.5rem 1.25rem;
+            font-weight: 500;
+        }
+
         .btn-brand{
             background: var(--brand);
             border-color: var(--brand);
@@ -128,14 +141,31 @@
             font-weight: 600;
         }
 
+        /* Globals */
+        .section-dark {
+            background-color: #0b1220; /* Deep blue-ish dark */
+            color: #f1f5f9;
+        }
+        .section-dark .text-muted {
+            color: #9aa4b2 !important;
+        }
+        .section-dark .kicker {
+            color: var(--gold);
+        }
+
         /* Hero */
         .hero{
-            background:
-                radial-gradient(1200px 600px at 10% 10%, var(--hero-1), transparent 55%),
-                radial-gradient(900px 500px at 90% 20%, var(--hero-2), transparent 60%),
-                var(--surface);
-            border-bottom: 1px solid var(--border);
+            background: #001233; /* Very dark BSI blue */
+            background-image: 
+                radial-gradient(1200px 600px at 10% 10%, rgba(0,32,91, 0.4), transparent 55%),
+                radial-gradient(900px 500px at 90% 20%, rgba(212,175,55, 0.08), transparent 60%);
+            color: #ffffff;
+            border-bottom: 0;
+            padding-top: 6rem;
+            padding-bottom: 6rem;
         }
+        .hero .text-muted { color: #a5b4fc !important; }
+        .hero .kicker { color: var(--gold); }
 
         .kicker{
             color: var(--muted);
@@ -216,6 +246,10 @@
         <div class="collapse navbar-collapse" id="nav">
             <ul class="navbar-nav ms-auto gap-lg-2 align-items-lg-center">
 
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('site.emissions') }}">Emissões</a>
+                </li>
+
                 {{-- Indústrias --}}
                 <li class="nav-item dropdown dropdown-mega">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -252,7 +286,7 @@
 
                 {{-- Serviços --}}
                 <li class="nav-item dropdown dropdown-mega">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" href="{{ route('site.services') }}" role="button" data-bs-toggle="dropdown">
                         Serviços
                     </a>
                     <div class="dropdown-menu mega-menu p-0 border-0">
@@ -294,15 +328,15 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">A BSI</div>
                                 <div class="mega-kicker">História, time e visão.</div>
-                                <a class="mega-link" href="#">Sobre</a>
-                                <a class="mega-link" href="#">Governança</a>
+                                <a class="mega-link" href="{{ route('site.about') }}">Sobre</a>
+                                <a class="mega-link" href="{{ route('site.governance') }}">Governança</a>
                                 <a class="mega-link" href="#">Compliance</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Relações com Investidores</div>
                                 <div class="mega-kicker">Documentos públicos e comunicados.</div>
-                                <a class="mega-link" href="#">R.I</a>
+                                <a class="mega-link" href="{{ route('site.ri') }}">R.I</a>
                                 <a class="mega-link" href="#">Fatos relevantes</a>
                                 <a class="mega-link" href="#">Assembleias</a>
                             </div>
@@ -310,7 +344,7 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Contato</div>
                                 <div class="mega-kicker">Fale com a BSI.</div>
-                                <a class="mega-link" href="#">Fale conosco</a>
+                                <a class="mega-link" href="{{ route('site.contact') }}">Fale conosco</a>
                                 <a class="mega-link" href="#">Trabalhe conosco</a>
                             </div>
                         </div>
@@ -319,13 +353,6 @@
             </ul>
 
             <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0">
-                {{-- (Opcional) Seletor de tema Auto/Claro/Escuro --}}
-                <select class="form-select form-select-sm theme-select" onchange="BSITheme.set(this.value)">
-                    <option value="auto">Tema: Auto</option>
-                    <option value="light">Tema: Claro</option>
-                    <option value="dark">Tema: Escuro</option>
-                </select>
-
                 <a href="{{ $portalUrl }}" class="btn btn-outline-brand btn-sm">Portal do Investidor</a>
                 <a href="#" class="btn btn-brand btn-sm">Falar com a BSI</a>
             </div>
