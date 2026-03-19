@@ -32,18 +32,7 @@
   </div>
 </section>
 
-{{-- Faixa de parceiros (MVP com placeholders) --}}
-<section class="py-4" style="background: var(--bg);">
-  <div class="container">
-    <div class="text-center text-muted small mb-3 text-uppercase fw-bold" style="letter-spacing: 0.05em;">Entidades parceiras</div>
-    <div class="d-flex flex-wrap align-items-center justify-content-center gap-5 logo-strip">
-      <img src="https://dummyimage.com/120x28/ddd/aaa&text=Parceiro+1" alt="">
-      <img src="https://dummyimage.com/120x28/ddd/aaa&text=Parceiro+2" alt="">
-      <img src="https://dummyimage.com/120x28/ddd/aaa&text=Parceiro+3" alt="">
-      <img src="https://dummyimage.com/120x28/ddd/aaa&text=Parceiro+4" alt="">
-    </div>
-  </div>
-</section>
+
 
 {{-- Indústrias / Soluções (cards grandes com foto estilo Opea) --}}
 <section class="py-5 bg-white">
