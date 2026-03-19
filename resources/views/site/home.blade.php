@@ -2,8 +2,13 @@
 @section('title','BSI Capital — Securitizadora')
 
 @section('content')
-<section class="hero">
-  <div class="container py-3">
+<section class="hero position-relative overflow-hidden">
+  {{-- Video Background --}}
+  <video autoplay loop muted playsinline class="position-absolute w-100 h-100 object-fit-cover" style="top: 0; left: 0; z-index: 0; opacity: 0.35; pointer-events: none;">
+    <source src="https://opea.com.br/wp-content/themes/opeacapital/assets/video/nova_intro.mp4" type="video/mp4">
+  </video>
+
+  <div class="container py-3 position-relative" style="z-index: 1;">
     <div class="row align-items-center g-4 text-center">
       <div class="col-lg-8 mx-auto">
         <div class="kicker mb-3">Securitização • Mercado de Capitais • Real Estate</div>
@@ -21,11 +26,7 @@
           <button class="btn btn-brand rounded-pill px-4 text-nowrap" type="button" style="background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600;">Comece agora</button>
         </div>
 
-        <div class="mt-5 d-flex gap-3 justify-content-center flex-wrap">
-          <span class="badge" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-weight: 500; border-radius: 50rem; padding: 8px 16px;">Compliance & Auditoria</span>
-          <span class="badge" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-weight: 500; border-radius: 50rem; padding: 8px 16px;">Controle de Acesso</span>
-          <span class="badge" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-weight: 500; border-radius: 50rem; padding: 8px 16px;">Relações com Investidores</span>
-        </div>
+
       </div>
     </div>
   </div>
