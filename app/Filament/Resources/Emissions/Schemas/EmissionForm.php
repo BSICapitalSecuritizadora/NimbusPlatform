@@ -52,6 +52,10 @@ class EmissionForm
                             ->label('Emissor')
                             ->maxLength(255),
 
+                        TextInput::make('lead_coordinator')
+                            ->label('Coordenador líder')
+                            ->maxLength(255),
+
                         TextInput::make('fiduciary_regime')
                             ->label('Regime fiduciário')
                             ->maxLength(255),

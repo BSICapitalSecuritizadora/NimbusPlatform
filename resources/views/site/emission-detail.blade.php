@@ -5,7 +5,7 @@
 @section('content')
 <style>
     :root {
-        --opea-purple: var(--brand-dark);
+        --opea-purple: var(--brand); /* Navy Blue instead of Purple */
         --opea-bg: var(--brand-light);
     }
     .emission-page {
@@ -14,7 +14,7 @@
         font-family: 'Inter', sans-serif;
     }
     .text-purple { color: var(--opea-purple); }
-    .bg-purple-light { background-color: #DBD6DE; }
+    .bg-purple-light { background-color: rgba(0, 32, 91, 0.1); }
     
     .breadcrumb-item + .breadcrumb-item::before { content: ""; }
     
@@ -26,7 +26,7 @@
         font-size: 0.9rem;
     }
     .nav-pills .nav-link.active {
-        background-color: #DBD6DE;
+        background-color: rgba(0, 32, 91, 0.1);
         color: var(--opea-purple);
     }
     
@@ -51,9 +51,13 @@
 </style>
 
 <div class="emission-page pb-5" style="min-height: 100vh;">
-    <!-- Top Label -->
-    <div class="py-4 text-center">
-        <h2 class="h1 fw-normal text-purple mb-0">Emissão</h2>
+    <!-- Top Logo -->
+    <div class="py-5 text-center">
+        @if($emission->logo_path)
+            <img src="{{ Storage::url($emission->logo_path) }}" alt="{{ $emission->name }}" style="max-height: 80px; max-width: 250px; object-fit: contain;">
+        @else
+            <h2 class="h1 fw-normal text-purple mb-0">Emissão</h2>
+        @endif
     </div>
 
     <div class="container pb-4">
@@ -67,7 +71,6 @@
             </div>
             
             <div class="d-flex flex-wrap align-items-center gap-3 small">
-                <span class="text-muted opacity-75">{{ $emission->type }}.{{ $emission->emission_number }}.BSI</span>
                 <span class="text-muted opacity-75">ISIN {{ $emission->isin_code ?? 'N/A' }}</span>
                 <span class="text-muted opacity-75">IF {{ $emission->if_code }}</span>
                 <span class="badge rounded-pill px-3 py-1" style="background-color: #e6f6ec; color: #1e6e44;">
@@ -78,7 +81,6 @@
 
         <!-- Tab Navigation -->
         <ul class="nav nav-pills mb-5 gap-2" id="emissionTabs" role="tablist">
-            <li class="nav-item"><a class="nav-link" href="#resumo">Resumo</a></li>
             <li class="nav-item"><a class="nav-link active" href="#caracteristicas">Características</a></li>
             <li class="nav-item"><a class="nav-link" href="#pagamentos">Pagamentos</a></li>
             <li class="nav-item"><a class="nav-link" href="#documentos">Documentos</a></li>
@@ -94,7 +96,21 @@
                     <button class="btn btn-link p-0 text-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
                 </div>
 
-                <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-4 mb-4">
+                <style>
+                    @media (min-width: 992px) {
+                        .grid-characteristics {
+                            display: grid !important;
+                            grid-template-columns: repeat(5, 1fr) !important;
+                            gap: 1.5rem;
+                        }
+                        .grid-characteristics .col {
+                            width: 100% !important;
+                            flex: 0 0 100% !important;
+                            max-width: 100% !important;
+                        }
+                    }
+                </style>
+                <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 grid-characteristics g-4 mb-4">
                     <div class="col">
                         <span class="char-label">Emissor</span>
                         <div class="char-value">{{ $emission->issuer ?? 'N/A' }}</div>
@@ -102,6 +118,14 @@
                     <div class="col">
                         <span class="char-label">Série</span>
                         <div class="char-value">{{ $emission->series ?? 'N/A' }}</div>
+                    </div>
+                    <div class="col">
+                        <span class="char-label">Coordenador Líder</span>
+                        <div class="char-value">{{ $emission->lead_coordinator ?? 'N/A' }}</div>
+                    </div>
+                    <div class="col">
+                        <span class="char-label">Número da emissão</span>
+                        <div class="char-value">{{ $emission->emission_number ?? 'N/A' }}</div>
                     </div>
                     <div class="col">
                         <span class="char-label">Data de Emissão</span>
@@ -116,32 +140,36 @@
                         <div class="char-value">{{ $emission->remuneration ?? 'N/A' }}</div>
                     </div>
                     <div class="col">
-                        <span class="char-label">Regime Fiduciário</span>
-                        <div class="char-value">{{ $emission->fiduciary_regime ? 'Sim' : 'Não' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Período Atu. Monetária</span>
-                        <div class="char-value">{{ $emission->monetary_update_period ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
                         <span class="char-label">Tipo de Oferta</span>
                         <div class="char-value">{{ $emission->offer_type ?? 'N/A' }}</div>
+                    </div>
+                    <div class="col">
+                        <span class="char-label">Segmento</span>
+                        <div class="char-value">{{ $emission->segment ?? 'N/A' }}</div>
+                    </div>
+                    <div class="col">
+                        <span class="char-label">Concentração</span>
+                        <div class="char-value">{{ $emission->concentration ?? 'N/A' }}</div>
+                    </div>
+                    <div class="col">
+                        <span class="char-label">Preço de emissão</span>
+                        <div class="char-value">R$ {{ number_format($emission->issued_price, 2, ',', '.') }}</div>
                     </div>
                     <div class="col">
                         <span class="char-label">Quantidade Emitida</span>
                         <div class="char-value">{{ number_format($emission->issued_quantity, 0, ',', '.') }}</div>
                     </div>
                     <div class="col">
-                        <span class="char-label">Volume Total</span>
+                        <span class="char-label">Quantidade integralizada</span>
+                        <div class="char-value">{{ number_format($emission->integralized_quantity, 0, ',', '.') }}</div>
+                    </div>
+                    <div class="col">
+                        <span class="char-label">Volume emitido</span>
                         <div class="char-value">R$ {{ number_format($emission->issued_volume, 0, ',', '.') }}</div>
                     </div>
                     <div class="col">
                         <span class="char-label">Agente Fiduciário</span>
                         <div class="char-value">{{ $emission->trustee_agent ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Custodiante</span>
-                        <div class="char-value">—</div>
                     </div>
                 </div>
             </div>

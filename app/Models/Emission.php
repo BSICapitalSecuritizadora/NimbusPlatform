@@ -33,6 +33,7 @@ class Emission extends Model
         'isin_code',
         'status',
         'issuer',
+        'lead_coordinator',
         'fiduciary_regime',
         'issue_date',
         'maturity_date',
