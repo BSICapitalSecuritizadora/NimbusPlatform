@@ -13,6 +13,7 @@ Route::get('/governanca', [SiteController::class, 'governance'])->name('site.gov
 Route::get('/contato', [SiteController::class, 'contact'])->name('site.contact');
 
 Route::get('/emissoes', [SiteController::class, 'emissions'])->name('site.emissions');
+Route::get('/emissoes/{if_code}', [SiteController::class, 'emissionShow'])->name('site.emissions.show');
 Route::get('/ri', [SiteController::class, 'ri'])->name('site.ri');
 
 Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])

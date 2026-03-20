@@ -85,7 +85,7 @@
               </div>
             </div>
             <div class="card-footer bg-transparent border-0 p-4 pt-0">
-               <a href="#" class="btn btn-outline-brand w-100 rounded-pill py-2 small fw-bold">Ver detalhes</a>
+               <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand w-100 rounded-pill py-2 small fw-bold">Ver detalhes</a>
             </div>
           </div>
         </div>

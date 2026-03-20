@@ -47,6 +47,18 @@ class SiteController extends Controller
         return view('site.emissions', compact('emissions', 'q'));
     }
 
+    public function emissionShow($if_code)
+    {
+        $emission = Emission::where('if_code', $if_code)
+            ->where('is_public', true)
+            ->with(['documents' => function($q) {
+                $q->where('is_public', true)->orderByDesc('published_at');
+            }])
+            ->firstOrFail();
+
+        return view('site.emission-detail', compact('emission'));
+    }
+
     public function ri(Request $request)
     {
         $categories = [
