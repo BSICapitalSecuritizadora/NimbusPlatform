@@ -160,6 +160,13 @@ class EmissionForm
                             ->label('Disponível no site público')
                             ->default(false),
 
+                        \Filament\Forms\Components\FileUpload::make('logo_path')
+                            ->label('Logo da Operação')
+                            ->image()
+                            ->disk('public')
+                            ->directory('emissions/logos')
+                            ->columnSpanFull(),
+
                         Textarea::make('description')
                             ->label('Descrição')
                             ->rows(6)

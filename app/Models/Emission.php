@@ -27,6 +27,7 @@ class Emission extends Model
 
     protected $fillable = [
         'name',
+        'logo_path',
         'type',
         'if_code',
         'isin_code',
