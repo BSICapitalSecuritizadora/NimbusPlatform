@@ -30,14 +30,21 @@ class SiteController extends Controller
         return view('site.contact');
     }
 
-    public function emissions()
+    public function emissions(Request $request)
     {
+        $q = trim((string) $request->query('q', ''));
+
         $emissions = Emission::query()
             ->where('is_public', true)
-            ->orderByDesc('id')
-            ->paginate(12);
+            ->when($q !== '', function ($qq) use ($q) {
+                $qq->where('name', 'like', "%{$q}%")
+                    ->orWhere('issuer', 'like', "%{$q}%");
+            })
+            ->orderByDesc('issue_date')
+            ->paginate(12)
+            ->withQueryString();
 
-        return view('site.emissions', compact('emissions'));
+        return view('site.emissions', compact('emissions', 'q'));
     }
 
     public function ri(Request $request)

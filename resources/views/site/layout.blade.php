@@ -80,6 +80,9 @@
             font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Navbar */
@@ -407,7 +410,9 @@
     </div>
 </nav>
 
-@yield('content')
+<main class="flex-grow-1">
+    @yield('content')
+</main>
 
 <footer class="footer py-5 mt-5">
     <div class="container">
@@ -448,7 +453,7 @@
         <hr class="my-4 border-secondary opacity-25">
         
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 small pb-2">
-            <div>© {{ date('Y') }} BSI Capital Securitizadora S/A. Todos os direitos reservados.</div>
+            <div>© {{ date('Y') }} BSI Capital Securitizadora S.A. Todos os direitos reservados.</div>
             <div>Ambiente local • Versão MVP</div>
         </div>
     </div>

@@ -4,12 +4,21 @@
 @section('content')
 <section class="py-5">
   <div class="container">
-    <div class="d-flex align-items-end justify-content-between mb-3">
+    <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between mb-4 gap-3">
       <div>
         <div class="kicker mb-2">Emissões</div>
         <h1 class="h3 fw-bold mb-1">Emissões públicas</h1>
         <div class="text-muted small">Listagem das emissões marcadas como públicas.</div>
       </div>
+
+      <form method="GET" class="d-flex gap-2" style="max-width: 400px; width: 100%;">
+          <input class="form-control rounded-pill border-0 bg-white shadow-sm ps-3" 
+                 name="q" 
+                 value="{{ $q ?? '' }}" 
+                 placeholder="Buscar emissão ou emissor..." 
+                 style="border: 1px solid var(--border) !important;">
+          <button class="btn btn-brand rounded-pill px-4">Buscar</button>
+      </form>
     </div>
 
     <div class="row g-4">
