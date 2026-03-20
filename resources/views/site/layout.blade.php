@@ -29,6 +29,9 @@
             --nav-bg: rgba(255,255,255,.90);
             --hero-1: rgba(0,32,91,.14);
             --hero-2: rgba(0,32,91,.06);
+
+            --brand-dark: #4e2a4e; /* Berinjela Opea */
+            --brand-light: #f9f7f9; /* Background Opea */
         }
 
         /* Auto dark when OS/browser is dark */
