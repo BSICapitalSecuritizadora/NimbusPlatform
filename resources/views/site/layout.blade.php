@@ -23,6 +23,9 @@
             --muted: #5b667a;
             --border: #e7ebf3;
 
+            --brand-outline: var(--brand);
+            --brand-outline-border: color-mix(in oklab, var(--brand) 70%, var(--border) 30%);
+
             --nav-bg: rgba(255,255,255,.90);
             --hero-1: rgba(0,32,91,.14);
             --hero-2: rgba(0,32,91,.06);
@@ -38,6 +41,9 @@
                 --muted: #9aa4b2;
                 --border: rgba(255,255,255,.10);
 
+                --brand-outline: #90c2ff;
+                --brand-outline-border: rgba(144, 194, 255, 0.3);
+
                 --nav-bg: rgba(11,15,23,.75);
                 --hero-1: rgba(255,255,255,.06);
                 --hero-2: rgba(212,175,55,.10);
@@ -51,6 +57,8 @@
             --text: #0b1220;
             --muted: #5b667a;
             --border: #e7ebf3;
+            --brand-outline: var(--brand);
+            --brand-outline-border: color-mix(in oklab, var(--brand) 70%, var(--border) 30%);
             --nav-bg: rgba(255,255,255,.90);
             --hero-1: rgba(0,32,91,.14);
             --hero-2: rgba(0,32,91,.06);
@@ -61,6 +69,8 @@
             --text: #f1f5f9;
             --muted: #9aa4b2;
             --border: rgba(255,255,255,.10);
+            --brand-outline: #90c2ff;
+            --brand-outline-border: rgba(144, 194, 255, 0.3);
             --nav-bg: rgba(11,15,23,.75);
             --hero-1: rgba(255,255,255,.06);
             --hero-2: rgba(212,175,55,.10);
@@ -104,6 +114,11 @@
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 32px;
+            color: var(--text);
+        }
+        
+        .list-group-item {
+            color: var(--text);
         }
 
         .text-muted{ color: var(--muted) !important; }
@@ -123,8 +138,8 @@
         .btn-brand:hover{ opacity:.95; color:#fff; }
 
         .btn-outline-brand{
-            border-color: color-mix(in oklab, var(--brand) 70%, var(--border) 30%);
-            color: var(--brand);
+            border-color: var(--brand-outline-border);
+            color: var(--brand-outline);
             background: transparent;
         }
         .btn-outline-brand:hover{

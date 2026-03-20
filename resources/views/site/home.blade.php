@@ -38,22 +38,21 @@
 <section class="py-5 bg-white">
   <div class="container py-4">
     <div class="text-center mb-5">
-      <h2 class="h3 fw-bold mb-2">Soluções por indústria</h2>
+      <h2 class="h3 fw-bold mb-2" style="color: var(--brand);">Soluções por indústria</h2>
       <div class="text-muted">Para empresas, estruturadores e investidores.</div>
     </div>
 
-    <div class="row g-4">
+    <div class="row g-4 justify-content-center">
       @php
         $industries = [
           ['Imobiliário','Estruturação e acompanhamento de operações.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop'],
-          ['Agronegócio','Crédito estruturado para cadeias e projetos.', 'https://images.unsplash.com/photo-1592982537447-6f2cc0a12e2f?q=80&w=800&auto=format&fit=crop'],
-          ['Infraestrutura','Financiamento para desenvolvimento e expansão.', 'https://images.unsplash.com/photo-1541888069542-6eac4046dc9f?q=80&w=800&auto=format&fit=crop'],
-          ['Fintechs','Operações escaláveis com governança.', 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800&auto=format&fit=crop'],
+          ['Agronegócio','Crédito estruturado para cadeias e projetos.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop'],
+          ['Infra & Empresas','Financiamento, expansão e novos recebíveis (CR).', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop'],
         ];
       @endphp
 
       @foreach($industries as [$title, $desc, $img])
-        <div class="col-md-6 col-lg-3">
+        <div class="col-md-6 col-lg-4">
           <div class="card h-100 border-0 overflow-hidden position-relative shadow-sm" style="border-radius: 32px; min-height: 400px;">
             <img src="{{ $img }}" class="position-absolute w-100 h-100 object-fit-cover" alt="{{ $title }}">
             <div class="position-absolute w-100 h-100" style="background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,32,91,0.85) 100%);"></div>
