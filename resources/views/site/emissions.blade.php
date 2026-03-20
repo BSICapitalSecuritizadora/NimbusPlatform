@@ -12,21 +12,27 @@
       </div>
     </div>
 
-    <div class="row g-3">
+    <div class="row g-4">
       @forelse($emissions as $e)
         <div class="col-md-6 col-lg-4">
-          <div class="card p-4 h-100">
-            <div class="d-flex justify-content-between align-items-start mb-2">
+          <div class="card p-4 h-100 border-0 shadow-sm card-hover" style="border-radius: 32px; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+            <div class="d-flex justify-content-between align-items-start mb-3">
               <div>
-                <div class="fw-semibold">{{ $e->name }}</div>
-                <div class="text-muted small">{{ $e->type ?? '—' }} • {{ $e->status ?? '—' }}</div>
+                <h3 class="h6 fw-bold mb-1" style="color: var(--brand-outline);">{{ $e->name }}</h3>
+                <div class="text-muted" style="font-size: 0.75rem;">{{ $e->type ?? '—' }} • {{ $e->status ?? '—' }}</div>
               </div>
-              <span class="badge badge-soft">{{ $e->type ?? '—' }}</span>
+              <span class="badge badge-soft px-3 py-2 rounded-pill">{{ $e->type ?? '—' }}</span>
             </div>
 
-            <div class="text-muted small">
-              Emissor: {{ $e->issuer ?? '—' }}<br>
-              Vencimento: {{ optional($e->maturity_date)->format('d/m/Y') ?? '—' }}
+            <div class="text-muted border-top pt-3" style="font-size: 0.85rem;">
+              <div class="d-flex justify-content-between mb-1">
+                <span>Emissor:</span>
+                <span class="fw-medium text-body">{{ $e->issuer ?? '—' }}</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span>Vencimento:</span>
+                <span class="fw-medium text-body">{{ optional($e->maturity_date)->format('d/m/Y') ?? '—' }}</span>
+              </div>
             </div>
           </div>
         </div>

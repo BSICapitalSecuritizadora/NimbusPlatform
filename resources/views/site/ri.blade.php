@@ -12,16 +12,16 @@
       </div>
     </div>
 
-    <form method="GET" class="card p-3 mb-4">
+    <form method="GET" class="card p-4 border-0 shadow-sm mb-5" style="border-radius: 24px;">
       <div class="row g-3 align-items-end">
         <div class="col-md-5">
-          <label class="form-label">Buscar por título</label>
-          <input class="form-control" name="q" value="{{ $q }}" placeholder="Ex.: Relatório Anual">
+          <label class="form-label small fw-bold text-muted">BUSCAR POR TÍTULO</label>
+          <input class="form-control rounded-pill border-0 bg-light-subtle ps-3" name="q" value="{{ $q }}" placeholder="Ex.: Relatório Anual" style="background: var(--bg); border: 1px solid var(--border);">
         </div>
 
-        <div class="col-md-5">
-          <label class="form-label">Categoria</label>
-          <select class="form-select" name="category">
+        <div class="col-md-4">
+          <label class="form-label small fw-bold text-muted">CATEGORIA</label>
+          <select class="form-select rounded-pill border-0 bg-light-subtle" name="category" style="background: var(--bg); border: 1px solid var(--border);">
             <option value="">Todas</option>
             @foreach($categories as $key => $label)
               <option value="{{ $key }}" @selected($category === $key)>{{ $label }}</option>
@@ -29,35 +29,35 @@
           </select>
         </div>
 
-        <div class="col-md-2 d-grid">
-          <button class="btn btn-brand">Filtrar</button>
+        <div class="col-md-3 d-grid">
+          <button class="btn btn-brand rounded-pill px-4">Filtrar resultados</button>
         </div>
       </div>
     </form>
 
-    <div class="card">
-      <div class="list-group list-group-flush">
-        @forelse($docs as $d)
-          <div class="list-group-item d-flex justify-content-between align-items-start"
-               style="background: var(--surface); border-color: var(--border);">
-            <div>
-              <div class="fw-semibold">{{ $d->title }}</div>
+    <div class="d-flex flex-column gap-3">
+      @forelse($docs as $d)
+        <div class="card p-4 border-0 shadow-sm card-hover" style="border-radius: 20px; transition: all 0.3s ease;">
+          <div class="row align-items-center">
+            <div class="col-md-8">
+              <h3 class="h6 fw-bold mb-1" style="color: var(--brand-outline);">{{ $d->title }}</h3>
               <div class="text-muted small">
-                Categoria: {{ $categories[$d->category] ?? ($d->category ?? '—') }}
-                • Publicado em: {{ optional($d->{$dateField})->format('d/m/Y') ?? '—' }}
+                <span class="badge badge-soft rounded-pill me-2 px-3">{{ $categories[$d->category] ?? ($d->category ?? '—') }}</span>
+                Publicado em: {{ optional($d->{$dateField})->format('d/m/Y') ?? '—' }}
               </div>
             </div>
-
-            {{-- Por enquanto sem download público direto. Depois fazemos rota pública segura. --}}
-            <span class="badge badge-soft">Público</span>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+               <span class="badge badge-soft px-3 py-2 rounded-pill me-2">Documento Público</span>
+               <a href="#" class="btn btn-sm btn-outline-brand rounded-pill px-4">Acessar</a>
+            </div>
           </div>
-        @empty
-          <div class="list-group-item text-muted"
-               style="background: var(--surface); border-color: var(--border);">
-            Nenhum documento público publicado ainda.
-          </div>
-        @endforelse
-      </div>
+        </div>
+      @empty
+        <div class="card p-5 text-center text-muted border-0 shadow-sm" style="border-radius: 20px;">
+           <div class="mb-2">Nenhum documento público publicado ainda.</div>
+           <small>Tente ajustar seus filtros de busca.</small>
+        </div>
+      @endforelse
     </div>
 
     <div class="mt-3">
