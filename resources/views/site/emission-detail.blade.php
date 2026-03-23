@@ -245,40 +245,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 {
                     label: 'Prêmio',
                     data: {!! json_encode($emission->payments->pluck('premium_value')) !!},
-                    backgroundColor: 'rgba(212, 175, 55, 0.5)',
-                    borderColor: 'var(--gold)',
-                    borderWidth: 1,
-                    borderRadius: 4
+                    backgroundColor: '#d4af37', // Gold
+                    borderRadius: 4,
+                    barPercentage: 0.5
                 },
                 {
                     label: 'Juros',
                     data: {!! json_encode($emission->payments->pluck('interest_value')) !!},
-                    backgroundColor: 'rgba(154, 164, 178, 0.6)',
-                    borderColor: '#9aa4b2',
-                    borderWidth: 1,
-                    borderRadius: 4
+                    backgroundColor: '#5b667a', // Muted/Gray
+                    borderRadius: 4,
+                    barPercentage: 0.5
                 },
                 {
                     label: 'Amortização Extraordinária',
                     data: {!! json_encode($emission->payments->pluck('extra_amortization_value')) !!},
-                    backgroundColor: 'var(--brand-dark)',
-                    borderColor: 'var(--brand-dark)',
-                    borderWidth: 1,
-                    borderRadius: 4
+                    backgroundColor: '#4e2a4e', // Brand Dark/Purple
+                    borderRadius: 4,
+                    barPercentage: 0.5
                 },
                 {
                     label: 'Amortização',
                     data: {!! json_encode($emission->payments->pluck('amortization_value')) !!},
-                    backgroundColor: 'var(--brand)',
-                    borderColor: 'var(--brand)',
-                    borderWidth: 1,
-                    borderRadius: 4
+                    backgroundColor: '#00205b', // Brand Navy
+                    borderRadius: 4,
+                    barPercentage: 0.5
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
             scales: {
                 x: {
                     stacked: true,
@@ -287,7 +287,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 y: {
                     stacked: true,
                     border: { display: false },
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
                     ticks: {
+                        color: '#5b667a',
                         callback: function(value) {
                             return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
                         }
@@ -297,11 +299,14 @@ document.addEventListener('DOMContentLoaded', function() {
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { usePointStyle: true, boxWidth: 8, padding: 20 }
+                    labels: { usePointStyle: true, boxWidth: 10, padding: 25, font: { family: 'Inter', size: 13 } }
                 },
                 tooltip: {
-                    mode: 'index',
-                    intersect: false,
+                    backgroundColor: 'rgba(11, 18, 32, 0.9)',
+                    titleFont: { family: 'Inter', size: 14 },
+                    bodyFont: { family: 'Inter', size: 13 },
+                    padding: 12,
+                    cornerRadius: 8,
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
