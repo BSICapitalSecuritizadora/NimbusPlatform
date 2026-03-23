@@ -62,7 +62,7 @@ class EmissionResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager::class,
         ];
     }
 

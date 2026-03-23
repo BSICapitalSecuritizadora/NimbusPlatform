@@ -39,6 +39,7 @@ class SiteController extends Controller
 
         $emissions = Emission::query()
             ->where('is_public', true)
+            ->whereNotNull('if_code')
             ->when($q !== '', function ($qq) use ($q) {
                 $qq->where(function($query) use ($q) {
                     $query->where('name', 'like', "%{$q}%")
