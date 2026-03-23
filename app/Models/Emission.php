@@ -101,4 +101,9 @@ class Emission extends Model
     {
         return $this->hasMany(PuHistory::class);
     }
+
+    public function integralizationHistories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(IntegralizationHistory::class);
+    }
 }

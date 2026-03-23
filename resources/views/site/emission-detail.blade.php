@@ -231,10 +231,32 @@
                     </div>
                     <div class="col-md-6">
                         <div class="d-flex flex-column h-100 p-3 rounded" style="background-color: var(--opea-bg); border: 1px solid rgba(0,0,0,0.05);">
-                            <span class="char-label mb-1">Integralização</span>
-                            <span class="fs-4 fw-bold text-purple">
-                                {{ $emission->integralization_status ?? '—' }}
-                            </span>
+                            @php
+                                $totalInt = isset($emission->integralizationHistories) && $emission->integralizationHistories()->count() > 0 
+                                            ? $emission->integralizationHistories()->sum('quantity') 
+                                            : null;
+                            @endphp
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="char-label mb-0">Integralização</span>
+                                <span class="fs-5 fw-bold text-purple">
+                                    {{ $totalInt ? number_format($totalInt, 0, ',', '.') : ($emission->integralization_status ?? '—') }}
+                                </span>
+                            </div>
+                            
+                            @if(isset($emission->integralizationHistories) && $emission->integralizationHistories()->count() > 0)
+                            <div class="mt-2 pt-2 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
+                                <span class="char-label mb-2">Histórico</span>
+                                <div class="d-flex flex-column gap-1">
+                                    @foreach($emission->integralizationHistories()->orderByDesc('date')->get() as $intHistory)
+                                    <div class="d-flex justify-content-between small" style="font-size: 0.8rem;">
+                                        <span class="text-muted">{{ $intHistory->date->format('d/m/Y') }}</span>
+                                        <span class="fw-medium text-purple">{{ number_format($intHistory->quantity, 0, ',', '.') }}</span>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>
