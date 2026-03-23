@@ -115,5 +115,19 @@ class InitialDemoSeeder extends Seeder
         $investor->emissions()->syncWithoutDetaching([$emission->id]);
         $investor->documents()->syncWithoutDetaching([$document->id]);
         $document->emissions()->syncWithoutDetaching([$emission->id]);
+
+        $currentDate = \Carbon\Carbon::parse($emission->issue_date)->addMonth();
+        $limitDate = now()->addMonths(12);
+        while ($currentDate->lte($limitDate)) {
+            \App\Models\Payment::create([
+                'emission_id' => $emission->id,
+                'payment_date' => $currentDate->copy()->endOfMonth()->format('Y-m-d'),
+                'premium_value' => rand(2, 8),
+                'interest_value' => rand(10, 30),
+                'amortization_value' => rand(15, 40),
+                'extra_amortization_value' => rand(0, 10) > 8 ? rand(5, 20) : 0,
+            ]);
+            $currentDate->addMonth();
+        }
     }
 }

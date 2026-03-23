@@ -112,20 +112,24 @@
                 </style>
                 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 grid-characteristics g-4 mb-4">
                     <div class="col">
-                        <span class="char-label">Emissor</span>
-                        <div class="char-value">{{ $emission->issuer ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
                         <span class="char-label">Série</span>
                         <div class="char-value">{{ $emission->series ?? 'N/A' }}</div>
+                    </div>
+                    <div class="col">
+                        <span class="char-label">Número da emissão</span>
+                        <div class="char-value">{{ $emission->emission_number ?? 'N/A' }}</div>
+                    </div>
+                    <div class="col">
+                        <span class="char-label">Emissor</span>
+                        <div class="char-value">{{ $emission->issuer ?? 'N/A' }}</div>
                     </div>
                     <div class="col">
                         <span class="char-label">Coordenador Líder</span>
                         <div class="char-value">{{ $emission->lead_coordinator ?? 'N/A' }}</div>
                     </div>
                     <div class="col">
-                        <span class="char-label">Número da emissão</span>
-                        <div class="char-value">{{ $emission->emission_number ?? 'N/A' }}</div>
+                        <span class="char-label">Agente Fiduciário</span>
+                        <div class="char-value">{{ $emission->trustee_agent ?? 'N/A' }}</div>
                     </div>
                     <div class="col">
                         <span class="char-label">Data de Emissão</span>
@@ -167,10 +171,21 @@
                         <span class="char-label">Volume emitido</span>
                         <div class="char-value">R$ {{ number_format($emission->issued_volume, 0, ',', '.') }}</div>
                     </div>
-                    <div class="col">
-                        <span class="char-label">Agente Fiduciário</span>
-                        <div class="char-value">{{ $emission->trustee_agent ?? 'N/A' }}</div>
-                    </div>
+                </div>
+            </div>
+
+            <!-- Pagamentos Card -->
+            <div class="card card-opea p-4 shadow-sm" id="pagamentos">
+                <h3 class="h5 fw-bold text-purple mb-4">Fluxo de Pagamentos</h3>
+                
+                <div style="position: relative; height: 350px; width: 100%;">
+                    @if(isset($emission->payments) && $emission->payments->count() > 0)
+                        <canvas id="paymentsChart"></canvas>
+                    @else
+                        <div class="d-flex align-items-center justify-content-center h-100 text-muted bg-light rounded" style="border: 1px dashed var(--border);">
+                            Nenhum dado de pagamento registrado até o momento.
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -211,4 +226,98 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+@if(isset($emission->payments) && $emission->payments->count() > 0)
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('paymentsChart');
+    if(!ctx) return;
+
+    const labels = {!! json_encode($emission->payments->pluck('payment_date')->map(fn($d) => $d->format('d/m/Y'))) !!};
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Prêmio',
+                    data: {!! json_encode($emission->payments->pluck('premium_value')) !!},
+                    backgroundColor: 'rgba(212, 175, 55, 0.5)',
+                    borderColor: 'var(--gold)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Juros',
+                    data: {!! json_encode($emission->payments->pluck('interest_value')) !!},
+                    backgroundColor: 'rgba(154, 164, 178, 0.6)',
+                    borderColor: '#9aa4b2',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Amortização Extraordinária',
+                    data: {!! json_encode($emission->payments->pluck('extra_amortization_value')) !!},
+                    backgroundColor: 'var(--brand-dark)',
+                    borderColor: 'var(--brand-dark)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Amortização',
+                    data: {!! json_encode($emission->payments->pluck('amortization_value')) !!},
+                    backgroundColor: 'var(--brand)',
+                    borderColor: 'var(--brand)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { display: false }
+                },
+                y: {
+                    stacked: true,
+                    border: { display: false },
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, boxWidth: 8, padding: 20 }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+@endif
+@endpush
 @endsection

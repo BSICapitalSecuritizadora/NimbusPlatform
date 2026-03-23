@@ -33,18 +33,34 @@ class SiteController extends Controller
     public function emissions(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
+        $type = $request->query('type');
+        $issue_date_order = $request->query('issue_date_order');
+        $maturity_date_order = $request->query('maturity_date_order');
 
         $emissions = Emission::query()
             ->where('is_public', true)
             ->when($q !== '', function ($qq) use ($q) {
-                $qq->where('name', 'like', "%{$q}%")
-                    ->orWhere('issuer', 'like', "%{$q}%");
+                $qq->where(function($query) use ($q) {
+                    $query->where('name', 'like', "%{$q}%")
+                          ->orWhere('issuer', 'like', "%{$q}%");
+                });
             })
-            ->orderByDesc('issue_date')
+            ->when($type, function ($qq) use ($type) {
+                $qq->where('type', $type);
+            })
+            ->when($issue_date_order === 'asc' || $issue_date_order === 'desc', function ($qq) use ($issue_date_order) {
+                $qq->orderBy('issue_date', $issue_date_order);
+            })
+            ->when($maturity_date_order === 'asc' || $maturity_date_order === 'desc', function ($qq) use ($maturity_date_order) {
+                $qq->orderBy('maturity_date', $maturity_date_order);
+            })
+            ->when(!$issue_date_order && !$maturity_date_order, function ($qq) {
+                $qq->orderByDesc('issue_date');
+            })
             ->paginate(12)
             ->withQueryString();
 
-        return view('site.emissions', compact('emissions', 'q'));
+        return view('site.emissions', compact('emissions', 'q', 'type', 'issue_date_order', 'maturity_date_order'));
     }
 
     public function emissionShow($if_code)
@@ -53,6 +69,9 @@ class SiteController extends Controller
             ->where('is_public', true)
             ->with(['documents' => function($q) {
                 $q->where('is_public', true)->orderByDesc('published_at');
+            }])
+            ->with(['payments' => function($q) {
+                $q->where('payment_date', '<=', today())->orderBy('payment_date');
             }])
             ->firstOrFail();
 

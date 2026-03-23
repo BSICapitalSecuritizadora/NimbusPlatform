@@ -4,24 +4,60 @@
 @section('content')
 <section class="py-5 bg-light-subtle" style="background: #f8f9fa; min-height: 100vh;">
   <div class="container">
-    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-5 gap-4">
-      <div>
+    <div class="mb-5">
+      <div class="mb-4">
         <h1 class="h2 fw-bold mb-1" style="color: #1a1a1a;">Pesquisar emissões</h1>
       </div>
 
-      <form method="GET" class="d-flex gap-2 align-items-center" style="max-width: 500px; width: 100%;">
-          <div class="input-group bg-white rounded-pill shadow-sm overflow-hidden" style="border: 1px solid #e0e0e0;">
-              <span class="input-group-text border-0 bg-transparent ps-3">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              </span>
-              <input class="form-control border-0 bg-transparent ps-0 py-2" 
-                     name="q" 
-                     value="{{ $q ?? '' }}" 
-                     placeholder="Pesquisar emissões"
-                     style="box-shadow: none;">
-          </div>
-          <button class="btn btn-brand rounded-pill px-4" style="background: var(--brand); color: white; border: none; height: 46px;">Filtrar</button>
-      </form>
+      <div class="card border-0 shadow-sm" style="border-radius: 16px; background: white;">
+        <div class="card-body p-4 p-md-5">
+          <form method="GET">
+              <div class="row g-4">
+                  <!-- Busca -->
+                  <div class="col-12">
+                      <div class="input-group bg-light rounded-pill overflow-hidden" style="border: 1px solid #e0e0e0;">
+                          <span class="input-group-text border-0 bg-light ps-4 text-muted">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                          </span>
+                          <input class="form-control border-0 bg-light ps-2 py-3" 
+                                 name="q" 
+                                 value="{{ $q ?? '' }}" 
+                                 placeholder="Busque por nome, emissor ou código IF..."
+                                 style="box-shadow: none; font-size: 1rem;">
+                          <button class="btn btn-brand px-4 px-md-5 fw-bold" style="background: var(--brand); color: white; border: none; border-radius: 0 50px 50px 0;">Buscar</button>
+                      </div>
+                  </div>
+                  
+                  <!-- Filtros -->
+                  <div class="col-md-4">
+                      <label class="form-label small fw-bold text-muted ms-1 mb-2">Tipo de Emissão</label>
+                      <select name="type" class="form-select bg-light border-0" style="border-radius: 12px; padding: 12px 16px; box-shadow: none; cursor: pointer;" onchange="this.form.submit()">
+                          <option value="">Todos os tipos</option>
+                          <option value="CR" {{ ($type ?? '') === 'CR' ? 'selected' : '' }}>CR</option>
+                          <option value="CRA" {{ ($type ?? '') === 'CRA' ? 'selected' : '' }}>CRA</option>
+                          <option value="CRI" {{ ($type ?? '') === 'CRI' ? 'selected' : '' }}>CRI</option>
+                      </select>
+                  </div>
+                  <div class="col-md-4">
+                      <label class="form-label small fw-bold text-muted ms-1 mb-2">Data de Emissão</label>
+                      <select name="issue_date_order" class="form-select bg-light border-0" style="border-radius: 12px; padding: 12px 16px; box-shadow: none; cursor: pointer;" onchange="this.form.submit()">
+                          <option value="">Ordenar por...</option>
+                          <option value="desc" {{ ($issue_date_order ?? '') === 'desc' ? 'selected' : '' }}>Mais recente &gt; Mais antiga</option>
+                          <option value="asc" {{ ($issue_date_order ?? '') === 'asc' ? 'selected' : '' }}>Mais antiga &gt; Mais recente</option>
+                      </select>
+                  </div>
+                  <div class="col-md-4">
+                      <label class="form-label small fw-bold text-muted ms-1 mb-2">Data de Vencimento</label>
+                      <select name="maturity_date_order" class="form-select bg-light border-0" style="border-radius: 12px; padding: 12px 16px; box-shadow: none; cursor: pointer;" onchange="this.form.submit()">
+                          <option value="">Ordenar por...</option>
+                          <option value="desc" {{ ($maturity_date_order ?? '') === 'desc' ? 'selected' : '' }}>Mais recente &gt; Mais antiga</option>
+                          <option value="asc" {{ ($maturity_date_order ?? '') === 'asc' ? 'selected' : '' }}>Mais antiga &gt; Mais recente</option>
+                      </select>
+                  </div>
+              </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <div class="row g-4">

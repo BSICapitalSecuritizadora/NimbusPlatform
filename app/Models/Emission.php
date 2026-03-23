@@ -89,4 +89,9 @@ class Emission extends Model
     {
         return $this->belongsToMany(Document::class, 'emission_document')->withTimestamps();
     }
+
+    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
 }
