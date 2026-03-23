@@ -192,10 +192,41 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="d-flex flex-column h-100 p-3 rounded" style="background-color: var(--opea-bg); border: 1px solid rgba(0,0,0,0.05);">
-                            <span class="char-label mb-1">PU Atual</span>
-                            <span class="fs-4 fw-bold" style="color: var(--gold);">
-                                {{ $emission->current_pu ? 'R$ ' . number_format($emission->current_pu, 6, ',', '.') : '—' }}
-                            </span>
+                            @php
+                                $lastFiveDays = collect();
+                                for($i = 0; $i < 5; $i++) {
+                                    $date = \Carbon\Carbon::today()->subDays($i);
+                                    $pu = $emission->puHistories()->where('date', '<=', $date->format('Y-m-d'))->orderByDesc('date')->first();
+                                    $lastFiveDays->push([
+                                        'date' => $date,
+                                        'value' => $pu ? $pu->unit_value : null
+                                    ]);
+                                }
+                                $todayPu = $lastFiveDays->first()['value'] ?? $emission->current_pu;
+                            @endphp
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="char-label mb-0">PU Atual</span>
+                                <span class="fs-5 fw-bold" style="color: var(--gold);">
+                                    {{ $todayPu ? 'R$ ' . number_format($todayPu, 6, ',', '.') : '—' }}
+                                </span>
+                            </div>
+                            
+                            @if($lastFiveDays->whereNotNull('value')->count() > 0)
+                            <div class="mt-2 pt-2 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
+                                <span class="char-label mb-2">Histórico (Últimos 5 dias)</span>
+                                <div class="d-flex flex-column gap-1">
+                                    @foreach($lastFiveDays as $dayPu)
+                                    <div class="d-flex justify-content-between small" style="font-size: 0.8rem;">
+                                        <span class="text-muted">{{ $dayPu['date']->format('d/m/Y') }}</span>
+                                        <span class="fw-medium text-purple">
+                                            {{ $dayPu['value'] ? 'R$ ' . number_format($dayPu['value'], 6, ',', '.') : '—' }}
+                                        </span>
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
                         </div>
                     </div>
                     <div class="col-md-6">

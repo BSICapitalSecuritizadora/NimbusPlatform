@@ -96,4 +96,9 @@ class Emission extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function puHistories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PuHistory::class);
+    }
 }
