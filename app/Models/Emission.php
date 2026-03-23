@@ -56,6 +56,8 @@ class Emission extends Model
         'issued_volume',
         'is_public',
         'description',
+        'current_pu',
+        'integralization_status',
     ];
 
     protected $casts = [

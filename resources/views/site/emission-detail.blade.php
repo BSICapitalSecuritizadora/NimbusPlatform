@@ -178,7 +178,7 @@
             <div class="card card-opea p-4 shadow-sm" id="pagamentos">
                 <h3 class="h5 fw-bold text-purple mb-4">Fluxo de Pagamentos</h3>
                 
-                <div style="position: relative; height: 350px; width: 100%;">
+                <div style="position: relative; height: 350px; width: 100%;" class="mb-4">
                     @if(isset($emission->payments) && $emission->payments->count() > 0)
                         <canvas id="paymentsChart"></canvas>
                     @else
@@ -186,6 +186,26 @@
                             Nenhum dado de pagamento registrado até o momento.
                         </div>
                     @endif
+                </div>
+
+                <!-- Resumo PU e Integralização -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex flex-column h-100 p-3 rounded" style="background-color: var(--opea-bg); border: 1px solid rgba(0,0,0,0.05);">
+                            <span class="char-label mb-1">PU Atual</span>
+                            <span class="fs-4 fw-bold" style="color: var(--gold);">
+                                {{ $emission->current_pu ? 'R$ ' . number_format($emission->current_pu, 6, ',', '.') : '—' }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex flex-column h-100 p-3 rounded" style="background-color: var(--opea-bg); border: 1px solid rgba(0,0,0,0.05);">
+                            <span class="char-label mb-1">Integralização</span>
+                            <span class="fs-4 fw-bold text-purple">
+                                {{ $emission->integralization_status ?? '—' }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -228,6 +248,18 @@
 </div>
 
 @push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabLinks = document.querySelectorAll('#emissionTabs .nav-link');
+    tabLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            tabLinks.forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+});
+</script>
+
 @if(isset($emission->payments) && $emission->payments->count() > 0)
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
