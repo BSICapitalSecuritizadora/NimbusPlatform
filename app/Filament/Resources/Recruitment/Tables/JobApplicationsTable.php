@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Recruitment\Tables;
 
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\ViewAction;
+use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
