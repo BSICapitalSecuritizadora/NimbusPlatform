@@ -85,6 +85,21 @@ class SiteController extends Controller
         return view('site.servicos.compliance');
     }
 
+    public function documentosAcl()
+    {
+        return view('site.servicos.documentos-acl');
+    }
+
+    public function auditoriaAcessos()
+    {
+        return view('site.servicos.auditoria-acessos');
+    }
+
+    public function integracoes()
+    {
+        return view('site.servicos.integracoes');
+    }
+
     public function services()
     {
         return view('site.services');
@@ -98,6 +113,11 @@ class SiteController extends Controller
     public function governance()
     {
         return view('site.governance');
+    }
+
+    public function complianceBsi()
+    {
+        return view('site.compliance');
     }
 
     public function contact()

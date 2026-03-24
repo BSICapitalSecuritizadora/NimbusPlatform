@@ -10,6 +10,7 @@ Route::get('/', [HomeController::class, 'index'])->name('site.home');
 Route::get('/servicos', [SiteController::class, 'services'])->name('site.services');
 Route::get('/sobre', [SiteController::class, 'about'])->name('site.about');
 Route::get('/governanca', [SiteController::class, 'governance'])->name('site.governance');
+Route::get('/compliance', [SiteController::class, 'complianceBsi'])->name('site.compliance');
 Route::get('/contato', [SiteController::class, 'contact'])->name('site.contact');
 
 Route::get('/emissoes', [SiteController::class, 'emissions'])->name('site.emissions');
@@ -40,6 +41,11 @@ Route::get('/servicos/registro-distribuicao', [SiteController::class, 'registroD
 Route::get('/servicos/portal-do-investidor', [SiteController::class, 'portalInvestidor'])->name('site.servicos.portal-investidor');
 Route::get('/servicos/relatorios', [SiteController::class, 'relatorios'])->name('site.servicos.relatorios');
 Route::get('/servicos/compliance', [SiteController::class, 'compliance'])->name('site.servicos.compliance');
+
+// Serviços > Tecnologia
+Route::get('/servicos/documentos-acl', [SiteController::class, 'documentosAcl'])->name('site.servicos.documentos-acl');
+Route::get('/servicos/auditoria-acessos', [SiteController::class, 'auditoriaAcessos'])->name('site.servicos.auditoria-acessos');
+Route::get('/servicos/integracoes', [SiteController::class, 'integracoes'])->name('site.servicos.integracoes');
 
 Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
     ->name('public-documents');

@@ -363,9 +363,9 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Tecnologia</div>
                                 <div class="mega-kicker">Automação e trilha de auditoria.</div>
-                                <a class="mega-link" href="#">Documentos com ACL</a>
-                                <a class="mega-link" href="#">Auditoria de acessos</a>
-                                <a class="mega-link" href="#">Integrações</a>
+                                <a class="mega-link" href="{{ route('site.servicos.documentos-acl') }}">Documentos com ACL</a>
+                                <a class="mega-link" href="{{ route('site.servicos.auditoria-acessos') }}">Auditoria de acessos</a>
+                                <a class="mega-link" href="{{ route('site.servicos.integracoes') }}">Integrações</a>
                             </div>
                         </div>
                     </div>
@@ -383,7 +383,7 @@
                                 <div class="mega-kicker">História, time e visão.</div>
                                 <a class="mega-link" href="{{ route('site.about') }}">Sobre</a>
                                 <a class="mega-link" href="{{ route('site.governance') }}">Governança</a>
-                                <a class="mega-link" href="#">Compliance</a>
+                                <a class="mega-link" href="{{ route('site.compliance') }}">Compliance</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
