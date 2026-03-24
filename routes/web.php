@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Site\HomeController;
+use App\Http\Controllers\Site\ProposalController;
 use App\Http\Controllers\Site\PublicDocumentsController;
 use App\Http\Controllers\Site\SiteController;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,10 @@ Route::get('/servicos/integracoes', [SiteController::class, 'integracoes'])->nam
 
 Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
     ->name('public-documents');
+
+// Proposals (Integrated from NimbusForms)
+Route::get('/proposta', [ProposalController::class, 'create'])->name('site.proposal.create');
+Route::post('/proposta', [ProposalController::class, 'store'])->name('site.proposal.store');
 
 // Healthcheck para staging / monitoramento
 Route::get('/healthcheck', function () {

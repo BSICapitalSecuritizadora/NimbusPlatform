@@ -397,7 +397,7 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Contato</div>
                                 <div class="mega-kicker">Fale com a BSI.</div>
-                                <a class="mega-link" href="{{ route('site.contact') }}">Fale conosco</a>
+                                <a class="mega-link" href="{{ route('site.proposal.create') }}">Envie sua proposta</a>
                                 <a class="mega-link" href="#">Trabalhe conosco</a>
                             </div>
                         </div>
@@ -407,7 +407,7 @@
 
             <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0">
                 <a href="{{ $portalUrl }}" class="btn btn-outline-brand btn-sm">Portal do Investidor</a>
-                <a href="#" class="btn btn-brand btn-sm">Falar com a BSI</a>
+                <a href="{{ route('site.proposal.create') }}" class="btn btn-brand btn-sm">Envie sua proposta</a>
             </div>
         </div>
     </div>
@@ -442,7 +442,7 @@
                 <div class="d-flex flex-column gap-2 fw-medium">
                     <a href="{{ route('site.emissions') }}" class="text-muted text-decoration-none">Ver Emissões</a>
                     <a href="{{ route('site.ri') }}" class="text-muted text-decoration-none">Relações com Investidores</a>
-                    <a href="{{ route('site.contact') }}" class="text-muted text-decoration-none">Fale Conosco</a>
+                    <a href="{{ route('site.proposal.create') }}" class="text-muted text-decoration-none">Envie sua proposta</a>
                 </div>
             </div>
 
