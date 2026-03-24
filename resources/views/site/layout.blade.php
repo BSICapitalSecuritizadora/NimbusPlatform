@@ -407,7 +407,7 @@
 
             <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0">
                 <a href="{{ $portalUrl }}" class="btn btn-outline-brand btn-sm">Portal do Investidor</a>
-                <a href="{{ route('site.proposal.create') }}" class="btn btn-brand btn-sm">Envie sua proposta</a>
+                <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm">Fale Conosco</a>
             </div>
         </div>
     </div>
