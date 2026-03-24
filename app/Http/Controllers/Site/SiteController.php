@@ -112,12 +112,24 @@ class SiteController extends Controller
 
     public function governance()
     {
-        return view('site.governance');
+        $documents = Document::query()
+            ->visibleOnPublicSite()
+            ->where('category', 'governanca')
+            ->orderByDesc('published_at')
+            ->get();
+
+        return view('site.governance', compact('documents'));
     }
 
     public function complianceBsi()
     {
-        return view('site.compliance');
+        $documents = Document::query()
+            ->visibleOnPublicSite()
+            ->where('category', 'governanca')
+            ->orderByDesc('published_at')
+            ->get();
+
+        return view('site.compliance', compact('documents'));
     }
 
     public function contact()
@@ -176,15 +188,7 @@ class SiteController extends Controller
 
     public function ri(Request $request)
     {
-        $categories = [
-            'anuncios' => 'Anúncios',
-            'assembleias' => 'Assembleias',
-            'convocacoes_assembleias' => 'Convocações para Assembleias',
-            'demonstracoes_financeiras' => 'Demonstrações Financeiras',
-            'documentos_operacao' => 'Documentos da Operação',
-            'fatos_relevantes' => 'Fatos Relevantes',
-            'relatorios_anuais' => 'Relatórios Anuais',
-        ];
+        $categories = Document::CATEGORY_OPTIONS;
 
         $category = $request->query('category');
         $q = trim((string) $request->query('q', ''));
@@ -192,6 +196,7 @@ class SiteController extends Controller
         $dateField = Schema::hasColumn('documents', 'published_at') ? 'published_at' : 'created_at';
 
         $docs = Document::query()
+            ->with('emissions:emissions.id,emissions.name')
             ->published()
             ->public()
             ->when($category, fn ($qq) => $qq->where('category', $category))

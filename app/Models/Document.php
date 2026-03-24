@@ -23,6 +23,7 @@ class Document extends Model
         'demonstracoes_financeiras' => 'Demonstrações Financeiras',
         'documentos_operacao' => 'Documentos da Operação',
         'fatos_relevantes' => 'Fatos Relevantes',
+        'governanca' => 'Governança',
         'relatorios_anuais' => 'Relatórios Anuais',
     ];
 

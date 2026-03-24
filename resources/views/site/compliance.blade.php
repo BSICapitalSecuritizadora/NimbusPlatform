@@ -77,35 +77,32 @@
         </div>
 
         <div class="row g-4 justify-content-center">
+            @forelse($documents as $document)
             <div class="col-md-6 col-lg-4">
-                <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.05); border-radius: 16px;">
-                    <div class="mb-3">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <a href="{{ Storage::disk($document->resolved_storage_disk)->url($document->file_path) }}" target="_blank" class="text-decoration-none" download>
+                    <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.05); border-radius: 16px; transition: .3s;">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">{{ $document->title }}</h4>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between">
+                            <span style="color: #8892b0; font-size: 0.85rem;">
+                                {{ $document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y') }}
+                                @if($document->file_size)
+                                    · {{ number_format($document->file_size / 1024, 0) }} KB
+                                @endif
+                            </span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </div>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1rem;">Política de PLD/FT</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.9rem;">Diretrizes de prevenção à lavagem de dinheiro e combate ao financiamento do terrorismo.</p>
-                </div>
+                </a>
             </div>
-
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.05); border-radius: 16px;">
-                    <div class="mb-3">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1rem;">Código de Conduta</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.9rem;">Princípios éticos e regras de comportamento para colaboradores e parceiros.</p>
-                </div>
+            @empty
+            <div class="col-12 text-center py-4">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <p class="mb-0" style="color: #8892b0;">Os documentos de compliance serão disponibilizados em breve.</p>
             </div>
-
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.05); border-radius: 16px;">
-                    <div class="mb-3">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1rem;">Política de Conflitos de Interesse</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.9rem;">Diretrizes para identificação, gestão e mitigação de conflitos de interesse.</p>
-                </div>
-            </div>
+            @endforelse
         </div>
     </div>
 </section>
