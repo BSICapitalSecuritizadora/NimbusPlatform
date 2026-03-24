@@ -2,6 +2,77 @@
 @section('title','Relações com Investidores — BSI Capital')
 
 @section('content')
+<style>
+    /* Custom Pagination Styling */
+    .pagination {
+        margin-top: 2rem;
+        gap: 8px;
+    }
+    .pagination .page-item .page-link {
+        border-radius: 50% !important;
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e2e8f0;
+        color: #4b5563;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        background: #fff;
+        margin: 0;
+    }
+    .pagination .page-item.active .page-link {
+        background-color: var(--brand) !important;
+        border-color: var(--brand) !important;
+        color: #fff !important;
+        box-shadow: 0 4px 12px rgba(0,32,91,0.15);
+    }
+    .pagination .page-item:not(.active) .page-link:hover {
+        background-color: #f8fafc;
+        border-color: var(--brand);
+        color: var(--brand);
+    }
+    .pagination .page-item.disabled .page-link {
+        background-color: #f1f5f9;
+        color: #94a3b8;
+        border-color: #e2e8f0;
+    }
+
+    /* SVG Arrows for Previous/Next */
+    .page-item:first-child .page-link, 
+    .page-item:last-child .page-link {
+        position: relative;
+        color: transparent !important;
+    }
+    .page-item:first-child .page-link::after {
+        content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 18 9 12 15 6'%3E%3C/polyline%3E%3C/svg%3E");
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -45%);
+    }
+    .page-item:last-child .page-link::after {
+        content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2300205b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'%3E%3C/polyline%3E%3C/svg%3E");
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -45%);
+    }
+    .page-item:first-child.disabled .page-link::after { opacity: 0.3; }
+    .page-item:last-child.disabled .page-link::after { opacity: 0.3; }
+
+    /* Hide the "Showing X to Y of Z" text for a cleaner look if preferred, or style it */
+    nav .flex.justify-between.flex-1.sm\:hidden, 
+    nav .hidden.sm\:flex-1.sm\:flex.sm\:items-center.sm\:justify-between > div:first-child {
+        display: none !important;
+    }
+    nav .hidden.sm\:flex-1.sm\:flex.sm\:items-center.sm\:justify-between {
+        justify-content: center !important;
+    }
+</style>
+
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 35vh; overflow: hidden; background: #001233;">
     <div class="container position-relative z-1">

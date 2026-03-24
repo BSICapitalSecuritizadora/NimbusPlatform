@@ -390,8 +390,8 @@
                                 <div class="mega-title">Relações com Investidores</div>
                                 <div class="mega-kicker">Documentos públicos e comunicados.</div>
                                 <a class="mega-link" href="{{ route('site.ri') }}">R.I</a>
-                                <a class="mega-link" href="#">Fatos relevantes</a>
-                                <a class="mega-link" href="#">Assembleias</a>
+                                <a class="mega-link" href="{{ route('site.ri', ['category' => 'fatos_relevantes']) }}">Fatos relevantes</a>
+                                <a class="mega-link" href="{{ route('site.ri', ['category' => 'assembleias']) }}">Assembleias</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
