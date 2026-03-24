@@ -91,9 +91,8 @@
             
             <!-- Characteristics Card -->
             <div class="card card-opea p-4 shadow-sm" id="caracteristicas">
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="mb-4">
                     <h3 class="h5 fw-bold text-purple mb-0">Características</h3>
-                    <button class="btn btn-link p-0 text-muted"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
                 </div>
 
                 <style>
@@ -263,37 +262,75 @@
             </div>
 
             <!-- Documents Card -->
-            <div class="card card-opea p-4 shadow-sm" id="documentos">
-                <h3 class="h5 fw-bold text-purple mb-4">Documentos da Operação</h3>
-                
-                @if($emission->documents->count() > 0)
-                <div class="table-responsive">
-                    <table class="table align-middle">
-                        <tbody>
-                            @foreach($emission->documents as $doc)
-                            <tr>
-                                <td width="120" class="text-muted small border-0">{{ optional($doc->published_at)->format('d/m/Y') }}</td>
-                                <td class="border-0">
-                                    <div class="fw-bold">{{ $doc->title }}</div>
-                                    @if($doc->description)
-                                    <div class="small text-muted">{{ $doc->description }}</div>
-                                    @endif
-                                </td>
-                                <td width="60" class="text-end border-0">
-                                    <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="text-muted opacity-50">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                                    </a>
-                                </td>
-                            </tr>
+            <div id="documentos" class="mt-5">
+                <div class="card card-opea p-4 shadow-sm">
+                    <h3 class="h5 fw-bold text-purple mb-4">Documentos</h3>
+                    
+                    @if($emission->documents->count() > 0)
+                    @php
+                        $allCategories = [
+                            'anuncios' => 'Anúncios',
+                            'assembleias' => 'Assembleias',
+                            'convocacoes_assembleias' => 'Convocações para Assembleias',
+                            'demonstracoes_financeiras' => 'Demonstrações Financeiras',
+                            'documentos_operacao' => 'Documentos da Operação',
+                            'fatos_relevantes' => 'Fatos Relevantes',
+                            'relatorios_anuais' => 'Relatórios Anuais',
+                        ];
+                        $docCategories = $emission->documents->pluck('category')
+                            ->filter()
+                            ->unique()
+                            ->sortBy(function($cat) use ($allCategories) {
+                                return strtolower($allCategories[$cat] ?? $cat);
+                            });
+                    @endphp
+                    
+                    @if($docCategories->isNotEmpty())
+                    <div class="mb-4">
+                        <select id="docCategoryFilter" class="form-select border-0 border-bottom rounded-0 text-muted shadow-none" style="padding-left: 0; padding-right: 32px; max-width: 320px; border-color: rgba(0,0,0,0.1) !important; background-position: right 0 center;">
+                            <option value="">Todos</option>
+                            @foreach($docCategories as $cat)
+                                <option value="{{ $cat }}">{{ $allCategories[$cat] ?? ucfirst($cat) }}</option>
                             @endforeach
-                        </tbody>
-                    </table>
+                        </select>
+                    </div>
+                    @endif
+
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th class="border-0 text-purple small fw-bold pb-3 text-center" style="font-size: 0.8rem; width: 120px;">Data</th>
+                                    <th class="border-0 text-purple small fw-bold pb-3 text-center" style="font-size: 0.8rem;">Título</th>
+                                    <th class="border-0 text-purple small fw-bold pb-3 text-center" style="font-size: 0.8rem; width: 80px;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($emission->documents as $index => $doc)
+                                <tr class="doc-row" data-category="{{ $doc->category }}" style="{{ $index >= 3 ? 'display: none;' : '' }}">
+                                    <td class="text-muted small border-bottom py-3 text-center">{{ optional($doc->published_at)->format('d/m/Y') }}</td>
+                                    <td class="border-bottom text-center py-3">
+                                        <div class="text-muted small">{{ $doc->title }}</div>
+                                        @if($doc->description)
+                                        <div class="small opacity-50" style="font-size: 0.75rem;">{{ $doc->description }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="text-center border-bottom py-3">
+                                        <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="text-purple">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                        </a>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @else
+                    <div class="text-center py-5 opacity-50">
+                        <p class="mb-0">Nenhum documento disponível para esta operação.</p>
+                    </div>
+                    @endif
                 </div>
-                @else
-                <div class="text-center py-5 opacity-50">
-                    <p class="mb-0">Nenhum documento disponível para esta operação.</p>
-                </div>
-                @endif
             </div>
 
         </div>
@@ -310,6 +347,30 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
         });
     });
+
+    const docFilter = document.getElementById('docCategoryFilter');
+    if(docFilter) {
+        docFilter.addEventListener('change', function() {
+            const val = this.value;
+            const rows = document.querySelectorAll('.doc-row');
+            
+            if (val === '') {
+                // If "Todos" is selected, only show the first 3 recent documents
+                rows.forEach((row, index) => {
+                    row.style.display = index < 3 ? '' : 'none';
+                });
+            } else {
+                // If a specific category is selected, show all matching documents
+                rows.forEach(row => {
+                    if(row.dataset.category === val) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+        });
+    }
 });
 </script>
 
