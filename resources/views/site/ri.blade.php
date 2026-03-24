@@ -68,8 +68,21 @@
     nav .hidden.sm\:flex-1.sm\:flex.sm\:items-center.sm\:justify-between > div:first-child {
         display: none !important;
     }
-    nav .hidden.sm\:flex-1.sm\:flex.sm\:items-center.sm\:justify-between {
+    /* Hide default text from Laravel pagination (Bootstrap 5 template) */
+    .pagination-container nav > div:first-child,
+    .pagination-container nav div.hidden {
+        display: none !important;
+    }
+    
+    /* Ensure the pagination buttons are centered below our custom text */
+    .pagination-container nav {
+        display: flex !important;
         justify-content: center !important;
+        margin: 0 auto;
+    }
+    .pagination-container .pagination {
+        margin-bottom: 0;
+        justify-content: center;
     }
 </style>
 
@@ -196,7 +209,10 @@
 
         <!-- Pagination -->
         @if($docs->hasPages())
-        <div class="mt-4 d-flex justify-content-center">
+        <div class="mt-5 pagination-container">
+            <div class="text-center text-muted small mb-3">
+                Mostrando <strong>{{ $docs->firstItem() }}</strong> a <strong>{{ $docs->lastItem() }}</strong> de <strong>{{ $docs->total() }}</strong> resultados
+            </div>
             {{ $docs->links() }}
         </div>
         @endif
