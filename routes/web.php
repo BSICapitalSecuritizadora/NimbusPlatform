@@ -31,6 +31,16 @@ Route::get('/infra-empresas/cr-futuro', [SiteController::class, 'crFuturo'])->na
 Route::get('/infra-empresas/recebiveis', [SiteController::class, 'recebiveis'])->name('site.infra.recebiveis');
 Route::get('/infra-empresas/estruturacao-sob-medida', [SiteController::class, 'estruturacaoSobMedida'])->name('site.infra.estruturacao');
 
+// Serviços > Estruturação
+Route::get('/servicos/originacao', [SiteController::class, 'originacao'])->name('site.servicos.originacao');
+Route::get('/servicos/estrutura-juridica', [SiteController::class, 'estruturaJuridica'])->name('site.servicos.estrutura-juridica');
+Route::get('/servicos/registro-distribuicao', [SiteController::class, 'registroDistribuicao'])->name('site.servicos.registro-distribuicao');
+
+// Serviços > Gestão
+Route::get('/servicos/portal-do-investidor', [SiteController::class, 'portalInvestidor'])->name('site.servicos.portal-investidor');
+Route::get('/servicos/relatorios', [SiteController::class, 'relatorios'])->name('site.servicos.relatorios');
+Route::get('/servicos/compliance', [SiteController::class, 'compliance'])->name('site.servicos.compliance');
+
 Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
     ->name('public-documents');
 

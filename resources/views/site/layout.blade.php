@@ -347,17 +347,17 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Estruturação</div>
                                 <div class="mega-kicker">Modelagem, documentação e governança.</div>
-                                <a class="mega-link" href="#">Originação</a>
-                                <a class="mega-link" href="#">Estrutura jurídica</a>
-                                <a class="mega-link" href="#">Registro e distribuição</a>
+                                <a class="mega-link" href="{{ route('site.servicos.originacao') }}">Originação</a>
+                                <a class="mega-link" href="{{ route('site.servicos.estrutura-juridica') }}">Estrutura jurídica</a>
+                                <a class="mega-link" href="{{ route('site.servicos.registro-distribuicao') }}">Registro e distribuição</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Gestão</div>
                                 <div class="mega-kicker">Transparência e acompanhamento ao investidor.</div>
-                                <a class="mega-link" href="{{ $portalUrl }}">Portal do investidor</a>
-                                <a class="mega-link" href="#">Relatórios</a>
-                                <a class="mega-link" href="#">Compliance</a>
+                                <a class="mega-link" href="{{ route('site.servicos.portal-investidor') }}">Portal do investidor</a>
+                                <a class="mega-link" href="{{ route('site.servicos.relatorios') }}">Relatórios</a>
+                                <a class="mega-link" href="{{ route('site.servicos.compliance') }}">Compliance</a>
                             </div>
 
                             <div class="col-lg-4 p-3">

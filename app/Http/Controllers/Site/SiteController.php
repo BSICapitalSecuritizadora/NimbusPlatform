@@ -55,6 +55,36 @@ class SiteController extends Controller
         return view('site.infra-empresas.estruturacao');
     }
 
+    public function originacao()
+    {
+        return view('site.servicos.originacao');
+    }
+
+    public function estruturaJuridica()
+    {
+        return view('site.servicos.estrutura-juridica');
+    }
+
+    public function registroDistribuicao()
+    {
+        return view('site.servicos.registro-distribuicao');
+    }
+
+    public function portalInvestidor()
+    {
+        return view('site.servicos.portal-investidor');
+    }
+
+    public function relatorios()
+    {
+        return view('site.servicos.relatorios');
+    }
+
+    public function compliance()
+    {
+        return view('site.servicos.compliance');
+    }
+
     public function services()
     {
         return view('site.services');
