@@ -321,9 +321,9 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Agronegócio</div>
                                 <div class="mega-kicker">Crédito estruturado para cadeias e projetos.</div>
-                                <a class="mega-link" href="#">CRA</a>
-                                <a class="mega-link" href="#">Cooperativas</a>
-                                <a class="mega-link" href="#">Projetos</a>
+                                <a class="mega-link" href="{{ route('site.agronegocio.cra') }}">CRA</a>
+                                <a class="mega-link" href="{{ route('site.agronegocio.cooperativas') }}">Cooperativas</a>
+                                <a class="mega-link" href="{{ route('site.agronegocio.projetos') }}">Projetos</a>
                             </div>
 
                             <div class="col-lg-4 p-3">

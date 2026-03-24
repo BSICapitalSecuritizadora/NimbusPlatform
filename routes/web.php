@@ -21,6 +21,11 @@ Route::get('/imobiliario/cri-real-estate', [SiteController::class, 'criRealEstat
 Route::get('/imobiliario/loteamentos', [SiteController::class, 'loteamentos'])->name('site.imobiliario.loteamentos');
 Route::get('/imobiliario/incorporacao', [SiteController::class, 'incorporacao'])->name('site.imobiliario.incorporacao');
 
+// Agronegócio
+Route::get('/agronegocio/cra', [SiteController::class, 'cra'])->name('site.agronegocio.cra');
+Route::get('/agronegocio/cooperativas', [SiteController::class, 'cooperativas'])->name('site.agronegocio.cooperativas');
+Route::get('/agronegocio/projetos', [SiteController::class, 'projetos'])->name('site.agronegocio.projetos');
+
 Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
     ->name('public-documents');
 

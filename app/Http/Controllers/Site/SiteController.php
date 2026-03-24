@@ -25,6 +25,21 @@ class SiteController extends Controller
         return view('site.imobiliario.incorporacao');
     }
 
+    public function cra()
+    {
+        return view('site.agronegocio.cra');
+    }
+
+    public function cooperativas()
+    {
+        return view('site.agronegocio.cooperativas');
+    }
+
+    public function projetos()
+    {
+        return view('site.agronegocio.projetos');
+    }
+
     public function services()
     {
         return view('site.services');
