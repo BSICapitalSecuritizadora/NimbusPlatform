@@ -45,13 +45,13 @@
     <div class="row g-4 justify-content-center">
       @php
         $industries = [
-          ['Imobiliário','Estruturação e acompanhamento de operações.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop'],
-          ['Agronegócio','Crédito estruturado para cadeias e projetos.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop'],
-          ['Infra & Empresas','Financiamento, expansão e novos recebíveis (CR).', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop'],
+          ['Imobiliário','Estruturação e acompanhamento de operações.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
+          ['Agronegócio','Crédito estruturado para cadeias e projetos.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
+          ['Infra & Empresas','Financiamento, expansão e novos recebíveis (CR).', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
         ];
       @endphp
 
-      @foreach($industries as [$title, $desc, $img])
+      @foreach($industries as [$title, $desc, $img, $link])
         <div class="col-md-6 col-lg-4">
           <div class="card h-100 border-0 overflow-hidden position-relative shadow-sm" style="border-radius: 32px; min-height: 400px;">
             <img src="{{ $img }}" class="position-absolute w-100 h-100 object-fit-cover" alt="{{ $title }}">
@@ -59,7 +59,7 @@
             <div class="position-absolute bottom-0 p-4 w-100 text-white">
               <h3 class="h5 fw-bold mb-2">{{ $title }}</h3>
               <p class="small mb-4" style="opacity: 0.9;">{{ $desc }}</p>
-              <a href="#" class="btn btn-sm btn-light rounded-pill px-3 fw-bold" style="color: var(--brand);">Saiba mais</a>
+              <a href="{{ $link }}" class="btn btn-sm btn-light rounded-pill px-3 fw-bold" style="color: var(--brand);">Saiba mais</a>
             </div>
           </div>
         </div>
@@ -81,23 +81,32 @@
 
     @php
       $cases = [
-        ['Estruturação CRI', 'Operação completa com governança e relatórios recorrentes, utilizando nossa infraestrutura para garantir o lastro perfeitamente auditável.', 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop'],
-        ['Gestão de Documentos', 'Desenvolvimento de um portal customizado com controle de acesso granular e auditoria completa para todos os investidores da operação.', 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop'],
+        [
+            'title' => 'Estruturação CRI',
+            'desc' => 'Operação completa com governança e relatórios recorrentes, utilizando nossa infraestrutura para garantir o lastro perfeitamente auditável.',
+            'img' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop',
+            'slug' => 'estruturacao-cri'
+        ],
+        [
+            'title' => 'Gestão de Documentos',
+            'desc' => 'Desenvolvimento de um portal customizado com controle de acesso granular e auditoria completa para todos os investidores da operação.',
+            'img' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
+            'slug' => 'gestao-de-documentos'
+        ],
       ];
     @endphp
 
     @foreach($cases as $index => $case)
-      @php [$title, $desc, $img] = $case; @endphp
       <div class="row align-items-center g-5 mb-5 {{ $index % 2 !== 0 ? 'flex-row-reverse' : '' }}">
         <div class="col-lg-6">
           <div class="overflow-hidden shadow-lg" style="border-radius: 32px;">
-            <img src="{{ $img }}" class="img-fluid w-100 object-fit-cover" style="height: 400px;" alt="Case Image">
+            <img src="{{ $case['img'] }}" class="img-fluid w-100 object-fit-cover" style="height: 400px;" alt="Case Image">
           </div>
         </div>
         <div class="col-lg-6 px-lg-5">
-          <h3 class="h2 fw-bold mb-3">{{ $title }}</h3>
-          <p class="lead text-muted mb-4" style="font-weight: 300;">{{ $desc }}</p>
-          <a href="#" class="btn btn-outline-brand rounded-pill px-4" style="border-color: var(--gold); color: var(--gold);">Ler estudo de caso</a>
+          <h3 class="h2 fw-bold mb-3">{{ $case['title'] }}</h3>
+          <p class="lead text-muted mb-4" style="font-weight: 300;">{{ $case['desc'] }}</p>
+          <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-brand rounded-pill px-4" style="border-color: var(--gold); color: var(--gold);">Ler estudo de caso</a>
         </div>
       </div>
     @endforeach

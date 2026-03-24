@@ -94,6 +94,8 @@ Route::get('/healthcheck', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
+    // Estudos de Caso
+    Route::get('/estudos-de-caso/{slug}', [App\Http\Controllers\Site\CaseStudyController::class, 'show'])->name('site.cases.show');
 });
 
 require __DIR__.'/settings.php';
