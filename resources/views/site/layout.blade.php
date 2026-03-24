@@ -398,7 +398,7 @@
                                 <div class="mega-title">Contato</div>
                                 <div class="mega-kicker">Fale com a BSI.</div>
                                 <a class="mega-link" href="{{ route('site.proposal.create') }}">Envie sua proposta</a>
-                                <a class="mega-link" href="#">Trabalhe conosco</a>
+                                <a class="mega-link" href="{{ route('site.vacancies.index') }}">Trabalhe conosco</a>
                             </div>
                         </div>
                     </div>
@@ -443,6 +443,7 @@
                     <a href="{{ route('site.emissions') }}" class="text-muted text-decoration-none">Ver Emissões</a>
                     <a href="{{ route('site.ri') }}" class="text-muted text-decoration-none">Relações com Investidores</a>
                     <a href="{{ route('site.proposal.create') }}" class="text-muted text-decoration-none">Envie sua proposta</a>
+                    <a href="{{ route('site.vacancies.index') }}" class="text-muted text-decoration-none">Trabalhe Conosco</a>
                 </div>
             </div>
 

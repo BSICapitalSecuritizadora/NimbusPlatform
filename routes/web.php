@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Site\HomeController;
+use App\Http\Controllers\Site\JobController;
 use App\Http\Controllers\Site\ProposalController;
 use App\Http\Controllers\Site\PublicDocumentsController;
 use App\Http\Controllers\Site\SiteController;
@@ -54,6 +55,11 @@ Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
 // Proposals (Integrated from NimbusForms)
 Route::get('/proposta', [ProposalController::class, 'create'])->name('site.proposal.create');
 Route::post('/proposta', [ProposalController::class, 'store'])->name('site.proposal.store');
+
+// Recruitment (Trabalhe Conosco)
+Route::get('/trabalhe-conosco', [JobController::class, 'index'])->name('site.vacancies.index');
+Route::get('/trabalhe-conosco/{slug}', [JobController::class, 'show'])->name('site.vacancies.show');
+Route::post('/trabalhe-conosco/{id}/candidatar', [JobController::class, 'apply'])->name('site.vacancies.apply');
 
 // Healthcheck para staging / monitoramento
 Route::get('/healthcheck', function () {
