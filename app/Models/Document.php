@@ -25,6 +25,7 @@ class Document extends Model
         'fatos_relevantes' => 'Fatos Relevantes',
         'governanca' => 'Governança',
         'relatorios_anuais' => 'Relatórios Anuais',
+        'societarios' => 'Societários',
     ];
 
     protected $fillable = [

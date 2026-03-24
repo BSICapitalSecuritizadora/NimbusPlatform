@@ -188,7 +188,9 @@ class SiteController extends Controller
 
     public function ri(Request $request)
     {
-        $categories = Document::CATEGORY_OPTIONS;
+        $categories = collect(Document::CATEGORY_OPTIONS)
+            ->except(['governanca'])
+            ->toArray();
 
         $category = $request->query('category');
         $q = trim((string) $request->query('q', ''));
@@ -199,6 +201,7 @@ class SiteController extends Controller
             ->with('emissions:emissions.id,emissions.name')
             ->published()
             ->public()
+            ->where('category', '!=', 'governanca')
             ->when($category, fn ($qq) => $qq->where('category', $category))
             ->when($q !== '', fn ($qq) => $qq->where('title', 'like', "%{$q}%"))
             ->orderByDesc($dateField)
