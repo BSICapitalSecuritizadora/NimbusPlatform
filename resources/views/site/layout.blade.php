@@ -329,9 +329,9 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Infra & Empresas</div>
                                 <div class="mega-kicker">Estruturas para expansão e investimentos.</div>
-                                <a class="mega-link" href="#">CR (futuro)</a>
-                                <a class="mega-link" href="#">Recebíveis</a>
-                                <a class="mega-link" href="#">Estruturação sob medida</a>
+                                <a class="mega-link" href="{{ route('site.infra.cr') }}">CR (futuro)</a>
+                                <a class="mega-link" href="{{ route('site.infra.recebiveis') }}">Recebíveis</a>
+                                <a class="mega-link" href="{{ route('site.infra.estruturacao') }}">Estruturação sob medida</a>
                             </div>
                         </div>
                     </div>

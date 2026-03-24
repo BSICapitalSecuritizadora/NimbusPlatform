@@ -26,6 +26,11 @@ Route::get('/agronegocio/cra', [SiteController::class, 'cra'])->name('site.agron
 Route::get('/agronegocio/cooperativas', [SiteController::class, 'cooperativas'])->name('site.agronegocio.cooperativas');
 Route::get('/agronegocio/projetos', [SiteController::class, 'projetos'])->name('site.agronegocio.projetos');
 
+// Infra & Empresas
+Route::get('/infra-empresas/cr-futuro', [SiteController::class, 'crFuturo'])->name('site.infra.cr');
+Route::get('/infra-empresas/recebiveis', [SiteController::class, 'recebiveis'])->name('site.infra.recebiveis');
+Route::get('/infra-empresas/estruturacao-sob-medida', [SiteController::class, 'estruturacaoSobMedida'])->name('site.infra.estruturacao');
+
 Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
     ->name('public-documents');
 

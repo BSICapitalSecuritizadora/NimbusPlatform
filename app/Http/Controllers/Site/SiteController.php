@@ -40,6 +40,21 @@ class SiteController extends Controller
         return view('site.agronegocio.projetos');
     }
 
+    public function crFuturo()
+    {
+        return view('site.infra-empresas.cr-futuro');
+    }
+
+    public function recebiveis()
+    {
+        return view('site.infra-empresas.recebiveis');
+    }
+
+    public function estruturacaoSobMedida()
+    {
+        return view('site.infra-empresas.estruturacao');
+    }
+
     public function services()
     {
         return view('site.services');
