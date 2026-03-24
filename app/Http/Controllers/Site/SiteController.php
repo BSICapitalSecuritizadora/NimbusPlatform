@@ -10,6 +10,21 @@ use Illuminate\Support\Facades\Schema;
 
 class SiteController extends Controller
 {
+    public function criRealEstate()
+    {
+        return view('site.imobiliario.cri');
+    }
+
+    public function loteamentos()
+    {
+        return view('site.imobiliario.loteamentos');
+    }
+
+    public function incorporacao()
+    {
+        return view('site.imobiliario.incorporacao');
+    }
+
     public function services()
     {
         return view('site.services');

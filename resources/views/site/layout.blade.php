@@ -313,9 +313,9 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Imobiliário</div>
                                 <div class="mega-kicker">Operações lastreadas e estruturação completa.</div>
-                                <a class="mega-link" href="#">CRI / Real Estate</a>
-                                <a class="mega-link" href="#">Loteamentos</a>
-                                <a class="mega-link" href="#">Incorporação</a>
+                                <a class="mega-link" href="{{ route('site.imobiliario.cri') }}">CRI / Real Estate</a>
+                                <a class="mega-link" href="{{ route('site.imobiliario.loteamentos') }}">Loteamentos</a>
+                                <a class="mega-link" href="{{ route('site.imobiliario.incorporacao') }}">Incorporação</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
