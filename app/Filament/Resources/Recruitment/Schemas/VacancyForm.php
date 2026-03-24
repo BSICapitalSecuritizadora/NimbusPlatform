@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\Recruitment\Schemas;
 
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,40 +15,44 @@ class VacancyForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Dados da Vaga')
+            Section::make('Informações da Vaga')
                 ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('title')
-                            ->label('Título da Vaga')
-                            ->required()
-                            ->lazy()
-                            ->afterStateUpdated(fn (string $context, $state, $set) => $context === 'create' ? $set('slug', Str::slug($state)) : null),
-                        
-                        TextInput::make('slug')
-                            ->disabled()
-                            ->required()
-                            ->unique(ignoreRecord: true),
-                    ]),
+                    TextInput::make('title')
+                        ->label('Título da Vaga')
+                        ->required()
+                        ->lazy()
+                        ->afterStateUpdated(fn (string $context, $state, $set) => $context === 'create' ? $set('slug', Str::slug($state)) : null),
+                    
+                    TextInput::make('slug')
+                        ->disabled()
+                        ->required()
+                        ->unique(ignoreRecord: true),
 
-                    Grid::make(3)->schema([
-                        TextInput::make('department')
-                            ->label('Departamento'),
-                        
-                        TextInput::make('location')
-                            ->label('Localização')
-                            ->default('São Paulo, SP'),
+                    TextInput::make('department')
+                        ->label('Departamento'),
+                    
+                    TextInput::make('location')
+                        ->label('Localização')
+                        ->default('São Paulo, SP'),
 
-                        Select::make('type')
-                            ->label('Tipo de Contrato')
-                            ->options([
-                                'CLT' => 'CLT',
-                                'PJ' => 'PJ',
-                                'Estágio' => 'Estágio',
-                                'Freelance' => 'Freelance',
-                            ])
-                            ->default('CLT'),
-                    ]),
+                    Select::make('type')
+                        ->label('Tipo de Contrato')
+                        ->options([
+                            'CLT' => 'CLT',
+                            'PJ' => 'PJ',
+                            'Estágio' => 'Estágio',
+                            'Freelance' => 'Freelance',
+                        ])
+                        ->default('CLT'),
 
+                    Toggle::make('is_active')
+                        ->label('Vaga Ativa')
+                        ->default(true),
+                ])
+                ->columns(2),
+
+            Section::make('Conteúdo')
+                ->schema([
                     RichEditor::make('description')
                         ->label('Descrição da Vaga')
                         ->required()
@@ -62,12 +65,7 @@ class VacancyForm
                     RichEditor::make('benefits')
                         ->label('Benefícios')
                         ->columnSpanFull(),
-
-                    Toggle::make('is_active')
-                        ->label('Vaga Ativa')
-                        ->default(true),
                 ])
-                ->columns(1)
         ]);
     }
 }

@@ -7,11 +7,10 @@ use App\Filament\Resources\Recruitment\Pages\ViewJobApplication;
 use App\Filament\Resources\Recruitment\Tables\JobApplicationsTable;
 use App\Models\JobApplication;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -37,18 +36,21 @@ class JobApplicationResource extends Resource
         return $schema->components([
             Section::make('Detalhes da Candidatura')
                 ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('name')->disabled(),
-                        TextInput::make('email')->disabled(),
-                        TextInput::make('phone')->disabled(),
-                        TextInput::make('linkedin_url')->disabled(),
-                    ]),
-                    Textarea::make('message')->disabled()->columnSpanFull(),
+                    TextInput::make('name')->disabled(),
+                    TextInput::make('email')->disabled(),
+                    TextInput::make('phone')->disabled(),
+                    TextInput::make('linkedin_url')->disabled(),
+
+                    Textarea::make('message')
+                        ->disabled()
+                        ->columnSpanFull(),
+                    
                     FileUpload::make('resume_path')
                         ->label('Currículo')
                         ->disabled()
                         ->columnSpanFull(),
                 ])
+                ->columns(2)
         ]);
     }
 

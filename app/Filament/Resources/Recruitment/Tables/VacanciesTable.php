@@ -2,9 +2,10 @@
 
 namespace App\Filament\Resources\Recruitment\Tables;
 
-use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 
 class VacanciesTable
@@ -32,8 +33,9 @@ class VacanciesTable
                     ->label('Localização')
                     ->searchable(),
 
-                ToggleColumn::make('is_active')
-                    ->label('Ativa'),
+                IconColumn::make('is_active')
+                    ->label('Ativa')
+                    ->boolean(),
 
                 TextColumn::make('applications_count')
                     ->label('Candidatos')
@@ -51,7 +53,8 @@ class VacanciesTable
                 //
             ])
             ->actions([
-                //
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
                 //
