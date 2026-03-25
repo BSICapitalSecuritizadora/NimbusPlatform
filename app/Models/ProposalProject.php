@@ -27,4 +27,9 @@ class ProposalProject extends Model
     {
         return $this->hasOne(ProjectCharacteristic::class, 'project_id');
     }
+
+    public function indicators()
+    {
+        return $this->hasOne(ProjectIndicator::class, 'project_id');
+    }
 }

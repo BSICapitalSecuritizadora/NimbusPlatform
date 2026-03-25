@@ -99,5 +99,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Estudos de Caso (Públicos)
 Route::get('/estudos-de-caso/{slug}', [App\Http\Controllers\Site\CaseStudyController::class, 'show'])->name('site.cases.show');
 
+// Admin Reports
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/projetos/{project}/relatorio', [App\Http\Controllers\Admin\ProjectReportController::class, 'generateReport'])->name('admin.projects.report');
+    Route::get('/admin/projetos/{project}/analitico', [App\Http\Controllers\Admin\ProjectReportController::class, 'analyticalReport'])->name('admin.projects.analytical');
+});
+
 require __DIR__.'/settings.php';
 require __DIR__.'/investor.php';

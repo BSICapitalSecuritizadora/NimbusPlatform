@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "azure-oss/storage-blob-laravel": "^1.6",
+        "barryvdh/laravel-dompdf": "*",
         "filament/filament": "^5.3",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
