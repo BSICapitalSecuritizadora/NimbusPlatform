@@ -55,16 +55,17 @@ class ProjectRelationManager extends RelationManager
                             ->label('Valor atual de mercado do terreno')
                             ->numeric()
                             ->default(0)
-                            ->prefix('R$'),
+                            ->prefix('R$')
+                            ->columnSpan(2),
                         TextInput::make('land_area')
                             ->label('Área do Terreno (m²)')
                             ->numeric()
                             ->required()
                             ->default(0),
                         DatePicker::make('launch_date')
-                            ->label('Lançamento do Empreendimento')
+                            ->label('Data de lançamento')
                             ->required(),
-                    ])->columns(3),
+                    ])->columns(2),
 
                 Section::make('Cronograma')
                     ->icon('heroicon-o-calendar-days')
