@@ -14,14 +14,14 @@ class HomeController extends Controller
             ->where('is_public', true)
             ->orderByDesc('id')
             ->limit(6)
-            ->get(['id', 'name', 'type', 'status', 'issuer', 'maturity_date']);
+            ->get(['id', 'name', 'logo_path', 'type', 'if_code', 'status', 'issuer', 'maturity_date', 'issued_volume']);
 
         $riDocuments = Document::query()
             ->published()
             ->public()
             ->orderByDesc('published_at')
-            ->limit(6)
-            ->get(['id', 'title', 'category', 'published_at']);
+            ->limit(3)
+            ->get(['id', 'title', 'category', 'published_at', 'file_path', 'storage_disk']);
 
         return view('site.home', compact('emissions', 'riDocuments'));
     }

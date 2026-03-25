@@ -132,6 +132,17 @@
             box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
         }
 
+        .emission-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px rgba(0,32,91,0.12) !important;
+            border-color: color-mix(in oklab, var(--gold) 30%, var(--border) 70%);
+        }
+
+        .ri-item:hover {
+            background: rgba(0,32,91,0.02) !important;
+            transform: translateX(4px);
+        }
+
         .text-muted{ color: var(--muted) !important; }
 
         /* Buttons */
