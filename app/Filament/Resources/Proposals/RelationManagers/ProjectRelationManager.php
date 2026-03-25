@@ -29,10 +29,12 @@ class ProjectRelationManager extends RelationManager
         return $schema
             ->components([
                 Section::make('Informações Gerais')
+                    ->icon('heroicon-o-information-circle')
                     ->schema([
                         TextInput::make('name')
                             ->label('Nome do Empreendimento')
                             ->required()
+                            ->columnSpan(2)
                             ->maxLength(255),
                         TextInput::make('site')
                             ->label('Site')
@@ -44,9 +46,10 @@ class ProjectRelationManager extends RelationManager
                             ->required()
                             ->default(0)
                             ->prefix('R$'),
-                    ])->columns(3),
+                    ])->columns(2),
 
                 Section::make('Detalhes do Terreno & Lançamento')
+                    ->icon('heroicon-o-map')
                     ->schema([
                         TextInput::make('land_market_value')
                             ->label('Valor atual de mercado do terreno')
@@ -64,6 +67,7 @@ class ProjectRelationManager extends RelationManager
                     ])->columns(3),
 
                 Section::make('Cronograma')
+                    ->icon('heroicon-o-calendar-days')
                     ->schema([
                         DatePicker::make('sales_launch_date')
                             ->label('Lançamento das Vendas')
@@ -81,6 +85,7 @@ class ProjectRelationManager extends RelationManager
                     ])->columns(4),
 
                 Section::make('Localização')
+                    ->icon('heroicon-o-map-pin')
                     ->schema([
                         TextInput::make('cep')
                             ->label('CEP')
@@ -93,18 +98,23 @@ class ProjectRelationManager extends RelationManager
                                 $cep = preg_replace('/[^0-9]/', '', $state);
                                 if (strlen($cep) !== 8) return;
 
-                                $response = Http::get("https://viacep.com.br/ws/{$cep}/json/");
-                                
-                                if ($response->ok() && !isset($response->json()['erro'])) {
-                                    $data = $response->json();
-                                    $set('logradouro', $data['logradouro'] ?? '');
-                                    $set('bairro', $data['bairro'] ?? '');
-                                    $set('cidade', $data['localidade'] ?? '');
-                                    $set('estado', $data['uf'] ?? '');
+                                try {
+                                    $response = Http::get("https://viacep.com.br/ws/{$cep}/json/");
+                                    
+                                    if ($response->ok() && !isset($response->json()['erro'])) {
+                                        $data = $response->json();
+                                        $set('logradouro', $data['logradouro'] ?? '');
+                                        $set('bairro', $data['bairro'] ?? '');
+                                        $set('cidade', $data['localidade'] ?? '');
+                                        $set('estado', $data['uf'] ?? '');
+                                    }
+                                } catch (\Exception $e) {
+                                    // Fail silently
                                 }
                             }),
                         TextInput::make('logradouro')
                             ->label('Rua')
+                            ->columnSpan(2)
                             ->maxLength(255),
                         TextInput::make('complemento')
                             ->label('Complemento')
@@ -118,6 +128,7 @@ class ProjectRelationManager extends RelationManager
                             ->maxLength(255),
                         TextInput::make('cidade')
                             ->label('Cidade')
+                            ->columnSpan(2)
                             ->maxLength(255),
                         TextInput::make('estado')
                             ->label('Estado')
@@ -125,6 +136,7 @@ class ProjectRelationManager extends RelationManager
                     ])->columns(3),
 
                 Section::make('Características Técnicas (Obra)')
+                    ->icon('heroicon-o-home-modern')
                     ->relationship('characteristics')
                     ->schema([
                         TextInput::make('blocks')
@@ -178,6 +190,7 @@ class ProjectRelationManager extends RelationManager
                     ])->columns(2)->collapsed(),
 
                 Section::make('Unidades e Vendas')
+                    ->icon('heroicon-o-shopping-cart')
                     ->schema([
                         TextInput::make('units_total')
                             ->label('Total de Unidades')
@@ -207,6 +220,7 @@ class ProjectRelationManager extends RelationManager
                     ])->columns(3)->collapsed(),
 
                 Section::make('Custos')
+                    ->icon('heroicon-o-banknotes')
                     ->schema([
                         TextInput::make('cost_incurred')
                             ->label('Custo Incidido')
@@ -231,6 +245,7 @@ class ProjectRelationManager extends RelationManager
                     ])->columns(4)->collapsed(),
 
                 Section::make('Valores de Venda')
+                    ->icon('heroicon-o-currency-dollar')
                     ->schema([
                         TextInput::make('value_total_sale')
                             ->label('VGV Total')
@@ -270,6 +285,7 @@ class ProjectRelationManager extends RelationManager
                     ])->columns(3)->collapsed(),
 
                 Section::make('Indicadores Avançados (Thresholds)')
+                    ->icon('heroicon-o-presentation-chart-line')
                     ->relationship('indicators')
                     ->schema([
                         TextInput::make('financiamento_custo_obra_ideal')->label('Financ/Custo Obra Ideal (%)')->numeric()->default(0),
