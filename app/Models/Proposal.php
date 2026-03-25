@@ -22,4 +22,9 @@ class Proposal extends Model
     {
         return $this->belongsTo(ProposalContact::class, 'contact_id');
     }
+
+    public function project()
+    {
+        return $this->hasOne(ProposalProject::class);
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Proposals;
 
 use App\Filament\Resources\Proposals\Pages\ListProposals;
 use App\Filament\Resources\Proposals\Pages\ViewProposal;
+use App\Filament\Resources\Proposals\RelationManagers;
 use App\Filament\Resources\Proposals\Tables\ProposalsTable;
 use App\Models\Proposal;
 use Filament\Forms\Components\Select;
@@ -122,6 +123,13 @@ class ProposalResource extends Resource
     public static function table(Table $table): Table
     {
         return ProposalsTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            RelationManagers\ProjectRelationManager::class,
+        ];
     }
 
     public static function getPages(): array
