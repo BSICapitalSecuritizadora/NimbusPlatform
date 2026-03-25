@@ -4,11 +4,15 @@ namespace App\Filament\Resources\Proposals\RelationManagers;
 
 use App\Filament\Resources\Proposals\Pages\ViewProposal;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Carbon;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -75,15 +79,21 @@ class ProjectRelationManager extends RelationManager
                             ->required(),
                         DatePicker::make('construction_start_date')
                             ->label('Início das Obras')
-                            ->required(),
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::updateRemainingMonths($get, $set)),
                         DatePicker::make('delivery_forecast_date')
                             ->label('Previsão de Entrega')
-                            ->required(),
-                        TextInput::make('remaining_months')
-                            ->label('Prazo Remanescente (meses)')
-                            ->numeric()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::updateRemainingMonths($get, $set)),
+                        Placeholder::make('remaining_months_display')
+                            ->label('Prazo Remanescente')
+                            ->columnSpan(2)
+                            ->content(fn (Get $get) => (int) $get('remaining_months') . ' meses'),
+                        Hidden::make('remaining_months')
                             ->default(0),
-                    ])->columns(4),
+                    ])->columns(2),
 
                 Section::make('Localização')
                     ->icon('heroicon-o-map-pin')
@@ -141,20 +151,22 @@ class ProjectRelationManager extends RelationManager
                     ->relationship('characteristics')
                     ->schema([
                         TextInput::make('blocks')
-                            ->label('Qtd. de Blocos')
-                            ->numeric(),
-                        TextInput::make('floors')
-                            ->label('Qtd. de Pavimentos')
+                            ->label('Quantidade de Blocos')
                             ->numeric(),
                         TextInput::make('typical_floors')
-                            ->label('Qtd. de Andares Tipo')
+                            ->label('Quantidade de Andares')
                             ->numeric(),
                         TextInput::make('units_per_floor')
                             ->label('Unidades por Andar')
                             ->numeric(),
                         TextInput::make('total_units')
                             ->label('Total de Unidades')
-                            ->numeric(),
+                            ->numeric()
+                            ->default(0)
+                            ->readOnly()
+                            ->extraAttributes(['style' => 'cursor: not-allowed;'])
+                            ->dehydrated()
+                            ->dehydrateStateUsing(fn (Get $get) => self::calculateTechnicalTotalUnits($get('unitTypes'))),
 
                         Repeater::make('unitTypes')
                             ->relationship('unitTypes')
@@ -165,60 +177,80 @@ class ProjectRelationManager extends RelationManager
                                     ->numeric()
                                     ->default(1),
                                 TextInput::make('bedrooms')
-                                    ->label('Dormitórios (Ex: 3 Suítes)')
+                                    ->label('Dormitórios')
                                     ->maxLength(255),
                                 TextInput::make('parking_spaces')
-                                    ->label('Vagas (Ex: 2 Vagas)')
+                                    ->label('Garagem')
                                     ->maxLength(255),
+                                TextInput::make('total_units')
+                                    ->label('Unidades')
+                                    ->numeric()
+                                    ->live(),
                                 TextInput::make('useful_area')
                                     ->label('Área Útil (m²)')
-                                    ->numeric(),
-                                TextInput::make('total_units')
-                                    ->label('Total de Unidades deste Tipo')
+                                    ->columnSpan(2)
                                     ->numeric(),
                                 TextInput::make('average_price')
                                     ->label('Preço Médio')
+                                    ->columnSpan(3)
                                     ->numeric()
                                     ->prefix('R$'),
                                 TextInput::make('price_per_m2')
                                     ->label('Preço m²')
+                                    ->columnSpan(3)
                                     ->numeric()
                                     ->prefix('R$'),
                             ])
                             ->columns(3)
                             ->columnSpanFull()
-                            ->itemLabel(fn (array $state): ?string => ($state['bedrooms'] ?? null) ? "Unidade: {$state['bedrooms']}" : null),
+                            ->itemLabel(fn (array $state): ?string => ($state['bedrooms'] ?? null) ? "Unidade: {$state['bedrooms']}" : null)
+                            ->afterStateHydrated(fn (?array $state, Set $set) => self::updateTechnicalTotalUnits($state, $set))
+                            ->afterStateUpdated(fn (?array $state, Set $set) => self::updateTechnicalTotalUnits($state, $set)),
                     ])->columns(2)->collapsed(),
 
-                Section::make('Unidades e Vendas')
+                Section::make('Quadro de Vendas')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
-                        TextInput::make('units_total')
-                            ->label('Total de Unidades')
-                            ->numeric()
-                            ->default(0),
-                        TextInput::make('units_exchanged')
-                            ->label('Unidades Permutadas')
-                            ->numeric()
-                            ->default(0),
-                        TextInput::make('units_paid')
-                            ->label('Unidades Quitadas')
-                            ->numeric()
-                            ->default(0),
                         TextInput::make('units_unpaid')
-                            ->label('Unidades Não Quitadas')
-                            ->numeric()
-                            ->default(0),
-                        TextInput::make('units_stock')
-                            ->label('Unidades em Estoque')
-                            ->numeric()
-                            ->default(0),
-                        TextInput::make('sales_percentage')
-                            ->label('Percentual de Vendas (%)')
+                            ->label('Vendidas')
                             ->numeric()
                             ->default(0)
-                            ->suffix('%'),
-                    ])->columns(3)->collapsed(),
+                            ->live()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
+                        TextInput::make('units_paid')
+                            ->label('Quitadas')
+                            ->numeric()
+                            ->default(0)
+                            ->live()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
+                        TextInput::make('units_exchanged')
+                            ->label('Permutadas')
+                            ->numeric()
+                            ->default(0)
+                            ->live()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
+                        TextInput::make('units_stock')
+                            ->label('Estoque')
+                            ->numeric()
+                            ->default(0)
+                            ->live()
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
+                        TextInput::make('units_total')
+                            ->label('Total')
+                            ->numeric()
+                            ->default(0)
+                            ->readOnly()
+                            ->extraAttributes(['style' => 'cursor: not-allowed;'])
+                            ->dehydrated(),
+                        TextInput::make('sales_percentage')
+                            ->label('Vendas (%)')
+                            ->numeric()
+                            ->default(0)
+                            ->suffix('%')
+                            ->readOnly()
+                            ->extraAttributes(['style' => 'cursor: not-allowed;'])
+                            ->dehydrated(),
+                    ])->columns(2)->collapsed(),
 
                 Section::make('Custos')
                     ->icon('heroicon-o-banknotes')
@@ -345,5 +377,55 @@ class ProjectRelationManager extends RelationManager
                     ->openUrlInNewTab(),
                 \Filament\Actions\DeleteAction::make(),
             ]);
+    }
+
+    public static function updateRemainingMonths(Get $get, Set $set): void
+    {
+        try {
+            $start = $get('construction_start_date');
+            $end = $get('delivery_forecast_date');
+
+            if ($start && $end) {
+                $startDate = \Illuminate\Support\Carbon::parse($start);
+                $endDate = \Illuminate\Support\Carbon::parse($end);
+                
+                // Only perform math if years look sane (at least 4 digits while typing)
+                if ($startDate->year > 1000 && $endDate->year > 1000) {
+                    $months = $startDate->diffInMonths($endDate);
+                    $set('remaining_months', (int) abs($months));
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silence all errors during live state updates to prevent 500s
+        }
+    }
+
+    protected static function updateTechnicalTotalUnits(?array $unitTypes, Set $set): void
+    {
+        $set('total_units', self::calculateTechnicalTotalUnits($unitTypes));
+    }
+
+    protected static function calculateTechnicalTotalUnits(?array $unitTypes): int
+    {
+        return collect($unitTypes ?? [])
+            ->sum(fn (array $unitType): int => (int) data_get($unitType, 'total_units', 0));
+    }
+
+    public static function updateSalesCalculations(Get $get, Set $set): void
+    {
+        $unpaid = (int) $get('units_unpaid');
+        $paid = (int) $get('units_paid');
+        $exchanged = (int) $get('units_exchanged');
+        $stock = (int) $get('units_stock');
+
+        $total = $unpaid + $paid + $exchanged + $stock;
+        $set('units_total', $total);
+
+        if ($total > 0) {
+            $percentage = (($unpaid + $paid) / $total) * 100;
+            $set('sales_percentage', round($percentage, 2));
+        } else {
+            $set('sales_percentage', 0);
+        }
     }
 }
