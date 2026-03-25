@@ -46,8 +46,8 @@ class ProposalsTable
                 //
             ])
             ->actions([
-                ViewAction::make(),
-                \Filament\Tables\Actions\EditAction::make(),
+                \Filament\Actions\ViewAction::make(),
+                \Filament\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 //
