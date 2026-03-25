@@ -275,22 +275,26 @@ class ProjectRelationManager extends RelationManager
                     ->icon('heroicon-o-banknotes')
                     ->schema([
                         TextInput::make('cost_incurred')
-                            ->label('Custo Incidido')
+                            ->label('Custo Incorrido')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
                         TextInput::make('cost_to_incur')
                             ->label('Custo a Incorrer')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
                         TextInput::make('cost_total')
                             ->label('Custo Total')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
                         TextInput::make('work_stage_percentage')
                             ->label('Estágio da Obra (%)')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->suffix('%'),
