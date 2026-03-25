@@ -64,12 +64,12 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-semibold text-muted">Nome da Empresa</label>
-                                        <input type="text" name="nome_empresa" id="nome_empresa" class="form-control border-light shadow-none bg-light ps-3 py-2 @error('nome_empresa') is-invalid @enderror" placeholder="Razão Social" value="{{ old('nome_empresa') }}" required>
+                                        <input type="text" name="nome_empresa" id="nome_empresa" class="form-control border-light shadow-none bg-light ps-3 py-2 @error('nome_empresa') is-invalid @enderror" placeholder="Razão Social" value="{{ old('nome_empresa') }}" required readonly style="cursor: not-allowed; background-color: #f8f9fa !important;">
                                         @error('nome_empresa') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-semibold text-muted">Inscrição Estadual</label>
-                                        <input type="text" name="ie" id="ie" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="IE (opcional)" value="{{ old('ie') }}">
+                                        <input type="text" name="ie" id="ie" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="IE (opcional)" value="{{ old('ie') }}" readonly style="cursor: not-allowed; background-color: #f8f9fa !important;">
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-semibold text-muted">Site</label>
