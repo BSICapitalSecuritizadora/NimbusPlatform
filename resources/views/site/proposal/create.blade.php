@@ -80,7 +80,7 @@
                                         <div class="d-flex flex-wrap gap-3">
                                             @foreach($sectors as $sector)
                                                 <div class="form-check custom-chip">
-                                                    <input class="form-check-input d-none" type="checkbox" name="setores[]" value="{{ $sector->id }}" id="sector{{ $sector->id }}" {{ in_array($sector->id, old('setores', [])) ? 'checked' : '' }}>
+                                                    <input class="form-check-input d-none" type="radio" name="setores[]" value="{{ $sector->id }}" id="sector{{ $sector->id }}" {{ in_array($sector->id, old('setores', [])) ? 'checked' : '' }}>
                                                     <label class="form-check-label px-3 py-2 rounded-pill border text-muted small fw-medium text-uppercase cursor-pointer" for="sector{{ $sector->id }}" style="transition: all 0.2s ease; cursor: pointer; display: inline-block;">
                                                         {{ $sector->name }}
                                                     </label>
@@ -107,27 +107,27 @@
                                     </div>
                                     <div class="col-md-7">
                                         <label class="form-label small fw-semibold text-muted">Logradouro</label>
-                                        <input type="text" name="logradouro" id="logradouro" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Rua, Avenida..." value="{{ old('logradouro') }}" required>
+                                        <input type="text" name="logradouro" id="logradouro" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Rua, Avenida..." value="{{ old('logradouro') }}" required readonly style="cursor: not-allowed; background-color: #f8f9fa !important;">
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label small fw-semibold text-muted">Número</label>
-                                        <input type="text" name="numero" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Nº" value="{{ old('numero') }}" required>
+                                        <input type="text" name="numero" id="numero" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Nº" value="{{ old('numero') }}" required>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label small fw-semibold text-muted">Complemento</label>
-                                        <input type="text" name="complemento" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Apto, Sala..." value="{{ old('complemento') }}">
+                                        <input type="text" name="complemento" id="complemento" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Apto, Sala..." value="{{ old('complemento') }}">
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label small fw-semibold text-muted">Bairro</label>
-                                        <input type="text" name="bairro" id="bairro" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Bairro" value="{{ old('bairro') }}" required>
+                                        <input type="text" name="bairro" id="bairro" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Bairro" value="{{ old('bairro') }}" required readonly style="cursor: not-allowed; background-color: #f8f9fa !important;">
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small fw-semibold text-muted">Cidade</label>
-                                        <input type="text" name="cidade" id="cidade" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Cidade" value="{{ old('cidade') }}" required>
+                                        <input type="text" name="cidade" id="cidade" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Cidade" value="{{ old('cidade') }}" required readonly style="cursor: not-allowed; background-color: #f8f9fa !important;">
                                     </div>
                                     <div class="col-md-1">
                                         <label class="form-label small fw-semibold text-muted">UF</label>
-                                        <input type="text" name="estado" id="estado" class="form-control border-light shadow-none bg-light ps-3 py-2 text-center" placeholder="UF" maxlength="2" value="{{ old('estado') }}" required>
+                                        <input type="text" name="estado" id="estado" class="form-control border-light shadow-none bg-light ps-3 py-2 text-center" placeholder="UF" maxlength="2" value="{{ old('estado') }}" required readonly style="cursor: not-allowed; background-color: #f8f9fa !important;">
                                     </div>
                                 </div>
                             </div>
@@ -278,6 +278,8 @@
                                 document.getElementById('cep').value = est.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2'); // Formatting mask
                             }
                             if (est.logradouro) document.getElementById('logradouro').value = est.logradouro;
+                            if (est.numero) document.getElementById('numero').value = est.numero;
+                            if (est.complemento) document.getElementById('complemento').value = est.complemento;
                             if (est.bairro) document.getElementById('bairro').value = est.bairro;
                             if (est.cidade && est.cidade.nome) document.getElementById('cidade').value = est.cidade.nome;
                             if (est.estado && est.estado.sigla) document.getElementById('estado').value = est.estado.sigla;
