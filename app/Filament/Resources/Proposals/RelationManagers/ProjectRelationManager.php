@@ -12,6 +12,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 use Illuminate\Support\Carbon;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -189,17 +190,35 @@ class ProjectRelationManager extends RelationManager
                                 TextInput::make('useful_area')
                                     ->label('Área Útil (m²)')
                                     ->columnSpan(2)
-                                    ->numeric(),
+                                    ->numeric()
+                                    ->live()
+                                    ->afterStateHydrated(fn (Get $get, Set $set) => self::updateUnitTypePricePerM2($get, $set))
+                                    ->afterStateUpdated(fn (Get $get, Set $set) => self::updateUnitTypePricePerM2($get, $set)),
                                 TextInput::make('average_price')
                                     ->label('Preço Médio')
                                     ->columnSpan(3)
-                                    ->numeric()
-                                    ->prefix('R$'),
+                                    ->prefix('R$')
+                                    ->inputMode('decimal')
+                                    ->live(onBlur: true)
+                                    ->mask(RawJs::make(<<<'JS'
+                                        $money($input, ',', '.')
+                                    JS))
+                                    ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
+                                    ->dehydrateStateUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
+                                    ->mutateStateForValidationUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
+                                    ->afterStateHydrated(fn (Get $get, Set $set) => self::syncAveragePriceField($get, $set))
+                                    ->afterStateUpdated(fn (Get $get, Set $set) => self::syncAveragePriceField($get, $set)),
                                 TextInput::make('price_per_m2')
                                     ->label('Preço m²')
                                     ->columnSpan(3)
-                                    ->numeric()
-                                    ->prefix('R$'),
+                                    ->prefix('R$')
+                                    ->readOnly()
+                                    ->extraAttributes(['style' => 'cursor: not-allowed;'])
+                                    ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
+                                    ->dehydrateStateUsing(fn (Get $get): ?float => self::calculateUnitTypePricePerM2(
+                                        $get('average_price'),
+                                        $get('useful_area'),
+                                    )),
                             ])
                             ->columns(3)
                             ->columnSpanFull()
@@ -409,6 +428,99 @@ class ProjectRelationManager extends RelationManager
     {
         return collect($unitTypes ?? [])
             ->sum(fn (array $unitType): int => (int) data_get($unitType, 'total_units', 0));
+    }
+
+    protected static function updateUnitTypePricePerM2(Get $get, Set $set): void
+    {
+        $set(
+            'price_per_m2',
+            self::formatCurrencyForDisplay(
+                self::calculateUnitTypePricePerM2(
+                    $get('average_price'),
+                    $get('useful_area'),
+                ),
+            ),
+        );
+    }
+
+    protected static function syncAveragePriceField(Get $get, Set $set): void
+    {
+        $averagePrice = self::normalizeDecimalValue($get('average_price'));
+
+        $set('average_price', self::formatCurrencyForDisplay($averagePrice));
+
+        $set(
+            'price_per_m2',
+            self::formatCurrencyForDisplay(
+                self::calculateUnitTypePricePerM2(
+                    $averagePrice,
+                    $get('useful_area'),
+                ),
+            ),
+        );
+    }
+
+    protected static function calculateUnitTypePricePerM2(mixed $averagePrice, mixed $usefulArea): ?float
+    {
+        $averagePrice = self::normalizeDecimalValue($averagePrice);
+        $usefulArea = self::normalizeDecimalValue($usefulArea);
+
+        if (($averagePrice === null) || ($usefulArea === null) || ($usefulArea <= 0)) {
+            return null;
+        }
+
+        return round($averagePrice / $usefulArea, 2);
+    }
+
+    protected static function normalizeDecimalValue(mixed $value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return round((float) $value, 2);
+        }
+
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $value = str_replace(['R$', ' '], '', $value);
+
+        if (str_contains($value, ',')) {
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+        } elseif (str_contains($value, '.')) {
+            $parts = explode('.', $value);
+
+            if ((count($parts) > 2) || (strlen(end($parts)) === 3)) {
+                $value = str_replace('.', '', $value);
+            } else {
+                $value = str_replace(',', '', $value);
+            }
+        } else {
+            $value = str_replace(',', '', $value);
+        }
+
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return round((float) $value, 2);
+    }
+
+    protected static function formatCurrencyForDisplay(mixed $value): ?string
+    {
+        $value = self::normalizeDecimalValue($value);
+
+        if ($value === null) {
+            return null;
+        }
+
+        return number_format($value, 2, ',', '.');
     }
 
     public static function updateSalesCalculations(Get $get, Set $set): void
