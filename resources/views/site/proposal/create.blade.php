@@ -153,11 +153,12 @@
                                         <label class="form-label small fw-semibold text-muted">Telefone Pessoal / Celular</label>
                                         <input type="text" name="telefone_pessoal" id="phone_personal" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="(00) 00000-0000" value="{{ old('telefone_pessoal') }}" required>
                                     </div>
-                                    <div class="col-md-2 d-flex align-items-end px-3 py-2">
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" name="whatsapp" id="whatsapp" value="1" {{ old('whatsapp') ? 'checked' : '' }}>
-                                            <label class="form-check-label small text-muted" for="whatsapp">Tem WhatsApp?</label>
-                                        </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-semibold text-muted">Tem WhatsApp?</label>
+                                        <select name="whatsapp" id="whatsapp" class="form-select border-light shadow-none bg-light ps-3 py-2 text-muted small">
+                                            <option value="1" {{ old('whatsapp', '1') == '1' ? 'selected' : '' }}>Sim</option>
+                                            <option value="0" {{ old('whatsapp') == '0' ? 'selected' : '' }}>Não</option>
+                                        </select>
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small fw-semibold text-muted">Telefone da Empresa</label>

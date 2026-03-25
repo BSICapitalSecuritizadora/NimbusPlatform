@@ -75,13 +75,12 @@ class ProposalController extends Controller
             // 2. Sync Sectors
             $company->sectors()->sync($validated['setores']);
 
-            // 3. Create Contact
             $contact = ProposalContact::create([
                 'company_id' => $company->id,
                 'name' => $validated['nome_contato'],
                 'email' => $validated['email'],
                 'phone_personal' => $validated['telefone_pessoal'],
-                'whatsapp' => $request->has('whatsapp'),
+                'whatsapp' => (bool) $request->input('whatsapp'),
                 'phone_company' => $validated['telefone_empresa'],
                 'cargo' => $validated['cargo'],
             ]);
