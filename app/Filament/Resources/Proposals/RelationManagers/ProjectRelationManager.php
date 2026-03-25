@@ -6,6 +6,7 @@ use App\Filament\Resources\Proposals\Pages\ViewProposal;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -13,6 +14,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Http;
 
 class ProjectRelationManager extends RelationManager
 {
@@ -26,6 +28,102 @@ class ProjectRelationManager extends RelationManager
     {
         return $schema
             ->components([
+                Section::make('Informações Gerais')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label('Nome do Empreendimento')
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('site')
+                            ->label('Site')
+                            ->url()
+                            ->maxLength(255),
+                        TextInput::make('value_requested')
+                            ->label('Valor Solicitado')
+                            ->numeric()
+                            ->required()
+                            ->default(0)
+                            ->prefix('R$'),
+                    ])->columns(3),
+
+                Section::make('Detalhes do Terreno & Lançamento')
+                    ->schema([
+                        TextInput::make('land_market_value')
+                            ->label('Valor atual de mercado do terreno')
+                            ->numeric()
+                            ->default(0)
+                            ->prefix('R$'),
+                        TextInput::make('land_area')
+                            ->label('Área do Terreno (m²)')
+                            ->numeric()
+                            ->required()
+                            ->default(0),
+                        DatePicker::make('launch_date')
+                            ->label('Lançamento do Empreendimento')
+                            ->required(),
+                    ])->columns(3),
+
+                Section::make('Cronograma')
+                    ->schema([
+                        DatePicker::make('sales_launch_date')
+                            ->label('Lançamento das Vendas')
+                            ->required(),
+                        DatePicker::make('construction_start_date')
+                            ->label('Início das Obras')
+                            ->required(),
+                        DatePicker::make('delivery_forecast_date')
+                            ->label('Previsão de Entrega')
+                            ->required(),
+                        TextInput::make('remaining_months')
+                            ->label('Prazo Remanescente (meses)')
+                            ->numeric()
+                            ->default(0),
+                    ])->columns(4),
+
+                Section::make('Localização')
+                    ->schema([
+                        TextInput::make('cep')
+                            ->label('CEP')
+                            ->required()
+                            ->maxLength(9)
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, ?string $state) {
+                                if (!$state) return;
+                                
+                                $cep = preg_replace('/[^0-9]/', '', $state);
+                                if (strlen($cep) !== 8) return;
+
+                                $response = Http::get("https://viacep.com.br/ws/{$cep}/json/");
+                                
+                                if ($response->ok() && !isset($response->json()['erro'])) {
+                                    $data = $response->json();
+                                    $set('logradouro', $data['logradouro'] ?? '');
+                                    $set('bairro', $data['bairro'] ?? '');
+                                    $set('cidade', $data['localidade'] ?? '');
+                                    $set('estado', $data['uf'] ?? '');
+                                }
+                            }),
+                        TextInput::make('logradouro')
+                            ->label('Rua')
+                            ->maxLength(255),
+                        TextInput::make('complemento')
+                            ->label('Complemento')
+                            ->maxLength(255),
+                        TextInput::make('numero')
+                            ->label('Número')
+                            ->required()
+                            ->maxLength(50),
+                        TextInput::make('bairro')
+                            ->label('Bairro')
+                            ->maxLength(255),
+                        TextInput::make('cidade')
+                            ->label('Cidade')
+                            ->maxLength(255),
+                        TextInput::make('estado')
+                            ->label('Estado')
+                            ->maxLength(2),
+                    ])->columns(3),
+
                 Section::make('Características Técnicas (Obra)')
                     ->relationship('characteristics')
                     ->schema([
@@ -77,72 +175,7 @@ class ProjectRelationManager extends RelationManager
                             ->columns(3)
                             ->columnSpanFull()
                             ->itemLabel(fn (array $state): ?string => ($state['bedrooms'] ?? null) ? "Unidade: {$state['bedrooms']}" : null),
-                    ])->columns(2),
-
-                Section::make('Informações Gerais')
-                    ->schema([
-                        TextInput::make('name')
-                            ->label('Nome do Empreendimento')
-                            ->required()
-                            ->maxLength(255),
-                        TextInput::make('company_name')
-                            ->label('Razão Social (SPE)')
-                            ->maxLength(255),
-                        TextInput::make('site')
-                            ->label('Site')
-                            ->url()
-                            ->maxLength(255),
-                        DatePicker::make('launch_date')
-                            ->label('Data de Lançamento'),
-                    ])->columns(2),
-
-                Section::make('Localização')
-                    ->schema([
-                        TextInput::make('cep')
-                            ->label('CEP')
-                            ->maxLength(9),
-                        TextInput::make('logradouro')
-                            ->label('Logradouro')
-                            ->maxLength(255),
-                        TextInput::make('numero')
-                            ->label('Número')
-                            ->maxLength(50),
-                        TextInput::make('complemento')
-                            ->label('Complemento')
-                            ->maxLength(255),
-                        TextInput::make('bairro')
-                            ->label('Bairro')
-                            ->maxLength(255),
-                        TextInput::make('cidade')
-                            ->label('Cidade')
-                            ->maxLength(255),
-                        TextInput::make('estado')
-                            ->label('Estado')
-                            ->maxLength(2),
-                    ])->columns(3),
-
-                Section::make('Dados Financeiros & Área')
-                    ->schema([
-                        TextInput::make('value_requested')
-                            ->label('Valor Solicitado')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('land_market_value')
-                            ->label('Valor de Mercado do Terreno')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('land_area')
-                            ->label('Área do Terreno (m²)')
-                            ->numeric()
-                            ->default(0),
-                        TextInput::make('work_stage_percentage')
-                            ->label('Estágio da Obra (%)')
-                            ->numeric()
-                            ->default(0)
-                            ->suffix('%'),
-                    ])->columns(2),
+                    ])->columns(2)->collapsed(),
 
                 Section::make('Unidades e Vendas')
                     ->schema([
@@ -171,7 +204,7 @@ class ProjectRelationManager extends RelationManager
                             ->numeric()
                             ->default(0)
                             ->suffix('%'),
-                    ])->columns(3),
+                    ])->columns(3)->collapsed(),
 
                 Section::make('Custos')
                     ->schema([
@@ -190,7 +223,12 @@ class ProjectRelationManager extends RelationManager
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
-                    ])->columns(3),
+                        TextInput::make('work_stage_percentage')
+                            ->label('Estágio da Obra (%)')
+                            ->numeric()
+                            ->default(0)
+                            ->suffix('%'),
+                    ])->columns(4)->collapsed(),
 
                 Section::make('Valores de Venda')
                     ->schema([
@@ -229,7 +267,7 @@ class ProjectRelationManager extends RelationManager
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
-                    ])->columns(3),
+                    ])->columns(3)->collapsed(),
 
                 Section::make('Indicadores Avançados (Thresholds)')
                     ->relationship('indicators')

@@ -13,7 +13,13 @@ class ProposalProject extends Model
         'proposal_id', 'name', 'company_name', 'site',
         'value_requested', 'land_market_value', 'land_area',
         'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'estado',
-        'launch_date', 'units_exchanged', 'units_paid', 'units_unpaid', 'units_stock', 'units_total',
+        'launch_date',
+        'sales_launch_date',
+        'construction_start_date',
+        'delivery_forecast_date',
+        'remaining_months',
+        'units_exchanged',
+        'units_paid', 'units_unpaid', 'units_stock', 'units_total',
         'sales_percentage', 'cost_incurred', 'cost_to_incur', 'cost_total', 'work_stage_percentage',
         'value_paid', 'value_unpaid', 'value_stock', 'value_total_sale', 'value_received', 'value_until_keys', 'value_post_keys'
     ];
