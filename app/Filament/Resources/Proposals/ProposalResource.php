@@ -94,6 +94,17 @@ class ProposalResource extends Resource
                         ->content(fn ($record) => $record->observations ?? 'Sem observações.')
                         ->columnSpanFull(),
                     
+                    \Filament\Forms\Components\Placeholder::make('status_view')
+                        ->label('Status')
+                        ->content(fn ($record) => match ($record->status) {
+                            'pendente' => 'Pendente',
+                            'em_analise' => 'Em Análise',
+                            'aprovado' => 'Aprovado',
+                            'rejeitado' => 'Rejeitado',
+                            default => ucfirst($record->status),
+                        })
+                        ->visible(fn ($livewire) => $livewire instanceof ViewProposal),
+
                     Select::make('status')
                         ->label('Status')
                         ->options([
@@ -102,7 +113,8 @@ class ProposalResource extends Resource
                             'aprovado' => 'Aprovado',
                             'rejeitado' => 'Rejeitado',
                         ])
-                        ->required(),
+                        ->required()
+                        ->hidden(fn ($livewire) => $livewire instanceof ViewProposal),
                 ])
         ]);
     }

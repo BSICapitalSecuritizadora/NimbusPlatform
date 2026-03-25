@@ -85,12 +85,11 @@ class ProposalController extends Controller
                 'cargo' => $validated['cargo'],
             ]);
 
-            // 4. Create Proposal
             Proposal::create([
                 'company_id' => $company->id,
                 'contact_id' => $contact->id,
                 'observations' => $validated['observacoes'],
-                'status' => 'pending',
+                'status' => 'pendente',
             ]);
 
             DB::commit();
