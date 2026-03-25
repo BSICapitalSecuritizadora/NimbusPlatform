@@ -216,7 +216,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Masks
-        IMask(document.getElementById('cnpj'), { mask: '00.000.000/0000-00' });
+        const cnpjMask = IMask(document.getElementById('cnpj'), { mask: '00.000.000/0000-00' });
         IMask(document.getElementById('cep'), { mask: '00000-000' });
         IMask(document.getElementById('phone_personal'), { mask: '(00) 00000-0000' });
         IMask(document.getElementById('phone_company'), { mask: '(00) 0000-0000' });
@@ -239,13 +239,62 @@
             }
         });
 
-        // CNPJ Lookup (ReceitaWS - Public API limit is 3 reqs/min)
-        const cnpjInput = document.getElementById('cnpj');
-        cnpjInput.addEventListener('blur', function() {
-            const cnpj = this.value.replace(/\D/g, '');
-            if (cnpj.length === 14) {
-                // Not using directly due to CORS and limits, but we could add a backend proxy if needed.
-                // For now, let's just do pre-fill if it already exists or if we had a paid API.
+        // CNPJ Lookup (cnpj.ws Public API)
+        let lastCheckedCnpj = '';
+        cnpjMask.on('accept', function() {
+            const cnpj = cnpjMask.unmaskedValue;
+            if (cnpj.length === 14 && cnpj !== lastCheckedCnpj) {
+                lastCheckedCnpj = cnpj;
+                const cnpjInput = document.getElementById('cnpj');
+                
+                // Visual Indicator
+                const originalBg = cnpjInput.style.background;
+                cnpjInput.style.background = 'rgba(212,175,55, 0.1)';
+
+                fetch(`https://publica.cnpj.ws/cnpj/${cnpj}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error('API Error');
+                        return res.json();
+                    })
+                    .then(data => {
+                        // Company Name (Razão Social)
+                        if (data.razao_social) {
+                            document.getElementById('nome_empresa').value = data.razao_social;
+                        }
+
+                        // State Registration (Inscrição Estadual)
+                        if (data.estabelecimento && data.estabelecimento.inscricoes_estaduais && data.estabelecimento.inscricoes_estaduais.length > 0) {
+                            // Find first valid state registration
+                            const ieObj = data.estabelecimento.inscricoes_estaduais.find(i => i.inscricao_estadual && i.inscricao_estadual !== '');
+                            if (ieObj) {
+                                document.getElementById('ie').value = ieObj.inscricao_estadual;
+                            }
+                        }
+
+                        // Address Fill (bonus for better UX)
+                        if (data.estabelecimento) {
+                            const est = data.estabelecimento;
+                            if (est.cep) {
+                                document.getElementById('cep').value = est.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2'); // Formatting mask
+                            }
+                            if (est.logradouro) document.getElementById('logradouro').value = est.logradouro;
+                            if (est.bairro) document.getElementById('bairro').value = est.bairro;
+                            if (est.cidade && est.cidade.nome) document.getElementById('cidade').value = est.cidade.nome;
+                            if (est.estado && est.estado.sigla) document.getElementById('estado').value = est.estado.sigla;
+                            if (est.site) {
+                                // Add https:// if missing
+                                let site = est.site.toLowerCase();
+                                if (!site.startsWith('http')) site = 'https://' + site;
+                                document.querySelector('input[name="site"]').value = site;
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.warn('CNPJ lookup failed:', err.message);
+                    })
+                    .finally(() => {
+                        cnpjInput.style.background = originalBg;
+                    });
             }
         });
     });
