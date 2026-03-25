@@ -2,23 +2,20 @@
 
 namespace App\Filament\Resources\Proposals\RelationManagers;
 
-use App\Filament\Resources\Proposals\Pages\ViewProposal;
+use App\Models\ProposalProject;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
-use Illuminate\Support\Carbon;
-use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Http;
 
 class ProjectRelationManager extends RelationManager
@@ -91,7 +88,7 @@ class ProjectRelationManager extends RelationManager
                         Placeholder::make('remaining_months_display')
                             ->label('Prazo Remanescente')
                             ->columnSpan(2)
-                            ->content(fn (Get $get) => (int) $get('remaining_months') . ' meses'),
+                            ->content(fn (Get $get) => (int) $get('remaining_months').' meses'),
                         Hidden::make('remaining_months')
                             ->default(0),
                     ])->columns(2),
@@ -105,15 +102,19 @@ class ProjectRelationManager extends RelationManager
                             ->maxLength(9)
                             ->live()
                             ->afterStateUpdated(function (Set $set, ?string $state) {
-                                if (!$state) return;
-                                
+                                if (! $state) {
+                                    return;
+                                }
+
                                 $cep = preg_replace('/[^0-9]/', '', $state);
-                                if (strlen($cep) !== 8) return;
+                                if (strlen($cep) !== 8) {
+                                    return;
+                                }
 
                                 try {
                                     $response = Http::get("https://viacep.com.br/ws/{$cep}/json/");
-                                    
-                                    if ($response->ok() && !isset($response->json()['erro'])) {
+
+                                    if ($response->ok() && ! isset($response->json()['erro'])) {
                                         $data = $response->json();
                                         $set('logradouro', $data['logradouro'] ?? '');
                                         $set('bairro', $data['bairro'] ?? '');
@@ -277,68 +278,107 @@ class ProjectRelationManager extends RelationManager
                         TextInput::make('cost_incurred')
                             ->label('Custo Incorrido')
                             ->columnSpan(2)
-                            ->numeric()
                             ->default(0)
-                            ->prefix('R$'),
+                            ->prefix('R$')
+                            ->inputMode('decimal')
+                            ->live(onBlur: true)
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.')
+                            JS))
+                            ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
+                            ->dehydrateStateUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
+                            ->mutateStateForValidationUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
+                            ->afterStateHydrated(fn (Get $get, Set $set) => self::syncCostFields($get, $set))
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::syncCostFields($get, $set)),
                         TextInput::make('cost_to_incur')
                             ->label('Custo a Incorrer')
                             ->columnSpan(2)
-                            ->numeric()
                             ->default(0)
-                            ->prefix('R$'),
+                            ->prefix('R$')
+                            ->inputMode('decimal')
+                            ->live(onBlur: true)
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.')
+                            JS))
+                            ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
+                            ->dehydrateStateUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
+                            ->mutateStateForValidationUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
+                            ->afterStateHydrated(fn (Get $get, Set $set) => self::syncCostFields($get, $set))
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::syncCostFields($get, $set)),
                         TextInput::make('cost_total')
                             ->label('Custo Total')
                             ->columnSpan(2)
-                            ->numeric()
                             ->default(0)
-                            ->prefix('R$'),
+                            ->prefix('R$')
+                            ->readOnly()
+                            ->extraAttributes(['style' => 'cursor: not-allowed;'])
+                            ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
+                            ->dehydrated()
+                            ->dehydrateStateUsing(fn (Get $get): float => ProposalProject::calculateCostTotal(
+                                $get('cost_incurred'),
+                                $get('cost_to_incur'),
+                            )),
                         TextInput::make('work_stage_percentage')
                             ->label('Estágio da Obra (%)')
                             ->columnSpan(2)
-                            ->numeric()
                             ->default(0)
-                            ->suffix('%'),
+                            ->readOnly()
+                            ->extraAttributes(['style' => 'cursor: not-allowed;'])
+                            ->suffix('%')
+                            ->formatStateUsing(fn ($state): string => self::formatPercentageForDisplay($state))
+                            ->dehydrated()
+                            ->dehydrateStateUsing(fn (Get $get): float => ProposalProject::calculateWorkStagePercentage(
+                                $get('cost_incurred'),
+                                ProposalProject::calculateCostTotal($get('cost_incurred'), $get('cost_to_incur')),
+                            )),
                     ])->columns(4)->collapsed(),
 
                 Section::make('Valores de Venda')
                     ->icon('heroicon-o-currency-dollar')
                     ->schema([
-                        TextInput::make('value_total_sale')
-                            ->label('VGV Total')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
                         TextInput::make('value_paid')
-                            ->label('Valor Unidades Quitadas')
+                            ->label('Quitadas')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
                         TextInput::make('value_unpaid')
-                            ->label('Valor Unidades Não Quitadas')
+                            ->label('Vendidas')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
                         TextInput::make('value_stock')
-                            ->label('Valor em Estoque')
+                            ->label('Estoque')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
                         TextInput::make('value_received')
                             ->label('Valor já Recebido')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
                         TextInput::make('value_until_keys')
                             ->label('A receber até as chaves')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
                         TextInput::make('value_post_keys')
                             ->label('A receber pós chaves')
+                            ->columnSpan(2)
                             ->numeric()
                             ->default(0)
                             ->prefix('R$'),
-                    ])->columns(3)->collapsed(),
+                        TextInput::make('value_total_sale')
+                            ->label('VGV Total')
+                            ->columnSpan(2)
+                            ->numeric()
+                            ->default(0)
+                            ->prefix('R$'),
+                    ])->columns(2)->collapsed(),
 
                 Section::make('Indicadores Avançados (Thresholds)')
                     ->icon('heroicon-o-presentation-chart-line')
@@ -411,7 +451,7 @@ class ProjectRelationManager extends RelationManager
             if ($start && $end) {
                 $startDate = \Illuminate\Support\Carbon::parse($start);
                 $endDate = \Illuminate\Support\Carbon::parse($end);
-                
+
                 // Only perform math if years look sane (at least 4 digits while typing)
                 if ($startDate->year > 1000 && $endDate->year > 1000) {
                     $months = $startDate->diffInMonths($endDate);
@@ -460,6 +500,22 @@ class ProjectRelationManager extends RelationManager
                     $averagePrice,
                     $get('useful_area'),
                 ),
+            ),
+        );
+    }
+
+    protected static function syncCostFields(Get $get, Set $set): void
+    {
+        $costTotal = ProposalProject::calculateCostTotal(
+            $get('cost_incurred'),
+            $get('cost_to_incur'),
+        );
+
+        $set('cost_total', self::formatCurrencyForDisplay($costTotal));
+        $set(
+            'work_stage_percentage',
+            self::formatPercentageForDisplay(
+                ProposalProject::calculateWorkStagePercentage($get('cost_incurred'), $costTotal),
             ),
         );
     }
@@ -525,6 +581,11 @@ class ProjectRelationManager extends RelationManager
         }
 
         return number_format($value, 2, ',', '.');
+    }
+
+    protected static function formatPercentageForDisplay(mixed $value): string
+    {
+        return number_format(self::normalizeDecimalValue($value) ?? 0, 2, ',', '.');
     }
 
     public static function updateSalesCalculations(Get $get, Set $set): void
