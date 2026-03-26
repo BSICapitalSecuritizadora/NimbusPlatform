@@ -42,22 +42,15 @@ class ProjectRelationManager extends RelationManager
                             ->label('Site')
                             ->url()
                             ->maxLength(255),
-                        TextInput::make('value_requested')
-                            ->label('Valor Solicitado')
-                            ->numeric()
+                        self::makeCurrencyField('value_requested', 'Valor Solicitado')
                             ->required()
-                            ->default(0)
-                            ->prefix('R$'),
+                            ->columnSpan(1),
                     ])->columns(2),
 
                 Section::make('Detalhes do Terreno & Lançamento')
                     ->icon('heroicon-o-map')
                     ->schema([
-                        TextInput::make('land_market_value')
-                            ->label('Valor atual de mercado do terreno')
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$')
+                        self::makeCurrencyField('land_market_value', 'Valor atual de mercado do terreno')
                             ->columnSpan(2),
                         TextInput::make('land_area')
                             ->label('Área do Terreno (m²)')
