@@ -39,6 +39,13 @@ it('recalculates derived project sales and cost fields on create and update', fu
         'cost_to_incur' => '1.680.000,00',
         'cost_total' => '1,00',
         'work_stage_percentage' => '99,99',
+        'value_paid' => '1.234.567,89',
+        'value_unpaid' => '234.567,89',
+        'value_stock' => '345.678,90',
+        'value_received' => '456.789,01',
+        'value_until_keys' => '567.890,12',
+        'value_post_keys' => '678.901,23',
+        'value_total_sale' => '7.654.321,98',
     ]);
 
     $project->refresh();
@@ -52,6 +59,18 @@ it('recalculates derived project sales and cost fields on create and update', fu
         ->and((float) $project->cost_incurred)->toBe(720000.0)
         ->and((float) $project->cost_to_incur)->toBe(1680000.0)
         ->and((float) $project->cost_total)->toBe(2400000.0)
+        ->and((float) $project->value_paid)->toBe(1234567.89)
+        ->and((float) $project->value_unpaid)->toBe(234567.89)
+        ->and((float) $project->value_stock)->toBe(345678.9)
+        ->and((float) $project->value_received)->toBe(456789.01)
+        ->and((float) $project->value_until_keys)->toBe(567890.12)
+        ->and((float) $project->value_post_keys)->toBe(678901.23)
+        ->and((float) $project->value_total_sale)->toBe(7654321.98)
+        ->and(ProposalProject::calculatePaymentFlowTotal(
+            $project->value_received,
+            $project->value_until_keys,
+            $project->value_post_keys,
+        ))->toBe(1703580.36)
         ->and((float) $project->work_stage_percentage)->toBe(30.0);
 
     $project->update([
@@ -65,6 +84,13 @@ it('recalculates derived project sales and cost fields on create and update', fu
         'cost_to_incur' => 0,
         'cost_total' => 100,
         'work_stage_percentage' => 50,
+        'value_paid' => '10.000,00',
+        'value_unpaid' => '20.000,50',
+        'value_stock' => '30.000,75',
+        'value_received' => '40.100,25',
+        'value_until_keys' => '50.200,50',
+        'value_post_keys' => '60.300,75',
+        'value_total_sale' => '70.400,99',
     ]);
 
     $project->refresh();
@@ -72,5 +98,17 @@ it('recalculates derived project sales and cost fields on create and update', fu
     expect((int) $project->units_total)->toBe(20)
         ->and((float) $project->sales_percentage)->toBe(100.0)
         ->and((float) $project->cost_total)->toBe(0.0)
+        ->and((float) $project->value_paid)->toBe(10000.0)
+        ->and((float) $project->value_unpaid)->toBe(20000.5)
+        ->and((float) $project->value_stock)->toBe(30000.75)
+        ->and((float) $project->value_received)->toBe(40100.25)
+        ->and((float) $project->value_until_keys)->toBe(50200.5)
+        ->and((float) $project->value_post_keys)->toBe(60300.75)
+        ->and((float) $project->value_total_sale)->toBe(70400.99)
+        ->and(ProposalProject::calculatePaymentFlowTotal(
+            $project->value_received,
+            $project->value_until_keys,
+            $project->value_post_keys,
+        ))->toBe(150601.5)
         ->and((float) $project->work_stage_percentage)->toBe(0.0);
 });

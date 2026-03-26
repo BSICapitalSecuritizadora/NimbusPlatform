@@ -336,48 +336,33 @@ class ProjectRelationManager extends RelationManager
                 Section::make('Valores de Venda')
                     ->icon('heroicon-o-currency-dollar')
                     ->schema([
-                        TextInput::make('value_paid')
-                            ->label('Quitadas')
+                        self::makeCurrencyField('value_paid', 'Quitadas'),
+                        self::makeCurrencyField('value_unpaid', 'Vendidas'),
+                        self::makeCurrencyField('value_stock', 'Estoque'),
+                        self::makeCurrencyField('value_total_sale', 'VGV Total'),
+                    ])->columns(2)->collapsed(),
+
+                Section::make('Fluxo de pagamento')
+                    ->icon('heroicon-o-banknotes')
+                    ->schema([
+                        self::makeCurrencyField('value_received', 'Valor já Recebido')
+                            ->afterStateHydrated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set))
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set)),
+                        self::makeCurrencyField('value_until_keys', 'A receber até as chaves')
+                            ->afterStateHydrated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set))
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set)),
+                        self::makeCurrencyField('value_post_keys', 'A receber pós chaves')
+                            ->afterStateHydrated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set))
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set)),
+                        TextInput::make('payment_flow_total')
+                            ->label('Total')
                             ->columnSpan(2)
-                            ->numeric()
                             ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('value_unpaid')
-                            ->label('Vendidas')
-                            ->columnSpan(2)
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('value_stock')
-                            ->label('Estoque')
-                            ->columnSpan(2)
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('value_received')
-                            ->label('Valor já Recebido')
-                            ->columnSpan(2)
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('value_until_keys')
-                            ->label('A receber até as chaves')
-                            ->columnSpan(2)
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('value_post_keys')
-                            ->label('A receber pós chaves')
-                            ->columnSpan(2)
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
-                        TextInput::make('value_total_sale')
-                            ->label('VGV Total')
-                            ->columnSpan(2)
-                            ->numeric()
-                            ->default(0)
-                            ->prefix('R$'),
+                            ->prefix('R$')
+                            ->readOnly()
+                            ->extraAttributes(['style' => 'cursor: not-allowed;'])
+                            ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
+                            ->dehydrated(false),
                     ])->columns(2)->collapsed(),
 
                 Section::make('Indicadores Avançados (Thresholds)')
@@ -586,6 +571,32 @@ class ProjectRelationManager extends RelationManager
     protected static function formatPercentageForDisplay(mixed $value): string
     {
         return number_format(self::normalizeDecimalValue($value) ?? 0, 2, ',', '.');
+    }
+
+    protected static function makeCurrencyField(string $name, string $label): TextInput
+    {
+        return TextInput::make($name)
+            ->label($label)
+            ->columnSpan(2)
+            ->default(0)
+            ->prefix('R$')
+            ->inputMode('decimal')
+            ->live(onBlur: true)
+            ->mask(RawJs::make(<<<'JS'
+                $money($input, ',', '.')
+            JS))
+            ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
+            ->dehydrateStateUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
+            ->mutateStateForValidationUsing(fn ($state): ?float => self::normalizeDecimalValue($state));
+    }
+
+    protected static function syncPaymentFlowTotal(Get $get, Set $set): void
+    {
+        $set('payment_flow_total', ProposalProject::calculatePaymentFlowTotal(
+            $get('value_received'),
+            $get('value_until_keys'),
+            $get('value_post_keys'),
+        ));
     }
 
     public static function updateSalesCalculations(Get $get, Set $set): void

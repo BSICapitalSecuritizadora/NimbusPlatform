@@ -30,6 +30,7 @@ class ProposalProject extends Model
     {
         static::saving(function (self $project): void {
             $project->syncSalesMetrics();
+            $project->syncSaleValues();
             $project->syncCostMetrics();
         });
     }
@@ -101,6 +102,32 @@ class ProposalProject extends Model
         return round(($costIncurred / $costTotal) * 100, 2);
     }
 
+    public static function calculatePaymentFlowTotal(
+        mixed $valueReceived,
+        mixed $valueUntilKeys,
+        mixed $valuePostKeys,
+    ): float {
+        return round(
+            self::normalizeDecimalValue($valueReceived)
+                + self::normalizeDecimalValue($valueUntilKeys)
+                + self::normalizeDecimalValue($valuePostKeys),
+            2,
+        );
+    }
+
+    public static function calculateSalesValuesTotal(
+        mixed $valuePaid,
+        mixed $valueUnpaid,
+        mixed $valueStock,
+    ): float {
+        return round(
+            self::normalizeDecimalValue($valuePaid)
+                + self::normalizeDecimalValue($valueUnpaid)
+                + self::normalizeDecimalValue($valueStock),
+            2,
+        );
+    }
+
     protected function syncSalesMetrics(): void
     {
         $this->units_exchanged = self::normalizeIntegerValue($this->units_exchanged);
@@ -127,6 +154,21 @@ class ProposalProject extends Model
         $this->cost_to_incur = self::normalizeDecimalValue($this->cost_to_incur);
         $this->cost_total = self::calculateCostTotal($this->cost_incurred, $this->cost_to_incur);
         $this->work_stage_percentage = self::calculateWorkStagePercentage($this->cost_incurred, $this->cost_total);
+    }
+
+    protected function syncSaleValues(): void
+    {
+        $this->value_paid = self::normalizeDecimalValue($this->value_paid);
+        $this->value_unpaid = self::normalizeDecimalValue($this->value_unpaid);
+        $this->value_stock = self::normalizeDecimalValue($this->value_stock);
+        $this->value_received = self::normalizeDecimalValue($this->value_received);
+        $this->value_until_keys = self::normalizeDecimalValue($this->value_until_keys);
+        $this->value_post_keys = self::normalizeDecimalValue($this->value_post_keys);
+        $this->value_total_sale = self::calculateSalesValuesTotal(
+            $this->value_paid,
+            $this->value_unpaid,
+            $this->value_stock,
+        );
     }
 
     protected static function normalizeIntegerValue(mixed $value): int
