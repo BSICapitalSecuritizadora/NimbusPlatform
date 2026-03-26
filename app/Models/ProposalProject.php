@@ -29,6 +29,7 @@ class ProposalProject extends Model
     protected static function booted(): void
     {
         static::saving(function (self $project): void {
+            $project->syncSalesMetrics();
             $project->syncCostMetrics();
         });
     }
@@ -56,6 +57,38 @@ class ProposalProject extends Model
         );
     }
 
+    public static function calculateUnitsTotal(
+        mixed $unitsUnpaid,
+        mixed $unitsPaid,
+        mixed $unitsExchanged,
+        mixed $unitsStock,
+    ): int {
+        return self::normalizeIntegerValue($unitsUnpaid)
+            + self::normalizeIntegerValue($unitsPaid)
+            + self::normalizeIntegerValue($unitsExchanged)
+            + self::normalizeIntegerValue($unitsStock);
+    }
+
+    public static function calculateSalesPercentage(
+        mixed $unitsUnpaid,
+        mixed $unitsPaid,
+        mixed $unitsExchanged,
+        mixed $unitsStock,
+    ): float {
+        $unitsUnpaid = self::normalizeIntegerValue($unitsUnpaid);
+        $unitsPaid = self::normalizeIntegerValue($unitsPaid);
+        $unitsExchanged = self::normalizeIntegerValue($unitsExchanged);
+        $unitsStock = self::normalizeIntegerValue($unitsStock);
+        $unitsTotal = self::calculateUnitsTotal($unitsUnpaid, $unitsPaid, $unitsExchanged, $unitsStock);
+        $sellableUnits = $unitsTotal - $unitsExchanged;
+
+        if ($sellableUnits <= 0) {
+            return 0.0;
+        }
+
+        return round((($unitsUnpaid + $unitsPaid) / $sellableUnits) * 100, 2);
+    }
+
     public static function calculateWorkStagePercentage(mixed $costIncurred, mixed $costTotal): float
     {
         $costIncurred = self::normalizeDecimalValue($costIncurred);
@@ -68,12 +101,37 @@ class ProposalProject extends Model
         return round(($costIncurred / $costTotal) * 100, 2);
     }
 
+    protected function syncSalesMetrics(): void
+    {
+        $this->units_exchanged = self::normalizeIntegerValue($this->units_exchanged);
+        $this->units_paid = self::normalizeIntegerValue($this->units_paid);
+        $this->units_unpaid = self::normalizeIntegerValue($this->units_unpaid);
+        $this->units_stock = self::normalizeIntegerValue($this->units_stock);
+        $this->units_total = self::calculateUnitsTotal(
+            $this->units_unpaid,
+            $this->units_paid,
+            $this->units_exchanged,
+            $this->units_stock,
+        );
+        $this->sales_percentage = self::calculateSalesPercentage(
+            $this->units_unpaid,
+            $this->units_paid,
+            $this->units_exchanged,
+            $this->units_stock,
+        );
+    }
+
     protected function syncCostMetrics(): void
     {
         $this->cost_incurred = self::normalizeDecimalValue($this->cost_incurred);
         $this->cost_to_incur = self::normalizeDecimalValue($this->cost_to_incur);
         $this->cost_total = self::calculateCostTotal($this->cost_incurred, $this->cost_to_incur);
         $this->work_stage_percentage = self::calculateWorkStagePercentage($this->cost_incurred, $this->cost_total);
+    }
+
+    protected static function normalizeIntegerValue(mixed $value): int
+    {
+        return (int) round(self::normalizeDecimalValue($value));
     }
 
     protected static function normalizeDecimalValue(mixed $value): float

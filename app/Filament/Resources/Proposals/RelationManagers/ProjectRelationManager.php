@@ -235,25 +235,25 @@ class ProjectRelationManager extends RelationManager
                             ->label('Vendidas')
                             ->numeric()
                             ->default(0)
-                            ->live()
+                            ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
                         TextInput::make('units_paid')
                             ->label('Quitadas')
                             ->numeric()
                             ->default(0)
-                            ->live()
+                            ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
                         TextInput::make('units_exchanged')
                             ->label('Permutadas')
                             ->numeric()
                             ->default(0)
-                            ->live()
+                            ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
                         TextInput::make('units_stock')
                             ->label('Estoque')
                             ->numeric()
                             ->default(0)
-                            ->live()
+                            ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
                         TextInput::make('units_total')
                             ->label('Total')
@@ -590,19 +590,22 @@ class ProjectRelationManager extends RelationManager
 
     public static function updateSalesCalculations(Get $get, Set $set): void
     {
-        $unpaid = (int) $get('units_unpaid');
-        $paid = (int) $get('units_paid');
-        $exchanged = (int) $get('units_exchanged');
-        $stock = (int) $get('units_stock');
+        $unitsUnpaid = $get('units_unpaid');
+        $unitsPaid = $get('units_paid');
+        $unitsExchanged = $get('units_exchanged');
+        $unitsStock = $get('units_stock');
 
-        $total = $unpaid + $paid + $exchanged + $stock;
-        $set('units_total', $total);
-
-        if ($total > 0) {
-            $percentage = (($unpaid + $paid) / $total) * 100;
-            $set('sales_percentage', round($percentage, 2));
-        } else {
-            $set('sales_percentage', 0);
-        }
+        $set('units_total', ProposalProject::calculateUnitsTotal(
+            $unitsUnpaid,
+            $unitsPaid,
+            $unitsExchanged,
+            $unitsStock,
+        ));
+        $set('sales_percentage', ProposalProject::calculateSalesPercentage(
+            $unitsUnpaid,
+            $unitsPaid,
+            $unitsExchanged,
+            $unitsStock,
+        ));
     }
 }
