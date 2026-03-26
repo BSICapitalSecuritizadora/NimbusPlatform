@@ -80,7 +80,7 @@
                                         <div class="d-flex flex-wrap gap-3">
                                             @foreach($sectors as $sector)
                                                 <div class="form-check custom-chip">
-                                                    <input class="form-check-input d-none" type="radio" name="setores[]" value="{{ $sector->id }}" id="sector{{ $sector->id }}" {{ in_array($sector->id, old('setores', [])) ? 'checked' : '' }}>
+                                                    <input class="form-check-input d-none" type="checkbox" name="setores[]" value="{{ $sector->id }}" id="sector{{ $sector->id }}" {{ in_array($sector->id, old('setores', [])) ? 'checked' : '' }}>
                                                     <label class="form-check-label px-3 py-2 rounded-pill border text-muted small fw-medium text-uppercase cursor-pointer" for="sector{{ $sector->id }}" style="transition: all 0.2s ease; cursor: pointer; display: inline-block;">
                                                         {{ $sector->name }}
                                                     </label>

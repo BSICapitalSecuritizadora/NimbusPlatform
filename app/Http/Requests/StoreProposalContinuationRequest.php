@@ -1,0 +1,120 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
+
+class StoreProposalContinuationRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'nome' => ['required', 'string', 'max:255'],
+            'site' => ['nullable', 'url', 'max:255'],
+            'valor_solicitado' => ['required', 'string', 'max:50'],
+            'valor_mercado_terreno' => ['nullable', 'string', 'max:50'],
+            'area_terreno' => ['required', 'numeric', 'min:0'],
+            'data_lancamento' => ['required', 'date_format:Y-m'],
+            'lancamento_vendas' => ['required', 'date_format:Y-m'],
+            'inicio_obras' => ['required', 'date_format:Y-m'],
+            'previsao_entrega' => ['required', 'date_format:Y-m'],
+            'prazo_remanescente' => ['nullable', 'integer', 'min:0'],
+            'cep' => ['required', 'string', 'max:9'],
+            'logradouro' => ['required', 'string', 'max:255'],
+            'complemento' => ['nullable', 'string', 'max:255'],
+            'numero' => ['required', 'string', 'max:50'],
+            'bairro' => ['required', 'string', 'max:255'],
+            'cidade' => ['required', 'string', 'max:255'],
+            'estado' => ['required', 'string', 'size:2'],
+            'nome_empreendimento' => ['required', 'array', 'min:1'],
+            'nome_empreendimento.*' => ['required', 'string', 'max:255'],
+            'unidades_permutadas' => ['required', 'array'],
+            'unidades_permutadas.*' => ['nullable', 'integer', 'min:0'],
+            'unidades_quitadas' => ['required', 'array'],
+            'unidades_quitadas.*' => ['nullable', 'integer', 'min:0'],
+            'unidades_nao_quitadas' => ['required', 'array'],
+            'unidades_nao_quitadas.*' => ['nullable', 'integer', 'min:0'],
+            'unidades_estoque' => ['required', 'array'],
+            'unidades_estoque.*' => ['nullable', 'integer', 'min:0'],
+            'custo_incidido' => ['required', 'array'],
+            'custo_incidido.*' => ['nullable', 'string', 'max:50'],
+            'custo_a_incorrer' => ['required', 'array'],
+            'custo_a_incorrer.*' => ['nullable', 'string', 'max:50'],
+            'valor_quitadas' => ['required', 'array'],
+            'valor_quitadas.*' => ['nullable', 'string', 'max:50'],
+            'valor_nao_quitadas' => ['required', 'array'],
+            'valor_nao_quitadas.*' => ['nullable', 'string', 'max:50'],
+            'valor_estoque' => ['required', 'array'],
+            'valor_estoque.*' => ['nullable', 'string', 'max:50'],
+            'valor_ja_recebido' => ['required', 'array'],
+            'valor_ja_recebido.*' => ['nullable', 'string', 'max:50'],
+            'valor_ate_chaves' => ['required', 'array'],
+            'valor_ate_chaves.*' => ['nullable', 'string', 'max:50'],
+            'valor_chaves_pos' => ['required', 'array'],
+            'valor_chaves_pos.*' => ['nullable', 'string', 'max:50'],
+            'car_bloco' => ['required', 'integer', 'min:1'],
+            'car_pavimentos' => ['required', 'integer', 'min:1'],
+            'car_andares_tipo' => ['required', 'integer', 'min:1'],
+            'car_unidades_andar' => ['required', 'integer', 'min:1'],
+            'car_total' => ['nullable', 'integer', 'min:1'],
+            'tipo_total' => ['required', 'array', 'min:1'],
+            'tipo_total.*' => ['required', 'integer', 'min:1'],
+            'tipo_dormitorios' => ['required', 'array', 'min:1'],
+            'tipo_dormitorios.*' => ['required', 'string', 'max:255'],
+            'tipo_vagas' => ['required', 'array', 'min:1'],
+            'tipo_vagas.*' => ['required', 'string', 'max:255'],
+            'tipo_area' => ['required', 'array', 'min:1'],
+            'tipo_area.*' => ['required', 'numeric', 'gt:0'],
+            'tipo_preco_medio' => ['required', 'array', 'min:1'],
+            'tipo_preco_medio.*' => ['required', 'string', 'max:50'],
+            'arquivos' => ['nullable', 'array'],
+            'arquivos.*' => ['file', 'max:10240'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'nome.required' => 'O nome principal do empreendimento é obrigatório.',
+            'nome_empreendimento.required' => 'Adicione ao menos um empreendimento.',
+            'nome_empreendimento.*.required' => 'A identificação de cada empreendimento é obrigatória.',
+            'data_lancamento.date_format' => 'O lançamento deve estar no formato mm/aaaa.',
+            'lancamento_vendas.date_format' => 'O lançamento das vendas deve estar no formato mm/aaaa.',
+            'inicio_obras.date_format' => 'O início das obras deve estar no formato mm/aaaa.',
+            'previsao_entrega.date_format' => 'A previsão de entrega deve estar no formato mm/aaaa.',
+        ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $expected = count($this->input('nome_empreendimento', []));
+            $perProjectFields = [
+                'unidades_permutadas',
+                'unidades_quitadas',
+                'unidades_nao_quitadas',
+                'unidades_estoque',
+                'custo_incidido',
+                'custo_a_incorrer',
+                'valor_quitadas',
+                'valor_nao_quitadas',
+                'valor_estoque',
+                'valor_ja_recebido',
+                'valor_ate_chaves',
+                'valor_chaves_pos',
+            ];
+
+            foreach ($perProjectFields as $field) {
+                if (count($this->input($field, [])) !== $expected) {
+                    $validator->errors()->add($field, 'Os blocos de empreendimentos enviados estão incompletos.');
+                }
+            }
+        });
+    }
+}

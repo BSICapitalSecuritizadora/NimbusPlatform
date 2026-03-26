@@ -35,6 +35,16 @@ class ProposalProject extends Model
         });
     }
 
+    protected function casts(): array
+    {
+        return [
+            'launch_date' => 'date',
+            'sales_launch_date' => 'date',
+            'construction_start_date' => 'date',
+            'delivery_forecast_date' => 'date',
+        ];
+    }
+
     public function proposal(): BelongsTo
     {
         return $this->belongsTo(Proposal::class);

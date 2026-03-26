@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
+use App\Http\Controllers\Site\ProposalContinuationController;
 use App\Http\Controllers\Site\ProposalController;
 use App\Http\Controllers\Site\PublicDocumentsController;
 use App\Http\Controllers\Site\SiteController;
@@ -55,6 +56,22 @@ Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
 // Proposals (Integrated from NimbusForms)
 Route::get('/proposta', [ProposalController::class, 'create'])->name('site.proposal.create');
 Route::post('/proposta', [ProposalController::class, 'store'])->name('site.proposal.store');
+Route::get('/proposta/continuar/{access}', [ProposalContinuationController::class, 'showAccess'])
+    ->name('site.proposal.continuation.access');
+Route::post('/proposta/continuar/{access}', [ProposalContinuationController::class, 'verify'])
+    ->name('site.proposal.continuation.verify');
+Route::get('/proposta/continuar/{access}/formulario', [ProposalContinuationController::class, 'showForm'])
+    ->name('site.proposal.continuation.form');
+Route::post('/proposta/continuar/{access}/formulario', [ProposalContinuationController::class, 'store'])
+    ->name('site.proposal.continuation.store');
+Route::post('/proposta/continuar/{access}/indicadores', [ProposalContinuationController::class, 'storeIndicators'])
+    ->name('site.proposal.continuation.indicators');
+Route::get('/proposta/continuar/{access}/arquivos/{file}', [ProposalContinuationController::class, 'downloadFile'])
+    ->name('site.proposal.continuation.files.download');
+Route::get('/proposta/continuar/{access}/empreendimentos/{project}/relatorio', [ProposalContinuationController::class, 'downloadProjectReport'])
+    ->name('site.proposal.continuation.projects.report');
+Route::get('/proposta/continuar/{access}/empreendimentos/{project}/analitico', [ProposalContinuationController::class, 'downloadAnalyticalReport'])
+    ->name('site.proposal.continuation.projects.analytical');
 
 // Recruitment (Trabalhe Conosco)
 Route::get('/trabalhe-conosco', [JobController::class, 'index'])->name('site.vacancies.index');
