@@ -20,11 +20,11 @@ use Illuminate\Support\Facades\Http;
 
 class ProjectRelationManager extends RelationManager
 {
-    protected static string $relationship = 'project';
+    protected static string $relationship = 'projects';
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $title = 'Dados do Empreendimento';
+    protected static ?string $title = 'Empreendimentos';
 
     public function form(Schema $schema): Schema
     {
@@ -416,7 +416,7 @@ class ProjectRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Projeto'),
+                    ->label('Empreendimento'),
                 Tables\Columns\TextColumn::make('value_requested')
                     ->label('Vlr. Solicitado')
                     ->money('BRL'),
@@ -426,7 +426,7 @@ class ProjectRelationManager extends RelationManager
             ])
             ->headerActions([
                 \Filament\Actions\CreateAction::make()
-                    ->label('Adicionar Projeto'),
+                    ->label('Adicionar Empreendimento'),
             ])
             ->actions([
                 \Filament\Actions\EditAction::make(),
@@ -611,20 +611,26 @@ class ProjectRelationManager extends RelationManager
 
     protected static function syncPaymentFlowTotal(Get $get, Set $set): void
     {
-        $set('payment_flow_total', ProposalProject::calculatePaymentFlowTotal(
-            $get('value_received'),
-            $get('value_until_keys'),
-            $get('value_post_keys'),
-        ));
+        $set(
+            'payment_flow_total',
+            self::formatCurrencyForDisplay(ProposalProject::calculatePaymentFlowTotal(
+                $get('value_received'),
+                $get('value_until_keys'),
+                $get('value_post_keys'),
+            )),
+        );
     }
 
     protected static function syncSalesValuesTotal(Get $get, Set $set): void
     {
-        $set('value_total_sale', ProposalProject::calculateSalesValuesTotal(
-            $get('value_paid'),
-            $get('value_unpaid'),
-            $get('value_stock'),
-        ));
+        $set(
+            'value_total_sale',
+            self::formatCurrencyForDisplay(ProposalProject::calculateSalesValuesTotal(
+                $get('value_paid'),
+                $get('value_unpaid'),
+                $get('value_stock'),
+            )),
+        );
     }
 
     public static function updateSalesCalculations(Get $get, Set $set): void

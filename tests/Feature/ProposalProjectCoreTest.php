@@ -122,3 +122,36 @@ it('recalculates derived project sales and cost fields on create and update', fu
         ))->toBe(150601.5)
         ->and((float) $project->work_stage_percentage)->toBe(0.0);
 });
+
+it('allows multiple named projects in the same proposal', function () {
+    $company = ProposalCompany::query()->create([
+        'name' => 'Construtora Exemplo',
+        'cnpj' => '12.345.678/0001-90',
+    ]);
+
+    $contact = ProposalContact::query()->create([
+        'company_id' => $company->id,
+        'name' => 'Maria Silva',
+        'email' => 'maria@example.com',
+    ]);
+
+    $proposal = Proposal::query()->create([
+        'company_id' => $company->id,
+        'contact_id' => $contact->id,
+        'status' => 'pending',
+    ]);
+
+    $proposal->projects()->create([
+        'name' => 'Torre Madrid',
+    ]);
+
+    $proposal->projects()->create([
+        'name' => 'Torre Manchester',
+    ]);
+
+    expect($proposal->projects()->count())->toBe(2)
+        ->and($proposal->projects()->pluck('name')->all())->toBe([
+            'Torre Madrid',
+            'Torre Manchester',
+        ]);
+});
