@@ -36,15 +36,8 @@
             @endphp
 
             <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4">
-                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-3">
-                    <div>
-                        <h2 class="h5 fw-bold mb-1">Resumo do envio</h2>
-                        <div class="text-muted">Recebemos as informações da sua proposta e o time comercial seguirá com a análise interna.</div>
-                    </div>
-                    <div class="rounded-4 px-3 py-2 small fw-semibold" style="background:#f8fafc;border:1px solid #dbe4f0;">
-                        Situação atual: {{ $proposal->status_label }}
-                    </div>
-                </div>
+                <h2 class="h5 fw-bold mb-1">Resumo do envio</h2>
+                <div class="text-muted mb-3">Recebemos as informações da sua proposta e o time comercial seguirá com a análise interna.</div>
                 <div class="small text-muted">Os dados de análise comercial e indicadores internos permanecem restritos ao painel administrativo.</div>
             </div></div>
 
