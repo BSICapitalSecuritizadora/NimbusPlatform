@@ -22,9 +22,7 @@
                             <div class="small text-uppercase text-muted fw-semibold mb-2">Proposta</div>
                             <div class="fw-semibold">{{ $proposal->company->name }}</div>
                             <div class="text-muted">{{ $proposal->contact->name }} • {{ $proposal->contact->email }}</div>
-                            @if ($proposal->representative)
-                                <div class="mt-2 small text-muted">Representante responsável: {{ $proposal->representative->name }}</div>
-                            @endif
+                            <div class="mt-2 small text-muted">CNPJ: {{ $proposal->company->cnpj }} • Status: {{ $proposal->status_label }}</div>
                         </div>
 
                         <form method="POST" action="{{ route('site.proposal.continuation.verify', $access) }}">

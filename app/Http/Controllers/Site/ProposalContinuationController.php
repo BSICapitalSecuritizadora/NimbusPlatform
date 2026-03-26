@@ -4,13 +4,10 @@ namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProposalContinuationRequest;
-use App\Http\Requests\StoreProposalIndicatorsRequest;
 use App\Http\Requests\VerifyProposalContinuationRequest;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalFile;
-use App\Models\ProposalProject;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -186,82 +183,6 @@ class ProposalContinuationController extends Controller
             ->with('success', 'Empreendimento(s) salvo(s) com sucesso.');
     }
 
-    public function storeIndicators(
-        StoreProposalIndicatorsRequest $request,
-        ProposalContinuationAccess $access,
-    ): RedirectResponse {
-        $this->ensureAuthorized($request, $access);
-
-        $proposal = $this->loadProposal($access);
-        $project = $proposal->projects()->oldest('id')->firstOrFail();
-
-        $project->indicators()->updateOrCreate(
-            ['project_id' => $project->id],
-            $request->validated(),
-        );
-
-        return redirect()
-            ->route('site.proposal.continuation.form', $access)
-            ->with('success', 'Indicadores salvos com sucesso.');
-    }
-
-    public function downloadProjectReport(
-        Request $request,
-        ProposalContinuationAccess $access,
-        ProposalProject $project,
-    ) {
-        $this->ensureAuthorized($request, $access);
-        $this->ensureProjectBelongsToProposal($access, $project);
-
-        $project->load(['characteristics.unitTypes']);
-        $pdf = Pdf::loadView('pdf.project-report', compact('project'));
-
-        return $pdf->download("relatorio-empreendimento-{$project->id}.pdf");
-    }
-
-    public function downloadAnalyticalReport(
-        Request $request,
-        ProposalContinuationAccess $access,
-        ProposalProject $project,
-    ) {
-        $this->ensureAuthorized($request, $access);
-        $this->ensureProjectBelongsToProposal($access, $project);
-
-        $project->load(['characteristics.unitTypes', 'indicators']);
-
-        $totalUnits = max(1, (int) $project->units_total);
-        $totalReceivables = ProposalProject::calculatePaymentFlowTotal(
-            $project->value_received,
-            $project->value_until_keys,
-            $project->value_post_keys,
-        );
-        $totalReceivables = max(0.01, $totalReceivables);
-
-        $data = [
-            'project' => $project,
-            'percent_vendidas' => ($project->units_unpaid / $totalUnits) * 100,
-            'percent_quitadas' => ($project->units_paid / $totalUnits) * 100,
-            'percent_estoque' => ($project->units_stock / $totalUnits) * 100,
-            'percent_permutadas' => ($project->units_exchanged / $totalUnits) * 100,
-            'valor_total_total' => ProposalProject::calculateSalesValuesTotal(
-                $project->value_paid,
-                $project->value_unpaid,
-                $project->value_stock,
-            ),
-            'valor_total_recebiveis' => $totalReceivables,
-            'percent_recebido' => ($project->value_received / $totalReceivables) * 100,
-            'percent_obra' => ($project->value_until_keys / $totalReceivables) * 100,
-            'percent_chaves' => ($project->value_post_keys / $totalReceivables) * 100,
-            'valor_terreno_m2' => $project->land_area > 0 ? $project->land_market_value / $project->land_area : 0,
-            'custo_construcao_m2' => $project->land_area > 0 ? $project->cost_total / $project->land_area : 0,
-            'financiamento_custo_obra' => $project->cost_total > 0 ? ($project->value_requested / $project->cost_total) * 100 : 0,
-        ];
-
-        $pdf = Pdf::loadView('pdf.project-analytical', $data);
-
-        return $pdf->download("relatorio-analitico-{$project->id}.pdf");
-    }
-
     public function downloadFile(
         Request $request,
         ProposalContinuationAccess $access,
@@ -280,9 +201,7 @@ class ProposalContinuationController extends Controller
             ->with([
                 'company.sectors',
                 'contact',
-                'representative',
                 'projects.characteristics.unitTypes',
-                'projects.indicators',
                 'files',
             ])
             ->firstOrFail();
@@ -305,13 +224,6 @@ class ProposalContinuationController extends Controller
     protected function isAuthorized(Request $request, ProposalContinuationAccess $access): bool
     {
         return $request->session()->has($this->verifiedSessionKey($access)) && $access->isActive();
-    }
-
-    protected function ensureProjectBelongsToProposal(
-        ProposalContinuationAccess $access,
-        ProposalProject $project,
-    ): void {
-        abort_unless($project->proposal_id === $access->proposal_id, 404);
     }
 
     protected function magicLinkSessionKey(ProposalContinuationAccess $access): string

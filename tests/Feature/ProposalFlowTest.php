@@ -141,6 +141,22 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->assertRedirect(route('site.proposal.continuation.form', $access))
         ->assertSessionHas('success');
 
+    $this->get(route('site.proposal.continuation.form', $access))
+        ->assertOk()
+        ->assertSee('Cadastro Inicial')
+        ->assertSee('Dados Gerais da Operação')
+        ->assertSee('Contato 1')
+        ->assertSee('Observações iniciais.')
+        ->assertSee('Rua das Torres')
+        ->assertSee('Residencial Atlântico')
+        ->assertSee('Torre Madrid')
+        ->assertSee('Fluxo de Pagamento')
+        ->assertSee('Arquivos Anexados')
+        ->assertDontSee('Indicadores Avançados')
+        ->assertDontSee('Salvar Indicadores')
+        ->assertDontSee('Analítico')
+        ->assertDontSee('Representante:');
+
     $proposal->refresh();
     $proposal->load([
         'projects.characteristics.unitTypes',
@@ -214,7 +230,7 @@ it('revokes the previous access and records a new send when the link is resent',
     $this->get(relativePathFromUrl($firstMailData['continuation_url']))->assertForbidden();
 });
 
-it('stores advanced indicators after the continuation flow is authorized', function () {
+it('keeps internal indicators and reports unavailable on the proposer flow', function () {
     Mail::fake();
 
     $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
@@ -241,21 +257,31 @@ it('stores advanced indicators after the continuation flow is authorized', funct
     $this->post(route('site.proposal.continuation.store', $access), continuationPayload())
         ->assertRedirect(route('site.proposal.continuation.form', $access));
 
-    $this->post(route('site.proposal.continuation.indicators', $access), [
+    $project = $proposal->fresh()->projects()->oldest('id')->firstOrFail();
+    $basePath = '/proposta/continuar/'.$access->getRouteKey();
+
+    $this->get(route('site.proposal.continuation.form', $access))
+        ->assertOk()
+        ->assertDontSee('Indicadores Avançados')
+        ->assertDontSee('Salvar Indicadores')
+        ->assertDontSee("/proposta/continuar/{$access->getRouteKey()}/empreendimentos/{$project->id}/relatorio")
+        ->assertDontSee("/proposta/continuar/{$access->getRouteKey()}/empreendimentos/{$project->id}/analitico")
+        ->assertDontSee('Analítico');
+
+    $this->post("{$basePath}/indicadores", [
         'financiamento_custo_obra_ideal' => 55.5,
         'financiamento_custo_obra_limite' => 60.0,
         'ltv_ideal' => 65.0,
         'ltv_limite' => 75.0,
-    ])->assertRedirect(route('site.proposal.continuation.form', $access))
-        ->assertSessionHas('success');
+    ])->assertNotFound();
 
-    $project = $proposal->fresh()->projects()->oldest('id')->firstOrFail();
+    $this->get("{$basePath}/empreendimentos/{$project->id}/relatorio")
+        ->assertNotFound();
 
-    expect($project->indicators)->not->toBeNull()
-        ->and((float) $project->indicators->financiamento_custo_obra_ideal)->toBe(55.5)
-        ->and((float) $project->indicators->financiamento_custo_obra_limite)->toBe(60.0)
-        ->and((float) $project->indicators->ltv_ideal)->toBe(65.0)
-        ->and((float) $project->indicators->ltv_limite)->toBe(75.0);
+    $this->get("{$basePath}/empreendimentos/{$project->id}/analitico")
+        ->assertNotFound();
+
+    expect($project->fresh()->indicators)->toBeNull();
 });
 
 it('flags legacy accesses that do not have a recoverable code', function () {

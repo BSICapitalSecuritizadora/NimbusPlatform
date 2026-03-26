@@ -3,33 +3,124 @@
 @section('title', 'Formulário de Empreendimento')
 
 @section('content')
-@php($firstProject = $proposal->projects->first())
-@php($firstIndicator = $firstProject?->indicators)
+@php
+    $firstProject = $proposal->projects->first();
+@endphp
 <section class="py-5" style="background:#eef2f7;">
     <div class="container"><div class="row justify-content-center"><div class="col-xl-10">
-        @if (session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
+        @if (session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
         <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between gap-3">
             <div><h1 class="h3 fw-bold mb-1">Formulário de Empreendimento</h1><div class="text-muted">{{ $proposal->company->name }} • {{ $proposal->company->cnpj }}</div></div>
-            <div class="text-lg-end"><div class="small text-uppercase text-muted fw-semibold">Status</div><div class="fw-semibold">{{ $proposal->status_label }}</div>@if($proposal->representative)<div class="small text-muted mt-1">Representante: {{ $proposal->representative->name }}</div>@endif</div>
+            <div class="text-lg-end"><div class="small text-uppercase text-muted fw-semibold">Status</div><div class="fw-semibold">{{ $proposal->status_label }}</div></div>
         </div></div>
 
         @if ($proposal->projects->isNotEmpty())
+            @php
+                $company = $proposal->company;
+                $contact = $proposal->contact;
+                $companyAddress = collect([
+                    trim(implode(', ', array_filter([$company->logradouro, $company->numero]))),
+                    $company->complemento,
+                ])->filter()->implode(', ');
+                $companyRegion = collect([
+                    $company->bairro,
+                    trim(implode(' - ', array_filter([$company->cidade, $company->estado]))),
+                    $company->cep ? 'CEP '.$company->cep : null,
+                ])->filter()->implode(' • ');
+                $contactPhones = collect([
+                    $contact->phone_personal ? 'Pessoal: '.$contact->phone_personal.($contact->whatsapp ? ' (WhatsApp)' : '') : null,
+                    $contact->phone_company ? 'Empresa: '.$contact->phone_company : null,
+                ])->filter()->implode(' • ');
+            @endphp
+
             <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4">
-                <h2 class="h5 fw-bold mb-3">Dados Gerais</h2>
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-3">
+                    <div>
+                        <h2 class="h5 fw-bold mb-1">Resumo do envio</h2>
+                        <div class="text-muted">Recebemos as informações da sua proposta e o time comercial seguirá com a análise interna.</div>
+                    </div>
+                    <div class="rounded-4 px-3 py-2 small fw-semibold" style="background:#f8fafc;border:1px solid #dbe4f0;">
+                        Situação atual: {{ $proposal->status_label }}
+                    </div>
+                </div>
+                <div class="small text-muted">Os dados de análise comercial e indicadores internos permanecem restritos ao painel administrativo.</div>
+            </div></div>
+
+            <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-3">Cadastro Inicial</h2>
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="h6 fw-bold">Empresa</div>
+                        <ul class="list-group">
+                            <li class="list-group-item"><strong>Razão social:</strong> {{ $company->name }}</li>
+                            <li class="list-group-item"><strong>CNPJ:</strong> {{ $company->cnpj }}</li>
+                            <li class="list-group-item"><strong>IE:</strong> {{ $company->ie ?: '—' }}</li>
+                            <li class="list-group-item"><strong>Setores:</strong> {{ $company->sectors->pluck('name')->join(', ') ?: '—' }}</li>
+                            <li class="list-group-item"><strong>Site:</strong> {{ $company->site ?: '—' }}</li>
+                            <li class="list-group-item"><strong>Endereço:</strong> {{ $companyAddress ?: '—' }}</li>
+                            <li class="list-group-item"><strong>Localidade:</strong> {{ $companyRegion ?: '—' }}</li>
+                        </ul>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="h6 fw-bold">Contato e observações</div>
+                        <ul class="list-group">
+                            <li class="list-group-item"><strong>Contato:</strong> {{ $contact->name }}</li>
+                            <li class="list-group-item"><strong>E-mail:</strong> {{ $contact->email }}</li>
+                            <li class="list-group-item"><strong>Telefones:</strong> {{ $contactPhones ?: '—' }}</li>
+                            <li class="list-group-item"><strong>Cargo:</strong> {{ $contact->cargo ?: '—' }}</li>
+                            <li class="list-group-item"><strong>Observações:</strong><br>{{ $proposal->observations ?: 'Sem observações.' }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div></div>
+
+            <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4">
+                <h2 class="h5 fw-bold mb-3">Dados Gerais da Operação</h2>
                 <div class="row g-3">
                     <div class="col-md-4"><strong>Nome do Empreendimento:</strong> {{ $firstProject->company_name }}</div>
                     <div class="col-md-4"><strong>Site:</strong> {{ $firstProject->site ?: '—' }}</div>
                     <div class="col-md-4"><strong>Valor Solicitado:</strong> R$ {{ number_format((float) $firstProject->value_requested, 2, ',', '.') }}</div>
+                    <div class="col-md-4"><strong>Valor de Mercado do Terreno:</strong> R$ {{ number_format((float) $firstProject->land_market_value, 2, ',', '.') }}</div>
+                    <div class="col-md-4"><strong>Área do Terreno:</strong> {{ number_format((float) $firstProject->land_area, 2, ',', '.') }} m²</div>
                     <div class="col-md-4"><strong>Lançamento:</strong> {{ $firstProject->launch_date?->format('m/Y') }}</div>
                     <div class="col-md-4"><strong>Lançamento das Vendas:</strong> {{ $firstProject->sales_launch_date?->format('m/Y') }}</div>
+                    <div class="col-md-4"><strong>Início das Obras:</strong> {{ $firstProject->construction_start_date?->format('m/Y') }}</div>
                     <div class="col-md-4"><strong>Previsão de Entrega:</strong> {{ $firstProject->delivery_forecast_date?->format('m/Y') }}</div>
+                    <div class="col-md-4"><strong>Prazo Remanescente:</strong> {{ (int) $firstProject->remaining_months }} meses</div>
                 </div>
             </div></div>
 
             @foreach ($proposal->projects as $project)
+                @php
+                    $projectAddress = collect([
+                        trim(implode(', ', array_filter([$project->logradouro, $project->numero]))),
+                        $project->complemento,
+                    ])->filter()->implode(', ');
+                    $projectRegion = collect([
+                        $project->bairro,
+                        trim(implode(' - ', array_filter([$project->cidade, $project->estado]))),
+                        $project->cep ? 'CEP '.$project->cep : null,
+                    ])->filter()->implode(' • ');
+                    $paymentFlowTotal = \App\Models\ProposalProject::calculatePaymentFlowTotal(
+                        $project->value_received,
+                        $project->value_until_keys,
+                        $project->value_post_keys,
+                    );
+                @endphp
+
                 <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4">
-                    <div class="h5 fw-bold mb-3">Empreendimento: <span class="text-primary">{{ $project->name }}</span></div>
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
+                        <div class="h5 fw-bold mb-0">Empreendimento: <span class="text-primary">{{ $project->name }}</span></div>
+                        <div class="small text-muted">Informações enviadas pelo proponente</div>
+                    </div>
                     <div class="row g-4">
+                        <div class="col-lg-6"><div class="h6 fw-bold">Endereço do Empreendimento</div><ul class="list-group">
+                            <li class="list-group-item"><strong>Endereço:</strong> {{ $projectAddress ?: '—' }}</li>
+                            <li class="list-group-item"><strong>Localidade:</strong> {{ $projectRegion ?: '—' }}</li>
+                            <li class="list-group-item"><strong>Site do empreendimento:</strong> {{ $project->site ?: '—' }}</li>
+                        </ul></div>
                         <div class="col-lg-6"><div class="h6 fw-bold">Resumo das Unidades</div><ul class="list-group">
                             <li class="list-group-item"><strong>Permutadas:</strong> {{ $project->units_exchanged }}</li>
                             <li class="list-group-item"><strong>Quitadas:</strong> {{ $project->units_paid }}</li>
@@ -44,7 +135,21 @@
                             <li class="list-group-item"><strong>Custo Total:</strong> R$ {{ number_format((float) $project->cost_total, 2, ',', '.') }}</li>
                             <li class="list-group-item"><strong>Estágio da Obra:</strong> {{ number_format((float) $project->work_stage_percentage, 2, ',', '.') }}%</li>
                             <li class="list-group-item"><strong>VGV Total:</strong> R$ {{ number_format((float) $project->value_total_sale, 2, ',', '.') }}</li>
-                            <li class="list-group-item"><strong>Recebíveis:</strong> R$ {{ number_format((float) \App\Models\ProposalProject::calculatePaymentFlowTotal($project->value_received, $project->value_until_keys, $project->value_post_keys), 2, ',', '.') }}</li>
+                            <li class="list-group-item"><strong>Recebíveis:</strong> R$ {{ number_format((float) $paymentFlowTotal, 2, ',', '.') }}</li>
+                        </ul></div>
+                    </div>
+                    <div class="row g-4 mt-1">
+                        <div class="col-lg-6"><div class="h6 fw-bold">Valores de Venda</div><ul class="list-group">
+                            <li class="list-group-item"><strong>Quitadas:</strong> R$ {{ number_format((float) $project->value_paid, 2, ',', '.') }}</li>
+                            <li class="list-group-item"><strong>Vendidas:</strong> R$ {{ number_format((float) $project->value_unpaid, 2, ',', '.') }}</li>
+                            <li class="list-group-item"><strong>Estoque:</strong> R$ {{ number_format((float) $project->value_stock, 2, ',', '.') }}</li>
+                            <li class="list-group-item"><strong>VGV Total:</strong> R$ {{ number_format((float) $project->value_total_sale, 2, ',', '.') }}</li>
+                        </ul></div>
+                        <div class="col-lg-6"><div class="h6 fw-bold">Fluxo de Pagamento</div><ul class="list-group">
+                            <li class="list-group-item"><strong>Valor já Recebido:</strong> R$ {{ number_format((float) $project->value_received, 2, ',', '.') }}</li>
+                            <li class="list-group-item"><strong>A receber até as chaves:</strong> R$ {{ number_format((float) $project->value_until_keys, 2, ',', '.') }}</li>
+                            <li class="list-group-item"><strong>A receber pós chaves:</strong> R$ {{ number_format((float) $project->value_post_keys, 2, ',', '.') }}</li>
+                            <li class="list-group-item"><strong>Total:</strong> R$ {{ number_format((float) $paymentFlowTotal, 2, ',', '.') }}</li>
                         </ul></div>
                     </div>
                     @if ($project->characteristics)
@@ -56,33 +161,56 @@
                                 <div class="col-md-3"><strong>Unidades/Andar:</strong> {{ $project->characteristics->units_per_floor }}</div>
                                 <div class="col-md-2"><strong>Total:</strong> {{ $project->characteristics->total_units }}</div>
                             </div>
+                            @if ($project->characteristics->unitTypes->isNotEmpty())
+                                <div class="table-responsive">
+                                    <table class="table table-bordered align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Tipo</th>
+                                                <th>Unidades</th>
+                                                <th>Dormitórios</th>
+                                                <th>Vagas</th>
+                                                <th>Área Útil</th>
+                                                <th>Preço Médio</th>
+                                                <th>Preço / m²</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($project->characteristics->unitTypes as $unitType)
+                                                <tr>
+                                                    <td>Tipo {{ $unitType->order }}</td>
+                                                    <td>{{ $unitType->total_units }}</td>
+                                                    <td>{{ $unitType->bedrooms ?: '—' }}</td>
+                                                    <td>{{ $unitType->parking_spaces ?: '—' }}</td>
+                                                    <td>{{ number_format((float) $unitType->useful_area, 2, ',', '.') }} m²</td>
+                                                    <td>R$ {{ number_format((float) $unitType->average_price, 2, ',', '.') }}</td>
+                                                    <td>R$ {{ number_format((float) $unitType->price_per_m2, 2, ',', '.') }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @endif
                         </div>
                     @endif
                 </div></div>
             @endforeach
 
-            <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4">
-                <div class="h5 fw-bold mb-3">Indicadores Avançados</div>
-                <form method="POST" action="{{ route('site.proposal.continuation.indicators', $access) }}">@csrf
-                    <div class="table-responsive"><table class="table table-bordered align-middle">
-                        <thead><tr><th>Indicador</th><th>Percentual Ideal (%)</th><th>Percentual Limite (%)</th></tr></thead>
-                        <tbody>
-                            @foreach (['financiamento_custo_obra' => 'Financiamento / Custo de obra','financiamento_vgv' => 'Financiamento / VGV','custo_obra_vgv' => 'Custo da obra / VGV','recebiveis_vfcto' => 'Recebíveis / V fcto.','recebiveis_terreno_vfcto' => 'Recebíveis+Terreno / V fcto.','vendas_liquido_permutas' => '% vendas líquido de permutas','terreno_vgv' => 'Terreno / VGV','terreno_custo_obra' => 'Terreno / Custo de obra','ltv' => 'LTV'] as $key => $label)
-                                <tr><td>{{ $label }}</td><td><input type="number" step="0.01" name="{{ $key }}_ideal" class="form-control" value="{{ old($key . '_ideal', data_get($firstIndicator, $key . '_ideal')) }}"></td><td><input type="number" step="0.01" name="{{ $key }}_limite" class="form-control" value="{{ old($key . '_limite', data_get($firstIndicator, $key . '_limite')) }}"></td></tr>
-                            @endforeach
-                        </tbody>
-                    </table></div>
-                    <button type="submit" class="btn btn-brand">Salvar Indicadores</button>
-                </form>
-            </div></div>
-
-            <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body p-4">
-                <div class="h5 fw-bold mb-3">Relatórios</div>
-                <div class="d-flex flex-wrap gap-2">@foreach ($proposal->projects as $project)<a class="btn btn-outline-primary" href="{{ route('site.proposal.continuation.projects.report', [$access, $project]) }}">Relatório {{ $project->name }}</a><a class="btn btn-outline-danger" href="{{ route('site.proposal.continuation.projects.analytical', [$access, $project]) }}">Analítico {{ $project->name }}</a>@endforeach</div>
-            </div></div>
-
             @if ($proposal->files->isNotEmpty())
-                <div class="card border-0 shadow-sm rounded-4"><div class="card-body p-4"><div class="h5 fw-bold mb-3">Arquivos Anexados</div><ul class="list-group">@foreach ($proposal->files as $file)<li class="list-group-item"><a href="{{ route('site.proposal.continuation.files.download', [$access, $file]) }}">{{ $file->original_name }}</a></li>@endforeach</ul></div></div>
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <div class="h5 fw-bold mb-3">Arquivos Anexados</div>
+                        <ul class="list-group">
+                            @foreach ($proposal->files as $file)
+                                <li class="list-group-item">
+                                    <a href="{{ route('site.proposal.continuation.files.download', [$access, $file]) }}">
+                                        {{ $file->original_name }}
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
             @endif
         @else
             <div class="card border-0 shadow-sm rounded-4"><div class="card-body p-4 p-lg-5">
