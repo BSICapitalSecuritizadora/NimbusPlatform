@@ -37,6 +37,11 @@ class ProposalsTable
                     ->searchable()
                     ->sortable()
                     ->placeholder('Não atribuído'),
+                TextColumn::make('latestContinuationAccess.status_label')
+                    ->label('Link')
+                    ->state(fn (Proposal $record): string => $record->latestContinuationAccess?->status_label ?? 'Sem envio')
+                    ->badge()
+                    ->color(fn (Proposal $record): string => $record->latestContinuationAccess?->status_color ?? 'gray'),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -51,6 +56,11 @@ class ProposalsTable
                     }),
                 TextColumn::make('distributed_at')
                     ->label('Distribuída')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->sortable(),
+                TextColumn::make('latestContinuationAccess.last_accessed_at')
+                    ->label('Último acesso link')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),

@@ -25,6 +25,8 @@ class ProposalContinuationController extends Controller
     {
         abort_unless($request->hasValidSignature() && $access->isActive(), 403);
 
+        $access->markLinkOpened();
+
         $request->session()->put($this->magicLinkSessionKey($access), true);
 
         if ($this->isAuthorized($request, $access)) {
@@ -43,6 +45,8 @@ class ProposalContinuationController extends Controller
     ): RedirectResponse {
         $this->ensureMagicLinkConfirmed($request, $access);
 
+        $access->markLinkOpened();
+
         $proposal = $this->loadProposal($access);
 
         if ($this->normalizeCnpj($request->validated('cnpj')) !== $this->normalizeCnpj((string) $proposal->company?->cnpj)) {
@@ -59,10 +63,7 @@ class ProposalContinuationController extends Controller
 
         $request->session()->put($this->verifiedSessionKey($access), true);
 
-        $access->forceFill([
-            'verified_at' => $access->verified_at ?? now(),
-            'last_used_at' => now(),
-        ])->save();
+        $access->markVerified();
 
         return redirect()
             ->route('site.proposal.continuation.form', $access)
@@ -292,6 +293,8 @@ class ProposalContinuationController extends Controller
         $this->ensureMagicLinkConfirmed($request, $access);
 
         abort_unless($this->isAuthorized($request, $access), 403);
+
+        $access->markAuthorizedUsage();
     }
 
     protected function ensureMagicLinkConfirmed(Request $request, ProposalContinuationAccess $access): void

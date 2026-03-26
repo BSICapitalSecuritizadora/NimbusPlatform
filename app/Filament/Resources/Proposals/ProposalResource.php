@@ -7,6 +7,7 @@ use App\Filament\Resources\Proposals\Pages\ListProposals;
 use App\Filament\Resources\Proposals\Pages\ViewProposal;
 use App\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager;
 use App\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager;
+use App\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager;
 use App\Filament\Resources\Proposals\Tables\ProposalsTable;
 use App\Models\Proposal;
 use Filament\Forms\Components\Placeholder;
@@ -56,18 +57,39 @@ class ProposalResource extends Resource
                 ->columns(2),
             Section::make('Acesso do Cliente')
                 ->schema([
+                    Placeholder::make('access_status_view')
+                        ->label('Status do link')
+                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->status_label ?? '—'),
                     Placeholder::make('access_email_view')
                         ->label('E-mail do magic link')
                         ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->sent_to_email ?? '—'),
+                    Placeholder::make('access_code_view')
+                        ->label('Codigo enviado')
+                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->display_code ?? '—'),
+                    Placeholder::make('access_sent_at_view')
+                        ->label('Enviado em')
+                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->sent_at?->format('d/m/Y H:i')
+                            ?? $record?->latestContinuationAccess?->created_at?->format('d/m/Y H:i')
+                            ?? '—'),
                     Placeholder::make('access_expires_at_view')
                         ->label('Expira em')
                         ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->expires_at?->format('d/m/Y H:i') ?? '—'),
+                    Placeholder::make('access_first_accessed_at_view')
+                        ->label('Primeiro acesso')
+                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->first_accessed_at?->format('d/m/Y H:i') ?? '—'),
+                    Placeholder::make('access_last_accessed_at_view')
+                        ->label('Ultimo acesso')
+                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->last_accessed_at?->format('d/m/Y H:i') ?? '—'),
                     Placeholder::make('access_verified_at_view')
                         ->label('Validado em')
                         ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->verified_at?->format('d/m/Y H:i') ?? '—'),
                     Placeholder::make('access_last_used_at_view')
-                        ->label('Último uso')
+                        ->label('Ultimo uso autenticado')
                         ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->last_used_at?->format('d/m/Y H:i') ?? '—'),
+                    Placeholder::make('access_generated_url_view')
+                        ->label('Link gerado')
+                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->generated_url ?? '—')
+                        ->columnSpanFull(),
                 ])
                 ->columns(2),
             Section::make('Dados da Empresa')
@@ -141,6 +163,7 @@ class ProposalResource extends Resource
     {
         return [
             ProposalAssignmentRelationManager::class,
+            ProposalContinuationAccessRelationManager::class,
             ProjectRelationManager::class,
         ];
     }

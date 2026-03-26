@@ -6,6 +6,7 @@ use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -24,6 +25,10 @@ class ProposalContinuationLinkMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new Address(
+                config('proposals.mail.from.address', config('mail.from.address')),
+                config('proposals.mail.from.name', config('mail.from.name')),
+            ),
             subject: 'Continue o preenchimento da sua proposta',
         );
     }

@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\Proposals\SendProposalContinuationLink;
 use App\Mail\ProposalContinuationLinkMail;
 use App\Models\Proposal;
 use App\Models\ProposalAssignment;
+use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalDistributionState;
 use App\Models\ProposalRepresentative;
 use App\Models\ProposalSector;
@@ -85,10 +87,15 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
 
     expect($proposal->status)->toBe(Proposal::STATUS_AWAITING_COMPLETION)
         ->and($proposal->assigned_representative_id)->not->toBeNull()
-        ->and($proposal->latestContinuationAccess)->not->toBeNull();
+        ->and($proposal->latestContinuationAccess)->not->toBeNull()
+        ->and($proposal->latestContinuationAccess?->display_code)->not->toBe('Indisponivel')
+        ->and($proposal->latestContinuationAccess?->sent_at)->not->toBeNull();
 
     $mailData = captureContinuationMail();
     $access = $proposal->latestContinuationAccess;
+
+    expect($access->display_code)->toBe($mailData['code'])
+        ->and($access->generated_url)->toContain('/proposta/continuar/');
 
     $this->post(route('site.proposal.continuation.verify', $access), [
         'cnpj' => $proposal->company->cnpj,
@@ -98,6 +105,12 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
     $this->get(relativePathFromUrl($mailData['continuation_url']))
         ->assertOk()
         ->assertSee('Continuar Proposta');
+
+    $access->refresh();
+
+    expect($access->first_accessed_at)->not->toBeNull()
+        ->and($access->last_accessed_at)->not->toBeNull()
+        ->and($access->status_label)->toBe('Acessado');
 
     $this->post(route('site.proposal.continuation.verify', $access), [
         'cnpj' => '00.000.000/0000-00',
@@ -117,6 +130,12 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
     $this->get(route('site.proposal.continuation.form', $access))
         ->assertOk()
         ->assertSee('Formulário de Empreendimento');
+
+    $access->refresh();
+
+    expect($access->verified_at)->not->toBeNull()
+        ->and($access->last_used_at)->not->toBeNull()
+        ->and($access->status_label)->toBe('Validado');
 
     $this->post(route('site.proposal.continuation.store', $access), continuationPayload())
         ->assertRedirect(route('site.proposal.continuation.form', $access))
@@ -152,6 +171,47 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->and((float) $firstProject->characteristics->unitTypes->first()->price_per_m2)->toBe(10303.03);
 
     Storage::disk('local')->assertExists($proposal->files->first()->file_path);
+});
+
+it('revokes the previous access and records a new send when the link is resent', function () {
+    Mail::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create([
+        'name' => 'Representante Comercial',
+        'queue_position' => 1,
+    ]);
+
+    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
+        ->assertRedirect(route('site.proposal.create'));
+
+    $proposal = Proposal::query()
+        ->with(['company', 'contact', 'continuationAccesses'])
+        ->firstOrFail();
+
+    $firstAccess = $proposal->continuationAccesses()->latest('id')->firstOrFail();
+    $firstMailData = captureContinuationMail();
+
+    app(SendProposalContinuationLink::class)->handle(
+        $proposal->loadMissing(['company', 'contact']),
+    );
+
+    Mail::assertSent(ProposalContinuationLinkMail::class, 2);
+
+    $proposal->refresh();
+
+    /** @var ProposalContinuationAccess $latestAccess */
+    $latestAccess = $proposal->continuationAccesses()->latest('id')->firstOrFail();
+
+    expect($proposal->continuationAccesses()->count())->toBe(2)
+        ->and($latestAccess->id)->not->toBe($firstAccess->id)
+        ->and($latestAccess->sent_at)->not->toBeNull()
+        ->and($latestAccess->revoked_at)->toBeNull()
+        ->and($latestAccess->display_code)->not->toBe('Indisponivel');
+
+    expect($firstAccess->fresh()->revoked_at)->not->toBeNull();
+
+    $this->get(relativePathFromUrl($firstMailData['continuation_url']))->assertForbidden();
 });
 
 it('stores advanced indicators after the continuation flow is authorized', function () {
@@ -196,6 +256,17 @@ it('stores advanced indicators after the continuation flow is authorized', funct
         ->and((float) $project->indicators->financiamento_custo_obra_limite)->toBe(60.0)
         ->and((float) $project->indicators->ltv_ideal)->toBe(65.0)
         ->and((float) $project->indicators->ltv_limite)->toBe(75.0);
+});
+
+it('flags legacy accesses that do not have a recoverable code', function () {
+    $access = new ProposalContinuationAccess([
+        'token' => 'legacy-token',
+        'sent_to_email' => 'legacy@example.com',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    expect($access->display_code)->toBe('Codigo legado - reenviar acesso')
+        ->and($access->status_label)->toBe('Enviado');
 });
 
 function initialProposalPayload(ProposalSector $sector, int $index = 1): array

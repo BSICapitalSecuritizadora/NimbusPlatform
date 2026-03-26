@@ -39,13 +39,24 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME'),
+            'scheme' => env('MAIL_SCHEME', env('MAIL_ENCRYPTION')),
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            'timeout' => env('MAIL_TIMEOUT'),
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+        ],
+
+        'outlook' => [
+            'transport' => 'smtp',
+            'scheme' => env('OUTLOOK_MAIL_SCHEME', env('OUTLOOK_MAIL_ENCRYPTION', 'tls')),
+            'host' => env('OUTLOOK_MAIL_HOST', 'smtp.office365.com'),
+            'port' => env('OUTLOOK_MAIL_PORT', 587),
+            'username' => env('OUTLOOK_MAIL_USERNAME'),
+            'password' => env('OUTLOOK_MAIL_PASSWORD'),
+            'timeout' => env('OUTLOOK_MAIL_TIMEOUT', 30),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
@@ -93,6 +104,15 @@ return [
             'mailers' => [
                 'ses',
                 'postmark',
+            ],
+            'retry_after' => 60,
+        ],
+
+        'proposal_outlook_failover' => [
+            'transport' => 'failover',
+            'mailers' => [
+                'outlook',
+                'log',
             ],
             'retry_after' => 60,
         ],

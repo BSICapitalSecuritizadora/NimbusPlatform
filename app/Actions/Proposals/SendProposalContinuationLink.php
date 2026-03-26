@@ -24,9 +24,11 @@ class SendProposalContinuationLink
             ['access' => $access],
         );
 
-        Mail::to($proposal->contact->email)->send(
-            new ProposalContinuationLinkMail($proposal, $access, $code, $continuationUrl),
-        );
+        Mail::mailer(config('proposals.mail.mailer'))
+            ->to($proposal->contact->email)
+            ->send(
+                new ProposalContinuationLinkMail($proposal, $access, $code, $continuationUrl),
+            );
 
         return $access;
     }
