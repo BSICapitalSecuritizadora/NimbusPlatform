@@ -37,7 +37,11 @@ class ProjectReportController extends Controller
             'percent_estoque' => ($project->units_stock / $total_unidades) * 100,
             'percent_permutadas' => ($project->units_exchanged / $total_unidades) * 100,
 
-            'valor_total_total' => $project->value_unpaid + $project->value_paid + $project->value_stock,
+            'valor_total_total' => ProposalProject::calculateSalesValuesTotal(
+                $project->value_paid,
+                $project->value_unpaid,
+                $project->value_stock,
+            ),
             'valor_total_recebiveis' => $total_recebiveis,
 
             'percent_recebido' => ($project->value_received / $total_recebiveis) * 100,

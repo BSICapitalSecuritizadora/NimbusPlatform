@@ -336,10 +336,29 @@ class ProjectRelationManager extends RelationManager
                 Section::make('Valores de Venda')
                     ->icon('heroicon-o-currency-dollar')
                     ->schema([
-                        self::makeCurrencyField('value_paid', 'Quitadas'),
-                        self::makeCurrencyField('value_unpaid', 'Vendidas'),
-                        self::makeCurrencyField('value_stock', 'Estoque'),
-                        self::makeCurrencyField('value_total_sale', 'VGV Total'),
+                        self::makeCurrencyField('value_paid', 'Quitadas')
+                            ->afterStateHydrated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set))
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set)),
+                        self::makeCurrencyField('value_unpaid', 'Vendidas')
+                            ->afterStateHydrated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set))
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set)),
+                        self::makeCurrencyField('value_stock', 'Estoque')
+                            ->afterStateHydrated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set))
+                            ->afterStateUpdated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set)),
+                        TextInput::make('value_total_sale')
+                            ->label('VGV Total')
+                            ->columnSpan(2)
+                            ->default(0)
+                            ->prefix('R$')
+                            ->readOnly()
+                            ->extraAttributes(['style' => 'cursor: not-allowed;'])
+                            ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
+                            ->dehydrated()
+                            ->dehydrateStateUsing(fn (Get $get): float => ProposalProject::calculateSalesValuesTotal(
+                                $get('value_paid'),
+                                $get('value_unpaid'),
+                                $get('value_stock'),
+                            )),
                     ])->columns(2)->collapsed(),
 
                 Section::make('Fluxo de pagamento')
@@ -596,6 +615,15 @@ class ProjectRelationManager extends RelationManager
             $get('value_received'),
             $get('value_until_keys'),
             $get('value_post_keys'),
+        ));
+    }
+
+    protected static function syncSalesValuesTotal(Get $get, Set $set): void
+    {
+        $set('value_total_sale', ProposalProject::calculateSalesValuesTotal(
+            $get('value_paid'),
+            $get('value_unpaid'),
+            $get('value_stock'),
         ));
     }
 

@@ -65,7 +65,12 @@ it('recalculates derived project sales and cost fields on create and update', fu
         ->and((float) $project->value_received)->toBe(456789.01)
         ->and((float) $project->value_until_keys)->toBe(567890.12)
         ->and((float) $project->value_post_keys)->toBe(678901.23)
-        ->and((float) $project->value_total_sale)->toBe(7654321.98)
+        ->and((float) $project->value_total_sale)->toBe(1814814.68)
+        ->and(ProposalProject::calculateSalesValuesTotal(
+            $project->value_paid,
+            $project->value_unpaid,
+            $project->value_stock,
+        ))->toBe(1814814.68)
         ->and(ProposalProject::calculatePaymentFlowTotal(
             $project->value_received,
             $project->value_until_keys,
@@ -104,7 +109,12 @@ it('recalculates derived project sales and cost fields on create and update', fu
         ->and((float) $project->value_received)->toBe(40100.25)
         ->and((float) $project->value_until_keys)->toBe(50200.5)
         ->and((float) $project->value_post_keys)->toBe(60300.75)
-        ->and((float) $project->value_total_sale)->toBe(70400.99)
+        ->and((float) $project->value_total_sale)->toBe(60001.25)
+        ->and(ProposalProject::calculateSalesValuesTotal(
+            $project->value_paid,
+            $project->value_unpaid,
+            $project->value_stock,
+        ))->toBe(60001.25)
         ->and(ProposalProject::calculatePaymentFlowTotal(
             $project->value_received,
             $project->value_until_keys,
