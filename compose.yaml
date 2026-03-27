@@ -75,12 +75,13 @@ services:
     phpmyadmin:
         image: 'phpmyadmin:latest'
         ports:
-            - '8081:80'
+            - '8082:80'
         networks:
             - sail
         environment:
-            PMA_ARBITRARY: 1
+            PMA_ARBITRARY: 0
             PMA_HOST: mysql
+            PMA_PORT: 3306
             PMA_USER: '${DB_USERNAME}'
             PMA_PASSWORD: '${DB_PASSWORD}'
         depends_on:
