@@ -919,38 +919,99 @@
                                         <hr class="my-2">
                                     </div>
 
-                                    <div class="col-12">
-                                        <div class="section-kicker mb-2">Características</div>
-                                        <h2 class="section-title h4 mb-1">Características do Empreendimento</h2>
-                                        <p class="section-copy mb-0">Configuração física do produto e dados das tipologias da operação.</p>
+                                    @php
+                                        $typeColumns = max(
+                                            1,
+                                            count(old('tipo_total', [])),
+                                            count(old('tipo_dormitorios', [])),
+                                            count(old('tipo_vagas', [])),
+                                            count(old('tipo_area', [])),
+                                            count(old('tipo_preco_medio', [])),
+                                        );
+                                    @endphp
+
+                                    <div class="col-12 d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
+                                        <div>
+                                            <div class="section-kicker mb-2">Características</div>
+                                            <h2 class="section-title h4 mb-1">Características do Empreendimento</h2>
+                                            <p class="section-copy mb-0">Configuração física do produto e dados das tipologias da operação. Adicione um ou mais Tipos conforme necessário.</p>
+                                        </div>
+                                        <button type="button" id="addTipo" class="btn btn-outline-brand">Adicionar Tipo</button>
                                     </div>
 
                                     <div class="col-12">
                                         <div class="proposal-list p-3 p-lg-4">
                                             <div class="row g-3 mb-4">
-                                                <div class="col-md-2"><label class="form-label">Blocos</label><input type="number" min="1" name="car_bloco" id="car_bloco" class="form-control" required></div>
-                                                <div class="col-md-2"><label class="form-label">Pavimentos</label><input type="number" min="1" name="car_pavimentos" id="car_pavimentos" class="form-control" required></div>
-                                                <div class="col-md-3"><label class="form-label">Andares Tipo</label><input type="number" min="1" name="car_andares_tipo" id="car_andares_tipo" class="form-control" required></div>
-                                                <div class="col-md-3"><label class="form-label">Unidades/Andar</label><input type="number" min="1" name="car_unidades_andar" id="car_unidades_andar" class="form-control" required></div>
-                                                <div class="col-md-2"><label class="form-label">Total</label><input type="number" name="car_total" id="car_total" class="form-control" readonly></div>
+                                                <div class="col-md-2"><label class="form-label">Blocos</label><input type="number" min="1" name="car_bloco" id="car_bloco" class="form-control" value="{{ old('car_bloco') }}" required></div>
+                                                <div class="col-md-2"><label class="form-label">Pavimentos</label><input type="number" min="1" name="car_pavimentos" id="car_pavimentos" class="form-control" value="{{ old('car_pavimentos') }}" required></div>
+                                                <div class="col-md-3"><label class="form-label">Andares Tipo</label><input type="number" min="1" name="car_andares_tipo" id="car_andares_tipo" class="form-control" value="{{ old('car_andares_tipo') }}" required></div>
+                                                <div class="col-md-3"><label class="form-label">Unidades/Andar</label><input type="number" min="1" name="car_unidades_andar" id="car_unidades_andar" class="form-control" value="{{ old('car_unidades_andar') }}" required></div>
+                                                <div class="col-md-2"><label class="form-label">Total</label><input type="number" name="car_total" id="car_total" class="form-control" value="{{ old('car_total') }}" readonly></div>
                                             </div>
 
                                             <div class="table-shell">
                                                 <div class="table-responsive">
-                                                    <table class="table table-bordered align-middle">
+                                                    <table class="table table-bordered align-middle" data-type-table>
                                                         <thead>
                                                             <tr>
                                                                 <th>&nbsp;</th>
-                                                                <th>Tipo 1</th>
+                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                    <th class="tipo-coluna-header">
+                                                                        <div class="d-flex justify-content-between align-items-center gap-2">
+                                                                            <span>Tipo {{ $typeIndex + 1 }}</span>
+                                                                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-danger remove-type-button {{ $typeColumns === 1 ? 'd-none' : '' }}">Remover</button>
+                                                                        </div>
+                                                                    </th>
+                                                                @endfor
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <tr><th>Total</th><td><input type="number" name="tipo_total[]" class="form-control" min="1" required></td></tr>
-                                                            <tr><th>Dormitórios</th><td><input type="text" name="tipo_dormitorios[]" class="form-control" required></td></tr>
-                                                            <tr><th>Vagas</th><td><input type="text" name="tipo_vagas[]" class="form-control" required></td></tr>
-                                                            <tr><th>Área Útil (m²)</th><td><input type="number" step="0.01" name="tipo_area[]" class="form-control tipo-area" required></td></tr>
-                                                            <tr><th>Preço Médio</th><td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="tipo_preco_medio[]" class="form-control tipo-preco-medio money" required></div></td></tr>
-                                                            <tr><th>Preço / m²</th><td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="tipo_preco_m2[]" class="form-control tipo-preco-m2" readonly></div></td></tr>
+                                                            <tr>
+                                                                <th>Total</th>
+                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                    <td class="tipo-coluna"><input type="number" name="tipo_total[]" class="form-control" min="1" value="{{ old('tipo_total.'.$typeIndex) }}" required></td>
+                                                                @endfor
+                                                            </tr>
+                                                            <tr>
+                                                                <th>Dormitórios</th>
+                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                    <td class="tipo-coluna"><input type="text" name="tipo_dormitorios[]" class="form-control" value="{{ old('tipo_dormitorios.'.$typeIndex) }}" required></td>
+                                                                @endfor
+                                                            </tr>
+                                                            <tr>
+                                                                <th>Vagas</th>
+                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                    <td class="tipo-coluna"><input type="text" name="tipo_vagas[]" class="form-control" value="{{ old('tipo_vagas.'.$typeIndex) }}" required></td>
+                                                                @endfor
+                                                            </tr>
+                                                            <tr>
+                                                                <th>Área Útil (m²)</th>
+                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                    <td class="tipo-coluna"><input type="number" step="0.01" name="tipo_area[]" class="form-control tipo-area" value="{{ old('tipo_area.'.$typeIndex) }}" required></td>
+                                                                @endfor
+                                                            </tr>
+                                                            <tr>
+                                                                <th>Preço Médio</th>
+                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                    <td class="tipo-coluna">
+                                                                        <div class="input-group">
+                                                                            <span class="input-group-text">R$</span>
+                                                                            <input type="text" name="tipo_preco_medio[]" class="form-control tipo-preco-medio money" value="{{ old('tipo_preco_medio.'.$typeIndex) }}" required>
+                                                                        </div>
+                                                                    </td>
+                                                                @endfor
+                                                            </tr>
+                                                            <tr>
+                                                                <th>Preço / m²</th>
+                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                    <td class="tipo-coluna">
+                                                                        <div class="input-group">
+                                                                            <span class="input-group-text">R$</span>
+                                                                            <input type="text" name="tipo_preco_m2[]" class="form-control tipo-preco-m2" value="{{ old('tipo_preco_m2.'.$typeIndex) }}" readonly>
+                                                                        </div>
+                                                                    </td>
+                                                                @endfor
+                                                            </tr>
                                                         </tbody>
                                                     </table>
                                                 </div>
@@ -982,20 +1043,248 @@
 <script src="https://unpkg.com/imask"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const cepInput = document.getElementById('cep'), inicioObras = document.getElementById('inicio_obras'), previsaoEntrega = document.getElementById('previsao_entrega'), prazoRemanescente = document.getElementById('prazo_remanescente');
-    const formatMoney = (input) => { let value = input.value.replace(/\D/g, ''); let floatValue = parseFloat(value) / 100; input.value = isNaN(floatValue) ? '' : floatValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-    const parseMoney = (value) => value ? (parseFloat(value.replace(/[^\d,-]/g, '').replace(/\./g, '').replace(',', '.')) || 0) : 0;
-    document.querySelectorAll('.money').forEach((input) => input.addEventListener('input', (event) => formatMoney(event.target)));
+    const cepInput = document.getElementById('cep');
+    const inicioObras = document.getElementById('inicio_obras');
+    const previsaoEntrega = document.getElementById('previsao_entrega');
+    const prazoRemanescente = document.getElementById('prazo_remanescente');
+    const typesTable = document.querySelector('[data-type-table]');
+
+    const formatMoney = (input) => {
+        let value = input.value.replace(/\D/g, '');
+        let floatValue = parseFloat(value) / 100;
+
+        input.value = isNaN(floatValue)
+            ? ''
+            : floatValue.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+    };
+
+    const parseMoney = (value) => value
+        ? (parseFloat(value.replace(/[^\d,-]/g, '').replace(/\./g, '').replace(',', '.')) || 0)
+        : 0;
+
+    const bindMoneyInputs = (scope = document) => {
+        scope.querySelectorAll('.money').forEach((input) => {
+            input.addEventListener('input', (event) => formatMoney(event.target));
+        });
+    };
+
+    bindMoneyInputs();
+
     document.querySelectorAll('.bloco-dinamico').forEach((bloco) => bindBlock(bloco));
-    ['car_bloco', 'car_andares_tipo', 'car_unidades_andar'].forEach((id) => document.getElementById(id)?.addEventListener('input', updateCharacteristics));
+
+    ['car_bloco', 'car_andares_tipo', 'car_unidades_andar'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('input', updateCharacteristics);
+    });
+
     [inicioObras, previsaoEntrega].forEach((input) => input?.addEventListener('change', updateRemainingMonths));
-    document.addEventListener('input', (event) => { if (event.target.classList.contains('tipo-area') || event.target.classList.contains('tipo-preco-medio')) updatePricePerM2(); });
-    document.getElementById('addEmpreendimento')?.addEventListener('click', function () { const container = document.getElementById('blocos-empreendimento'); const base = container.querySelector('.bloco-dinamico'); const clone = base.cloneNode(true); clone.querySelectorAll('input').forEach((input) => input.value = ''); container.appendChild(clone); clone.querySelectorAll('.money').forEach((input) => input.addEventListener('input', (event) => formatMoney(event.target))); bindBlock(clone); });
-    if (cepInput) { IMask(cepInput, { mask: '00000-000' }); cepInput.addEventListener('blur', function () { const cep = this.value.replace(/\D/g, ''); if (cep.length !== 8) return; fetch(`https://viacep.com.br/ws/${cep}/json/`).then((response) => response.json()).then((data) => { if (!data.erro) { document.getElementById('logradouro').value = data.logradouro || ''; document.getElementById('bairro').value = data.bairro || ''; document.getElementById('cidade').value = data.localidade || ''; document.getElementById('estado').value = data.uf || ''; } }); }); }
-    function bindBlock(bloco) { const unidadeCampos = bloco.querySelectorAll('.unidade-campo'), totalUnidades = bloco.querySelector('input[name="unidades_total[]"]'), percentualVendas = bloco.querySelector('input[name="percentual_vendas[]"]'), custoIncidido = bloco.querySelector('input[name="custo_incidido[]"]'), custoAIncorrer = bloco.querySelector('input[name="custo_a_incorrer[]"]'), custoTotal = bloco.querySelector('input[name="custo_total[]"]'), estagioObra = bloco.querySelector('input[name="estagio_obra[]"]'), valorQuitadas = bloco.querySelector('input[name="valor_quitadas[]"]'), valorNaoQuitadas = bloco.querySelector('input[name="valor_nao_quitadas[]"]'), valorEstoque = bloco.querySelector('input[name="valor_estoque[]"]'), valorTotalVenda = bloco.querySelector('input[name="valor_total_venda[]"]'); unidadeCampos.forEach((input) => input.addEventListener('input', function () { const values = Array.from(unidadeCampos).map((field) => parseInt(field.value || '0', 10) || 0), total = values.reduce((acc, item) => acc + item, 0), quitadas = parseInt(bloco.querySelector('input[name="unidades_quitadas[]"]').value || '0', 10) || 0, naoQuitadas = parseInt(bloco.querySelector('input[name="unidades_nao_quitadas[]"]').value || '0', 10) || 0, permutadas = parseInt(bloco.querySelector('input[name="unidades_permutadas[]"]').value || '0', 10) || 0, base = total - permutadas; totalUnidades.value = total; percentualVendas.value = base > 0 ? (((quitadas + naoQuitadas) / base) * 100).toFixed(2) : '0.00'; })); [custoIncidido, custoAIncorrer, valorQuitadas, valorNaoQuitadas, valorEstoque].forEach((input) => input.addEventListener('input', function () { const totalCost = parseMoney(custoIncidido.value) + parseMoney(custoAIncorrer.value), totalSale = parseMoney(valorQuitadas.value) + parseMoney(valorNaoQuitadas.value) + parseMoney(valorEstoque.value); custoTotal.value = totalCost ? totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''; estagioObra.value = totalCost > 0 ? ((parseMoney(custoIncidido.value) / totalCost) * 100).toFixed(2) : '0.00'; valorTotalVenda.value = totalSale ? totalSale.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''; })); }
-    function updateRemainingMonths() { if (!inicioObras || !previsaoEntrega || !prazoRemanescente || !inicioObras.value || !previsaoEntrega.value) return; const [sy, sm] = inicioObras.value.split('-').map(Number), [ey, em] = previsaoEntrega.value.split('-').map(Number); prazoRemanescente.value = ((ey - sy) * 12) + (em - sm); }
-    function updateCharacteristics() { const total = (parseInt(document.getElementById('car_bloco')?.value || '0', 10) || 0) * (parseInt(document.getElementById('car_andares_tipo')?.value || '0', 10) || 0) * (parseInt(document.getElementById('car_unidades_andar')?.value || '0', 10) || 0); const field = document.getElementById('car_total'); if (field) field.value = total || ''; }
-    function updatePricePerM2() { const areas = document.querySelectorAll('.tipo-area'), prices = document.querySelectorAll('.tipo-preco-medio'), pricePerM2 = document.querySelectorAll('.tipo-preco-m2'); prices.forEach((field, index) => { const area = parseFloat(areas[index]?.value || '0'), price = parseMoney(field.value); pricePerM2[index].value = area > 0 ? (price / area).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''; }); }
+
+    document.addEventListener('input', (event) => {
+        if (event.target.classList.contains('tipo-area') || event.target.classList.contains('tipo-preco-medio')) {
+            updatePricePerM2();
+        }
+    });
+
+    document.getElementById('addEmpreendimento')?.addEventListener('click', function () {
+        const container = document.getElementById('blocos-empreendimento');
+        const base = container.querySelector('.bloco-dinamico');
+        const clone = base.cloneNode(true);
+
+        clone.querySelectorAll('input').forEach((input) => {
+            input.value = '';
+        });
+
+        container.appendChild(clone);
+        bindMoneyInputs(clone);
+        bindBlock(clone);
+    });
+
+    document.getElementById('addTipo')?.addEventListener('click', function () {
+        addTypeColumn();
+    });
+
+    typesTable?.addEventListener('click', function (event) {
+        const removeButton = event.target.closest('.remove-type-button');
+
+        if (!removeButton) {
+            return;
+        }
+
+        const headers = Array.from(typesTable.querySelectorAll('.tipo-coluna-header'));
+
+        if (headers.length <= 1) {
+            return;
+        }
+
+        const header = removeButton.closest('.tipo-coluna-header');
+        const columnIndex = Array.from(header.parentElement.children).indexOf(header);
+
+        header.remove();
+
+        typesTable.querySelectorAll('tbody tr').forEach((row) => {
+            row.children[columnIndex]?.remove();
+        });
+
+        updateTypeHeaders();
+        updatePricePerM2();
+    });
+
+    updateTypeHeaders();
+    updatePricePerM2();
+    updateCharacteristics();
+    updateRemainingMonths();
+
+    if (cepInput) {
+        IMask(cepInput, { mask: '00000-000' });
+        cepInput.addEventListener('blur', function () {
+            const cep = this.value.replace(/\D/g, '');
+
+            if (cep.length !== 8) {
+                return;
+            }
+
+            fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then((response) => response.json())
+                .then((data) => {
+                    if (!data.erro) {
+                        document.getElementById('logradouro').value = data.logradouro || '';
+                        document.getElementById('bairro').value = data.bairro || '';
+                        document.getElementById('cidade').value = data.localidade || '';
+                        document.getElementById('estado').value = data.uf || '';
+                    }
+                });
+        });
+    }
+
+    function bindBlock(bloco) {
+        const unidadeCampos = bloco.querySelectorAll('.unidade-campo');
+        const totalUnidades = bloco.querySelector('input[name="unidades_total[]"]');
+        const percentualVendas = bloco.querySelector('input[name="percentual_vendas[]"]');
+        const custoIncidido = bloco.querySelector('input[name="custo_incidido[]"]');
+        const custoAIncorrer = bloco.querySelector('input[name="custo_a_incorrer[]"]');
+        const custoTotal = bloco.querySelector('input[name="custo_total[]"]');
+        const estagioObra = bloco.querySelector('input[name="estagio_obra[]"]');
+        const valorQuitadas = bloco.querySelector('input[name="valor_quitadas[]"]');
+        const valorNaoQuitadas = bloco.querySelector('input[name="valor_nao_quitadas[]"]');
+        const valorEstoque = bloco.querySelector('input[name="valor_estoque[]"]');
+        const valorTotalVenda = bloco.querySelector('input[name="valor_total_venda[]"]');
+
+        unidadeCampos.forEach((input) => input.addEventListener('input', function () {
+            const values = Array.from(unidadeCampos).map((field) => parseInt(field.value || '0', 10) || 0);
+            const total = values.reduce((acc, item) => acc + item, 0);
+            const quitadas = parseInt(bloco.querySelector('input[name="unidades_quitadas[]"]').value || '0', 10) || 0;
+            const naoQuitadas = parseInt(bloco.querySelector('input[name="unidades_nao_quitadas[]"]').value || '0', 10) || 0;
+            const permutadas = parseInt(bloco.querySelector('input[name="unidades_permutadas[]"]').value || '0', 10) || 0;
+            const base = total - permutadas;
+
+            totalUnidades.value = total;
+            percentualVendas.value = base > 0 ? (((quitadas + naoQuitadas) / base) * 100).toFixed(2) : '0.00';
+        }));
+
+        [custoIncidido, custoAIncorrer, valorQuitadas, valorNaoQuitadas, valorEstoque].forEach((input) => {
+            input.addEventListener('input', function () {
+                const totalCost = parseMoney(custoIncidido.value) + parseMoney(custoAIncorrer.value);
+                const totalSale = parseMoney(valorQuitadas.value) + parseMoney(valorNaoQuitadas.value) + parseMoney(valorEstoque.value);
+
+                custoTotal.value = totalCost
+                    ? totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : '';
+                estagioObra.value = totalCost > 0 ? ((parseMoney(custoIncidido.value) / totalCost) * 100).toFixed(2) : '0.00';
+                valorTotalVenda.value = totalSale
+                    ? totalSale.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : '';
+            });
+        });
+    }
+
+    function addTypeColumn() {
+        if (!typesTable) {
+            return;
+        }
+
+        const headerRow = typesTable.querySelector('thead tr');
+        const lastHeader = headerRow.querySelector('.tipo-coluna-header:last-of-type');
+        const headerClone = lastHeader.cloneNode(true);
+
+        headerClone.querySelector('.remove-type-button')?.classList.remove('d-none');
+        headerRow.appendChild(headerClone);
+
+        typesTable.querySelectorAll('tbody tr').forEach((row) => {
+            const lastCell = row.querySelector('.tipo-coluna:last-of-type');
+            const cellClone = lastCell.cloneNode(true);
+
+            cellClone.querySelectorAll('input').forEach((input) => {
+                input.value = '';
+            });
+
+            row.appendChild(cellClone);
+            bindMoneyInputs(cellClone);
+        });
+
+        updateTypeHeaders();
+    }
+
+    function updateTypeHeaders() {
+        if (!typesTable) {
+            return;
+        }
+
+        const headers = Array.from(typesTable.querySelectorAll('.tipo-coluna-header'));
+        const shouldHideRemoveButton = headers.length <= 1;
+
+        headers.forEach((header, index) => {
+            const title = header.querySelector('span');
+            const removeButton = header.querySelector('.remove-type-button');
+
+            if (title) {
+                title.textContent = `Tipo ${index + 1}`;
+            }
+
+            if (removeButton) {
+                removeButton.classList.toggle('d-none', shouldHideRemoveButton);
+            }
+        });
+    }
+
+    function updateRemainingMonths() {
+        if (!inicioObras || !previsaoEntrega || !prazoRemanescente || !inicioObras.value || !previsaoEntrega.value) {
+            return;
+        }
+
+        const [startYear, startMonth] = inicioObras.value.split('-').map(Number);
+        const [endYear, endMonth] = previsaoEntrega.value.split('-').map(Number);
+
+        prazoRemanescente.value = ((endYear - startYear) * 12) + (endMonth - startMonth);
+    }
+
+    function updateCharacteristics() {
+        const total =
+            (parseInt(document.getElementById('car_bloco')?.value || '0', 10) || 0) *
+            (parseInt(document.getElementById('car_andares_tipo')?.value || '0', 10) || 0) *
+            (parseInt(document.getElementById('car_unidades_andar')?.value || '0', 10) || 0);
+        const field = document.getElementById('car_total');
+
+        if (field) {
+            field.value = total || '';
+        }
+    }
+
+    function updatePricePerM2() {
+        const areas = document.querySelectorAll('.tipo-area');
+        const prices = document.querySelectorAll('.tipo-preco-medio');
+        const pricePerM2 = document.querySelectorAll('.tipo-preco-m2');
+
+        prices.forEach((field, index) => {
+            const area = parseFloat(areas[index]?.value || '0');
+            const price = parseMoney(field.value);
+
+            pricePerM2[index].value = area > 0
+                ? (price / area).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : '';
+        });
+    }
 });
 </script>
 @endpush

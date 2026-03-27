@@ -150,6 +150,7 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->assertSee('Rua das Torres')
         ->assertSee('Residencial Atlântico')
         ->assertSee('Torre Madrid')
+        ->assertSee('Tipo 2')
         ->assertSee('Fluxo de Pagamento')
         ->assertSee('Arquivos Anexados')
         ->assertDontSee('Indicadores Avançados')
@@ -183,8 +184,9 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->and((float) $firstProject->value_total_sale)->toBe(4900001.25)
         ->and($firstProject->characteristics)->not->toBeNull()
         ->and((int) $firstProject->characteristics->total_units)->toBe(120)
-        ->and($firstProject->characteristics->unitTypes)->toHaveCount(1)
-        ->and((float) $firstProject->characteristics->unitTypes->first()->price_per_m2)->toBe(10303.03);
+        ->and($firstProject->characteristics->unitTypes)->toHaveCount(2)
+        ->and((float) $firstProject->characteristics->unitTypes->first()->price_per_m2)->toBe(10303.03)
+        ->and((float) $firstProject->characteristics->unitTypes->last()->price_per_m2)->toBe(8904.11);
 
     Storage::disk('local')->assertExists($proposal->files->first()->file_path);
 });
@@ -361,11 +363,11 @@ function continuationPayload(): array
         'car_andares_tipo' => 15,
         'car_unidades_andar' => 4,
         'car_total' => 120,
-        'tipo_total' => [120],
-        'tipo_dormitorios' => ['3'],
-        'tipo_vagas' => ['2'],
-        'tipo_area' => [82.5],
-        'tipo_preco_medio' => ['850.000,00'],
+        'tipo_total' => [60, 60],
+        'tipo_dormitorios' => ['3', '2'],
+        'tipo_vagas' => ['2', '1'],
+        'tipo_area' => [82.5, 58.4],
+        'tipo_preco_medio' => ['850.000,00', '520.000,00'],
         'arquivos' => [
             UploadedFile::fake()->create('memorial-descritivo.pdf', 128, 'application/pdf'),
         ],

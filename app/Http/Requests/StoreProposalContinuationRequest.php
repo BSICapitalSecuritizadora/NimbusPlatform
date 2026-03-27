@@ -94,7 +94,7 @@ class StoreProposalContinuationRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $expected = count($this->input('nome_empreendimento', []));
+            $expectedProjects = count($this->input('nome_empreendimento', []));
             $perProjectFields = [
                 'unidades_permutadas',
                 'unidades_quitadas',
@@ -109,10 +109,25 @@ class StoreProposalContinuationRequest extends FormRequest
                 'valor_ate_chaves',
                 'valor_chaves_pos',
             ];
+            $typeFields = [
+                'tipo_total',
+                'tipo_dormitorios',
+                'tipo_vagas',
+                'tipo_area',
+                'tipo_preco_medio',
+            ];
 
             foreach ($perProjectFields as $field) {
-                if (count($this->input($field, [])) !== $expected) {
+                if (count($this->input($field, [])) !== $expectedProjects) {
                     $validator->errors()->add($field, 'Os blocos de empreendimentos enviados estão incompletos.');
+                }
+            }
+
+            $expectedTypes = count($this->input('tipo_total', []));
+
+            foreach ($typeFields as $field) {
+                if (count($this->input($field, [])) !== $expectedTypes) {
+                    $validator->errors()->add($field, 'Os tipos enviados estão incompletos.');
                 }
             }
         });
