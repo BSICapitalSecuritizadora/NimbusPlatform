@@ -29,6 +29,10 @@ it('recalculates derived project sales and cost fields on create and update', fu
     $project = ProposalProject::query()->create([
         'proposal_id' => $proposal->id,
         'name' => 'Empreendimento Teste',
+        'value_requested' => '26.500.000,00',
+        'land_market_value' => '1.850.000,00',
+        'land_area' => '2.689,00',
+        'remaining_months' => '53',
         'units_unpaid' => 74,
         'units_paid' => 0,
         'units_exchanged' => 146,
@@ -51,6 +55,10 @@ it('recalculates derived project sales and cost fields on create and update', fu
     $project->refresh();
 
     expect((int) $project->units_unpaid)->toBe(74)
+        ->and((float) $project->value_requested)->toBe(26500000.0)
+        ->and((float) $project->land_market_value)->toBe(1850000.0)
+        ->and((float) $project->land_area)->toBe(2689.0)
+        ->and((int) $project->remaining_months)->toBe(53)
         ->and((int) $project->units_paid)->toBe(0)
         ->and((int) $project->units_exchanged)->toBe(146)
         ->and((int) $project->units_stock)->toBe(309)

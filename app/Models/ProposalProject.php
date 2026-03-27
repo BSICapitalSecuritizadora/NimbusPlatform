@@ -29,6 +29,7 @@ class ProposalProject extends Model
     protected static function booted(): void
     {
         static::saving(function (self $project): void {
+            $project->syncOverviewValues();
             $project->syncSalesMetrics();
             $project->syncSaleValues();
             $project->syncCostMetrics();
@@ -156,6 +157,14 @@ class ProposalProject extends Model
             $this->units_exchanged,
             $this->units_stock,
         );
+    }
+
+    protected function syncOverviewValues(): void
+    {
+        $this->value_requested = self::normalizeDecimalValue($this->value_requested);
+        $this->land_market_value = self::normalizeDecimalValue($this->land_market_value);
+        $this->land_area = self::normalizeDecimalValue($this->land_area);
+        $this->remaining_months = self::normalizeIntegerValue($this->remaining_months);
     }
 
     protected function syncCostMetrics(): void
