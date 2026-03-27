@@ -82,14 +82,17 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->assertSessionHas('success');
 
     $proposal = Proposal::query()
-        ->with(['company', 'contact', 'latestContinuationAccess'])
+        ->with(['company', 'contact', 'latestContinuationAccess', 'statusHistories'])
         ->firstOrFail();
 
     expect($proposal->status)->toBe(Proposal::STATUS_AWAITING_COMPLETION)
         ->and($proposal->assigned_representative_id)->not->toBeNull()
         ->and($proposal->latestContinuationAccess)->not->toBeNull()
         ->and($proposal->latestContinuationAccess?->display_code)->not->toBe('Indisponivel')
-        ->and($proposal->latestContinuationAccess?->sent_at)->not->toBeNull();
+        ->and($proposal->latestContinuationAccess?->sent_at)->not->toBeNull()
+        ->and($proposal->statusHistories)->toHaveCount(1)
+        ->and($proposal->statusHistories->first()->previous_status)->toBeNull()
+        ->and($proposal->statusHistories->first()->new_status)->toBe(Proposal::STATUS_AWAITING_COMPLETION);
 
     $mailData = captureContinuationMail();
     $access = $proposal->latestContinuationAccess;
@@ -163,6 +166,8 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         'projects.characteristics.unitTypes',
         'files',
         'latestContinuationAccess',
+        'statusHistories',
+        'latestStatusHistory',
     ]);
 
     expect($proposal->status)->toBe(Proposal::STATUS_IN_REVIEW)
@@ -173,7 +178,11 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
             'Torre Manchester',
         ])
         ->and($proposal->files)->toHaveCount(1)
-        ->and($proposal->latestContinuationAccess?->verified_at)->not->toBeNull();
+        ->and($proposal->latestContinuationAccess?->verified_at)->not->toBeNull()
+        ->and($proposal->statusHistories)->toHaveCount(2)
+        ->and($proposal->latestStatusHistory?->previous_status)->toBe(Proposal::STATUS_AWAITING_COMPLETION)
+        ->and($proposal->latestStatusHistory?->new_status)->toBe(Proposal::STATUS_IN_REVIEW)
+        ->and($proposal->latestStatusHistory?->note)->toBe('Informações complementares enviadas pelo proponente.');
 
     $firstProject = $proposal->projects->first();
 

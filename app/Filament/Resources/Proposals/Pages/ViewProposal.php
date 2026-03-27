@@ -15,6 +15,7 @@ class ViewProposal extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ProposalResource::getChangeStatusAction(),
             Action::make('resend_access')
                 ->label('Reenviar acesso')
                 ->icon('heroicon-o-paper-airplane')

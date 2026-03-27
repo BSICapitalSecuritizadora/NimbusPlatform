@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Site;
 
+use App\Actions\Proposals\UpdateProposalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProposalContinuationRequest;
 use App\Http\Requests\VerifyProposalContinuationRequest;
@@ -80,13 +81,14 @@ class ProposalContinuationController extends Controller
     public function store(
         StoreProposalContinuationRequest $request,
         ProposalContinuationAccess $access,
+        UpdateProposalStatus $updateProposalStatus,
     ): RedirectResponse {
         $this->ensureAuthorized($request, $access);
 
         $proposal = $this->loadProposal($access);
         $validated = $request->validated();
 
-        DB::transaction(function () use ($proposal, $validated, $request): void {
+        DB::transaction(function () use ($proposal, $validated, $request, $updateProposalStatus): void {
             $proposal->projects()->delete();
 
             $sharedPayload = [
@@ -173,9 +175,21 @@ class ProposalContinuationController extends Controller
             }
 
             $proposal->forceFill([
-                'status' => Proposal::STATUS_IN_REVIEW,
                 'completed_at' => now(),
             ])->save();
+
+            if (in_array($proposal->status, [
+                Proposal::STATUS_AWAITING_COMPLETION,
+                Proposal::STATUS_AWAITING_INFORMATION,
+            ], true)) {
+                $updateProposalStatus->handle(
+                    $proposal,
+                    Proposal::STATUS_IN_REVIEW,
+                    null,
+                    'Informações complementares enviadas pelo proponente.',
+                    false,
+                );
+            }
         });
 
         return redirect()

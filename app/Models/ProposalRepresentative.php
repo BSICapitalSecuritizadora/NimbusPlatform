@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProposalRepresentative extends Model
@@ -14,6 +15,7 @@ class ProposalRepresentative extends Model
     protected $fillable = [
         'name',
         'email',
+        'user_id',
         'queue_position',
         'is_active',
     ];
@@ -23,6 +25,11 @@ class ProposalRepresentative extends Model
         return [
             'is_active' => 'boolean',
         ];
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function proposals(): HasMany

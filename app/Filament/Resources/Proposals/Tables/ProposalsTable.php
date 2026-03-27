@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Proposals\Tables;
 
 use App\Actions\Proposals\SendProposalContinuationLink;
+use App\Filament\Resources\Proposals\ProposalResource;
 use App\Models\Proposal;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -46,26 +47,23 @@ class ProposalsTable
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (?string $state, Proposal $record): string => $record->status_label)
-                    ->color(fn (?string $state): string => match ($state) {
-                        Proposal::STATUS_AWAITING_COMPLETION => 'warning',
-                        Proposal::STATUS_IN_REVIEW => 'info',
-                        Proposal::STATUS_APPROVED => 'success',
-                        Proposal::STATUS_REJECTED => 'danger',
-                        'pending' => 'gray',
-                        default => 'gray',
-                    }),
+                    ->color(fn (?string $state): string => Proposal::statusColorFor($state)),
                 TextColumn::make('distributed_at')
                     ->label('Distribuída')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
+                TextColumn::make('latestStatusHistory.changed_at')
+                    ->label('Última movimentação')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—'),
                 TextColumn::make('latestContinuationAccess.last_accessed_at')
                     ->label('Último acesso link')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('completed_at')
-                    ->label('Concluída')
+                    ->label('Complementada')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
@@ -75,6 +73,7 @@ class ProposalsTable
                     ->sortable(),
             ])
             ->actions([
+                ProposalResource::getChangeStatusAction(),
                 Action::make('resend_access')
                     ->label('Reenviar acesso')
                     ->icon('heroicon-o-paper-airplane')

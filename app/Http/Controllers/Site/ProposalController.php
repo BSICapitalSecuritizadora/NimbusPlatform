@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Site;
 
 use App\Actions\Proposals\AssignProposalRepresentative;
 use App\Actions\Proposals\SendProposalContinuationLink;
+use App\Actions\Proposals\UpdateProposalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProposalRequest;
 use App\Models\Proposal;
@@ -26,12 +27,13 @@ class ProposalController extends Controller
         StoreProposalRequest $request,
         AssignProposalRepresentative $assignProposalRepresentative,
         SendProposalContinuationLink $sendProposalContinuationLink,
+        UpdateProposalStatus $updateProposalStatus,
     ) {
         $validated = $request->validated();
         $proposal = null;
 
         try {
-            $proposal = DB::transaction(function () use ($validated, $request, $assignProposalRepresentative): Proposal {
+            $proposal = DB::transaction(function () use ($validated, $request, $assignProposalRepresentative, $updateProposalStatus): Proposal {
                 $company = ProposalCompany::updateOrCreate(
                     ['cnpj' => $validated['cnpj']],
                     [
@@ -68,6 +70,13 @@ class ProposalController extends Controller
                 ]);
 
                 $assignProposalRepresentative->handle($proposal);
+                $updateProposalStatus->recordHistory(
+                    $proposal,
+                    null,
+                    Proposal::STATUS_AWAITING_COMPLETION,
+                    null,
+                    'Proposta recebida e aguardando complementação do cliente.',
+                );
 
                 return $proposal->fresh(['company', 'contact', 'representative']);
             });

@@ -31,6 +31,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'documents.create',
             'documents.update',
             'documents.delete',
+
+            // Proposals
+            'proposals.view',
+            'proposals.update',
         ];
 
         foreach ($permissions as $perm) {
@@ -40,6 +44,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $superAdmin = Role::firstOrCreate(['name' => 'super-admin']);
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $editor = Role::firstOrCreate(['name' => 'editor']);
+        $commercialRepresentative = Role::firstOrCreate(['name' => 'commercial-representative']);
 
         // admin: tudo
         $admin->syncPermissions($permissions);
@@ -49,6 +54,11 @@ class RolesAndPermissionsSeeder extends Seeder
             'investors.view', 'investors.create', 'investors.update',
             'emissions.view', 'emissions.create', 'emissions.update',
             'documents.view', 'documents.create', 'documents.update',
+        ]);
+
+        $commercialRepresentative->syncPermissions([
+            'proposals.view',
+            'proposals.update',
         ]);
 
         // super-admin: não precisa sync (Gate::before dá bypass),

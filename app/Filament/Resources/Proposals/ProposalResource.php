@@ -2,21 +2,29 @@
 
 namespace App\Filament\Resources\Proposals;
 
+use App\Actions\Proposals\UpdateProposalStatus;
 use App\Filament\Resources\Proposals\Pages\EditProposal;
 use App\Filament\Resources\Proposals\Pages\ListProposals;
 use App\Filament\Resources\Proposals\Pages\ViewProposal;
 use App\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager;
 use App\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager;
 use App\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager;
+use App\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager;
 use App\Filament\Resources\Proposals\Tables\ProposalsTable;
 use App\Models\Proposal;
+use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class ProposalResource extends Resource
 {
@@ -51,7 +59,7 @@ class ProposalResource extends Resource
                         ->label('Distribuída em')
                         ->content(fn (?Proposal $record): string => $record?->distributed_at?->format('d/m/Y H:i') ?? '—'),
                     Placeholder::make('completed_at_view')
-                        ->label('Concluída em')
+                        ->label('Complementada em')
                         ->content(fn (?Proposal $record): string => $record?->completed_at?->format('d/m/Y H:i') ?? '—'),
                 ])
                 ->columns(2),
@@ -90,6 +98,41 @@ class ProposalResource extends Resource
                         ->label('Link gerado')
                         ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->generated_url ?? '—')
                         ->columnSpanFull(),
+                ])
+                ->columns(2),
+            Section::make('Análise Comercial')
+                ->schema([
+                    Placeholder::make('analysis_status_view')
+                        ->label('Status atual')
+                        ->content(fn (?Proposal $record): string => $record?->status_label ?? '—'),
+                    Placeholder::make('analysis_next_statuses_view')
+                        ->label('Próximos status possíveis')
+                        ->content(fn (?Proposal $record): string => static::formatNextStatuses($record)),
+                    Placeholder::make('analysis_changed_by_view')
+                        ->label('Última alteração por')
+                        ->content(fn (?Proposal $record): string => match (true) {
+                            ! $record?->latestStatusHistory => '—',
+                            (bool) $record->latestStatusHistory->changedByUser?->name => $record->latestStatusHistory->changedByUser->name,
+                            default => 'Sistema',
+                        }),
+                    Placeholder::make('analysis_changed_at_view')
+                        ->label('Última alteração em')
+                        ->content(fn (?Proposal $record): string => $record?->latestStatusHistory?->changed_at?->format('d/m/Y H:i') ?? '—'),
+                    Placeholder::make('analysis_latest_note_view')
+                        ->label('Última observação da movimentação')
+                        ->content(fn (?Proposal $record): string => $record?->latestStatusHistory?->note ?? 'Sem observação registrada.')
+                        ->columnSpanFull(),
+                    Placeholder::make('internal_notes_view')
+                        ->label('Observações internas')
+                        ->content(fn (?Proposal $record): string => $record?->internal_notes ?? 'Sem observações internas.')
+                        ->columnSpanFull()
+                        ->visible(fn ($livewire): bool => $livewire instanceof ViewProposal),
+                    Textarea::make('internal_notes')
+                        ->label('Observações internas')
+                        ->rows(6)
+                        ->helperText('Visível apenas ao time comercial no painel administrativo.')
+                        ->columnSpanFull()
+                        ->hidden(fn ($livewire): bool => $livewire instanceof ViewProposal),
                 ])
                 ->columns(2),
             Section::make('Dados da Empresa')
@@ -136,20 +179,6 @@ class ProposalResource extends Resource
                         ->label('Observações')
                         ->content(fn (?Proposal $record): string => $record?->observations ?? 'Sem observações.')
                         ->columnSpanFull(),
-                    Placeholder::make('status_view')
-                        ->label('Status')
-                        ->content(fn (?Proposal $record): string => $record?->status_label ?? '—')
-                        ->visible(fn ($livewire): bool => $livewire instanceof ViewProposal),
-                    Select::make('status')
-                        ->label('Status')
-                        ->options([
-                            Proposal::STATUS_AWAITING_COMPLETION => 'Aguardando complementação',
-                            Proposal::STATUS_IN_REVIEW => 'Em análise',
-                            Proposal::STATUS_APPROVED => 'Aprovado',
-                            Proposal::STATUS_REJECTED => 'Rejeitado',
-                        ])
-                        ->required()
-                        ->hidden(fn ($livewire): bool => $livewire instanceof ViewProposal),
                 ]),
         ]);
     }
@@ -164,6 +193,7 @@ class ProposalResource extends Resource
         return [
             ProposalAssignmentRelationManager::class,
             ProposalContinuationAccessRelationManager::class,
+            ProposalStatusHistoryRelationManager::class,
             ProjectRelationManager::class,
         ];
     }
@@ -180,6 +210,130 @@ class ProposalResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function canViewAny(): bool
+    {
+        $user = static::resolveCurrentUser();
+
+        return static::userCanManageAll($user) || (bool) $user?->can('proposals.view');
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return $record instanceof Proposal
+            && static::userCanAccessRecord(static::resolveCurrentUser(), $record);
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return $record instanceof Proposal
+            && static::userCanManageRecord(static::resolveCurrentUser(), $record);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'company.sectors',
+                'contact',
+                'representative.user',
+                'latestContinuationAccess',
+                'latestStatusHistory.changedByUser',
+            ])
+            ->visibleTo(static::resolveCurrentUser());
+    }
+
+    public static function getChangeStatusAction(): Action
+    {
+        return Action::make('change_status')
+            ->label('Atualizar status')
+            ->icon('heroicon-o-arrow-path')
+            ->color('primary')
+            ->modalHeading('Atualizar andamento da proposta')
+            ->visible(fn (Proposal $record): bool => static::userCanManageRecord(static::resolveCurrentUser(), $record)
+                && filled($record->nextAvailableStatusOptions()))
+            ->form([
+                Placeholder::make('current_status')
+                    ->label('Status atual')
+                    ->content(fn (Proposal $record): string => $record->status_label),
+                Placeholder::make('current_representative')
+                    ->label('Representante responsável')
+                    ->content(fn (Proposal $record): string => $record->representative?->name ?? 'Não atribuído'),
+                Select::make('status')
+                    ->label('Novo status')
+                    ->options(fn (Proposal $record): array => $record->nextAvailableStatusOptions())
+                    ->required()
+                    ->native(false),
+                Textarea::make('note')
+                    ->label('Observação da movimentação')
+                    ->rows(4)
+                    ->helperText('Obrigatório ao rejeitar a proposta ou solicitar novas informações.'),
+            ])
+            ->action(function (Proposal $record, array $data): void {
+                app(UpdateProposalStatus::class)->handle(
+                    $record,
+                    $data['status'],
+                    static::resolveCurrentUser(),
+                    $data['note'] ?? null,
+                );
+
+                $record->refresh();
+
+                Notification::make()
+                    ->title('Status da proposta atualizado com sucesso.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    protected static function resolveCurrentUser(): ?User
+    {
+        $user = auth()->user();
+
+        return $user instanceof User ? $user : null;
+    }
+
+    protected static function userCanManageAll(?User $user): bool
+    {
+        return (bool) $user?->hasAnyRole(['super-admin', 'admin']);
+    }
+
+    protected static function userCanAccessRecord(?User $user, Proposal $proposal): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (static::userCanManageAll($user)) {
+            return true;
+        }
+
+        return $user->can('proposals.view') && $proposal->isAssignedToUser($user);
+    }
+
+    protected static function userCanManageRecord(?User $user, Proposal $proposal): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (static::userCanManageAll($user)) {
+            return true;
+        }
+
+        return $user->can('proposals.update') && $proposal->isAssignedToUser($user);
+    }
+
+    protected static function formatNextStatuses(?Proposal $record): string
+    {
+        if (! $record) {
+            return '—';
+        }
+
+        $nextStatuses = array_values($record->nextAvailableStatusOptions());
+
+        return $nextStatuses !== [] ? implode(' | ', $nextStatuses) : 'Sem novas transições disponíveis.';
     }
 
     protected static function formatCompanyAddress(?Proposal $record): string
