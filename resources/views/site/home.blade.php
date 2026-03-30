@@ -11,19 +11,19 @@
   <div class="container py-3 position-relative" style="z-index: 1;">
     <div class="row align-items-center g-4 text-center">
       <div class="col-lg-8 mx-auto">
-        <div class="kicker mb-3">Securitização • Mercado de Capitais • Real Estate</div>
+        <div class="kicker mb-3">Securitização • Mercado de Capitais • Crédito Estruturado</div>
         <h1 class="display-4 fw-bold mb-4" style="letter-spacing: -0.02em;">
-          Soluções estruturadas de crédito para você fazer mais.
+          Estruturação, gestão e acompanhamento de operações com padrão institucional.
         </h1>
         <p class="lead mb-5" style="color: rgba(255,255,255,0.85); font-weight: 300;">
-          Governança, tecnologia e proximidade para estruturar e acompanhar operações
-          com transparência e controle.
+          Soluções para securitização e crédito estruturado, com governança, tecnologia
+          e disciplina operacional em todas as etapas da operação.
         </p>
 
         {{-- Opea style email capture pill --}}
         <div class="bg-white p-2 rounded-pill shadow-lg mx-auto d-flex align-items-center" style="max-width: 500px;">
-          <input type="email" class="form-control border-0 shadow-none bg-transparent ps-4" placeholder="Seu melhor e-mail" style="outline: none; box-shadow: none;">
-          <button class="btn btn-brand rounded-pill px-4 text-nowrap" type="button" style="background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600;">Comece agora</button>
+          <input type="email" class="form-control border-0 shadow-none bg-transparent ps-4" placeholder="Informe seu e-mail corporativo" style="outline: none; box-shadow: none;">
+          <button class="btn btn-brand rounded-pill px-4 text-nowrap" type="button" style="background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600;">Solicitar contato</button>
         </div>
 
 
@@ -38,16 +38,16 @@
 <section class="py-5 bg-white">
   <div class="container py-4">
     <div class="text-center mb-5">
-      <h2 class="h3 fw-bold mb-2" style="color: var(--brand);">Soluções por indústria</h2>
-      <div class="text-muted">Para empresas, estruturadores e investidores.</div>
+      <h2 class="h3 fw-bold mb-2" style="color: var(--brand);">Soluções estruturadas por setor</h2>
+      <div class="text-muted">Atuação especializada para empresas, originadores e investidores institucionais.</div>
     </div>
 
     <div class="row g-4 justify-content-center">
       @php
         $industries = [
-          ['Imobiliário','Estruturação e acompanhamento de operações.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
-          ['Agronegócio','Crédito estruturado para cadeias e projetos.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
-          ['Infra & Empresas','Financiamento, expansão e novos recebíveis (CR).', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
+          ['Imobiliário','Estruturação de CRI, acompanhamento operacional e gestão documental para operações do setor imobiliário.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
+          ['Agronegócio','Soluções de crédito estruturado para produtores, cooperativas, tradings e cadeias do agronegócio.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
+          ['Infra & Empresas','Estruturação de recebíveis e operações sob medida para expansão, capital de giro e projetos corporativos.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
         ];
       @endphp
 
@@ -59,7 +59,7 @@
             <div class="position-absolute bottom-0 p-4 w-100 text-white">
               <h3 class="h5 fw-bold mb-2">{{ $title }}</h3>
               <p class="small mb-4" style="opacity: 0.9;">{{ $desc }}</p>
-              <a href="{{ $link }}" class="btn btn-sm btn-light rounded-pill px-3 fw-bold" style="color: var(--brand);">Saiba mais</a>
+              <a href="{{ $link }}" class="btn btn-sm btn-light rounded-pill px-3 fw-bold" style="color: var(--brand);">Conhecer solução</a>
             </div>
           </div>
         </div>
@@ -72,10 +72,10 @@
 <section class="py-5 section-dark">
   <div class="container py-5">
     <div class="text-center mb-5">
-      <div class="kicker mb-2">Cases de Sucesso</div>
-      <h2 class="h3 fw-bold mb-3">Exemplos práticos de estruturação</h2>
+      <div class="kicker mb-2">Experiência Aplicada</div>
+      <h2 class="h3 fw-bold mb-3">Estruturas desenhadas para operações reais</h2>
       <p class="text-muted mx-auto" style="max-width: 600px;">
-        Como a BSI Capital ajuda empresas a gerenciarem operações complexas com foco em governança e controle.
+        Exemplos de como combinamos governança, tecnologia e execução para dar previsibilidade ao ciclo da operação.
       </p>
     </div>
 
@@ -83,13 +83,13 @@
       $cases = [
         [
             'title' => 'Estruturação CRI',
-            'desc' => 'Operação completa com governança e relatórios recorrentes, utilizando nossa infraestrutura para garantir o lastro perfeitamente auditável.',
+            'desc' => 'Estruturação completa de CRI com governança documental, acompanhamento operacional e trilha de auditoria ao longo da operação.',
             'img' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop',
             'slug' => 'estruturacao-cri'
         ],
         [
             'title' => 'Gestão de Documentos',
-            'desc' => 'Desenvolvimento de um portal customizado com controle de acesso granular e auditoria completa para todos os investidores da operação.',
+            'desc' => 'Portal dedicado para investidores com controle de acesso, organização documental e rastreabilidade das interações da operação.',
             'img' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
             'slug' => 'gestao-de-documentos'
         ],
@@ -106,7 +106,7 @@
         <div class="col-lg-6 px-lg-5">
           <h3 class="h2 fw-bold mb-3">{{ $case['title'] }}</h3>
           <p class="lead text-muted mb-4" style="font-weight: 300;">{{ $case['desc'] }}</p>
-          <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-brand rounded-pill px-4" style="border-color: var(--gold); color: var(--gold);">Ler estudo de caso</a>
+          <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-brand rounded-pill px-4" style="border-color: var(--gold); color: var(--gold);">Ver estudo de caso</a>
         </div>
       </div>
     @endforeach
@@ -122,10 +122,10 @@
           <div style="width: 4px; height: 28px; background: linear-gradient(180deg, var(--gold), var(--brand)); border-radius: 4px;"></div>
           <h2 class="h4 fw-bold mb-0" style="letter-spacing: -0.02em;">Emissões em destaque</h2>
         </div>
-        <div class="text-muted small ms-3">Somente emissões marcadas como públicas.</div>
+        <div class="text-muted small ms-3">Seleção das emissões públicas mais recentes disponíveis na plataforma.</div>
       </div>
       <a class="btn btn-outline-brand btn-sm px-4" href="{{ route('site.emissions') }}">
-        Ver todas
+        Ver emissões
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="ms-1" style="vertical-align: -1px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
     </div>
@@ -188,7 +188,7 @@
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     </div>
                     <div style="min-width: 0;">
-                      <div style="font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">Data de Vencimento</div>
+                      <div style="font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">Vencimento</div>
                       <div style="font-size: 0.82rem; font-weight: 500; color: var(--text);">{{ optional($e->maturity_date)->format('d/m/Y') ?? '—' }}</div>
                     </div>
                   </div>
@@ -198,7 +198,7 @@
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
                     <div style="min-width: 0;">
-                      <div style="font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">Valor da Emissão</div>
+                      <div style="font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;">Volume Emitido</div>
                       <div style="font-size: 0.82rem; font-weight: 500; color: var(--text);">{{ $e->issued_volume ? 'R$ ' . number_format($e->issued_volume, 2, ',', '.') : '—' }}</div>
                     </div>
                   </div>
@@ -211,7 +211,7 @@
         <div class="col-12">
           <div class="card p-5 text-center" style="border-style: dashed;">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" class="mx-auto mb-3" style="opacity: 0.5;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            <div class="text-muted">Nenhuma emissão pública cadastrada ainda.</div>
+            <div class="text-muted">No momento, não há emissões públicas disponíveis.</div>
           </div>
         </div>
       @endforelse
@@ -224,10 +224,10 @@
           <div style="width: 4px; height: 28px; background: linear-gradient(180deg, var(--gold), var(--brand)); border-radius: 4px;"></div>
           <h2 class="h4 fw-bold mb-0" style="letter-spacing: -0.02em;">Relações com Investidores</h2>
         </div>
-        <div class="text-muted small ms-3">Documentos publicados e públicos.</div>
+        <div class="text-muted small ms-3">Documentos públicos e comunicados institucionais mais recentes.</div>
       </div>
       <a class="btn btn-outline-brand btn-sm px-4" href="{{ route('site.ri') }}">
-        Ver todos
+        Acessar RI
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="ms-1" style="vertical-align: -1px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
     </div>
@@ -257,7 +257,7 @@
               </div>
               <div class="col-md-auto text-end">
                 <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-light rounded-pill px-4 fw-bold" style="color: var(--brand); font-size: 0.85rem; border: 1px solid var(--border);">
-                  Acessar
+                  Abrir documento
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="ms-1"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </a>
               </div>
@@ -265,8 +265,8 @@
           </div>
         @empty
           <div class="list-group-item p-5 text-center text-muted" style="background: var(--surface); border-color: var(--border);">
-            <div class="mb-2">Nenhum documento público publicado ainda.</div>
-            <div class="small">Fique atento para futuras atualizações.</div>
+            <div class="mb-2">No momento, não há documentos públicos disponíveis.</div>
+            <div class="small">Novas publicações serão disponibilizadas nesta seção.</div>
           </div>
         @endforelse
       </div>
@@ -287,18 +287,18 @@
             <div class="d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.1); color: var(--gold);">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
             </div>
-            <h3 class="h4 fw-bold mb-0 text-white">Fique por dentro das novidades</h3>
+            <h3 class="h4 fw-bold mb-0 text-white">Receba atualizações institucionais</h3>
           </div>
-          <p class="text-white opacity-75 mb-0" style="font-weight: 300; font-size: 1.1rem;">Assine nossa newsletter e receba atualizações sobre operações e comunicados.</p>
+          <p class="text-white opacity-75 mb-0" style="font-weight: 300; font-size: 1.1rem;">Cadastre seu e-mail para acompanhar comunicados, publicações e novidades relevantes da BSI Capital.</p>
         </div>
         <div class="col-lg-5">
           <form class="bg-white p-2 rounded-pill shadow-sm d-flex align-items-center">
-            <input type="email" class="form-control border-0 shadow-none bg-transparent ps-4" placeholder="seu@email.com" style="outline: none; box-shadow: none;">
-            <button class="btn btn-brand rounded-pill px-4 text-nowrap" type="button" style="background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600;">Assinar agora</button>
+            <input type="email" class="form-control border-0 shadow-none bg-transparent ps-4" placeholder="Seu e-mail corporativo" style="outline: none; box-shadow: none;">
+            <button class="btn btn-brand rounded-pill px-4 text-nowrap" type="button" style="background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600;">Receber atualizações</button>
           </form>
           <div class="text-white opacity-50 small mt-3 px-3">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Garantimos a privacidade dos seus dados.
+            Seu contato será utilizado apenas para comunicações institucionais da BSI Capital.
           </div>
         </div>
       </div>
