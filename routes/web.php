@@ -123,3 +123,20 @@ Route::middleware(['auth'])->group(function () {
 
 require __DIR__.'/settings.php';
 require __DIR__.'/investor.php';
+
+// NimbusDocs Portal Routes
+Route::prefix('nimbus')->name('nimbus.')->group(function () {
+    // Auth Routes...
+    Route::get('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'showRequestForm'])->name('auth.request');
+    Route::post('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'requestPin'])->name('auth.request.post');
+    Route::get('/verificar', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'showVerifyForm'])->name('auth.verify');
+    Route::post('/verificar', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'verifyPin'])->name('auth.verify.post');
+    Route::post('/sair', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'logout'])->name('auth.logout');
+
+    // Authenticated Portal Routes
+    Route::middleware(['auth:nimbus'])->group(function () {
+        Route::get('/dashboard', function () {
+            return view('nimbus.dashboard'); // To be implemented later
+        })->name('dashboard');
+    });
+});

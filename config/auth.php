@@ -48,6 +48,11 @@ return [
             'driver' => 'session',
             'provider' => 'investors',
         ],
+
+        'nimbus' => [
+            'driver' => 'session',
+            'provider' => 'nimbus_users',
+        ],
     ],
 
     /*
@@ -76,6 +81,11 @@ return [
         'investors' => [
             'driver' => 'eloquent',
             'model' => Investor::class,
+        ],
+
+        'nimbus_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Nimbus\PortalUser::class,
         ],
 
         // 'users' => [

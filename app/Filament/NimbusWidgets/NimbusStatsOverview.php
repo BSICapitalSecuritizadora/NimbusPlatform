@@ -2,18 +2,17 @@
 
 namespace App\Filament\NimbusWidgets;
 
+use App\Models\Nimbus\GeneralDocument;
+use App\Models\Nimbus\PortalUser;
+use App\Models\Nimbus\Submission;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use App\Models\Nimbus\Submission;
-use App\Models\Nimbus\PortalUser;
-use App\Models\Nimbus\GeneralDocument;
 
 class NimbusStatsOverview extends BaseWidget
 {
-    protected static ?string $pollingInterval = '30s';
-    
-    // Spans 2 columns to match the left-to-right flow, or just "full" row
-    protected int | string | array $columnSpan = 'full';
+    protected ?string $pollingInterval = '30s';
+
+    protected int|string|array $columnSpan = 'full';
 
     protected function getColumns(): int
     {
@@ -27,7 +26,7 @@ class NimbusStatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-inbox-arrow-down')
                 ->color('secondary')
                 ->extraAttributes(['class' => 'bg-gray-50 border border-gray-100 shadow-sm']),
-            
+
             Stat::make('Aguardando Análise', Submission::where('status', 'PENDING')->count())
                 ->descriptionIcon('heroicon-m-clock')
                 ->color('warning')
