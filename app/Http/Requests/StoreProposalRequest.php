@@ -40,16 +40,23 @@ class StoreProposalRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'cnpj.regex' => 'Informe um CNPJ válido.',
-            'cep.regex' => 'Informe um CEP válido.',
+            'cnpj.required' => 'O CNPJ da empresa é obrigatório.',
+            'cnpj.regex' => 'Informe um CNPJ válido no formato 00.000.000/0000-00.',
+            'cep.required' => 'O CEP é obrigatório.',
+            'cep.regex' => 'Informe um CEP válido no formato 00000-000.',
             'setores.required' => 'Selecione ao menos um setor de atuação.',
-            'nome_empresa.required' => 'O nome da empresa é obrigatório.',
-            'nome_contato.required' => 'O nome do contato é obrigatório.',
-            'email.required' => 'O e-mail do contato é obrigatório.',
-            'email.email' => 'Informe um e-mail válido.',
-            'telefone_pessoal.required' => 'O telefone pessoal é obrigatório.',
-            'telefone_pessoal.regex' => 'Informe um telefone pessoal válido.',
-            'telefone_empresa.regex' => 'Informe um telefone da empresa válido.',
+            'nome_empresa.required' => 'A razão social da empresa é obrigatória.',
+            'logradouro.required' => 'O logradouro é obrigatório.',
+            'numero.required' => 'O número do endereço é obrigatório.',
+            'bairro.required' => 'O bairro é obrigatório.',
+            'cidade.required' => 'A cidade é obrigatória.',
+            'estado.required' => 'O estado (UF) é obrigatório.',
+            'nome_contato.required' => 'O nome do responsável pelo contato é obrigatório.',
+            'email.required' => 'O e-mail de contato é obrigatório.',
+            'email.email' => 'Informe um endereço de e-mail válido.',
+            'telefone_pessoal.required' => 'O telefone pessoal do contato é obrigatório.',
+            'telefone_pessoal.regex' => 'Informe um número de telefone pessoal válido.',
+            'telefone_empresa.regex' => 'Informe um número de telefone da empresa válido.',
         ];
     }
 

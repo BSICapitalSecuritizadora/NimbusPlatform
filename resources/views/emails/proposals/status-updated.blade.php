@@ -2,32 +2,35 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Atualização da proposta</title>
+    <title>Atualização de proposta — BSI Capital</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
     <div style="max-width:640px;margin:0 auto;padding:32px 20px;">
         <div style="background:#001233;border-radius:16px 16px 0 0;padding:28px 32px;color:#fff;">
             <div style="font-size:24px;font-weight:700;">BSI Capital</div>
-            <div style="margin-top:8px;font-size:16px;">Atualização do andamento da sua proposta</div>
+            <div style="margin-top:8px;font-size:16px;opacity:.85;">Atualização de andamento — Proposta Comercial</div>
         </div>
         <div style="background:#fff;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;padding:32px;">
-            <p style="margin-top:0;">Olá, {{ $proposal->contact->name }}.</p>
-            <p>A proposta da empresa <strong>{{ $proposal->company->name }}</strong> teve uma atualização em nosso fluxo comercial.</p>
+            <p style="margin-top:0;">Prezado(a) {{ $proposal->contact->name }},</p>
+            <p>Informamos que a proposta da empresa <strong>{{ $proposal->company->name }}</strong> registrou uma atualização em nosso fluxo de análise comercial.</p>
 
             <div style="background:#f8fafc;border:1px solid #dbe4f0;border-radius:12px;padding:20px;margin:24px 0;">
-                <div style="font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin-bottom:6px;">Status atual</div>
-                <div style="font-size:28px;font-weight:700;color:#001233;">{{ \App\Models\Proposal::statusLabelFor($status) }}</div>
+                <div style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:#6b7280;margin-bottom:8px;font-weight:600;">Situação atual da proposta</div>
+                <div style="font-size:26px;font-weight:700;color:#001233;">{{ \App\Models\Proposal::statusLabelFor($status) }}</div>
             </div>
 
             @if ($status === \App\Models\Proposal::STATUS_APPROVED)
-                <p>Sua proposta foi aprovada pelo time comercial. Seguiremos com os próximos passos internos do processo.</p>
+                <p>Sua proposta foi aprovada pela equipe comercial da BSI Capital. Daremos continuidade às próximas etapas do processo internamente e entraremos em contato com as orientações necessárias.</p>
             @elseif ($status === \App\Models\Proposal::STATUS_REJECTED)
-                <p>Sua proposta foi encerrada nesta etapa. Se necessário, nossa equipe comercial poderá orientar um novo envio futuro.</p>
+                <p>Após análise, sua proposta não avançou nesta etapa do processo. Caso julgue pertinente, nossa equipe comercial está à disposição para orientar sobre eventuais adequações e novas submissões.</p>
             @elseif ($status === \App\Models\Proposal::STATUS_COMPLETED)
-                <p>A análise comercial desta proposta foi concluída com sucesso.</p>
+                <p>A análise comercial desta proposta foi concluída. Agradecemos a confiança depositada na BSI Capital.</p>
             @endif
 
-            <p style="margin:24px 0 0;">Em caso de dúvidas, responda este e-mail ou fale com o time comercial da BSI Capital.</p>
+            <p style="margin:24px 0 0;color:#6b7280;font-size:14px;">Em caso de dúvidas, responda a este e-mail ou entre em contato diretamente com a equipe comercial da BSI Capital.</p>
+        </div>
+        <div style="text-align:center;padding:20px 0;font-size:12px;color:#9ca3af;">
+            BSI Capital Securitizadora S/A — Comunicação Institucional
         </div>
     </div>
 </body>

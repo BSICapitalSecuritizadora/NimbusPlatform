@@ -92,14 +92,21 @@ class StoreProposalContinuationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'nome.required' => 'O nome principal do empreendimento é obrigatório.',
-            'nome_empreendimento.required' => 'Adicione ao menos um empreendimento.',
-            'nome_empreendimento.*.required' => 'A identificação de cada empreendimento é obrigatória.',
-            'data_lancamento.date_format' => 'O lançamento deve estar no formato mm/aaaa.',
-            'lancamento_vendas.date_format' => 'O lançamento das vendas deve estar no formato mm/aaaa.',
-            'inicio_obras.date_format' => 'O início das obras deve estar no formato mm/aaaa.',
+            'nome.required' => 'A denominação principal do empreendimento é obrigatória.',
+            'valor_solicitado.required' => 'O valor solicitado para a operação é obrigatório.',
+            'area_terreno.required' => 'A área do terreno é obrigatória.',
+            'data_lancamento.required' => 'A data de lançamento do empreendimento é obrigatória.',
+            'data_lancamento.date_format' => 'A data de lançamento deve estar no formato mm/aaaa.',
+            'lancamento_vendas.required' => 'A data de lançamento comercial é obrigatória.',
+            'lancamento_vendas.date_format' => 'A data de lançamento das vendas deve estar no formato mm/aaaa.',
+            'inicio_obras.required' => 'A data de início das obras é obrigatória.',
+            'inicio_obras.date_format' => 'A data de início das obras deve estar no formato mm/aaaa.',
+            'previsao_entrega.required' => 'A previsão de entrega do empreendimento é obrigatória.',
             'previsao_entrega.date_format' => 'A previsão de entrega deve estar no formato mm/aaaa.',
-            'arquivos.*.mimes' => 'Os arquivos devem estar nos formatos PDF, DOC, DOCX, XLS, XLSX, PNG, JPG ou JPEG.',
+            'nome_empreendimento.required' => 'Informe ao menos um empreendimento vinculado à operação.',
+            'nome_empreendimento.*.required' => 'A identificação de cada empreendimento é obrigatória.',
+            'arquivos.*.mimes' => 'Os arquivos anexados devem estar nos formatos PDF, DOC, DOCX, XLS, XLSX, PNG, JPG ou JPEG.',
+            'arquivos.*.max' => 'Cada arquivo não pode exceder 10 MB.',
         ];
     }
 

@@ -26,10 +26,10 @@ class VerifyProposalContinuationRequest extends FormRequest
         $codeLength = max(4, (int) config('proposals.continuation_access.code_length', 6));
 
         return [
-            'cnpj.required' => 'Informe o CNPJ cadastrado na proposta.',
-            'code.required' => 'Informe o código enviado por e-mail.',
-            'cnpj.regex' => 'Informe um CNPJ válido.',
-            'code.digits' => "O código deve conter {$codeLength} dígitos.",
+            'cnpj.required' => 'Informe o CNPJ vinculado à proposta.',
+            'cnpj.regex' => 'Informe um CNPJ válido no formato 00.000.000/0000-00.',
+            'code.required' => 'Informe o código de acesso recebido por e-mail.',
+            'code.digits' => "O código de acesso deve conter exatamente {$codeLength} dígitos.",
         ];
     }
 
