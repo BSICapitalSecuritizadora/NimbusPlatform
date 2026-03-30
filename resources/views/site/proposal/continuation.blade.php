@@ -6,6 +6,145 @@
     $firstProject = $proposal->projects->first();
     $projectCount = $proposal->projects->count();
     $fileCount = $proposal->files->count();
+    $canEditProposal = $proposal->canBeCompletedByRequester();
+    $showReadonlySummary = $proposal->projects->isNotEmpty() && ! $canEditProposal;
+    $operationValues = [
+        'nome' => old('nome', $firstProject?->company_name),
+        'site' => old('site', $firstProject?->site),
+        'valor_solicitado' => old('valor_solicitado', $firstProject ? number_format((float) $firstProject->value_requested, 2, ',', '.') : ''),
+        'valor_mercado_terreno' => old('valor_mercado_terreno', $firstProject ? number_format((float) $firstProject->land_market_value, 2, ',', '.') : ''),
+        'area_terreno' => old('area_terreno', $firstProject?->land_area),
+        'data_lancamento' => old('data_lancamento', $firstProject?->launch_date?->format('Y-m')),
+        'lancamento_vendas' => old('lancamento_vendas', $firstProject?->sales_launch_date?->format('Y-m')),
+        'inicio_obras' => old('inicio_obras', $firstProject?->construction_start_date?->format('Y-m')),
+        'previsao_entrega' => old('previsao_entrega', $firstProject?->delivery_forecast_date?->format('Y-m')),
+        'prazo_remanescente' => old('prazo_remanescente', $firstProject?->remaining_months),
+        'cep' => old('cep', $firstProject?->cep),
+        'logradouro' => old('logradouro', $firstProject?->logradouro),
+        'complemento' => old('complemento', $firstProject?->complemento),
+        'numero' => old('numero', $firstProject?->numero),
+        'bairro' => old('bairro', $firstProject?->bairro),
+        'cidade' => old('cidade', $firstProject?->cidade),
+        'estado' => old('estado', $firstProject?->estado),
+        'car_bloco' => old('car_bloco', $firstProject?->characteristics?->blocks),
+        'car_pavimentos' => old('car_pavimentos', $firstProject?->characteristics?->floors),
+        'car_andares_tipo' => old('car_andares_tipo', $firstProject?->characteristics?->typical_floors),
+        'car_unidades_andar' => old('car_unidades_andar', $firstProject?->characteristics?->units_per_floor),
+        'car_total' => old('car_total', $firstProject?->characteristics?->total_units),
+    ];
+
+    $formProjects = collect(old('nome_empreendimento', []))
+        ->values()
+        ->map(function ($name, $index) {
+            return [
+                'id' => old('project_id.'.$index),
+                'name' => $name,
+                'units_exchanged' => old('unidades_permutadas.'.$index),
+                'units_paid' => old('unidades_quitadas.'.$index),
+                'units_unpaid' => old('unidades_nao_quitadas.'.$index),
+                'units_stock' => old('unidades_estoque.'.$index),
+                'units_total' => old('unidades_total.'.$index),
+                'sales_percentage' => old('percentual_vendas.'.$index),
+                'cost_incurred' => old('custo_incidido.'.$index),
+                'cost_to_incur' => old('custo_a_incorrer.'.$index),
+                'cost_total' => old('custo_total.'.$index),
+                'work_stage_percentage' => old('estagio_obra.'.$index),
+                'value_paid' => old('valor_quitadas.'.$index),
+                'value_unpaid' => old('valor_nao_quitadas.'.$index),
+                'value_stock' => old('valor_estoque.'.$index),
+                'value_total_sale' => old('valor_total_venda.'.$index),
+                'value_received' => old('valor_ja_recebido.'.$index),
+                'value_until_keys' => old('valor_ate_chaves.'.$index),
+                'value_post_keys' => old('valor_chaves_pos.'.$index),
+            ];
+        });
+
+    if ($formProjects->isEmpty()) {
+        $formProjects = $proposal->projects->isNotEmpty()
+            ? $proposal->projects->values()->map(function ($project) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'units_exchanged' => $project->units_exchanged,
+                    'units_paid' => $project->units_paid,
+                    'units_unpaid' => $project->units_unpaid,
+                    'units_stock' => $project->units_stock,
+                    'units_total' => $project->units_total,
+                    'sales_percentage' => number_format((float) $project->sales_percentage, 2, '.', ''),
+                    'cost_incurred' => number_format((float) $project->cost_incurred, 2, ',', '.'),
+                    'cost_to_incur' => number_format((float) $project->cost_to_incur, 2, ',', '.'),
+                    'cost_total' => number_format((float) $project->cost_total, 2, ',', '.'),
+                    'work_stage_percentage' => number_format((float) $project->work_stage_percentage, 2, '.', ''),
+                    'value_paid' => number_format((float) $project->value_paid, 2, ',', '.'),
+                    'value_unpaid' => number_format((float) $project->value_unpaid, 2, ',', '.'),
+                    'value_stock' => number_format((float) $project->value_stock, 2, ',', '.'),
+                    'value_total_sale' => number_format((float) $project->value_total_sale, 2, ',', '.'),
+                    'value_received' => number_format((float) $project->value_received, 2, ',', '.'),
+                    'value_until_keys' => number_format((float) $project->value_until_keys, 2, ',', '.'),
+                    'value_post_keys' => number_format((float) $project->value_post_keys, 2, ',', '.'),
+                ];
+            })
+            : collect([
+                [
+                    'id' => null,
+                    'name' => null,
+                    'units_exchanged' => null,
+                    'units_paid' => null,
+                    'units_unpaid' => null,
+                    'units_stock' => null,
+                    'units_total' => null,
+                    'sales_percentage' => null,
+                    'cost_incurred' => null,
+                    'cost_to_incur' => null,
+                    'cost_total' => null,
+                    'work_stage_percentage' => null,
+                    'value_paid' => null,
+                    'value_unpaid' => null,
+                    'value_stock' => null,
+                    'value_total_sale' => null,
+                    'value_received' => null,
+                    'value_until_keys' => null,
+                    'value_post_keys' => null,
+                ],
+            ]);
+    }
+
+    $typeRows = collect(old('tipo_total', []))
+        ->values()
+        ->map(function ($total, $index) {
+            return [
+                'total' => $total,
+                'bedrooms' => old('tipo_dormitorios.'.$index),
+                'parking_spaces' => old('tipo_vagas.'.$index),
+                'useful_area' => old('tipo_area.'.$index),
+                'average_price' => old('tipo_preco_medio.'.$index),
+                'price_per_m2' => old('tipo_preco_m2.'.$index),
+            ];
+        });
+
+    if ($typeRows->isEmpty()) {
+        $typeRows = $firstProject?->characteristics?->unitTypes?->isNotEmpty()
+            ? $firstProject->characteristics->unitTypes->sortBy('order')->values()->map(function ($unitType) {
+                return [
+                    'total' => $unitType->total_units,
+                    'bedrooms' => $unitType->bedrooms,
+                    'parking_spaces' => $unitType->parking_spaces,
+                    'useful_area' => $unitType->useful_area,
+                    'average_price' => number_format((float) $unitType->average_price, 2, ',', '.'),
+                    'price_per_m2' => number_format((float) $unitType->price_per_m2, 2, ',', '.'),
+                ];
+            })
+            : collect([
+                [
+                    'total' => null,
+                    'bedrooms' => null,
+                    'parking_spaces' => null,
+                    'useful_area' => null,
+                    'average_price' => null,
+                    'price_per_m2' => null,
+                ],
+            ]);
+    }
 @endphp
 
 @push('head')
@@ -407,7 +546,7 @@
                         </div>
                     </div>
 
-                    @if ($proposal->projects->isNotEmpty())
+                    @if ($showReadonlySummary)
                         @php
                             $company = $proposal->company;
                             $contact = $proposal->contact;
@@ -738,9 +877,13 @@
                                 <div class="row g-4 align-items-center">
                                     <div class="col-lg-7">
                                         <div class="section-kicker mb-2">Próxima Etapa</div>
-                                        <h2 class="section-title">Complementar informações do empreendimento</h2>
+                                        <h2 class="section-title">
+                                            {{ $proposal->status === \App\Models\Proposal::STATUS_AWAITING_INFORMATION ? 'Atualize as informações solicitadas' : 'Complementar informações do empreendimento' }}
+                                        </h2>
                                         <p class="section-copy mb-0">
-                                            Preencha os dados abaixo com atenção. Essa etapa organiza o empreendimento, unidades, cronograma, fluxo financeiro e documentos complementares.
+                                            {{ $proposal->status === \App\Models\Proposal::STATUS_AWAITING_INFORMATION
+                                                ? 'O time comercial solicitou novos dados. Revise os campos abaixo, atualize o que for necessário e salve novamente a proposta.'
+                                                : 'Preencha os dados abaixo com atenção. Essa etapa organiza o empreendimento, unidades, cronograma, fluxo financeiro e documentos complementares.' }}
                                         </p>
                                     </div>
                                     <div class="col-lg-5">
@@ -764,23 +907,23 @@
                                         <p class="section-copy mb-0">Dados principais para identificação da operação, cronograma e endereço do empreendimento.</p>
                                     </div>
 
-                                    <div class="col-md-5"><label class="form-label">Nome do Empreendimento *</label><input type="text" name="nome" class="form-control" value="{{ old('nome') }}" required></div>
-                                    <div class="col-md-4"><label class="form-label">Site</label><input type="url" name="site" class="form-control" value="{{ old('site') }}"></div>
-                                    <div class="col-md-3"><label class="form-label">Valor Solicitado *</label><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_solicitado" class="form-control money" value="{{ old('valor_solicitado') }}" required></div></div>
-                                    <div class="col-md-4"><label class="form-label">Valor atual de mercado do terreno</label><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_mercado_terreno" class="form-control money" value="{{ old('valor_mercado_terreno') }}"></div></div>
-                                    <div class="col-md-4"><label class="form-label">Área do Terreno (m²) *</label><input type="number" step="0.01" name="area_terreno" class="form-control" value="{{ old('area_terreno') }}" required></div>
-                                    <div class="col-md-4"><label class="form-label">Lançamento *</label><input type="month" name="data_lancamento" class="form-control" value="{{ old('data_lancamento') }}" required></div>
-                                    <div class="col-md-3"><label class="form-label">Lançamento das Vendas *</label><input type="month" name="lancamento_vendas" class="form-control" value="{{ old('lancamento_vendas') }}" required></div>
-                                    <div class="col-md-3"><label class="form-label">Início das Obras *</label><input type="month" name="inicio_obras" id="inicio_obras" class="form-control" value="{{ old('inicio_obras') }}" required></div>
-                                    <div class="col-md-3"><label class="form-label">Previsão de Entrega *</label><input type="month" name="previsao_entrega" id="previsao_entrega" class="form-control" value="{{ old('previsao_entrega') }}" required></div>
-                                    <div class="col-md-3"><label class="form-label">Prazo Remanescente (meses)</label><input type="number" name="prazo_remanescente" id="prazo_remanescente" class="form-control" value="{{ old('prazo_remanescente') }}" readonly></div>
-                                    <div class="col-md-3"><label class="form-label">CEP *</label><input type="text" name="cep" id="cep" class="form-control" value="{{ old('cep') }}" required></div>
-                                    <div class="col-md-6"><label class="form-label">Rua</label><input type="text" name="logradouro" id="logradouro" class="form-control" value="{{ old('logradouro') }}" readonly></div>
-                                    <div class="col-md-3"><label class="form-label">Complemento</label><input type="text" name="complemento" class="form-control" value="{{ old('complemento') }}"></div>
-                                    <div class="col-md-3"><label class="form-label">Número *</label><input type="text" name="numero" class="form-control" value="{{ old('numero') }}" required></div>
-                                    <div class="col-md-4"><label class="form-label">Bairro</label><input type="text" name="bairro" id="bairro" class="form-control" value="{{ old('bairro') }}" readonly></div>
-                                    <div class="col-md-4"><label class="form-label">Cidade</label><input type="text" name="cidade" id="cidade" class="form-control" value="{{ old('cidade') }}" readonly></div>
-                                    <div class="col-md-2"><label class="form-label">Estado</label><input type="text" name="estado" id="estado" class="form-control" value="{{ old('estado') }}" readonly></div>
+                                    <div class="col-md-5"><label class="form-label">Nome do Empreendimento *</label><input type="text" name="nome" class="form-control" value="{{ $operationValues['nome'] }}" required></div>
+                                    <div class="col-md-4"><label class="form-label">Site</label><input type="url" name="site" class="form-control" value="{{ $operationValues['site'] }}"></div>
+                                    <div class="col-md-3"><label class="form-label">Valor Solicitado *</label><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_solicitado" class="form-control money" value="{{ $operationValues['valor_solicitado'] }}" required></div></div>
+                                    <div class="col-md-4"><label class="form-label">Valor atual de mercado do terreno</label><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_mercado_terreno" class="form-control money" value="{{ $operationValues['valor_mercado_terreno'] }}"></div></div>
+                                    <div class="col-md-4"><label class="form-label">Área do Terreno (m²) *</label><input type="number" step="0.01" name="area_terreno" class="form-control" value="{{ $operationValues['area_terreno'] }}" required></div>
+                                    <div class="col-md-4"><label class="form-label">Lançamento *</label><input type="month" name="data_lancamento" class="form-control" value="{{ $operationValues['data_lancamento'] }}" required></div>
+                                    <div class="col-md-3"><label class="form-label">Lançamento das Vendas *</label><input type="month" name="lancamento_vendas" class="form-control" value="{{ $operationValues['lancamento_vendas'] }}" required></div>
+                                    <div class="col-md-3"><label class="form-label">Início das Obras *</label><input type="month" name="inicio_obras" id="inicio_obras" class="form-control" value="{{ $operationValues['inicio_obras'] }}" required></div>
+                                    <div class="col-md-3"><label class="form-label">Previsão de Entrega *</label><input type="month" name="previsao_entrega" id="previsao_entrega" class="form-control" value="{{ $operationValues['previsao_entrega'] }}" required></div>
+                                    <div class="col-md-3"><label class="form-label">Prazo Remanescente (meses)</label><input type="number" name="prazo_remanescente" id="prazo_remanescente" class="form-control" value="{{ $operationValues['prazo_remanescente'] }}" readonly></div>
+                                    <div class="col-md-3"><label class="form-label">CEP *</label><input type="text" name="cep" id="cep" class="form-control" value="{{ $operationValues['cep'] }}" required></div>
+                                    <div class="col-md-6"><label class="form-label">Rua</label><input type="text" name="logradouro" id="logradouro" class="form-control" value="{{ $operationValues['logradouro'] }}" readonly></div>
+                                    <div class="col-md-3"><label class="form-label">Complemento</label><input type="text" name="complemento" class="form-control" value="{{ $operationValues['complemento'] }}"></div>
+                                    <div class="col-md-3"><label class="form-label">Número *</label><input type="text" name="numero" class="form-control" value="{{ $operationValues['numero'] }}" required></div>
+                                    <div class="col-md-4"><label class="form-label">Bairro</label><input type="text" name="bairro" id="bairro" class="form-control" value="{{ $operationValues['bairro'] }}" readonly></div>
+                                    <div class="col-md-4"><label class="form-label">Cidade</label><input type="text" name="cidade" id="cidade" class="form-control" value="{{ $operationValues['cidade'] }}" readonly></div>
+                                    <div class="col-md-2"><label class="form-label">Estado</label><input type="text" name="estado" id="estado" class="form-control" value="{{ $operationValues['estado'] }}" readonly></div>
 
                                     <div class="col-12">
                                         <hr class="my-2">
@@ -797,138 +940,131 @@
                                     </div>
 
                                     <div class="col-12" id="blocos-empreendimento">
-                                        <div class="bloco-dinamico">
-                                            <div class="proposal-list p-3 p-lg-4">
-                                                <div class="mb-4">
-                                                    <label class="form-label">Identificação do Empreendimento</label>
-                                                    <input type="text" name="nome_empreendimento[]" class="form-control" placeholder="Ex: Torre Madrid" required>
-                                                </div>
+                                        @foreach ($formProjects as $projectForm)
+                                            <div class="bloco-dinamico">
+                                                <div class="proposal-list p-3 p-lg-4">
+                                                    <input type="hidden" name="project_id[]" value="{{ $projectForm['id'] }}">
 
-                                                <div class="d-flex flex-column gap-4">
-                                                    <div>
-                                                        <div class="panel-title">Resumo das Unidades</div>
-                                                        <div class="table-shell">
-                                                            <div class="table-responsive">
-                                                                <table class="table table-bordered">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Permutadas</th>
-                                                                            <th>Quitadas</th>
-                                                                            <th>Não Quitadas</th>
-                                                                            <th>Estoque</th>
-                                                                            <th>Total</th>
-                                                                            <th>% Vendidas</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <tr>
-                                                                            <td><input type="number" name="unidades_permutadas[]" class="form-control unidade-campo" min="0"></td>
-                                                                            <td><input type="number" name="unidades_quitadas[]" class="form-control unidade-campo" min="0"></td>
-                                                                            <td><input type="number" name="unidades_nao_quitadas[]" class="form-control unidade-campo" min="0"></td>
-                                                                            <td><input type="number" name="unidades_estoque[]" class="form-control unidade-campo" min="0"></td>
-                                                                            <td><input type="number" name="unidades_total[]" class="form-control" readonly></td>
-                                                                            <td><input type="number" name="percentual_vendas[]" class="form-control" readonly></td>
-                                                                        </tr>
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        </div>
+                                                    <div class="mb-4">
+                                                        <label class="form-label">Identificação do Empreendimento</label>
+                                                        <input type="text" name="nome_empreendimento[]" class="form-control" placeholder="Ex: Torre Madrid" value="{{ $projectForm['name'] }}" required>
                                                     </div>
 
-                                                    <div>
-                                                        <div class="panel-title">Resumo Financeiro</div>
-                                                        <div class="table-shell">
-                                                            <div class="table-responsive">
-                                                                <table class="table table-bordered">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Custo Incorrido</th>
-                                                                            <th>Custo a Incorrer</th>
-                                                                            <th>Custo Total</th>
-                                                                            <th>Estágio da Obra (%)</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <tr>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="custo_incidido[]" class="form-control money"></div></td>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="custo_a_incorrer[]" class="form-control money"></div></td>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="custo_total[]" class="form-control money" readonly></div></td>
-                                                                            <td><input type="number" name="estagio_obra[]" class="form-control" readonly></td>
-                                                                        </tr>
-                                                                    </tbody>
-                                                                </table>
+                                                    <div class="d-flex flex-column gap-4">
+                                                        <div>
+                                                            <div class="panel-title">Resumo das Unidades</div>
+                                                            <div class="table-shell">
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-bordered">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th>Permutadas</th>
+                                                                                <th>Quitadas</th>
+                                                                                <th>Não Quitadas</th>
+                                                                                <th>Estoque</th>
+                                                                                <th>Total</th>
+                                                                                <th>% Vendidas</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <tr>
+                                                                                <td><input type="number" name="unidades_permutadas[]" class="form-control unidade-campo" min="0" value="{{ $projectForm['units_exchanged'] }}"></td>
+                                                                                <td><input type="number" name="unidades_quitadas[]" class="form-control unidade-campo" min="0" value="{{ $projectForm['units_paid'] }}"></td>
+                                                                                <td><input type="number" name="unidades_nao_quitadas[]" class="form-control unidade-campo" min="0" value="{{ $projectForm['units_unpaid'] }}"></td>
+                                                                                <td><input type="number" name="unidades_estoque[]" class="form-control unidade-campo" min="0" value="{{ $projectForm['units_stock'] }}"></td>
+                                                                                <td><input type="number" name="unidades_total[]" class="form-control" value="{{ $projectForm['units_total'] }}" readonly></td>
+                                                                                <td><input type="number" name="percentual_vendas[]" class="form-control" value="{{ $projectForm['sales_percentage'] }}" readonly></td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div>
-                                                        <div class="panel-title">Valores de Venda</div>
-                                                        <div class="table-shell">
-                                                            <div class="table-responsive">
-                                                                <table class="table table-bordered">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Quitadas</th>
-                                                                            <th>Não Quitadas</th>
-                                                                            <th>Estoque</th>
-                                                                            <th>Total Venda</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <tr>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_quitadas[]" class="form-control money"></div></td>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_nao_quitadas[]" class="form-control money"></div></td>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_estoque[]" class="form-control money"></div></td>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_total_venda[]" class="form-control money" readonly></div></td>
-                                                                        </tr>
-                                                                    </tbody>
-                                                                </table>
+                                                        <div>
+                                                            <div class="panel-title">Resumo Financeiro</div>
+                                                            <div class="table-shell">
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-bordered">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th>Custo Incorrido</th>
+                                                                                <th>Custo a Incorrer</th>
+                                                                                <th>Custo Total</th>
+                                                                                <th>Estágio da Obra (%)</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <tr>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="custo_incidido[]" class="form-control money" value="{{ $projectForm['cost_incurred'] }}"></div></td>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="custo_a_incorrer[]" class="form-control money" value="{{ $projectForm['cost_to_incur'] }}"></div></td>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="custo_total[]" class="form-control money" value="{{ $projectForm['cost_total'] }}" readonly></div></td>
+                                                                                <td><input type="number" name="estagio_obra[]" class="form-control" value="{{ $projectForm['work_stage_percentage'] }}" readonly></td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div>
-                                                        <div class="panel-title">Fluxo de Pagamento</div>
-                                                        <div class="table-shell">
-                                                            <div class="table-responsive">
-                                                                <table class="table table-bordered">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>Já Recebido</th>
-                                                                            <th>Até Chaves</th>
-                                                                            <th>Chaves + Pós Chaves</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <tr>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_ja_recebido[]" class="form-control money"></div></td>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_ate_chaves[]" class="form-control money"></div></td>
-                                                                            <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_chaves_pos[]" class="form-control money"></div></td>
-                                                                        </tr>
-                                                                    </tbody>
-                                                                </table>
+                                                        <div>
+                                                            <div class="panel-title">Valores de Venda</div>
+                                                            <div class="table-shell">
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-bordered">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th>Quitadas</th>
+                                                                                <th>Não Quitadas</th>
+                                                                                <th>Estoque</th>
+                                                                                <th>Total Venda</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <tr>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_quitadas[]" class="form-control money" value="{{ $projectForm['value_paid'] }}"></div></td>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_nao_quitadas[]" class="form-control money" value="{{ $projectForm['value_unpaid'] }}"></div></td>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_estoque[]" class="form-control money" value="{{ $projectForm['value_stock'] }}"></div></td>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_total_venda[]" class="form-control money" value="{{ $projectForm['value_total_sale'] }}" readonly></div></td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <div class="panel-title">Fluxo de Pagamento</div>
+                                                            <div class="table-shell">
+                                                                <div class="table-responsive">
+                                                                    <table class="table table-bordered">
+                                                                        <thead>
+                                                                            <tr>
+                                                                                <th>Já Recebido</th>
+                                                                                <th>Até Chaves</th>
+                                                                                <th>Chaves + Pós Chaves</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            <tr>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_ja_recebido[]" class="form-control money" value="{{ $projectForm['value_received'] }}"></div></td>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_ate_chaves[]" class="form-control money" value="{{ $projectForm['value_until_keys'] }}"></div></td>
+                                                                                <td><div class="input-group"><span class="input-group-text">R$</span><input type="text" name="valor_chaves_pos[]" class="form-control money" value="{{ $projectForm['value_post_keys'] }}"></div></td>
+                                                                            </tr>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        @endforeach
                                     </div>
 
                                     <div class="col-12">
                                         <hr class="my-2">
                                     </div>
-
-                                    @php
-                                        $typeColumns = max(
-                                            1,
-                                            count(old('tipo_total', [])),
-                                            count(old('tipo_dormitorios', [])),
-                                            count(old('tipo_vagas', [])),
-                                            count(old('tipo_area', [])),
-                                            count(old('tipo_preco_medio', [])),
-                                        );
-                                    @endphp
 
                                     <div class="col-12 d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
                                         <div>
@@ -940,13 +1076,13 @@
                                     </div>
 
                                     <div class="col-12">
-                                        <div class="proposal-list p-3 p-lg-4">
-                                            <div class="row g-3 mb-4">
-                                                <div class="col-md-2"><label class="form-label">Blocos</label><input type="number" min="1" name="car_bloco" id="car_bloco" class="form-control" value="{{ old('car_bloco') }}" required></div>
-                                                <div class="col-md-2"><label class="form-label">Pavimentos</label><input type="number" min="1" name="car_pavimentos" id="car_pavimentos" class="form-control" value="{{ old('car_pavimentos') }}" required></div>
-                                                <div class="col-md-3"><label class="form-label">Andares Tipo</label><input type="number" min="1" name="car_andares_tipo" id="car_andares_tipo" class="form-control" value="{{ old('car_andares_tipo') }}" required></div>
-                                                <div class="col-md-3"><label class="form-label">Unidades/Andar</label><input type="number" min="1" name="car_unidades_andar" id="car_unidades_andar" class="form-control" value="{{ old('car_unidades_andar') }}" required></div>
-                                                <div class="col-md-2"><label class="form-label">Total</label><input type="number" name="car_total" id="car_total" class="form-control" value="{{ old('car_total') }}" readonly></div>
+                                                <div class="proposal-list p-3 p-lg-4">
+                                                    <div class="row g-3 mb-4">
+                                                <div class="col-md-2"><label class="form-label">Blocos</label><input type="number" min="1" name="car_bloco" id="car_bloco" class="form-control" value="{{ $operationValues['car_bloco'] }}" required></div>
+                                                <div class="col-md-2"><label class="form-label">Pavimentos</label><input type="number" min="1" name="car_pavimentos" id="car_pavimentos" class="form-control" value="{{ $operationValues['car_pavimentos'] }}" required></div>
+                                                <div class="col-md-3"><label class="form-label">Andares Tipo</label><input type="number" min="1" name="car_andares_tipo" id="car_andares_tipo" class="form-control" value="{{ $operationValues['car_andares_tipo'] }}" required></div>
+                                                <div class="col-md-3"><label class="form-label">Unidades/Andar</label><input type="number" min="1" name="car_unidades_andar" id="car_unidades_andar" class="form-control" value="{{ $operationValues['car_unidades_andar'] }}" required></div>
+                                                <div class="col-md-2"><label class="form-label">Total</label><input type="number" name="car_total" id="car_total" class="form-control" value="{{ $operationValues['car_total'] }}" readonly></div>
                                             </div>
 
                                             <div class="table-shell">
@@ -955,62 +1091,62 @@
                                                         <thead>
                                                             <tr>
                                                                 <th>&nbsp;</th>
-                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                @foreach ($typeRows as $typeIndex => $typeRow)
                                                                     <th class="tipo-coluna-header">
                                                                         <div class="d-flex justify-content-between align-items-center gap-2">
                                                                             <span>Tipo {{ $typeIndex + 1 }}</span>
-                                                                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-danger remove-type-button {{ $typeColumns === 1 ? 'd-none' : '' }}">Remover</button>
+                                                                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-danger remove-type-button {{ $typeRows->count() === 1 ? 'd-none' : '' }}">Remover</button>
                                                                         </div>
                                                                     </th>
-                                                                @endfor
+                                                                @endforeach
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             <tr>
                                                                 <th>Total</th>
-                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
-                                                                    <td class="tipo-coluna"><input type="number" name="tipo_total[]" class="form-control" min="1" value="{{ old('tipo_total.'.$typeIndex) }}" required></td>
-                                                                @endfor
+                                                                @foreach ($typeRows as $typeRow)
+                                                                    <td class="tipo-coluna"><input type="number" name="tipo_total[]" class="form-control" min="1" value="{{ $typeRow['total'] }}" required></td>
+                                                                @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th>Dormitórios</th>
-                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
-                                                                    <td class="tipo-coluna"><input type="text" name="tipo_dormitorios[]" class="form-control" value="{{ old('tipo_dormitorios.'.$typeIndex) }}" required></td>
-                                                                @endfor
+                                                                @foreach ($typeRows as $typeRow)
+                                                                    <td class="tipo-coluna"><input type="text" name="tipo_dormitorios[]" class="form-control" value="{{ $typeRow['bedrooms'] }}" required></td>
+                                                                @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th>Vagas</th>
-                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
-                                                                    <td class="tipo-coluna"><input type="text" name="tipo_vagas[]" class="form-control" value="{{ old('tipo_vagas.'.$typeIndex) }}" required></td>
-                                                                @endfor
+                                                                @foreach ($typeRows as $typeRow)
+                                                                    <td class="tipo-coluna"><input type="text" name="tipo_vagas[]" class="form-control" value="{{ $typeRow['parking_spaces'] }}" required></td>
+                                                                @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th>Área Útil (m²)</th>
-                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
-                                                                    <td class="tipo-coluna"><input type="number" step="0.01" name="tipo_area[]" class="form-control tipo-area" value="{{ old('tipo_area.'.$typeIndex) }}" required></td>
-                                                                @endfor
+                                                                @foreach ($typeRows as $typeRow)
+                                                                    <td class="tipo-coluna"><input type="number" step="0.01" name="tipo_area[]" class="form-control tipo-area" value="{{ $typeRow['useful_area'] }}" required></td>
+                                                                @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th>Preço Médio</th>
-                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                @foreach ($typeRows as $typeRow)
                                                                     <td class="tipo-coluna">
                                                                         <div class="input-group">
                                                                             <span class="input-group-text">R$</span>
-                                                                            <input type="text" name="tipo_preco_medio[]" class="form-control tipo-preco-medio money" value="{{ old('tipo_preco_medio.'.$typeIndex) }}" required>
+                                                                            <input type="text" name="tipo_preco_medio[]" class="form-control tipo-preco-medio money" value="{{ $typeRow['average_price'] }}" required>
                                                                         </div>
                                                                     </td>
-                                                                @endfor
+                                                                @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th>Preço / m²</th>
-                                                                @for ($typeIndex = 0; $typeIndex < $typeColumns; $typeIndex++)
+                                                                @foreach ($typeRows as $typeRow)
                                                                     <td class="tipo-coluna">
                                                                         <div class="input-group">
                                                                             <span class="input-group-text">R$</span>
-                                                                            <input type="text" name="tipo_preco_m2[]" class="form-control tipo-preco-m2" value="{{ old('tipo_preco_m2.'.$typeIndex) }}" readonly>
+                                                                            <input type="text" name="tipo_preco_m2[]" class="form-control tipo-preco-m2" value="{{ $typeRow['price_per_m2'] }}" readonly>
                                                                         </div>
                                                                     </td>
-                                                                @endfor
+                                                                @endforeach
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -1022,6 +1158,20 @@
                                     <div class="col-12">
                                         <label class="form-label">Arquivos do Empreendimento</label>
                                         <input type="file" name="arquivos[]" class="form-control" multiple>
+                                        @if ($proposal->files->isNotEmpty())
+                                            <div class="section-copy mt-2">Arquivos já enviados permanecem disponíveis abaixo. Novos uploads serão adicionados ao histórico da proposta.</div>
+                                            <div class="d-flex flex-column gap-2 mt-3">
+                                                @foreach ($proposal->files as $file)
+                                                    <a class="attachment-card" href="{{ route('site.proposal.continuation.files.download', [$access, $file]) }}">
+                                                        <div>
+                                                            <div class="attachment-name">{{ $file->original_name }}</div>
+                                                            <div class="attachment-meta small">{{ $file->created_at?->format('d/m/Y H:i') }}</div>
+                                                        </div>
+                                                        <span class="attachment-cta">Baixar arquivo</span>
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <div class="col-12 d-flex flex-column flex-sm-row gap-3 justify-content-between align-items-sm-center">

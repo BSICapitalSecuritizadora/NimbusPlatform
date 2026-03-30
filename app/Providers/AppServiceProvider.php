@@ -3,10 +3,13 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -26,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureRateLimiting();
 
         Gate::before(function ($user, $ability) {
             return $user->hasRole('super-admin') ? true : null;
@@ -54,5 +58,47 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+    }
+
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('proposal-submission', function (Request $request): Limit {
+            $email = mb_strtolower((string) $request->input('email'));
+            $cnpj = preg_replace('/\D/', '', (string) $request->input('cnpj'));
+
+            return Limit::perMinute(5)->by(implode('|', [
+                'proposal-submission',
+                $request->ip(),
+                $email,
+                $cnpj,
+            ]));
+        });
+
+        RateLimiter::for('proposal-link-access', function (Request $request): Limit {
+            $access = $request->route('access');
+            $token = is_object($access) && method_exists($access, 'getRouteKey')
+                ? (string) $access->getRouteKey()
+                : (string) $access;
+
+            return Limit::perMinute(20)->by("proposal-link-access|{$request->ip()}|{$token}");
+        });
+
+        RateLimiter::for('proposal-verification', function (Request $request): Limit {
+            $access = $request->route('access');
+            $token = is_object($access) && method_exists($access, 'getRouteKey')
+                ? (string) $access->getRouteKey()
+                : (string) $access;
+
+            return Limit::perMinute(5)->by("proposal-verification|{$request->ip()}|{$token}");
+        });
+
+        RateLimiter::for('proposal-continuation-store', function (Request $request): Limit {
+            $access = $request->route('access');
+            $token = is_object($access) && method_exists($access, 'getRouteKey')
+                ? (string) $access->getRouteKey()
+                : (string) $access;
+
+            return Limit::perMinute(10)->by("proposal-continuation-store|{$request->ip()}|{$token}");
+        });
     }
 }

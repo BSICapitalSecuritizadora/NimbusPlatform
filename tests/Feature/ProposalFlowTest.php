@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Proposals\SendProposalContinuationLink;
+use App\Actions\Proposals\UpdateProposalStatus;
 use App\Mail\ProposalContinuationLinkMail;
 use App\Models\Proposal;
 use App\Models\ProposalAssignment;
@@ -8,6 +9,7 @@ use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalDistributionState;
 use App\Models\ProposalRepresentative;
 use App\Models\ProposalSector;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -65,6 +67,38 @@ it('distributes incoming proposals in round-robin order without repeating repres
 
         expect($representativeId)->not->toBe($assignedRepresentativeIds[$index - 1]);
     }
+});
+
+it('stores each proposal company as an immutable snapshot even when the cnpj repeats', function () {
+    Mail::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create([
+        'name' => 'Representante Comercial',
+        'queue_position' => 1,
+    ]);
+
+    $firstPayload = initialProposalPayload($sector, 1);
+    $secondPayload = initialProposalPayload($sector, 2);
+
+    $secondPayload['cnpj'] = $firstPayload['cnpj'];
+    $secondPayload['nome_empresa'] = 'Construtora Histórico 2';
+    $secondPayload['site'] = 'https://historico-2.example.com';
+
+    $this->post(route('site.proposal.store'), $firstPayload)->assertRedirect(route('site.proposal.create'));
+    $this->post(route('site.proposal.store'), $secondPayload)->assertRedirect(route('site.proposal.create'));
+
+    $proposals = Proposal::query()
+        ->with('company')
+        ->orderBy('id')
+        ->get();
+
+    expect($proposals)->toHaveCount(2)
+        ->and($proposals[0]->company_id)->not->toBe($proposals[1]->company_id)
+        ->and($proposals[0]->company->name)->toBe($firstPayload['nome_empresa'])
+        ->and($proposals[0]->company->site)->toBe($firstPayload['site'])
+        ->and($proposals[1]->company->name)->toBe($secondPayload['nome_empresa'])
+        ->and($proposals[1]->company->site)->toBe($secondPayload['site']);
 });
 
 it('requires the signed magic link plus cnpj and emailed code before continuing the Nimbus-style form', function () {
@@ -198,6 +232,132 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->and((float) $firstProject->characteristics->unitTypes->last()->price_per_m2)->toBe(8904.11);
 
     Storage::disk('local')->assertExists($proposal->files->first()->file_path);
+});
+
+it('rate limits repeated continuation code attempts on the public flow', function () {
+    Mail::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create([
+        'name' => 'Representante Comercial',
+        'queue_position' => 1,
+    ]);
+
+    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
+        ->assertRedirect(route('site.proposal.create'));
+
+    $proposal = Proposal::query()->with(['company', 'latestContinuationAccess'])->firstOrFail();
+    $access = $proposal->latestContinuationAccess;
+    $mailData = captureContinuationMail();
+
+    $this->get(relativePathFromUrl($mailData['continuation_url']))->assertOk();
+
+    foreach (range(1, 5) as $attempt) {
+        $this->post(route('site.proposal.continuation.verify', $access), [
+            'cnpj' => $proposal->company->cnpj,
+            'code' => '000000',
+        ])->assertSessionHasErrors('code');
+    }
+
+    $this->post(route('site.proposal.continuation.verify', $access), [
+        'cnpj' => $proposal->company->cnpj,
+        'code' => '000000',
+    ])->assertTooManyRequests();
+});
+
+it('preserves project level internal analysis when the proposer resubmits requested information', function () {
+    Mail::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    $representativeUser = User::factory()->create([
+        'email' => 'representante-retorno@example.com',
+    ]);
+    $representativeUser->assignRole('commercial-representative');
+
+    ProposalRepresentative::factory()->create([
+        'name' => 'Representante Comercial',
+        'queue_position' => 1,
+        'user_id' => $representativeUser->id,
+        'email' => $representativeUser->email,
+    ]);
+
+    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
+        ->assertRedirect(route('site.proposal.create'));
+
+    $proposal = Proposal::query()
+        ->with(['company', 'latestContinuationAccess'])
+        ->firstOrFail();
+    $initialMailData = captureContinuationMail();
+
+    $this->get(relativePathFromUrl($initialMailData['continuation_url']))->assertOk();
+    $this->post(route('site.proposal.continuation.verify', $proposal->latestContinuationAccess), [
+        'cnpj' => $proposal->company->cnpj,
+        'code' => $initialMailData['code'],
+    ])->assertRedirect(route('site.proposal.continuation.form', $proposal->latestContinuationAccess));
+
+    $this->post(route('site.proposal.continuation.store', $proposal->latestContinuationAccess), continuationPayload())
+        ->assertRedirect(route('site.proposal.continuation.form', $proposal->latestContinuationAccess));
+
+    $proposal->refresh();
+    $proposal->load('projects.indicators');
+
+    $firstProject = $proposal->projects()->oldest('id')->firstOrFail();
+    $indicator = $firstProject->indicators()->create([
+        'financiamento_custo_obra_ideal' => 70.0,
+        'financiamento_custo_obra_limite' => 75.0,
+        'ltv_ideal' => 55.0,
+        'ltv_limite' => 60.0,
+    ]);
+
+    app(UpdateProposalStatus::class)->handle(
+        $proposal->fresh(),
+        Proposal::STATUS_AWAITING_INFORMATION,
+        $representativeUser,
+        'Atualizar vendas da Torre Madrid.',
+    );
+
+    $proposal->refresh();
+    $proposal->load(['company', 'latestContinuationAccess', 'projects']);
+
+    expect($proposal->status)->toBe(Proposal::STATUS_AWAITING_INFORMATION)
+        ->and($proposal->continuationAccesses()->count())->toBe(2)
+        ->and($proposal->latestContinuationAccess?->id)->not->toBeNull();
+
+    $latestAccess = $proposal->latestContinuationAccess;
+
+    $this->get(relativePathFromUrl($latestAccess->generated_url))
+        ->assertOk();
+
+    $this->post(route('site.proposal.continuation.verify', $latestAccess), [
+        'cnpj' => $proposal->company->cnpj,
+        'code' => $latestAccess->display_code,
+    ])->assertRedirect(route('site.proposal.continuation.form', $latestAccess));
+
+    $this->get(route('site.proposal.continuation.form', $latestAccess))
+        ->assertOk()
+        ->assertSee('Atualize as informações solicitadas')
+        ->assertSee('Torre Madrid');
+
+    $resubmissionPayload = continuationPayload();
+    $resubmissionPayload['project_id'] = $proposal->projects()->orderBy('id')->pluck('id')->all();
+    $resubmissionPayload['valor_quitadas'][0] = '950.000,00';
+
+    $this->post(route('site.proposal.continuation.store', $latestAccess), $resubmissionPayload)
+        ->assertRedirect(route('site.proposal.continuation.form', $latestAccess))
+        ->assertSessionHas('success');
+
+    $proposal->refresh();
+    $proposal->load(['projects.indicators', 'latestStatusHistory']);
+
+    $updatedFirstProject = $proposal->projects()->oldest('id')->firstOrFail();
+
+    expect($proposal->status)->toBe(Proposal::STATUS_IN_REVIEW)
+        ->and($updatedFirstProject->id)->toBe($firstProject->id)
+        ->and((float) $updatedFirstProject->value_paid)->toBe(950000.0)
+        ->and($updatedFirstProject->indicators)->not->toBeNull()
+        ->and($updatedFirstProject->indicators?->id)->toBe($indicator->id)
+        ->and((float) $updatedFirstProject->indicators?->ltv_ideal)->toBe(55.0)
+        ->and($proposal->latestStatusHistory?->new_status)->toBe(Proposal::STATUS_IN_REVIEW);
 });
 
 it('revokes the previous access and records a new send when the link is resent', function () {

@@ -11,6 +11,10 @@ use Illuminate\Validation\ValidationException;
 
 class UpdateProposalStatus
 {
+    public function __construct(
+        protected NotifyProposalStatusChange $notifyProposalStatusChange,
+    ) {}
+
     public function handle(
         Proposal $proposal,
         string $newStatus,
@@ -44,13 +48,17 @@ class UpdateProposalStatus
             ]);
         }
 
-        return DB::transaction(function () use ($proposal, $currentStatus, $newStatus, $user, $normalizedNote): ProposalStatusHistory {
+        $history = DB::transaction(function () use ($proposal, $currentStatus, $newStatus, $user, $normalizedNote): ProposalStatusHistory {
             $proposal->forceFill([
                 'status' => $newStatus,
             ])->save();
 
             return $this->recordHistory($proposal, $currentStatus, $newStatus, $user, $normalizedNote);
         });
+
+        $this->notifyProposalStatusChange->handle($proposal->fresh(['company', 'contact', 'latestContinuationAccess']), $newStatus);
+
+        return $history;
     }
 
     public function recordHistory(

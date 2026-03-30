@@ -6,13 +6,16 @@ use App\Actions\Proposals\UpdateProposalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProposalContinuationRequest;
 use App\Http\Requests\VerifyProposalContinuationRequest;
+use App\Models\ProjectCharacteristic;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalFile;
+use App\Models\ProposalProject;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -86,11 +89,10 @@ class ProposalContinuationController extends Controller
         $this->ensureAuthorized($request, $access);
 
         $proposal = $this->loadProposal($access);
+        $this->ensureCanStoreFromRequester($proposal);
         $validated = $request->validated();
 
         DB::transaction(function () use ($proposal, $validated, $request, $updateProposalStatus): void {
-            $proposal->projects()->delete();
-
             $sharedPayload = [
                 'company_name' => $validated['nome'],
                 'site' => $validated['site'] ?? null,
@@ -116,7 +118,7 @@ class ProposalContinuationController extends Controller
             );
 
             foreach ($validated['nome_empreendimento'] as $index => $projectName) {
-                $project = $proposal->projects()->create([
+                $project = $this->upsertProposalProject($proposal, $validated['project_id'][$index] ?? null, [
                     ...$sharedPayload,
                     'name' => $projectName,
                     'remaining_months' => $validated['prazo_remanescente'] ?? $remainingMonths,
@@ -134,44 +136,11 @@ class ProposalContinuationController extends Controller
                     'value_post_keys' => $validated['valor_chaves_pos'][$index] ?? null,
                 ]);
 
-                $characteristic = $project->characteristics()->create([
-                    'blocks' => $validated['car_bloco'],
-                    'floors' => $validated['car_pavimentos'],
-                    'typical_floors' => $validated['car_andares_tipo'],
-                    'units_per_floor' => $validated['car_unidades_andar'],
-                    'total_units' => $validated['car_total']
-                        ?? ($validated['car_bloco'] * $validated['car_andares_tipo'] * $validated['car_unidades_andar']),
-                ]);
-
-                foreach ($validated['tipo_total'] as $typeIndex => $totalUnits) {
-                    $averagePrice = $this->normalizeMoney($validated['tipo_preco_medio'][$typeIndex] ?? null);
-                    $usefulArea = (float) ($validated['tipo_area'][$typeIndex] ?? 0);
-
-                    $characteristic->unitTypes()->create([
-                        'order' => $typeIndex + 1,
-                        'total_units' => $totalUnits,
-                        'bedrooms' => $validated['tipo_dormitorios'][$typeIndex] ?? null,
-                        'parking_spaces' => $validated['tipo_vagas'][$typeIndex] ?? null,
-                        'useful_area' => $usefulArea,
-                        'average_price' => $averagePrice,
-                        'price_per_m2' => $usefulArea > 0 ? round($averagePrice / $usefulArea, 2) : 0,
-                    ]);
-                }
+                $this->syncProjectCharacteristics($project, $validated);
             }
 
             if ($request->hasFile('arquivos')) {
-                foreach ($request->file('arquivos') as $file) {
-                    $storedPath = $file->store("proposal-files/{$proposal->id}", 'local');
-
-                    $proposal->files()->create([
-                        'disk' => 'local',
-                        'file_path' => $storedPath,
-                        'file_name' => basename($storedPath),
-                        'original_name' => $file->getClientOriginalName(),
-                        'mime_type' => $file->getMimeType(),
-                        'file_size' => $file->getSize(),
-                    ]);
-                }
+                $this->storeUploadedFiles($proposal, $request->file('arquivos'));
             }
 
             $proposal->forceFill([
@@ -235,6 +204,11 @@ class ProposalContinuationController extends Controller
         abort_unless($request->session()->has($this->magicLinkSessionKey($access)) && $access->isActive(), 403);
     }
 
+    protected function ensureCanStoreFromRequester(Proposal $proposal): void
+    {
+        abort_unless($proposal->canBeCompletedByRequester(), 403);
+    }
+
     protected function isAuthorized(Request $request, ProposalContinuationAccess $access): bool
     {
         return $request->session()->has($this->verifiedSessionKey($access)) && $access->isActive();
@@ -263,6 +237,77 @@ class ProposalContinuationController extends Controller
     protected function calculateRemainingMonths(string $startDate, string $endDate): int
     {
         return Carbon::parse($startDate)->diffInMonths(Carbon::parse($endDate));
+    }
+
+    protected function upsertProposalProject(Proposal $proposal, null|string|int $projectId, array $attributes): ProposalProject
+    {
+        if (blank($projectId)) {
+            return $proposal->projects()->create($attributes);
+        }
+
+        $project = $proposal->projects()->whereKey($projectId)->first();
+
+        if (! $project) {
+            throw ValidationException::withMessages([
+                'project_id' => 'Um dos empreendimentos enviados não pertence a esta proposta.',
+            ]);
+        }
+
+        $project->fill($attributes);
+        $project->save();
+
+        return $project;
+    }
+
+    protected function syncProjectCharacteristics(ProposalProject $project, array $validated): void
+    {
+        /** @var ProjectCharacteristic $characteristic */
+        $characteristic = $project->characteristics()->firstOrNew();
+        $characteristic->fill([
+            'blocks' => $validated['car_bloco'],
+            'floors' => $validated['car_pavimentos'],
+            'typical_floors' => $validated['car_andares_tipo'],
+            'units_per_floor' => $validated['car_unidades_andar'],
+            'total_units' => $validated['car_total']
+                ?? ($validated['car_bloco'] * $validated['car_andares_tipo'] * $validated['car_unidades_andar']),
+        ]);
+        $characteristic->save();
+
+        $characteristic->unitTypes()->delete();
+
+        foreach ($validated['tipo_total'] as $typeIndex => $totalUnits) {
+            $averagePrice = $this->normalizeMoney($validated['tipo_preco_medio'][$typeIndex] ?? null);
+            $usefulArea = (float) ($validated['tipo_area'][$typeIndex] ?? 0);
+
+            $characteristic->unitTypes()->create([
+                'order' => $typeIndex + 1,
+                'total_units' => $totalUnits,
+                'bedrooms' => $validated['tipo_dormitorios'][$typeIndex] ?? null,
+                'parking_spaces' => $validated['tipo_vagas'][$typeIndex] ?? null,
+                'useful_area' => $usefulArea,
+                'average_price' => $averagePrice,
+                'price_per_m2' => $usefulArea > 0 ? round($averagePrice / $usefulArea, 2) : 0,
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, UploadedFile>  $files
+     */
+    protected function storeUploadedFiles(Proposal $proposal, array $files): void
+    {
+        foreach ($files as $file) {
+            $storedPath = $file->store("proposal-files/{$proposal->id}", 'local');
+
+            $proposal->files()->create([
+                'disk' => 'local',
+                'file_path' => $storedPath,
+                'file_name' => basename($storedPath),
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+        }
     }
 
     protected function normalizeMoney(null|string|float|int $value): float

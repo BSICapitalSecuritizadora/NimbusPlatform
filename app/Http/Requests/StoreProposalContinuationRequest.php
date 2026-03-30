@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreProposalContinuationRequest extends FormRequest
@@ -14,6 +15,8 @@ class StoreProposalContinuationRequest extends FormRequest
 
     public function rules(): array
     {
+        $proposalId = $this->route('access')?->proposal_id;
+
         return [
             'nome' => ['required', 'string', 'max:255'],
             'site' => ['nullable', 'url', 'max:255'],
@@ -32,6 +35,14 @@ class StoreProposalContinuationRequest extends FormRequest
             'bairro' => ['required', 'string', 'max:255'],
             'cidade' => ['required', 'string', 'max:255'],
             'estado' => ['required', 'string', 'size:2'],
+            'project_id' => ['nullable', 'array'],
+            'project_id.*' => [
+                'nullable',
+                'integer',
+                Rule::exists('proposal_projects', 'id')->where(
+                    fn ($query) => $query->where('proposal_id', $proposalId),
+                ),
+            ],
             'nome_empreendimento' => ['required', 'array', 'min:1'],
             'nome_empreendimento.*' => ['required', 'string', 'max:255'],
             'unidades_permutadas' => ['required', 'array'],
@@ -74,7 +85,7 @@ class StoreProposalContinuationRequest extends FormRequest
             'tipo_preco_medio' => ['required', 'array', 'min:1'],
             'tipo_preco_medio.*' => ['required', 'string', 'max:50'],
             'arquivos' => ['nullable', 'array'],
-            'arquivos.*' => ['file', 'max:10240'],
+            'arquivos.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
         ];
     }
 
@@ -88,12 +99,21 @@ class StoreProposalContinuationRequest extends FormRequest
             'lancamento_vendas.date_format' => 'O lançamento das vendas deve estar no formato mm/aaaa.',
             'inicio_obras.date_format' => 'O início das obras deve estar no formato mm/aaaa.',
             'previsao_entrega.date_format' => 'A previsão de entrega deve estar no formato mm/aaaa.',
+            'arquivos.*.mimes' => 'Os arquivos devem estar nos formatos PDF, DOC, DOCX, XLS, XLSX, PNG, JPG ou JPEG.',
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            if (
+                filled($this->input('inicio_obras'))
+                && filled($this->input('previsao_entrega'))
+                && $this->input('previsao_entrega') < $this->input('inicio_obras')
+            ) {
+                $validator->errors()->add('previsao_entrega', 'A previsão de entrega deve ser posterior ao início das obras.');
+            }
+
             $expectedProjects = count($this->input('nome_empreendimento', []));
             $perProjectFields = [
                 'unidades_permutadas',
@@ -121,6 +141,10 @@ class StoreProposalContinuationRequest extends FormRequest
                 if (count($this->input($field, [])) !== $expectedProjects) {
                     $validator->errors()->add($field, 'Os blocos de empreendimentos enviados estão incompletos.');
                 }
+            }
+
+            if (filled($this->input('project_id')) && (count($this->input('project_id', [])) !== $expectedProjects)) {
+                $validator->errors()->add('project_id', 'Os identificadores dos empreendimentos enviados estão incompletos.');
             }
 
             $expectedTypes = count($this->input('tipo_total', []));

@@ -128,6 +128,14 @@ class Proposal extends Model
             && $this->assigned_representative_id === $user->proposalRepresentative?->id;
     }
 
+    public function canBeCompletedByRequester(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_AWAITING_COMPLETION,
+            self::STATUS_AWAITING_INFORMATION,
+        ], true);
+    }
+
     public static function statusOptions(): array
     {
         return [

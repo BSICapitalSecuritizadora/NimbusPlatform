@@ -14,13 +14,13 @@ class StoreProposalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cnpj' => ['required', 'string', 'max:18'],
+            'cnpj' => ['required', 'string', 'regex:/^\d{2}\.?\d{3}\.?\d{3}\/?\d{4}\-?\d{2}$/'],
             'nome_empresa' => ['required', 'string', 'max:255'],
             'ie' => ['nullable', 'string', 'max:255'],
             'site' => ['nullable', 'url', 'max:255'],
             'setores' => ['required', 'array', 'min:1'],
-            'setores.*' => ['exists:proposal_sectors,id'],
-            'cep' => ['required', 'string', 'max:9'],
+            'setores.*' => ['distinct', 'exists:proposal_sectors,id'],
+            'cep' => ['required', 'string', 'regex:/^\d{5}\-?\d{3}$/'],
             'logradouro' => ['required', 'string', 'max:255'],
             'numero' => ['required', 'string', 'max:255'],
             'complemento' => ['nullable', 'string', 'max:255'],
@@ -29,9 +29,9 @@ class StoreProposalRequest extends FormRequest
             'estado' => ['required', 'string', 'size:2'],
             'nome_contato' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'telefone_pessoal' => ['required', 'string', 'max:20'],
+            'telefone_pessoal' => ['required', 'string', 'regex:/^\(?\d{2}\)?\s?\d{4,5}\-?\d{4}$/'],
             'whatsapp' => ['nullable', 'boolean'],
-            'telefone_empresa' => ['nullable', 'string', 'max:20'],
+            'telefone_empresa' => ['nullable', 'string', 'regex:/^\(?\d{2}\)?\s?\d{4,5}\-?\d{4}$/'],
             'cargo' => ['nullable', 'string', 'max:255'],
             'observacoes' => ['nullable', 'string'],
         ];
@@ -40,12 +40,28 @@ class StoreProposalRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'cnpj.regex' => 'Informe um CNPJ válido.',
+            'cep.regex' => 'Informe um CEP válido.',
             'setores.required' => 'Selecione ao menos um setor de atuação.',
             'nome_empresa.required' => 'O nome da empresa é obrigatório.',
             'nome_contato.required' => 'O nome do contato é obrigatório.',
             'email.required' => 'O e-mail do contato é obrigatório.',
             'email.email' => 'Informe um e-mail válido.',
             'telefone_pessoal.required' => 'O telefone pessoal é obrigatório.',
+            'telefone_pessoal.regex' => 'Informe um telefone pessoal válido.',
+            'telefone_empresa.regex' => 'Informe um telefone da empresa válido.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'cnpj' => trim((string) $this->input('cnpj')),
+            'cep' => trim((string) $this->input('cep')),
+            'telefone_pessoal' => trim((string) $this->input('telefone_pessoal')),
+            'telefone_empresa' => filled($this->input('telefone_empresa'))
+                ? trim((string) $this->input('telefone_empresa'))
+                : null,
+        ]);
     }
 }

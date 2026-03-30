@@ -34,21 +34,19 @@ class ProposalController extends Controller
 
         try {
             $proposal = DB::transaction(function () use ($validated, $request, $assignProposalRepresentative, $updateProposalStatus): Proposal {
-                $company = ProposalCompany::updateOrCreate(
-                    ['cnpj' => $validated['cnpj']],
-                    [
-                        'name' => $validated['nome_empresa'],
-                        'ie' => $validated['ie'],
-                        'site' => $validated['site'],
-                        'cep' => $validated['cep'],
-                        'logradouro' => $validated['logradouro'],
-                        'numero' => $validated['numero'],
-                        'complemento' => $validated['complemento'],
-                        'bairro' => $validated['bairro'],
-                        'cidade' => $validated['cidade'],
-                        'estado' => $validated['estado'],
-                    ],
-                );
+                $company = ProposalCompany::create([
+                    'name' => $validated['nome_empresa'],
+                    'cnpj' => $validated['cnpj'],
+                    'ie' => $validated['ie'],
+                    'site' => $validated['site'],
+                    'cep' => $validated['cep'],
+                    'logradouro' => $validated['logradouro'],
+                    'numero' => $validated['numero'],
+                    'complemento' => $validated['complemento'],
+                    'bairro' => $validated['bairro'],
+                    'cidade' => $validated['cidade'],
+                    'estado' => $validated['estado'],
+                ]);
 
                 $company->sectors()->sync($validated['setores']);
 

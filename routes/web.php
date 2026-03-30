@@ -55,14 +55,19 @@ Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
 
 // Proposals (Integrated from NimbusForms)
 Route::get('/proposta', [ProposalController::class, 'create'])->name('site.proposal.create');
-Route::post('/proposta', [ProposalController::class, 'store'])->name('site.proposal.store');
+Route::post('/proposta', [ProposalController::class, 'store'])
+    ->middleware('throttle:proposal-submission')
+    ->name('site.proposal.store');
 Route::get('/proposta/continuar/{access}', [ProposalContinuationController::class, 'showAccess'])
+    ->middleware('throttle:proposal-link-access')
     ->name('site.proposal.continuation.access');
 Route::post('/proposta/continuar/{access}', [ProposalContinuationController::class, 'verify'])
+    ->middleware('throttle:proposal-verification')
     ->name('site.proposal.continuation.verify');
 Route::get('/proposta/continuar/{access}/formulario', [ProposalContinuationController::class, 'showForm'])
     ->name('site.proposal.continuation.form');
 Route::post('/proposta/continuar/{access}/formulario', [ProposalContinuationController::class, 'store'])
+    ->middleware('throttle:proposal-continuation-store')
     ->name('site.proposal.continuation.store');
 Route::get('/proposta/continuar/{access}/arquivos/{file}', [ProposalContinuationController::class, 'downloadFile'])
     ->name('site.proposal.continuation.files.download');

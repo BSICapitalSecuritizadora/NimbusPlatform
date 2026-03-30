@@ -2,6 +2,8 @@
 
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\Filament\Resources\Proposals\ProposalResource;
+use App\Mail\ProposalContinuationLinkMail;
+use App\Mail\ProposalStatusUpdatedMail;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
@@ -10,6 +12,7 @@ use App\Models\ProposalStatusHistory;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -17,6 +20,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
+    Mail::fake();
 });
 
 it('limits the commercial representative to proposals assigned to their queue record', function () {
@@ -87,6 +91,8 @@ it('records the status transition history with the responsible user and note', f
         ->and($history->note)->toBe('Solicitar memorial descritivo atualizado ao cliente.')
         ->and($history->changed_at)->not->toBeNull()
         ->and($proposal->fresh()->latestStatusHistory?->is($history))->toBeTrue();
+
+    Mail::assertSent(ProposalContinuationLinkMail::class);
 });
 
 it('rejects unauthorized or inconsistent status changes', function () {
@@ -136,6 +142,32 @@ it('rejects unauthorized or inconsistent status changes', function () {
     ))->toThrow(ValidationException::class);
 
     expect(ProposalStatusHistory::query()->count())->toBe(0);
+});
+
+it('notifies the client when the proposal is approved', function () {
+    $representativeUser = User::factory()->create([
+        'email' => 'aprovacao@example.com',
+    ]);
+    $representativeUser->assignRole('commercial-representative');
+
+    $representative = ProposalRepresentative::factory()->create([
+        'user_id' => $representativeUser->id,
+        'email' => $representativeUser->email,
+    ]);
+
+    $proposal = createProposalForRepresentative($representative, Proposal::STATUS_IN_REVIEW);
+
+    app(UpdateProposalStatus::class)->handle(
+        $proposal,
+        Proposal::STATUS_APPROVED,
+        $representativeUser,
+        'Documentação validada.',
+    );
+
+    Mail::assertSent(ProposalStatusUpdatedMail::class, function (ProposalStatusUpdatedMail $mail) use ($proposal): bool {
+        return $mail->proposal->is($proposal->fresh())
+            && $mail->status === Proposal::STATUS_APPROVED;
+    });
 });
 
 function createProposalForRepresentative(ProposalRepresentative $representative, string $status): Proposal
