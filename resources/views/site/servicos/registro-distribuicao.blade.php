@@ -15,10 +15,10 @@
                     Registro e <br><span style="color: var(--gold);">Distribuição</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Cuidamos do registro junto à CVM e à B3, bem como da coordenação de toda a distribuição dos títulos junto a investidores qualificados e institucionais.
+                    Coordenamos o registro, a interface com a infraestrutura de mercado e a distribuição da oferta, com disciplina operacional e aderência regulatória.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Falar com Especialistas
+                    Fale com nossa equipe
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -36,8 +36,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Do Registro à Liquidação</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Garantimos que seus títulos cheguem ao mercado com total conformidade e distribuição eficiente.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Execução organizada até a liquidação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">O fechamento da operação depende de coordenação entre agentes, infraestrutura de mercado, rito regulatório e estratégia de colocação.</p>
         </div>
 
         <div class="row g-4">
@@ -46,8 +46,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Registro CVM & B3</h3>
-                    <p class="text-muted mb-0">Protocolo e acompanhamento do registro junto à CVM e depósito na B3, garantindo conformidade e agilidade no processo regulatório.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Fluxo regulatório</h3>
+                    <p class="text-muted mb-0">Conduzimos o protocolo, o acompanhamento e a interação com os agentes envolvidos no registro e no depósito da operação.</p>
                 </div>
             </div>
             
@@ -56,8 +56,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Coordenação de Distribuição</h3>
-                    <p class="text-muted mb-0">Articulação com distribuidores, plataformas de investimento e assessores de investimento para garantir demanda qualificada.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Coordenação da distribuição</h3>
+                    <p class="text-muted mb-0">Atuamos junto a distribuidores, plataformas e investidores para sustentar a colocação da oferta com alinhamento entre tese, demanda e cronograma.</p>
                 </div>
             </div>
 
@@ -66,8 +66,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Bookbuilding & Pricing</h3>
-                    <p class="text-muted mb-0">Gestão do processo de bookbuilding para definição de taxa e volume ótimos, assegurando precificação competitiva ao emissor.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Bookbuilding e precificação</h3>
+                    <p class="text-muted mb-0">Acompanhamos a formação do livro, a leitura de demanda e a definição de taxa e volume para apoiar uma execução consistente da oferta.</p>
                 </div>
             </div>
         </div>

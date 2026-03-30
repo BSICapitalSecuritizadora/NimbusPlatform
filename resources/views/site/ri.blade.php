@@ -93,10 +93,10 @@
             <div class="col-lg-8">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
                 <h1 class="display-4 fw-bold mb-3" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Relação com <span style="color: var(--gold);">Investidores</span>
+                    Relações com <span style="color: var(--gold);">Investidores</span>
                 </h1>
                 <p class="lead mb-0" style="color: #a5b4fc; max-width: 80%;">
-                    Acesse demonstrações financeiras, fatos relevantes, atas de assembleias e demais documentos públicos da BSI Capital.
+                    Consulte documentos públicos, comunicados e informações institucionais da BSI Capital organizados para acompanhamento transparente por investidores e demais públicos interessados.
                 </p>
             </div>
         </div>
@@ -115,7 +115,7 @@
                     class="form-control border-0 shadow-sm ps-4 pe-5 py-3"
                     name="q"
                     value="{{ $q }}"
-                    placeholder="Pesquisar arquivo..."
+                    placeholder="Pesquisar documentos e comunicados..."
                     style="border-radius: 50px; font-size: 1rem; background: #fff;"
                 >
                 <button type="submit" class="btn position-absolute top-50 translate-middle-y end-0 me-2 p-0 border-0 bg-transparent" style="color: var(--brand);">
@@ -146,9 +146,9 @@
         <!-- Results Count -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="text-muted small">
-                <strong>{{ $docs->total() }}</strong> documento(s) encontrado(s)
-                @if($category) para <strong>{{ $categories[$category] ?? $category }}</strong> @endif
-                @if($q !== '') contendo <strong>"{{ $q }}"</strong> @endif
+                <strong>{{ $docs->total() }}</strong> documento(s) disponível(is)
+                @if($category) na categoria <strong>{{ $categories[$category] ?? $category }}</strong> @endif
+                @if($q !== '') para a busca <strong>"{{ $q }}"</strong> @endif
             </div>
         </div>
 
@@ -189,7 +189,7 @@
                         </div>
                         <div class="col-auto pe-4">
                             <div class="d-flex align-items-center gap-2">
-                                <span class="badge rounded-pill px-3 py-2 d-none d-md-inline-block" style="background: rgba(34,197,94,0.08); color: #16a34a; font-weight: 600; font-size: 0.75rem;">Documento Público</span>
+                                <span class="badge rounded-pill px-3 py-2 d-none d-md-inline-block" style="background: rgba(34,197,94,0.08); color: #16a34a; font-weight: 600; font-size: 0.75rem;">Documento público</span>
                                 <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-sm btn-brand rounded-pill px-4 d-inline-flex align-items-center gap-2" download>
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                                     Baixar
@@ -201,8 +201,8 @@
             @empty
                 <div class="card p-5 text-center border-0 shadow-sm" style="border-radius: 20px;">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" class="mx-auto mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    <div class="text-muted mb-1 fw-medium">Nenhum documento encontrado.</div>
-                    <small class="text-muted">Tente ajustar seus filtros de busca.</small>
+                    <div class="text-muted mb-1 fw-medium">Nenhum documento foi localizado.</div>
+                    <small class="text-muted">Revise os filtros aplicados ou tente uma nova busca.</small>
                 </div>
             @endforelse
         </div>
@@ -211,7 +211,7 @@
         @if($docs->hasPages())
         <div class="mt-5 pagination-container">
             <div class="text-center text-muted small mb-3">
-                Mostrando <strong>{{ $docs->firstItem() }}</strong> a <strong>{{ $docs->lastItem() }}</strong> de <strong>{{ $docs->total() }}</strong> resultados
+                Exibindo <strong>{{ $docs->firstItem() }}</strong> a <strong>{{ $docs->lastItem() }}</strong> de <strong>{{ $docs->total() }}</strong> documentos
             </div>
             {{ $docs->links() }}
         </div>
@@ -222,10 +222,10 @@
 <!-- CTA -->
 <section class="py-5" style="background: linear-gradient(135deg, #001233 0%, #0b1220 100%);">
     <div class="container py-4 text-center">
-        <h2 class="h4 fw-bold mb-3" style="color: #ffffff;">Estamos à Sua Disposição</h2>
-        <p class="mx-auto mb-4" style="max-width: 500px; color: #a5b4fc;">Dúvidas sobre nossos documentos ou operações? Nosso time de R.I. está pronto para atender você.</p>
+        <h2 class="h4 fw-bold mb-3" style="color: #ffffff;">Canal de contato com investidores</h2>
+        <p class="mx-auto mb-4" style="max-width: 500px; color: #a5b4fc;">Se precisar de esclarecimentos sobre documentos públicos, comunicados ou informações institucionais, entre em contato com nossa equipe.</p>
         <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg">
-            Fale com R.I.
+            Fale com RI
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         </a>
     </div>

@@ -9,10 +9,10 @@
             <div class="col-lg-8">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Atendimento</span>
                 <h1 class="display-4 fw-bold mb-3" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Fale com a <span style="color: var(--gold);">BSI Capital</span>
+                    Entre em contato com a <span style="color: var(--gold);">BSI Capital</span>
                 </h1>
                 <p class="lead mb-0" style="color: #a5b4fc; max-width: 80%;">
-                    Estamos à disposição para ouvir suas dúvidas, sugestões ou propostas. Entre em contato conosco através dos canais abaixo.
+                    Nossa equipe está disponível para atender demandas comerciais, institucionais e de relacionamento. Utilize os canais abaixo para falar conosco com segurança e agilidade.
                 </p>
             </div>
         </div>
@@ -32,7 +32,7 @@
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                         </div>
                         <div>
-                            <h3 class="h6 fw-bold mb-1" style="color: var(--brand);">E-mail</h3>
+                            <h3 class="h6 fw-bold mb-1" style="color: var(--brand);">E-mail institucional</h3>
                             <a href="mailto:contato@bsicapital.com.br" class="text-muted text-decoration-none">contato@bsicapital.com.br</a>
                         </div>
                     </div>
@@ -54,7 +54,7 @@
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                         </div>
                         <div>
-                            <h3 class="h6 fw-bold mb-1" style="color: var(--brand);">Localização</h3>
+                            <h3 class="h6 fw-bold mb-1" style="color: var(--brand);">Endereço</h3>
                             <p class="text-muted mb-0 small">
                                 Avenida das Nações Unidas, 14.401<br>
                                 Tarumã Tower, Sala 713<br>
@@ -69,41 +69,41 @@
             <div class="col-lg-7">
                 <div class="card p-4 p-md-5 border-0 shadow-lg rounded-4 overflow-hidden">
                     <div class="mb-4">
-                        <h2 class="h4 fw-bold mb-2" style="color: var(--brand);">Envie uma Mensagem</h2>
-                        <p class="text-muted small">Preencha os campos abaixo e retornaremos o mais breve possível.</p>
+                        <h2 class="h4 fw-bold mb-2" style="color: var(--brand);">Envie sua mensagem</h2>
+                        <p class="text-muted small">Preencha os dados abaixo. Seu contato será direcionado para a área responsável e retornaremos assim que possível.</p>
                     </div>
                     
                     <form action="#" method="POST" class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Seu Nome</label>
-                            <input type="text" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Digite seu nome" required>
+                            <label class="form-label small fw-semibold text-muted">Nome</label>
+                            <input type="text" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Informe seu nome" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Seu E-mail</label>
-                            <input type="email" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Digite seu e-mail" required>
+                            <label class="form-label small fw-semibold text-muted">E-mail</label>
+                            <input type="email" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Informe seu e-mail" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Telefone</label>
-                            <input type="tel" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="(00) 00000-0000">
+                            <input type="tel" class="form-control border-light shadow-none bg-light ps-3 py-2" placeholder="Informe seu telefone">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold text-muted">Assunto</label>
                             <select class="form-select border-light shadow-none bg-light ps-3 py-2">
-                                <option selected disabled>Escolha o assunto</option>
-                                <option>Relações com Investidores</option>
-                                <option>Comercial / Novos Negócios</option>
-                                <option>Compliance / Ouvidoria</option>
-                                <option>Trabalhe Conosco</option>
-                                <option>Outros Assuntos</option>
+                                <option selected disabled>Selecione o assunto</option>
+                                <option>Relações com investidores</option>
+                                <option>Comercial e novos negócios</option>
+                                <option>Compliance e canal de ética</option>
+                                <option>Carreiras / Trabalhe conosco</option>
+                                <option>Assuntos institucionais</option>
                             </select>
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-semibold text-muted">Mensagem</label>
-                            <textarea class="form-control border-light shadow-none bg-light ps-3 py-2" rows="4" placeholder="Como podemos ajudar?" required></textarea>
+                            <textarea class="form-control border-light shadow-none bg-light ps-3 py-2" rows="4" placeholder="Descreva como podemos ajudar" required></textarea>
                         </div>
                         <div class="col-12 mt-4">
                             <button type="submit" class="btn btn-brand btn-lg w-100 shadow-sm">
-                                Enviar Mensagem
+                                Enviar contato
                             </button>
                         </div>
                     </form>

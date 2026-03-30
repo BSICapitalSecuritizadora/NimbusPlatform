@@ -16,7 +16,7 @@
                     Portal do <br><span style="color: var(--gold);">Investidor</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Plataforma exclusiva e segura para investidores acompanharem em tempo real suas posições, documentos, pagamentos e toda a evolução das operações.
+                    Ambiente seguro para acompanhamento de posições, documentos, eventos financeiros e informações relevantes das operações com acesso centralizado e rastreável.
                 </p>
                 <a href="{{ $portalUrl }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Acessar o Portal
@@ -37,8 +37,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Transparência em Primeiro Lugar</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Nosso portal foi desenvolvido com tecnologia de ponta para entregar informação clara e acessível a cada investidor.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Transparência e acesso contínuo à informação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">O portal consolida os dados relevantes da operação em uma interface segura, organizada e compatível com as rotinas de acompanhamento do investidor.</p>
         </div>
 
         <div class="row g-4">
@@ -47,8 +47,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acesso Seguro</h3>
-                    <p class="text-muted mb-0">Autenticação com múltiplos fatores, sessões criptografadas e controle de acesso por documento (ACL) para máxima proteção.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acesso controlado</h3>
+                    <p class="text-muted mb-0">Autenticação reforçada, sessões protegidas e controle granular de permissões para preservar a confidencialidade das informações do investidor.</p>
                 </div>
             </div>
             
@@ -57,8 +57,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Documentos em Tempo Real</h3>
-                    <p class="text-muted mb-0">Acesso a todos os documentos da operação — termos, relatórios, assembleias e fatos relevantes — centralizados em um só lugar.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Documentação centralizada</h3>
+                    <p class="text-muted mb-0">Termos, relatórios, comunicados, assembleias e demais documentos da operação ficam disponíveis em um único ambiente de consulta.</p>
                 </div>
             </div>
 
@@ -67,8 +67,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acompanhamento de PU</h3>
-                    <p class="text-muted mb-0">Evolução do Preço Unitário, histórico de integralizações e fluxo de pagamentos atualizados automaticamente.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acompanhamento da operação</h3>
+                    <p class="text-muted mb-0">Informações sobre preço unitário, eventos financeiros, histórico de pagamentos e evolução da posição ficam disponíveis de forma contínua.</p>
                 </div>
             </div>
         </div>

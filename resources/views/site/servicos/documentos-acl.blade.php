@@ -15,10 +15,10 @@
                     Documentos <br>com <span style="color: var(--gold);">ACL</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Sistema de controle de acesso por documento (Access Control List), garantindo que cada investidor visualize apenas os documentos que lhe são pertinentes.
+                    Controle granular de acesso a documentos para garantir que cada usuário visualize apenas os materiais compatíveis com seu vínculo, perfil e permissão operacional.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Falar com Especialistas
+                    Fale com nossa equipe
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -36,8 +36,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Segurança Documental Inteligente</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Cada documento é protegido por permissões granulares, garantindo privacidade e conformidade regulatória.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Governança documental com controle efetivo</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">A gestão de documentos exige segregação de acesso, rastreabilidade e aderência a regras operacionais e regulatórias.</p>
         </div>
 
         <div class="row g-4">
@@ -46,8 +46,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Permissões Granulares</h3>
-                    <p class="text-muted mb-0">Defina quem pode visualizar, baixar ou compartilhar cada documento, por investidor, por operação ou por série.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Permissões por perfil</h3>
+                    <p class="text-muted mb-0">As regras de acesso podem ser configuradas por investidor, operação, série ou perfil de usuário, de acordo com a política definida para cada documento.</p>
                 </div>
             </div>
             
@@ -56,8 +56,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visibilidade Controlada</h3>
-                    <p class="text-muted mb-0">Documentos públicos, restritos a titulares ou confidenciais — três níveis de visibilidade para máxima flexibilidade.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visibilidade segregada</h3>
+                    <p class="text-muted mb-0">Materiais públicos, restritos ou confidenciais podem seguir critérios distintos de exposição, reduzindo risco de acesso indevido e dispersão de informação.</p>
                 </div>
             </div>
 
@@ -66,8 +66,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Download Seguro</h3>
-                    <p class="text-muted mb-0">Links de download validados e com rate-limiting, protegendo contra acessos não autorizados e garantindo rastreabilidade.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Distribuição protegida</h3>
+                    <p class="text-muted mb-0">O acesso ao conteúdo é controlado com validações de permissão e registros de uso, fortalecendo segurança, conformidade e trilha de auditoria.</p>
                 </div>
             </div>
         </div>

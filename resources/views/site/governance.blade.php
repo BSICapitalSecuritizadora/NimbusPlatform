@@ -14,7 +14,7 @@
                     Governança <br><span style="color: var(--gold);">Corporativa</span>
                 </h1>
                 <p class="lead mb-0" style="color: #a5b4fc; max-width: 90%;">
-                    Transparência, ética e conformidade regulatória são os alicerces de nossa atuação. Conheça as práticas que sustentam a integridade de cada operação.
+                    Nossa governança combina estrutura decisória, controles internos e disciplina regulatória para sustentar a integridade da companhia e das operações que conduzimos.
                 </p>
             </div>
         </div>
@@ -28,8 +28,8 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Compliance</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Programa de Compliance</h2>
-                <p class="text-muted mb-3">A BSI possui um programa de Compliance com objetivo de estabelecer regras e procedimentos a serem observados e seguidos pelos colaboradores, visando o fortalecimento e funcionamento dos processos internos para garantir a integridade de suas atividades e a qualidade dos serviços prestados.</p>
-                <p class="text-muted mb-4">Adicionalmente, estas regras visam garantir o atendimento às normas, políticas e regulamentações vigentes e os padrões ético e profissional, mitigando riscos operacionais, reputacionais e regulatórios.</p>
+                <p class="text-muted mb-3">A BSI mantém um programa de compliance voltado à definição de regras, responsabilidades e procedimentos para apoiar a integridade dos processos internos e a qualidade dos serviços prestados.</p>
+                <p class="text-muted mb-4">Essa estrutura reforça a aderência a normas, políticas e regulamentações vigentes, além de contribuir para a mitigação de riscos operacionais, reputacionais e regulatórios.</p>
 
                 <div class="d-flex flex-column gap-3">
                     <div class="d-flex align-items-start gap-3">
@@ -38,7 +38,7 @@
                         </div>
                         <div>
                             <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Regras e Procedimentos Internos</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Normativos claros para todos os colaboradores e prestadores de serviço.</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Diretrizes e normativos aplicáveis aos colaboradores e prestadores envolvidos nas atividades da companhia.</div>
                         </div>
                     </div>
                     <div class="d-flex align-items-start gap-3">
@@ -47,7 +47,7 @@
                         </div>
                         <div>
                             <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Monitoramento Contínuo</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Acompanhamento ativo de normas CVM e regulamentações do setor.</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Acompanhamento recorrente das exigências regulatórias e dos referenciais aplicáveis ao setor.</div>
                         </div>
                     </div>
                     <div class="d-flex align-items-start gap-3">
@@ -56,7 +56,7 @@
                         </div>
                         <div>
                             <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Mitigação de Riscos</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Processos desenhados para minimizar riscos operacionais e reputacionais.</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Controles e procedimentos desenhados para reduzir exposição a riscos operacionais, reputacionais e de conformidade.</div>
                         </div>
                     </div>
                 </div>
@@ -72,7 +72,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Diretoria Executiva</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Gestão estratégica e operacional da companhia</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Condução estratégica e supervisão da execução operacional da companhia</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
@@ -81,7 +81,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Comitê de Compliance</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Supervisão do programa de conformidade e ética</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Acompanhamento das diretrizes de conformidade, ética e controles internos</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
@@ -90,7 +90,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Comitê de Riscos</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Análise e monitoramento de riscos das operações</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Avaliação e monitoramento dos principais riscos associados às operações</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
@@ -99,7 +99,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Auditoria Interna</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Verificação independente dos processos e controles</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Verificação independente da aderência dos processos e da efetividade dos controles</div>
                             </div>
                         </div>
                     </div>
@@ -114,7 +114,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Manuais & Políticas Regulatórias</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #a5b4fc;">Documentos que regem nossas operações e garantem a conformidade com as melhores práticas do mercado.</p>
+            <p class="mx-auto" style="max-width: 600px; color: #a5b4fc;">Documentos que formalizam diretrizes, procedimentos e referenciais aplicáveis à atuação da companhia.</p>
         </div>
 
         <div class="row g-4">
@@ -141,7 +141,7 @@
             @empty
             <div class="col-12 text-center py-4">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                <p class="mb-0" style="color: #8892b0;">Os documentos de governança serão disponibilizados em breve.</p>
+                <p class="mb-0" style="color: #8892b0;">Os documentos de governança serão disponibilizados neste ambiente assim que publicados.</p>
             </div>
             @endforelse
         </div>
@@ -154,7 +154,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Gestão de Riscos</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Uma abordagem estruturada para identificar, avaliar e mitigar os riscos inerentes às operações de securitização.</p>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Abordagem estruturada para identificar, avaliar, monitorar e mitigar os riscos inerentes às operações de securitização.</p>
         </div>
 
         <div class="row g-4">
@@ -164,7 +164,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Risco de Crédito</h3>
-                    <p class="text-muted mb-0">Análise rigorosa do lastro, da qualidade dos recebíveis e do histórico de inadimplência dos cedentes e sacados envolvidos.</p>
+                    <p class="text-muted mb-0">Análise do lastro, da qualidade dos recebíveis e do histórico das contrapartes envolvidas para apoiar a solidez da estrutura.</p>
                 </div>
             </div>
             
@@ -174,7 +174,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Risco de Mercado</h3>
-                    <p class="text-muted mb-0">Monitoramento de variáveis macroeconômicas, taxas de juros e índices de correção que impactam o desempenho das operações.</p>
+                    <p class="text-muted mb-0">Monitoramento de variáveis econômicas, taxas e indexadores capazes de influenciar o comportamento das operações ao longo do tempo.</p>
                 </div>
             </div>
 
@@ -184,7 +184,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Risco Operacional</h3>
-                    <p class="text-muted mb-0">Controles internos, segregação de funções e trilha de auditoria para prevenir falhas nos processos e sistemas.</p>
+                    <p class="text-muted mb-0">Controles internos, segregação de funções e trilhas de verificação para reduzir falhas de processo, sistemas e execução.</p>
                 </div>
             </div>
         </div>
@@ -195,9 +195,9 @@
 <section class="py-5" style="background: linear-gradient(135deg, #001233 0%, #0b1220 100%);">
     <div class="container py-5 text-center">
         <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Estamos à Sua Disposição</h2>
-        <p class="mx-auto mb-5" style="max-width: 550px; color: #a5b4fc;">Tem dúvidas sobre nossas práticas de governança ou deseja reportar algo ao nosso Comitê de Compliance? Entre em contato.</p>
+        <p class="mx-auto mb-5" style="max-width: 550px; color: #a5b4fc;">Se precisar de esclarecimentos sobre nossas práticas de governança ou canais institucionais de contato, fale com nossa equipe.</p>
         <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg">
-            Fale Conosco
+            Fale com nossa equipe
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         </a>
     </div>

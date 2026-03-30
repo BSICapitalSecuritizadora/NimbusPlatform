@@ -15,10 +15,10 @@
                     <span style="color: var(--gold);">Compliance</span> <br>& Governança
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Programa de compliance robusto que assegura a conformidade com a legislação vigente, as normas da CVM e as melhores práticas do mercado de securitização.
+                    Estrutura de compliance e governança voltada à condução responsável das operações, com aderência regulatória, monitoramento e disciplina de controles.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Falar com Especialistas
+                    Fale com nossa equipe
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -36,8 +36,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Integridade em Cada Operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Nosso programa de compliance garante que todas as operações sejam conduzidas com ética, transparência e responsabilidade.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Controles e governança ao longo da operação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">O ambiente de compliance sustenta a integridade da operação com políticas, monitoramento e procedimentos compatíveis com o mercado regulado.</p>
         </div>
 
         <div class="row g-4">
@@ -46,8 +46,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">PLD / FT</h3>
-                    <p class="text-muted mb-0">Prevenção à Lavagem de Dinheiro e ao Financiamento do Terrorismo com processos de KYC e monitoramento contínuo de transações.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">PLD/FTP e diligência cadastral</h3>
+                    <p class="text-muted mb-0">Aplicamos procedimentos de identificação, qualificação e monitoramento para reforçar a prevenção à lavagem de dinheiro e ao financiamento do terrorismo e da proliferação.</p>
                 </div>
             </div>
             
@@ -56,8 +56,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Código de Ética</h3>
-                    <p class="text-muted mb-0">Código de conduta e políticas internas que regem o comportamento de todos os colaboradores e parceiros da BSI Capital.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Políticas e conduta</h3>
+                    <p class="text-muted mb-0">Normas internas, código de conduta e diretrizes de governança apoiam a atuação da equipe e a relação com investidores, parceiros e prestadores de serviço.</p>
                 </div>
             </div>
 
@@ -66,8 +66,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Covenants</h3>
-                    <p class="text-muted mb-0">Controle ativo dos indicadores financeiros e gatilhos contratuais, assegurando o cumprimento das obrigações em cada emissão.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de obrigações</h3>
+                    <p class="text-muted mb-0">Acompanhamos covenants, eventos contratuais e exigências operacionais para apoiar o cumprimento das obrigações previstas em cada emissão.</p>
                 </div>
             </div>
         </div>

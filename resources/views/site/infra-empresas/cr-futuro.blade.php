@@ -15,10 +15,10 @@
                     Certificados de <br><span style="color: var(--gold);">Recebíveis (CR)</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Um novo instrumento em desenvolvimento para financiar projetos de infraestrutura, saneamento, energia e transporte com lastro em recebíveis de longo prazo.
+                    Estrutura em evolução para viabilizar captação de longo prazo em infraestrutura e operações empresariais, com lastro em recebíveis e aderência ao mercado de capitais.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Falar com Especialistas
+                    Fale com nossa equipe
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -38,8 +38,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">O Futuro da Infraestrutura Está Aqui</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Antecipamos a regulamentação para já preparar estruturas que vão destravar o potencial de investimentos em infra no Brasil.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Preparação para o próximo ciclo de investimentos</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Acompanhamos a evolução regulatória para estruturar operações com consistência técnica, governança e prontidão para futuras emissões.</p>
         </div>
 
         <div class="row g-4">
@@ -48,8 +48,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Amplitude Setorial</h3>
-                    <p class="text-muted mb-0">Não limitado a um setor, o CR pode lastrear desde concessões rodoviárias a instalações públicas de energia, saneamento e mobilidade urbana.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Abrangência de projetos</h3>
+                    <p class="text-muted mb-0">A estrutura pode atender projetos de saneamento, energia, logística, mobilidade e outros ativos com fluxos previsíveis e horizonte de longo prazo.</p>
                 </div>
             </div>
             
@@ -58,8 +58,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Isenção Tributária</h3>
-                    <p class="text-muted mb-0">Assim como CRI e CRA, a expectativa é que o CR mantenha a isenção de IR para pessoas físicas, incentivando a captação de recursos.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Atratividade ao investidor</h3>
+                    <p class="text-muted mb-0">O instrumento nasce com potencial para ampliar a base de investidores e apoiar emissões com perfil compatível ao financiamento de infraestrutura.</p>
                 </div>
             </div>
 
@@ -68,8 +68,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Preparação Antecipada</h3>
-                    <p class="text-muted mb-0">A BSI já se antecipa ao marco regulatório, modelando estruturas prontas para serem ofertadas assim que o CR for oficializado.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Preparação regulatória</h3>
+                    <p class="text-muted mb-0">A BSI já trabalha em modelagens preliminares, critérios de elegibilidade e arquitetura operacional para acelerar a entrada desse instrumento no mercado.</p>
                 </div>
             </div>
         </div>

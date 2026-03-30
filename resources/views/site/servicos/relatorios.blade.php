@@ -15,10 +15,10 @@
                     <span style="color: var(--gold);">Relatórios</span> <br>Gerenciais
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Relatórios periódicos e sob demanda, com informações claras sobre o desempenho das operações, evolução do lastro e acompanhamento de garantias.
+                    Reportes periódicos e sob demanda com informações estruturadas sobre desempenho da operação, comportamento do lastro, garantias e eventos relevantes.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Falar com Especialistas
+                    Fale com nossa equipe
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -36,8 +36,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Informação que Gera Confiança</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Nossos relatórios são elaborados com rigor técnico e clareza para atender às exigências de investidores e reguladores.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Prestação de informações com rigor técnico</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Os relatórios são estruturados para apoiar o acompanhamento da operação com clareza, consistência metodológica e aderência às exigências do mercado.</p>
         </div>
 
         <div class="row g-4">
@@ -46,8 +46,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Relatórios Mensais</h3>
-                    <p class="text-muted mb-0">Reportes mensais com indicadores do lastro, inadimplência, fluxo de pagamentos e posição financeira atualizada de cada série.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Relatórios periódicos</h3>
+                    <p class="text-muted mb-0">Consolidamos indicadores do lastro, inadimplência, pagamentos, garantias e posição financeira para acompanhamento recorrente das séries emitidas.</p>
                 </div>
             </div>
             
@@ -56,8 +56,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Demonstrações Financeiras</h3>
-                    <p class="text-muted mb-0">Publicação de demonstrações financeiras auditadas conforme normativas CVM e padrões contábeis IFRS aplicáveis.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Demonstrações e obrigações informacionais</h3>
+                    <p class="text-muted mb-0">Publicamos demonstrações e documentos informacionais de acordo com os requisitos regulatórios e os padrões contábeis aplicáveis.</p>
                 </div>
             </div>
 
@@ -66,8 +66,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Dashboards Customizados</h3>
-                    <p class="text-muted mb-0">Painéis interativos disponíveis no Portal do Investidor, com filtros por operação, período e tipo de informação.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visualização complementar</h3>
+                    <p class="text-muted mb-0">Os relatórios podem ser combinados com painéis de consulta no portal para facilitar leitura, filtros e acompanhamento por período ou operação.</p>
                 </div>
             </div>
         </div>
