@@ -6,6 +6,7 @@ namespace App\Models;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,6 +28,10 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
+        'cargo',
+        'departamento',
+        'approved_at',
+        'invited_by',
     ];
 
     /**
@@ -50,8 +55,14 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'approved_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
     }
 
     /**
@@ -69,6 +80,11 @@ class User extends Authenticatable implements FilamentUser
     public function proposalRepresentative(): HasOne
     {
         return $this->hasOne(ProposalRepresentative::class);
+    }
+
+    public function invitedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'invited_by');
     }
 
     public function canAccessPanel(Panel $panel): bool

@@ -4,8 +4,10 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -22,12 +24,30 @@ class CreateNewUser implements CreatesNewUsers
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
+            'cargo' => ['nullable', 'string', 'max:255'],
+            'departamento' => ['nullable', 'string', 'max:255'],
+            'invitation_token' => ['required', 'string'],
         ])->validate();
 
-        return User::create([
+        $invitation = Invitation::findValid($input['invitation_token'] ?? '');
+
+        if (! $invitation) {
+            throw ValidationException::withMessages([
+                'invitation_token' => ['O convite é inválido, expirou ou já foi utilizado.'],
+            ]);
+        }
+
+        $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
+            'cargo' => $input['cargo'] ?? null,
+            'departamento' => $input['departamento'] ?? null,
+            'invited_by' => $invitation->invited_by,
         ]);
+
+        $invitation->update(['used_at' => now()]);
+
+        return $user;
     }
 }

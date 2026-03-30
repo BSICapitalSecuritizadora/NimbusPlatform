@@ -13,6 +13,8 @@ new #[Title('Configurações de perfil')] class extends Component {
 
     public string $name = '';
     public string $email = '';
+    public string $cargo = '';
+    public string $departamento = '';
 
     /**
      * Mount the component.
@@ -21,6 +23,8 @@ new #[Title('Configurações de perfil')] class extends Component {
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
+        $this->cargo = Auth::user()->cargo ?? '';
+        $this->departamento = Auth::user()->departamento ?? '';
     }
 
     /**
@@ -30,7 +34,11 @@ new #[Title('Configurações de perfil')] class extends Component {
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $validated = $this->validate([
+            ...$this->profileRules($user->id),
+            'cargo' => ['nullable', 'string', 'max:255'],
+            'departamento' => ['nullable', 'string', 'max:255'],
+        ]);
 
         $user->fill($validated);
 
@@ -83,6 +91,10 @@ new #[Title('Configurações de perfil')] class extends Component {
     <x-pages::settings.layout :heading="__('Perfil')" :subheading="__('Atualize seu nome e endereço de e-mail')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
             <flux:input wire:model="name" :label="__('Nome')" type="text" required autofocus autocomplete="name" />
+
+            <flux:input wire:model="cargo" :label="__('Cargo')" type="text" autocomplete="organization-title" :placeholder="__('Ex.: Analista Financeiro')" />
+
+            <flux:input wire:model="departamento" :label="__('Departamento')" type="text" :placeholder="__('Ex.: Comercial')" />
 
             <div>
                 <flux:input wire:model="email" :label="__('E-mail')" type="email" required autocomplete="email" />

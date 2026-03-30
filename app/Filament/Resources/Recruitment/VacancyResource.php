@@ -29,6 +29,16 @@ class VacancyResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) Vacancy::query()->where('is_active', true)->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return Vacancy::query()->where('is_active', true)->exists() ? 'success' : 'gray';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return VacancyForm::configure($schema);

@@ -32,7 +32,18 @@ class UserFactory extends Factory
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
+            'approved_at' => now(),
         ];
+    }
+
+    /**
+     * Indicate that the user's account has not been approved yet.
+     */
+    public function unapproved(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'approved_at' => null,
+        ]);
     }
 
     /**

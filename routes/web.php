@@ -108,7 +108,9 @@ Route::get('/healthcheck', function () {
     ], $healthy ? 200 : 503);
 })->name('healthcheck');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->get('/pending-approval', fn () => view('pages.auth.pending-approval'))->name('pending-approval');
+
+Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
 
@@ -135,21 +137,27 @@ Route::prefix('nimbus')->name('nimbus.')->group(function () {
     Route::middleware(['auth:nimbus'])->group(function () {
         Route::get('/dashboard', function () {
             $user = \Illuminate\Support\Facades\Auth::guard('nimbus')->user();
-            
+
             // Dummy data for now before we implement the full controller queries
             $stats = [
                 'total' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->count(),
                 'pending' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->whereIn('status', ['PENDING', 'UNDER_REVIEW'])->count(),
                 'approved' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->where('status', 'APPROVED')->count(),
             ];
-            
+
             $submissions = \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)
                 ->orderByDesc('submitted_at')
                 ->limit(5)
                 ->get()
                 ->toArray();
-                
+
             return view('nimbus.dashboard', compact('stats', 'submissions'));
         })->name('dashboard');
+
+        // Submissions
+        Route::get('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'index'])->name('submissions.index');
+        Route::get('/submissions/new', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'create'])->name('submissions.create');
+        Route::post('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'store'])->name('submissions.store');
+        Route::get('/submissions/{submission}', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'show'])->name('submissions.show');
     });
 });
