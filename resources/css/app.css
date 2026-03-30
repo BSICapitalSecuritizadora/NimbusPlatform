@@ -9,7 +9,21 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-brand-50: #eef4ff;
+    --color-brand-100: #d9e5ff;
+    --color-brand-200: #b8ccff;
+    --color-brand-300: #8eabff;
+    --color-brand-400: #5f81f8;
+    --color-brand-500: #355ed8;
+    --color-brand-600: #1d3fb8;
+    --color-brand-700: #00205b;
+    --color-brand-800: #001233;
+    --color-brand-900: #0a1734;
+    --color-gold-400: #e3c96f;
+    --color-gold-500: #d4af37;
+    --color-gold-600: #b48f1c;
 
     --color-zinc-50: #fafafa;
     --color-zinc-100: #f5f5f5;
@@ -23,27 +37,42 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    --color-accent: var(--color-brand-700);
+    --color-accent-content: var(--color-brand-700);
     --color-accent-foreground: var(--color-white);
 }
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: var(--color-brand-100);
+        --color-accent-content: var(--color-brand-100);
+        --color-accent-foreground: var(--color-brand-900);
     }
 }
 
 @layer base {
-
     *,
     ::after,
     ::before,
     ::backdrop,
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
+    }
+
+    body {
+        background:
+            radial-gradient(circle at top left, rgba(0, 32, 91, 0.08), transparent 28%),
+            radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 22%),
+            #f6f8fc;
+        color: #0f172a;
+    }
+
+    .dark body {
+        background:
+            radial-gradient(circle at top left, rgba(53, 94, 216, 0.12), transparent 26%),
+            radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 20%),
+            #08111d;
+        color: #f3f6fb;
     }
 }
 
@@ -61,6 +90,32 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
-/* \[:where(&)\]:size-4 {
-    @apply size-4;
-} */
+@layer components {
+    .bsi-shell-card {
+        @apply rounded-[26px] border border-zinc-200/80 bg-white/90 shadow-[0_20px_45px_rgba(0,32,91,0.08)] backdrop-blur dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_24px_52px_rgba(0,0,0,0.35)];
+    }
+
+    .bsi-shell-card-soft {
+        @apply rounded-[22px] border border-brand-100 bg-brand-50/70 shadow-sm dark:border-white/10 dark:bg-white/[0.03];
+    }
+
+    .bsi-kicker {
+        @apply text-[0.72rem] font-bold uppercase tracking-[0.24em] text-gold-500;
+    }
+
+    .bsi-heading {
+        @apply font-semibold tracking-[-0.03em] text-brand-800 dark:text-white;
+    }
+
+    .bsi-copy {
+        @apply text-sm leading-7 text-zinc-600 dark:text-zinc-300;
+    }
+
+    .bsi-action-primary {
+        @apply inline-flex items-center justify-center rounded-full bg-brand-700 px-5 py-3 font-semibold text-white shadow-[0_14px_30px_rgba(0,32,91,0.18)] transition hover:-translate-y-0.5 hover:bg-brand-800;
+    }
+
+    .bsi-action-secondary {
+        @apply inline-flex items-center justify-center rounded-full border border-brand-200 bg-white px-5 py-3 font-semibold text-brand-700 transition hover:-translate-y-0.5 hover:border-gold-500/60 hover:bg-gold-400/10 dark:border-white/15 dark:bg-transparent dark:text-brand-100;
+    }
+}

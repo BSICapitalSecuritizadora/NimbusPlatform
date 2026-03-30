@@ -1,233 +1,162 @@
 @extends('site.layout')
-@section('title','Relações com Investidores — BSI Capital')
+@section('title', 'Relações com Investidores — BSI Capital')
 
 @section('content')
-<style>
-    /* Custom Pagination Styling */
-    .pagination {
-        margin-top: 2rem;
-        gap: 8px;
-    }
-    .pagination .page-item .page-link {
-        border-radius: 50% !important;
-        width: 42px;
-        height: 42px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #e2e8f0;
-        color: #4b5563;
-        font-weight: 500;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
-        background: #fff;
-        margin: 0;
-    }
-    .pagination .page-item.active .page-link {
-        background-color: var(--brand) !important;
-        border-color: var(--brand) !important;
-        color: #fff !important;
-        box-shadow: 0 4px 12px rgba(0,32,91,0.15);
-    }
-    .pagination .page-item:not(.active) .page-link:hover {
-        background-color: #f8fafc;
-        border-color: var(--brand);
-        color: var(--brand);
-    }
-    .pagination .page-item.disabled .page-link {
-        background-color: #f1f5f9;
-        color: #94a3b8;
-        border-color: #e2e8f0;
-    }
-
-    /* SVG Arrows for Previous/Next */
-    .page-item:first-child .page-link, 
-    .page-item:last-child .page-link {
-        position: relative;
-        color: transparent !important;
-    }
-    .page-item:first-child .page-link::after {
-        content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 18 9 12 15 6'%3E%3C/polyline%3E%3C/svg%3E");
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -45%);
-    }
-    .page-item:last-child .page-link::after {
-        content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2300205b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'%3E%3C/polyline%3E%3C/svg%3E");
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -45%);
-    }
-    .page-item:first-child.disabled .page-link::after { opacity: 0.3; }
-    .page-item:last-child.disabled .page-link::after { opacity: 0.3; }
-
-    /* Hide the "Showing X to Y of Z" text for a cleaner look if preferred, or style it */
-    nav .flex.justify-between.flex-1.sm\:hidden, 
-    nav .hidden.sm\:flex-1.sm\:flex.sm\:items-center.sm\:justify-between > div:first-child {
-        display: none !important;
-    }
-    /* Hide default text from Laravel pagination (Bootstrap 5 template) */
-    .pagination-container nav > div:first-child,
-    .pagination-container nav div.hidden {
-        display: none !important;
-    }
-    
-    /* Ensure the pagination buttons are centered below our custom text */
-    .pagination-container nav {
-        display: flex !important;
-        justify-content: center !important;
-        margin: 0 auto;
-    }
-    .pagination-container .pagination {
-        margin-bottom: 0;
-        justify-content: center;
-    }
-</style>
-
-<!-- Hero Section -->
-<section class="hero position-relative d-flex align-items-center" style="min-height: 35vh; overflow: hidden; background: #001233;">
-    <div class="container position-relative z-1">
-        <div class="row">
+<section class="hero position-relative d-flex align-items-center" style="min-height: 38vh;">
+    <div class="container position-relative">
+        <div class="row g-4 align-items-end">
             <div class="col-lg-8">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
-                <h1 class="display-4 fw-bold mb-3" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Relações com <span style="color: var(--gold);">Investidores</span>
-                </h1>
-                <p class="lead mb-0" style="color: #a5b4fc; max-width: 80%;">
-                    Consulte documentos públicos, comunicados e informações institucionais da BSI Capital organizados para acompanhamento transparente por investidores e demais públicos interessados.
+                <span class="badge mb-3 px-3 py-2 text-uppercase">Institucional</span>
+                <h1 class="display-4 fw-bold mb-3">Relações com <span style="color: var(--gold);">Investidores</span></h1>
+                <p class="lead mb-0" style="max-width: 760px;">
+                    Consulte documentos públicos, comunicados e publicações institucionais organizados para apoiar o acompanhamento transparente da BSI Capital por investidores e demais públicos interessados.
                 </p>
+            </div>
+            <div class="col-lg-4">
+                <div class="surface-card-dark p-4">
+                    <div class="small text-uppercase text-white-50 fw-semibold mb-2">Visão rápida</div>
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <div>
+                            <div class="fs-2 fw-bold text-white">{{ $docs->total() }}</div>
+                            <div class="small text-white-50">documento(s) disponível(is)</div>
+                        </div>
+                        <div class="badge badge-soft px-3 py-2">{{ count($categories) }} categorias</div>
+                    </div>
+                    <div class="small text-white-50">Busca, filtros e histórico em uma leitura mais clara e consistente com o restante da plataforma.</div>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Search + Filters + Documents -->
-<section class="py-5" style="background-color: var(--bg);">
-    <div class="container">
+<section class="py-5">
+    <div class="container py-lg-4">
+        <div class="surface-card p-4 p-lg-5 mb-4">
+            <div class="row g-4 align-items-end">
+                <div class="col-lg-7">
+                    <div class="section-kicker mb-2">Consulta pública</div>
+                    <h2 class="h3 fw-bold text-brand mb-3">Documentos públicos organizados para consulta rápida</h2>
+                    <p class="section-copy mb-0">
+                        Pesquise comunicados e documentos institucionais por palavra-chave ou categoria, com uma navegação mais objetiva e compatível com o contexto de RI.
+                    </p>
+                </div>
+                <div class="col-lg-5">
+                    <form method="GET" id="riForm">
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                class="form-control border-end-0"
+                                name="q"
+                                value="{{ $q }}"
+                                placeholder="Pesquisar documentos e comunicados"
+                            >
+                            <button type="submit" class="input-group-text border-start-0 bg-transparent px-3">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </button>
+                        </div>
+                        @if($category)
+                            <input type="hidden" name="category" value="{{ $category }}">
+                        @endif
+                    </form>
+                </div>
+            </div>
 
-        <!-- Search Bar -->
-        <form method="GET" class="mb-4" id="riForm">
-            <div class="position-relative" style="max-width: 700px;">
-                <input
-                    type="text"
-                    class="form-control border-0 shadow-sm ps-4 pe-5 py-3"
-                    name="q"
-                    value="{{ $q }}"
-                    placeholder="Pesquisar documentos e comunicados..."
-                    style="border-radius: 50px; font-size: 1rem; background: #fff;"
-                >
-                <button type="submit" class="btn position-absolute top-50 translate-middle-y end-0 me-2 p-0 border-0 bg-transparent" style="color: var(--brand);">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                </button>
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <a href="{{ route('site.ri', array_filter(['q' => $q])) }}" class="btn {{ !$category ? 'btn-brand' : 'btn-outline-brand' }} btn-sm px-4">Todos</a>
+                @foreach($categories as $key => $label)
+                    <a href="{{ route('site.ri', array_filter(['category' => $key, 'q' => $q])) }}" class="btn {{ $category === $key ? 'btn-brand' : 'btn-outline-brand' }} btn-sm px-4">
+                        {{ $label }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-4">
+            <div class="section-copy">
+                <strong>{{ $docs->total() }}</strong> documento(s) disponível(is)
                 @if($category)
-                    <input type="hidden" name="category" value="{{ $category }}">
+                    na categoria <strong>{{ $categories[$category] ?? $category }}</strong>
+                @endif
+                @if($q !== '')
+                    para a busca <strong>"{{ $q }}"</strong>
                 @endif
             </div>
-        </form>
-
-        <!-- Category Pills -->
-        <div class="d-flex flex-wrap gap-2 mb-5">
-            <a href="{{ route('site.ri', array_filter(['q' => $q])) }}"
-               class="btn rounded-pill px-4 py-2 fw-medium {{ !$category ? 'btn-brand text-white' : 'btn-outline-secondary' }}"
-               style="font-size: 0.9rem; {{ !$category ? '' : 'border-color: #d1d5db; color: #4b5563;' }}">
-                Todos
-            </a>
-            @foreach($categories as $key => $label)
-                <a href="{{ route('site.ri', array_filter(['category' => $key, 'q' => $q])) }}"
-                   class="btn rounded-pill px-4 py-2 fw-medium {{ $category === $key ? 'btn-brand text-white' : 'btn-outline-secondary' }}"
-                   style="font-size: 0.9rem; {{ $category === $key ? '' : 'border-color: #d1d5db; color: #4b5563;' }}">
-                    {{ $label }}
-                </a>
-            @endforeach
+            <div class="small text-muted">Atualizações públicas, fatos relevantes e arquivos institucionais.</div>
         </div>
 
-        <!-- Results Count -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div class="text-muted small">
-                <strong>{{ $docs->total() }}</strong> documento(s) disponível(is)
-                @if($category) na categoria <strong>{{ $categories[$category] ?? $category }}</strong> @endif
-                @if($q !== '') para a busca <strong>"{{ $q }}"</strong> @endif
-            </div>
-        </div>
-
-        <!-- Document Cards -->
         <div class="d-flex flex-column gap-3">
             @forelse($docs as $d)
-                <div class="card p-0 border-0 shadow-sm card-hover overflow-hidden" style="border-radius: 16px; transition: all 0.3s ease;">
+                <div class="card border-0 shadow-sm overflow-hidden">
                     <div class="row g-0 align-items-center">
                         <div class="col">
                             <div class="p-4">
                                 <div class="d-flex align-items-start gap-3">
-                                    <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-3" style="width: 48px; height: 48px; background: rgba(0,32,91,0.06); color: var(--brand);">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                    <div class="d-flex align-items-center justify-content-center flex-shrink-0" style="width: 52px; height: 52px; border-radius: 16px; background: rgba(0, 32, 91, 0.06); color: var(--brand);">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                     </div>
                                     <div class="flex-grow-1">
-                                        <h3 class="h6 fw-bold mb-1" style="color: var(--brand);">{{ $d->title }}</h3>
-                                        <div class="d-flex flex-wrap align-items-center gap-2">
-                                            <span class="badge rounded-pill px-3 py-1" style="background: rgba(0,32,91,0.08); color: var(--brand); font-size: 0.75rem; font-weight: 600;">
-                                                {{ $categories[$d->category] ?? ($d->category ?? '—') }}
-                                            </span>
+                                        <h3 class="h5 fw-bold text-brand mb-2">{{ $d->title }}</h3>
+                                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                            <span class="badge badge-soft px-3 py-2">{{ $categories[$d->category] ?? ($d->category ?? '—') }}</span>
                                             @foreach($d->emissions as $emission)
-                                                <span class="badge rounded-pill px-3 py-1" style="background: rgba(212,175,55,0.1); color: var(--gold); border: 1px solid rgba(212,175,55,0.2); font-size: 0.75rem; font-weight: 600;">
-                                                    {{ $emission->name }}
-                                                </span>
+                                                <span class="badge px-3 py-2" style="background: rgba(212,175,55,0.1); color: var(--gold); border: 1px solid rgba(212,175,55,0.2);">{{ $emission->name }}</span>
                                             @endforeach
-                                            <span class="text-muted" style="font-size: 0.8rem;">
-                                                {{ optional($d->{$dateField})->format('d/m/Y') ?? '—' }}
-                                            </span>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-3 small text-muted">
+                                            <span>{{ optional($d->{$dateField})->format('d/m/Y') ?? '—' }}</span>
                                             @if($d->file_size)
-                                                <span class="text-muted" style="font-size: 0.8rem;">
-                                                    · {{ $d->file_size >= 1048576 ? number_format($d->file_size / 1048576, 1) . ' MB' : number_format($d->file_size / 1024, 0) . ' KB' }}
-                                                </span>
+                                                <span>{{ $d->file_size >= 1048576 ? number_format($d->file_size / 1048576, 1) . ' MB' : number_format($d->file_size / 1024, 0) . ' KB' }}</span>
                                             @endif
+                                            <span>Documento público</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-auto pe-4">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="badge rounded-pill px-3 py-2 d-none d-md-inline-block" style="background: rgba(34,197,94,0.08); color: #16a34a; font-weight: 600; font-size: 0.75rem;">Documento público</span>
-                                <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-sm btn-brand rounded-pill px-4 d-inline-flex align-items-center gap-2" download>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                    Baixar
-                                </a>
-                            </div>
+                        <div class="col-lg-auto px-4 pb-4 pb-lg-0">
+                            <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-brand px-4" download>
+                                Baixar
+                            </a>
                         </div>
                     </div>
                 </div>
             @empty
-                <div class="card p-5 text-center border-0 shadow-sm" style="border-radius: 20px;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" class="mx-auto mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    <div class="text-muted mb-1 fw-medium">Nenhum documento foi localizado.</div>
-                    <small class="text-muted">Revise os filtros aplicados ou tente uma nova busca.</small>
+                <div class="card p-5 text-center border-0 shadow-sm">
+                    <div class="fw-semibold text-muted mb-2">Nenhum documento foi localizado.</div>
+                    <div class="small text-muted">Revise os filtros aplicados ou tente uma nova busca.</div>
                 </div>
             @endforelse
         </div>
 
-        <!-- Pagination -->
         @if($docs->hasPages())
-        <div class="mt-5 pagination-container">
-            <div class="text-center text-muted small mb-3">
+            <div class="mt-5 text-center small text-muted">
                 Exibindo <strong>{{ $docs->firstItem() }}</strong> a <strong>{{ $docs->lastItem() }}</strong> de <strong>{{ $docs->total() }}</strong> documentos
             </div>
             {{ $docs->links() }}
-        </div>
         @endif
     </div>
 </section>
 
-<!-- CTA -->
-<section class="py-5" style="background: linear-gradient(135deg, #001233 0%, #0b1220 100%);">
-    <div class="container py-4 text-center">
-        <h2 class="h4 fw-bold mb-3" style="color: #ffffff;">Canal de contato com investidores</h2>
-        <p class="mx-auto mb-4" style="max-width: 500px; color: #a5b4fc;">Se precisar de esclarecimentos sobre documentos públicos, comunicados ou informações institucionais, entre em contato com nossa equipe.</p>
-        <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg">
-            Fale com RI
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-        </a>
+<section class="pb-5">
+    <div class="container">
+        <div class="card border-0 overflow-hidden" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f);">
+            <div class="row g-0 align-items-center">
+                <div class="col-lg-8">
+                    <div class="p-4 p-lg-5">
+                        <div class="section-kicker mb-2">Canal RI</div>
+                        <h2 class="h3 fw-bold text-white mb-3">Precisa de apoio sobre documentos públicos ou comunicados?</h2>
+                        <p class="text-white-50 mb-0">
+                            Entre em contato com nossa equipe para esclarecimentos sobre publicações, informações institucionais e temas de relacionamento com investidores.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="p-4 p-lg-5">
+                        <a href="{{ route('site.contact') }}" class="btn btn-light btn-lg">Fale com RI</a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 @endsection

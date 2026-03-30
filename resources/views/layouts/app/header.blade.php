@@ -4,70 +4,71 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:header container class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.toggle class="lg:hidden mr-2" icon="bars-2" inset="left" />
+        <flux:header container class="border-b border-zinc-200/70 bg-white/85 backdrop-blur dark:border-white/10 dark:bg-[#08111dcc]">
+            <flux:sidebar.toggle class="mr-2 lg:hidden" icon="bars-2" inset="left" />
 
             <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
 
-            <flux:navbar class="-mb-px max-lg:hidden">
-                <flux:navbar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                    {{ __('Dashboard') }}
-                </flux:navbar.item>
-            </flux:navbar>
+            <div class="ms-4 hidden items-center gap-3 lg:flex">
+                <span class="rounded-full border border-gold-500/30 bg-gold-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.24em] text-gold-500">
+                    Ambiente interno
+                </span>
+                <span class="text-sm text-zinc-500 dark:text-zinc-400">
+                    Operação, documentos e relacionamento no padrão BSI Capital.
+                </span>
+            </div>
 
             <flux:spacer />
 
-            <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
-                <flux:tooltip :content="__('Search')" position="bottom">
-                    <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Search')" />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Repository')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="folder-git-2"
-                        href="https://github.com/laravel/livewire-starter-kit"
-                        target="_blank"
-                        :label="__('Repository')"
-                    />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Documentation')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="book-open-text"
-                        href="https://laravel.com/docs/starter-kits#livewire"
-                        target="_blank"
-                        :label="__('Documentation')"
-                    />
-                </flux:tooltip>
+            <flux:navbar class="-mb-px hidden items-center gap-1 py-0! lg:flex">
+                <flux:navbar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                    {{ __('Dashboard') }}
+                </flux:navbar.item>
+                <flux:navbar.item icon="globe-alt" :href="route('site.home')">
+                    {{ __('Site') }}
+                </flux:navbar.item>
+                <flux:navbar.item icon="document-text" :href="route('site.proposal.create')">
+                    {{ __('Nova proposta') }}
+                </flux:navbar.item>
             </flux:navbar>
+
+            <div class="ms-2 hidden items-center gap-2 lg:flex">
+                <a href="{{ route('site.ri') }}" class="bsi-action-secondary !px-4 !py-2 text-sm">
+                    {{ __('R.I.') }}
+                </a>
+            </div>
 
             <x-desktop-user-menu />
         </flux:header>
 
-        <!-- Mobile Menu -->
-        <flux:sidebar collapsible="mobile" sticky class="lg:hidden border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+        <flux:sidebar collapsible="mobile" sticky class="border-e border-zinc-200/70 bg-white/95 dark:border-white/10 dark:bg-[#08111df2] lg:hidden">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
             </flux:sidebar.header>
 
+            <div class="px-4 pb-2">
+                <div class="bsi-kicker mb-2">Navegação</div>
+                <p class="bsi-copy text-xs">
+                    Acesso rápido aos principais pontos do ambiente interno e do site institucional.
+                </p>
+            </div>
+
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')">
+                <flux:sidebar.group :heading="__('Painel')">
                     <flux:sidebar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard')  }}
+                        {{ __('Dashboard') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="globe-alt" :href="route('site.home')">
+                        {{ __('Site') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="document-text" :href="route('site.proposal.create')">
+                        {{ __('Nova proposta') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="cog" :href="route('profile.edit')" wire:navigate>
+                        {{ __('Configurações') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
-            </flux:sidebar.nav>
-
-            <flux:spacer />
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
-                </flux:sidebar.item>
             </flux:sidebar.nav>
         </flux:sidebar>
 

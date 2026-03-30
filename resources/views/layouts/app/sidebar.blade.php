@@ -4,78 +4,54 @@
         @include('partials.head')
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200/70 bg-white/95 dark:border-white/10 dark:bg-[#08111df2]">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
+            <div class="px-4 pb-4">
+                <div class="bsi-kicker mb-2">Painel BSI</div>
+                <p class="bsi-copy text-xs">
+                    Ambiente interno para leitura operacional, acesso institucional e navegação rápida entre fluxos relevantes.
+                </p>
+            </div>
+
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Painel')" class="grid">
+                <flux:sidebar.group :heading="__('Navegação')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Visão Geral') }}
+                        {{ __('Visão geral') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="globe-alt" :href="route('site.home')">
+                        {{ __('Site institucional') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="document-text" :href="route('site.proposal.create')">
+                        {{ __('Nova proposta') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="folder-open" :href="route('site.ri')">
+                        {{ __('Relações com investidores') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 
             <flux:spacer />
 
+            <div class="px-4 pb-4">
+                <div class="bsi-shell-card-soft p-4">
+                    <div class="text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">{{ __('Conta') }}</div>
+                    <div class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        Gerencie preferências, perfil e acesso ao ambiente interno da BSI Capital.
+                    </div>
+                </div>
+            </div>
+
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
-        <!-- Mobile User Menu -->
-        <flux:header class="lg:hidden">
+        <flux:header class="border-b border-zinc-200/70 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#08111dcc] lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
-
             <flux:spacer />
-
-            <flux:dropdown position="top" align="end">
-                <flux:profile
-                    :initials="auth()->user()->initials()"
-                    icon-trailing="chevron-down"
-                />
-
-                <flux:menu>
-                    <flux:menu.radio.group>
-                        <div class="p-0 text-sm font-normal">
-                            <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-                                <flux:avatar
-                                    :name="auth()->user()->name"
-                                    :initials="auth()->user()->initials()"
-                                />
-
-                                <div class="grid flex-1 text-start text-sm leading-tight">
-                                    <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
-                                    <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
-                                </div>
-                            </div>
-                        </div>
-                    </flux:menu.radio.group>
-
-                    <flux:menu.separator />
-
-                    <flux:menu.radio.group>
-                        <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
-                            {{ __('Configurações') }}
-                        </flux:menu.item>
-                    </flux:menu.radio.group>
-
-                    <flux:menu.separator />
-
-                    <form method="POST" action="{{ route('logout') }}" class="w-full">
-                        @csrf
-                        <flux:menu.item
-                            as="button"
-                            type="submit"
-                            icon="arrow-right-start-on-rectangle"
-                            class="w-full cursor-pointer"
-                            data-test="logout-button"
-                        >
-                            {{ __('Sair') }}
-                        </flux:menu.item>
-                    </form>
-                </flux:menu>
-            </flux:dropdown>
+            <div class="text-sm font-semibold tracking-[-0.02em] text-brand-700 dark:text-white">{{ __('Painel BSI Capital') }}</div>
         </flux:header>
 
         {{ $slot }}

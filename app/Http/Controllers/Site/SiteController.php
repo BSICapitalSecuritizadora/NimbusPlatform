@@ -102,7 +102,7 @@ class SiteController extends Controller
 
     public function services()
     {
-        return view('site.services');
+        return view('site.service');
     }
 
     public function about()
@@ -148,9 +148,9 @@ class SiteController extends Controller
             ->where('is_public', true)
             ->whereNotNull('if_code')
             ->when($q !== '', function ($qq) use ($q) {
-                $qq->where(function($query) use ($q) {
+                $qq->where(function ($query) use ($q) {
                     $query->where('name', 'like', "%{$q}%")
-                          ->orWhere('issuer', 'like', "%{$q}%");
+                        ->orWhere('issuer', 'like', "%{$q}%");
                 });
             })
             ->when($type, function ($qq) use ($type) {
@@ -162,7 +162,7 @@ class SiteController extends Controller
             ->when($maturity_date_order === 'asc' || $maturity_date_order === 'desc', function ($qq) use ($maturity_date_order) {
                 $qq->orderBy('maturity_date', $maturity_date_order);
             })
-            ->when(!$issue_date_order && !$maturity_date_order, function ($qq) {
+            ->when(! $issue_date_order && ! $maturity_date_order, function ($qq) {
                 $qq->orderByDesc('issue_date');
             })
             ->paginate(12)
@@ -175,10 +175,10 @@ class SiteController extends Controller
     {
         $emission = Emission::where('if_code', $if_code)
             ->where('is_public', true)
-            ->with(['documents' => function($q) {
+            ->with(['documents' => function ($q) {
                 $q->where('is_public', true)->orderByDesc('published_at');
             }])
-            ->with(['payments' => function($q) {
+            ->with(['payments' => function ($q) {
                 $q->where('payment_date', '<=', today())->orderBy('payment_date');
             }])
             ->firstOrFail();
