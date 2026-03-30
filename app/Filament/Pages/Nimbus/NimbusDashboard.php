@@ -2,31 +2,34 @@
 
 namespace App\Filament\Pages\Nimbus;
 
-use App\Filament\Widgets\Nimbus\Widgets\LatestSubmissions;
-use App\Filament\Widgets\Nimbus\Widgets\SubmissionStats;
-use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
-use UnitEnum;
+use App\Filament\NimbusWidgets\NimbusStatsOverview;
+use App\Filament\NimbusWidgets\NimbusRecentSubmissions;
+use App\Filament\NimbusWidgets\NimbusRecentActivities;
+use App\Filament\NimbusWidgets\NimbusStatusDistribution;
+use App\Filament\NimbusWidgets\NimbusVolumeChart;
 
 class NimbusDashboard extends BaseDashboard
 {
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar';
-
-    protected static string|UnitEnum|null $navigationGroup = 'NimbusDocs';
-
-    protected static ?string $title = 'Dashboard NimbusDocs';
-
+    protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-chart-bar';
+    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static ?string $title = 'Visão Geral';
     protected static ?string $navigationLabel = 'Dashboard';
-
     protected static ?int $navigationSort = -1;
 
-    protected static string $routePath = 'nimbusdocs';
+    public function getColumns(): int | array
+    {
+        return 3;
+    }
 
     public function getWidgets(): array
     {
         return [
-            SubmissionStats::class,
-            LatestSubmissions::class,
+            NimbusStatsOverview::class,
+            NimbusRecentSubmissions::class,
+            NimbusRecentActivities::class,
+            NimbusStatusDistribution::class,
+            NimbusVolumeChart::class,
         ];
     }
 }
