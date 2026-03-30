@@ -128,15 +128,28 @@ require __DIR__.'/investor.php';
 Route::prefix('nimbus')->name('nimbus.')->group(function () {
     // Auth Routes...
     Route::get('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'showRequestForm'])->name('auth.request');
-    Route::post('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'requestPin'])->name('auth.request.post');
-    Route::get('/verificar', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'showVerifyForm'])->name('auth.verify');
-    Route::post('/verificar', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'verifyPin'])->name('auth.verify.post');
+    Route::post('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'verifyPin'])->name('auth.verify.post');
     Route::post('/sair', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'logout'])->name('auth.logout');
 
     // Authenticated Portal Routes
     Route::middleware(['auth:nimbus'])->group(function () {
         Route::get('/dashboard', function () {
-            return view('nimbus.dashboard'); // To be implemented later
+            $user = \Illuminate\Support\Facades\Auth::guard('nimbus')->user();
+            
+            // Dummy data for now before we implement the full controller queries
+            $stats = [
+                'total' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->count(),
+                'pending' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->whereIn('status', ['PENDING', 'UNDER_REVIEW'])->count(),
+                'approved' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->where('status', 'APPROVED')->count(),
+            ];
+            
+            $submissions = \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)
+                ->orderByDesc('submitted_at')
+                ->limit(5)
+                ->get()
+                ->toArray();
+                
+            return view('nimbus.dashboard', compact('stats', 'submissions'));
         })->name('dashboard');
     });
 });

@@ -14,84 +14,35 @@ class PortalAuthController extends Controller
     /**
      * Mostra o formulário inicial onde o usuário informa o e-mail ou documento.
      */
+    /**
+     * Mostra o formulário de login (único passo com o código XXXX-XXXX-XXXX).
+     */
     public function showRequestForm()
     {
-        return view('nimbus.auth.request-pin');
+        return view('nimbus.auth.login');
     }
 
     /**
-     * Valida o usuário e envia o PIN de 6 dígitos pro e-mail.
-     */
-    public function requestPin(Request $request)
-    {
-        $request->validate([
-            'identifier' => 'required|string'
-        ]);
-
-        $identifier = $request->input('identifier');
-
-        // Busca o usuário pelo e-mail ou documento
-        $user = PortalUser::where('status', 'ACTIVE')
-            ->where(function($q) use ($identifier) {
-                $q->where('email', $identifier)
-                  ->orWhere('document_number', preg_replace('/[^0-9]/', '', $identifier));
-            })
-            ->first();
-
-        if (!$user) {
-            return back()->withErrors(['identifier' => 'Usuário não encontrado ou inativo no portal Nimbus.']);
-        }
-
-        // Gera Token de 6 dígitos (Ex: 849201)
-        $code = random_int(100000, 999999);
-
-        // Revoga os tokens anteriores pendentes
-        $user->accessTokens()->where('status', 'PENDING')->update(['status' => 'REVOKED']);
-
-        // Salva novo token (Válido por 30 minutos)
-        $user->accessTokens()->create([
-            'code' => $code,
-            'status' => 'PENDING',
-            'expires_at' => now()->addMinutes(30)
-        ]);
-
-        // Aqui disparamos o Job / Mailable nativo do Laravel com o PIN para o $user->email
-        // Mail::to($user->email)->queue(new \App\Mail\Nimbus\PortalAccessPinCode($user, $code));
-
-        return redirect()->route('nimbus.auth.verify')->with('user_id', $user->id);
-    }
-
-    /**
-     * Mostra o formulário de validação do PIN.
-     */
-    public function showVerifyForm()
-    {
-        if (!session('user_id')) {
-            return redirect()->route('nimbus.auth.request');
-        }
-        return view('nimbus.auth.verify-pin');
-    }
-
-    /**
-     * Checa se o código bate e faz autenticação (Session / Custom Guard).
+     * Faz a verificação e o login direto pela submissão do código.
      */
     public function verifyPin(Request $request)
     {
-        $request->validate(['code' => 'required|numeric|digits:6']);
+        $request->validate(['access_code' => 'required|string']);
 
-        $user = PortalUser::find(session('user_id'));
-        if (!$user) {
-            return redirect()->route('nimbus.auth.request');
-        }
+        $tokenStr = str_replace('-', '', $request->input('access_code'));
 
-        $token = $user->accessTokens()
-            ->where('code', $request->input('code'))
-            ->where('status', 'PENDING')
-            ->where('expires_at', '>', now())
+        $token = AccessToken::where('code', $tokenStr)
+            // ->where('status', 'PENDING') // Removed pending constraint to allow reused codes if needed, or keeping it
+            // ->where('expires_at', '>', now())
             ->first();
 
-        if (!$token) {
-            return back()->withErrors(['code' => 'Código inválido ou expirado. Tente novamente.']);
+        if (!$token || !$token->portalUser || $token->portalUser->status !== 'ACTIVE') {
+            return back()->withErrors(['access_code' => 'Código inválido ou expirado.'])->withInput();
+        }
+
+        // Verifica se ainda é válido (Você pode alterar a regra de PENDING depois conforme o original)
+        if ($token->status === 'REVOKED' || ($token->expires_at && $token->expires_at < now())) {
+            return back()->withErrors(['access_code' => 'Código expirado. Solicite um novo com a administração.'])->withInput();
         }
 
         // Marca como usado
@@ -102,13 +53,12 @@ class PortalAuthController extends Controller
             'used_user_agent' => $request->userAgent()
         ]);
 
-        // Atualiza último login
+        $user = $token->portalUser;
         $user->update([
             'last_login_at' => now(),
-            'last_login_method' => 'PIN_EMAIL'
+            'last_login_method' => 'ACCESS_CODE'
         ]);
 
-        // Faz o login no Laravel Auth System usando um guard customizado para isolar acessos
         Auth::guard('nimbus')->login($user);
 
         return redirect()->route('nimbus.dashboard');
