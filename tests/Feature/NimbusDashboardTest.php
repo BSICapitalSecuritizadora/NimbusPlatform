@@ -116,7 +116,9 @@ it('renders the portal users list under Administração', function () {
         ->assertSee('Nome completo')
         ->assertSee('E-mail')
         ->assertSee('Gerar chave')
-        ->assertSee('Cliente Portal');
+        ->assertSee('Cliente Portal')
+        ->assertSee('123.456.789-01')
+        ->assertSee('(11) 99999-9999');
 });
 
 it('renders the portal user create form with the same core fields as the NimbusDocs reference', function () {

@@ -26,9 +26,11 @@ class PortalUsersTable
                     ->searchable(),
                 TextColumn::make('document_number')
                     ->label('Documento')
+                    ->formatStateUsing(fn (?string $state): ?string => self::formatCpfForDisplay($state))
                     ->searchable(),
                 TextColumn::make('phone_number')
                     ->label('Telefone')
+                    ->formatStateUsing(fn (?string $state): ?string => self::formatPhoneForDisplay($state))
                     ->searchable(),
                 TextColumn::make('external_id')
                     ->label('ID externo')
@@ -114,5 +116,44 @@ class PortalUsersTable
                     DeleteBulkAction::make()->label('Excluir selecionados'),
                 ]),
             ]);
+    }
+
+    private static function normalizeDigits(?string $state): ?string
+    {
+        if (! filled($state)) {
+            return null;
+        }
+
+        return preg_replace('/\D+/', '', $state);
+    }
+
+    private static function formatCpfForDisplay(?string $state): ?string
+    {
+        $digits = self::normalizeDigits($state);
+
+        if (! filled($digits) || strlen($digits) !== 11) {
+            return $state;
+        }
+
+        return preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $digits);
+    }
+
+    private static function formatPhoneForDisplay(?string $state): ?string
+    {
+        $digits = self::normalizeDigits($state);
+
+        if (! filled($digits)) {
+            return $state;
+        }
+
+        if (strlen($digits) === 10) {
+            return preg_replace('/(\d{2})(\d{4})(\d{4})/', '($1) $2-$3', $digits);
+        }
+
+        if (strlen($digits) === 11) {
+            return preg_replace('/(\d{2})(\d{5})(\d{4})/', '($1) $2-$3', $digits);
+        }
+
+        return $state;
     }
 }
