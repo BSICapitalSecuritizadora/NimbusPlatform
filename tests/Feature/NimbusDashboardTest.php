@@ -2,9 +2,15 @@
 
 use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
+use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
+use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
+use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
 use App\Models\Nimbus\AccessToken;
+use App\Models\Nimbus\DocumentCategory;
+use App\Models\Nimbus\GeneralDocument;
+use App\Models\Nimbus\PortalDocument;
 use App\Models\Nimbus\PortalUser;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -58,6 +64,17 @@ it('organizes administrative items under the Administração subsection', functi
         ->not->toBeNull();
 });
 
+it('organizes document management items under the Gestão Documental subsection', function () {
+    expect(DocumentCategoryResource::getNavigationParentItem())->toBe('Gestão Documental')
+        ->and(DocumentCategoryResource::getNavigationLabel())->toBe('Categorias de Documentos')
+        ->and(GeneralDocumentResource::getNavigationParentItem())->toBe('Gestão Documental')
+        ->and(GeneralDocumentResource::getNavigationLabel())->toBe('Biblioteca Geral')
+        ->and(PortalDocumentResource::getNavigationParentItem())->toBe('Gestão Documental')
+        ->and(PortalDocumentResource::getNavigationLabel())->toBe('Documentos por Usuário')
+        ->and(collect(Filament::getPanel('admin')->getNavigationItems())->first(fn ($item) => $item->getLabel() === 'Gestão Documental'))
+        ->not->toBeNull();
+});
+
 it('makes the Visão Geral subsection clickable', function () {
     $overviewItem = collect(Filament::getPanel('admin')->getNavigationItems())
         ->first(fn ($item) => $item->getLabel() === 'Visão Geral');
@@ -72,6 +89,14 @@ it('makes the Administração subsection clickable', function () {
 
     expect($administrationItem)->not->toBeNull()
         ->and($administrationItem->getUrl())->toBe(PortalUserResource::getUrl(panel: 'admin'));
+});
+
+it('makes the Gestão Documental subsection clickable', function () {
+    $documentManagementItem = collect(Filament::getPanel('admin')->getNavigationItems())
+        ->first(fn ($item) => $item->getLabel() === 'Gestão Documental');
+
+    expect($documentManagementItem)->not->toBeNull()
+        ->and($documentManagementItem->getUrl())->toBe(DocumentCategoryResource::getUrl(panel: 'admin'));
 });
 
 it('renders the submissions list in Portuguese without exposing creation to internal users', function () {
@@ -182,4 +207,129 @@ it('renders the access keys list under Administração', function () {
         ->assertSee('ABCD-EF12-3456')
         ->assertSee('Válida')
         ->assertSee('Revogar');
+});
+
+it('renders the document categories list under Gestão Documental', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-document-categories@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    DocumentCategory::query()->create([
+        'name' => 'Institucional',
+    ]);
+
+    $this->actingAs($user)
+        ->get(DocumentCategoryResource::getUrl(panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Categorias de Documentos')
+        ->assertSee('Nova categoria')
+        ->assertSee('Institucional')
+        ->assertSee('Documentos vinculados');
+});
+
+it('renders the biblioteca geral list under Gestão Documental', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-general-documents@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $category = DocumentCategory::query()->create([
+        'name' => 'Institucional',
+    ]);
+
+    GeneralDocument::query()->create([
+        'nimbus_category_id' => $category->id,
+        'title' => 'Manual do Investidor',
+        'description' => 'Documento institucional para consulta geral.',
+        'file_path' => 'nimbus/general-documents/manual-investidor.pdf',
+        'file_original_name' => 'manual-investidor.pdf',
+        'file_size' => 204800,
+        'file_mime' => 'application/pdf',
+        'is_active' => true,
+        'published_at' => now(),
+        'created_by_user_id' => $user->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(GeneralDocumentResource::getUrl(panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Biblioteca Geral')
+        ->assertSee('Novo documento geral')
+        ->assertSee('Manual do Investidor')
+        ->assertSee('Institucional');
+});
+
+it('renders the portal documents list under Gestão Documental', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-portal-documents@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Documentos',
+        'email' => 'cliente.documentos@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    PortalDocument::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'title' => 'Contrato Social',
+        'description' => 'Arquivo societário do cliente.',
+        'file_path' => 'nimbus/portal-documents/contrato-social.pdf',
+        'file_original_name' => 'contrato-social.pdf',
+        'file_size' => 153600,
+        'file_mime' => 'application/pdf',
+        'created_by_user_id' => $user->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(PortalDocumentResource::getUrl(panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Documentos por Usuário')
+        ->assertSee('Novo documento do usuário')
+        ->assertSee('Cliente Documentos')
+        ->assertSee('Contrato Social');
+});
+
+it('renders the document management create forms in Portuguese', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-document-management-create@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $category = DocumentCategory::query()->create([
+        'name' => 'Institucional',
+    ]);
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Formulário',
+        'email' => 'cliente.formulario@example.com',
+        'document_number' => '98765432100',
+        'phone_number' => '11888888888',
+        'status' => 'ACTIVE',
+    ]);
+
+    $this->actingAs($user)
+        ->get(DocumentCategoryResource::getUrl('create', panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Nova Categoria de Documento')
+        ->assertSee('Nome da categoria');
+
+    $this->actingAs($user)
+        ->get(GeneralDocumentResource::getUrl('create', panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Novo Documento Geral')
+        ->assertSee('Categoria')
+        ->assertSee('Arquivo')
+        ->assertSee($category->name);
+
+    $this->actingAs($user)
+        ->get(PortalDocumentResource::getUrl('create', panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Novo Documento do Usuário')
+        ->assertSee('Usuário do portal')
+        ->assertSee('Arquivo');
 });

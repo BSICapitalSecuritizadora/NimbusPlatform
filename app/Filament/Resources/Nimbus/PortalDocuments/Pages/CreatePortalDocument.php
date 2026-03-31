@@ -1,16 +1,16 @@
 <?php
 
-namespace App\Filament\Resources\Nimbus\GeneralDocuments\Pages;
+namespace App\Filament\Resources\Nimbus\PortalDocuments\Pages;
 
-use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
+use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Support\Enums\Width;
 
-class CreateGeneralDocument extends CreateRecord
+class CreatePortalDocument extends CreateRecord
 {
-    protected static string $resource = GeneralDocumentResource::class;
+    protected static string $resource = PortalDocumentResource::class;
 
-    protected static ?string $title = 'Novo Documento Geral';
+    protected static ?string $title = 'Novo Documento do Usuário';
 
     protected static ?string $breadcrumb = 'Criar';
 

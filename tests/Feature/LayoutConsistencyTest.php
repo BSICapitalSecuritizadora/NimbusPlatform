@@ -10,7 +10,7 @@ dataset('public-layout-routes', [
         'site.home',
         [
             'Envie sua proposta',
-            'Estruturas de crédito com execução institucional, governança operacional e acompanhamento contínuo.',
+            'Securitização e crédito estruturado com rigor técnico, governança e presença ativa ao longo de toda a operação.',
             'Soluções estruturadas por setor e perfil de operação',
         ],
     ],

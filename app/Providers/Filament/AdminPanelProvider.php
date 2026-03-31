@@ -4,6 +4,9 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
+use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
+use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
+use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
 use Filament\Http\Middleware\Authenticate;
@@ -51,6 +54,12 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(-10)
                     ->url(fn (): string => PortalUserResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(PortalUserResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(AccessTokenResource::getNavigationItemActiveRoutePattern())),
+                NavigationItem::make('Gestão Documental')
+                    ->group('NimbusDocs')
+                    ->icon(Heroicon::OutlinedFolder)
+                    ->sort(0)
+                    ->url(fn (): string => DocumentCategoryResource::getUrl(panel: 'admin'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(DocumentCategoryResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(GeneralDocumentResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(PortalDocumentResource::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

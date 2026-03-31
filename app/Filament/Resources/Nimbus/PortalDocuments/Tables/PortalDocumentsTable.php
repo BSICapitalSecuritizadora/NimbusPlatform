@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\Nimbus\GeneralDocuments\Tables;
+namespace App\Filament\Resources\Nimbus\PortalDocuments\Tables;
 
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -10,17 +10,19 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Number;
 
-class GeneralDocumentsTable
+class PortalDocumentsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('category.name')
-                    ->label('Categoria')
-                    ->badge()
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('portalUser.full_name')
+                    ->label('Usuário do portal')
+                    ->searchable(),
+                TextColumn::make('portalUser.email')
+                    ->label('E-mail')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('title')
                     ->label('Título')
                     ->searchable(),
@@ -31,29 +33,14 @@ class GeneralDocumentsTable
                     ->label('Tamanho')
                     ->formatStateUsing(fn (?int $state): string => $state ? Number::fileSize($state) : '—')
                     ->sortable(),
-                TextColumn::make('is_active')
-                    ->label('Status')
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'Ativo' : 'Inativo')
-                    ->badge()
-                    ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
-                TextColumn::make('published_at')
-                    ->label('Publicado em')
-                    ->dateTime()
-                    ->sortable(),
                 TextColumn::make('createdBy.name')
-                    ->label('Criado por')
+                    ->label('Enviado por')
                     ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime()
-                    ->sortable()
-                    ->toggleable(),
-                TextColumn::make('updated_at')
-                    ->label('Atualizado em')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->sortable(),
             ])
             ->filters([
                 //

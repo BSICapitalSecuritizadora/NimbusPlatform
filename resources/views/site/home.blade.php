@@ -12,10 +12,10 @@
             <div class="col-xl-7">
                 <div class="kicker mb-3">Securitização • Mercado de Capitais • Crédito Estruturado</div>
                 <h1 class="display-3 fw-bold mb-4">
-                    Estruturas de crédito com execução institucional, governança operacional e acompanhamento contínuo.
+                    Securitização e crédito estruturado com rigor técnico, governança e presença ativa ao longo de toda a operação.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    A BSI Capital estrutura, coordena e acompanha operações com disciplina técnica, fluxo informacional organizado e relacionamento consistente entre emissores, originadores e investidores.
+                    A BSI Capital estrutura e coordena operações de crédito com critério técnico e gestão próxima — conectando emissores, originadores e investidores com transparência e consistência.
                 </p>
 
                 <div class="d-flex flex-wrap gap-3 mb-4">

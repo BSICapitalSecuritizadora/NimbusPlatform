@@ -1,22 +1,21 @@
 <?php
 
-namespace App\Filament\Resources\Nimbus\GeneralDocuments\Schemas;
+namespace App\Filament\Resources\Nimbus\PortalDocuments\Schemas;
 
-use Filament\Forms\Components\DateTimePicker;
+use App\Models\Nimbus\PortalUser;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Number;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
-class GeneralDocumentForm
+class PortalDocumentForm
 {
     public static function configure(Schema $schema): Schema
     {
@@ -27,9 +26,9 @@ class GeneralDocumentForm
                     '2xl' => 12,
                 ])
                     ->schema([
-                        Section::make('Dados da publicação')
-                            ->description('Cadastro e manutenção da biblioteca institucional.')
-                            ->icon('heroicon-o-folder')
+                        Section::make('Dados do documento')
+                            ->description('Upload individualizado para um usuário do portal.')
+                            ->icon('heroicon-o-folder-open')
                             ->columnSpan([
                                 'default' => 1,
                                 '2xl' => 8,
@@ -39,22 +38,23 @@ class GeneralDocumentForm
                                 '3xl' => 2,
                             ])
                             ->schema([
-                                Select::make('nimbus_category_id')
-                                    ->label('Categoria')
-                                    ->relationship('category', 'name')
-                                    ->searchable()
+                                Select::make('nimbus_portal_user_id')
+                                    ->label('Usuário do portal')
+                                    ->relationship('portalUser', 'full_name')
+                                    ->getOptionLabelFromRecordUsing(fn (PortalUser $record): string => filled($record->email) ? "{$record->full_name} ({$record->email})" : $record->full_name)
+                                    ->searchable(['full_name', 'email'])
                                     ->preload()
                                     ->required()
                                     ->columnSpanFull(),
                                 TextInput::make('title')
                                     ->label('Título')
-                                    ->placeholder('Ex: Regulamento Interno 2026')
+                                    ->placeholder('Ex: Contrato Social Atualizado')
                                     ->required()
                                     ->maxLength(255)
                                     ->columnSpanFull(),
                                 Textarea::make('description')
                                     ->label('Descrição')
-                                    ->placeholder('Resumo do conteúdo e da finalidade do documento.')
+                                    ->placeholder('Informações adicionais para o usuário sobre este arquivo.')
                                     ->rows(4)
                                     ->columnSpanFull(),
                                 Hidden::make('file_original_name'),
@@ -63,7 +63,7 @@ class GeneralDocumentForm
                                 FileUpload::make('file_path')
                                     ->label('Arquivo')
                                     ->required()
-                                    ->directory('nimbus/general-documents')
+                                    ->directory('nimbus/portal-documents')
                                     ->preserveFilenames()
                                     ->maxSize(51200)
                                     ->acceptedFileTypes([
@@ -87,25 +87,13 @@ class GeneralDocumentForm
                                     })
                                     ->columnSpanFull(),
                             ]),
-                        Section::make('Disponibilidade')
+                        Section::make('Informações do arquivo')
                             ->icon('heroicon-o-document-text')
                             ->columnSpan([
                                 'default' => 1,
                                 '2xl' => 4,
                             ])
                             ->schema([
-                                Toggle::make('is_active')
-                                    ->label('Disponível no portal')
-                                    ->default(true)
-                                    ->required()
-                                    ->helperText('Quando ativo, o documento pode ser disponibilizado aos usuários.')
-                                    ->columnSpanFull(),
-                                DateTimePicker::make('published_at')
-                                    ->label('Publicado em')
-                                    ->seconds(false)
-                                    ->native(false)
-                                    ->helperText('Se vazio, o documento fica sem data definida de publicação.')
-                                    ->columnSpanFull(),
                                 Placeholder::make('file_original_name_display')
                                     ->label('Arquivo atual')
                                     ->content(fn ($record): string => $record?->file_original_name ?? '—')

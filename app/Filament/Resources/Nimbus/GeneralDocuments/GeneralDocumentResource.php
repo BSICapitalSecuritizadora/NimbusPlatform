@@ -13,14 +13,25 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class GeneralDocumentResource extends Resource
 {
     protected static ?string $model = GeneralDocument::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
 
     protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+
+    protected static ?string $navigationParentItem = 'Gestão Documental';
+
+    protected static ?string $navigationLabel = 'Biblioteca Geral';
+
+    protected static ?string $modelLabel = 'documento geral';
+
+    protected static ?string $pluralModelLabel = 'Biblioteca Geral';
+
+    protected static ?int $navigationSort = 21;
 
     public static function form(Schema $schema): Schema
     {
@@ -37,6 +48,12 @@ class GeneralDocumentResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['category', 'createdBy']);
     }
 
     public static function getPages(): array
