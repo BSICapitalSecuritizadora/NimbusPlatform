@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Nimbus;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\AccessToken;
-use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PortalAuthController extends Controller
@@ -29,14 +27,13 @@ class PortalAuthController extends Controller
     {
         $request->validate(['access_code' => 'required|string']);
 
-        $tokenStr = str_replace('-', '', $request->input('access_code'));
+        $normalizedCode = $this->normalizeAccessCode((string) $request->input('access_code'));
+        $rawCode = str_replace('-', '', $normalizedCode);
 
-        $token = AccessToken::where('code', $tokenStr)
-            // ->where('status', 'PENDING') // Removed pending constraint to allow reused codes if needed, or keeping it
-            // ->where('expires_at', '>', now())
+        $token = AccessToken::whereIn('code', [$normalizedCode, $rawCode])
             ->first();
 
-        if (!$token || !$token->portalUser || $token->portalUser->status !== 'ACTIVE') {
+        if (! $token || ! $token->portalUser || $token->portalUser->status !== 'ACTIVE') {
             return back()->withErrors(['access_code' => 'Código inválido ou expirado.'])->withInput();
         }
 
@@ -50,13 +47,13 @@ class PortalAuthController extends Controller
             'status' => 'USED',
             'used_at' => now(),
             'used_ip' => $request->ip(),
-            'used_user_agent' => $request->userAgent()
+            'used_user_agent' => $request->userAgent(),
         ]);
 
         $user = $token->portalUser;
         $user->update([
             'last_login_at' => now(),
-            'last_login_method' => 'ACCESS_CODE'
+            'last_login_method' => 'ACCESS_CODE',
         ]);
 
         Auth::guard('nimbus')->login($user);
@@ -64,9 +61,17 @@ class PortalAuthController extends Controller
         return redirect()->route('nimbus.dashboard');
     }
 
+    private function normalizeAccessCode(string $accessCode): string
+    {
+        $sanitizedCode = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $accessCode) ?? '');
+
+        return implode('-', str_split($sanitizedCode, 4));
+    }
+
     public function logout()
     {
         Auth::guard('nimbus')->logout();
+
         return redirect()->route('nimbus.auth.request');
     }
 }

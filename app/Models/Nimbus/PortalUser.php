@@ -2,9 +2,10 @@
 
 namespace App\Models\Nimbus;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class PortalUser extends Model
+class PortalUser extends Authenticatable
 {
     use \Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -16,17 +17,17 @@ class PortalUser extends Model
         'last_login_at' => 'datetime',
     ];
 
-    public function accessTokens()
+    public function accessTokens(): HasMany
     {
         return $this->hasMany(AccessToken::class, 'nimbus_portal_user_id');
     }
 
-    public function submissions()
+    public function submissions(): HasMany
     {
         return $this->hasMany(Submission::class, 'nimbus_portal_user_id');
     }
 
-    public function documents()
+    public function documents(): HasMany
     {
         return $this->hasMany(PortalDocument::class, 'nimbus_portal_user_id');
     }

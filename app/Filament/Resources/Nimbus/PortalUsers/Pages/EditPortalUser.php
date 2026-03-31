@@ -10,6 +10,10 @@ class EditPortalUser extends EditRecord
 {
     protected static string $resource = PortalUserResource::class;
 
+    protected static ?string $title = 'Editar usuário do portal';
+
+    protected static ?string $breadcrumb = 'Editar';
+
     protected function getHeaderActions(): array
     {
         return [

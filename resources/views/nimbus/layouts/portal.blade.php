@@ -7,7 +7,7 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
@@ -15,42 +15,42 @@
     <!-- CSS Injection from nimbusdocs-theme.css equivalents or local logic -->
     <style>
         :root {
-            --nd-navy-900: #06101c;
-            --nd-navy-850: #0f2137;
-            --nd-navy-800: #0c1b2e;
-            --nd-navy-700: #1b2f48;
+            --nd-navy-900: #001233;
+            --nd-navy-850: #001a4d;
+            --nd-navy-800: #00205b;
+            --nd-navy-700: #0f2f73;
             --nd-navy-100: #e6f0fa;
             
-            --nd-gold-700: #8a6428;
-            --nd-gold-600: #a67f3d;
-            --nd-gold-500: #d4a84b;
-            --nd-gold-400: #e4c47a;
-            --nd-gold-300: #f0dea5;
-            --nd-gold-100: #fdf8e6;
+            --nd-gold-700: #a78825;
+            --nd-gold-600: #bf9b2e;
+            --nd-gold-500: #d4af37;
+            --nd-gold-400: #e3c563;
+            --nd-gold-300: #f3e4a8;
+            --nd-gold-100: #fdfaf2;
 
             --nd-white: #ffffff;
-            --nd-surface-50: #f8fafc;
-            --nd-surface-100: #f1f5f9;
-            --nd-surface-200: #e2e8f0;
+            --nd-surface-50: #f4f7fb;
+            --nd-surface-100: #f8fbff;
+            --nd-surface-200: #dfe7f2;
 
             --nd-success-light: #ecfdf5;
             --nd-success-dark: #059669;
 
             --nd-gray-400: #9ca3af;
-            --nd-gray-500: #6b7280;
+            --nd-gray-500: #5c6980;
             --nd-gray-600: #4b5563;
 
-            --nd-radius: 0.375rem;
-            --nd-radius-lg: 0.5rem;
-            --nd-radius-xl: 0.75rem;
-            --nd-radius-2xl: 1rem;
+            --nd-radius: 12px;
+            --nd-radius-lg: 16px;
+            --nd-radius-xl: 24px;
+            --nd-radius-2xl: 28px;
 
-            --nd-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --nd-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --nd-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --nd-shadow-sm: 0 10px 25px rgba(0, 32, 91, 0.04);
+            --nd-shadow-md: 0 20px 45px rgba(0, 32, 91, 0.08);
+            --nd-shadow-lg: 0 24px 55px rgba(0, 32, 91, 0.12);
 
             --nd-transition: all 0.2s ease;
-            --nd-font-heading: 'Plus Jakarta Sans', sans-serif;
+            --nd-font-heading: 'Inter', sans-serif;
         }
 
         body {
@@ -58,7 +58,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
         }
 
         .portal-main {
@@ -135,14 +135,9 @@
     <nav class="navbar navbar-expand-lg portal-navbar sticky-top">
         <div class="container-xxl">
             <a class="navbar-brand d-flex align-items-center gap-3" href="{{ route('nimbus.dashboard') }}">
-                <div class="portal-logo-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 24px;">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                </div>
-                <div>
-                     <div class="portal-logo-title">BSI Capital</div>
-                     <div class="portal-logo-subtitle">Portal do Cliente</div>
+                <img src="https://bsicapital.com.br/wp-content/uploads/2022/06/logo.png" alt="BSI Capital" style="max-height: 44px;">
+                <div class="border-start border-light border-opacity-25 ps-3 py-1 d-none d-sm-block">
+                     <span class="text-white-50 fw-semibold text-uppercase" style="letter-spacing: 1px; font-size: 0.75rem;"></span>
                 </div>
             </a>
 

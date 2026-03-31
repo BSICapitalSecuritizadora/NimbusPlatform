@@ -10,10 +10,14 @@ class ListPortalUsers extends ListRecords
 {
     protected static string $resource = PortalUserResource::class;
 
+    protected static ?string $title = 'Usuários do Portal';
+
+    protected static ?string $breadcrumb = 'Listar';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()->label('Novo usuário'),
         ];
     }
 }

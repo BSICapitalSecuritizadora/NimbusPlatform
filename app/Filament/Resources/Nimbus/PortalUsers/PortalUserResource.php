@@ -18,9 +18,19 @@ class PortalUserResource extends Resource
 {
     protected static ?string $model = PortalUser::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
     protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+
+    protected static ?string $navigationParentItem = 'Administração';
+
+    protected static ?string $navigationLabel = 'Usuários do Portal';
+
+    protected static ?string $modelLabel = 'usuário do portal';
+
+    protected static ?string $pluralModelLabel = 'Usuários do Portal';
+
+    protected static ?int $navigationSort = 10;
 
     public static function form(Schema $schema): Schema
     {

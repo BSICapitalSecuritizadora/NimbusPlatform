@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Nimbus\NimbusDashboard;
+use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
+use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -43,6 +45,12 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(-20)
                     ->url(fn (): string => NimbusDashboard::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(NimbusDashboard::getNavigationItemActiveRoutePattern()) || request()->routeIs(SubmissionResource::getNavigationItemActiveRoutePattern())),
+                NavigationItem::make('Administração')
+                    ->group('NimbusDocs')
+                    ->icon(Heroicon::OutlinedCog6Tooth)
+                    ->sort(-10)
+                    ->url(fn (): string => PortalUserResource::getUrl(panel: 'admin'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(PortalUserResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(AccessTokenResource::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

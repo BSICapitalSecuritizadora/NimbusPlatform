@@ -2,11 +2,15 @@
 
 namespace App\Filament\Resources\Nimbus\PortalUsers\Tables;
 
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class PortalUsersTable
 {
@@ -15,28 +19,44 @@ class PortalUsersTable
         return $table
             ->columns([
                 TextColumn::make('full_name')
+                    ->label('Nome completo')
                     ->searchable(),
                 TextColumn::make('email')
-                    ->label('Email address')
+                    ->label('E-mail')
                     ->searchable(),
                 TextColumn::make('document_number')
+                    ->label('Documento')
                     ->searchable(),
                 TextColumn::make('phone_number')
+                    ->label('Telefone')
                     ->searchable(),
                 TextColumn::make('external_id')
+                    ->label('ID externo')
                     ->searchable(),
                 TextColumn::make('status')
+                    ->label('Status')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'INVITED' => 'Aguardando Cadastro',
+                        'ACTIVE' => 'Ativo',
+                        'INACTIVE' => 'Inativo',
+                        'BLOCKED' => 'Suspenso',
+                        default => (string) $state,
+                    })
                     ->badge(),
                 TextColumn::make('last_login_at')
+                    ->label('Último acesso')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('last_login_method')
+                    ->label('Método do último acesso')
                     ->searchable(),
                 TextColumn::make('created_at')
+                    ->label('Criado em')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                    ->label('Atualizado em')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -46,45 +66,43 @@ class PortalUsersTable
             ])
             ->recordActions([
                 EditAction::make(),
-                \Filament\Tables\Actions\Action::make('generate_token')
-                    ->label('Gerar Código')
+                Action::make('generate_token')
+                    ->label('Gerar chave')
                     ->icon('heroicon-o-key')
                     ->color('warning')
                     ->requiresConfirmation()
-                    ->modalHeading('Gerar Código de Acesso')
-                    ->modalDescription('Isso irá invalidar o código atual do usuário (caso exista) e gerar um novo código de 14 dígitos.')
+                    ->modalHeading('Gerar chave de acesso')
+                    ->modalDescription('Isso irá revogar a chave atual do usuário, se existir, e gerar um novo código no formato XXXX-XXXX-XXXX.')
                     ->action(function ($record) {
                         try {
-                            \Illuminate\Support\Facades\DB::transaction(function () use ($record, &$code) {
-                                // Invalidar tokens anteriores do usuário
-                                $record->accessTokens()->update(['status' => 'expired']);
+                            DB::transaction(function () use ($record, &$code) {
+                                $record->accessTokens()
+                                    ->where('status', 'PENDING')
+                                    ->update(['status' => 'REVOKED']);
 
-                                // Gerar novo formato XXXX-XXXX-XXXX
                                 $code = strtoupper(substr(bin2hex(random_bytes(2)), 0, 4)).'-'.
-                                        strtoupper(substr(bin2hex(random_bytes(2)), 0, 4)).'-'.
-                                        strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
+                                    strtoupper(substr(bin2hex(random_bytes(2)), 0, 4)).'-'.
+                                    strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
 
                                 $record->accessTokens()->create([
-                                    'token' => $code,
-                                    'status' => 'active',
+                                    'code' => $code,
+                                    'status' => 'PENDING',
                                     'expires_at' => now()->addDays(7),
                                 ]);
                             });
 
-                            // Disparar o email para a Fila (Queue)
-                            \Illuminate\Support\Facades\Mail::to($record->email)
+                            Mail::to($record->email)
                                 ->send(new \App\Mail\Nimbus\SendPortalAccessCode($record, $code));
 
-                            \Filament\Notifications\Notification::make()
-                                ->title('Código Enviado!')
-                                ->body("O código **{$code}** foi gerado e as instruções foram enviadas para o e-mail do usuário.")
+                            Notification::make()
+                                ->title('Chave enviada')
+                                ->body("A chave **{$code}** foi gerada e enviada para o e-mail do usuário.")
                                 ->success()
                                 ->duration(10000)
                                 ->send();
-
                         } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Erro ao gerar código')
+                            Notification::make()
+                                ->title('Erro ao gerar chave')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();
@@ -93,7 +111,7 @@ class PortalUsersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->label('Excluir selecionados'),
                 ]),
             ]);
     }

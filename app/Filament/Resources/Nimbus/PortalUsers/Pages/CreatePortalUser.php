@@ -8,4 +8,8 @@ use Filament\Resources\Pages\CreateRecord;
 class CreatePortalUser extends CreateRecord
 {
     protected static string $resource = PortalUserResource::class;
+
+    protected static ?string $title = 'Novo Usuário';
+
+    protected static ?string $breadcrumb = 'Criar';
 }
