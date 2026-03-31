@@ -15,11 +15,13 @@ class NimbusDashboard extends BaseDashboard
 
     protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
 
+    protected static ?string $navigationParentItem = 'Visão Geral';
+
     protected static ?string $title = 'Visão Geral';
 
     protected static ?string $navigationLabel = 'Dashboard';
 
-    protected static ?int $navigationSort = -1;
+    protected static ?int $navigationSort = -10;
 
     protected static string $routePath = '/nimbus-dashboard';
 

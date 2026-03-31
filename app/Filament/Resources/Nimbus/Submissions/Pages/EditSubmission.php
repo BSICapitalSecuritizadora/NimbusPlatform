@@ -10,6 +10,10 @@ class EditSubmission extends EditRecord
 {
     protected static string $resource = SubmissionResource::class;
 
+    protected static ?string $title = 'Editar envio e solicitação';
+
+    protected static ?string $breadcrumb = 'Editar';
+
     protected function getHeaderActions(): array
     {
         return [
