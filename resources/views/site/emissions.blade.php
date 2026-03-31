@@ -75,11 +75,11 @@
                         <div style="height: 4px; background: linear-gradient(90deg, var(--brand), var(--gold), var(--brand));"></div>
                         <div class="card-body p-4">
                             <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
-                                <div style="min-width: 0;">
+                                <div class="flex-grow-1">
                                     <div class="small text-uppercase text-muted fw-semibold mb-2">{{ $e->if_code ?? 'CRI' }}</div>
-                                    <h3 class="h5 fw-bold text-brand mb-0" style="line-height: 1.45;">{{ $e->name }}</h3>
+                                    <h3 class="h5 fw-bold text-brand mb-0" style="line-height: 1.45; word-wrap: break-word;">{{ $e->name }}</h3>
                                 </div>
-                                <div class="d-flex align-items-center justify-content-center flex-shrink-0 p-2" style="min-width: 64px; min-height: 46px; border-radius: 16px; background: rgba(0,32,91,0.06); color: var(--brand);">
+                                <div class="d-flex align-items-center justify-content-center flex-shrink-0 p-2" style="width: 72px; height: 72px; border-radius: 16px; background: rgba(0,32,91,0.06); color: var(--brand);">
                                     @if($e->logo_path)
                                         <img src="{{ Storage::url($e->logo_path) }}" alt="{{ $e->name }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                                     @else

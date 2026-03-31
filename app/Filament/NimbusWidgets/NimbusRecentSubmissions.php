@@ -2,17 +2,18 @@
 
 namespace App\Filament\NimbusWidgets;
 
+use App\Models\Nimbus\Submission;
+use Filament\Actions\Action;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
-use App\Models\Nimbus\Submission;
 
 class NimbusRecentSubmissions extends BaseWidget
 {
     protected static ?string $heading = 'Envios Recentes';
-    
+
     // Span 2 of 3 columns
-    protected int | string | array $columnSpan = 2;
+    protected int|string|array $columnSpan = 2;
 
     public function table(Table $table): Table
     {
@@ -37,7 +38,7 @@ class NimbusRecentSubmissions extends BaseWidget
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('Ver Detalhes')
+                Action::make('Ver Detalhes')
                     ->icon('heroicon-m-chevron-right')
                     ->iconButton()
                     ->url(fn (Submission $record): string => \App\Filament\Resources\Nimbus\Submissions\SubmissionResource::getUrl('edit', ['record' => $record])),

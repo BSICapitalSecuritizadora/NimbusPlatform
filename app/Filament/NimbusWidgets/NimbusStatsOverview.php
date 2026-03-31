@@ -23,34 +23,28 @@ class NimbusStatsOverview extends BaseWidget
     {
         return [
             Stat::make('Envios Recebidos', Submission::count())
-                ->descriptionIcon('heroicon-m-inbox-arrow-down')
-                ->color('secondary')
-                ->extraAttributes(['class' => 'bg-gray-50 border border-gray-100 shadow-sm']),
+                ->icon('heroicon-m-inbox-arrow-down')
+                ->extraAttributes(['class' => 'nimbus-stat-card bg-slate-500 border border-slate-600 shadow-sm']),
 
             Stat::make('Aguardando Análise', Submission::where('status', 'PENDING')->count())
-                ->descriptionIcon('heroicon-m-clock')
-                ->color('warning')
-                ->extraAttributes(['class' => 'bg-orange-50 border border-orange-100 shadow-sm']),
+                ->icon('heroicon-m-clock')
+                ->extraAttributes(['class' => 'nimbus-stat-card bg-amber-500 border border-amber-600 shadow-sm']),
 
             Stat::make('Aprovados', Submission::where('status', 'COMPLETED')->count())
-                ->descriptionIcon('heroicon-m-check-badge')
-                ->color('success')
-                ->extraAttributes(['class' => 'bg-emerald-50 border border-emerald-100 shadow-sm']),
+                ->icon('heroicon-m-check-badge')
+                ->extraAttributes(['class' => 'nimbus-stat-card bg-emerald-500 border border-emerald-600 shadow-sm']),
 
             Stat::make('Rejeitados', Submission::where('status', 'REJECTED')->count())
-                ->descriptionIcon('heroicon-m-x-circle')
-                ->color('danger')
-                ->extraAttributes(['class' => 'bg-rose-50 border border-rose-100 shadow-sm']),
+                ->icon('heroicon-m-x-circle')
+                ->extraAttributes(['class' => 'nimbus-stat-card bg-rose-500 border border-rose-600 shadow-sm']),
 
             Stat::make('Usuários Cadastrados', PortalUser::where('status', 'ACTIVE')->count())
-                ->descriptionIcon('heroicon-m-users')
-                ->color('info')
-                ->extraAttributes(['class' => 'bg-amber-50 border border-amber-100 shadow-sm']),
+                ->icon('heroicon-m-users')
+                ->extraAttributes(['class' => 'nimbus-stat-card bg-yellow-500 border border-yellow-600 shadow-sm']),
 
             Stat::make('Documentos Vigentes', GeneralDocument::where('is_active', true)->count())
-                ->descriptionIcon('heroicon-m-document-text')
-                ->color('primary')
-                ->extraAttributes(['class' => 'bg-blue-50 border border-blue-100 shadow-sm']),
+                ->icon('heroicon-m-document-text')
+                ->extraAttributes(['class' => 'nimbus-stat-card bg-sky-500 border border-sky-600 shadow-sm']),
         ];
     }
 }

@@ -1,3 +1,7 @@
+@php
+    use Filament\Support\Icons\Heroicon;
+@endphp
+
 <x-filament-widgets::widget>
     <div class="flex flex-col gap-6">
         
@@ -5,7 +9,7 @@
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
-                    <x-heroicon-o-bolt class="w-5 h-5 text-gray-500" />
+                    <x-filament::icon :icon="Heroicon::Bolt" class="h-5 w-5 text-gray-500" />
                     <h3 class="text-base font-medium text-gray-950 dark:text-white">Últimas Atividades</h3>
                 </div>
                 <a href="#" class="text-xs text-primary-600 hover:text-primary-500 font-medium">Ver Todas</a>
@@ -31,7 +35,7 @@
         {{-- Atenções Necessárias --}}
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
             <div class="flex items-center gap-2 mb-4">
-                <x-heroicon-o-exclamation-triangle class="w-5 h-5 text-amber-500" />
+                <x-filament::icon :icon="Heroicon::ExclamationTriangle" class="h-5 w-5 text-amber-500" />
                 <h3 class="text-base font-medium text-gray-950 dark:text-white">Atenções Necessárias</h3>
             </div>
             
@@ -42,7 +46,7 @@
                         <span class="text-sm font-bold text-orange-800">{{ $oldPendingCount }} envios</span>
                         <span class="text-xs text-orange-600">aguardando há mais de 7 dias</span>
                     </div>
-                    <x-heroicon-m-chevron-right class="w-4 h-4 text-orange-400" />
+                    <x-filament::icon :icon="Heroicon::ChevronRight" class="h-4 w-4 text-orange-400" />
                 </a>
                 @endif
                 
@@ -52,7 +56,7 @@
                         <span class="text-sm font-bold text-rose-800">{{ $expiredTokensCount }} tokens</span>
                         <span class="text-xs text-rose-600">de acesso expirados</span>
                     </div>
-                    <x-heroicon-m-chevron-right class="w-4 h-4 text-rose-400" />
+                    <x-filament::icon :icon="Heroicon::ChevronRight" class="h-4 w-4 text-rose-400" />
                 </a>
                 @endif
                 

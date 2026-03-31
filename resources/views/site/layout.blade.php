@@ -200,9 +200,9 @@
         }
 
         .badge-soft {
-            background: color-mix(in srgb, var(--gold) 11%, transparent);
-            border: 1px solid color-mix(in srgb, var(--gold) 28%, var(--border));
-            color: color-mix(in srgb, var(--brand) 78%, var(--text));
+            background: var(--gold);
+            border: 1px solid var(--gold);
+            color: var(--brand);
             font-weight: 700;
         }
 
@@ -243,6 +243,19 @@
             color: var(--text);
             border-color: color-mix(in srgb, var(--gold) 45%, var(--brand));
             background: color-mix(in srgb, var(--gold) 14%, var(--surface));
+        }
+
+        .btn-outline-gold {
+            border-color: color-mix(in srgb, var(--gold) 45%, transparent);
+            color: var(--gold);
+            background: transparent;
+        }
+
+        .btn-outline-gold:hover,
+        .btn-outline-gold:focus {
+            color: var(--brand);
+            border-color: var(--gold);
+            background: var(--gold);
         }
 
         .btn-light {
@@ -597,7 +610,8 @@
             color: var(--brand);
         }
 
-        .brand-dark {
+        .brand-dark,
+        .anbima-dark {
             display: none;
         }
 

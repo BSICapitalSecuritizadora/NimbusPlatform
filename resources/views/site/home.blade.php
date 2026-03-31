@@ -115,7 +115,6 @@
                         <img src="{{ $img }}" class="position-absolute w-100 h-100 object-fit-cover" alt="{{ $title }}">
                         <div class="position-absolute w-100 h-100" style="background: linear-gradient(180deg, rgba(2, 9, 24, 0.05) 0%, rgba(0, 18, 51, 0.82) 74%, rgba(0, 18, 51, 0.96) 100%);"></div>
                         <div class="position-relative h-100 d-flex flex-column justify-content-end p-4 text-white">
-                            <div class="badge badge-soft align-self-start px-3 py-2 mb-3">{{ $title }}</div>
                             <h3 class="h4 fw-bold mb-3 text-white">{{ $title }}</h3>
                             <p class="mb-4 text-white-50">{{ $desc }}</p>
                             <div>
@@ -175,7 +174,7 @@
                                     <h3 class="h3 fw-bold mb-3">{{ $case['title'] }}</h3>
                                     <p class="text-muted mb-4">{{ $case['desc'] }}</p>
                                     <div class="mt-auto">
-                                        <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-brand px-4">Ver estudo de caso</a>
+                                        <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-gold px-4">Ver estudo de caso</a>
                                     </div>
                                 </div>
                             </div>

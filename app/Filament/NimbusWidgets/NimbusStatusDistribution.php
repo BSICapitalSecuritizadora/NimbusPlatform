@@ -2,19 +2,19 @@
 
 namespace App\Filament\NimbusWidgets;
 
-use Filament\Widgets\ChartWidget;
 use App\Models\Nimbus\Submission;
+use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 
 class NimbusStatusDistribution extends ChartWidget
 {
-    protected static ?string $heading = 'Distribuição por Situação';
-    
+    protected ?string $heading = 'Distribuição por Situação';
+
     // Span 1 col out of 3
-    protected int | string | array $columnSpan = 1;
+    protected int|string|array $columnSpan = 1;
 
     // Use a fixed max height
-    protected static ?string $maxHeight = '250px';
+    protected ?string $maxHeight = '250px';
 
     protected function getData(): array
     {
