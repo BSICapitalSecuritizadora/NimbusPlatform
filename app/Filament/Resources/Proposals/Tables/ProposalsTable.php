@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Proposals\Tables;
 
 use App\Actions\Proposals\SendProposalContinuationLink;
+use App\Enums\ProposalStatus;
 use App\Filament\Resources\Proposals\ProposalResource;
 use App\Models\Proposal;
 use Filament\Actions\Action;
@@ -47,7 +48,7 @@ class ProposalsTable
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (?string $state, Proposal $record): string => $record->status_label)
-                    ->color(fn (?string $state): string => Proposal::statusColorFor($state)),
+                    ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('distributed_at')
                     ->label('Distribuída')
                     ->dateTime('d/m/Y H:i')

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire;
+namespace App\Livewire\Proposals;
 
 use App\Actions\Proposals\StoreProposalContinuationData;
 use App\Models\Proposal;
@@ -12,11 +12,12 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
-class ProposalContinuationForm extends Component
+class ContinuationForm extends Component
 {
     use WithFileUploads;
 
@@ -27,18 +28,73 @@ class ProposalContinuationForm extends Component
     public ?string $successMessage = null;
 
     /** @var array<string, mixed> */
+    #[Validate([
+        'operation.nome' => ['required', 'string', 'max:255'],
+        'operation.site' => ['nullable', 'url', 'max:255'],
+        'operation.valor_solicitado' => ['required', 'string', 'max:50'],
+        'operation.valor_mercado_terreno' => ['nullable', 'string', 'max:50'],
+        'operation.area_terreno' => ['required', 'numeric', 'min:0'],
+        'operation.data_lancamento' => ['required', 'date_format:Y-m'],
+        'operation.lancamento_vendas' => ['required', 'date_format:Y-m'],
+        'operation.inicio_obras' => ['required', 'date_format:Y-m'],
+        'operation.previsao_entrega' => ['required', 'date_format:Y-m'],
+        'operation.prazo_remanescente' => ['nullable', 'integer', 'min:0'],
+        'operation.cep' => ['required', 'string', 'max:9'],
+        'operation.logradouro' => ['required', 'string', 'max:255'],
+        'operation.complemento' => ['nullable', 'string', 'max:255'],
+        'operation.numero' => ['required', 'string', 'max:50'],
+        'operation.bairro' => ['required', 'string', 'max:255'],
+        'operation.cidade' => ['required', 'string', 'max:255'],
+        'operation.estado' => ['required', 'string', 'size:2'],
+    ])]
     public array $operation = [];
 
     /** @var array<string, mixed> */
+    #[Validate([
+        'characteristics.blocks' => ['required', 'integer', 'min:1'],
+        'characteristics.floors' => ['required', 'integer', 'min:1'],
+        'characteristics.typical_floors' => ['required', 'integer', 'min:1'],
+        'characteristics.units_per_floor' => ['required', 'integer', 'min:1'],
+        'characteristics.total_units' => ['nullable', 'integer', 'min:1'],
+    ])]
     public array $characteristics = [];
 
     /** @var array<int, array<string, mixed>> */
+    #[Validate([
+        'projects' => ['required', 'array', 'min:1'],
+        'projects.*.id' => ['nullable', 'integer'],
+        'projects.*.name' => ['required', 'string', 'max:255'],
+        'projects.*.units_exchanged' => ['nullable', 'integer', 'min:0'],
+        'projects.*.units_paid' => ['nullable', 'integer', 'min:0'],
+        'projects.*.units_unpaid' => ['nullable', 'integer', 'min:0'],
+        'projects.*.units_stock' => ['nullable', 'integer', 'min:0'],
+        'projects.*.cost_incurred' => ['nullable', 'string', 'max:50'],
+        'projects.*.cost_to_incur' => ['nullable', 'string', 'max:50'],
+        'projects.*.value_paid' => ['nullable', 'string', 'max:50'],
+        'projects.*.value_unpaid' => ['nullable', 'string', 'max:50'],
+        'projects.*.value_stock' => ['nullable', 'string', 'max:50'],
+        'projects.*.value_received' => ['nullable', 'string', 'max:50'],
+        'projects.*.value_until_keys' => ['nullable', 'string', 'max:50'],
+        'projects.*.value_post_keys' => ['nullable', 'string', 'max:50'],
+    ])]
     public array $projects = [];
 
     /** @var array<int, array<string, mixed>> */
+    #[Validate([
+        'unitTypes' => ['required', 'array', 'min:1'],
+        'unitTypes.*.total' => ['required', 'integer', 'min:1'],
+        'unitTypes.*.bedrooms' => ['required', 'string', 'max:255'],
+        'unitTypes.*.parking_spaces' => ['required', 'string', 'max:255'],
+        'unitTypes.*.useful_area' => ['required', 'numeric', 'gt:0'],
+        'unitTypes.*.average_price' => ['required', 'string', 'max:50'],
+    ])]
     public array $unitTypes = [];
 
     /** @var array<int, TemporaryUploadedFile> */
+    #[Validate([
+        'uploads' => ['nullable', 'array'],
+        'uploads.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
+    ])]
     public array $uploads = [];
 
     public function mount(ProposalContinuationAccess $access, Proposal $proposal): void
@@ -56,7 +112,7 @@ class ProposalContinuationForm extends Component
         $canEditProposal = $proposal->canBeCompletedByRequester();
         $showReadonlySummary = $proposal->projects->isNotEmpty() && ! $canEditProposal;
 
-        return view('livewire.proposal-continuation-form', [
+        return view('livewire.proposals.continuation-form', [
             'access' => $this->access(),
             'proposal' => $proposal,
             'firstProject' => $firstProject,
@@ -183,7 +239,7 @@ class ProposalContinuationForm extends Component
             'uploads' => $this->uploads,
         ];
 
-        $validated = validator($payload, $this->rules(), $this->messages())
+        $validated = validator($payload, $this->saveRules(), $this->saveMessages())
             ->after(function (Validator $validator) use ($payload): void {
                 $operation = $payload['operation'];
 
@@ -228,7 +284,7 @@ class ProposalContinuationForm extends Component
     /**
      * @return array<string, mixed>
      */
-    protected function rules(): array
+    protected function saveRules(): array
     {
         return [
             'operation.nome' => ['required', 'string', 'max:255'],
@@ -288,7 +344,7 @@ class ProposalContinuationForm extends Component
     /**
      * @return array<string, string>
      */
-    protected function messages(): array
+    protected function saveMessages(): array
     {
         return [
             'operation.nome.required' => 'A denominação principal do empreendimento é obrigatória.',

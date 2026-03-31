@@ -2,6 +2,7 @@
 
 namespace App\Actions\Proposals;
 
+use App\Enums\ProposalStatus;
 use App\Mail\ProposalStatusUpdatedMail;
 use App\Models\Proposal;
 use Illuminate\Support\Facades\Log;
@@ -13,8 +14,14 @@ class NotifyProposalStatusChange
         protected SendProposalContinuationLink $sendProposalContinuationLink,
     ) {}
 
-    public function handle(Proposal $proposal, string $newStatus): void
+    public function handle(Proposal $proposal, ProposalStatus|string $newStatus): void
     {
+        $newStatus = ProposalStatus::fromValue($newStatus);
+
+        if (! $newStatus) {
+            return;
+        }
+
         try {
             $proposal->loadMissing(['company', 'contact', 'latestContinuationAccess']);
 
@@ -22,27 +29,27 @@ class NotifyProposalStatusChange
                 return;
             }
 
-            if ($newStatus === Proposal::STATUS_AWAITING_INFORMATION) {
+            if ($newStatus === ProposalStatus::AwaitingInformation) {
                 $this->sendProposalContinuationLink->handle($proposal);
 
                 return;
             }
 
             if (! in_array($newStatus, [
-                Proposal::STATUS_APPROVED,
-                Proposal::STATUS_REJECTED,
-                Proposal::STATUS_COMPLETED,
+                ProposalStatus::Approved,
+                ProposalStatus::Rejected,
+                ProposalStatus::Completed,
             ], true)) {
                 return;
             }
 
             Mail::mailer(config('proposals.mail.mailer'))
                 ->to($proposal->contact->email)
-                ->send(new ProposalStatusUpdatedMail($proposal, $newStatus));
+                ->send(new ProposalStatusUpdatedMail($proposal, $newStatus->value));
         } catch (\Throwable $exception) {
             Log::warning('Falha ao notificar alteração de status da proposta.', [
                 'proposal_id' => $proposal->id,
-                'status' => $newStatus,
+                'status' => $newStatus->value,
                 'message' => $exception->getMessage(),
             ]);
         }

@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(docker exec:*)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(sudo chmod:*)",
+      "Bash(chmod -R 755 /home/desktop/projects/bsi-capital/storage/framework/testing/)"
     ]
   }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets\Proposals;
 
-use App\Models\Proposal;
+use App\Enums\ProposalStatus;
 use App\Support\Proposals\ProposalDashboardData;
 use Filament\Widgets\ChartWidget;
 
@@ -25,7 +25,7 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
 
         return [
             'labels' => array_map(
-                fn (string $status): string => Proposal::statusLabelFor($status),
+                fn (string $status): string => ProposalStatus::labelFor($status),
                 array_keys($distribution),
             ),
             'datasets' => [[

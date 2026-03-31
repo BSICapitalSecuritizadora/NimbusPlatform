@@ -151,7 +151,7 @@ class ProposalResource extends Resource
                         ->content(fn (?Proposal $record): string => $record?->company?->site ?? '—'),
                     Placeholder::make('company_address')
                         ->label('Endereço')
-                        ->content(fn (?Proposal $record): string => static::formatCompanyAddress($record)),
+                        ->content(fn (?Proposal $record): string => $record?->company_address ?? 'â€”'),
                     Placeholder::make('company_sectors')
                         ->label('Setores de Atuação')
                         ->content(fn (?Proposal $record): string => $record?->company?->sectors->pluck('name')->join(', ') ?: '—'),
@@ -167,7 +167,7 @@ class ProposalResource extends Resource
                         ->content(fn (?Proposal $record): string => $record?->contact?->email ?? '—'),
                     Placeholder::make('contact_phones')
                         ->label('Telefones')
-                        ->content(fn (?Proposal $record): string => static::formatContactPhones($record)),
+                        ->content(fn (?Proposal $record): string => $record?->contact?->phone_summary ?? 'â€”'),
                     Placeholder::make('contact_cargo')
                         ->label('Cargo')
                         ->content(fn (?Proposal $record): string => $record?->contact?->cargo ?? '—'),
@@ -252,7 +252,7 @@ class ProposalResource extends Resource
             ->color('primary')
             ->modalHeading('Atualizar andamento da proposta')
             ->visible(fn (Proposal $record): bool => static::userCanManageRecord(static::resolveCurrentUser(), $record)
-                && filled($record->nextAvailableStatusOptions()))
+                && filled(app(UpdateProposalStatus::class)->availableStatusOptions($record->status)))
             ->form([
                 Placeholder::make('current_status')
                     ->label('Status atual')
@@ -262,7 +262,7 @@ class ProposalResource extends Resource
                     ->content(fn (Proposal $record): string => $record->representative?->name ?? 'Não atribuído'),
                 Select::make('status')
                     ->label('Novo status')
-                    ->options(fn (Proposal $record): array => $record->nextAvailableStatusOptions())
+                    ->options(fn (Proposal $record): array => app(UpdateProposalStatus::class)->availableStatusOptions($record->status))
                     ->required()
                     ->native(false),
                 Textarea::make('note')
@@ -331,7 +331,7 @@ class ProposalResource extends Resource
             return '—';
         }
 
-        $nextStatuses = array_values($record->nextAvailableStatusOptions());
+        $nextStatuses = array_values(app(UpdateProposalStatus::class)->availableStatusOptions($record->status));
 
         return $nextStatuses !== [] ? implode(' | ', $nextStatuses) : 'Sem novas transições disponíveis.';
     }

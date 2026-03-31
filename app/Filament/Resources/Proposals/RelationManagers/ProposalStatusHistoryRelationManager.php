@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Proposals\RelationManagers;
 
-use App\Models\Proposal;
+use App\Enums\ProposalStatus;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -30,14 +30,14 @@ class ProposalStatusHistoryRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('previous_status')
                     ->label('Status anterior')
-                    ->formatStateUsing(fn (?string $state): string => Proposal::statusLabelFor($state))
+                    ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                     ->badge()
-                    ->color(fn (?string $state): string => Proposal::statusColorFor($state)),
+                    ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('new_status')
                     ->label('Novo status')
-                    ->formatStateUsing(fn (?string $state): string => Proposal::statusLabelFor($state))
+                    ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                     ->badge()
-                    ->color(fn (?string $state): string => Proposal::statusColorFor($state)),
+                    ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('changedByUser.name')
                     ->label('Responsável')
                     ->placeholder('Sistema')

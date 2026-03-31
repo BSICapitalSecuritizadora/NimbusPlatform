@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\ProposalStatus;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,17 +15,17 @@ class Proposal extends Model
 {
     use HasFactory;
 
-    public const STATUS_AWAITING_COMPLETION = 'aguardando_complementacao';
+    public const string STATUS_AWAITING_COMPLETION = ProposalStatus::AwaitingCompletion->value;
 
-    public const STATUS_IN_REVIEW = 'em_analise';
+    public const string STATUS_IN_REVIEW = ProposalStatus::InReview->value;
 
-    public const STATUS_AWAITING_INFORMATION = 'aguardando_informacoes';
+    public const string STATUS_AWAITING_INFORMATION = ProposalStatus::AwaitingInformation->value;
 
-    public const STATUS_APPROVED = 'aprovado';
+    public const string STATUS_APPROVED = ProposalStatus::Approved->value;
 
-    public const STATUS_REJECTED = 'rejeitado';
+    public const string STATUS_REJECTED = ProposalStatus::Rejected->value;
 
-    public const STATUS_COMPLETED = 'concluida';
+    public const string STATUS_COMPLETED = ProposalStatus::Completed->value;
 
     protected $fillable = [
         'company_id',
@@ -40,8 +42,8 @@ class Proposal extends Model
     protected function casts(): array
     {
         return [
-            'distributed_at' => 'datetime',
-            'completed_at' => 'datetime',
+            'distributed_at' => 'immutable_datetime',
+            'completed_at' => 'immutable_datetime',
         ];
     }
 
@@ -130,95 +132,27 @@ class Proposal extends Model
 
     public function canBeCompletedByRequester(): bool
     {
-        return in_array($this->status, [
-            self::STATUS_AWAITING_COMPLETION,
-            self::STATUS_AWAITING_INFORMATION,
-        ], true);
+        return ProposalStatus::fromValue($this->status)?->canBeCompletedByRequester() ?? false;
     }
 
-    public static function statusOptions(): array
+    protected function statusLabel(): Attribute
     {
-        return [
-            self::STATUS_AWAITING_COMPLETION => 'Aguardando complementação',
-            self::STATUS_IN_REVIEW => 'Em análise',
-            self::STATUS_AWAITING_INFORMATION => 'Aguardando informações',
-            self::STATUS_APPROVED => 'Aprovada',
-            self::STATUS_REJECTED => 'Rejeitada',
-            self::STATUS_COMPLETED => 'Concluída',
-        ];
+        return Attribute::make(
+            get: fn (): string => ProposalStatus::labelFor($this->status),
+        );
     }
 
-    public static function allowedStatusTransitions(?string $currentStatus): array
+    protected function statusColor(): Attribute
     {
-        return match ($currentStatus) {
-            self::STATUS_AWAITING_COMPLETION => [
-                self::STATUS_IN_REVIEW,
-                self::STATUS_REJECTED,
-            ],
-            self::STATUS_IN_REVIEW => [
-                self::STATUS_AWAITING_INFORMATION,
-                self::STATUS_APPROVED,
-                self::STATUS_REJECTED,
-            ],
-            self::STATUS_AWAITING_INFORMATION => [
-                self::STATUS_IN_REVIEW,
-                self::STATUS_REJECTED,
-            ],
-            self::STATUS_APPROVED => [
-                self::STATUS_IN_REVIEW,
-                self::STATUS_COMPLETED,
-            ],
-            self::STATUS_REJECTED => [
-                self::STATUS_IN_REVIEW,
-            ],
-            default => [],
-        };
+        return Attribute::make(
+            get: fn (): string => ProposalStatus::colorFor($this->status),
+        );
     }
 
-    public function nextAvailableStatusOptions(): array
+    protected function companyAddress(): Attribute
     {
-        return collect(static::allowedStatusTransitions($this->status))
-            ->mapWithKeys(fn (string $status): array => [$status => static::statusLabelFor($status)])
-            ->all();
-    }
-
-    public static function requiresStatusNote(string $status): bool
-    {
-        return in_array($status, [
-            self::STATUS_AWAITING_INFORMATION,
-            self::STATUS_REJECTED,
-        ], true);
-    }
-
-    public static function statusLabelFor(?string $status): string
-    {
-        return static::statusOptions()[$status] ?? match ($status) {
-            'pending', 'pendente' => 'Pendente',
-            null => '—',
-            default => ucfirst((string) $status),
-        };
-    }
-
-    public static function statusColorFor(?string $status): string
-    {
-        return match ($status) {
-            self::STATUS_AWAITING_COMPLETION => 'warning',
-            self::STATUS_IN_REVIEW => 'info',
-            self::STATUS_AWAITING_INFORMATION => 'warning',
-            self::STATUS_APPROVED => 'success',
-            self::STATUS_REJECTED => 'danger',
-            self::STATUS_COMPLETED => 'gray',
-            default => 'gray',
-        };
-    }
-
-    public function getStatusLabelAttribute(): string
-    {
-        return static::statusLabelFor($this->status);
-    }
-
-    public function getStatusColorAttribute(): string
-    {
-        return static::statusColorFor($this->status);
+        return Attribute::make(
+            get: fn (): string => $this->company?->full_address ?? '—',
+        );
     }
 }

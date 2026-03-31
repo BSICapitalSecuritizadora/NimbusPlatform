@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -26,7 +27,9 @@ class ProposalStatusUpdatedMail extends Mailable
                 config('proposals.mail.from.address', config('mail.from.address')),
                 config('proposals.mail.from.name', config('mail.from.name')),
             ),
-            subject: 'Atualização da sua proposta: '.Proposal::statusLabelFor($this->status),
+            subject: __('proposals.mail.status_updated_subject', [
+                'status' => ProposalStatus::labelFor($this->status),
+            ]),
         );
     }
 

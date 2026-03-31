@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Proposals\StoreProposalContinuationData;
-use App\Livewire\ProposalContinuationForm;
+use App\Livewire\Proposals\ContinuationForm;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalRepresentative;
@@ -23,7 +23,7 @@ it('renders the continuation page through the livewire component', function () {
     $this->withSession(proposalContinuationSessionState($access))
         ->get(route('site.proposal.continuation.form', $access))
         ->assertSuccessful()
-        ->assertSeeLivewire(ProposalContinuationForm::class)
+        ->assertSeeLivewire(ContinuationForm::class)
         ->assertSee('Formulário de Empreendimento');
 });
 
@@ -40,7 +40,7 @@ it('looks up the cep and hydrates the operation address fields', function () {
 
     [$proposal, $access] = createProposalContinuationContext($this);
 
-    Livewire::test(ProposalContinuationForm::class, ['access' => $access, 'proposal' => $proposal])
+    Livewire::test(ContinuationForm::class, ['access' => $access, 'proposal' => $proposal])
         ->set('operation.cep', '04567-000')
         ->call('lookupCep')
         ->assertSet('operation.cep', '04567-000')
@@ -57,7 +57,7 @@ it('recalculates project and unit type metrics reactively', function () {
 
     [$proposal, $access] = createProposalContinuationContext($this);
 
-    Livewire::test(ProposalContinuationForm::class, ['access' => $access, 'proposal' => $proposal])
+    Livewire::test(ContinuationForm::class, ['access' => $access, 'proposal' => $proposal])
         ->set('projects.0.name', 'Torre Madrid')
         ->set('projects.0.units_exchanged', 10)
         ->set('projects.0.units_paid', 20)
@@ -89,7 +89,7 @@ it('stores the continuation payload through the livewire component', function ()
     [$proposal, $access] = createProposalContinuationContext($this);
     $payload = proposalContinuationComponentState();
 
-    Livewire::test(ProposalContinuationForm::class, ['access' => $access, 'proposal' => $proposal])
+    Livewire::test(ContinuationForm::class, ['access' => $access, 'proposal' => $proposal])
         ->set('operation', $payload['operation'])
         ->set('characteristics', $payload['characteristics'])
         ->set('projects', $payload['projects'])

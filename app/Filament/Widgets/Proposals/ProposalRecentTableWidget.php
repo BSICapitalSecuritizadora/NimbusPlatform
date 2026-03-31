@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets\Proposals;
 
+use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Support\Proposals\ProposalDashboardData;
 use Filament\Tables\Columns\TextColumn;
@@ -35,8 +36,8 @@ class ProposalRecentTableWidget extends TableWidget
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => Proposal::statusLabelFor($state))
-                    ->color(fn (?string $state): string => Proposal::statusColorFor($state)),
+                    ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
+                    ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('created_at')
                     ->label('Entrada')
                     ->dateTime('d/m/Y H:i')
