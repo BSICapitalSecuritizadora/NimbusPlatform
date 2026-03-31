@@ -102,9 +102,9 @@
 
         @php
             $industries = [
-                ['Imobiliário', 'Estruturação de CRI, acompanhamento operacional e gestão documental para operações do setor imobiliário.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
-                ['Agronegócio', 'Soluções de crédito estruturado para produtores, cooperativas, tradings e cadeias do agronegócio.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
-                ['Infra & Empresas', 'Estruturação de recebíveis e operações sob medida para expansão, capital de giro e projetos corporativos.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
+                ['Imobiliário', 'CRI com estrutura adequada ao ativo — incorporação, loteamento, built-to-suit ou portfólio —, com gestão documental e acompanhamento da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
+                ['Agronegócio', 'CRA e operações de crédito estruturado para produtores, cooperativas e tradings, com aderência às particularidades de prazo, sazonalidade e garantia do agro.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
+                ['Infra & Empresas', 'Securitização de recebíveis e estruturação de dívida para empresas em expansão, refinanciamento ou captação de capital de giro com garantias reais ou performadas.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
             ];
         @endphp
 
@@ -133,9 +133,9 @@
         <div class="row align-items-end g-4 mb-5">
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Experiência aplicada</div>
-                <h2 class="display-6 fw-bold mb-3">Estruturas desenhadas para operações reais</h2>
+                <h2 class="display-6 fw-bold mb-3">Execução com padrão institucional, do fechamento ao acompanhamento</h2>
                 <p class="text-muted mb-0">
-                    A BSI combina governança, tecnologia e disciplina de execução para reduzir atrito operacional, melhorar a leitura da operação e fortalecer a relação entre as partes envolvidas.
+                    Governança, tecnologia e processo definido para que cada etapa da operação seja rastreável, auditável e comunicada com clareza às partes envolvidas.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -147,13 +147,13 @@
             $cases = [
                 [
                     'title' => 'Estruturação CRI',
-                    'desc' => 'Estruturação completa de CRI com governança documental, acompanhamento operacional e trilha de auditoria ao longo da operação.',
+                    'desc' => 'Modelagem jurídico-financeira, coordenação com escritório jurídico e agente fiduciário, controle documental e acompanhamento da carteira até o vencimento.',
                     'img' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'estruturacao-cri',
                 ],
                 [
                     'title' => 'Gestão de Documentos',
-                    'desc' => 'Portal dedicado para investidores com controle de acesso, organização documental e rastreabilidade das interações da operação.',
+                    'desc' => 'Ambiente segmentado por perfil de acesso — emissor, originador ou investidor — com repositório documental, histórico de interações e visibilidade sobre o status da operação.',
                     'img' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'gestao-de-documentos',
                 ],
@@ -191,9 +191,9 @@
         <div class="row g-4 mb-4 align-items-end">
             <div class="col-lg-6">
                 <div class="section-kicker mb-2">Mercado e transparência</div>
-                <h2 class="h2 fw-bold text-brand mb-3">Emissões e documentos públicos em um fluxo mais claro</h2>
+                <h2 class="h2 fw-bold text-brand mb-3">Emissões e informações públicas com acesso direto</h2>
                 <p class="section-copy mb-0">
-                    Organizamos a visualização das emissões e da área de relações com investidores para facilitar leitura, consulta e tomada de decisão.
+                    Dados das operações, documentos regulatórios e comunicados ao mercado disponíveis em um único ponto de consulta — sem intermediários.
                 </p>
             </div>
             <div class="col-lg-6 text-lg-end">
@@ -275,8 +275,8 @@
                 <div class="card h-100 overflow-hidden">
                     <div class="p-4 p-lg-5 border-bottom border-brand-subtle">
                         <div class="section-kicker mb-2">Relações com investidores</div>
-                        <h3 class="h3 fw-bold text-brand mb-2">Publicações recentes</h3>
-                        <p class="section-copy mb-0">Documentos públicos, comunicados e arquivos institucionais organizados para consulta rápida.</p>
+                        <h3 class="h3 fw-bold text-brand mb-2">Divulgações ao mercado</h3>
+                        <p class="section-copy mb-0">Fatos relevantes, relatórios periódicos e documentos da oferta publicados conforme obrigações regulatórias e de autorregulação.</p>
                     </div>
                     <div class="list-group list-group-flush">
                         @forelse($riDocuments as $d)
@@ -316,9 +316,9 @@
                 <div class="col-lg-8">
                     <div class="p-4 p-lg-5">
                         <div class="section-kicker mb-2">Relacionamento institucional</div>
-                        <h2 class="h2 fw-bold text-white mb-3">Fale com a BSI sobre sua operação ou sua agenda com investidores</h2>
+                        <h2 class="h2 fw-bold text-white mb-3">Entre em contato com a BSI Capital</h2>
                         <p class="text-white-50 mb-0" style="max-width: 640px;">
-                            Centralizamos estruturação, gestão, tecnologia e transparência em uma experiência única, com o mesmo padrão de marca, clareza operacional e postura institucional.
+                            Para estruturação de operações, coordenação de oferta ou gestão de relações com investidores — respondemos com agilidade e direcionamos para a área responsável.
                         </p>
                     </div>
                 </div>

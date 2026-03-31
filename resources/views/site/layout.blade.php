@@ -841,7 +841,7 @@
                     <img src="https://bsicapital.com.br/wp-content/uploads/2022/06/logo.png" alt="BSI Capital" class="brand-dark" style="max-height: 48px;">
                 </a>
                 <p class="section-copy small mb-3">
-                    Securitizadora com atuação em crédito estruturado, governança operacional e relacionamento com investidores, conectando empresas e mercado de capitais com padrão institucional.
+                    Securitizadora registrada na CVM. Estruturamos e gerimos operações de crédito — CRI, CRA e CR — com rigor técnico, controle documental e reporte contínuo aos investidores.
                 </p>
                 <div class="d-flex gap-3 justify-content-center justify-content-md-start mt-2">
                     <a href="https://br.linkedin.com/company/bsi-capital-securitizadora-s-a" target="_blank" class="text-muted text-decoration-none" title="LinkedIn">

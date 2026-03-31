@@ -7,9 +7,9 @@
         <div class="row g-4 align-items-end">
             <div class="col-lg-8">
                 <span class="badge mb-3 px-3 py-2 text-uppercase">Mercado primário</span>
-                <h1 class="display-4 fw-bold mb-3">Emissões com leitura mais clara, organizada e institucional</h1>
+                <h1 class="display-4 fw-bold mb-3">Operações estruturadas e coordenadas pela BSI Capital</h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Consulte as emissões públicas em um ambiente mais consistente, com filtros objetivos, navegação mais limpa e melhor hierarquia das informações relevantes.
+                    Consulte as emissões públicas com dados operacionais, tipo de instrumento, status e documentação — organizados para análise direta por investidores e originadores.
                 </p>
             </div>
         </div>
@@ -22,9 +22,9 @@
             <div class="row g-4 align-items-end">
                 <div class="col-lg-5">
                     <div class="section-kicker mb-2">Pesquisa e filtros</div>
-                    <h2 class="h3 fw-bold text-brand mb-3">Encontre emissões por nome, emissor ou critério operacional</h2>
+                    <h2 class="h3 fw-bold text-brand mb-3">Filtre por instrumento, setor ou emissor</h2>
                     <p class="section-copy mb-0">
-                        Organizamos a busca para facilitar a comparação entre instrumentos e tornar o processo de consulta mais objetivo.
+                        Busca por nome, tipo de ativo ou critério operacional para identificar e comparar operações com precisão.
                     </p>
                 </div>
                 <div class="col-lg-7">

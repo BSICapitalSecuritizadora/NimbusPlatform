@@ -11,7 +11,7 @@ dataset('public-layout-routes', [
         [
             'Envie sua proposta',
             'Securitização e crédito estruturado com rigor técnico, governança e presença ativa ao longo de toda a operação.',
-            'Soluções estruturadas por setor e perfil de operação',
+            'Atuação por setor, com aderência ao ativo e à operação',
         ],
     ],
     'services' => [
@@ -32,7 +32,7 @@ dataset('public-layout-routes', [
     'emissions' => [
         'site.emissions',
         [
-            'Emissões com leitura mais clara, organizada e institucional',
+            'Operações estruturadas e coordenadas pela BSI Capital',
             'Tipo de emissão',
         ],
     ],

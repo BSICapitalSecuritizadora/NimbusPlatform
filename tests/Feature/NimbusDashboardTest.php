@@ -299,10 +299,14 @@ it('renders and saves notification settings under Comunicação', function () {
         ->get(NotificationSettings::getUrl(panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Configurar Notificações')
+        ->assertSee('Portal do Usuário')
         ->assertSee('Nova submissão')
         ->assertSee('Alteração de status')
         ->assertSee('Documento de resposta')
-        ->assertSee('Link de acesso');
+        ->assertSee('Link de acesso')
+        ->assertSee('Microsoft 365 / Outlook')
+        ->assertSee('Conectar conta corporativa')
+        ->assertSee('Ver Auditoria de Envios');
 
     Livewire::test(NotificationSettings::class)
         ->set('data.portal_notify_new_submission', false)
@@ -323,6 +327,18 @@ it('renders and saves notification settings under Comunicação', function () {
             'portal.notify.response_upload' => '0',
             'portal.notify.access_link' => '1',
         ]);
+});
+
+it('shows the microsoft connection as connected when corporate credentials are configured', function () {
+    config()->set('services.outlook.tenant_id', 'tenant-id');
+    config()->set('services.outlook.client_id', 'client-id');
+    config()->set('services.outlook.client_secret', 'client-secret');
+    config()->set('services.outlook.mailbox', 'nimbus@empresa.com.br');
+
+    Livewire::test(NotificationSettings::class)
+        ->assertSee('Conectado')
+        ->assertSee('Revisar conexão corporativa')
+        ->assertDontSee('Pendências:');
 });
 
 it('renders the document categories list under Gestão Documental', function () {
