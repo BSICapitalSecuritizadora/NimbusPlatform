@@ -43,6 +43,26 @@ class ProposalProject extends Model
             'sales_launch_date' => 'date',
             'construction_start_date' => 'date',
             'delivery_forecast_date' => 'date',
+            'value_requested' => 'decimal:2',
+            'land_market_value' => 'decimal:2',
+            'land_area' => 'decimal:2',
+            'units_exchanged' => 'integer',
+            'units_paid' => 'integer',
+            'units_unpaid' => 'integer',
+            'units_stock' => 'integer',
+            'units_total' => 'integer',
+            'sales_percentage' => 'decimal:2',
+            'cost_incurred' => 'decimal:2',
+            'cost_to_incur' => 'decimal:2',
+            'cost_total' => 'decimal:2',
+            'work_stage_percentage' => 'decimal:2',
+            'value_paid' => 'decimal:2',
+            'value_unpaid' => 'decimal:2',
+            'value_stock' => 'decimal:2',
+            'value_total_sale' => 'decimal:2',
+            'value_received' => 'decimal:2',
+            'value_until_keys' => 'decimal:2',
+            'value_post_keys' => 'decimal:2',
         ];
     }
 
@@ -190,12 +210,131 @@ class ProposalProject extends Model
         );
     }
 
+    public function getFormattedValueRequestedAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->value_requested);
+    }
+
+    public function getFormattedLandMarketValueAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->land_market_value);
+    }
+
+    public function getFormattedCostIncurredAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->cost_incurred);
+    }
+
+    public function getFormattedCostToIncurAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->cost_to_incur);
+    }
+
+    public function getFormattedCostTotalAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->cost_total);
+    }
+
+    public function getFormattedValuePaidAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->value_paid);
+    }
+
+    public function getFormattedValueUnpaidAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->value_unpaid);
+    }
+
+    public function getFormattedValueStockAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->value_stock);
+    }
+
+    public function getFormattedValueTotalSaleAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->value_total_sale);
+    }
+
+    public function getFormattedValueReceivedAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->value_received);
+    }
+
+    public function getFormattedValueUntilKeysAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->value_until_keys);
+    }
+
+    public function getFormattedValuePostKeysAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->value_post_keys);
+    }
+
+    public function getFormattedPaymentFlowTotalAttribute(): string
+    {
+        return self::formatCurrencyForDisplay(self::calculatePaymentFlowTotal(
+            $this->value_received,
+            $this->value_until_keys,
+            $this->value_post_keys,
+        ));
+    }
+
+    public function getFormattedSalesPercentageAttribute(): string
+    {
+        return number_format((float) $this->sales_percentage, 2, ',', '.').'%';
+    }
+
+    public function getFormattedWorkStagePercentageAttribute(): string
+    {
+        return number_format((float) $this->work_stage_percentage, 2, ',', '.').'%';
+    }
+
+    public function getLaunchMonthAttribute(): ?string
+    {
+        return $this->launch_date?->format('Y-m');
+    }
+
+    public function getSalesLaunchMonthAttribute(): ?string
+    {
+        return $this->sales_launch_date?->format('Y-m');
+    }
+
+    public function getConstructionStartMonthAttribute(): ?string
+    {
+        return $this->construction_start_date?->format('Y-m');
+    }
+
+    public function getDeliveryForecastMonthAttribute(): ?string
+    {
+        return $this->delivery_forecast_date?->format('Y-m');
+    }
+
+    public function getFormattedLaunchMonthAttribute(): string
+    {
+        return $this->launch_date?->format('m/Y') ?? '—';
+    }
+
+    public function getFormattedSalesLaunchMonthAttribute(): string
+    {
+        return $this->sales_launch_date?->format('m/Y') ?? '—';
+    }
+
+    public function getFormattedConstructionStartMonthAttribute(): string
+    {
+        return $this->construction_start_date?->format('m/Y') ?? '—';
+    }
+
+    public function getFormattedDeliveryForecastMonthAttribute(): string
+    {
+        return $this->delivery_forecast_date?->format('m/Y') ?? '—';
+    }
+
     protected static function normalizeIntegerValue(mixed $value): int
     {
         return (int) round(self::normalizeDecimalValue($value));
     }
 
-    protected static function normalizeDecimalValue(mixed $value): float
+    public static function normalizeDecimalValue(mixed $value): float
     {
         if ($value === null) {
             return 0.0;
@@ -233,5 +372,10 @@ class ProposalProject extends Model
         }
 
         return round((float) $value, 2);
+    }
+
+    public static function formatCurrencyForDisplay(mixed $value): string
+    {
+        return number_format(self::normalizeDecimalValue($value), 2, ',', '.');
     }
 }

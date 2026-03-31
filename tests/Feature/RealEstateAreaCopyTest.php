@@ -4,8 +4,8 @@ it('renders the revised CRI copy on the real estate area page', function () {
     $this->get(route('site.imobiliario.cri'))
         ->assertSuccessful()
         ->assertSee('CRI e Real Estate')
-        ->assertSee('Estruturação com governança e previsibilidade')
-        ->assertSee('Acompanhamento ao longo de toda a operação');
+        ->assertSee('Cobertura técnica em cada fase da operação')
+        ->assertSee('Gestão pós-emissão com controle e reporte');
 });
 
 it('renders the revised loteamentos copy on the real estate area page', function () {

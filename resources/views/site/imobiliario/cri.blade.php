@@ -15,7 +15,7 @@
                     CRI e <span style="color: var(--gold);">Real Estate</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Estruturação de operações lastreadas em recebíveis imobiliários, com governança jurídica, monitoramento operacional e disciplina compatível com o mercado de capitais.
+                    Emissão e gestão de CRI com cobertura jurídica, controle do lastro e acompanhamento da carteira — do fechamento da operação ao seu encerramento.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Falar com nossa equipe
@@ -49,8 +49,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Estruturação com governança e previsibilidade</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Organizamos operações imobiliárias com segurança documental, acompanhamento contínuo e alinhamento entre originadores, investidores e agentes da operação.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Cobertura técnica em cada fase da operação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Estruturamos e gerimos o CRI com processo definido, documentação controlada e comunicação regular entre originadores, agente fiduciário e investidores.</p>
         </div>
 
         <div class="row g-4">
@@ -61,7 +61,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Estrutura documental</h3>
-                    <p class="text-muted mb-0">Coordenação da documentação jurídica, financeira e operacional necessária para a emissão e o acompanhamento dos recebíveis imobiliários.</p>
+                    <p class="text-muted mb-0">Organização e controle da documentação jurídica, financeira e operacional exigida na emissão — escritura, termo de securitização, cessão de recebíveis e registros.</p>
                 </div>
             </div>
             
@@ -72,7 +72,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança e monitoramento</h3>
-                    <p class="text-muted mb-0">Acompanhamento do lastro, das garantias e dos eventos da operação com foco em transparência, conformidade e mitigação de risco.</p>
+                    <p class="text-muted mb-0">Verificação periódica do lastro, das garantias e dos covenants, com reporte de eventos relevantes ao agente fiduciário e aos investidores.</p>
                 </div>
             </div>
 
@@ -82,8 +82,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Eficiência na alocação de capital</h3>
-                    <p class="text-muted mb-0">Modelagem financeira orientada à sustentabilidade da operação, com condições estruturadas de acordo com o perfil do ativo e da carteira.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Modelagem financeira</h3>
+                    <p class="text-muted mb-0">Estruturação do fluxo de pagamentos, remuneração dos títulos e adequação das condições da emissão ao perfil do ativo, do cedente e da carteira.</p>
                 </div>
             </div>
         </div>
@@ -95,22 +95,22 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Acompanhamento ao longo de toda a operação</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Gestão pós-emissão com controle e reporte</h2>
                 <p class="text-muted mb-4 lead">
-                    A BSI acompanha o ciclo completo do CRI, desde a estruturação e formalização da operação até o controle de pagamentos, monitoramento do lastro e encerramento final.
+                    A BSI assume a gestão operacional do CRI após o fechamento — com controle de fluxo de caixa, monitoramento do lastro e cumprimento das obrigações previstas na escritura.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Relatórios gerenciais periódicos para investidores e demais participantes da operação.</span>
+                        <span class="text-dark fw-medium">Relatórios periódicos de desempenho da carteira para investidores e agente fiduciário.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Monitoramento do lastro, da conta vinculada e dos principais eventos de performance da operação.</span>
+                        <span class="text-dark fw-medium">Acompanhamento do lastro, da conta vinculada, dos covenants e dos eventos de crédito.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Disponibilização estruturada de informações por meio do Portal do Investidor.</span>
+                        <span class="text-dark fw-medium">Acesso segmentado via Portal do Investidor, com histórico documental e trilha de auditoria.</span>
                     </li>
                 </ul>
             </div>
