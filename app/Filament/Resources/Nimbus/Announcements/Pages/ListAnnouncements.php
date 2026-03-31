@@ -10,10 +10,14 @@ class ListAnnouncements extends ListRecords
 {
     protected static string $resource = AnnouncementResource::class;
 
+    protected static ?string $title = 'Avisos Gerais';
+
+    protected static ?string $breadcrumb = 'Listar';
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()->label('Novo aviso'),
         ];
     }
 }

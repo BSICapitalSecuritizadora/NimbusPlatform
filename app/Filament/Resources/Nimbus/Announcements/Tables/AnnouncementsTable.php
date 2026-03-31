@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Nimbus\Announcements\Tables;
 
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -16,26 +16,42 @@ class AnnouncementsTable
         return $table
             ->columns([
                 TextColumn::make('title')
+                    ->label('Título')
                     ->searchable(),
                 TextColumn::make('level')
+                    ->label('Nível')
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'info' => 'Informativo',
+                        'success' => 'Sucesso',
+                        'warning' => 'Atenção',
+                        'danger' => 'Crítico',
+                        default => $state,
+                    })
                     ->badge(),
                 TextColumn::make('starts_at')
-                    ->dateTime()
+                    ->label('Início')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('ends_at')
-                    ->dateTime()
+                    ->label('Fim')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
-                IconColumn::make('is_active')
-                    ->boolean(),
-                TextColumn::make('created_by_user_id')
-                    ->numeric()
-                    ->sortable(),
+                TextColumn::make('is_active')
+                    ->label('Status')
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Ativo' : 'Inativo')
+                    ->badge()
+                    ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
+                TextColumn::make('createdBy.name')
+                    ->label('Criado por')
+                    ->placeholder('—'),
                 TextColumn::make('created_at')
-                    ->dateTime()
+                    ->label('Criado em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->toggleable(),
                 TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->label('Atualizado em')
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -44,11 +60,13 @@ class AnnouncementsTable
             ])
             ->recordActions([
                 EditAction::make(),
+                DeleteAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 }

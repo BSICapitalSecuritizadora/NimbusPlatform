@@ -13,14 +13,25 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class AnnouncementResource extends Resource
 {
     protected static ?string $model = Announcement::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
     protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+
+    protected static ?string $navigationParentItem = 'Comunicação';
+
+    protected static ?string $navigationLabel = 'Avisos Gerais';
+
+    protected static ?string $modelLabel = 'aviso geral';
+
+    protected static ?string $pluralModelLabel = 'Avisos Gerais';
+
+    protected static ?int $navigationSort = 30;
 
     public static function form(Schema $schema): Schema
     {
@@ -37,6 +48,12 @@ class AnnouncementResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with('createdBy');
     }
 
     public static function getPages(): array

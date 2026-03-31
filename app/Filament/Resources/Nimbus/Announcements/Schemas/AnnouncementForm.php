@@ -7,6 +7,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class AnnouncementForm
@@ -15,22 +17,59 @@ class AnnouncementForm
     {
         return $schema
             ->components([
-                TextInput::make('title')
-                    ->required(),
-                Textarea::make('body')
-                    ->required()
-                    ->columnSpanFull(),
-                Select::make('level')
-                    ->options(['info' => 'Info', 'success' => 'Success', 'warning' => 'Warning', 'danger' => 'Danger'])
-                    ->default('info')
-                    ->required(),
-                DateTimePicker::make('starts_at'),
-                DateTimePicker::make('ends_at'),
-                Toggle::make('is_active')
-                    ->required(),
-                TextInput::make('created_by_user_id')
-                    ->required()
-                    ->numeric(),
+                Grid::make([
+                    'default' => 1,
+                    'xl' => 12,
+                ])
+                    ->schema([
+                        Section::make('Conteúdo do aviso')
+                            ->description('Comunicados exibidos para os usuários do portal.')
+                            ->icon('heroicon-o-megaphone')
+                            ->columnSpan([
+                                'default' => 1,
+                                'xl' => 8,
+                            ])
+                            ->schema([
+                                TextInput::make('title')
+                                    ->label('Título')
+                                    ->required()
+                                    ->maxLength(255),
+                                Textarea::make('body')
+                                    ->label('Mensagem')
+                                    ->required()
+                                    ->rows(6)
+                                    ->columnSpanFull(),
+                            ]),
+                        Section::make('Publicação')
+                            ->columnSpan([
+                                'default' => 1,
+                                'xl' => 4,
+                            ])
+                            ->schema([
+                                Select::make('level')
+                                    ->label('Nível')
+                                    ->options([
+                                        'info' => 'Informativo',
+                                        'success' => 'Sucesso',
+                                        'warning' => 'Atenção',
+                                        'danger' => 'Crítico',
+                                    ])
+                                    ->default('info')
+                                    ->required(),
+                                DateTimePicker::make('starts_at')
+                                    ->label('Início de exibição')
+                                    ->seconds(false)
+                                    ->native(false),
+                                DateTimePicker::make('ends_at')
+                                    ->label('Fim de exibição')
+                                    ->seconds(false)
+                                    ->native(false),
+                                Toggle::make('is_active')
+                                    ->label('Ativo no portal')
+                                    ->default(true)
+                                    ->required(),
+                            ]),
+                    ]),
             ]);
     }
 }

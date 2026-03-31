@@ -3,9 +3,12 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Nimbus\NimbusDashboard;
+use App\Filament\Pages\Nimbus\NotificationSettings;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
+use App\Filament\Resources\Nimbus\Announcements\AnnouncementResource;
 use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
 use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
+use App\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource;
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
@@ -60,6 +63,12 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(0)
                     ->url(fn (): string => DocumentCategoryResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(DocumentCategoryResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(GeneralDocumentResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(PortalDocumentResource::getNavigationItemActiveRoutePattern())),
+                NavigationItem::make('Comunicação')
+                    ->group('NimbusDocs')
+                    ->icon(Heroicon::OutlinedMegaphone)
+                    ->sort(10)
+                    ->url(fn (): string => AnnouncementResource::getUrl(panel: 'admin'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(AnnouncementResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationOutboxResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationSettings::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

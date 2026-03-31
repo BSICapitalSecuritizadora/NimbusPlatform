@@ -1,20 +1,27 @@
 <?php
 
 use App\Filament\Pages\Nimbus\NimbusDashboard;
+use App\Filament\Pages\Nimbus\NotificationSettings;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
+use App\Filament\Resources\Nimbus\Announcements\AnnouncementResource;
 use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
 use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
+use App\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource;
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
 use App\Models\Nimbus\AccessToken;
+use App\Models\Nimbus\Announcement;
 use App\Models\Nimbus\DocumentCategory;
 use App\Models\Nimbus\GeneralDocument;
+use App\Models\Nimbus\NotificationOutbox;
+use App\Models\Nimbus\NotificationSetting;
 use App\Models\Nimbus\PortalDocument;
 use App\Models\Nimbus\PortalUser;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -75,6 +82,17 @@ it('organizes document management items under the Gestão Documental subsection'
         ->not->toBeNull();
 });
 
+it('organizes communication items under the Comunicação subsection', function () {
+    expect(AnnouncementResource::getNavigationParentItem())->toBe('Comunicação')
+        ->and(AnnouncementResource::getNavigationLabel())->toBe('Avisos Gerais')
+        ->and(NotificationOutboxResource::getNavigationParentItem())->toBe('Comunicação')
+        ->and(NotificationOutboxResource::getNavigationLabel())->toBe('Auditoria de Envios')
+        ->and(NotificationSettings::getNavigationParentItem())->toBe('Comunicação')
+        ->and(NotificationSettings::getNavigationLabel())->toBe('Configurar Notificações')
+        ->and(collect(Filament::getPanel('admin')->getNavigationItems())->first(fn ($item) => $item->getLabel() === 'Comunicação'))
+        ->not->toBeNull();
+});
+
 it('makes the Visão Geral subsection clickable', function () {
     $overviewItem = collect(Filament::getPanel('admin')->getNavigationItems())
         ->first(fn ($item) => $item->getLabel() === 'Visão Geral');
@@ -97,6 +115,14 @@ it('makes the Gestão Documental subsection clickable', function () {
 
     expect($documentManagementItem)->not->toBeNull()
         ->and($documentManagementItem->getUrl())->toBe(DocumentCategoryResource::getUrl(panel: 'admin'));
+});
+
+it('makes the Comunicação subsection clickable', function () {
+    $communicationItem = collect(Filament::getPanel('admin')->getNavigationItems())
+        ->first(fn ($item) => $item->getLabel() === 'Comunicação');
+
+    expect($communicationItem)->not->toBeNull()
+        ->and($communicationItem->getUrl())->toBe(AnnouncementResource::getUrl(panel: 'admin'));
 });
 
 it('renders the submissions list in Portuguese without exposing creation to internal users', function () {
@@ -207,6 +233,96 @@ it('renders the access keys list under Administração', function () {
         ->assertSee('ABCD-EF12-3456')
         ->assertSee('Válida')
         ->assertSee('Revogar');
+});
+
+it('renders the announcements list under Comunicação', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-announcements@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    Announcement::query()->create([
+        'title' => 'Manutenção Programada',
+        'body' => 'O portal ficará indisponível durante a madrugada.',
+        'level' => 'warning',
+        'starts_at' => now(),
+        'is_active' => true,
+        'created_by_user_id' => $user->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(AnnouncementResource::getUrl(panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Avisos Gerais')
+        ->assertSee('Novo aviso')
+        ->assertSee('Manutenção Programada')
+        ->assertSee('Atenção');
+});
+
+it('renders the notification outbox under Comunicação', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-outbox@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    NotificationOutbox::factory()->create([
+        'type' => 'submission_received',
+        'recipient_email' => 'cliente.notificado@example.com',
+        'subject' => 'Submissão recebida',
+        'template' => 'submission_received',
+        'payload_json' => ['submission' => ['id' => 1]],
+        'status' => 'FAILED',
+        'attempts' => 2,
+        'max_attempts' => 5,
+        'last_error' => 'SMTP timeout',
+    ]);
+
+    expect(NotificationOutboxResource::canCreate())->toBeFalse()
+        ->and(NotificationOutboxResource::hasPage('view'))->toBeTrue();
+
+    $this->actingAs($user)
+        ->get(NotificationOutboxResource::getUrl(panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Auditoria de Envios')
+        ->assertSee('cliente.notificado@example.com')
+        ->assertSee('Submissão recebida')
+        ->assertSee('Falhou');
+});
+
+it('renders and saves notification settings under Comunicação', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-notification-settings@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $this->actingAs($user)
+        ->get(NotificationSettings::getUrl(panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Configurar Notificações')
+        ->assertSee('Nova submissão')
+        ->assertSee('Alteração de status')
+        ->assertSee('Documento de resposta')
+        ->assertSee('Link de acesso');
+
+    Livewire::test(NotificationSettings::class)
+        ->set('data.portal_notify_new_submission', false)
+        ->set('data.portal_notify_status_change', true)
+        ->set('data.portal_notify_response_upload', false)
+        ->set('data.portal_notify_access_link', true)
+        ->call('save');
+
+    expect(NotificationSetting::getValues([
+        'portal.notify.new_submission',
+        'portal.notify.status_change',
+        'portal.notify.response_upload',
+        'portal.notify.access_link',
+    ]))
+        ->toMatchArray([
+            'portal.notify.new_submission' => '0',
+            'portal.notify.status_change' => '1',
+            'portal.notify.response_upload' => '0',
+            'portal.notify.access_link' => '1',
+        ]);
 });
 
 it('renders the document categories list under Gestão Documental', function () {

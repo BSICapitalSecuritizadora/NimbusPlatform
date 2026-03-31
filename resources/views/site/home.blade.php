@@ -51,9 +51,9 @@
             <div class="col-xl-5">
                 <div class="surface-card-dark p-4 p-lg-5">
                     <div class="kicker mb-3">Leitura rápida</div>
-                    <h2 class="h3 fw-bold mb-3 text-white">Uma estrutura completa para cada etapa da operação</h2>
+                    <h2 class="h3 fw-bold mb-3 text-white">Da estruturação à gestão: cobertura em todas as fases</h2>
                     <p class="text-white-50 mb-4">
-                        Unimos modelagem, documentação, gestão, tecnologia e relacionamento com investidores em uma jornada integrada, com padrão visual e operacional consistente.
+                        Atuamos desde a concepção jurídico-financeira até o acompanhamento pós-emissão, com processos definidos, documentação controlada e fluxo de informação entre as partes.
                     </p>
 
                     <div class="d-flex flex-column gap-3">
@@ -61,21 +61,21 @@
                             <div class="badge badge-soft px-3 py-2">1</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Originação e estruturação</div>
-                                <div class="small text-white-50">Leitura da tese, desenho jurídico-financeiro e coordenação da oferta.</div>
+                                <div class="small text-white-50">Análise da tese, modelagem jurídico-financeira e coordenação da oferta junto aos participantes.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">2</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Gestão e acompanhamento</div>
-                                <div class="small text-white-50">Rotina operacional, relatórios e monitoramento de documentos e eventos.</div>
+                                <div class="small text-white-50">Controle da rotina operacional, eventos de crédito, covenants e reporte periódico às partes.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">3</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Tecnologia e transparência</div>
-                                <div class="small text-white-50">Portal, controles de acesso, auditoria e integração entre áreas e públicos.</div>
+                                <div class="small text-white-50">Plataforma própria com acesso segmentado, trilha de auditoria e visibilidade para emissores e investidores.</div>
                             </div>
                         </div>
                     </div>
@@ -90,9 +90,9 @@
         <div class="row align-items-end g-4 mb-5">
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Atuação setorial</div>
-                <h2 class="display-6 fw-bold mb-3 text-brand">Soluções estruturadas por setor e perfil de operação</h2>
+                <h2 class="display-6 fw-bold mb-3 text-brand">Atuação por setor, com aderência ao ativo e à operação</h2>
                 <p class="section-copy mb-0">
-                    Nossa atuação combina especialização setorial e capacidade de execução para estruturar operações aderentes à natureza do ativo, da garantia e da estratégia de captação.
+                    Cada setor tem sua lógica de ativo, garantia e fluxo de caixa. Estruturamos operações com conhecimento setorial aplicado — não soluções genéricas.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
