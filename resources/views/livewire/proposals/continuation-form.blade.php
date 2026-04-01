@@ -112,16 +112,16 @@
                                     <div class="col-md-5">
                                         <flux:field>
                                             <flux:label>Nome do Empreendimento *</flux:label>
-                                            <flux:input wire:model.blur="operation.nome" />
-                                            <flux:error name="operation.nome" />
+                                            <flux:input wire:model.blur="nome" />
+                                            <flux:error name="nome" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Site</flux:label>
-                                            <flux:input type="url" wire:model.blur="operation.site" />
-                                            <flux:error name="operation.site" />
+                                            <flux:input type="url" wire:model.blur="site" />
+                                            <flux:error name="site" />
                                         </flux:field>
                                     </div>
 
@@ -130,9 +130,9 @@
                                             <flux:label>Valor Solicitado *</flux:label>
                                             <div class="flex">
                                                 <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                <flux:input class="rounded-l-none!" wire:model.blur="operation.valor_solicitado" inputmode="decimal" />
+                                                <flux:input class="rounded-l-none!" wire:model.blur="valor_solicitado" mask:dynamic="$money($input, ',', '.', 2)" inputmode="decimal" />
                                             </div>
-                                            <flux:error name="operation.valor_solicitado" />
+                                            <flux:error name="valor_solicitado" />
                                         </flux:field>
                                     </div>
 
@@ -141,113 +141,113 @@
                                             <flux:label>Valor atual de mercado do terreno</flux:label>
                                             <div class="flex">
                                                 <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                <flux:input class="rounded-l-none!" wire:model.blur="operation.valor_mercado_terreno" inputmode="decimal" />
+                                                <flux:input class="rounded-l-none!" wire:model.blur="valor_mercado_terreno" mask:dynamic="$money($input, ',', '.', 2)" inputmode="decimal" />
                                             </div>
-                                            <flux:error name="operation.valor_mercado_terreno" />
+                                            <flux:error name="valor_mercado_terreno" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Área do Terreno (m²) *</flux:label>
-                                            <flux:input type="number" step="0.01" wire:model.blur="operation.area_terreno" />
-                                            <flux:error name="operation.area_terreno" />
+                                            <flux:input type="number" step="0.01" wire:model.blur="area_terreno" />
+                                            <flux:error name="area_terreno" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Lançamento *</flux:label>
-                                            <flux:input type="month" wire:model.blur="operation.data_lancamento" />
-                                            <flux:error name="operation.data_lancamento" />
+                                            <flux:input type="month" wire:model.blur="data_lancamento" />
+                                            <flux:error name="data_lancamento" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Lançamento das Vendas *</flux:label>
-                                            <flux:input type="month" wire:model.blur="operation.lancamento_vendas" />
-                                            <flux:error name="operation.lancamento_vendas" />
+                                            <flux:input type="month" wire:model.blur="lancamento_vendas" />
+                                            <flux:error name="lancamento_vendas" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Início das Obras *</flux:label>
-                                            <flux:input type="month" wire:model.blur="operation.inicio_obras" />
-                                            <flux:error name="operation.inicio_obras" />
+                                            <flux:input type="month" wire:model.blur="inicio_obras" />
+                                            <flux:error name="inicio_obras" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Previsão de Entrega *</flux:label>
-                                            <flux:input type="month" wire:model.blur="operation.previsao_entrega" />
-                                            <flux:error name="operation.previsao_entrega" />
+                                            <flux:input type="month" wire:model.blur="previsao_entrega" />
+                                            <flux:error name="previsao_entrega" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Prazo Remanescente (meses)</flux:label>
-                                            <flux:input type="number" wire:model="operation.prazo_remanescente" readonly />
+                                            <flux:input type="number" wire:model="prazo_remanescente" readonly />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>CEP *</flux:label>
-                                            <flux:input wire:model.blur="operation.cep" wire:blur="lookupCep" />
-                                            <flux:error name="operation.cep" />
-                                            <flux:description wire:loading wire:target="lookupCep">Buscando endereço pelo CEP...</flux:description>
+                                            <flux:input wire:model.blur="cep" mask="99999-999" inputmode="numeric" />
+                                            <flux:error name="cep" />
+                                            <flux:description wire:loading wire:target="cep">Buscando endereço pelo CEP...</flux:description>
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-6">
                                         <flux:field>
                                             <flux:label>Rua *</flux:label>
-                                            <flux:input wire:model.blur="operation.logradouro" />
-                                            <flux:error name="operation.logradouro" />
+                                            <flux:input wire:model.blur="logradouro" />
+                                            <flux:error name="logradouro" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Complemento</flux:label>
-                                            <flux:input wire:model.blur="operation.complemento" />
-                                            <flux:error name="operation.complemento" />
+                                            <flux:input wire:model.blur="complemento" />
+                                            <flux:error name="complemento" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Número *</flux:label>
-                                            <flux:input wire:model.blur="operation.numero" />
-                                            <flux:error name="operation.numero" />
+                                            <flux:input wire:model.blur="numero" />
+                                            <flux:error name="numero" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Bairro *</flux:label>
-                                            <flux:input wire:model.blur="operation.bairro" />
-                                            <flux:error name="operation.bairro" />
+                                            <flux:input wire:model.blur="bairro" />
+                                            <flux:error name="bairro" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Cidade *</flux:label>
-                                            <flux:input wire:model.blur="operation.cidade" />
-                                            <flux:error name="operation.cidade" />
+                                            <flux:input wire:model.blur="cidade" />
+                                            <flux:error name="cidade" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-2">
                                         <flux:field>
                                             <flux:label>Estado *</flux:label>
-                                            <flux:input maxlength="2" wire:model.blur="operation.estado" />
-                                            <flux:error name="operation.estado" />
+                                            <flux:input maxlength="2" wire:model.blur="estado" />
+                                            <flux:error name="estado" />
                                         </flux:field>
                                     </div>
 
@@ -287,8 +287,8 @@
                                                     <div class="mb-4">
                                                         <flux:field>
                                                             <flux:label>Identificação do Empreendimento *</flux:label>
-                                                            <flux:input wire:model.blur="projects.{{ $index }}.name" />
-                                                            <flux:error name="projects.{{ $index }}.name" />
+                                                            <flux:input wire:model.blur="projects.{{ $index }}.nome" />
+                                                            <flux:error name="projects.{{ $index }}.nome" />
                                                         </flux:field>
                                                     </div>
 
@@ -311,12 +311,12 @@
                                                                         </thead>
                                                                         <tbody>
                                                                             <tr>
-                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.units_exchanged" /></td>
-                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.units_paid" /></td>
-                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.units_unpaid" /></td>
-                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.units_stock" /></td>
-                                                                                <td><flux:input type="number" wire:model="projects.{{ $index }}.units_total" readonly /></td>
-                                                                                <td><flux:input wire:model="projects.{{ $index }}.sales_percentage" readonly /></td>
+                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.unidades_permutadas" /></td>
+                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.unidades_quitadas" /></td>
+                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.unidades_nao_quitadas" /></td>
+                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.unidades_estoque" /></td>
+                                                                                <td><flux:input type="number" wire:model="projects.{{ $index }}.unidades_total" readonly /></td>
+                                                                                <td><flux:input wire:model="projects.{{ $index }}.percentual_vendido" readonly /></td>
                                                                             </tr>
                                                                         </tbody>
                                                                     </table>
@@ -345,22 +345,22 @@
                                                                                 <td>
                                                                                     <div class="flex">
                                                                                         <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                        <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.cost_incurred" />
+                                                                                        <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.custo_incidido" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                                     </div>
                                                                                 </td>
                                                                                 <td>
                                                                                     <div class="flex">
                                                                                         <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                        <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.cost_to_incur" />
+                                                                                        <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.custo_a_incorrer" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                                     </div>
                                                                                 </td>
                                                                                 <td>
                                                                                     <div class="flex">
                                                                                         <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                        <flux:input class="rounded-l-none!" wire:model="projects.{{ $index }}.cost_total" readonly />
+                                                                                        <flux:input class="rounded-l-none!" wire:model="projects.{{ $index }}.custo_total" readonly />
                                                                                     </div>
                                                                                 </td>
-                                                                                <td><flux:input wire:model="projects.{{ $index }}.work_stage_percentage" readonly /></td>
+                                                                                <td><flux:input wire:model="projects.{{ $index }}.estagio_obra" readonly /></td>
                                                                             </tr>
                                                                         </tbody>
                                                                     </table>
@@ -379,25 +379,25 @@
                                                                     <table class="table table-bordered mb-0">
                                                                         <thead>
                                                                             <tr>
-                                                                                @foreach (['Quitadas', 'Não Quitadas', 'Estoque', 'Total Venda'] as $col)
+                                                                                @foreach (['Quitadas', 'Não Quitadas', 'Estoque', 'VGV Total'] as $col)
                                                                                     <th class="bg-[color-mix(in_oklab,var(--brand)_8%,var(--surface)_92%)] text-[var(--brand)] text-[0.76rem] font-bold tracking-[0.08em] uppercase">{{ $col }}</th>
                                                                                 @endforeach
                                                                             </tr>
                                                                         </thead>
                                                                         <tbody>
                                                                             <tr>
-                                                                                @foreach (['value_paid', 'value_unpaid', 'value_stock'] as $field)
+                                                                                @foreach (['valor_quitadas', 'valor_nao_quitadas', 'valor_estoque'] as $field)
                                                                                     <td>
                                                                                         <div class="flex">
                                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.{{ $field }}" />
+                                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.{{ $field }}" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                                         </div>
                                                                                     </td>
                                                                                 @endforeach
                                                                                 <td>
                                                                                     <div class="flex">
                                                                                         <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                        <flux:input class="rounded-l-none!" wire:model="projects.{{ $index }}.value_total_sale" readonly />
+                                                                                        <flux:input class="rounded-l-none!" wire:model="projects.{{ $index }}.vgv_total" readonly />
                                                                                     </div>
                                                                                 </td>
                                                                             </tr>
@@ -425,11 +425,11 @@
                                                                         </thead>
                                                                         <tbody>
                                                                             <tr>
-                                                                                @foreach (['value_received', 'value_until_keys', 'value_post_keys'] as $field)
+                                                                                @foreach (['valor_ja_recebido', 'valor_ate_chaves', 'valor_chaves_pos'] as $field)
                                                                                     <td>
                                                                                         <div class="flex">
                                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.{{ $field }}" />
+                                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.{{ $field }}" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                                         </div>
                                                                                     </td>
                                                                                 @endforeach
@@ -454,7 +454,7 @@
                                             <h2 class="h4 text-[var(--brand)] font-extrabold tracking-[-0.03em] mb-1">Características do Empreendimento</h2>
                                             <p class="text-[var(--muted)] mb-0">Configuração física do produto e dados das tipologias da operação. Adicione um ou mais tipos conforme necessário.</p>
                                         </div>
-                                        <flux:button type="button" variant="outline" wire:click="addUnitType">Adicionar Tipo</flux:button>
+                                        <flux:button type="button" variant="outline" wire:click="addTipo">Adicionar Tipo</flux:button>
                                     </div>
 
                                     <div class="col-12">
@@ -463,39 +463,39 @@
                                                 <div class="col-md-2">
                                                     <flux:field>
                                                         <flux:label>Blocos *</flux:label>
-                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="characteristics.blocks" />
-                                                        <flux:error name="characteristics.blocks" />
+                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="blocos" />
+                                                        <flux:error name="blocos" />
                                                     </flux:field>
                                                 </div>
 
                                                 <div class="col-md-2">
                                                     <flux:field>
                                                         <flux:label>Pavimentos *</flux:label>
-                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="characteristics.floors" />
-                                                        <flux:error name="characteristics.floors" />
+                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="pavimentos" />
+                                                        <flux:error name="pavimentos" />
                                                     </flux:field>
                                                 </div>
 
                                                 <div class="col-md-3">
                                                     <flux:field>
                                                         <flux:label>Andares Tipo *</flux:label>
-                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="characteristics.typical_floors" />
-                                                        <flux:error name="characteristics.typical_floors" />
+                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="andares_tipo" />
+                                                        <flux:error name="andares_tipo" />
                                                     </flux:field>
                                                 </div>
 
                                                 <div class="col-md-3">
                                                     <flux:field>
                                                         <flux:label>Unidades/Andar *</flux:label>
-                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="characteristics.units_per_floor" />
-                                                        <flux:error name="characteristics.units_per_floor" />
+                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="unidades_por_andar" />
+                                                        <flux:error name="unidades_por_andar" />
                                                     </flux:field>
                                                 </div>
 
                                                 <div class="col-md-2">
                                                     <flux:field>
                                                         <flux:label>Total</flux:label>
-                                                        <flux:input type="number" wire:model="characteristics.total_units" readonly />
+                                                        <flux:input type="number" wire:model="total_unidades" readonly />
                                                     </flux:field>
                                                 </div>
                                             </div>
@@ -506,12 +506,12 @@
                                                         <thead>
                                                             <tr>
                                                                 <th class="bg-[color-mix(in_oklab,var(--brand)_8%,var(--surface)_92%)] text-[var(--brand)] text-[0.76rem] font-bold tracking-[0.08em] uppercase">&nbsp;</th>
-                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
+                                                                @foreach ($tipos as $typeIndex => $typeRow)
                                                                     <th class="bg-[color-mix(in_oklab,var(--brand)_8%,var(--surface)_92%)] text-[var(--brand)] text-[0.76rem] font-bold tracking-[0.08em] uppercase" wire:key="type-header-{{ $typeIndex }}">
                                                                         <div class="d-flex justify-content-between align-items-center gap-2">
                                                                             <span>Tipo {{ $typeIndex + 1 }}</span>
-                                                                            @if (count($unitTypes) > 1)
-                                                                                <flux:button type="button" variant="ghost" size="sm" class="text-red-500! p-0!" wire:click="removeUnitType({{ $typeIndex }})">
+                                                                            @if (count($tipos) > 1)
+                                                                                <flux:button type="button" variant="ghost" size="sm" class="text-red-500! p-0!" wire:click="removeTipo({{ $typeIndex }})">
                                                                                     Remover
                                                                                 </flux:button>
                                                                             @endif
@@ -523,54 +523,54 @@
                                                         <tbody>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Total *</th>
-                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
+                                                                @foreach ($tipos as $typeIndex => $typeRow)
                                                                     <td wire:key="type-total-{{ $typeIndex }}">
-                                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="unitTypes.{{ $typeIndex }}.total" />
+                                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="tipos.{{ $typeIndex }}.total" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Dormitórios *</th>
-                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
+                                                                @foreach ($tipos as $typeIndex => $typeRow)
                                                                     <td wire:key="type-bedrooms-{{ $typeIndex }}">
-                                                                        <flux:input wire:model.blur="unitTypes.{{ $typeIndex }}.bedrooms" />
+                                                                        <flux:input wire:model.blur="tipos.{{ $typeIndex }}.dormitorios" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Vagas *</th>
-                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
+                                                                @foreach ($tipos as $typeIndex => $typeRow)
                                                                     <td wire:key="type-parking-{{ $typeIndex }}">
-                                                                        <flux:input wire:model.blur="unitTypes.{{ $typeIndex }}.parking_spaces" />
+                                                                        <flux:input wire:model.blur="tipos.{{ $typeIndex }}.vagas" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Área Útil (m²) *</th>
-                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
+                                                                @foreach ($tipos as $typeIndex => $typeRow)
                                                                     <td wire:key="type-area-{{ $typeIndex }}">
-                                                                        <flux:input type="number" step="0.01" wire:model.live.debounce.300ms="unitTypes.{{ $typeIndex }}.useful_area" />
+                                                                        <flux:input type="number" step="0.01" wire:model.live.debounce.300ms="tipos.{{ $typeIndex }}.area_util" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Preço Médio *</th>
-                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
+                                                                @foreach ($tipos as $typeIndex => $typeRow)
                                                                     <td wire:key="type-average-price-{{ $typeIndex }}">
                                                                         <div class="flex">
                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="unitTypes.{{ $typeIndex }}.average_price" />
+                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="tipos.{{ $typeIndex }}.preco_medio" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                         </div>
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Preço / m²</th>
-                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
+                                                                @foreach ($tipos as $typeIndex => $typeRow)
                                                                     <td wire:key="type-price-per-m2-{{ $typeIndex }}">
                                                                         <div class="flex">
                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                            <flux:input class="rounded-l-none!" wire:model="unitTypes.{{ $typeIndex }}.price_per_m2" readonly />
+                                                                            <flux:input class="rounded-l-none!" wire:model="tipos.{{ $typeIndex }}.preco_m2" readonly />
                                                                         </div>
                                                                     </td>
                                                                 @endforeach
@@ -637,7 +637,7 @@
                                             type="submit"
                                             variant="primary"
                                             wire:loading.attr="disabled"
-                                            wire:target="save,uploads,lookupCep"
+                                            wire:target="save,uploads"
                                         >
                                             <span wire:loading.remove wire:target="save">Salvar Empreendimento(s)</span>
                                             <span wire:loading wire:target="save">Salvando...</span>
