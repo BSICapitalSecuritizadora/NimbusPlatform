@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -27,88 +28,139 @@ class ContinuationForm extends Component
 
     public ?string $successMessage = null;
 
-    public string $nome = '';
+    #[Validate('required|string|max:255')]
+    public string $developmentName = '';
 
-    public string $site = '';
+    #[Validate('nullable|url|max:255')]
+    public string $websiteUrl = '';
 
-    public string $valor_solicitado = '';
+    #[Validate('required|string|max:50')]
+    public string $requestedAmount = '';
 
-    public string $valor_mercado_terreno = '';
+    #[Validate('nullable|string|max:50')]
+    public string $landMarketValue = '';
 
-    public string $area_terreno = '';
+    #[Validate('required|numeric|min:0')]
+    public string $landArea = '';
 
-    public string $data_lancamento = '';
+    #[Validate('required|date_format:Y-m')]
+    public string $launchDate = '';
 
-    public string $lancamento_vendas = '';
+    #[Validate('required|date_format:Y-m')]
+    public string $salesLaunchDate = '';
 
-    public string $inicio_obras = '';
+    #[Validate('required|date_format:Y-m')]
+    public string $constructionStartDate = '';
 
-    public string $previsao_entrega = '';
+    #[Validate('required|date_format:Y-m')]
+    public string $deliveryForecastDate = '';
 
-    public int|string $prazo_remanescente = '';
+    #[Validate('nullable|integer|min:0')]
+    public int|string $remainingMonths = '';
 
-    public string $cep = '';
+    #[Validate('required|string|max:9')]
+    public string $zipCode = '';
 
-    public string $logradouro = '';
+    #[Validate('required|string|max:255')]
+    public string $street = '';
 
-    public string $complemento = '';
+    #[Validate('nullable|string|max:255')]
+    public string $addressComplement = '';
 
-    public string $numero = '';
+    #[Validate('required|string|max:50')]
+    public string $addressNumber = '';
 
-    public string $bairro = '';
+    #[Validate('required|string|max:255')]
+    public string $neighborhood = '';
 
-    public string $cidade = '';
+    #[Validate('required|string|max:255')]
+    public string $city = '';
 
-    public string $estado = '';
+    #[Validate('required|string|size:2')]
+    public string $state = '';
 
-    public int|string $blocos = '';
+    #[Validate('required|integer|min:1')]
+    public int|string $blockCount = '';
 
-    public int|string $pavimentos = '';
+    #[Validate('required|integer|min:1')]
+    public int|string $floorCount = '';
 
-    public int|string $andares_tipo = '';
+    #[Validate('required|integer|min:1')]
+    public int|string $typicalFloorCount = '';
 
-    public int|string $unidades_por_andar = '';
+    #[Validate('required|integer|min:1')]
+    public int|string $unitsPerFloor = '';
 
-    public int|string $total_unidades = '';
+    #[Validate('nullable|integer|min:1')]
+    public int|string $totalUnits = '';
 
     /**
      * @var array<int, array{
      *     id: int|string|null,
-     *     nome: string,
-     *     unidades_permutadas: int|string,
-     *     unidades_quitadas: int|string,
-     *     unidades_nao_quitadas: int|string,
-     *     unidades_estoque: int|string,
-     *     unidades_total: int|string,
-     *     percentual_vendido: string,
-     *     custo_incidido: string,
-     *     custo_a_incorrer: string,
-     *     custo_total: string,
-     *     estagio_obra: string,
-     *     valor_quitadas: string,
-     *     valor_nao_quitadas: string,
-     *     valor_estoque: string,
-     *     vgv_total: string,
-     *     valor_ja_recebido: string,
-     *     valor_ate_chaves: string,
-     *     valor_chaves_pos: string
+     *     name: string,
+     *     exchangedUnits: int|string,
+     *     paidUnits: int|string,
+     *     unpaidUnits: int|string,
+     *     stockUnits: int|string,
+     *     totalUnits: int|string,
+     *     salesPercentage: string,
+     *     incurredCost: string,
+     *     costToIncur: string,
+     *     totalCost: string,
+     *     workStagePercentage: string,
+     *     paidSalesValue: string,
+     *     unpaidSalesValue: string,
+     *     stockSalesValue: string,
+     *     grossSalesValue: string,
+     *     receivedValue: string,
+     *     valueUntilKeys: string,
+     *     valueAfterKeys: string
      * }>
      */
+    #[Validate([
+        'projects' => ['required', 'array', 'min:1'],
+        'projects.*.id' => ['nullable', 'integer'],
+        'projects.*.name' => ['required', 'string', 'max:255'],
+        'projects.*.exchangedUnits' => ['nullable', 'integer', 'min:0'],
+        'projects.*.paidUnits' => ['nullable', 'integer', 'min:0'],
+        'projects.*.unpaidUnits' => ['nullable', 'integer', 'min:0'],
+        'projects.*.stockUnits' => ['nullable', 'integer', 'min:0'],
+        'projects.*.incurredCost' => ['nullable', 'string', 'max:50'],
+        'projects.*.costToIncur' => ['nullable', 'string', 'max:50'],
+        'projects.*.paidSalesValue' => ['nullable', 'string', 'max:50'],
+        'projects.*.unpaidSalesValue' => ['nullable', 'string', 'max:50'],
+        'projects.*.stockSalesValue' => ['nullable', 'string', 'max:50'],
+        'projects.*.receivedValue' => ['nullable', 'string', 'max:50'],
+        'projects.*.valueUntilKeys' => ['nullable', 'string', 'max:50'],
+        'projects.*.valueAfterKeys' => ['nullable', 'string', 'max:50'],
+    ])]
     public array $projects = [];
 
     /**
      * @var array<int, array{
-     *     total: int|string,
-     *     dormitorios: string,
-     *     vagas: string,
-     *     area_util: float|int|string,
-     *     preco_medio: string,
-     *     preco_m2: string
+     *     totalUnits: int|string,
+     *     bedrooms: string,
+     *     parkingSpaces: string,
+     *     usableArea: float|int|string,
+     *     averagePrice: string,
+     *     pricePerSquareMeter: string
      * }>
      */
-    public array $tipos = [];
+    #[Validate([
+        'unitTypes' => ['required', 'array', 'min:1'],
+        'unitTypes.*.totalUnits' => ['required', 'integer', 'min:1'],
+        'unitTypes.*.bedrooms' => ['required', 'string', 'max:255'],
+        'unitTypes.*.parkingSpaces' => ['required', 'string', 'max:255'],
+        'unitTypes.*.usableArea' => ['required', 'numeric', 'gt:0'],
+        'unitTypes.*.averagePrice' => ['required', 'string', 'max:50'],
+    ])]
+    public array $unitTypes = [];
 
     /** @var array<int, TemporaryUploadedFile> */
+    #[Validate([
+        'uploads' => ['nullable', 'array'],
+        'uploads.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
+    ])]
     public array $uploads = [];
 
     public function mount(ProposalContinuationAccess $access, Proposal $proposal): void
@@ -144,69 +196,54 @@ class ContinuationForm extends Component
 
     public function updated(string $property, mixed $value): void
     {
-        if (in_array($property, ['valor_solicitado', 'valor_mercado_terreno'], true)) {
+        if (in_array($property, ['requestedAmount', 'landMarketValue'], true)) {
             $this->formatMoneyProperty($property);
         }
 
-        if ($property === 'estado') {
-            $this->estado = Str::upper(substr((string) $value, 0, 2));
+        if ($property === 'state') {
+            $this->state = Str::upper(substr((string) $value, 0, 2));
         }
 
-        if (in_array($property, ['inicio_obras', 'previsao_entrega'], true)) {
-            $this->syncPrazoRemanescente();
+        if (in_array($property, ['constructionStartDate', 'deliveryForecastDate'], true)) {
+            $this->syncRemainingMonths();
         }
 
         if (preg_match('/^projects\.(\d+)\./', $property, $matches) === 1) {
             $projectIndex = (int) $matches[1];
 
-            if (preg_match('/\.(custo_incidido|custo_a_incorrer|valor_quitadas|valor_nao_quitadas|valor_estoque|valor_ja_recebido|valor_ate_chaves|valor_chaves_pos)$/', $property) === 1) {
+            if (preg_match('/\.(incurredCost|costToIncur|paidSalesValue|unpaidSalesValue|stockSalesValue|receivedValue|valueUntilKeys|valueAfterKeys)$/', $property) === 1) {
                 $this->formatMoneyProperty($property);
             }
 
             $this->syncProject($projectIndex);
         }
 
-        if (preg_match('/^tipos\.(\d+)\./', $property, $matches) === 1) {
-            $typeIndex = (int) $matches[1];
+        if (preg_match('/^unitTypes\.(\d+)\./', $property, $matches) === 1) {
+            $unitTypeIndex = (int) $matches[1];
 
-            if (str_ends_with($property, '.preco_medio')) {
+            if (str_ends_with($property, '.averagePrice')) {
                 $this->formatMoneyProperty($property);
             }
 
-            $this->syncTipo($typeIndex);
+            $this->syncUnitType($unitTypeIndex);
         }
 
-        if (in_array($property, ['blocos', 'andares_tipo', 'unidades_por_andar'], true)) {
-            $this->syncTotalUnidades();
+        if (in_array($property, ['blockCount', 'typicalFloorCount', 'unitsPerFloor'], true)) {
+            $this->syncTotalUnits();
         }
     }
 
-    public function updatedCep(mixed $value): void
+    public function updatedZipCode(mixed $value): void
     {
-        $formattedCep = $this->formatCep((string) $value);
+        $formattedZipCode = $this->formatZipCode((string) $value);
 
-        if ($formattedCep !== $this->cep) {
-            $this->cep = $formattedCep;
+        if ($formattedZipCode !== $this->zipCode) {
+            $this->zipCode = $formattedZipCode;
 
             return;
         }
 
-        $cep = preg_replace('/\D/', '', $formattedCep);
-
-        if (strlen($cep) !== 8) {
-            return;
-        }
-
-        $response = Http::get("https://viacep.com.br/ws/{$cep}/json/");
-
-        if (! $response->successful() || $response->json('erro')) {
-            return;
-        }
-
-        $this->logradouro = (string) ($response->json('logradouro') ?? '');
-        $this->bairro = (string) ($response->json('bairro') ?? '');
-        $this->cidade = (string) ($response->json('localidade') ?? '');
-        $this->estado = Str::upper((string) ($response->json('uf') ?? ''));
+        $this->fetchAddress();
     }
 
     public function addProject(): void
@@ -225,37 +262,37 @@ class ContinuationForm extends Component
         $this->projects = array_values($this->projects);
     }
 
-    public function addTipo(): void
+    public function addUnitType(): void
     {
-        $this->tipos[] = $this->blankTipo();
+        $this->unitTypes[] = $this->blankUnitType();
     }
 
-    public function removeTipo(int $index): void
+    public function removeUnitType(int $index): void
     {
-        if (count($this->tipos) === 1) {
+        if (count($this->unitTypes) === 1) {
             return;
         }
 
-        unset($this->tipos[$index]);
+        unset($this->unitTypes[$index]);
 
-        $this->tipos = array_values($this->tipos);
+        $this->unitTypes = array_values($this->unitTypes);
 
-        foreach (array_keys($this->tipos) as $typeIndex) {
-            $this->syncTipo($typeIndex);
+        foreach (array_keys($this->unitTypes) as $unitTypeIndex) {
+            $this->syncUnitType($unitTypeIndex);
         }
     }
 
     public function save(StoreProposalContinuationData $storeProposalContinuationData): void
     {
-        $this->syncPrazoRemanescente();
-        $this->syncTotalUnidades();
+        $this->syncRemainingMonths();
+        $this->syncTotalUnits();
 
         foreach (array_keys($this->projects) as $projectIndex) {
             $this->syncProject($projectIndex);
         }
 
-        foreach (array_keys($this->tipos) as $typeIndex) {
-            $this->syncTipo($typeIndex);
+        foreach (array_keys($this->unitTypes) as $unitTypeIndex) {
+            $this->syncUnitType($unitTypeIndex);
         }
 
         $payload = $this->normalizeValidationPayload($this->validationPayload());
@@ -263,11 +300,11 @@ class ContinuationForm extends Component
         $validated = validator($payload, $this->saveRules(), $this->saveMessages())
             ->after(function (Validator $validator) use ($payload): void {
                 if (
-                    filled($payload['inicio_obras'] ?? null)
-                    && filled($payload['previsao_entrega'] ?? null)
-                    && ($payload['previsao_entrega'] < $payload['inicio_obras'])
+                    filled($payload['constructionStartDate'] ?? null)
+                    && filled($payload['deliveryForecastDate'] ?? null)
+                    && ($payload['deliveryForecastDate'] < $payload['constructionStartDate'])
                 ) {
-                    $validator->errors()->add('previsao_entrega', 'A previsão de entrega deve ser posterior ao início das obras.');
+                    $validator->errors()->add('deliveryForecastDate', 'A previsão de entrega deve ser posterior ao início das obras.');
                 }
             })->validate();
 
@@ -282,33 +319,53 @@ class ContinuationForm extends Component
         $this->fillFromProposal($this->proposal()->fresh($this->proposalRelations()));
     }
 
+    protected function fetchAddress(): void
+    {
+        $zipCode = preg_replace('/\D/', '', $this->zipCode);
+
+        if (strlen($zipCode) !== 8) {
+            return;
+        }
+
+        $response = Http::get("https://viacep.com.br/ws/{$zipCode}/json/");
+
+        if (! $response->successful() || $response->json('erro')) {
+            return;
+        }
+
+        $this->street = (string) ($response->json('logradouro') ?? '');
+        $this->neighborhood = (string) ($response->json('bairro') ?? '');
+        $this->city = (string) ($response->json('localidade') ?? '');
+        $this->state = Str::upper((string) ($response->json('uf') ?? ''));
+    }
+
     protected function validationPayload(): array
     {
         return [
-            'nome' => $this->nome,
-            'site' => $this->site,
-            'valor_solicitado' => $this->valor_solicitado,
-            'valor_mercado_terreno' => $this->valor_mercado_terreno,
-            'area_terreno' => $this->area_terreno,
-            'data_lancamento' => $this->data_lancamento,
-            'lancamento_vendas' => $this->lancamento_vendas,
-            'inicio_obras' => $this->inicio_obras,
-            'previsao_entrega' => $this->previsao_entrega,
-            'prazo_remanescente' => $this->prazo_remanescente,
-            'cep' => $this->cep,
-            'logradouro' => $this->logradouro,
-            'complemento' => $this->complemento,
-            'numero' => $this->numero,
-            'bairro' => $this->bairro,
-            'cidade' => $this->cidade,
-            'estado' => $this->estado,
-            'blocos' => $this->blocos,
-            'pavimentos' => $this->pavimentos,
-            'andares_tipo' => $this->andares_tipo,
-            'unidades_por_andar' => $this->unidades_por_andar,
-            'total_unidades' => $this->total_unidades,
+            'developmentName' => $this->developmentName,
+            'websiteUrl' => $this->websiteUrl,
+            'requestedAmount' => $this->requestedAmount,
+            'landMarketValue' => $this->landMarketValue,
+            'landArea' => $this->landArea,
+            'launchDate' => $this->launchDate,
+            'salesLaunchDate' => $this->salesLaunchDate,
+            'constructionStartDate' => $this->constructionStartDate,
+            'deliveryForecastDate' => $this->deliveryForecastDate,
+            'remainingMonths' => $this->remainingMonths,
+            'zipCode' => $this->zipCode,
+            'street' => $this->street,
+            'addressComplement' => $this->addressComplement,
+            'addressNumber' => $this->addressNumber,
+            'neighborhood' => $this->neighborhood,
+            'city' => $this->city,
+            'state' => $this->state,
+            'blockCount' => $this->blockCount,
+            'floorCount' => $this->floorCount,
+            'typicalFloorCount' => $this->typicalFloorCount,
+            'unitsPerFloor' => $this->unitsPerFloor,
+            'totalUnits' => $this->totalUnits,
             'projects' => $this->projects,
-            'tipos' => $this->tipos,
+            'unitTypes' => $this->unitTypes,
             'uploads' => $this->uploads,
         ];
     }
@@ -317,60 +374,60 @@ class ContinuationForm extends Component
     {
         return [
             'operation' => [
-                'nome' => $validated['nome'],
-                'site' => $validated['site'] ?? null,
-                'valor_solicitado' => $validated['valor_solicitado'],
-                'valor_mercado_terreno' => $validated['valor_mercado_terreno'] ?? null,
-                'area_terreno' => $validated['area_terreno'],
-                'data_lancamento' => $validated['data_lancamento'],
-                'lancamento_vendas' => $validated['lancamento_vendas'],
-                'inicio_obras' => $validated['inicio_obras'],
-                'previsao_entrega' => $validated['previsao_entrega'],
-                'prazo_remanescente' => $validated['prazo_remanescente'] ?? null,
-                'cep' => $validated['cep'],
-                'logradouro' => $validated['logradouro'],
-                'complemento' => $validated['complemento'] ?? null,
-                'numero' => $validated['numero'],
-                'bairro' => $validated['bairro'],
-                'cidade' => $validated['cidade'],
-                'estado' => $validated['estado'],
+                'nome' => $validated['developmentName'],
+                'site' => $validated['websiteUrl'] ?? null,
+                'valor_solicitado' => $validated['requestedAmount'],
+                'valor_mercado_terreno' => $validated['landMarketValue'] ?? null,
+                'area_terreno' => $validated['landArea'],
+                'data_lancamento' => $validated['launchDate'],
+                'lancamento_vendas' => $validated['salesLaunchDate'],
+                'inicio_obras' => $validated['constructionStartDate'],
+                'previsao_entrega' => $validated['deliveryForecastDate'],
+                'prazo_remanescente' => $validated['remainingMonths'] ?? null,
+                'cep' => $validated['zipCode'],
+                'logradouro' => $validated['street'],
+                'complemento' => $validated['addressComplement'] ?? null,
+                'numero' => $validated['addressNumber'],
+                'bairro' => $validated['neighborhood'],
+                'cidade' => $validated['city'],
+                'estado' => $validated['state'],
             ],
             'characteristics' => [
-                'blocks' => $validated['blocos'],
-                'floors' => $validated['pavimentos'],
-                'typical_floors' => $validated['andares_tipo'],
-                'units_per_floor' => $validated['unidades_por_andar'],
-                'total_units' => $validated['total_unidades'] ?? null,
+                'blocks' => $validated['blockCount'],
+                'floors' => $validated['floorCount'],
+                'typical_floors' => $validated['typicalFloorCount'],
+                'units_per_floor' => $validated['unitsPerFloor'],
+                'total_units' => $validated['totalUnits'] ?? null,
             ],
             'projects' => collect($validated['projects'])
                 ->map(function (array $project): array {
                     return [
                         'id' => $project['id'] ?? null,
-                        'name' => $project['nome'],
-                        'units_exchanged' => $project['unidades_permutadas'] ?? 0,
-                        'units_paid' => $project['unidades_quitadas'] ?? 0,
-                        'units_unpaid' => $project['unidades_nao_quitadas'] ?? 0,
-                        'units_stock' => $project['unidades_estoque'] ?? 0,
-                        'cost_incurred' => $project['custo_incidido'] ?? null,
-                        'cost_to_incur' => $project['custo_a_incorrer'] ?? null,
-                        'value_paid' => $project['valor_quitadas'] ?? null,
-                        'value_unpaid' => $project['valor_nao_quitadas'] ?? null,
-                        'value_stock' => $project['valor_estoque'] ?? null,
-                        'value_received' => $project['valor_ja_recebido'] ?? null,
-                        'value_until_keys' => $project['valor_ate_chaves'] ?? null,
-                        'value_post_keys' => $project['valor_chaves_pos'] ?? null,
+                        'name' => $project['name'],
+                        'units_exchanged' => $project['exchangedUnits'] ?? 0,
+                        'units_paid' => $project['paidUnits'] ?? 0,
+                        'units_unpaid' => $project['unpaidUnits'] ?? 0,
+                        'units_stock' => $project['stockUnits'] ?? 0,
+                        'cost_incurred' => $project['incurredCost'] ?? null,
+                        'cost_to_incur' => $project['costToIncur'] ?? null,
+                        'value_paid' => $project['paidSalesValue'] ?? null,
+                        'value_unpaid' => $project['unpaidSalesValue'] ?? null,
+                        'value_stock' => $project['stockSalesValue'] ?? null,
+                        'value_received' => $project['receivedValue'] ?? null,
+                        'value_until_keys' => $project['valueUntilKeys'] ?? null,
+                        'value_post_keys' => $project['valueAfterKeys'] ?? null,
                     ];
                 })
                 ->values()
                 ->all(),
-            'unit_types' => collect($validated['tipos'])
-                ->map(function (array $tipo): array {
+            'unit_types' => collect($validated['unitTypes'])
+                ->map(function (array $unitType): array {
                     return [
-                        'total' => $tipo['total'],
-                        'bedrooms' => $tipo['dormitorios'],
-                        'parking_spaces' => $tipo['vagas'],
-                        'useful_area' => $tipo['area_util'],
-                        'average_price' => $tipo['preco_medio'],
+                        'total' => $unitType['totalUnits'],
+                        'bedrooms' => $unitType['bedrooms'],
+                        'parking_spaces' => $unitType['parkingSpaces'],
+                        'useful_area' => $unitType['usableArea'],
+                        'average_price' => $unitType['averagePrice'],
                     ];
                 })
                 ->values()
@@ -397,23 +454,23 @@ class ContinuationForm extends Component
     protected function saveRules(): array
     {
         return [
-            'nome' => ['required', 'string', 'max:255'],
-            'site' => ['nullable', 'url', 'max:255'],
-            'valor_solicitado' => ['required', 'string', 'max:50'],
-            'valor_mercado_terreno' => ['nullable', 'string', 'max:50'],
-            'area_terreno' => ['required', 'numeric', 'min:0'],
-            'data_lancamento' => ['required', 'date_format:Y-m'],
-            'lancamento_vendas' => ['required', 'date_format:Y-m'],
-            'inicio_obras' => ['required', 'date_format:Y-m'],
-            'previsao_entrega' => ['required', 'date_format:Y-m'],
-            'prazo_remanescente' => ['nullable', 'integer', 'min:0'],
-            'cep' => ['required', 'string', 'max:9'],
-            'logradouro' => ['required', 'string', 'max:255'],
-            'complemento' => ['nullable', 'string', 'max:255'],
-            'numero' => ['required', 'string', 'max:50'],
-            'bairro' => ['required', 'string', 'max:255'],
-            'cidade' => ['required', 'string', 'max:255'],
-            'estado' => ['required', 'string', 'size:2'],
+            'developmentName' => ['required', 'string', 'max:255'],
+            'websiteUrl' => ['nullable', 'url', 'max:255'],
+            'requestedAmount' => ['required', 'string', 'max:50'],
+            'landMarketValue' => ['nullable', 'string', 'max:50'],
+            'landArea' => ['required', 'numeric', 'min:0'],
+            'launchDate' => ['required', 'date_format:Y-m'],
+            'salesLaunchDate' => ['required', 'date_format:Y-m'],
+            'constructionStartDate' => ['required', 'date_format:Y-m'],
+            'deliveryForecastDate' => ['required', 'date_format:Y-m'],
+            'remainingMonths' => ['nullable', 'integer', 'min:0'],
+            'zipCode' => ['required', 'string', 'max:9'],
+            'street' => ['required', 'string', 'max:255'],
+            'addressComplement' => ['nullable', 'string', 'max:255'],
+            'addressNumber' => ['required', 'string', 'max:50'],
+            'neighborhood' => ['required', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:255'],
+            'state' => ['required', 'string', 'size:2'],
             'projects' => ['required', 'array', 'min:1'],
             'projects.*.id' => [
                 'nullable',
@@ -422,30 +479,30 @@ class ContinuationForm extends Component
                     fn ($query) => $query->where('proposal_id', $this->proposalId),
                 ),
             ],
-            'projects.*.nome' => ['required', 'string', 'max:255'],
-            'projects.*.unidades_permutadas' => ['nullable', 'integer', 'min:0'],
-            'projects.*.unidades_quitadas' => ['nullable', 'integer', 'min:0'],
-            'projects.*.unidades_nao_quitadas' => ['nullable', 'integer', 'min:0'],
-            'projects.*.unidades_estoque' => ['nullable', 'integer', 'min:0'],
-            'projects.*.custo_incidido' => ['nullable', 'string', 'max:50'],
-            'projects.*.custo_a_incorrer' => ['nullable', 'string', 'max:50'],
-            'projects.*.valor_quitadas' => ['nullable', 'string', 'max:50'],
-            'projects.*.valor_nao_quitadas' => ['nullable', 'string', 'max:50'],
-            'projects.*.valor_estoque' => ['nullable', 'string', 'max:50'],
-            'projects.*.valor_ja_recebido' => ['nullable', 'string', 'max:50'],
-            'projects.*.valor_ate_chaves' => ['nullable', 'string', 'max:50'],
-            'projects.*.valor_chaves_pos' => ['nullable', 'string', 'max:50'],
-            'blocos' => ['required', 'integer', 'min:1'],
-            'pavimentos' => ['required', 'integer', 'min:1'],
-            'andares_tipo' => ['required', 'integer', 'min:1'],
-            'unidades_por_andar' => ['required', 'integer', 'min:1'],
-            'total_unidades' => ['nullable', 'integer', 'min:1'],
-            'tipos' => ['required', 'array', 'min:1'],
-            'tipos.*.total' => ['required', 'integer', 'min:1'],
-            'tipos.*.dormitorios' => ['required', 'string', 'max:255'],
-            'tipos.*.vagas' => ['required', 'string', 'max:255'],
-            'tipos.*.area_util' => ['required', 'numeric', 'gt:0'],
-            'tipos.*.preco_medio' => ['required', 'string', 'max:50'],
+            'projects.*.name' => ['required', 'string', 'max:255'],
+            'projects.*.exchangedUnits' => ['nullable', 'integer', 'min:0'],
+            'projects.*.paidUnits' => ['nullable', 'integer', 'min:0'],
+            'projects.*.unpaidUnits' => ['nullable', 'integer', 'min:0'],
+            'projects.*.stockUnits' => ['nullable', 'integer', 'min:0'],
+            'projects.*.incurredCost' => ['nullable', 'string', 'max:50'],
+            'projects.*.costToIncur' => ['nullable', 'string', 'max:50'],
+            'projects.*.paidSalesValue' => ['nullable', 'string', 'max:50'],
+            'projects.*.unpaidSalesValue' => ['nullable', 'string', 'max:50'],
+            'projects.*.stockSalesValue' => ['nullable', 'string', 'max:50'],
+            'projects.*.receivedValue' => ['nullable', 'string', 'max:50'],
+            'projects.*.valueUntilKeys' => ['nullable', 'string', 'max:50'],
+            'projects.*.valueAfterKeys' => ['nullable', 'string', 'max:50'],
+            'blockCount' => ['required', 'integer', 'min:1'],
+            'floorCount' => ['required', 'integer', 'min:1'],
+            'typicalFloorCount' => ['required', 'integer', 'min:1'],
+            'unitsPerFloor' => ['required', 'integer', 'min:1'],
+            'totalUnits' => ['nullable', 'integer', 'min:1'],
+            'unitTypes' => ['required', 'array', 'min:1'],
+            'unitTypes.*.totalUnits' => ['required', 'integer', 'min:1'],
+            'unitTypes.*.bedrooms' => ['required', 'string', 'max:255'],
+            'unitTypes.*.parkingSpaces' => ['required', 'string', 'max:255'],
+            'unitTypes.*.usableArea' => ['required', 'numeric', 'gt:0'],
+            'unitTypes.*.averagePrice' => ['required', 'string', 'max:50'],
             'uploads' => ['nullable', 'array'],
             'uploads.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
         ];
@@ -457,19 +514,19 @@ class ContinuationForm extends Component
     protected function saveMessages(): array
     {
         return [
-            'nome.required' => 'A denominação principal do empreendimento é obrigatória.',
-            'valor_solicitado.required' => 'O valor solicitado para a operação é obrigatório.',
-            'area_terreno.required' => 'A área do terreno é obrigatória.',
-            'data_lancamento.required' => 'A data de lançamento do empreendimento é obrigatória.',
-            'data_lancamento.date_format' => 'A data de lançamento deve estar no formato mm/aaaa.',
-            'lancamento_vendas.required' => 'A data de lançamento comercial é obrigatória.',
-            'lancamento_vendas.date_format' => 'A data de lançamento das vendas deve estar no formato mm/aaaa.',
-            'inicio_obras.required' => 'A data de início das obras é obrigatória.',
-            'inicio_obras.date_format' => 'A data de início das obras deve estar no formato mm/aaaa.',
-            'previsao_entrega.required' => 'A previsão de entrega do empreendimento é obrigatória.',
-            'previsao_entrega.date_format' => 'A previsão de entrega deve estar no formato mm/aaaa.',
+            'developmentName.required' => 'A denominação principal do empreendimento é obrigatória.',
+            'requestedAmount.required' => 'O valor solicitado para a operação é obrigatório.',
+            'landArea.required' => 'A área do terreno é obrigatória.',
+            'launchDate.required' => 'A data de lançamento do empreendimento é obrigatória.',
+            'launchDate.date_format' => 'A data de lançamento deve estar no formato mm/aaaa.',
+            'salesLaunchDate.required' => 'A data de lançamento comercial é obrigatória.',
+            'salesLaunchDate.date_format' => 'A data de lançamento das vendas deve estar no formato mm/aaaa.',
+            'constructionStartDate.required' => 'A data de início das obras é obrigatória.',
+            'constructionStartDate.date_format' => 'A data de início das obras deve estar no formato mm/aaaa.',
+            'deliveryForecastDate.required' => 'A previsão de entrega do empreendimento é obrigatória.',
+            'deliveryForecastDate.date_format' => 'A previsão de entrega deve estar no formato mm/aaaa.',
             'projects.required' => 'Informe ao menos um empreendimento vinculado à operação.',
-            'projects.*.nome.required' => 'A identificação de cada empreendimento é obrigatória.',
+            'projects.*.name.required' => 'A identificação de cada empreendimento é obrigatória.',
             'uploads.*.mimes' => 'Os arquivos anexados devem estar nos formatos PDF, DOC, DOCX, XLS, XLSX, PNG, JPG ou JPEG.',
             'uploads.*.max' => 'Cada arquivo não pode exceder 10 MB.',
         ];
@@ -504,82 +561,82 @@ class ContinuationForm extends Component
     {
         $firstProject = $proposal->projects->first();
 
-        $this->nome = $firstProject?->company_name ?? '';
-        $this->site = $firstProject?->site ?? '';
-        $this->valor_solicitado = $firstProject?->formatted_value_requested ?? '';
-        $this->valor_mercado_terreno = $firstProject?->formatted_land_market_value ?? '';
-        $this->area_terreno = (string) ($firstProject?->land_area ?? '');
-        $this->data_lancamento = $firstProject?->launch_month ?? '';
-        $this->lancamento_vendas = $firstProject?->sales_launch_month ?? '';
-        $this->inicio_obras = $firstProject?->construction_start_month ?? '';
-        $this->previsao_entrega = $firstProject?->delivery_forecast_month ?? '';
-        $this->prazo_remanescente = $firstProject?->remaining_months ?? '';
-        $this->cep = $this->formatCep((string) ($firstProject?->cep ?? ''));
-        $this->logradouro = $firstProject?->logradouro ?? '';
-        $this->complemento = $firstProject?->complemento ?? '';
-        $this->numero = $firstProject?->numero ?? '';
-        $this->bairro = $firstProject?->bairro ?? '';
-        $this->cidade = $firstProject?->cidade ?? '';
-        $this->estado = $firstProject?->estado ?? '';
+        $this->developmentName = $firstProject?->company_name ?? '';
+        $this->websiteUrl = $firstProject?->site ?? '';
+        $this->requestedAmount = $firstProject?->formatted_value_requested ?? '';
+        $this->landMarketValue = $firstProject?->formatted_land_market_value ?? '';
+        $this->landArea = (string) ($firstProject?->land_area ?? '');
+        $this->launchDate = $firstProject?->launch_month ?? '';
+        $this->salesLaunchDate = $firstProject?->sales_launch_month ?? '';
+        $this->constructionStartDate = $firstProject?->construction_start_month ?? '';
+        $this->deliveryForecastDate = $firstProject?->delivery_forecast_month ?? '';
+        $this->remainingMonths = $firstProject?->remaining_months ?? '';
+        $this->zipCode = $this->formatZipCode((string) ($firstProject?->cep ?? ''));
+        $this->street = $firstProject?->logradouro ?? '';
+        $this->addressComplement = $firstProject?->complemento ?? '';
+        $this->addressNumber = $firstProject?->numero ?? '';
+        $this->neighborhood = $firstProject?->bairro ?? '';
+        $this->city = $firstProject?->cidade ?? '';
+        $this->state = $firstProject?->estado ?? '';
 
-        $this->blocos = $firstProject?->characteristics?->blocks ?? '';
-        $this->pavimentos = $firstProject?->characteristics?->floors ?? '';
-        $this->andares_tipo = $firstProject?->characteristics?->typical_floors ?? '';
-        $this->unidades_por_andar = $firstProject?->characteristics?->units_per_floor ?? '';
-        $this->total_unidades = $firstProject?->characteristics?->total_units ?? '';
+        $this->blockCount = $firstProject?->characteristics?->blocks ?? '';
+        $this->floorCount = $firstProject?->characteristics?->floors ?? '';
+        $this->typicalFloorCount = $firstProject?->characteristics?->typical_floors ?? '';
+        $this->unitsPerFloor = $firstProject?->characteristics?->units_per_floor ?? '';
+        $this->totalUnits = $firstProject?->characteristics?->total_units ?? '';
 
         $this->projects = $proposal->projects->isNotEmpty()
             ? $proposal->projects
                 ->map(fn (ProposalProject $project): array => [
                     'id' => $project->id,
-                    'nome' => $project->name,
-                    'unidades_permutadas' => $project->units_exchanged,
-                    'unidades_quitadas' => $project->units_paid,
-                    'unidades_nao_quitadas' => $project->units_unpaid,
-                    'unidades_estoque' => $project->units_stock,
-                    'unidades_total' => $project->units_total,
-                    'percentual_vendido' => number_format((float) $project->sales_percentage, 2, '.', ''),
-                    'custo_incidido' => $project->formatted_cost_incurred,
-                    'custo_a_incorrer' => $project->formatted_cost_to_incur,
-                    'custo_total' => $project->formatted_cost_total,
-                    'estagio_obra' => number_format((float) $project->work_stage_percentage, 2, '.', ''),
-                    'valor_quitadas' => $project->formatted_value_paid,
-                    'valor_nao_quitadas' => $project->formatted_value_unpaid,
-                    'valor_estoque' => $project->formatted_value_stock,
-                    'vgv_total' => $project->formatted_value_total_sale,
-                    'valor_ja_recebido' => $project->formatted_value_received,
-                    'valor_ate_chaves' => $project->formatted_value_until_keys,
-                    'valor_chaves_pos' => $project->formatted_value_post_keys,
+                    'name' => $project->name,
+                    'exchangedUnits' => $project->units_exchanged,
+                    'paidUnits' => $project->units_paid,
+                    'unpaidUnits' => $project->units_unpaid,
+                    'stockUnits' => $project->units_stock,
+                    'totalUnits' => $project->units_total,
+                    'salesPercentage' => number_format((float) $project->sales_percentage, 2, '.', ''),
+                    'incurredCost' => $project->formatted_cost_incurred,
+                    'costToIncur' => $project->formatted_cost_to_incur,
+                    'totalCost' => $project->formatted_cost_total,
+                    'workStagePercentage' => number_format((float) $project->work_stage_percentage, 2, '.', ''),
+                    'paidSalesValue' => $project->formatted_value_paid,
+                    'unpaidSalesValue' => $project->formatted_value_unpaid,
+                    'stockSalesValue' => $project->formatted_value_stock,
+                    'grossSalesValue' => $project->formatted_value_total_sale,
+                    'receivedValue' => $project->formatted_value_received,
+                    'valueUntilKeys' => $project->formatted_value_until_keys,
+                    'valueAfterKeys' => $project->formatted_value_post_keys,
                 ])
                 ->values()
                 ->all()
             : [$this->blankProject()];
 
-        $this->tipos = $firstProject?->characteristics?->unitTypes?->isNotEmpty()
+        $this->unitTypes = $firstProject?->characteristics?->unitTypes?->isNotEmpty()
             ? $firstProject->characteristics->unitTypes
                 ->sortBy('order')
                 ->map(fn ($unitType): array => [
-                    'total' => $unitType->total_units,
-                    'dormitorios' => $unitType->bedrooms,
-                    'vagas' => $unitType->parking_spaces,
-                    'area_util' => $unitType->useful_area,
-                    'preco_medio' => $unitType->formatted_average_price,
-                    'preco_m2' => $unitType->formatted_price_per_m2,
+                    'totalUnits' => $unitType->total_units,
+                    'bedrooms' => $unitType->bedrooms,
+                    'parkingSpaces' => $unitType->parking_spaces,
+                    'usableArea' => $unitType->useful_area,
+                    'averagePrice' => $unitType->formatted_average_price,
+                    'pricePerSquareMeter' => $unitType->formatted_price_per_m2,
                 ])
                 ->values()
                 ->all()
-            : [$this->blankTipo()];
+            : [$this->blankUnitType()];
 
         $this->uploads = [];
-        $this->syncPrazoRemanescente();
-        $this->syncTotalUnidades();
+        $this->syncRemainingMonths();
+        $this->syncTotalUnits();
 
         foreach (array_keys($this->projects) as $projectIndex) {
             $this->syncProject($projectIndex);
         }
 
-        foreach (array_keys($this->tipos) as $typeIndex) {
-            $this->syncTipo($typeIndex);
+        foreach (array_keys($this->unitTypes) as $unitTypeIndex) {
+            $this->syncUnitType($unitTypeIndex);
         }
     }
 
@@ -590,39 +647,39 @@ class ContinuationForm extends Component
     {
         return [
             'id' => null,
-            'nome' => '',
-            'unidades_permutadas' => '',
-            'unidades_quitadas' => '',
-            'unidades_nao_quitadas' => '',
-            'unidades_estoque' => '',
-            'unidades_total' => '',
-            'percentual_vendido' => '',
-            'custo_incidido' => '',
-            'custo_a_incorrer' => '',
-            'custo_total' => '',
-            'estagio_obra' => '',
-            'valor_quitadas' => '',
-            'valor_nao_quitadas' => '',
-            'valor_estoque' => '',
-            'vgv_total' => '',
-            'valor_ja_recebido' => '',
-            'valor_ate_chaves' => '',
-            'valor_chaves_pos' => '',
+            'name' => '',
+            'exchangedUnits' => '',
+            'paidUnits' => '',
+            'unpaidUnits' => '',
+            'stockUnits' => '',
+            'totalUnits' => '',
+            'salesPercentage' => '',
+            'incurredCost' => '',
+            'costToIncur' => '',
+            'totalCost' => '',
+            'workStagePercentage' => '',
+            'paidSalesValue' => '',
+            'unpaidSalesValue' => '',
+            'stockSalesValue' => '',
+            'grossSalesValue' => '',
+            'receivedValue' => '',
+            'valueUntilKeys' => '',
+            'valueAfterKeys' => '',
         ];
     }
 
     /**
      * @return array<string, float|int|string>
      */
-    protected function blankTipo(): array
+    protected function blankUnitType(): array
     {
         return [
-            'total' => '',
-            'dormitorios' => '',
-            'vagas' => '',
-            'area_util' => '',
-            'preco_medio' => '',
-            'preco_m2' => '',
+            'totalUnits' => '',
+            'bedrooms' => '',
+            'parkingSpaces' => '',
+            'usableArea' => '',
+            'averagePrice' => '',
+            'pricePerSquareMeter' => '',
         ];
     }
 
@@ -635,98 +692,98 @@ class ContinuationForm extends Component
         }
 
         if ($this->projectIsBlank($project)) {
-            $project['unidades_total'] = '';
-            $project['percentual_vendido'] = '';
-            $project['custo_total'] = '';
-            $project['estagio_obra'] = '';
-            $project['vgv_total'] = '';
+            $project['totalUnits'] = '';
+            $project['salesPercentage'] = '';
+            $project['totalCost'] = '';
+            $project['workStagePercentage'] = '';
+            $project['grossSalesValue'] = '';
             $this->projects[$index] = $project;
 
             return;
         }
 
-        $project['unidades_total'] = ProposalProject::calculateUnitsTotal(
-            $project['unidades_nao_quitadas'],
-            $project['unidades_quitadas'],
-            $project['unidades_permutadas'],
-            $project['unidades_estoque'],
+        $project['totalUnits'] = ProposalProject::calculateUnitsTotal(
+            $project['unpaidUnits'],
+            $project['paidUnits'],
+            $project['exchangedUnits'],
+            $project['stockUnits'],
         );
 
-        $project['percentual_vendido'] = number_format(ProposalProject::calculateSalesPercentage(
-            $project['unidades_nao_quitadas'],
-            $project['unidades_quitadas'],
-            $project['unidades_permutadas'],
-            $project['unidades_estoque'],
+        $project['salesPercentage'] = number_format(ProposalProject::calculateSalesPercentage(
+            $project['unpaidUnits'],
+            $project['paidUnits'],
+            $project['exchangedUnits'],
+            $project['stockUnits'],
         ), 2, '.', '');
 
         $costTotal = ProposalProject::calculateCostTotal(
-            $project['custo_incidido'],
-            $project['custo_a_incorrer'],
+            $project['incurredCost'],
+            $project['costToIncur'],
         );
 
-        $project['custo_total'] = ProposalProject::formatCurrencyForDisplay($costTotal);
-        $project['estagio_obra'] = number_format(ProposalProject::calculateWorkStagePercentage(
-            $project['custo_incidido'],
+        $project['totalCost'] = ProposalProject::formatCurrencyForDisplay($costTotal);
+        $project['workStagePercentage'] = number_format(ProposalProject::calculateWorkStagePercentage(
+            $project['incurredCost'],
             $costTotal,
         ), 2, '.', '');
 
-        $project['vgv_total'] = ProposalProject::formatCurrencyForDisplay(
+        $project['grossSalesValue'] = ProposalProject::formatCurrencyForDisplay(
             ProposalProject::calculateSalesValuesTotal(
-                $project['valor_quitadas'],
-                $project['valor_nao_quitadas'],
-                $project['valor_estoque'],
+                $project['paidSalesValue'],
+                $project['unpaidSalesValue'],
+                $project['stockSalesValue'],
             ),
         );
 
         $this->projects[$index] = $project;
     }
 
-    protected function syncTipo(int $index): void
+    protected function syncUnitType(int $index): void
     {
-        $tipo = $this->tipos[$index] ?? null;
+        $unitType = $this->unitTypes[$index] ?? null;
 
-        if (! $tipo) {
+        if (! $unitType) {
             return;
         }
 
-        $averagePrice = ProposalProject::normalizeDecimalValue($tipo['preco_medio'] ?? null);
-        $usefulArea = ProposalProject::normalizeDecimalValue($tipo['area_util'] ?? null);
+        $averagePrice = ProposalProject::normalizeDecimalValue($unitType['averagePrice'] ?? null);
+        $usableArea = ProposalProject::normalizeDecimalValue($unitType['usableArea'] ?? null);
 
-        $tipo['preco_m2'] = $averagePrice > 0 && $usefulArea > 0
-            ? ProposalProject::formatCurrencyForDisplay(round($averagePrice / $usefulArea, 2))
+        $unitType['pricePerSquareMeter'] = $averagePrice > 0 && $usableArea > 0
+            ? ProposalProject::formatCurrencyForDisplay(round($averagePrice / $usableArea, 2))
             : '';
 
-        $this->tipos[$index] = $tipo;
+        $this->unitTypes[$index] = $unitType;
     }
 
-    protected function syncPrazoRemanescente(): void
+    protected function syncRemainingMonths(): void
     {
-        if (! $this->inicio_obras || ! $this->previsao_entrega) {
-            $this->prazo_remanescente = '';
+        if (! $this->constructionStartDate || ! $this->deliveryForecastDate) {
+            $this->remainingMonths = '';
 
             return;
         }
 
         try {
-            $startDate = Carbon::createFromFormat('Y-m', $this->inicio_obras);
-            $endDate = Carbon::createFromFormat('Y-m', $this->previsao_entrega);
+            $startDate = Carbon::createFromFormat('Y-m', $this->constructionStartDate);
+            $endDate = Carbon::createFromFormat('Y-m', $this->deliveryForecastDate);
         } catch (\Throwable) {
-            $this->prazo_remanescente = '';
+            $this->remainingMonths = '';
 
             return;
         }
 
-        $this->prazo_remanescente = $startDate->diffInMonths($endDate);
+        $this->remainingMonths = $startDate->diffInMonths($endDate);
     }
 
-    protected function syncTotalUnidades(): void
+    protected function syncTotalUnits(): void
     {
-        $blocks = (int) ($this->blocos ?: 0);
-        $typicalFloors = (int) ($this->andares_tipo ?: 0);
-        $unitsPerFloor = (int) ($this->unidades_por_andar ?: 0);
+        $blockCount = (int) ($this->blockCount ?: 0);
+        $typicalFloorCount = (int) ($this->typicalFloorCount ?: 0);
+        $unitsPerFloor = (int) ($this->unitsPerFloor ?: 0);
 
-        $this->total_unidades = ($blocks > 0 && $typicalFloors > 0 && $unitsPerFloor > 0)
-            ? $blocks * $typicalFloors * $unitsPerFloor
+        $this->totalUnits = ($blockCount > 0 && $typicalFloorCount > 0 && $unitsPerFloor > 0)
+            ? $blockCount * $typicalFloorCount * $unitsPerFloor
             : '';
     }
 
@@ -741,7 +798,7 @@ class ContinuationForm extends Component
         );
     }
 
-    protected function formatCep(string $value): string
+    protected function formatZipCode(string $value): string
     {
         $digits = substr(preg_replace('/\D/', '', $value), 0, 8);
 
@@ -901,18 +958,18 @@ class ContinuationForm extends Component
      */
     protected function projectIsBlank(array $project): bool
     {
-        return blank($project['nome'])
-            && blank($project['unidades_permutadas'])
-            && blank($project['unidades_quitadas'])
-            && blank($project['unidades_nao_quitadas'])
-            && blank($project['unidades_estoque'])
-            && blank($project['custo_incidido'])
-            && blank($project['custo_a_incorrer'])
-            && blank($project['valor_quitadas'])
-            && blank($project['valor_nao_quitadas'])
-            && blank($project['valor_estoque'])
-            && blank($project['valor_ja_recebido'])
-            && blank($project['valor_ate_chaves'])
-            && blank($project['valor_chaves_pos']);
+        return blank($project['name'])
+            && blank($project['exchangedUnits'])
+            && blank($project['paidUnits'])
+            && blank($project['unpaidUnits'])
+            && blank($project['stockUnits'])
+            && blank($project['incurredCost'])
+            && blank($project['costToIncur'])
+            && blank($project['paidSalesValue'])
+            && blank($project['unpaidSalesValue'])
+            && blank($project['stockSalesValue'])
+            && blank($project['receivedValue'])
+            && blank($project['valueUntilKeys'])
+            && blank($project['valueAfterKeys']);
     }
 }
