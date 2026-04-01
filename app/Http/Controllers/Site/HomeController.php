@@ -12,7 +12,7 @@ class HomeController extends Controller
     {
         $emissions = Emission::query()
             ->where('is_public', true)
-            ->orderByDesc('id')
+            ->orderByDesc('issue_date')
             ->limit(6)
             ->get(['id', 'name', 'logo_path', 'type', 'if_code', 'status', 'issuer', 'maturity_date', 'issued_volume']);
 
