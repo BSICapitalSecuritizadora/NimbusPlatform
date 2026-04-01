@@ -506,12 +506,12 @@
                                                         <thead>
                                                             <tr>
                                                                 <th class="bg-[color-mix(in_oklab,var(--brand)_8%,var(--surface)_92%)] text-[var(--brand)] text-[0.76rem] font-bold tracking-[0.08em] uppercase">&nbsp;</th>
-                                                                @foreach ($tipos as $typeIndex => $typeRow)
+                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <th class="bg-[color-mix(in_oklab,var(--brand)_8%,var(--surface)_92%)] text-[var(--brand)] text-[0.76rem] font-bold tracking-[0.08em] uppercase" wire:key="type-header-{{ $typeIndex }}">
                                                                         <div class="d-flex justify-content-between align-items-center gap-2">
                                                                             <span>Tipo {{ $typeIndex + 1 }}</span>
-                                                                            @if (count($tipos) > 1)
-                                                                                <flux:button type="button" variant="ghost" size="sm" class="text-red-500! p-0!" wire:click="removeTipo({{ $typeIndex }})">
+                                                                            @if (count($unitTypes) > 1)
+                                                                                <flux:button type="button" variant="ghost" size="sm" class="text-red-500! p-0!" wire:click="removeUnitType({{ $typeIndex }})">
                                                                                     Remover
                                                                                 </flux:button>
                                                                             @endif
@@ -523,54 +523,54 @@
                                                         <tbody>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Total *</th>
-                                                                @foreach ($tipos as $typeIndex => $typeRow)
+                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-total-{{ $typeIndex }}">
-                                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="tipos.{{ $typeIndex }}.total" />
+                                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="unitTypes.{{ $typeIndex }}.totalUnits" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Dormitórios *</th>
-                                                                @foreach ($tipos as $typeIndex => $typeRow)
+                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-bedrooms-{{ $typeIndex }}">
-                                                                        <flux:input wire:model.blur="tipos.{{ $typeIndex }}.dormitorios" />
+                                                                        <flux:input wire:model.blur="unitTypes.{{ $typeIndex }}.bedrooms" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Vagas *</th>
-                                                                @foreach ($tipos as $typeIndex => $typeRow)
+                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-parking-{{ $typeIndex }}">
-                                                                        <flux:input wire:model.blur="tipos.{{ $typeIndex }}.vagas" />
+                                                                        <flux:input wire:model.blur="unitTypes.{{ $typeIndex }}.parkingSpaces" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Área Útil (m²) *</th>
-                                                                @foreach ($tipos as $typeIndex => $typeRow)
+                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-area-{{ $typeIndex }}">
-                                                                        <flux:input type="number" step="0.01" wire:model.live.debounce.300ms="tipos.{{ $typeIndex }}.area_util" />
+                                                                        <flux:input type="number" step="0.01" wire:model.live.debounce.300ms="unitTypes.{{ $typeIndex }}.usableArea" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Preço Médio *</th>
-                                                                @foreach ($tipos as $typeIndex => $typeRow)
+                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-average-price-{{ $typeIndex }}">
                                                                         <div class="flex">
                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="tipos.{{ $typeIndex }}.preco_medio" mask:dynamic="$money($input, ',', '.', 2)" />
+                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="unitTypes.{{ $typeIndex }}.averagePrice" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                         </div>
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
                                                             <tr>
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Preço / m²</th>
-                                                                @foreach ($tipos as $typeIndex => $typeRow)
+                                                                @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-price-per-m2-{{ $typeIndex }}">
                                                                         <div class="flex">
                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                            <flux:input class="rounded-l-none!" wire:model="tipos.{{ $typeIndex }}.preco_m2" readonly />
+                                                                            <flux:input class="rounded-l-none!" wire:model="unitTypes.{{ $typeIndex }}.pricePerSquareMeter" readonly />
                                                                         </div>
                                                                     </td>
                                                                 @endforeach

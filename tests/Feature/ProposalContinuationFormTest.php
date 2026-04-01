@@ -15,7 +15,7 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-it('renders the continuation page through the livewire component', function () {
+it('renders the continuation page through the full-page livewire component', function () {
     Mail::fake();
 
     [$proposal, $access] = createProposalContinuationContext($this);
@@ -25,18 +25,9 @@ it('renders the continuation page through the livewire component', function () {
         ->assertSuccessful()
         ->assertSeeLivewire(ContinuationForm::class)
         ->assertSee('Formulário de Empreendimento');
-
-    $html = Livewire::test(ContinuationForm::class, ['access' => $access, 'proposal' => $proposal])->html();
-
-    expect($html)
-        ->not->toContain('<script')
-        ->toContain('wire:model.blur="cep"')
-        ->toContain('x-mask="99999-999"')
-        ->not->toContain('lookupCep')
-        ->not->toContain('viacep.com.br/ws/');
 });
 
-it('looks up the cep and hydrates the operation address fields', function () {
+it('looks up the zip code and hydrates the operation address fields', function () {
     Mail::fake();
     Http::fake([
         'https://viacep.com.br/ws/*' => Http::response([
@@ -47,15 +38,17 @@ it('looks up the cep and hydrates the operation address fields', function () {
         ]),
     ]);
 
-    [$proposal, $access] = createProposalContinuationContext($this);
+    [, $access] = createProposalContinuationContext($this);
 
-    Livewire::test(ContinuationForm::class, ['access' => $access, 'proposal' => $proposal])
-        ->set('cep', '04567-000')
-        ->assertSet('cep', '04567-000')
-        ->assertSet('logradouro', 'Rua Faria Lima')
-        ->assertSet('bairro', 'Itaim Bibi')
-        ->assertSet('cidade', 'São Paulo')
-        ->assertSet('estado', 'SP');
+    seedProposalContinuationSession($access);
+
+    Livewire::test(ContinuationForm::class, ['access' => $access])
+        ->set('zipCode', '04567-000')
+        ->assertSet('zipCode', '04567-000')
+        ->assertSet('street', 'Rua Faria Lima')
+        ->assertSet('neighborhood', 'Itaim Bibi')
+        ->assertSet('city', 'São Paulo')
+        ->assertSet('state', 'SP');
 
     Http::assertSentCount(1);
 });
@@ -63,31 +56,33 @@ it('looks up the cep and hydrates the operation address fields', function () {
 it('recalculates project and unit type metrics reactively', function () {
     Mail::fake();
 
-    [$proposal, $access] = createProposalContinuationContext($this);
+    [, $access] = createProposalContinuationContext($this);
 
-    Livewire::test(ContinuationForm::class, ['access' => $access, 'proposal' => $proposal])
-        ->set('projects.0.nome', 'Torre Madrid')
-        ->set('projects.0.unidades_permutadas', 10)
-        ->set('projects.0.unidades_quitadas', 20)
-        ->set('projects.0.unidades_nao_quitadas', 15)
-        ->set('projects.0.unidades_estoque', 55)
-        ->set('projects.0.custo_incidido', '1.000.000,00')
-        ->set('projects.0.custo_a_incorrer', '3.000.000,00')
-        ->set('projects.0.valor_quitadas', '900.000,00')
-        ->set('projects.0.valor_nao_quitadas', '1.500.000,50')
-        ->set('projects.0.valor_estoque', '2.500.000,75')
-        ->set('tipos.0.area_util', 82.5)
-        ->set('tipos.0.preco_medio', '850.000,00')
-        ->set('blocos', 2)
-        ->set('andares_tipo', 15)
-        ->set('unidades_por_andar', 4)
-        ->assertSet('projects.0.unidades_total', 100)
-        ->assertSet('projects.0.percentual_vendido', '38.89')
-        ->assertSet('projects.0.custo_total', '4.000.000,00')
-        ->assertSet('projects.0.estagio_obra', '25.00')
-        ->assertSet('projects.0.vgv_total', '4.900.001,25')
-        ->assertSet('tipos.0.preco_m2', '10.303,03')
-        ->assertSet('total_unidades', 120);
+    seedProposalContinuationSession($access);
+
+    Livewire::test(ContinuationForm::class, ['access' => $access])
+        ->set('projects.0.name', 'Torre Madrid')
+        ->set('projects.0.exchangedUnits', 10)
+        ->set('projects.0.paidUnits', 20)
+        ->set('projects.0.unpaidUnits', 15)
+        ->set('projects.0.stockUnits', 55)
+        ->set('projects.0.incurredCost', '1.000.000,00')
+        ->set('projects.0.costToIncur', '3.000.000,00')
+        ->set('projects.0.paidSalesValue', '900.000,00')
+        ->set('projects.0.unpaidSalesValue', '1.500.000,50')
+        ->set('projects.0.stockSalesValue', '2.500.000,75')
+        ->set('unitTypes.0.usableArea', 82.5)
+        ->set('unitTypes.0.averagePrice', '850.000,00')
+        ->set('blockCount', 2)
+        ->set('typicalFloorCount', 15)
+        ->set('unitsPerFloor', 4)
+        ->assertSet('projects.0.totalUnits', 100)
+        ->assertSet('projects.0.salesPercentage', '38.89')
+        ->assertSet('projects.0.totalCost', '4.000.000,00')
+        ->assertSet('projects.0.workStagePercentage', '25.00')
+        ->assertSet('projects.0.grossSalesValue', '4.900.001,25')
+        ->assertSet('unitTypes.0.pricePerSquareMeter', '10.303,03')
+        ->assertSet('totalUnits', 120);
 });
 
 it('stores the continuation payload through the livewire component', function () {
@@ -105,7 +100,9 @@ it('stores the continuation payload through the livewire component', function ()
     [$proposal, $access] = createProposalContinuationContext($this);
     $payload = proposalContinuationComponentState();
 
-    $component = Livewire::test(ContinuationForm::class, ['access' => $access, 'proposal' => $proposal]);
+    seedProposalContinuationSession($access);
+
+    $component = Livewire::test(ContinuationForm::class, ['access' => $access]);
 
     foreach ($payload as $property => $value) {
         $component->set($property, $value);
@@ -178,56 +175,56 @@ function proposalContinuationComponentState(): array
     $payload = StoreProposalContinuationData::fromFlatPayload(proposalContinuationPayload());
 
     return [
-        'nome' => $payload['operation']['nome'],
-        'site' => $payload['operation']['site'],
-        'valor_solicitado' => $payload['operation']['valor_solicitado'],
-        'valor_mercado_terreno' => $payload['operation']['valor_mercado_terreno'],
-        'area_terreno' => (string) $payload['operation']['area_terreno'],
-        'data_lancamento' => $payload['operation']['data_lancamento'],
-        'lancamento_vendas' => $payload['operation']['lancamento_vendas'],
-        'inicio_obras' => $payload['operation']['inicio_obras'],
-        'previsao_entrega' => $payload['operation']['previsao_entrega'],
-        'prazo_remanescente' => $payload['operation']['prazo_remanescente'],
-        'cep' => $payload['operation']['cep'],
-        'logradouro' => $payload['operation']['logradouro'],
-        'complemento' => $payload['operation']['complemento'],
-        'numero' => $payload['operation']['numero'],
-        'bairro' => $payload['operation']['bairro'],
-        'cidade' => $payload['operation']['cidade'],
-        'estado' => $payload['operation']['estado'],
-        'blocos' => $payload['characteristics']['blocks'],
-        'pavimentos' => $payload['characteristics']['floors'],
-        'andares_tipo' => $payload['characteristics']['typical_floors'],
-        'unidades_por_andar' => $payload['characteristics']['units_per_floor'],
-        'total_unidades' => $payload['characteristics']['total_units'],
+        'developmentName' => $payload['operation']['nome'],
+        'websiteUrl' => $payload['operation']['site'],
+        'requestedAmount' => $payload['operation']['valor_solicitado'],
+        'landMarketValue' => $payload['operation']['valor_mercado_terreno'],
+        'landArea' => (string) $payload['operation']['area_terreno'],
+        'launchDate' => $payload['operation']['data_lancamento'],
+        'salesLaunchDate' => $payload['operation']['lancamento_vendas'],
+        'constructionStartDate' => $payload['operation']['inicio_obras'],
+        'deliveryForecastDate' => $payload['operation']['previsao_entrega'],
+        'remainingMonths' => $payload['operation']['prazo_remanescente'],
+        'zipCode' => $payload['operation']['cep'],
+        'street' => $payload['operation']['logradouro'],
+        'addressComplement' => $payload['operation']['complemento'],
+        'addressNumber' => $payload['operation']['numero'],
+        'neighborhood' => $payload['operation']['bairro'],
+        'city' => $payload['operation']['cidade'],
+        'state' => $payload['operation']['estado'],
+        'blockCount' => $payload['characteristics']['blocks'],
+        'floorCount' => $payload['characteristics']['floors'],
+        'typicalFloorCount' => $payload['characteristics']['typical_floors'],
+        'unitsPerFloor' => $payload['characteristics']['units_per_floor'],
+        'totalUnits' => $payload['characteristics']['total_units'],
         'projects' => collect($payload['projects'])->map(fn (array $project): array => [
             'id' => $project['id'] ?? null,
-            'nome' => $project['name'],
-            'unidades_permutadas' => $project['units_exchanged'],
-            'unidades_quitadas' => $project['units_paid'],
-            'unidades_nao_quitadas' => $project['units_unpaid'],
-            'unidades_estoque' => $project['units_stock'],
-            'unidades_total' => '',
-            'percentual_vendido' => '',
-            'custo_incidido' => $project['cost_incurred'] ?? '',
-            'custo_a_incorrer' => $project['cost_to_incur'] ?? '',
-            'custo_total' => '',
-            'estagio_obra' => '',
-            'valor_quitadas' => $project['value_paid'] ?? '',
-            'valor_nao_quitadas' => $project['value_unpaid'] ?? '',
-            'valor_estoque' => $project['value_stock'] ?? '',
-            'vgv_total' => '',
-            'valor_ja_recebido' => $project['value_received'] ?? '',
-            'valor_ate_chaves' => $project['value_until_keys'] ?? '',
-            'valor_chaves_pos' => $project['value_post_keys'] ?? '',
+            'name' => $project['name'],
+            'exchangedUnits' => $project['units_exchanged'],
+            'paidUnits' => $project['units_paid'],
+            'unpaidUnits' => $project['units_unpaid'],
+            'stockUnits' => $project['units_stock'],
+            'totalUnits' => '',
+            'salesPercentage' => '',
+            'incurredCost' => $project['cost_incurred'] ?? '',
+            'costToIncur' => $project['cost_to_incur'] ?? '',
+            'totalCost' => '',
+            'workStagePercentage' => '',
+            'paidSalesValue' => $project['value_paid'] ?? '',
+            'unpaidSalesValue' => $project['value_unpaid'] ?? '',
+            'stockSalesValue' => $project['value_stock'] ?? '',
+            'grossSalesValue' => '',
+            'receivedValue' => $project['value_received'] ?? '',
+            'valueUntilKeys' => $project['value_until_keys'] ?? '',
+            'valueAfterKeys' => $project['value_post_keys'] ?? '',
         ])->all(),
-        'tipos' => collect($payload['unit_types'])->map(fn (array $tipo): array => [
-            'total' => $tipo['total'],
-            'dormitorios' => $tipo['bedrooms'],
-            'vagas' => $tipo['parking_spaces'],
-            'area_util' => $tipo['useful_area'],
-            'preco_medio' => $tipo['average_price'],
-            'preco_m2' => '',
+        'unitTypes' => collect($payload['unit_types'])->map(fn (array $unitType): array => [
+            'totalUnits' => $unitType['total'],
+            'bedrooms' => $unitType['bedrooms'],
+            'parkingSpaces' => $unitType['parking_spaces'],
+            'usableArea' => $unitType['useful_area'],
+            'averagePrice' => $unitType['average_price'],
+            'pricePerSquareMeter' => '',
         ])->all(),
     ];
 }
@@ -241,6 +238,17 @@ function proposalContinuationSessionState(ProposalContinuationAccess $access): a
         "proposal_magic_link.{$access->id}" => true,
         "proposal_verified.{$access->id}" => true,
     ];
+}
+
+function seedProposalContinuationSession(ProposalContinuationAccess $access): void
+{
+    session()->start();
+
+    foreach (proposalContinuationSessionState($access) as $key => $value) {
+        session()->put($key, $value);
+    }
+
+    app('request')->setLaravelSession(app('session.store'));
 }
 
 function proposalInitialPayload(ProposalSector $sector, int $index = 1): array

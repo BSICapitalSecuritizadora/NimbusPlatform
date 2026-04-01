@@ -9,15 +9,20 @@ use App\Models\ProposalFile;
 use App\Models\ProposalProject;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
+#[Layout('site.layout')]
+#[Title('Formulário de Empreendimento')]
 class ContinuationForm extends Component
 {
     use WithFileUploads;
@@ -163,12 +168,16 @@ class ContinuationForm extends Component
     ])]
     public array $uploads = [];
 
-    public function mount(ProposalContinuationAccess $access, Proposal $proposal): void
+    public function mount(ProposalContinuationAccess $access): void
     {
+        $this->ensureAuthorized(request(), $access);
+
+        $proposal = $this->loadProposal($access);
+
         $this->accessId = $access->id;
         $this->proposalId = $proposal->id;
 
-        $this->fillFromProposal($proposal->loadMissing($this->proposalRelations()));
+        $this->fillFromProposal($proposal);
     }
 
     public function render(): View
@@ -284,6 +293,14 @@ class ContinuationForm extends Component
 
     public function save(StoreProposalContinuationData $storeProposalContinuationData): void
     {
+        $access = $this->access();
+
+        $this->ensureAuthorized(request(), $access);
+
+        $proposal = $this->proposal();
+
+        abort_unless($proposal->canBeCompletedByRequester(), 403);
+
         $this->syncRemainingMonths();
         $this->syncTotalUnits();
 
@@ -309,14 +326,14 @@ class ContinuationForm extends Component
             })->validate();
 
         $storeProposalContinuationData->handle(
-            $this->proposal(),
+            $proposal,
             $this->storePayload($validated),
             $this->uploads,
         );
 
         $this->successMessage = 'Empreendimento(s) salvo(s) com sucesso.';
         $this->uploads = [];
-        $this->fillFromProposal($this->proposal()->fresh($this->proposalRelations()));
+        $this->fillFromProposal($proposal->fresh($this->proposalRelations()));
     }
 
     protected function fetchAddress(): void
@@ -544,6 +561,13 @@ class ContinuationForm extends Component
         return ProposalContinuationAccess::query()->findOrFail($this->accessId);
     }
 
+    protected function loadProposal(ProposalContinuationAccess $access): Proposal
+    {
+        return $access->proposal()
+            ->with($this->proposalRelations())
+            ->firstOrFail();
+    }
+
     /**
      * @return array<int, string>
      */
@@ -555,6 +579,44 @@ class ContinuationForm extends Component
             'projects.characteristics.unitTypes',
             'files',
         ];
+    }
+
+    protected function ensureAuthorized(Request $request, ProposalContinuationAccess $access): void
+    {
+        $this->ensureMagicLinkConfirmed($request, $access);
+
+        abort_unless($this->isAuthorized($request, $access), 403);
+
+        $access->markAuthorizedUsage();
+    }
+
+    protected function ensureMagicLinkConfirmed(Request $request, ProposalContinuationAccess $access): void
+    {
+        abort_unless($this->hasSessionKey($request, $this->magicLinkSessionKey($access)) && $access->isActive(), 403);
+    }
+
+    protected function isAuthorized(Request $request, ProposalContinuationAccess $access): bool
+    {
+        return $this->hasSessionKey($request, $this->verifiedSessionKey($access)) && $access->isActive();
+    }
+
+    protected function magicLinkSessionKey(ProposalContinuationAccess $access): string
+    {
+        return "proposal_magic_link.{$access->id}";
+    }
+
+    protected function verifiedSessionKey(ProposalContinuationAccess $access): string
+    {
+        return "proposal_verified.{$access->id}";
+    }
+
+    protected function hasSessionKey(Request $request, string $key): bool
+    {
+        if ($request->hasSession()) {
+            return $request->session()->has($key);
+        }
+
+        return app('session.store')->has($key);
     }
 
     protected function fillFromProposal(Proposal $proposal): void
