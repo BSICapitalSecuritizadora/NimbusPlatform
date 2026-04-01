@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Proposals;
 
 use App\Actions\Proposals\UpdateProposalStatus;
+use App\Enums\ProposalStatus;
 use App\Filament\Resources\Proposals\Pages\EditProposal;
 use App\Filament\Resources\Proposals\Pages\ListProposals;
 use App\Filament\Resources\Proposals\Pages\ViewProposal;
@@ -17,8 +18,10 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -45,141 +48,181 @@ class ProposalResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Distribuição')
-                ->schema([
-                    Placeholder::make('distribution_sequence_view')
-                        ->label('Ordem na fila')
-                        ->content(fn (?Proposal $record): string => $record?->distribution_sequence
-                            ? (string) $record->distribution_sequence
-                            : '—'),
-                    Placeholder::make('representative_view')
-                        ->label('Representante')
-                        ->content(fn (?Proposal $record): string => $record?->representative?->name ?? 'Não atribuído'),
-                    Placeholder::make('distributed_at_view')
-                        ->label('Distribuída em')
-                        ->content(fn (?Proposal $record): string => $record?->distributed_at?->format('d/m/Y H:i') ?? '—'),
-                    Placeholder::make('completed_at_view')
-                        ->label('Complementada em')
-                        ->content(fn (?Proposal $record): string => $record?->completed_at?->format('d/m/Y H:i') ?? '—'),
-                ])
-                ->columns(2),
-            Section::make('Acesso do Cliente')
-                ->schema([
-                    Placeholder::make('access_status_view')
-                        ->label('Status do link')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->status_label ?? '—'),
-                    Placeholder::make('access_email_view')
-                        ->label('E-mail do magic link')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->sent_to_email ?? '—'),
-                    Placeholder::make('access_code_view')
-                        ->label('Codigo enviado')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->display_code ?? '—'),
-                    Placeholder::make('access_sent_at_view')
-                        ->label('Enviado em')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->sent_at?->format('d/m/Y H:i')
-                            ?? $record?->latestContinuationAccess?->created_at?->format('d/m/Y H:i')
-                            ?? '—'),
-                    Placeholder::make('access_expires_at_view')
-                        ->label('Expira em')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->expires_at?->format('d/m/Y H:i') ?? '—'),
-                    Placeholder::make('access_first_accessed_at_view')
-                        ->label('Primeiro acesso')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->first_accessed_at?->format('d/m/Y H:i') ?? '—'),
-                    Placeholder::make('access_last_accessed_at_view')
-                        ->label('Ultimo acesso')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->last_accessed_at?->format('d/m/Y H:i') ?? '—'),
-                    Placeholder::make('access_verified_at_view')
-                        ->label('Validado em')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->verified_at?->format('d/m/Y H:i') ?? '—'),
-                    Placeholder::make('access_last_used_at_view')
-                        ->label('Ultimo uso autenticado')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->last_used_at?->format('d/m/Y H:i') ?? '—'),
-                    Placeholder::make('access_generated_url_view')
-                        ->label('Link gerado')
-                        ->content(fn (?Proposal $record): string => $record?->latestContinuationAccess?->generated_url ?? '—')
-                        ->columnSpanFull(),
-                ])
-                ->columns(2),
             Section::make('Análise Comercial')
                 ->schema([
-                    Placeholder::make('analysis_status_view')
-                        ->label('Status atual')
-                        ->content(fn (?Proposal $record): string => $record?->status_label ?? '—'),
-                    Placeholder::make('analysis_next_statuses_view')
-                        ->label('Próximos status possíveis')
-                        ->content(fn (?Proposal $record): string => static::formatNextStatuses($record)),
-                    Placeholder::make('analysis_changed_by_view')
-                        ->label('Última alteração por')
-                        ->content(fn (?Proposal $record): string => match (true) {
-                            ! $record?->latestStatusHistory => '—',
-                            (bool) $record->latestStatusHistory->changedByUser?->name => $record->latestStatusHistory->changedByUser->name,
-                            default => 'Sistema',
-                        }),
-                    Placeholder::make('analysis_changed_at_view')
-                        ->label('Última alteração em')
-                        ->content(fn (?Proposal $record): string => $record?->latestStatusHistory?->changed_at?->format('d/m/Y H:i') ?? '—'),
-                    Placeholder::make('analysis_latest_note_view')
-                        ->label('Última observação da movimentação')
-                        ->content(fn (?Proposal $record): string => $record?->latestStatusHistory?->note ?? 'Sem observação registrada.')
-                        ->columnSpanFull(),
-                    Placeholder::make('internal_notes_view')
-                        ->label('Observações internas')
-                        ->content(fn (?Proposal $record): string => $record?->internal_notes ?? 'Sem observações internas.')
-                        ->columnSpanFull()
-                        ->visible(fn ($livewire): bool => $livewire instanceof ViewProposal),
                     Textarea::make('internal_notes')
                         ->label('Observações internas')
                         ->rows(6)
                         ->helperText('Visível apenas ao time comercial no painel administrativo.')
-                        ->columnSpanFull()
-                        ->hidden(fn ($livewire): bool => $livewire instanceof ViewProposal),
-                ])
-                ->columns(2),
-            Section::make('Dados da Empresa')
-                ->schema([
-                    Placeholder::make('company_name')
-                        ->label('Nome da Empresa')
-                        ->content(fn (?Proposal $record): string => $record?->company?->name ?? '—'),
-                    Placeholder::make('company_cnpj')
-                        ->label('CNPJ')
-                        ->content(fn (?Proposal $record): string => $record?->company?->cnpj ?? '—'),
-                    Placeholder::make('company_ie')
-                        ->label('IE')
-                        ->content(fn (?Proposal $record): string => $record?->company?->ie ?? '—'),
-                    Placeholder::make('company_site')
-                        ->label('Site')
-                        ->content(fn (?Proposal $record): string => $record?->company?->site ?? '—'),
-                    Placeholder::make('company_address')
-                        ->label('Endereço')
-                        ->content(fn (?Proposal $record): string => $record?->company_address ?? 'â€”'),
-                    Placeholder::make('company_sectors')
-                        ->label('Setores de Atuação')
-                        ->content(fn (?Proposal $record): string => $record?->company?->sectors->pluck('name')->join(', ') ?: '—'),
-                ])
-                ->columns(2),
-            Section::make('Dados de Contato')
-                ->schema([
-                    Placeholder::make('contact_name')
-                        ->label('Nome do Contato')
-                        ->content(fn (?Proposal $record): string => $record?->contact?->name ?? '—'),
-                    Placeholder::make('contact_email')
-                        ->label('E-mail')
-                        ->content(fn (?Proposal $record): string => $record?->contact?->email ?? '—'),
-                    Placeholder::make('contact_phones')
-                        ->label('Telefones')
-                        ->content(fn (?Proposal $record): string => $record?->contact?->phone_summary ?? 'â€”'),
-                    Placeholder::make('contact_cargo')
-                        ->label('Cargo')
-                        ->content(fn (?Proposal $record): string => $record?->contact?->cargo ?? '—'),
-                ])
-                ->columns(2),
-            Section::make('Proposta')
-                ->schema([
-                    Placeholder::make('observations')
-                        ->label('Observações')
-                        ->content(fn (?Proposal $record): string => $record?->observations ?? 'Sem observações.')
                         ->columnSpanFull(),
                 ]),
+        ]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            Grid::make(2)->schema([
+                Section::make('Distribuição')
+                    ->schema([
+                        TextEntry::make('distribution_sequence')
+                            ->label('Ordem na fila')
+                            ->numeric(decimalPlaces: 0)
+                            ->placeholder('—'),
+                        TextEntry::make('representative.name')
+                            ->label('Representante')
+                            ->placeholder('Não atribuído'),
+                        TextEntry::make('distributed_at')
+                            ->label('Distribuída em')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('completed_at')
+                            ->label('Complementada em')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                    ])
+                    ->columns(2),
+                Section::make('Dados da Empresa')
+                    ->schema([
+                        TextEntry::make('company.name')
+                            ->label('Nome da Empresa')
+                            ->placeholder('—'),
+                        TextEntry::make('company.cnpj')
+                            ->label('CNPJ')
+                            ->placeholder('—'),
+                        TextEntry::make('company.ie')
+                            ->label('IE')
+                            ->placeholder('—'),
+                        TextEntry::make('company.site')
+                            ->label('Site')
+                            ->placeholder('—')
+                            ->url(fn (?string $state): ?string => filled($state) ? $state : null)
+                            ->openUrlInNewTab(),
+                        TextEntry::make('company.full_address')
+                            ->label('Endereço')
+                            ->placeholder('—')
+                            ->columnSpanFull(),
+                        TextEntry::make('company.sectors.name')
+                            ->label('Setores de Atuação')
+                            ->listWithLineBreaks()
+                            ->bulleted()
+                            ->placeholder('—')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
+                Section::make('Acesso do Cliente')
+                    ->schema([
+                        TextEntry::make('latestContinuationAccess.status_label')
+                            ->label('Status do link')
+                            ->state(fn (Proposal $record): ?string => $record->latestContinuationAccess?->status_label)
+                            ->placeholder('—')
+                            ->badge()
+                            ->color(fn (Proposal $record): string => $record->latestContinuationAccess?->status_color ?? 'gray'),
+                        TextEntry::make('latestContinuationAccess.sent_to_email')
+                            ->label('E-mail do magic link')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.display_code')
+                            ->label('Codigo enviado')
+                            ->placeholder('—')
+                            ->copyable(),
+                        TextEntry::make('latestContinuationAccess.sent_at')
+                            ->label('Enviado em')
+                            ->state(fn (Proposal $record) => $record->latestContinuationAccess?->sent_at ?? $record->latestContinuationAccess?->created_at)
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.expires_at')
+                            ->label('Expira em')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.first_accessed_at')
+                            ->label('Primeiro acesso')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.last_accessed_at')
+                            ->label('Ultimo acesso')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.verified_at')
+                            ->label('Validado em')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.last_used_at')
+                            ->label('Ultimo uso autenticado')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.generated_url')
+                            ->label('Link gerado')
+                            ->placeholder('—')
+                            ->copyable()
+                            ->url(fn (?string $state): ?string => filled($state) ? $state : null)
+                            ->openUrlInNewTab()
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+                Section::make('Análise Comercial')
+                    ->schema([
+                        TextEntry::make('status')
+                            ->label('Status atual')
+                            ->badge()
+                            ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
+                            ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
+                        TextEntry::make('next_statuses')
+                            ->label('Próximos status possíveis')
+                            ->state(fn (?Proposal $record): array => $record ? array_values(
+                                app(UpdateProposalStatus::class)->availableStatusOptions($record->status),
+                            ) : [])
+                            ->listWithLineBreaks()
+                            ->bulleted()
+                            ->placeholder('Sem novas transições disponíveis.'),
+                        TextEntry::make('latest_status_changed_by')
+                            ->label('Última alteração por')
+                            ->state(fn (?Proposal $record): ?string => match (true) {
+                                ! $record?->latestStatusHistory => null,
+                                (bool) $record->latestStatusHistory->changedByUser?->name => $record->latestStatusHistory->changedByUser->name,
+                                default => 'Sistema',
+                            })
+                            ->placeholder('—'),
+                        TextEntry::make('latestStatusHistory.changed_at')
+                            ->label('Última alteração em')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestStatusHistory.note')
+                            ->label('Última observação da movimentação')
+                            ->placeholder('Sem observação registrada.')
+                            ->columnSpanFull(),
+                        TextEntry::make('internal_notes')
+                            ->label('Observações internas')
+                            ->placeholder('Sem observações internas.')
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+                Section::make('Dados de Contato')
+                    ->schema([
+                        TextEntry::make('contact.name')
+                            ->label('Nome do Contato')
+                            ->placeholder('—'),
+                        TextEntry::make('contact.email')
+                            ->label('E-mail')
+                            ->placeholder('—'),
+                        TextEntry::make('contact.phone_summary')
+                            ->label('Telefones')
+                            ->placeholder('—'),
+                        TextEntry::make('contact.cargo')
+                            ->label('Cargo')
+                            ->placeholder('—'),
+                    ])
+                    ->columns(2),
+                Section::make('Proposta')
+                    ->schema([
+                        TextEntry::make('observations')
+                            ->label('Observações')
+                            ->placeholder('Sem observações.')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+            ]),
         ]);
     }
 
@@ -323,61 +366,5 @@ class ProposalResource extends Resource
         }
 
         return $user->can('proposals.update') && $proposal->isAssignedToUser($user);
-    }
-
-    protected static function formatNextStatuses(?Proposal $record): string
-    {
-        if (! $record) {
-            return '—';
-        }
-
-        $nextStatuses = array_values(app(UpdateProposalStatus::class)->availableStatusOptions($record->status));
-
-        return $nextStatuses !== [] ? implode(' | ', $nextStatuses) : 'Sem novas transições disponíveis.';
-    }
-
-    protected static function formatCompanyAddress(?Proposal $record): string
-    {
-        $company = $record?->company;
-
-        if (! $company) {
-            return '—';
-        }
-
-        $street = trim(implode(', ', array_filter([
-            $company->logradouro,
-            $company->numero,
-        ])));
-
-        $district = $company->bairro ? " - {$company->bairro}" : '';
-        $city = trim(implode('/', array_filter([
-            $company->cidade,
-            $company->estado,
-        ])));
-        $zip = $company->cep ? " - CEP: {$company->cep}" : '';
-
-        $address = trim($street.$district);
-
-        if ($city !== '') {
-            $address = trim($address.'. '.$city, '. ');
-        }
-
-        return $address !== '' ? $address.$zip : '—';
-    }
-
-    protected static function formatContactPhones(?Proposal $record): string
-    {
-        $contact = $record?->contact;
-
-        if (! $contact) {
-            return '—';
-        }
-
-        $personalPhone = $contact->phone_personal
-            ? 'Pessoal: '.$contact->phone_personal.($contact->whatsapp ? ' (WhatsApp)' : '')
-            : null;
-        $companyPhone = $contact->phone_company ? 'Empresa: '.$contact->phone_company : null;
-
-        return implode(' | ', array_filter([$personalPhone, $companyPhone])) ?: '—';
     }
 }
