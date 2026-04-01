@@ -12,18 +12,18 @@ class ProposalProject extends Model
     use HasFactory;
 
     protected $fillable = [
-        'proposal_id', 'name', 'company_name', 'site',
-        'value_requested', 'land_market_value', 'land_area',
-        'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'estado',
+        'proposal_id', 'name', 'development_name', 'website_url',
+        'requested_amount', 'land_market_value', 'land_area',
+        'zip_code', 'street', 'address_number', 'address_complement', 'neighborhood', 'city', 'state',
         'launch_date',
         'sales_launch_date',
         'construction_start_date',
         'delivery_forecast_date',
         'remaining_months',
-        'units_exchanged',
-        'units_paid', 'units_unpaid', 'units_stock', 'units_total',
-        'sales_percentage', 'cost_incurred', 'cost_to_incur', 'cost_total', 'work_stage_percentage',
-        'value_paid', 'value_unpaid', 'value_stock', 'value_total_sale', 'value_received', 'value_until_keys', 'value_post_keys',
+        'exchanged_units',
+        'paid_units', 'unpaid_units', 'stock_units', 'units_total',
+        'sales_percentage', 'incurred_cost', 'cost_to_incur', 'total_cost', 'work_stage_percentage',
+        'paid_sales_value', 'unpaid_sales_value', 'stock_sales_value', 'gross_sales_value', 'received_value', 'value_until_keys', 'value_after_keys',
     ];
 
     protected static function booted(): void
@@ -43,26 +43,26 @@ class ProposalProject extends Model
             'sales_launch_date' => 'date',
             'construction_start_date' => 'date',
             'delivery_forecast_date' => 'date',
-            'value_requested' => 'decimal:2',
+            'requested_amount' => 'decimal:2',
             'land_market_value' => 'decimal:2',
             'land_area' => 'decimal:2',
-            'units_exchanged' => 'integer',
-            'units_paid' => 'integer',
-            'units_unpaid' => 'integer',
-            'units_stock' => 'integer',
+            'exchanged_units' => 'integer',
+            'paid_units' => 'integer',
+            'unpaid_units' => 'integer',
+            'stock_units' => 'integer',
             'units_total' => 'integer',
             'sales_percentage' => 'decimal:2',
-            'cost_incurred' => 'decimal:2',
+            'incurred_cost' => 'decimal:2',
             'cost_to_incur' => 'decimal:2',
-            'cost_total' => 'decimal:2',
+            'total_cost' => 'decimal:2',
             'work_stage_percentage' => 'decimal:2',
-            'value_paid' => 'decimal:2',
-            'value_unpaid' => 'decimal:2',
-            'value_stock' => 'decimal:2',
-            'value_total_sale' => 'decimal:2',
-            'value_received' => 'decimal:2',
+            'paid_sales_value' => 'decimal:2',
+            'unpaid_sales_value' => 'decimal:2',
+            'stock_sales_value' => 'decimal:2',
+            'gross_sales_value' => 'decimal:2',
+            'received_value' => 'decimal:2',
             'value_until_keys' => 'decimal:2',
-            'value_post_keys' => 'decimal:2',
+            'value_after_keys' => 'decimal:2',
         ];
     }
 
@@ -161,27 +161,27 @@ class ProposalProject extends Model
 
     protected function syncSalesMetrics(): void
     {
-        $this->units_exchanged = self::normalizeIntegerValue($this->units_exchanged);
-        $this->units_paid = self::normalizeIntegerValue($this->units_paid);
-        $this->units_unpaid = self::normalizeIntegerValue($this->units_unpaid);
-        $this->units_stock = self::normalizeIntegerValue($this->units_stock);
+        $this->exchanged_units = self::normalizeIntegerValue($this->exchanged_units);
+        $this->paid_units = self::normalizeIntegerValue($this->paid_units);
+        $this->unpaid_units = self::normalizeIntegerValue($this->unpaid_units);
+        $this->stock_units = self::normalizeIntegerValue($this->stock_units);
         $this->units_total = self::calculateUnitsTotal(
-            $this->units_unpaid,
-            $this->units_paid,
-            $this->units_exchanged,
-            $this->units_stock,
+            $this->unpaid_units,
+            $this->paid_units,
+            $this->exchanged_units,
+            $this->stock_units,
         );
         $this->sales_percentage = self::calculateSalesPercentage(
-            $this->units_unpaid,
-            $this->units_paid,
-            $this->units_exchanged,
-            $this->units_stock,
+            $this->unpaid_units,
+            $this->paid_units,
+            $this->exchanged_units,
+            $this->stock_units,
         );
     }
 
     protected function syncOverviewValues(): void
     {
-        $this->value_requested = self::normalizeDecimalValue($this->value_requested);
+        $this->requested_amount = self::normalizeDecimalValue($this->requested_amount);
         $this->land_market_value = self::normalizeDecimalValue($this->land_market_value);
         $this->land_area = self::normalizeDecimalValue($this->land_area);
         $this->remaining_months = self::normalizeIntegerValue($this->remaining_months);
@@ -189,30 +189,30 @@ class ProposalProject extends Model
 
     protected function syncCostMetrics(): void
     {
-        $this->cost_incurred = self::normalizeDecimalValue($this->cost_incurred);
+        $this->incurred_cost = self::normalizeDecimalValue($this->incurred_cost);
         $this->cost_to_incur = self::normalizeDecimalValue($this->cost_to_incur);
-        $this->cost_total = self::calculateCostTotal($this->cost_incurred, $this->cost_to_incur);
-        $this->work_stage_percentage = self::calculateWorkStagePercentage($this->cost_incurred, $this->cost_total);
+        $this->total_cost = self::calculateCostTotal($this->incurred_cost, $this->cost_to_incur);
+        $this->work_stage_percentage = self::calculateWorkStagePercentage($this->incurred_cost, $this->total_cost);
     }
 
     protected function syncSaleValues(): void
     {
-        $this->value_paid = self::normalizeDecimalValue($this->value_paid);
-        $this->value_unpaid = self::normalizeDecimalValue($this->value_unpaid);
-        $this->value_stock = self::normalizeDecimalValue($this->value_stock);
-        $this->value_received = self::normalizeDecimalValue($this->value_received);
+        $this->paid_sales_value = self::normalizeDecimalValue($this->paid_sales_value);
+        $this->unpaid_sales_value = self::normalizeDecimalValue($this->unpaid_sales_value);
+        $this->stock_sales_value = self::normalizeDecimalValue($this->stock_sales_value);
+        $this->received_value = self::normalizeDecimalValue($this->received_value);
         $this->value_until_keys = self::normalizeDecimalValue($this->value_until_keys);
-        $this->value_post_keys = self::normalizeDecimalValue($this->value_post_keys);
-        $this->value_total_sale = self::calculateSalesValuesTotal(
-            $this->value_paid,
-            $this->value_unpaid,
-            $this->value_stock,
+        $this->value_after_keys = self::normalizeDecimalValue($this->value_after_keys);
+        $this->gross_sales_value = self::calculateSalesValuesTotal(
+            $this->paid_sales_value,
+            $this->unpaid_sales_value,
+            $this->stock_sales_value,
         );
     }
 
-    public function getFormattedValueRequestedAttribute(): string
+    public function getFormattedRequestedAmountAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->value_requested);
+        return self::formatCurrencyForDisplay($this->requested_amount);
     }
 
     public function getFormattedLandMarketValueAttribute(): string
@@ -220,9 +220,9 @@ class ProposalProject extends Model
         return self::formatCurrencyForDisplay($this->land_market_value);
     }
 
-    public function getFormattedCostIncurredAttribute(): string
+    public function getFormattedIncurredCostAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->cost_incurred);
+        return self::formatCurrencyForDisplay($this->incurred_cost);
     }
 
     public function getFormattedCostToIncurAttribute(): string
@@ -230,34 +230,34 @@ class ProposalProject extends Model
         return self::formatCurrencyForDisplay($this->cost_to_incur);
     }
 
-    public function getFormattedCostTotalAttribute(): string
+    public function getFormattedTotalCostAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->cost_total);
+        return self::formatCurrencyForDisplay($this->total_cost);
     }
 
-    public function getFormattedValuePaidAttribute(): string
+    public function getFormattedPaidSalesValueAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->value_paid);
+        return self::formatCurrencyForDisplay($this->paid_sales_value);
     }
 
-    public function getFormattedValueUnpaidAttribute(): string
+    public function getFormattedUnpaidSalesValueAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->value_unpaid);
+        return self::formatCurrencyForDisplay($this->unpaid_sales_value);
     }
 
-    public function getFormattedValueStockAttribute(): string
+    public function getFormattedStockSalesValueAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->value_stock);
+        return self::formatCurrencyForDisplay($this->stock_sales_value);
     }
 
-    public function getFormattedValueTotalSaleAttribute(): string
+    public function getFormattedGrossSalesValueAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->value_total_sale);
+        return self::formatCurrencyForDisplay($this->gross_sales_value);
     }
 
-    public function getFormattedValueReceivedAttribute(): string
+    public function getFormattedReceivedValueAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->value_received);
+        return self::formatCurrencyForDisplay($this->received_value);
     }
 
     public function getFormattedValueUntilKeysAttribute(): string
@@ -265,17 +265,17 @@ class ProposalProject extends Model
         return self::formatCurrencyForDisplay($this->value_until_keys);
     }
 
-    public function getFormattedValuePostKeysAttribute(): string
+    public function getFormattedValueAfterKeysAttribute(): string
     {
-        return self::formatCurrencyForDisplay($this->value_post_keys);
+        return self::formatCurrencyForDisplay($this->value_after_keys);
     }
 
     public function getFormattedPaymentFlowTotalAttribute(): string
     {
         return self::formatCurrencyForDisplay(self::calculatePaymentFlowTotal(
-            $this->value_received,
+            $this->received_value,
             $this->value_until_keys,
-            $this->value_post_keys,
+            $this->value_after_keys,
         ));
     }
 

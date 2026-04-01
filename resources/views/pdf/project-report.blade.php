@@ -110,19 +110,19 @@
                 <td class="label">Empreendimento:</td>
                 <td>{{ $project->name }}</td>
                 <td class="label">SPE:</td>
-                <td>{{ $project->company_name ?? 'N/A' }}</td>
+                <td>{{ $project->development_name ?? 'N/A' }}</td>
             </tr>
             <tr>
                 <td class="label">Site:</td>
-                <td>{{ $project->site ?? 'N/A' }}</td>
+                <td>{{ $project->website_url ?? 'N/A' }}</td>
                 <td class="label">Lançamento:</td>
                 <td>{{ $project->launch_date ? \Carbon\Carbon::parse($project->launch_date)->format('m/Y') : 'N/A' }}</td>
             </tr>
             <tr>
                 <td class="label">Localização:</td>
                 <td colspan="3">
-                    {{ $project->logradouro }}, {{ $project->numero }} {{ $project->complemento }}<br>
-                    {{ $project->bairro }} - {{ $project->cidade }}/{{ $project->estado }} - CEP: {{ $project->cep }}
+                    {{ $project->street }}, {{ $project->address_number }} {{ $project->address_complement }}<br>
+                    {{ $project->neighborhood }} - {{ $project->city }}/{{ $project->state }} - CEP: {{ $project->zip_code }}
                 </td>
             </tr>
         </table>
@@ -134,17 +134,17 @@
                     <td class="label">Total de Unidades:</td>
                     <td>{{ $project->units_total }}</td>
                     <td class="label">Permutadas:</td>
-                    <td>{{ $project->units_exchanged }}</td>
+                    <td>{{ $project->exchanged_units }}</td>
                 </tr>
                 <tr>
                     <td class="label">Quitadas:</td>
-                    <td>{{ $project->units_paid }}</td>
+                    <td>{{ $project->paid_units }}</td>
                     <td class="label">Não Quitadas:</td>
-                    <td>{{ $project->units_unpaid }}</td>
+                    <td>{{ $project->unpaid_units }}</td>
                 </tr>
                 <tr>
                     <td class="label">Estoque:</td>
-                    <td>{{ $project->units_stock }}</td>
+                    <td>{{ $project->stock_units }}</td>
                     <td class="label">% Vendidas:</td>
                     <td>{{ number_format($project->sales_percentage, 2, ',', '.') }}%</td>
                 </tr>
@@ -156,21 +156,21 @@
             <table class="info-grid">
                 <tr>
                     <td class="label">Valor Solicitado:</td>
-                    <td>R$ {{ number_format($project->value_requested, 2, ',', '.') }}</td>
+                    <td>R$ {{ number_format($project->requested_amount, 2, ',', '.') }}</td>
                     <td class="label">Custo Total:</td>
-                    <td>R$ {{ number_format($project->cost_total, 2, ',', '.') }}</td>
+                    <td>R$ {{ number_format($project->total_cost, 2, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td class="label">VGV Total:</td>
-                    <td>R$ {{ number_format($project->value_total_sale, 2, ',', '.') }}</td>
+                    <td>R$ {{ number_format($project->gross_sales_value, 2, ',', '.') }}</td>
                     <td class="label">Estágio da Obra:</td>
                     <td>{{ number_format($project->work_stage_percentage, 2, ',', '.') }}%</td>
                 </tr>
                 <tr>
                     <td class="label">Já Recebido:</td>
-                    <td>R$ {{ number_format($project->value_received, 2, ',', '.') }}</td>
+                    <td>R$ {{ number_format($project->received_value, 2, ',', '.') }}</td>
                     <td class="label">Pós Chaves:</td>
-                    <td>R$ {{ number_format($project->value_post_keys, 2, ',', '.') }}</td>
+                    <td>R$ {{ number_format($project->value_after_keys, 2, ',', '.') }}</td>
                 </tr>
             </table>
         </div>
@@ -209,10 +209,10 @@
                 <tr>
                     <td>{{ $type->bedrooms }}</td>
                     <td>{{ $type->parking_spaces }}</td>
-                    <td>{{ number_format($type->useful_area, 2, ',', '.') }}</td>
+                    <td>{{ number_format($type->usable_area, 2, ',', '.') }}</td>
                     <td>{{ $type->total_units }}</td>
                     <td>R$ {{ number_format($type->average_price, 2, ',', '.') }}</td>
-                    <td>R$ {{ number_format($type->price_per_m2, 2, ',', '.') }}</td>
+                    <td>R$ {{ number_format($type->price_per_square_meter, 2, ',', '.') }}</td>
                 </tr>
                 @endforeach
             </tbody>

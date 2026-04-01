@@ -137,8 +137,8 @@ it('stores the continuation payload through the livewire component', function ()
 
     expect((int) $firstProject->units_total)->toBe(100)
         ->and((float) $firstProject->sales_percentage)->toBe(38.89)
-        ->and((float) $firstProject->cost_total)->toBe(4000000.0)
-        ->and((float) $firstProject->value_total_sale)->toBe(4900001.25)
+        ->and((float) $firstProject->total_cost)->toBe(4000000.0)
+        ->and((float) $firstProject->gross_sales_value)->toBe(4900001.25)
         ->and((int) $firstProject->characteristics->total_units)->toBe(120)
         ->and($firstProject->characteristics->unitTypes)->toHaveCount(2);
 
@@ -175,23 +175,23 @@ function proposalContinuationComponentState(): array
     $payload = StoreProposalContinuationData::fromFlatPayload(proposalContinuationPayload());
 
     return [
-        'developmentName' => $payload['operation']['nome'],
-        'websiteUrl' => $payload['operation']['site'],
-        'requestedAmount' => $payload['operation']['valor_solicitado'],
-        'landMarketValue' => $payload['operation']['valor_mercado_terreno'],
-        'landArea' => (string) $payload['operation']['area_terreno'],
-        'launchDate' => $payload['operation']['data_lancamento'],
-        'salesLaunchDate' => $payload['operation']['lancamento_vendas'],
-        'constructionStartDate' => $payload['operation']['inicio_obras'],
-        'deliveryForecastDate' => $payload['operation']['previsao_entrega'],
-        'remainingMonths' => $payload['operation']['prazo_remanescente'],
-        'zipCode' => $payload['operation']['cep'],
-        'street' => $payload['operation']['logradouro'],
-        'addressComplement' => $payload['operation']['complemento'],
-        'addressNumber' => $payload['operation']['numero'],
-        'neighborhood' => $payload['operation']['bairro'],
-        'city' => $payload['operation']['cidade'],
-        'state' => $payload['operation']['estado'],
+        'developmentName' => $payload['overview']['development_name'],
+        'websiteUrl' => $payload['overview']['website_url'],
+        'requestedAmount' => $payload['overview']['requested_amount'],
+        'landMarketValue' => $payload['overview']['land_market_value'],
+        'landArea' => (string) $payload['overview']['land_area'],
+        'launchDate' => $payload['overview']['launch_date'],
+        'salesLaunchDate' => $payload['overview']['sales_launch_date'],
+        'constructionStartDate' => $payload['overview']['construction_start_date'],
+        'deliveryForecastDate' => $payload['overview']['delivery_forecast_date'],
+        'remainingMonths' => $payload['overview']['remaining_months'],
+        'zipCode' => $payload['overview']['zip_code'],
+        'street' => $payload['overview']['street'],
+        'addressComplement' => $payload['overview']['address_complement'],
+        'addressNumber' => $payload['overview']['address_number'],
+        'neighborhood' => $payload['overview']['neighborhood'],
+        'city' => $payload['overview']['city'],
+        'state' => $payload['overview']['state'],
         'blockCount' => $payload['characteristics']['blocks'],
         'floorCount' => $payload['characteristics']['floors'],
         'typicalFloorCount' => $payload['characteristics']['typical_floors'],
@@ -200,44 +200,46 @@ function proposalContinuationComponentState(): array
         'projects' => collect($payload['projects'])->map(fn (array $project): array => [
             'id' => $project['id'] ?? null,
             'name' => $project['name'],
-            'exchangedUnits' => $project['units_exchanged'],
-            'paidUnits' => $project['units_paid'],
-            'unpaidUnits' => $project['units_unpaid'],
-            'stockUnits' => $project['units_stock'],
+            'exchangedUnits' => $project['exchanged_units'],
+            'paidUnits' => $project['paid_units'],
+            'unpaidUnits' => $project['unpaid_units'],
+            'stockUnits' => $project['stock_units'],
             'totalUnits' => '',
             'salesPercentage' => '',
-            'incurredCost' => $project['cost_incurred'] ?? '',
+            'incurredCost' => $project['incurred_cost'] ?? '',
             'costToIncur' => $project['cost_to_incur'] ?? '',
             'totalCost' => '',
             'workStagePercentage' => '',
-            'paidSalesValue' => $project['value_paid'] ?? '',
-            'unpaidSalesValue' => $project['value_unpaid'] ?? '',
-            'stockSalesValue' => $project['value_stock'] ?? '',
+            'paidSalesValue' => $project['paid_sales_value'] ?? '',
+            'unpaidSalesValue' => $project['unpaid_sales_value'] ?? '',
+            'stockSalesValue' => $project['stock_sales_value'] ?? '',
             'grossSalesValue' => '',
-            'receivedValue' => $project['value_received'] ?? '',
+            'receivedValue' => $project['received_value'] ?? '',
             'valueUntilKeys' => $project['value_until_keys'] ?? '',
-            'valueAfterKeys' => $project['value_post_keys'] ?? '',
+            'valueAfterKeys' => $project['value_after_keys'] ?? '',
         ])->all(),
         'unitTypes' => collect($payload['unit_types'])->map(fn (array $unitType): array => [
-            'totalUnits' => $unitType['total'],
+            'totalUnits' => $unitType['total_units'],
             'bedrooms' => $unitType['bedrooms'],
             'parkingSpaces' => $unitType['parking_spaces'],
-            'usableArea' => $unitType['useful_area'],
+            'usableArea' => $unitType['usable_area'],
             'averagePrice' => $unitType['average_price'],
             'pricePerSquareMeter' => '',
         ])->all(),
     ];
 }
 
-/**
- * @return array<string, bool>
- */
-function proposalContinuationSessionState(ProposalContinuationAccess $access): array
-{
-    return [
-        "proposal_magic_link.{$access->id}" => true,
-        "proposal_verified.{$access->id}" => true,
-    ];
+if (! function_exists('proposalContinuationSessionState')) {
+    /**
+     * @return array<string, bool>
+     */
+    function proposalContinuationSessionState(ProposalContinuationAccess $access): array
+    {
+        return [
+            "proposal_magic_link.{$access->id}" => true,
+            "proposal_verified.{$access->id}" => true,
+        ];
+    }
 }
 
 function seedProposalContinuationSession(ProposalContinuationAccess $access): void

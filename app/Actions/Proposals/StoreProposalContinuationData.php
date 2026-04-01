@@ -18,7 +18,7 @@ class StoreProposalContinuationData
 
     /**
      * @param  array{
-     *     operation: array<string, mixed>,
+     *     overview: array<string, mixed>,
      *     characteristics: array<string, mixed>,
      *     projects: array<int, array<string, mixed>>,
      *     unit_types: array<int, array<string, mixed>>
@@ -29,22 +29,22 @@ class StoreProposalContinuationData
     {
         DB::transaction(function () use ($proposal, $payload, $files): void {
             $sharedPayload = [
-                'company_name' => $payload['operation']['nome'],
-                'site' => $payload['operation']['site'] ?: null,
-                'value_requested' => ProposalProject::normalizeDecimalValue($payload['operation']['valor_solicitado']),
-                'land_market_value' => $this->normalizeDecimalOrNull($payload['operation']['valor_mercado_terreno'] ?? null),
-                'land_area' => ProposalProject::normalizeDecimalValue($payload['operation']['area_terreno']),
-                'cep' => $payload['operation']['cep'],
-                'logradouro' => $payload['operation']['logradouro'],
-                'numero' => $payload['operation']['numero'],
-                'complemento' => $payload['operation']['complemento'] ?: null,
-                'bairro' => $payload['operation']['bairro'],
-                'cidade' => $payload['operation']['cidade'],
-                'estado' => $payload['operation']['estado'],
-                'launch_date' => $this->monthToDate($payload['operation']['data_lancamento']),
-                'sales_launch_date' => $this->monthToDate($payload['operation']['lancamento_vendas']),
-                'construction_start_date' => $this->monthToDate($payload['operation']['inicio_obras']),
-                'delivery_forecast_date' => $this->monthToDate($payload['operation']['previsao_entrega']),
+                'development_name' => $payload['overview']['development_name'],
+                'website_url' => $payload['overview']['website_url'] ?: null,
+                'requested_amount' => ProposalProject::normalizeDecimalValue($payload['overview']['requested_amount']),
+                'land_market_value' => $this->normalizeDecimalOrNull($payload['overview']['land_market_value'] ?? null),
+                'land_area' => ProposalProject::normalizeDecimalValue($payload['overview']['land_area']),
+                'zip_code' => $payload['overview']['zip_code'],
+                'street' => $payload['overview']['street'],
+                'address_number' => $payload['overview']['address_number'],
+                'address_complement' => $payload['overview']['address_complement'] ?: null,
+                'neighborhood' => $payload['overview']['neighborhood'],
+                'city' => $payload['overview']['city'],
+                'state' => $payload['overview']['state'],
+                'launch_date' => $this->monthToDate($payload['overview']['launch_date']),
+                'sales_launch_date' => $this->monthToDate($payload['overview']['sales_launch_date']),
+                'construction_start_date' => $this->monthToDate($payload['overview']['construction_start_date']),
+                'delivery_forecast_date' => $this->monthToDate($payload['overview']['delivery_forecast_date']),
             ];
 
             $remainingMonths = $this->calculateRemainingMonths(
@@ -56,19 +56,19 @@ class StoreProposalContinuationData
                 $project = $this->upsertProposalProject($proposal, $projectData['id'] ?? null, [
                     ...$sharedPayload,
                     'name' => $projectData['name'],
-                    'remaining_months' => $payload['operation']['prazo_remanescente'] ?: $remainingMonths,
-                    'units_exchanged' => $projectData['units_exchanged'] ?? 0,
-                    'units_paid' => $projectData['units_paid'] ?? 0,
-                    'units_unpaid' => $projectData['units_unpaid'] ?? 0,
-                    'units_stock' => $projectData['units_stock'] ?? 0,
-                    'cost_incurred' => $this->normalizeDecimalOrNull($projectData['cost_incurred'] ?? null),
+                    'remaining_months' => $payload['overview']['remaining_months'] ?: $remainingMonths,
+                    'exchanged_units' => $projectData['exchanged_units'] ?? 0,
+                    'paid_units' => $projectData['paid_units'] ?? 0,
+                    'unpaid_units' => $projectData['unpaid_units'] ?? 0,
+                    'stock_units' => $projectData['stock_units'] ?? 0,
+                    'incurred_cost' => $this->normalizeDecimalOrNull($projectData['incurred_cost'] ?? null),
                     'cost_to_incur' => $this->normalizeDecimalOrNull($projectData['cost_to_incur'] ?? null),
-                    'value_paid' => $this->normalizeDecimalOrNull($projectData['value_paid'] ?? null),
-                    'value_unpaid' => $this->normalizeDecimalOrNull($projectData['value_unpaid'] ?? null),
-                    'value_stock' => $this->normalizeDecimalOrNull($projectData['value_stock'] ?? null),
-                    'value_received' => $this->normalizeDecimalOrNull($projectData['value_received'] ?? null),
+                    'paid_sales_value' => $this->normalizeDecimalOrNull($projectData['paid_sales_value'] ?? null),
+                    'unpaid_sales_value' => $this->normalizeDecimalOrNull($projectData['unpaid_sales_value'] ?? null),
+                    'stock_sales_value' => $this->normalizeDecimalOrNull($projectData['stock_sales_value'] ?? null),
+                    'received_value' => $this->normalizeDecimalOrNull($projectData['received_value'] ?? null),
                     'value_until_keys' => $this->normalizeDecimalOrNull($projectData['value_until_keys'] ?? null),
-                    'value_post_keys' => $this->normalizeDecimalOrNull($projectData['value_post_keys'] ?? null),
+                    'value_after_keys' => $this->normalizeDecimalOrNull($projectData['value_after_keys'] ?? null),
                 ]);
 
                 $this->syncProjectCharacteristics($project, $payload['characteristics'], $payload['unit_types']);
@@ -100,7 +100,7 @@ class StoreProposalContinuationData
     /**
      * @param  array<string, mixed>  $validated
      * @return array{
-     *     operation: array<string, mixed>,
+     *     overview: array<string, mixed>,
      *     characteristics: array<string, mixed>,
      *     projects: array<int, array<string, mixed>>,
      *     unit_types: array<int, array<string, mixed>>
@@ -114,18 +114,18 @@ class StoreProposalContinuationData
                 return [
                     'id' => $validated['project_id'][$index] ?? null,
                     'name' => $name,
-                    'units_exchanged' => $validated['unidades_permutadas'][$index] ?? 0,
-                    'units_paid' => $validated['unidades_quitadas'][$index] ?? 0,
-                    'units_unpaid' => $validated['unidades_nao_quitadas'][$index] ?? 0,
-                    'units_stock' => $validated['unidades_estoque'][$index] ?? 0,
-                    'cost_incurred' => $validated['custo_incidido'][$index] ?? null,
+                    'exchanged_units' => $validated['unidades_permutadas'][$index] ?? 0,
+                    'paid_units' => $validated['unidades_quitadas'][$index] ?? 0,
+                    'unpaid_units' => $validated['unidades_nao_quitadas'][$index] ?? 0,
+                    'stock_units' => $validated['unidades_estoque'][$index] ?? 0,
+                    'incurred_cost' => $validated['custo_incidido'][$index] ?? null,
                     'cost_to_incur' => $validated['custo_a_incorrer'][$index] ?? null,
-                    'value_paid' => $validated['valor_quitadas'][$index] ?? null,
-                    'value_unpaid' => $validated['valor_nao_quitadas'][$index] ?? null,
-                    'value_stock' => $validated['valor_estoque'][$index] ?? null,
-                    'value_received' => $validated['valor_ja_recebido'][$index] ?? null,
+                    'paid_sales_value' => $validated['valor_quitadas'][$index] ?? null,
+                    'unpaid_sales_value' => $validated['valor_nao_quitadas'][$index] ?? null,
+                    'stock_sales_value' => $validated['valor_estoque'][$index] ?? null,
+                    'received_value' => $validated['valor_ja_recebido'][$index] ?? null,
                     'value_until_keys' => $validated['valor_ate_chaves'][$index] ?? null,
-                    'value_post_keys' => $validated['valor_chaves_pos'][$index] ?? null,
+                    'value_after_keys' => $validated['valor_chaves_pos'][$index] ?? null,
                 ];
             })
             ->all();
@@ -134,34 +134,34 @@ class StoreProposalContinuationData
             ->values()
             ->map(function (mixed $totalUnits, int $index) use ($validated): array {
                 return [
-                    'total' => $totalUnits,
+                    'total_units' => $totalUnits,
                     'bedrooms' => $validated['tipo_dormitorios'][$index] ?? null,
                     'parking_spaces' => $validated['tipo_vagas'][$index] ?? null,
-                    'useful_area' => $validated['tipo_area'][$index] ?? null,
+                    'usable_area' => $validated['tipo_area'][$index] ?? null,
                     'average_price' => $validated['tipo_preco_medio'][$index] ?? null,
                 ];
             })
             ->all();
 
         return [
-            'operation' => [
-                'nome' => $validated['nome'],
-                'site' => $validated['site'] ?? null,
-                'valor_solicitado' => $validated['valor_solicitado'],
-                'valor_mercado_terreno' => $validated['valor_mercado_terreno'] ?? null,
-                'area_terreno' => $validated['area_terreno'],
-                'data_lancamento' => $validated['data_lancamento'],
-                'lancamento_vendas' => $validated['lancamento_vendas'],
-                'inicio_obras' => $validated['inicio_obras'],
-                'previsao_entrega' => $validated['previsao_entrega'],
-                'prazo_remanescente' => $validated['prazo_remanescente'] ?? null,
-                'cep' => $validated['cep'],
-                'logradouro' => $validated['logradouro'],
-                'complemento' => $validated['complemento'] ?? null,
-                'numero' => $validated['numero'],
-                'bairro' => $validated['bairro'],
-                'cidade' => $validated['cidade'],
-                'estado' => $validated['estado'],
+            'overview' => [
+                'development_name' => $validated['nome'],
+                'website_url' => $validated['site'] ?? null,
+                'requested_amount' => $validated['valor_solicitado'],
+                'land_market_value' => $validated['valor_mercado_terreno'] ?? null,
+                'land_area' => $validated['area_terreno'],
+                'launch_date' => $validated['data_lancamento'],
+                'sales_launch_date' => $validated['lancamento_vendas'],
+                'construction_start_date' => $validated['inicio_obras'],
+                'delivery_forecast_date' => $validated['previsao_entrega'],
+                'remaining_months' => $validated['prazo_remanescente'] ?? null,
+                'zip_code' => $validated['cep'],
+                'street' => $validated['logradouro'],
+                'address_complement' => $validated['complemento'] ?? null,
+                'address_number' => $validated['numero'],
+                'neighborhood' => $validated['bairro'],
+                'city' => $validated['cidade'],
+                'state' => $validated['estado'],
             ],
             'characteristics' => [
                 'blocks' => $validated['car_bloco'],
@@ -242,16 +242,16 @@ class StoreProposalContinuationData
 
         foreach ($unitTypes as $typeIndex => $unitType) {
             $averagePrice = ProposalProject::normalizeDecimalValue($unitType['average_price'] ?? null);
-            $usefulArea = (float) ($unitType['useful_area'] ?? 0);
+            $usableArea = (float) ($unitType['usable_area'] ?? 0);
 
             $characteristic->unitTypes()->create([
                 'order' => $typeIndex + 1,
-                'total_units' => $unitType['total'],
+                'total_units' => $unitType['total_units'],
                 'bedrooms' => $unitType['bedrooms'] ?? null,
                 'parking_spaces' => $unitType['parking_spaces'] ?? null,
-                'useful_area' => $usefulArea,
+                'usable_area' => $usableArea,
                 'average_price' => $averagePrice,
-                'price_per_m2' => $usefulArea > 0 ? round($averagePrice / $usefulArea, 2) : 0,
+                'price_per_square_meter' => $usableArea > 0 ? round($averagePrice / $usableArea, 2) : 0,
             ]);
         }
     }

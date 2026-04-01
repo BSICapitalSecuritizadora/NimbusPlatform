@@ -12,7 +12,7 @@ class ProjectUnitType extends Model
 
     protected $fillable = [
         'characteristic_id', 'order', 'total_units', 'bedrooms', 'parking_spaces',
-        'useful_area', 'average_price', 'price_per_m2',
+        'usable_area', 'average_price', 'price_per_square_meter',
     ];
 
     protected function casts(): array
@@ -20,9 +20,9 @@ class ProjectUnitType extends Model
         return [
             'order' => 'integer',
             'total_units' => 'integer',
-            'useful_area' => 'decimal:2',
+            'usable_area' => 'decimal:2',
             'average_price' => 'decimal:2',
-            'price_per_m2' => 'decimal:2',
+            'price_per_square_meter' => 'decimal:2',
         ];
     }
 
@@ -36,13 +36,13 @@ class ProjectUnitType extends Model
         return ProposalProject::formatCurrencyForDisplay($this->average_price);
     }
 
-    public function getFormattedPricePerM2Attribute(): string
+    public function getFormattedPricePerSquareMeterAttribute(): string
     {
-        return ProposalProject::formatCurrencyForDisplay($this->price_per_m2);
+        return ProposalProject::formatCurrencyForDisplay($this->price_per_square_meter);
     }
 
-    public function getFormattedUsefulAreaAttribute(): string
+    public function getFormattedUsableAreaAttribute(): string
     {
-        return number_format((float) $this->useful_area, 2, ',', '.');
+        return number_format((float) $this->usable_area, 2, ',', '.');
     }
 }

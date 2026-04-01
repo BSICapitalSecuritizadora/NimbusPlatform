@@ -60,9 +60,9 @@
             {{-- Repeat for other indicators... adding first 3 for brevity in this step --}}
             <tr>
                 <td>Financiamento / VGV</td>
-                <td>{{ number_format(($project->value_requested / max(1, $valor_total_total)) * 100, 2, ',', '.') }}%</td>
+                <td>{{ number_format(($project->requested_amount / max(1, $valor_total_total)) * 100, 2, ',', '.') }}%</td>
                 <td>Menor que {{ $inds?->financiamento_vgv_ideal }}%</td>
-                @php $s = getStatus(($project->value_requested / max(1, $valor_total_total)) * 100, $inds?->financiamento_vgv_ideal, $inds?->financiamento_vgv_limite); @endphp
+                @php $s = getStatus(($project->requested_amount / max(1, $valor_total_total)) * 100, $inds?->financiamento_vgv_ideal, $inds?->financiamento_vgv_limite); @endphp
                 <td class="status-cell {{ $s[1] }}">{{ $s[0] }}</td>
             </tr>
         </tbody>
@@ -79,9 +79,9 @@
             </tr>
         </thead>
         <tbody>
-            <tr><td>Vendidas</td><td>{{ $project->units_unpaid }}</td><td>{{ number_format($percent_vendidas, 1) }}%</td><td>R$ {{ number_format($project->value_unpaid, 2, ',', '.') }}</td></tr>
-            <tr><td>Quitadas</td><td>{{ $project->units_paid }}</td><td>{{ number_format($percent_quitadas, 1) }}%</td><td>R$ {{ number_format($project->value_paid, 2, ',', '.') }}</td></tr>
-            <tr><td>Estoque</td><td>{{ $project->units_stock }}</td><td>{{ number_format($percent_estoque, 1) }}%</td><td>R$ {{ number_format($project->value_stock, 2, ',', '.') }}</td></tr>
+            <tr><td>Vendidas</td><td>{{ $project->unpaid_units }}</td><td>{{ number_format($percent_vendidas, 1) }}%</td><td>R$ {{ number_format($project->unpaid_sales_value, 2, ',', '.') }}</td></tr>
+            <tr><td>Quitadas</td><td>{{ $project->paid_units }}</td><td>{{ number_format($percent_quitadas, 1) }}%</td><td>R$ {{ number_format($project->paid_sales_value, 2, ',', '.') }}</td></tr>
+            <tr><td>Estoque</td><td>{{ $project->stock_units }}</td><td>{{ number_format($percent_estoque, 1) }}%</td><td>R$ {{ number_format($project->stock_sales_value, 2, ',', '.') }}</td></tr>
             <tr><td><b>Total</b></td><td>{{ $project->units_total }}</td><td>100%</td><td><b>R$ {{ number_format($valor_total_total, 2, ',', '.') }}</b></td></tr>
         </tbody>
     </table>

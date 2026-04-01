@@ -38,11 +38,11 @@ class ProjectRelationManager extends RelationManager
                             ->required()
                             ->columnSpan(2)
                             ->maxLength(255),
-                        TextInput::make('site')
+                        TextInput::make('website_url')
                             ->label('Site')
                             ->url()
                             ->maxLength(255),
-                        self::makeCurrencyField('value_requested', 'Valor Solicitado')
+                        self::makeCurrencyField('requested_amount', 'Valor Solicitado')
                             ->required()
                             ->columnSpan(1),
                     ])->columns(2),
@@ -89,7 +89,7 @@ class ProjectRelationManager extends RelationManager
                 Section::make('Localização')
                     ->icon('heroicon-o-map-pin')
                     ->schema([
-                        TextInput::make('cep')
+                        TextInput::make('zip_code')
                             ->label('CEP')
                             ->required()
                             ->maxLength(9)
@@ -109,34 +109,34 @@ class ProjectRelationManager extends RelationManager
 
                                     if ($response->ok() && ! isset($response->json()['erro'])) {
                                         $data = $response->json();
-                                        $set('logradouro', $data['logradouro'] ?? '');
-                                        $set('bairro', $data['bairro'] ?? '');
-                                        $set('cidade', $data['localidade'] ?? '');
-                                        $set('estado', $data['uf'] ?? '');
+                                        $set('street', $data['logradouro'] ?? '');
+                                        $set('neighborhood', $data['bairro'] ?? '');
+                                        $set('city', $data['localidade'] ?? '');
+                                        $set('state', $data['uf'] ?? '');
                                     }
                                 } catch (\Exception $e) {
                                     // Fail silently
                                 }
                             }),
-                        TextInput::make('logradouro')
+                        TextInput::make('street')
                             ->label('Rua')
                             ->columnSpan(2)
                             ->maxLength(255),
-                        TextInput::make('complemento')
+                        TextInput::make('address_complement')
                             ->label('Complemento')
                             ->maxLength(255),
-                        TextInput::make('numero')
+                        TextInput::make('address_number')
                             ->label('Número')
                             ->required()
                             ->maxLength(50),
-                        TextInput::make('bairro')
+                        TextInput::make('neighborhood')
                             ->label('Bairro')
                             ->maxLength(255),
-                        TextInput::make('cidade')
+                        TextInput::make('city')
                             ->label('Cidade')
                             ->columnSpan(2)
                             ->maxLength(255),
-                        TextInput::make('estado')
+                        TextInput::make('state')
                             ->label('Estado')
                             ->maxLength(2),
                     ])->columns(3),
@@ -181,7 +181,7 @@ class ProjectRelationManager extends RelationManager
                                     ->label('Unidades')
                                     ->numeric()
                                     ->live(),
-                                TextInput::make('useful_area')
+                                TextInput::make('usable_area')
                                     ->label('Área Útil (m²)')
                                     ->columnSpan(2)
                                     ->numeric()
@@ -202,7 +202,7 @@ class ProjectRelationManager extends RelationManager
                                     ->mutateStateForValidationUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
                                     ->afterStateHydrated(fn (Get $get, Set $set) => self::syncAveragePriceField($get, $set))
                                     ->afterStateUpdated(fn (Get $get, Set $set) => self::syncAveragePriceField($get, $set)),
-                                TextInput::make('price_per_m2')
+                                TextInput::make('price_per_square_meter')
                                     ->label('Preço m²')
                                     ->columnSpan(3)
                                     ->prefix('R$')
@@ -211,7 +211,7 @@ class ProjectRelationManager extends RelationManager
                                     ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
                                     ->dehydrateStateUsing(fn (Get $get): ?float => self::calculateUnitTypePricePerM2(
                                         $get('average_price'),
-                                        $get('useful_area'),
+                                        $get('usable_area'),
                                     )),
                             ])
                             ->columns(3)
@@ -224,25 +224,25 @@ class ProjectRelationManager extends RelationManager
                 Section::make('Quadro de Vendas')
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
-                        TextInput::make('units_unpaid')
+                        TextInput::make('unpaid_units')
                             ->label('Vendidas')
                             ->numeric()
                             ->default(0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
-                        TextInput::make('units_paid')
+                        TextInput::make('paid_units')
                             ->label('Quitadas')
                             ->numeric()
                             ->default(0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
-                        TextInput::make('units_exchanged')
+                        TextInput::make('exchanged_units')
                             ->label('Permutadas')
                             ->numeric()
                             ->default(0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
-                        TextInput::make('units_stock')
+                        TextInput::make('stock_units')
                             ->label('Estoque')
                             ->numeric()
                             ->default(0)
@@ -268,7 +268,7 @@ class ProjectRelationManager extends RelationManager
                 Section::make('Custos')
                     ->icon('heroicon-o-banknotes')
                     ->schema([
-                        TextInput::make('cost_incurred')
+                        TextInput::make('incurred_cost')
                             ->label('Custo Incorrido')
                             ->columnSpan(2)
                             ->default(0)
@@ -298,7 +298,7 @@ class ProjectRelationManager extends RelationManager
                             ->mutateStateForValidationUsing(fn ($state): ?float => self::normalizeDecimalValue($state))
                             ->afterStateHydrated(fn (Get $get, Set $set) => self::syncCostFields($get, $set))
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::syncCostFields($get, $set)),
-                        TextInput::make('cost_total')
+                        TextInput::make('total_cost')
                             ->label('Custo Total')
                             ->columnSpan(2)
                             ->default(0)
@@ -308,7 +308,7 @@ class ProjectRelationManager extends RelationManager
                             ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
                             ->dehydrated()
                             ->dehydrateStateUsing(fn (Get $get): float => ProposalProject::calculateCostTotal(
-                                $get('cost_incurred'),
+                                $get('incurred_cost'),
                                 $get('cost_to_incur'),
                             )),
                         TextInput::make('work_stage_percentage')
@@ -321,24 +321,24 @@ class ProjectRelationManager extends RelationManager
                             ->formatStateUsing(fn ($state): string => self::formatPercentageForDisplay($state))
                             ->dehydrated()
                             ->dehydrateStateUsing(fn (Get $get): float => ProposalProject::calculateWorkStagePercentage(
-                                $get('cost_incurred'),
-                                ProposalProject::calculateCostTotal($get('cost_incurred'), $get('cost_to_incur')),
+                                $get('incurred_cost'),
+                                ProposalProject::calculateCostTotal($get('incurred_cost'), $get('cost_to_incur')),
                             )),
                     ])->columns(4)->collapsed(),
 
                 Section::make('Valores de Venda')
                     ->icon('heroicon-o-currency-dollar')
                     ->schema([
-                        self::makeCurrencyField('value_paid', 'Quitadas')
+                        self::makeCurrencyField('paid_sales_value', 'Quitadas')
                             ->afterStateHydrated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set))
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set)),
-                        self::makeCurrencyField('value_unpaid', 'Vendidas')
+                        self::makeCurrencyField('unpaid_sales_value', 'Vendidas')
                             ->afterStateHydrated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set))
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set)),
-                        self::makeCurrencyField('value_stock', 'Estoque')
+                        self::makeCurrencyField('stock_sales_value', 'Estoque')
                             ->afterStateHydrated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set))
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::syncSalesValuesTotal($get, $set)),
-                        TextInput::make('value_total_sale')
+                        TextInput::make('gross_sales_value')
                             ->label('VGV Total')
                             ->columnSpan(2)
                             ->default(0)
@@ -348,22 +348,22 @@ class ProjectRelationManager extends RelationManager
                             ->formatStateUsing(fn ($state): ?string => self::formatCurrencyForDisplay($state))
                             ->dehydrated()
                             ->dehydrateStateUsing(fn (Get $get): float => ProposalProject::calculateSalesValuesTotal(
-                                $get('value_paid'),
-                                $get('value_unpaid'),
-                                $get('value_stock'),
+                                $get('paid_sales_value'),
+                                $get('unpaid_sales_value'),
+                                $get('stock_sales_value'),
                             )),
                     ])->columns(2)->collapsed(),
 
                 Section::make('Fluxo de pagamento')
                     ->icon('heroicon-o-banknotes')
                     ->schema([
-                        self::makeCurrencyField('value_received', 'Valor já Recebido')
+                        self::makeCurrencyField('received_value', 'Valor já Recebido')
                             ->afterStateHydrated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set))
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set)),
                         self::makeCurrencyField('value_until_keys', 'A receber até as chaves')
                             ->afterStateHydrated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set))
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set)),
-                        self::makeCurrencyField('value_post_keys', 'A receber pós chaves')
+                        self::makeCurrencyField('value_after_keys', 'A receber pós chaves')
                             ->afterStateHydrated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set))
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::syncPaymentFlowTotal($get, $set)),
                         TextInput::make('payment_flow_total')
@@ -410,7 +410,7 @@ class ProjectRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Empreendimento'),
-                Tables\Columns\TextColumn::make('value_requested')
+                Tables\Columns\TextColumn::make('requested_amount')
                     ->label('Vlr. Solicitado')
                     ->money('BRL'),
                 Tables\Columns\TextColumn::make('work_stage_percentage')
@@ -474,11 +474,11 @@ class ProjectRelationManager extends RelationManager
     protected static function updateUnitTypePricePerM2(Get $get, Set $set): void
     {
         $set(
-            'price_per_m2',
+            'price_per_square_meter',
             self::formatCurrencyForDisplay(
                 self::calculateUnitTypePricePerM2(
                     $get('average_price'),
-                    $get('useful_area'),
+                    $get('usable_area'),
                 ),
             ),
         );
@@ -491,11 +491,11 @@ class ProjectRelationManager extends RelationManager
         $set('average_price', self::formatCurrencyForDisplay($averagePrice));
 
         $set(
-            'price_per_m2',
+            'price_per_square_meter',
             self::formatCurrencyForDisplay(
                 self::calculateUnitTypePricePerM2(
                     $averagePrice,
-                    $get('useful_area'),
+                    $get('usable_area'),
                 ),
             ),
         );
@@ -504,15 +504,15 @@ class ProjectRelationManager extends RelationManager
     protected static function syncCostFields(Get $get, Set $set): void
     {
         $costTotal = ProposalProject::calculateCostTotal(
-            $get('cost_incurred'),
+            $get('incurred_cost'),
             $get('cost_to_incur'),
         );
 
-        $set('cost_total', self::formatCurrencyForDisplay($costTotal));
+        $set('total_cost', self::formatCurrencyForDisplay($costTotal));
         $set(
             'work_stage_percentage',
             self::formatPercentageForDisplay(
-                ProposalProject::calculateWorkStagePercentage($get('cost_incurred'), $costTotal),
+                ProposalProject::calculateWorkStagePercentage($get('incurred_cost'), $costTotal),
             ),
         );
     }
@@ -607,9 +607,9 @@ class ProjectRelationManager extends RelationManager
         $set(
             'payment_flow_total',
             self::formatCurrencyForDisplay(ProposalProject::calculatePaymentFlowTotal(
-                $get('value_received'),
+                $get('received_value'),
                 $get('value_until_keys'),
-                $get('value_post_keys'),
+                $get('value_after_keys'),
             )),
         );
     }
@@ -617,21 +617,21 @@ class ProjectRelationManager extends RelationManager
     protected static function syncSalesValuesTotal(Get $get, Set $set): void
     {
         $set(
-            'value_total_sale',
+            'gross_sales_value',
             self::formatCurrencyForDisplay(ProposalProject::calculateSalesValuesTotal(
-                $get('value_paid'),
-                $get('value_unpaid'),
-                $get('value_stock'),
+                $get('paid_sales_value'),
+                $get('unpaid_sales_value'),
+                $get('stock_sales_value'),
             )),
         );
     }
 
     public static function updateSalesCalculations(Get $get, Set $set): void
     {
-        $unitsUnpaid = $get('units_unpaid');
-        $unitsPaid = $get('units_paid');
-        $unitsExchanged = $get('units_exchanged');
-        $unitsStock = $get('units_stock');
+        $unitsUnpaid = $get('unpaid_units');
+        $unitsPaid = $get('paid_units');
+        $unitsExchanged = $get('exchanged_units');
+        $unitsStock = $get('stock_units');
 
         $set('units_total', ProposalProject::calculateUnitsTotal(
             $unitsUnpaid,

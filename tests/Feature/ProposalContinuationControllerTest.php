@@ -127,13 +127,15 @@ function continuationPayload(): array
     ];
 }
 
-/**
- * @return array<string, bool>
- */
-function proposalContinuationSessionState(ProposalContinuationAccess $access): array
-{
-    return [
-        "proposal_magic_link.{$access->id}" => true,
-        "proposal_verified.{$access->id}" => true,
-    ];
+if (! function_exists('proposalContinuationSessionState')) {
+    /**
+     * @return array<string, bool>
+     */
+    function proposalContinuationSessionState(ProposalContinuationAccess $access): array
+    {
+        return [
+            "proposal_magic_link.{$access->id}" => true,
+            "proposal_verified.{$access->id}" => true,
+        ];
+    }
 }

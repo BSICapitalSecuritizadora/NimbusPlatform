@@ -12,7 +12,7 @@
             <div class="col-lg-5">
                 <div class="p-[1.2rem_1.25rem] rounded-3xl border border-[color-mix(in_oklab,var(--gold)_18%,var(--border)_82%)] bg-gradient-to-br from-[color-mix(in_oklab,var(--brand)_8%,var(--surface)_92%)] to-[color-mix(in_oklab,var(--gold)_10%,var(--surface)_90%)]">
                     <strong class="d-block mb-2 text-[var(--brand)] font-bold">Ambiente seguro para o proponente</strong>
-                    <p class="mb-0 text-[var(--muted)]" style="line-height: 1.7;">Os dados de análise comercial, indicadores internos e parâmetros do time de vendas permanecem restritos ao painel administrativo.</p>
+                    <p class="mb-0 leading-7 text-[var(--muted)]">Os dados de análise comercial, indicadores internos e parâmetros do time de vendas permanecem restritos ao painel administrativo.</p>
                 </div>
             </div>
         </div>
@@ -222,9 +222,9 @@
                                                 <td>{{ $unitType['total_units'] }}</td>
                                                 <td>{{ $unitType['bedrooms'] }}</td>
                                                 <td>{{ $unitType['parking_spaces'] }}</td>
-                                                <td>{{ $unitType['useful_area'] }}</td>
+                                                <td>{{ $unitType['usable_area'] }}</td>
                                                 <td>{{ $unitType['average_price'] }}</td>
-                                                <td>{{ $unitType['price_per_m2'] }}</td>
+                                                <td>{{ $unitType['price_per_square_meter'] }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -266,3 +266,4 @@
         </div>
     </div>
 @endif
+

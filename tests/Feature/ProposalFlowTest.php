@@ -220,16 +220,16 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
 
     $firstProject = $proposal->projects->first();
 
-    expect($firstProject->company_name)->toBe('Residencial Atlântico')
+    expect($firstProject->development_name)->toBe('Residencial Atlântico')
         ->and((int) $firstProject->units_total)->toBe(100)
         ->and((float) $firstProject->sales_percentage)->toBe(38.89)
-        ->and((float) $firstProject->cost_total)->toBe(4000000.0)
-        ->and((float) $firstProject->value_total_sale)->toBe(4900001.25)
+        ->and((float) $firstProject->total_cost)->toBe(4000000.0)
+        ->and((float) $firstProject->gross_sales_value)->toBe(4900001.25)
         ->and($firstProject->characteristics)->not->toBeNull()
         ->and((int) $firstProject->characteristics->total_units)->toBe(120)
         ->and($firstProject->characteristics->unitTypes)->toHaveCount(2)
-        ->and((float) $firstProject->characteristics->unitTypes->first()->price_per_m2)->toBe(10303.03)
-        ->and((float) $firstProject->characteristics->unitTypes->last()->price_per_m2)->toBe(8904.11);
+        ->and((float) $firstProject->characteristics->unitTypes->first()->price_per_square_meter)->toBe(10303.03)
+        ->and((float) $firstProject->characteristics->unitTypes->last()->price_per_square_meter)->toBe(8904.11);
 
     Storage::disk('local')->assertExists($proposal->files->first()->file_path);
 });
@@ -353,7 +353,7 @@ it('preserves project level internal analysis when the proposer resubmits reques
 
     expect($proposal->status)->toBe(Proposal::STATUS_IN_REVIEW)
         ->and($updatedFirstProject->id)->toBe($firstProject->id)
-        ->and((float) $updatedFirstProject->value_paid)->toBe(950000.0)
+        ->and((float) $updatedFirstProject->paid_sales_value)->toBe(950000.0)
         ->and($updatedFirstProject->indicators)->not->toBeNull()
         ->and($updatedFirstProject->indicators?->id)->toBe($indicator->id)
         ->and((float) $updatedFirstProject->indicators?->ltv_ideal)->toBe(55.0)

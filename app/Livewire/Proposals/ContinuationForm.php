@@ -327,7 +327,7 @@ class ContinuationForm extends Component
 
         $storeProposalContinuationData->handle(
             $proposal,
-            $this->storePayload($validated),
+            $this->storagePayload($validated),
             $this->uploads,
         );
 
@@ -387,27 +387,27 @@ class ContinuationForm extends Component
         ];
     }
 
-    protected function storePayload(array $validated): array
+    protected function storagePayload(array $validated): array
     {
         return [
-            'operation' => [
-                'nome' => $validated['developmentName'],
-                'site' => $validated['websiteUrl'] ?? null,
-                'valor_solicitado' => $validated['requestedAmount'],
-                'valor_mercado_terreno' => $validated['landMarketValue'] ?? null,
-                'area_terreno' => $validated['landArea'],
-                'data_lancamento' => $validated['launchDate'],
-                'lancamento_vendas' => $validated['salesLaunchDate'],
-                'inicio_obras' => $validated['constructionStartDate'],
-                'previsao_entrega' => $validated['deliveryForecastDate'],
-                'prazo_remanescente' => $validated['remainingMonths'] ?? null,
-                'cep' => $validated['zipCode'],
-                'logradouro' => $validated['street'],
-                'complemento' => $validated['addressComplement'] ?? null,
-                'numero' => $validated['addressNumber'],
-                'bairro' => $validated['neighborhood'],
-                'cidade' => $validated['city'],
-                'estado' => $validated['state'],
+            'overview' => [
+                'development_name' => $validated['developmentName'],
+                'website_url' => $validated['websiteUrl'] ?? null,
+                'requested_amount' => $validated['requestedAmount'],
+                'land_market_value' => $validated['landMarketValue'] ?? null,
+                'land_area' => $validated['landArea'],
+                'launch_date' => $validated['launchDate'],
+                'sales_launch_date' => $validated['salesLaunchDate'],
+                'construction_start_date' => $validated['constructionStartDate'],
+                'delivery_forecast_date' => $validated['deliveryForecastDate'],
+                'remaining_months' => $validated['remainingMonths'] ?? null,
+                'zip_code' => $validated['zipCode'],
+                'street' => $validated['street'],
+                'address_complement' => $validated['addressComplement'] ?? null,
+                'address_number' => $validated['addressNumber'],
+                'neighborhood' => $validated['neighborhood'],
+                'city' => $validated['city'],
+                'state' => $validated['state'],
             ],
             'characteristics' => [
                 'blocks' => $validated['blockCount'],
@@ -421,18 +421,18 @@ class ContinuationForm extends Component
                     return [
                         'id' => $project['id'] ?? null,
                         'name' => $project['name'],
-                        'units_exchanged' => $project['exchangedUnits'] ?? 0,
-                        'units_paid' => $project['paidUnits'] ?? 0,
-                        'units_unpaid' => $project['unpaidUnits'] ?? 0,
-                        'units_stock' => $project['stockUnits'] ?? 0,
-                        'cost_incurred' => $project['incurredCost'] ?? null,
+                        'exchanged_units' => $project['exchangedUnits'] ?? 0,
+                        'paid_units' => $project['paidUnits'] ?? 0,
+                        'unpaid_units' => $project['unpaidUnits'] ?? 0,
+                        'stock_units' => $project['stockUnits'] ?? 0,
+                        'incurred_cost' => $project['incurredCost'] ?? null,
                         'cost_to_incur' => $project['costToIncur'] ?? null,
-                        'value_paid' => $project['paidSalesValue'] ?? null,
-                        'value_unpaid' => $project['unpaidSalesValue'] ?? null,
-                        'value_stock' => $project['stockSalesValue'] ?? null,
-                        'value_received' => $project['receivedValue'] ?? null,
+                        'paid_sales_value' => $project['paidSalesValue'] ?? null,
+                        'unpaid_sales_value' => $project['unpaidSalesValue'] ?? null,
+                        'stock_sales_value' => $project['stockSalesValue'] ?? null,
+                        'received_value' => $project['receivedValue'] ?? null,
                         'value_until_keys' => $project['valueUntilKeys'] ?? null,
-                        'value_post_keys' => $project['valueAfterKeys'] ?? null,
+                        'value_after_keys' => $project['valueAfterKeys'] ?? null,
                     ];
                 })
                 ->values()
@@ -440,10 +440,10 @@ class ContinuationForm extends Component
             'unit_types' => collect($validated['unitTypes'])
                 ->map(function (array $unitType): array {
                     return [
-                        'total' => $unitType['totalUnits'],
+                        'total_units' => $unitType['totalUnits'],
                         'bedrooms' => $unitType['bedrooms'],
                         'parking_spaces' => $unitType['parkingSpaces'],
-                        'useful_area' => $unitType['usableArea'],
+                        'usable_area' => $unitType['usableArea'],
                         'average_price' => $unitType['averagePrice'],
                     ];
                 })
@@ -623,9 +623,9 @@ class ContinuationForm extends Component
     {
         $firstProject = $proposal->projects->first();
 
-        $this->developmentName = $firstProject?->company_name ?? '';
-        $this->websiteUrl = $firstProject?->site ?? '';
-        $this->requestedAmount = $firstProject?->formatted_value_requested ?? '';
+        $this->developmentName = $firstProject?->development_name ?? '';
+        $this->websiteUrl = $firstProject?->website_url ?? '';
+        $this->requestedAmount = $firstProject?->formatted_requested_amount ?? '';
         $this->landMarketValue = $firstProject?->formatted_land_market_value ?? '';
         $this->landArea = (string) ($firstProject?->land_area ?? '');
         $this->launchDate = $firstProject?->launch_month ?? '';
@@ -633,13 +633,13 @@ class ContinuationForm extends Component
         $this->constructionStartDate = $firstProject?->construction_start_month ?? '';
         $this->deliveryForecastDate = $firstProject?->delivery_forecast_month ?? '';
         $this->remainingMonths = $firstProject?->remaining_months ?? '';
-        $this->zipCode = $this->formatZipCode((string) ($firstProject?->cep ?? ''));
-        $this->street = $firstProject?->logradouro ?? '';
-        $this->addressComplement = $firstProject?->complemento ?? '';
-        $this->addressNumber = $firstProject?->numero ?? '';
-        $this->neighborhood = $firstProject?->bairro ?? '';
-        $this->city = $firstProject?->cidade ?? '';
-        $this->state = $firstProject?->estado ?? '';
+        $this->zipCode = $this->formatZipCode((string) ($firstProject?->zip_code ?? ''));
+        $this->street = $firstProject?->street ?? '';
+        $this->addressComplement = $firstProject?->address_complement ?? '';
+        $this->addressNumber = $firstProject?->address_number ?? '';
+        $this->neighborhood = $firstProject?->neighborhood ?? '';
+        $this->city = $firstProject?->city ?? '';
+        $this->state = $firstProject?->state ?? '';
 
         $this->blockCount = $firstProject?->characteristics?->blocks ?? '';
         $this->floorCount = $firstProject?->characteristics?->floors ?? '';
@@ -652,23 +652,23 @@ class ContinuationForm extends Component
                 ->map(fn (ProposalProject $project): array => [
                     'id' => $project->id,
                     'name' => $project->name,
-                    'exchangedUnits' => $project->units_exchanged,
-                    'paidUnits' => $project->units_paid,
-                    'unpaidUnits' => $project->units_unpaid,
-                    'stockUnits' => $project->units_stock,
+                    'exchangedUnits' => $project->exchanged_units,
+                    'paidUnits' => $project->paid_units,
+                    'unpaidUnits' => $project->unpaid_units,
+                    'stockUnits' => $project->stock_units,
                     'totalUnits' => $project->units_total,
                     'salesPercentage' => number_format((float) $project->sales_percentage, 2, '.', ''),
-                    'incurredCost' => $project->formatted_cost_incurred,
+                    'incurredCost' => $project->formatted_incurred_cost,
                     'costToIncur' => $project->formatted_cost_to_incur,
-                    'totalCost' => $project->formatted_cost_total,
+                    'totalCost' => $project->formatted_total_cost,
                     'workStagePercentage' => number_format((float) $project->work_stage_percentage, 2, '.', ''),
-                    'paidSalesValue' => $project->formatted_value_paid,
-                    'unpaidSalesValue' => $project->formatted_value_unpaid,
-                    'stockSalesValue' => $project->formatted_value_stock,
-                    'grossSalesValue' => $project->formatted_value_total_sale,
-                    'receivedValue' => $project->formatted_value_received,
+                    'paidSalesValue' => $project->formatted_paid_sales_value,
+                    'unpaidSalesValue' => $project->formatted_unpaid_sales_value,
+                    'stockSalesValue' => $project->formatted_stock_sales_value,
+                    'grossSalesValue' => $project->formatted_gross_sales_value,
+                    'receivedValue' => $project->formatted_received_value,
                     'valueUntilKeys' => $project->formatted_value_until_keys,
-                    'valueAfterKeys' => $project->formatted_value_post_keys,
+                    'valueAfterKeys' => $project->formatted_value_after_keys,
                 ])
                 ->values()
                 ->all()
@@ -681,9 +681,9 @@ class ContinuationForm extends Component
                     'totalUnits' => $unitType->total_units,
                     'bedrooms' => $unitType->bedrooms,
                     'parkingSpaces' => $unitType->parking_spaces,
-                    'usableArea' => $unitType->useful_area,
+                    'usableArea' => $unitType->usable_area,
                     'averagePrice' => $unitType->formatted_average_price,
-                    'pricePerSquareMeter' => $unitType->formatted_price_per_m2,
+                    'pricePerSquareMeter' => $unitType->formatted_price_per_square_meter,
                 ])
                 ->values()
                 ->all()
@@ -881,9 +881,9 @@ class ContinuationForm extends Component
         }
 
         return [
-            ['label' => 'Nome do Empreendimento', 'value' => $firstProject->company_name ?: '—'],
-            ['label' => 'Site', 'value' => $firstProject->site ?: '—'],
-            ['label' => 'Valor Solicitado', 'value' => 'R$ '.$firstProject->formatted_value_requested],
+            ['label' => 'Nome do Empreendimento', 'value' => $firstProject->development_name ?: '—'],
+            ['label' => 'Site', 'value' => $firstProject->website_url ?: '—'],
+            ['label' => 'Valor Solicitado', 'value' => 'R$ '.$firstProject->formatted_requested_amount],
             ['label' => 'Valor de Mercado do Terreno', 'value' => 'R$ '.$firstProject->formatted_land_market_value],
             ['label' => 'Área do Terreno', 'value' => number_format((float) $firstProject->land_area, 2, ',', '.').' m²'],
             ['label' => 'Lançamento', 'value' => $firstProject->formatted_launch_month],
@@ -903,47 +903,47 @@ class ContinuationForm extends Component
             return [
                 'name' => $project->name,
                 'region' => collect([
-                    $project->bairro,
-                    trim(implode(' - ', array_filter([$project->cidade, $project->estado]))),
-                    $project->cep ? 'CEP '.$project->cep : null,
+                    $project->neighborhood,
+                    trim(implode(' - ', array_filter([$project->city, $project->state]))),
+                    $project->zip_code ? 'CEP '.$project->zip_code : null,
                 ])->filter()->implode(' • ') ?: 'Localização não informada.',
                 'address' => collect([
-                    trim(implode(', ', array_filter([$project->logradouro, $project->numero]))),
-                    $project->complemento,
+                    trim(implode(', ', array_filter([$project->street, $project->address_number]))),
+                    $project->address_complement,
                 ])->filter()->implode(', '),
-                'site' => $project->site ?: '—',
+                'site' => $project->website_url ?: '—',
                 'metrics' => [
                     ['label' => 'Unidades Totais', 'value' => (string) $project->units_total],
                     ['label' => 'Vendas (%)', 'value' => $project->formatted_sales_percentage],
-                    ['label' => 'VGV Total', 'value' => 'R$ '.$project->formatted_value_total_sale],
+                    ['label' => 'VGV Total', 'value' => 'R$ '.$project->formatted_gross_sales_value],
                     ['label' => 'Fluxo de Pagamento', 'value' => 'R$ '.$project->formatted_payment_flow_total],
                 ],
                 'unit_summary' => [
-                    ['label' => 'Permutadas', 'value' => (string) $project->units_exchanged],
-                    ['label' => 'Quitadas', 'value' => (string) $project->units_paid],
-                    ['label' => 'Não Quitadas', 'value' => (string) $project->units_unpaid],
-                    ['label' => 'Estoque', 'value' => (string) $project->units_stock],
+                    ['label' => 'Permutadas', 'value' => (string) $project->exchanged_units],
+                    ['label' => 'Quitadas', 'value' => (string) $project->paid_units],
+                    ['label' => 'Não Quitadas', 'value' => (string) $project->unpaid_units],
+                    ['label' => 'Estoque', 'value' => (string) $project->stock_units],
                     ['label' => 'Total', 'value' => (string) $project->units_total],
                     ['label' => '% Vendidas', 'value' => $project->formatted_sales_percentage],
                 ],
                 'financial_summary' => [
-                    ['label' => 'Custo Incorrido', 'value' => 'R$ '.$project->formatted_cost_incurred],
+                    ['label' => 'Custo Incorrido', 'value' => 'R$ '.$project->formatted_incurred_cost],
                     ['label' => 'Custo a Incorrer', 'value' => 'R$ '.$project->formatted_cost_to_incur],
-                    ['label' => 'Custo Total', 'value' => 'R$ '.$project->formatted_cost_total],
+                    ['label' => 'Custo Total', 'value' => 'R$ '.$project->formatted_total_cost],
                     ['label' => 'Estágio da Obra', 'value' => $project->formatted_work_stage_percentage],
-                    ['label' => 'VGV Total', 'value' => 'R$ '.$project->formatted_value_total_sale],
+                    ['label' => 'VGV Total', 'value' => 'R$ '.$project->formatted_gross_sales_value],
                     ['label' => 'Recebíveis', 'value' => 'R$ '.$project->formatted_payment_flow_total],
                 ],
                 'sales_values' => [
-                    ['label' => 'Quitadas', 'value' => 'R$ '.$project->formatted_value_paid],
-                    ['label' => 'Vendidas', 'value' => 'R$ '.$project->formatted_value_unpaid],
-                    ['label' => 'Estoque', 'value' => 'R$ '.$project->formatted_value_stock],
-                    ['label' => 'VGV Total', 'value' => 'R$ '.$project->formatted_value_total_sale],
+                    ['label' => 'Quitadas', 'value' => 'R$ '.$project->formatted_paid_sales_value],
+                    ['label' => 'Vendidas', 'value' => 'R$ '.$project->formatted_unpaid_sales_value],
+                    ['label' => 'Estoque', 'value' => 'R$ '.$project->formatted_stock_sales_value],
+                    ['label' => 'VGV Total', 'value' => 'R$ '.$project->formatted_gross_sales_value],
                 ],
                 'payment_flow' => [
-                    ['label' => 'Valor já Recebido', 'value' => 'R$ '.$project->formatted_value_received],
+                    ['label' => 'Valor já Recebido', 'value' => 'R$ '.$project->formatted_received_value],
                     ['label' => 'A receber até as chaves', 'value' => 'R$ '.$project->formatted_value_until_keys],
-                    ['label' => 'A receber pós chaves', 'value' => 'R$ '.$project->formatted_value_post_keys],
+                    ['label' => 'A receber pós chaves', 'value' => 'R$ '.$project->formatted_value_after_keys],
                     ['label' => 'Total', 'value' => 'R$ '.$project->formatted_payment_flow_total],
                 ],
                 'characteristics' => $project->characteristics ? [
@@ -960,9 +960,9 @@ class ContinuationForm extends Component
                             'total_units' => $unitType->total_units,
                             'bedrooms' => $unitType->bedrooms ?: '—',
                             'parking_spaces' => $unitType->parking_spaces ?: '—',
-                            'useful_area' => $unitType->formatted_useful_area.' m²',
+                            'usable_area' => $unitType->formatted_usable_area.' m²',
                             'average_price' => 'R$ '.$unitType->formatted_average_price,
-                            'price_per_m2' => 'R$ '.$unitType->formatted_price_per_m2,
+                            'price_per_square_meter' => 'R$ '.$unitType->formatted_price_per_square_meter,
                         ])
                         ->all(),
                 ] : null,

@@ -1,4 +1,4 @@
-<section class="py-5" style="min-height: 70vh; background: linear-gradient(180deg, rgba(255,255,255,0.55), transparent 180px), radial-gradient(1100px 420px at 50% -8%, rgba(0,32,91,0.10), transparent 72%), var(--bg);">
+<section class="py-5 min-h-[70vh] [background:linear-gradient(180deg,_rgba(255,255,255,0.55),_transparent_180px),radial-gradient(1100px_420px_at_50%_-8%,_rgba(0,32,91,0.10),_transparent_72%),var(--bg)]">
     <div class="container py-lg-4">
         <div class="row justify-content-center">
             <div class="col-xl-10">
@@ -23,8 +23,7 @@
                     @endif
 
                     {{-- Hero Card --}}
-                    <div class="relative overflow-hidden rounded-[30px] border border-[var(--border)] shadow-[0_20px_45px_rgba(0,32,91,0.08)]"
-                         style="background: linear-gradient(145deg, color-mix(in oklab, var(--surface) 95%, white 5%), color-mix(in oklab, var(--surface) 88%, var(--brand) 12%));">
+                    <div class="relative overflow-hidden rounded-[30px] border border-[var(--border)] shadow-[0_20px_45px_rgba(0,32,91,0.08)] [background:linear-gradient(145deg,_color-mix(in_oklab,_var(--surface)_95%,_white_5%),_color-mix(in_oklab,_var(--surface)_88%,_var(--brand)_12%))]">
                         <div class="absolute inset-y-0 left-0 w-[6px] bg-gradient-to-b from-[var(--gold)] to-[var(--brand)]"></div>
                         <div class="p-4 p-lg-5">
                             <div class="row g-4 align-items-start">
@@ -39,8 +38,7 @@
 
                                 <div class="col-lg-4 text-lg-end">
                                     <div class="mb-[0.45rem] text-[0.76rem] font-bold tracking-[0.08em] uppercase text-[var(--muted)]">Status Atual</div>
-                                    <span class="inline-flex items-center gap-[0.65rem] px-4 py-3 rounded-full border font-bold text-[var(--brand)]"
-                                          style="border-color: color-mix(in oklab, var(--gold) 30%, var(--border) 70%); background: color-mix(in oklab, var(--gold) 10%, var(--surface) 90%);">
+                                    <span class="inline-flex items-center gap-[0.65rem] px-4 py-3 rounded-full border border-[color-mix(in_oklab,var(--gold)_30%,var(--border)_70%)] bg-[color-mix(in_oklab,var(--gold)_10%,var(--surface)_90%)] font-bold text-[var(--brand)]">
                                         <span class="inline-block w-[0.7rem] h-[0.7rem] rounded-full bg-[var(--gold)] shadow-[0_0_0_0.35rem_rgba(212,175,55,0.18)]"></span>
                                         {{ $proposal->status_label }}
                                     </span>
