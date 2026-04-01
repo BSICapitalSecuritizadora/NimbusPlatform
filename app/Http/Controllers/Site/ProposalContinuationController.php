@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Site;
 
 use App\Actions\Proposals\StoreProposalContinuationData;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreProposalContinuationRequest;
 use App\Http\Requests\VerifyProposalContinuationRequest;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
@@ -77,7 +76,7 @@ class ProposalContinuationController extends Controller
     }
 
     public function store(
-        StoreProposalContinuationRequest $request,
+        Request $request,
         ProposalContinuationAccess $access,
         StoreProposalContinuationData $storeProposalContinuationData,
     ): RedirectResponse {
@@ -85,11 +84,10 @@ class ProposalContinuationController extends Controller
 
         $proposal = $this->loadProposal($access);
         $this->ensureCanStoreFromRequester($proposal);
-        $validated = $request->validated();
 
         $storeProposalContinuationData->handle(
             $proposal,
-            StoreProposalContinuationData::fromFlatPayload($validated),
+            StoreProposalContinuationData::fromFlatPayload($request->all()),
             $request->file('arquivos', []),
         );
 
