@@ -1,282 +1,261 @@
-<section class="min-h-screen bg-[linear-gradient(180deg,rgba(248,250,252,0.94),rgba(255,255,255,0.98)),radial-gradient(circle_at_top,rgba(0,32,91,0.09),transparent_42%)] py-12 sm:py-16">
-    <div class="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 sm:px-6 lg:px-8">
-        <div class="overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(0,18,51,0.98),rgba(5,27,74,0.95))] text-white shadow-[0_32px_80px_rgba(0,18,51,0.18)]">
-            <div class="grid gap-8 px-6 py-8 sm:px-8 lg:grid-cols-[1.3fr_0.7fr] lg:px-10 lg:py-10">
-                <div class="space-y-4">
-                    <span class="inline-flex w-fit items-center rounded-full border border-[rgba(212,175,55,0.35)] bg-[rgba(212,175,55,0.12)] px-4 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">
-                        Oportunidade
-                    </span>
-                    <div class="space-y-3">
-                        <h1 class="text-4xl font-black tracking-[-0.05em] sm:text-5xl">
-                            Envie sua <span class="text-[var(--gold)]">Proposta</span>
-                        </h1>
-                        <p class="max-w-3xl text-sm leading-7 text-white/72 sm:text-base">
-                            Seja para securitização, estruturação ou novos negócios, preencha o formulário abaixo para iniciarmos uma análise preliminar.
-                        </p>
-                    </div>
+<section class="py-5 bg-transparent">
+    <div class="container py-4">
+        <!-- HEADER CARD -->
+        <div class="surface-card p-4 p-lg-5 mb-5 border-0 shadow-sm" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f); color: #fff;">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-7">
+                    <span class="badge badge-soft px-3 py-2 mb-3">OPORTUNIDADE</span>
+                    <h1 class="display-5 fw-bold mb-3">
+                        Envie sua <span style="color: var(--gold);">Proposta</span>
+                    </h1>
+                    <p class="lead text-white-50 mb-0" style="font-size: 1.1rem; max-width: 600px;">
+                        Seja para securitização, estruturação ou novos negócios, preencha o formulário abaixo para iniciarmos uma análise preliminar.
+                    </p>
                 </div>
-
-                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                    <div class="rounded-[1.5rem] border border-white/10 bg-white/8 p-5 backdrop-blur">
-                        <div class="text-[0.72rem] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Fluxo</div>
-                        <div class="mt-2 text-lg font-semibold tracking-[-0.03em]">Cadastro inicial</div>
-                        <div class="mt-2 text-sm text-white/68">Os dados da empresa e do contato são registrados nesta primeira etapa.</div>
-                    </div>
-                    <div class="rounded-[1.5rem] border border-white/10 bg-white/8 p-5 backdrop-blur">
-                        <div class="text-[0.72rem] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Continuação</div>
-                        <div class="mt-2 text-lg font-semibold tracking-[-0.03em]">Link seguro por e-mail</div>
-                        <div class="mt-2 text-sm text-white/68">Depois do envio, você recebe um acesso protegido para complementar as informações.</div>
+                <div class="col-lg-5">
+                    <div class="d-flex flex-column gap-3">
+                        <div class="p-4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;">
+                            <div class="kicker mb-2" style="color: var(--gold);">FLUXO</div>
+                            <div class="fs-5 fw-bold mb-1">Cadastro inicial</div>
+                            <div class="small text-white-50">Os dados da empresa e do contato são registrados nesta primeira etapa.</div>
+                        </div>
+                        <div class="p-4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;">
+                            <div class="kicker mb-2" style="color: var(--gold);">CONTINUAÇÃO</div>
+                            <div class="fs-5 fw-bold mb-1">Link seguro por e-mail</div>
+                            <div class="small text-white-50">Depois do envio, você recebe um acesso protegido para complementar as informações.</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- NOTIFICATIONS -->
         @if (session('success'))
-            <div class="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800 shadow-sm">
-                {{ session('success') }}
+            <div class="alert alert-success d-flex align-items-center mb-4" role="alert" style="border-radius: 16px; border: 1px solid rgba(25, 135, 84, 0.2); background: rgba(25, 135, 84, 0.05);">
+                <div>{{ session('success') }}</div>
             </div>
         @endif
 
         @error('submission')
-            <div class="rounded-[1.5rem] border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm">
-                {{ $message }}
+            <div class="alert alert-danger d-flex align-items-center mb-4" role="alert" style="border-radius: 16px; border: 1px solid rgba(220, 53, 69, 0.2); background: rgba(220, 53, 69, 0.05);">
+                <div>{{ $message }}</div>
             </div>
         @enderror
 
         @if ($errors->any() && ! $errors->has('submission'))
-            <div class="rounded-[1.5rem] border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm">
-                <p class="font-semibold">Revise os campos destacados antes de continuar.</p>
+            <div class="alert alert-danger d-flex align-items-center mb-4" role="alert" style="border-radius: 16px; border: 1px solid rgba(220, 53, 69, 0.2); background: rgba(220, 53, 69, 0.05);">
+                <div class="fw-semibold">Revise os campos destacados antes de continuar.</div>
             </div>
         @endif
 
-        <form wire:submit="save" class="space-y-8">
-            <div class="rounded-[2rem] border border-[var(--border)] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-                <div class="border-b border-[var(--border)] px-6 py-6 sm:px-8">
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <div class="text-xs font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Etapa 1</div>
-                            <h2 class="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-[var(--brand)]">Dados da Empresa</h2>
-                        </div>
-                        <p class="max-w-xl text-sm leading-6 text-[var(--muted)]">
-                            Informe o CNPJ para preencher a base inicial e ajuste os dados manualmente se necessário.
-                        </p>
+        <!-- FORM -->
+        <form wire:submit="save">
+            <!-- SECTION 1: DADOS DA EMPRESA -->
+            <div class="surface-card p-4 p-lg-5 mb-4 border-0">
+                <div class="mb-4 pb-4 border-bottom border-brand-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
+                    <div>
+                        <div class="section-kicker mb-2">Etapa 1</div>
+                        <h2 class="h3 fw-bold text-brand mb-0">Dados da Empresa</h2>
                     </div>
-                </div>
-
-                <div class="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-2">
-                    <flux:field>
-                        <flux:label>CNPJ</flux:label>
-                        <flux:input wire:model.blur="cnpj" mask="99.999.999/9999-99" inputmode="numeric" placeholder="00.000.000/0000-00" />
-                        <flux:description wire:loading wire:target="cnpj">Consultando dados públicos do CNPJ...</flux:description>
-                        <flux:error name="cnpj" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>Nome da Empresa</flux:label>
-                        <flux:input wire:model.blur="companyName" placeholder="Razão Social" />
-                        <flux:error name="companyName" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>Inscrição Estadual</flux:label>
-                        <flux:input wire:model.blur="stateRegistration" placeholder="IE (opcional)" />
-                        <flux:error name="stateRegistration" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>Site</flux:label>
-                        <flux:input wire:model.blur="website" type="url" placeholder="https://" />
-                        <flux:error name="website" />
-                    </flux:field>
-
-                    <div class="lg:col-span-2">
-                        <div class="space-y-3">
-                            <div>
-                                <label class="text-sm font-semibold text-zinc-700">Setores de Atuação</label>
-                                <p class="mt-1 text-sm text-zinc-500">Selecione ao menos um setor ligado à proposta.</p>
-                            </div>
-
-                            <div class="flex flex-wrap gap-3">
-                                @foreach ($sectors as $sector)
-                                    <label wire:key="sector-{{ $sector->id }}" class="group relative cursor-pointer">
-                                        <input type="checkbox" value="{{ $sector->id }}" wire:model.live="sectorIds" class="peer sr-only">
-                                        <span class="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-600 transition peer-checked:border-[var(--brand)] peer-checked:bg-[var(--brand)] peer-checked:text-white group-hover:border-[var(--gold)] group-hover:text-[var(--brand)]">
-                                            {{ $sector->name }}
-                                        </span>
-                                    </label>
-                                @endforeach
-                            </div>
-
-                            @error('sectorIds')
-                                <p class="text-sm font-medium text-red-600">{{ $message }}</p>
-                            @enderror
-
-                            @error('sectorIds.*')
-                                <p class="text-sm font-medium text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="rounded-[2rem] border border-[var(--border)] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-                <div class="border-b border-[var(--border)] px-6 py-6 sm:px-8">
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <div class="text-xs font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Etapa 2</div>
-                            <h2 class="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-[var(--brand)]">Localização</h2>
-                        </div>
-                        <p class="max-w-xl text-sm leading-6 text-[var(--muted)]">
-                            Ao informar o CEP, o endereço é completado automaticamente e pode ser ajustado antes do envio.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="grid gap-6 px-6 py-6 sm:px-8 md:grid-cols-2 xl:grid-cols-4">
-                    <flux:field class="xl:col-span-1">
-                        <flux:label>CEP</flux:label>
-                        <flux:input wire:model.blur="postalCode" mask="99999-999" inputmode="numeric" placeholder="00000-000" />
-                        <flux:description wire:loading wire:target="postalCode">Buscando endereço pelo CEP...</flux:description>
-                        <flux:error name="postalCode" />
-                    </flux:field>
-
-                    <flux:field class="xl:col-span-2">
-                        <flux:label>Logradouro</flux:label>
-                        <flux:input wire:model.blur="street" placeholder="Rua, Avenida..." />
-                        <flux:error name="street" />
-                    </flux:field>
-
-                    <flux:field class="xl:col-span-1">
-                        <flux:label>Número</flux:label>
-                        <flux:input wire:model.blur="addressNumber" placeholder="Nº" />
-                        <flux:error name="addressNumber" />
-                    </flux:field>
-
-                    <flux:field class="md:col-span-2 xl:col-span-1">
-                        <flux:label>Complemento</flux:label>
-                        <flux:input wire:model.blur="addressComplement" placeholder="Apto, Sala..." />
-                        <flux:error name="addressComplement" />
-                    </flux:field>
-
-                    <flux:field class="md:col-span-2 xl:col-span-1">
-                        <flux:label>Bairro</flux:label>
-                        <flux:input wire:model.blur="neighborhood" placeholder="Bairro" />
-                        <flux:error name="neighborhood" />
-                    </flux:field>
-
-                    <flux:field class="md:col-span-1 xl:col-span-1">
-                        <flux:label>Cidade</flux:label>
-                        <flux:input wire:model.blur="city" placeholder="Cidade" />
-                        <flux:error name="city" />
-                    </flux:field>
-
-                    <flux:field class="md:col-span-1 xl:col-span-1">
-                        <flux:label>UF</flux:label>
-                        <flux:input wire:model.blur="state" maxlength="2" placeholder="UF" />
-                        <flux:error name="state" />
-                    </flux:field>
-                </div>
-            </div>
-
-            <div class="rounded-[2rem] border border-[var(--border)] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-                <div class="border-b border-[var(--border)] px-6 py-6 sm:px-8">
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <div class="text-xs font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Etapa 3</div>
-                            <h2 class="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-[var(--brand)]">Dados de Contato</h2>
-                        </div>
-                        <p class="max-w-xl text-sm leading-6 text-[var(--muted)]">
-                            Este contato receberá o link seguro para continuar o preenchimento da proposta.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="grid gap-6 px-6 py-6 sm:px-8 md:grid-cols-2 xl:grid-cols-4">
-                    <flux:field class="xl:col-span-2">
-                        <flux:label>Nome do Contato</flux:label>
-                        <flux:input wire:model.blur="contactName" placeholder="Nome completo" />
-                        <flux:error name="contactName" />
-                    </flux:field>
-
-                    <flux:field class="xl:col-span-2">
-                        <flux:label>E-mail</flux:label>
-                        <flux:input wire:model.blur="email" type="email" placeholder="email@empresa.com.br" />
-                        <flux:error name="email" />
-                    </flux:field>
-
-                    <flux:field class="xl:col-span-2">
-                        <flux:label>Telefone Pessoal / Celular</flux:label>
-                        <flux:input
-                            wire:model.blur="personalPhone"
-                            mask:dynamic="$input.replace(/\D/g, '').length > 10 ? '(99) 99999-9999' : '(99) 9999-9999'"
-                            inputmode="tel"
-                            placeholder="(00) 00000-0000"
-                        />
-                        <flux:error name="personalPhone" />
-                    </flux:field>
-
-                    <flux:field class="xl:col-span-1">
-                        <flux:label>Telefone da Empresa</flux:label>
-                        <flux:input
-                            wire:model.blur="companyPhone"
-                            mask:dynamic="$input.replace(/\D/g, '').length > 10 ? '(99) 99999-9999' : '(99) 9999-9999'"
-                            inputmode="tel"
-                            placeholder="(00) 0000-0000"
-                        />
-                        <flux:error name="companyPhone" />
-                    </flux:field>
-
-                    <flux:field class="xl:col-span-1">
-                        <flux:label>Cargo</flux:label>
-                        <flux:input wire:model.blur="jobTitle" placeholder="Ex: Diretor Financeiro" />
-                        <flux:error name="jobTitle" />
-                    </flux:field>
-
-                    <div class="rounded-[1.5rem] border border-zinc-200 bg-zinc-50 px-5 py-4 md:col-span-2 xl:col-span-4">
-                        <label class="flex items-start gap-3">
-                            <flux:checkbox wire:model.live="hasWhatsapp" />
-                            <span class="space-y-1">
-                                <span class="block text-sm font-semibold text-zinc-800">Este contato recebe mensagens por WhatsApp</span>
-                                <span class="block text-sm text-zinc-500">Use esta opção para facilitar o retorno do time comercial.</span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="rounded-[2rem] border border-[var(--border)] bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-                <div class="border-b border-[var(--border)] px-6 py-6 sm:px-8">
-                    <div class="text-xs font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Etapa 4</div>
-                    <h2 class="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-[var(--brand)]">Assunto e Observações</h2>
-                </div>
-
-                <div class="px-6 py-6 sm:px-8">
-                    <flux:field>
-                        <flux:label>Descreva brevemente sua proposta ou dúvida</flux:label>
-                        <flux:textarea wire:model.blur="observations" rows="5" placeholder="Mais detalhes sobre o empreendimento ou operação..." />
-                        <flux:error name="observations" />
-                    </flux:field>
-                </div>
-            </div>
-
-            <div class="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(0,32,91,0.98),rgba(8,24,64,0.96))] px-6 py-6 text-white shadow-[0_24px_60px_rgba(0,18,51,0.18)] sm:flex-row sm:items-center sm:justify-between sm:px-8">
-                <div class="max-w-2xl">
-                    <div class="text-xs font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Próximo passo</div>
-                    <p class="mt-2 text-sm leading-7 text-white/72 sm:text-base">
-                        Após o envio, você receberá um link seguro para complementar os dados do empreendimento e anexar os documentos necessários.
+                    <p class="text-muted mb-0" style="max-width: 400px; font-size: 0.9rem;">
+                        Informe o CNPJ para preencher a base inicial e ajuste os dados manualmente se necessário.
                     </p>
                 </div>
 
-                <flux:button
-                    type="submit"
-                    variant="primary"
-                    wire:loading.attr="disabled"
-                    wire:target="save"
-                    class="justify-center !rounded-full !px-8 !py-3 !bg-[var(--gold)] !text-[var(--brand)] hover:!bg-[#e6c76d]"
-                >
-                    <span wire:loading.remove wire:target="save">Enviar Proposta</span>
-                    <span wire:loading wire:target="save">Enviando...</span>
-                </flux:button>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label">CNPJ</label>
+                        <input type="text" class="form-control" wire:model.blur="cnpj" x-mask="99.999.999/9999-99" inputmode="numeric" placeholder="00.000.000/0000-00">
+                        <div wire:loading wire:target="cnpj" class="form-text text-brand">Consultando dados públicos do CNPJ...</div>
+                        @error('cnpj') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Nome da Empresa</label>
+                        <input type="text" class="form-control" wire:model.blur="companyName" placeholder="Razão Social">
+                        @error('companyName') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Inscrição Estadual</label>
+                        <input type="text" class="form-control" wire:model.blur="stateRegistration" placeholder="IE (opcional)">
+                        @error('stateRegistration') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Site</label>
+                        <input type="url" class="form-control" wire:model.blur="website" placeholder="https://">
+                        @error('website') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Setores de Atuação</label>
+                        <div class="form-text mt-0 mb-3">Selecione ao menos um setor ligado à proposta.</div>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach ($sectors as $sector)
+                                <input type="checkbox" class="btn-check" id="sector-{{ $sector->id }}" value="{{ $sector->id }}" wire:model.live="sectorIds">
+                                <label class="btn btn-outline-brand rounded-pill" for="sector-{{ $sector->id }}" style="font-weight: 600;">
+                                    {{ $sector->name }}
+                                </label>
+                            @endforeach
+                        </div>
+
+                        @error('sectorIds') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        @error('sectorIds.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: LOCALIZAÇÃO -->
+            <div class="surface-card p-4 p-lg-5 mb-4 border-0">
+                <div class="mb-4 pb-4 border-bottom border-brand-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
+                    <div>
+                        <div class="section-kicker mb-2">Etapa 2</div>
+                        <h2 class="h3 fw-bold text-brand mb-0">Localização</h2>
+                    </div>
+                    <p class="text-muted mb-0" style="max-width: 400px; font-size: 0.9rem;">
+                        Ao informar o CEP, o endereço é completado automaticamente e pode ser ajustado antes do envio.
+                    </p>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <label class="form-label">CEP</label>
+                        <input type="text" class="form-control" wire:model.blur="postalCode" x-mask="99999-999" inputmode="numeric" placeholder="00000-000">
+                        <div wire:loading wire:target="postalCode" class="form-text text-brand">Buscando endereço pelo CEP...</div>
+                        @error('postalCode') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Logradouro</label>
+                        <input type="text" class="form-control" wire:model.blur="street" placeholder="Rua, Avenida...">
+                        @error('street') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Número</label>
+                        <input type="text" class="form-control" wire:model.blur="addressNumber" placeholder="Nº">
+                        @error('addressNumber') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Complemento</label>
+                        <input type="text" class="form-control" wire:model.blur="addressComplement" placeholder="Apto, Sala...">
+                        @error('addressComplement') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Bairro</label>
+                        <input type="text" class="form-control" wire:model.blur="neighborhood" placeholder="Bairro">
+                        @error('neighborhood') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Cidade</label>
+                        <input type="text" class="form-control" wire:model.blur="city" placeholder="Cidade">
+                        @error('city') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-1">
+                        <label class="form-label">UF</label>
+                        <input type="text" class="form-control" wire:model.blur="state" maxlength="2" placeholder="UF" style="text-transform: uppercase;">
+                        @error('state') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: DADOS DE CONTATO -->
+            <div class="surface-card p-4 p-lg-5 mb-4 border-0">
+                <div class="mb-4 pb-4 border-bottom border-brand-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
+                    <div>
+                        <div class="section-kicker mb-2">Etapa 3</div>
+                        <h2 class="h3 fw-bold text-brand mb-0">Dados de Contato</h2>
+                    </div>
+                    <p class="text-muted mb-0" style="max-width: 400px; font-size: 0.9rem;">
+                        Este contato receberá o link seguro para continuar o preenchimento da proposta.
+                    </p>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Nome do Contato</label>
+                        <input type="text" class="form-control" wire:model.blur="contactName" placeholder="Nome completo">
+                        @error('contactName') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">E-mail</label>
+                        <input type="email" class="form-control" wire:model.blur="email" placeholder="email@empresa.com.br">
+                        @error('email') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Telefone Pessoal / Celular</label>
+                        <input type="tel" class="form-control" wire:model.blur="personalPhone" x-mask:dynamic="$input.replace(/\D/g, '').length > 10 ? '(99) 99999-9999' : '(99) 9999-9999'" inputmode="tel" placeholder="(00) 00000-0000">
+                        @error('personalPhone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Telefone da Empresa</label>
+                        <input type="tel" class="form-control" wire:model.blur="companyPhone" x-mask:dynamic="$input.replace(/\D/g, '').length > 10 ? '(99) 99999-9999' : '(99) 9999-9999'" inputmode="tel" placeholder="(00) 0000-0000">
+                        @error('companyPhone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Cargo</label>
+                        <input type="text" class="form-control" wire:model.blur="jobTitle" placeholder="Ex: Diretor Financeiro">
+                        @error('jobTitle') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-12 mt-4 mt-md-5">
+                        <div class="p-4" style="border-radius: 16px; background: color-mix(in srgb, var(--surface-alt) 50%, transparent); border: 1px solid var(--border);">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-switch fs-4 mb-0 pb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="hasWhatsappCheck" wire:model.live="hasWhatsapp">
+                                </div>
+                                <label class="form-check-label ms-1" for="hasWhatsappCheck" style="cursor: pointer;">
+                                    <div class="fw-bold text-text mb-0" style="line-height:1.2;">Este contato recebe mensagens por WhatsApp</div>
+                                    <div class="text-muted small mt-1">Use esta opção para facilitar o retorno do time comercial.</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 4: ASSUNTO E OBSERVAÇÕES -->
+            <div class="surface-card p-4 p-lg-5 mb-4 border-0">
+                <div class="mb-4 pb-4 border-bottom border-brand-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
+                    <div>
+                        <div class="section-kicker mb-2">Etapa 4</div>
+                        <h2 class="h3 fw-bold text-brand mb-0">Assunto e Observações</h2>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Descreva brevemente sua proposta ou dúvida</label>
+                    <textarea class="form-control" wire:model.blur="observations" rows="5" placeholder="Mais detalhes sobre o empreendimento ou operação..."></textarea>
+                    @error('observations') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                </div>
+            </div>
+
+            <!-- SUBMIT BUTTON -->
+            <div class="surface-card p-4 p-lg-5 mb-5 border-0" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f); color: #fff;">
+                <div class="row align-items-center g-4">
+                    <div class="col-lg-8">
+                        <div class="kicker mb-2" style="color: var(--gold);">PRÓXIMO PASSO</div>
+                        <p class="mb-0 text-white-50" style="font-size: 1.05rem;">
+                            Após o envio, você receberá um link seguro para complementar os dados do empreendimento e anexar os documentos necessários.
+                        </p>
+                    </div>
+                    <div class="col-lg-4 text-lg-end">
+                        <button type="submit" class="btn px-4 py-2 w-100 w-lg-auto" wire:loading.attr="disabled" wire:target="save" style="background: var(--gold); border-color: var(--gold); color: var(--brand-strong); font-weight: 700; border-radius: 999px;">
+                            <span wire:loading.remove wire:target="save">Enviar Proposta</span>
+                            <span wire:loading wire:target="save">Enviando...</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </form>
     </div>

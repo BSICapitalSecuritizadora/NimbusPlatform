@@ -99,6 +99,7 @@ $ensureContinuationCanStore = static function (Proposal $proposal): void {
 
 $normalizeProposalCnpj = static fn (string $value): string => preg_replace('/\D/', '', $value) ?? '';
 
+Route::redirect('/proposta', '/proposals/create')->name('site.proposal.create');
 Route::get('/proposals/create', \App\Livewire\Proposals\CreateProposalForm::class)->name('proposal.create');
 Route::get('/proposta/continuar/{access}', function (Request $request, ProposalContinuationAccess $access) use ($hasAuthorizedContinuationSession, $loadProposalContinuation, $magicLinkSessionKey) {
     abort_unless($request->hasValidSignature() && $access->isActive(), 403);

@@ -19,6 +19,11 @@ it('renders the proposal creation page through the full-page livewire component'
         ->assertSee('Envie sua Proposta');
 });
 
+it('keeps the legacy public proposal url working', function () {
+    $this->get('/proposta')
+        ->assertRedirect(route('proposal.create'));
+});
+
 it('hydrates company and address fields from cnpj and postal code lookups', function () {
     Http::fake([
         'https://publica.cnpj.ws/cnpj/*' => Http::response([
