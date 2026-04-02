@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Proposals;
 
 use App\Actions\Proposals\UpdateProposalStatus;
+use App\DTOs\Proposals\UpdateProposalStatusDTO;
 use App\Enums\ProposalStatus;
 use App\Filament\Resources\Proposals\Pages\EditProposal;
 use App\Filament\Resources\Proposals\Pages\ListProposals;
@@ -316,9 +317,11 @@ class ProposalResource extends Resource
             ->action(function (Proposal $record, array $data): void {
                 app(UpdateProposalStatus::class)->handle(
                     $record,
-                    $data['status'],
-                    static::resolveCurrentUser(),
-                    $data['note'] ?? null,
+                    UpdateProposalStatusDTO::fromArray([
+                        'status' => $data['status'],
+                        'user' => static::resolveCurrentUser(),
+                        'note' => $data['note'] ?? null,
+                    ]),
                 );
 
                 $record->refresh();

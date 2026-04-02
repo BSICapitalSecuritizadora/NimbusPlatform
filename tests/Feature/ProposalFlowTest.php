@@ -2,6 +2,7 @@
 
 use App\Actions\Proposals\SendProposalContinuationLink;
 use App\Actions\Proposals\UpdateProposalStatus;
+use App\DTOs\Proposals\UpdateProposalStatusDTO;
 use App\Mail\ProposalContinuationLinkMail;
 use App\Models\Proposal;
 use App\Models\ProposalAssignment;
@@ -310,9 +311,11 @@ it('preserves project level internal analysis when the proposer resubmits reques
 
     app(UpdateProposalStatus::class)->handle(
         $proposal->fresh(),
-        Proposal::STATUS_AWAITING_INFORMATION,
-        $representativeUser,
-        'Atualizar vendas da Torre Madrid.',
+        UpdateProposalStatusDTO::fromArray([
+            'status' => Proposal::STATUS_AWAITING_INFORMATION,
+            'user' => $representativeUser,
+            'note' => 'Atualizar vendas da Torre Madrid.',
+        ]),
     );
 
     $proposal->refresh();

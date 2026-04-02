@@ -5,6 +5,7 @@ namespace App\Livewire\Proposals;
 use App\Actions\Proposals\AssignProposalRepresentative;
 use App\Actions\Proposals\SendProposalContinuationLink;
 use App\Actions\Proposals\UpdateProposalStatus;
+use App\DTOs\Proposals\ProposalStatusHistoryDTO;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
@@ -226,10 +227,11 @@ class CreateProposalForm extends Component
                 $assignProposalRepresentative->handle($proposal);
                 $updateProposalStatus->recordHistory(
                     $proposal,
-                    null,
-                    Proposal::STATUS_AWAITING_COMPLETION,
-                    null,
-                    'Proposta recebida e aguardando complementação do cliente.',
+                    ProposalStatusHistoryDTO::fromArray([
+                        'previousStatus' => null,
+                        'status' => Proposal::STATUS_AWAITING_COMPLETION,
+                        'note' => 'Proposta recebida e aguardando complementação do cliente.',
+                    ]),
                 );
 
                 return $proposal->fresh(['company', 'contact', 'representative']);
@@ -365,11 +367,19 @@ class CreateProposalForm extends Component
             return $digits;
         }
 
-        $formatted = preg_replace('/^(\d{2})(\d)/', '$1.$2', $digits) ?? $digits;
-        $formatted = preg_replace('/^(\d{2})\.(\d{3})(\d)/', '$1.$2.$3', $formatted) ?? $formatted;
-        $formatted = preg_replace('/\.(\d{3})(\d)/', '.$1/$2', $formatted) ?? $formatted;
+        if (strlen($digits) <= 5) {
+            return substr($digits, 0, 2).'.'.substr($digits, 2);
+        }
 
-        return preg_replace('/(\d{4})(\d)/', '$1-$2', $formatted) ?? $formatted;
+        if (strlen($digits) <= 8) {
+            return substr($digits, 0, 2).'.'.substr($digits, 2, 3).'.'.substr($digits, 5);
+        }
+
+        if (strlen($digits) <= 12) {
+            return substr($digits, 0, 2).'.'.substr($digits, 2, 3).'.'.substr($digits, 5, 3).'/'.substr($digits, 8);
+        }
+
+        return substr($digits, 0, 2).'.'.substr($digits, 2, 3).'.'.substr($digits, 5, 3).'/'.substr($digits, 8, 4).'-'.substr($digits, 12);
     }
 
     protected function formatPostalCode(string $value): string

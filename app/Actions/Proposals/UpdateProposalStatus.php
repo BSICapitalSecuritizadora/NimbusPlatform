@@ -2,6 +2,8 @@
 
 namespace App\Actions\Proposals;
 
+use App\DTOs\Proposals\ProposalStatusHistoryDTO;
+use App\DTOs\Proposals\UpdateProposalStatusDTO;
 use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalStatusHistory;
@@ -16,58 +18,53 @@ class UpdateProposalStatus
         protected NotifyProposalStatusChange $notifyProposalStatusChange,
     ) {}
 
-    public function handle(
-        Proposal $proposal,
-        ProposalStatus|string $newStatus,
-        ?User $user = null,
-        ?string $note = null,
-        bool $authorize = true,
-    ): ProposalStatusHistory {
-        $newStatus = $this->normalizeStatus($newStatus);
-
-        if (! $newStatus) {
-            throw ValidationException::withMessages([
-                'status' => 'Selecione um status válido para continuar.',
-            ]);
-        }
-
-        if ($authorize && ! $this->canChangeStatus($proposal, $user)) {
+    public function handle(Proposal $proposal, UpdateProposalStatusDTO $dto): ProposalStatusHistory
+    {
+        if ($dto->authorize && ! $this->canChangeStatus($proposal, $dto->user)) {
             throw new AuthorizationException('Você não pode alterar o status desta proposta.');
         }
 
         $currentStatus = $this->normalizeStatus($proposal->status);
 
-        if ($currentStatus?->value === $newStatus->value) {
+        if ($currentStatus?->value === $dto->newStatus->value) {
             throw ValidationException::withMessages([
                 'status' => 'Selecione um novo status para continuar.',
             ]);
         }
 
-        if (! in_array($newStatus, $this->allowedStatusTransitions($currentStatus), true)) {
+        if (! in_array($dto->newStatus, $this->allowedStatusTransitions($currentStatus), true)) {
             throw ValidationException::withMessages([
                 'status' => 'A transição de status informada não é permitida.',
             ]);
         }
 
-        $normalizedNote = filled($note) ? trim((string) $note) : null;
+        $normalizedNote = filled($dto->note) ? trim($dto->note) : null;
 
-        if ($this->requiresStatusNote($newStatus) && blank($normalizedNote)) {
+        if ($this->requiresStatusNote($dto->newStatus) && blank($normalizedNote)) {
             throw ValidationException::withMessages([
                 'note' => 'Informe uma observação para justificar esta mudança de status.',
             ]);
         }
 
-        $history = DB::transaction(function () use ($proposal, $currentStatus, $newStatus, $user, $normalizedNote): ProposalStatusHistory {
+        $history = DB::transaction(function () use ($proposal, $currentStatus, $dto, $normalizedNote): ProposalStatusHistory {
             $proposal->forceFill([
-                'status' => $newStatus->value,
+                'status' => $dto->newStatus->value,
             ])->save();
 
-            return $this->recordHistory($proposal, $currentStatus, $newStatus, $user, $normalizedNote);
+            return $this->recordHistory(
+                $proposal,
+                new ProposalStatusHistoryDTO(
+                    previousStatus: $currentStatus,
+                    newStatus: $dto->newStatus,
+                    user: $dto->user,
+                    note: $normalizedNote,
+                ),
+            );
         });
 
         $this->notifyProposalStatusChange->handle(
             $proposal->fresh(['company', 'contact', 'latestContinuationAccess']),
-            $newStatus,
+            $dto->newStatus,
         );
 
         return $history;
@@ -104,27 +101,13 @@ class UpdateProposalStatus
         ], true);
     }
 
-    public function recordHistory(
-        Proposal $proposal,
-        ProposalStatus|string|null $previousStatus,
-        ProposalStatus|string $newStatus,
-        ?User $user = null,
-        ?string $note = null,
-    ): ProposalStatusHistory {
-        $previousStatus = $this->normalizeStatus($previousStatus);
-        $newStatus = $this->normalizeStatus($newStatus);
-
-        if (! $newStatus) {
-            throw ValidationException::withMessages([
-                'status' => 'Selecione um status válido para continuar.',
-            ]);
-        }
-
+    public function recordHistory(Proposal $proposal, ProposalStatusHistoryDTO $dto): ProposalStatusHistory
+    {
         return $proposal->statusHistories()->create([
-            'previous_status' => $previousStatus?->value,
-            'new_status' => $newStatus->value,
-            'changed_by_user_id' => $user?->id,
-            'note' => blank($note) ? null : trim($note),
+            'previous_status' => $dto->previousStatus?->value,
+            'new_status' => $dto->newStatus->value,
+            'changed_by_user_id' => $dto->user?->id,
+            'note' => $dto->note,
             'changed_at' => now(),
         ]);
     }

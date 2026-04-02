@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Proposals\UpdateProposalStatus;
+use App\DTOs\Proposals\UpdateProposalStatusDTO;
 use App\Filament\Resources\Proposals\ProposalResource;
 use App\Mail\ProposalContinuationLinkMail;
 use App\Mail\ProposalStatusUpdatedMail;
@@ -79,9 +80,11 @@ it('records the status transition history with the responsible user and note', f
 
     $history = app(UpdateProposalStatus::class)->handle(
         $proposal,
-        Proposal::STATUS_AWAITING_INFORMATION,
-        $representativeUser,
-        'Solicitar memorial descritivo atualizado ao cliente.',
+        UpdateProposalStatusDTO::fromArray([
+            'status' => Proposal::STATUS_AWAITING_INFORMATION,
+            'user' => $representativeUser,
+            'note' => 'Solicitar memorial descritivo atualizado ao cliente.',
+        ]),
     );
 
     expect($proposal->fresh()->status)->toBe(Proposal::STATUS_AWAITING_INFORMATION)
@@ -120,25 +123,31 @@ it('rejects unauthorized or inconsistent status changes', function () {
 
     expect(fn () => app(UpdateProposalStatus::class)->handle(
         $proposal,
-        Proposal::STATUS_IN_REVIEW,
-        $otherUser,
-        'Tentativa indevida.',
+        UpdateProposalStatusDTO::fromArray([
+            'status' => Proposal::STATUS_IN_REVIEW,
+            'user' => $otherUser,
+            'note' => 'Tentativa indevida.',
+        ]),
     ))->toThrow(AuthorizationException::class);
 
     expect(fn () => app(UpdateProposalStatus::class)->handle(
         $proposal,
-        Proposal::STATUS_APPROVED,
-        $assignedUser,
-        'Pular etapas não é permitido.',
+        UpdateProposalStatusDTO::fromArray([
+            'status' => Proposal::STATUS_APPROVED,
+            'user' => $assignedUser,
+            'note' => 'Pular etapas não é permitido.',
+        ]),
     ))->toThrow(ValidationException::class);
 
     expect(fn () => app(UpdateProposalStatus::class)->handle(
         tap($proposal->fresh(), function (Proposal $proposal): void {
             $proposal->forceFill(['status' => Proposal::STATUS_IN_REVIEW])->save();
         }),
-        Proposal::STATUS_REJECTED,
-        $assignedUser,
-        null,
+        UpdateProposalStatusDTO::fromArray([
+            'status' => Proposal::STATUS_REJECTED,
+            'user' => $assignedUser,
+            'note' => null,
+        ]),
     ))->toThrow(ValidationException::class);
 
     expect(ProposalStatusHistory::query()->count())->toBe(0);
@@ -159,9 +168,11 @@ it('notifies the client when the proposal is approved', function () {
 
     app(UpdateProposalStatus::class)->handle(
         $proposal,
-        Proposal::STATUS_APPROVED,
-        $representativeUser,
-        'Documentação validada.',
+        UpdateProposalStatusDTO::fromArray([
+            'status' => Proposal::STATUS_APPROVED,
+            'user' => $representativeUser,
+            'note' => 'Documentação validada.',
+        ]),
     );
 
     Mail::assertSent(ProposalStatusUpdatedMail::class, function (ProposalStatusUpdatedMail $mail) use ($proposal): bool {

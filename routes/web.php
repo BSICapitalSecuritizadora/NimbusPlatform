@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Proposals\StoreProposalContinuationData;
+use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
 use App\Http\Controllers\Site\PublicDocumentsController;
@@ -158,7 +159,7 @@ Route::post('/proposta/continuar/{access}/formulario', function (Request $reques
 
     $storeProposalContinuationData->handle(
         $proposal,
-        StoreProposalContinuationData::fromFlatPayload($request->all()),
+        StoreProposalContinuationDataDTO::fromFlatPayload($request->all()),
         $request->file('arquivos', []),
     );
 

@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\Proposals\StoreProposalContinuationData;
+use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\Livewire\Proposals\ContinuationForm;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
@@ -171,58 +171,59 @@ function createProposalContinuationContext(\Illuminate\Foundation\Testing\TestCa
  */
 function proposalContinuationComponentState(): array
 {
-    $payload = StoreProposalContinuationData::fromFlatPayload(proposalContinuationPayload());
+    $rawPayload = proposalContinuationPayload();
+    $payload = StoreProposalContinuationDataDTO::fromFlatPayload($rawPayload);
 
     return [
-        'developmentName' => $payload['overview']['development_name'],
-        'websiteUrl' => $payload['overview']['website_url'],
-        'requestedAmount' => $payload['overview']['requested_amount'],
-        'landMarketValue' => $payload['overview']['land_market_value'],
-        'landArea' => (string) $payload['overview']['land_area'],
-        'launchDate' => $payload['overview']['launch_date'],
-        'salesLaunchDate' => $payload['overview']['sales_launch_date'],
-        'constructionStartDate' => $payload['overview']['construction_start_date'],
-        'deliveryForecastDate' => $payload['overview']['delivery_forecast_date'],
-        'remainingMonths' => $payload['overview']['remaining_months'],
-        'zipCode' => $payload['overview']['zip_code'],
-        'street' => $payload['overview']['street'],
-        'addressComplement' => $payload['overview']['address_complement'],
-        'addressNumber' => $payload['overview']['address_number'],
-        'neighborhood' => $payload['overview']['neighborhood'],
-        'city' => $payload['overview']['city'],
-        'state' => $payload['overview']['state'],
-        'blockCount' => $payload['characteristics']['blocks'],
-        'floorCount' => $payload['characteristics']['floors'],
-        'typicalFloorCount' => $payload['characteristics']['typical_floors'],
-        'unitsPerFloor' => $payload['characteristics']['units_per_floor'],
-        'totalUnits' => $payload['characteristics']['total_units'],
-        'projects' => collect($payload['projects'])->map(fn (array $project): array => [
-            'id' => $project['id'] ?? null,
-            'name' => $project['name'],
-            'exchangedUnits' => $project['exchanged_units'],
-            'paidUnits' => $project['paid_units'],
-            'unpaidUnits' => $project['unpaid_units'],
-            'stockUnits' => $project['stock_units'],
+        'developmentName' => $payload->overview->developmentName,
+        'websiteUrl' => $payload->overview->websiteUrl,
+        'requestedAmount' => $rawPayload['valor_solicitado'],
+        'landMarketValue' => $rawPayload['valor_mercado_terreno'],
+        'landArea' => (string) $payload->overview->landArea,
+        'launchDate' => $payload->overview->launchDate,
+        'salesLaunchDate' => $payload->overview->salesLaunchDate,
+        'constructionStartDate' => $payload->overview->constructionStartDate,
+        'deliveryForecastDate' => $payload->overview->deliveryForecastDate,
+        'remainingMonths' => $payload->overview->remainingMonths,
+        'zipCode' => $payload->overview->zipCode,
+        'street' => $payload->overview->street,
+        'addressComplement' => $payload->overview->addressComplement,
+        'addressNumber' => $payload->overview->addressNumber,
+        'neighborhood' => $payload->overview->neighborhood,
+        'city' => $payload->overview->city,
+        'state' => $payload->overview->state,
+        'blockCount' => $payload->characteristics->blocks,
+        'floorCount' => $payload->characteristics->floors,
+        'typicalFloorCount' => $payload->characteristics->typicalFloors,
+        'unitsPerFloor' => $payload->characteristics->unitsPerFloor,
+        'totalUnits' => $payload->characteristics->totalUnits,
+        'projects' => collect($payload->projects)->map(fn ($project, int $index): array => [
+            'id' => $project->id,
+            'name' => $project->name,
+            'exchangedUnits' => $project->exchangedUnits,
+            'paidUnits' => $project->paidUnits,
+            'unpaidUnits' => $project->unpaidUnits,
+            'stockUnits' => $project->stockUnits,
             'totalUnits' => '',
             'salesPercentage' => '',
-            'incurredCost' => $project['incurred_cost'] ?? '',
-            'costToIncur' => $project['cost_to_incur'] ?? '',
+            'incurredCost' => $rawPayload['custo_incidido'][$index] ?? '',
+            'costToIncur' => $rawPayload['custo_a_incorrer'][$index] ?? '',
             'totalCost' => '',
             'workStagePercentage' => '',
-            'paidSalesValue' => $project['paid_sales_value'] ?? '',
-            'unpaidSalesValue' => $project['unpaid_sales_value'] ?? '',
-            'stockSalesValue' => $project['stock_sales_value'] ?? '',
+            'paidSalesValue' => $rawPayload['valor_quitadas'][$index] ?? '',
+            'unpaidSalesValue' => $rawPayload['valor_nao_quitadas'][$index] ?? '',
+            'stockSalesValue' => $rawPayload['valor_estoque'][$index] ?? '',
             'grossSalesValue' => '',
-            'receivedValue' => $project['received_value'] ?? '',
-            'valueUntilKeys' => $project['value_until_keys'] ?? '',
-            'valueAfterKeys' => $project['value_after_keys'] ?? '',
+            'receivedValue' => $rawPayload['valor_ja_recebido'][$index] ?? '',
+            'valueUntilKeys' => $rawPayload['valor_ate_chaves'][$index] ?? '',
+            'valueAfterKeys' => $rawPayload['valor_chaves_pos'][$index] ?? '',
         ])->all(),
-        'unitTypes' => collect($payload['unit_types'])->map(fn (array $unitType): array => [
-            'totalUnits' => $unitType['total_units'],
-            'bedrooms' => $unitType['bedrooms'],
-            'parkingSpaces' => $unitType['parking_spaces'],
-            'usableArea' => $unitType['usable_area'],
-            'averagePrice' => $unitType['average_price'],
+        'unitTypes' => collect($payload->unitTypes)->map(fn ($unitType, int $index): array => [
+            'totalUnits' => $unitType->totalUnits,
+            'bedrooms' => $unitType->bedrooms,
+            'parkingSpaces' => $unitType->parkingSpaces,
+            'usableArea' => $unitType->usableArea,
+            'averagePrice' => $rawPayload['tipo_preco_medio'][$index] ?? '',
             'pricePerSquareMeter' => '',
         ])->all(),
     ];

@@ -3,6 +3,7 @@
 namespace App\Livewire\Proposals;
 
 use App\Actions\Proposals\StoreProposalContinuationData;
+use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalFile;
@@ -327,7 +328,7 @@ class ContinuationForm extends Component
 
         $storeProposalContinuationData->handle(
             $proposal,
-            $this->storagePayload($validated),
+            $this->continuationData($validated),
             $this->uploads,
         );
 
@@ -387,9 +388,9 @@ class ContinuationForm extends Component
         ];
     }
 
-    protected function storagePayload(array $validated): array
+    protected function continuationData(array $validated): StoreProposalContinuationDataDTO
     {
-        return [
+        return StoreProposalContinuationDataDTO::fromArray([
             'overview' => [
                 'development_name' => $validated['developmentName'],
                 'website_url' => $validated['websiteUrl'] ?? null,
@@ -449,7 +450,7 @@ class ContinuationForm extends Component
                 })
                 ->values()
                 ->all(),
-        ];
+        ]);
     }
 
     protected function normalizeValidationPayload(mixed $value): mixed
