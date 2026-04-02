@@ -252,7 +252,7 @@
                                                     <div class="fw-semibold">{{ optional($e->maturity_date)->format('d/m/Y') ?? '—' }}</div>
                                                 </div>
                                                 <div class="col-6">
-                                                    <div class="small text-uppercase text-muted fw-semibold mb-1">Volume</div>
+                                                    <div class="small text-uppercase text-muted fw-semibold mb-1">Valor emitido</div>
                                                     <div class="fw-semibold">{{ $e->issued_volume ? 'R$ ' . number_format($e->issued_volume, 2, ',', '.') : '—' }}</div>
                                                 </div>
                                             </div>
