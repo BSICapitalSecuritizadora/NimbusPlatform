@@ -65,7 +65,7 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <label class="form-label">CNPJ</label>
-                        <input type="text" class="form-control" wire:model.blur="cnpj" x-mask="99.999.999/9999-99" inputmode="numeric" placeholder="00.000.000/0000-00">
+                        <input type="text" class="form-control" wire:model.live.debounce.500ms="cnpj" x-mask="99.999.999/9999-99" inputmode="numeric" placeholder="00.000.000/0000-00">
                         <div wire:loading wire:target="cnpj" class="form-text text-brand">Consultando dados públicos do CNPJ...</div>
                         @error('cnpj') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
@@ -89,20 +89,19 @@
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label">Setores de Atuação</label>
-                        <div class="form-text mt-0 mb-3">Selecione ao menos um setor ligado à proposta.</div>
+                        <label class="form-label">Setor de Atuação</label>
+                        <div class="form-text mt-0 mb-3">Selecione o setor ligado à sua proposta.</div>
 
                         <div class="d-flex flex-wrap gap-2">
                             @foreach ($sectors as $sector)
-                                <input type="checkbox" class="btn-check" id="sector-{{ $sector->id }}" value="{{ $sector->id }}" wire:model.live="sectorIds">
+                                <input type="radio" class="btn-check" name="sectorId" id="sector-{{ $sector->id }}" value="{{ $sector->id }}" wire:model.live="sectorId">
                                 <label class="btn btn-outline-brand rounded-pill" for="sector-{{ $sector->id }}" style="font-weight: 600;">
                                     {{ $sector->name }}
                                 </label>
                             @endforeach
                         </div>
 
-                        @error('sectorIds') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                        @error('sectorIds.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        @error('sectorId') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
                 </div>
             </div>
@@ -122,7 +121,7 @@
                 <div class="row g-4">
                     <div class="col-md-3">
                         <label class="form-label">CEP</label>
-                        <input type="text" class="form-control" wire:model.blur="postalCode" x-mask="99999-999" inputmode="numeric" placeholder="00000-000">
+                        <input type="text" class="form-control" wire:model.live.debounce.500ms="postalCode" x-mask="99999-999" inputmode="numeric" placeholder="00000-000">
                         <div wire:loading wire:target="postalCode" class="form-text text-brand">Buscando endereço pelo CEP...</div>
                         @error('postalCode') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>

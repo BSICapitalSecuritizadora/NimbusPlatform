@@ -44,20 +44,9 @@ class CreateProposalForm extends Component
     #[Validate('max:255', onUpdate: false)]
     public ?string $website = null;
 
-    #[Validate(
-        [
-            'sectorIds' => 'required|array|min:1',
-            'sectorIds.*' => 'distinct|exists:proposal_sectors,id',
-        ],
-        message: [
-            'sectorIds.required' => 'Selecione ao menos um setor de atuação.',
-            'sectorIds.array' => 'Selecione ao menos um setor de atuação.',
-            'sectorIds.min' => 'Selecione ao menos um setor de atuação.',
-            'sectorIds.*.distinct' => 'Não repita o mesmo setor de atuação.',
-            'sectorIds.*.exists' => 'Selecione um setor de atuação válido.',
-        ],
-    )]
-    public array $sectorIds = [];
+    #[Validate('required', message: 'Selecione o setor de atuação.')]
+    #[Validate('exists:proposal_sectors,id', message: 'Selecione um setor de atuação válido.')]
+    public ?string $sectorId = null;
 
     #[Validate('required', message: 'O CEP é obrigatório.')]
     #[Validate('regex:/^\d{5}\-?\d{3}$/', message: 'Informe um CEP válido no formato 00000-000.')]
@@ -205,7 +194,7 @@ class CreateProposalForm extends Component
                     'estado' => Str::upper(trim($validated['state'])),
                 ]);
 
-                $company->sectors()->sync($validated['sectorIds']);
+                $company->sectors()->sync([$validated['sectorId']]);
 
                 $contact = ProposalContact::query()->create([
                     'company_id' => $company->id,
@@ -346,7 +335,7 @@ class CreateProposalForm extends Component
         $this->state = Str::upper((string) ($response->json('uf') ?? $this->state));
     }
 
-    protected function resolveStateRegistration(array $stateRegistrations): string
+    protected function resolveStateRegistration(array $stateRegistrations): ?string
     {
         foreach ($stateRegistrations as $stateRegistration) {
             $number = trim((string) ($stateRegistration['inscricao_estadual'] ?? ''));
