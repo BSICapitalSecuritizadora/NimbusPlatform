@@ -27,7 +27,7 @@
                 <flux:navbar.item icon="globe-alt" :href="route('site.home')">
                     {{ __('Site') }}
                 </flux:navbar.item>
-                <flux:navbar.item icon="document-text" :href="route('site.proposal.create')">
+                <flux:navbar.item icon="document-text" :href="route('proposal.create')">
                     {{ __('Nova proposta') }}
                 </flux:navbar.item>
             </flux:navbar>
@@ -62,7 +62,7 @@
                     <flux:sidebar.item icon="globe-alt" :href="route('site.home')">
                         {{ __('Site') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="document-text" :href="route('site.proposal.create')">
+                    <flux:sidebar.item icon="document-text" :href="route('proposal.create')">
                         {{ __('Nova proposta') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="cog" :href="route('profile.edit')" wire:navigate>

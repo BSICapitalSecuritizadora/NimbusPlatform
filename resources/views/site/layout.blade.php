@@ -828,7 +828,7 @@
 
             <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0">
                 <a href="{{ $portalUrl }}" class="btn btn-outline-brand btn-sm">Portal do Investidor</a>
-                <a href="{{ route('site.proposal.create') }}" class="btn btn-brand btn-sm">Envie sua proposta</a>
+                <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-sm">Envie sua proposta</a>
             </div>
         </div>
     </div>
@@ -871,7 +871,7 @@
                 <div class="d-flex flex-column gap-2 fw-medium">
                     <a href="{{ route('site.emissions') }}" class="footer-link justify-content-center">Ver Emissões</a>
                     <a href="{{ route('site.ri') }}" class="footer-link justify-content-center">Relações com Investidores</a>
-                    <a href="{{ route('site.proposal.create') }}" class="footer-link justify-content-center">Envie sua proposta</a>
+                    <a href="{{ route('proposal.create') }}" class="footer-link justify-content-center">Envie sua proposta</a>
                     <a href="{{ route('site.vacancies.index') }}" class="footer-link justify-content-center">Trabalhe conosco</a>
                 </div>
             </div>

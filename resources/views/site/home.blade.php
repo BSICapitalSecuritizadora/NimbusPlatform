@@ -19,7 +19,7 @@
                 </p>
 
                 <div class="d-flex flex-wrap gap-3 mb-4">
-                    <a href="{{ route('site.proposal.create') }}" class="btn btn-brand btn-lg px-5">Enviar proposta</a>
+                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Enviar proposta</a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Explorar emissões</a>
                 </div>
 
@@ -325,7 +325,7 @@
                 <div class="col-lg-4">
                     <div class="p-4 p-lg-5 d-flex flex-column gap-3">
                         <a href="{{ route('site.contact') }}" class="btn btn-light btn-lg">Solicitar contato</a>
-                        <a href="{{ route('site.proposal.create') }}" class="btn btn-outline-brand btn-lg" style="background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.18);">Enviar proposta</a>
+                        <a href="{{ route('proposal.create') }}" class="btn btn-outline-brand btn-lg" style="background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.18);">Enviar proposta</a>
                     </div>
                 </div>
             </div>

@@ -36,9 +36,7 @@ it('distributes incoming proposals in round-robin order without repeating repres
     ]);
 
     foreach (range(1, 4) as $index) {
-        $this->post(route('site.proposal.store'), initialProposalPayload($sector, $index))
-            ->assertRedirect(route('site.proposal.create'))
-            ->assertSessionHas('success');
+        submitInitialProposalThroughComponent($sector, $index);
     }
 
     $proposals = Proposal::query()
@@ -78,15 +76,16 @@ it('stores each proposal company as an immutable snapshot even when the cnpj rep
         'queue_position' => 1,
     ]);
 
-    $firstPayload = initialProposalPayload($sector, 1);
-    $secondPayload = initialProposalPayload($sector, 2);
+    $firstPayload = proposalCreateFormState($sector, 1);
+    $secondPayload = proposalCreateFormState($sector, 2);
 
     $secondPayload['cnpj'] = $firstPayload['cnpj'];
+    $secondPayload['companyName'] = 'Construtora HistÃ³rico 2';
     $secondPayload['nome_empresa'] = 'Construtora Histórico 2';
-    $secondPayload['site'] = 'https://historico-2.example.com';
+    $secondPayload['website'] = 'https://historico-2.example.com';
 
-    $this->post(route('site.proposal.store'), $firstPayload)->assertRedirect(route('site.proposal.create'));
-    $this->post(route('site.proposal.store'), $secondPayload)->assertRedirect(route('site.proposal.create'));
+    submitProposalCreateForm($firstPayload);
+    submitProposalCreateForm($secondPayload);
 
     $proposals = Proposal::query()
         ->with('company')
@@ -95,15 +94,19 @@ it('stores each proposal company as an immutable snapshot even when the cnpj rep
 
     expect($proposals)->toHaveCount(2)
         ->and($proposals[0]->company_id)->not->toBe($proposals[1]->company_id)
-        ->and($proposals[0]->company->name)->toBe($firstPayload['nome_empresa'])
-        ->and($proposals[0]->company->site)->toBe($firstPayload['site'])
-        ->and($proposals[1]->company->name)->toBe($secondPayload['nome_empresa'])
-        ->and($proposals[1]->company->site)->toBe($secondPayload['site']);
+        ->and($proposals[0]->company->name)->toBe($firstPayload['companyName'])
+        ->and($proposals[0]->company->site)->toBe($firstPayload['website'])
+        ->and($proposals[1]->company->name)->toBe($secondPayload['companyName'])
+        ->and($proposals[1]->company->site)->toBe($secondPayload['website']);
 });
 
 it('requires the signed magic link plus cnpj and emailed code before continuing the Nimbus-style form', function () {
     Mail::fake();
-    Storage::fake('local');
+    config()->set('filesystems.disks.local.root', storage_path('framework/testing/disks/local-'.uniqid()));
+    Storage::set('local', Storage::createLocalDriver([
+        'root' => config('filesystems.disks.local.root'),
+        'throw' => false,
+    ]));
 
     $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
     ProposalRepresentative::factory()->create([
@@ -111,9 +114,7 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         'queue_position' => 1,
     ]);
 
-    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
-        ->assertRedirect(route('site.proposal.create'))
-        ->assertSessionHas('success');
+    submitInitialProposalThroughComponent($sector);
 
     $proposal = Proposal::query()
         ->with(['company', 'contact', 'latestContinuationAccess', 'statusHistories'])
@@ -243,8 +244,7 @@ it('rate limits repeated continuation code attempts on the public flow', functio
         'queue_position' => 1,
     ]);
 
-    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
-        ->assertRedirect(route('site.proposal.create'));
+    submitInitialProposalThroughComponent($sector);
 
     $proposal = Proposal::query()->with(['company', 'latestContinuationAccess'])->firstOrFail();
     $access = $proposal->latestContinuationAccess;
@@ -281,8 +281,7 @@ it('preserves project level internal analysis when the proposer resubmits reques
         'email' => $representativeUser->email,
     ]);
 
-    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
-        ->assertRedirect(route('site.proposal.create'));
+    submitInitialProposalThroughComponent($sector);
 
     $proposal = Proposal::query()
         ->with(['company', 'latestContinuationAccess'])
@@ -369,8 +368,7 @@ it('revokes the previous access and records a new send when the link is resent',
         'queue_position' => 1,
     ]);
 
-    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
-        ->assertRedirect(route('site.proposal.create'));
+    submitInitialProposalThroughComponent($sector);
 
     $proposal = Proposal::query()
         ->with(['company', 'contact', 'continuationAccesses'])
@@ -410,8 +408,7 @@ it('keeps internal indicators and reports unavailable on the proposer flow', fun
         'queue_position' => 1,
     ]);
 
-    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
-        ->assertRedirect(route('site.proposal.create'));
+    submitInitialProposalThroughComponent($sector);
 
     $proposal = Proposal::query()
         ->with(['company', 'latestContinuationAccess'])
@@ -491,56 +488,58 @@ function initialProposalPayload(ProposalSector $sector, int $index = 1): array
     ];
 }
 
-function continuationPayload(): array
-{
-    return [
-        'nome' => 'Residencial Atlântico',
-        'site' => 'https://residencial-atlantico.example.com',
-        'valor_solicitado' => '15.000.000,00',
-        'valor_mercado_terreno' => '4.000.000,00',
-        'area_terreno' => 5000,
-        'data_lancamento' => '2026-03',
-        'lancamento_vendas' => '2026-04',
-        'inicio_obras' => '2026-05',
-        'previsao_entrega' => '2028-06',
-        'prazo_remanescente' => 25,
-        'cep' => '04567-000',
-        'logradouro' => 'Rua das Palmeiras',
-        'numero' => '100',
-        'complemento' => 'Bloco A',
-        'bairro' => 'Jardins',
-        'cidade' => 'São Paulo',
-        'estado' => 'SP',
-        'nome_empreendimento' => [
-            'Torre Madrid',
-            'Torre Manchester',
-        ],
-        'unidades_permutadas' => [10, 5],
-        'unidades_quitadas' => [20, 30],
-        'unidades_nao_quitadas' => [15, 25],
-        'unidades_estoque' => [55, 40],
-        'custo_incidido' => ['1.000.000,00', '2.000.000,00'],
-        'custo_a_incorrer' => ['3.000.000,00', '1.000.000,00'],
-        'valor_quitadas' => ['900.000,00', '1.100.000,00'],
-        'valor_nao_quitadas' => ['1.500.000,50', '1.700.000,25'],
-        'valor_estoque' => ['2.500.000,75', '3.600.000,10'],
-        'valor_ja_recebido' => ['400.000,00', '500.000,00'],
-        'valor_ate_chaves' => ['600.000,00', '700.000,00'],
-        'valor_chaves_pos' => ['800.000,00', '900.000,00'],
-        'car_bloco' => 2,
-        'car_pavimentos' => 20,
-        'car_andares_tipo' => 15,
-        'car_unidades_andar' => 4,
-        'car_total' => 120,
-        'tipo_total' => [60, 60],
-        'tipo_dormitorios' => ['3', '2'],
-        'tipo_vagas' => ['2', '1'],
-        'tipo_area' => [82.5, 58.4],
-        'tipo_preco_medio' => ['850.000,00', '520.000,00'],
-        'arquivos' => [
-            UploadedFile::fake()->create('memorial-descritivo.pdf', 128, 'application/pdf'),
-        ],
-    ];
+if (! function_exists('continuationPayload')) {
+    function continuationPayload(): array
+    {
+        return [
+            'nome' => 'Residencial Atlântico',
+            'site' => 'https://residencial-atlantico.example.com',
+            'valor_solicitado' => '15.000.000,00',
+            'valor_mercado_terreno' => '4.000.000,00',
+            'area_terreno' => 5000,
+            'data_lancamento' => '2026-03',
+            'lancamento_vendas' => '2026-04',
+            'inicio_obras' => '2026-05',
+            'previsao_entrega' => '2028-06',
+            'prazo_remanescente' => 25,
+            'cep' => '04567-000',
+            'logradouro' => 'Rua das Palmeiras',
+            'numero' => '100',
+            'complemento' => 'Bloco A',
+            'bairro' => 'Jardins',
+            'cidade' => 'São Paulo',
+            'estado' => 'SP',
+            'nome_empreendimento' => [
+                'Torre Madrid',
+                'Torre Manchester',
+            ],
+            'unidades_permutadas' => [10, 5],
+            'unidades_quitadas' => [20, 30],
+            'unidades_nao_quitadas' => [15, 25],
+            'unidades_estoque' => [55, 40],
+            'custo_incidido' => ['1.000.000,00', '2.000.000,00'],
+            'custo_a_incorrer' => ['3.000.000,00', '1.000.000,00'],
+            'valor_quitadas' => ['900.000,00', '1.100.000,00'],
+            'valor_nao_quitadas' => ['1.500.000,50', '1.700.000,25'],
+            'valor_estoque' => ['2.500.000,75', '3.600.000,10'],
+            'valor_ja_recebido' => ['400.000,00', '500.000,00'],
+            'valor_ate_chaves' => ['600.000,00', '700.000,00'],
+            'valor_chaves_pos' => ['800.000,00', '900.000,00'],
+            'car_bloco' => 2,
+            'car_pavimentos' => 20,
+            'car_andares_tipo' => 15,
+            'car_unidades_andar' => 4,
+            'car_total' => 120,
+            'tipo_total' => [60, 60],
+            'tipo_dormitorios' => ['3', '2'],
+            'tipo_vagas' => ['2', '1'],
+            'tipo_area' => [82.5, 58.4],
+            'tipo_preco_medio' => ['850.000,00', '520.000,00'],
+            'arquivos' => [
+                UploadedFile::fake()->create('memorial-descritivo.pdf', 128, 'application/pdf'),
+            ],
+        ];
+    }
 }
 
 /**

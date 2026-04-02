@@ -25,7 +25,7 @@
                     <flux:sidebar.item icon="globe-alt" :href="route('site.home')">
                         {{ __('Site institucional') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="document-text" :href="route('site.proposal.create')">
+                    <flux:sidebar.item icon="document-text" :href="route('proposal.create')">
                         {{ __('Nova proposta') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="folder-open" :href="route('site.ri')">

@@ -3,7 +3,6 @@
 use App\Actions\Proposals\StoreProposalContinuationData;
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
-use App\Http\Controllers\Site\ProposalController;
 use App\Http\Controllers\Site\PublicDocumentsController;
 use App\Http\Controllers\Site\SiteController;
 use App\Http\Requests\VerifyProposalContinuationRequest;
@@ -100,10 +99,7 @@ $ensureContinuationCanStore = static function (Proposal $proposal): void {
 
 $normalizeProposalCnpj = static fn (string $value): string => preg_replace('/\D/', '', $value) ?? '';
 
-Route::get('/proposta', [ProposalController::class, 'create'])->name('site.proposal.create');
-Route::post('/proposta', [ProposalController::class, 'store'])
-    ->middleware('throttle:proposal-submission')
-    ->name('site.proposal.store');
+Route::get('/proposals/create', \App\Livewire\Proposals\CreateProposalForm::class)->name('proposal.create');
 Route::get('/proposta/continuar/{access}', function (Request $request, ProposalContinuationAccess $access) use ($hasAuthorizedContinuationSession, $loadProposalContinuation, $magicLinkSessionKey) {
     abort_unless($request->hasValidSignature() && $access->isActive(), 403);
 

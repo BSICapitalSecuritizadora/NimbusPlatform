@@ -50,7 +50,7 @@ it('looks up the zip code and hydrates the operation address fields', function (
         ->assertSet('city', 'São Paulo')
         ->assertSet('state', 'SP');
 
-    Http::assertSentCount(1);
+    Http::assertSentCount(3);
 });
 
 it('recalculates project and unit type metrics reactively', function () {
@@ -157,8 +157,7 @@ function createProposalContinuationContext(\Illuminate\Foundation\Testing\TestCa
         'queue_position' => 1,
     ]);
 
-    $testCase->post(route('site.proposal.store'), proposalInitialPayload($sector))
-        ->assertRedirect(route('site.proposal.create'));
+    submitInitialProposalThroughComponent($sector);
 
     $proposal = Proposal::query()
         ->with(['company', 'latestContinuationAccess'])
@@ -251,31 +250,6 @@ function seedProposalContinuationSession(ProposalContinuationAccess $access): vo
     }
 
     app('request')->setLaravelSession(app('session.store'));
-}
-
-function proposalInitialPayload(ProposalSector $sector, int $index = 1): array
-{
-    return [
-        'cnpj' => sprintf('12.345.67%d/0001-%02d', $index, $index),
-        'nome_empresa' => "Construtora {$index}",
-        'ie' => "12345{$index}",
-        'site' => "https://construtora{$index}.example.com",
-        'setores' => [$sector->id],
-        'cep' => '04567-000',
-        'logradouro' => 'Rua das Torres',
-        'numero' => (string) (100 + $index),
-        'complemento' => 'Sala 10',
-        'bairro' => 'Centro',
-        'cidade' => 'São Paulo',
-        'estado' => 'SP',
-        'nome_contato' => "Contato {$index}",
-        'email' => "contato{$index}@example.com",
-        'telefone_pessoal' => '(11) 99999-0000',
-        'whatsapp' => '1',
-        'telefone_empresa' => '(11) 4000-0000',
-        'cargo' => 'Diretor',
-        'observacoes' => 'Observações iniciais.',
-    ];
 }
 
 function proposalContinuationPayload(): array

@@ -17,7 +17,7 @@
                         <a href="{{ route('site.home') }}" class="bsi-action-primary">
                             {{ __('Acessar o site') }}
                         </a>
-                        <a href="{{ route('site.proposal.create') }}" class="bsi-action-secondary !border-white/15 !bg-white/8 !text-white hover:!bg-white/12">
+                        <a href="{{ route('proposal.create') }}" class="bsi-action-secondary !border-white/15 !bg-white/8 !text-white hover:!bg-white/12">
                             {{ __('Enviar proposta') }}
                         </a>
                         <a href="{{ route('profile.edit') }}" class="bsi-action-secondary !border-white/15 !bg-transparent !text-white hover:!bg-white/8" wire:navigate>

@@ -297,7 +297,7 @@
 @endsection
 
 @push('scripts')
-<!-- jQuery, InputMask para funcionamento do submission-create.js -->
+<!-- jQuery, InputMask para funcionamento do wizard de submissão -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
 <script src="{{ asset('assets/nimbus/js/nimbusdocs-utils.js') }}"></script>
@@ -307,5 +307,5 @@
         csrfToken: "{{ csrf_token() }}"
     };
 </script>
-<script src="{{ asset('assets/nimbus/js/submission-create.js') }}"></script>
+<script src="{{ asset('assets/nimbus/js/submission-wizard.js') }}"></script>
 @endpush

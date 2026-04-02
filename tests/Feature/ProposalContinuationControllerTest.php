@@ -19,8 +19,7 @@ it('stores continuation submissions through the legacy public endpoint without a
         'queue_position' => 1,
     ]);
 
-    $this->post(route('site.proposal.store'), initialProposalPayload($sector))
-        ->assertRedirect(route('site.proposal.create'));
+    submitInitialProposalThroughComponent($sector);
 
     $proposal = Proposal::query()
         ->with('latestContinuationAccess')
@@ -31,7 +30,7 @@ it('stores continuation submissions through the legacy public endpoint without a
     expect($access)->not->toBeNull();
 
     $this->withSession(proposalContinuationSessionState($access))
-        ->post(route('site.proposal.continuation.store', $access), continuationPayload())
+        ->post(route('site.proposal.continuation.store', $access), controllerContinuationPayload())
         ->assertRedirect(route('site.proposal.continuation.form', $access))
         ->assertSessionHas('success');
 
@@ -50,35 +49,7 @@ it('stores continuation submissions through the legacy public endpoint without a
 /**
  * @return array<string, mixed>
  */
-function initialProposalPayload(ProposalSector $sector, int $index = 1): array
-{
-    return [
-        'cnpj' => sprintf('12.345.67%d/0001-%02d', $index, $index),
-        'nome_empresa' => "Construtora {$index}",
-        'ie' => "12345{$index}",
-        'site' => "https://construtora{$index}.example.com",
-        'setores' => [$sector->id],
-        'cep' => '04567-000',
-        'logradouro' => 'Rua das Torres',
-        'numero' => (string) (100 + $index),
-        'complemento' => 'Sala 10',
-        'bairro' => 'Centro',
-        'cidade' => 'São Paulo',
-        'estado' => 'SP',
-        'nome_contato' => "Contato {$index}",
-        'email' => "contato{$index}@example.com",
-        'telefone_pessoal' => '(11) 99999-0000',
-        'whatsapp' => '1',
-        'telefone_empresa' => '(11) 4000-0000',
-        'cargo' => 'Diretor',
-        'observacoes' => 'Observações iniciais.',
-    ];
-}
-
-/**
- * @return array<string, mixed>
- */
-function continuationPayload(): array
+function controllerContinuationPayload(): array
 {
     return [
         'nome' => 'Residencial Atlântico',
