@@ -1,4 +1,9 @@
 <div>
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-zinc-900">Meus Documentos</h1>
+        <p class="mt-1 text-sm text-zinc-500">Acompanhe e baixe os documentos e relatorios relacionados aos seus investimentos.</p>
+    </div>
+
     <flux:card class="mb-6 space-y-4">
         <div class="grid grid-cols-1 gap-4 items-end md:grid-cols-3 lg:grid-cols-6">
             <div class="md:col-span-3 lg:col-span-2">
@@ -41,7 +46,7 @@
         <flux:card>
             <div class="py-12 text-center text-zinc-500">
                 <flux:icon.document-text class="mx-auto mb-3 h-12 w-12 text-zinc-300" />
-                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">Nenhum documento encontrado.</h3>
+                <h3 class="text-lg font-medium text-zinc-900">Nenhum documento encontrado.</h3>
                 <p>Tente ajustar os filtros ou os termos de busca.</p>
             </div>
         </flux:card>
@@ -50,16 +55,16 @@
             @foreach($documents as $doc)
                 @php
                     $docDate = $doc->published_at ?? $doc->created_at;
-                    $isNew = $docDate > ($investor->last_portal_seen_at ?? '1970-01-01');
+                    $isNew = $docDate > ($previousPortalSeenAt ?? '1970-01-01 00:00:00');
                 @endphp
-                <flux:card wire:key="document-{{ $doc->id }}" class="flex flex-col justify-between gap-4 p-4 transition-all hover:bg-zinc-50 sm:flex-row sm:items-center dark:hover:bg-zinc-800/50">
+                <flux:card wire:key="document-{{ $doc->id }}" class="flex flex-col justify-between gap-4 p-4 transition-all hover:bg-zinc-50 sm:flex-row sm:items-center">
                     <div class="flex items-start gap-4">
                         <div class="mt-1 flex-shrink-0">
                             <flux:icon.document class="h-8 w-8 text-zinc-400" />
                         </div>
                         <div>
                             <div class="flex flex-wrap items-center gap-2">
-                                <h3 class="text-base font-medium text-zinc-900 dark:text-white">{{ $doc->title }}</h3>
+                                <h3 class="text-base font-medium text-zinc-900">{{ $doc->title }}</h3>
                                 @if($isNew)
                                     <flux:badge color="blue" size="sm">Novo</flux:badge>
                                 @endif

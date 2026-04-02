@@ -4,10 +4,19 @@ namespace App\Livewire\Investor;
 
 use App\Models\Document;
 use App\Models\Emission;
+use App\Models\Investor;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('investor.layout')]
+#[Title('Meus Documentos')]
 class DocumentList extends Component
 {
     use WithPagination;
@@ -24,13 +33,17 @@ class DocumentList extends Component
 
     public bool $onlyNew = false;
 
+    public ?string $previousPortalSeenAt = null;
+
     public function mount(): void
     {
-        $investor = auth('investor')->user();
+        $investor = $this->resolveInvestor();
 
-        if ($investor) {
-            $investor->forceFill(['last_portal_seen_at' => now()])->save();
-        }
+        $this->previousPortalSeenAt = $investor->last_portal_seen_at?->toDateTimeString();
+
+        $investor->forceFill([
+            'last_portal_seen_at' => now(),
+        ])->save();
     }
 
     public function updated(string $property): void
@@ -40,38 +53,72 @@ class DocumentList extends Component
         }
     }
 
-    public function render(): View
+    #[Computed]
+    public function investor(): Investor
     {
-        $investor = auth('investor')->user();
+        return $this->resolveInvestor();
+    }
 
-        $query = Document::query()
-            ->visibleToInvestor($investor->id)
-            ->when($this->search, fn ($q) => $q->where('title', 'like', "%{$this->search}%"))
-            ->when($this->category, fn ($q) => $q->where('category', $this->category))
-            ->when($this->emissionId, fn ($q) => $q->whereHas('emissions', fn ($qq) => $qq->whereKey($this->emissionId)))
-            ->when($this->dateFrom, fn ($q) => $q->where(function ($qDate) {
-                $qDate->whereDate('published_at', '>=', $this->dateFrom)
-                    ->orWhere(function ($qNull) {
-                        $qNull->whereNull('published_at')->whereDate('created_at', '>=', $this->dateFrom);
-                    });
-            }))
-            ->when($this->dateTo, fn ($q) => $q->where(function ($qDate) {
-                $qDate->whereDate('published_at', '<=', $this->dateTo)
-                    ->orWhere(function ($qNull) {
-                        $qNull->whereNull('published_at')->whereDate('created_at', '<=', $this->dateTo);
-                    });
-            }))
-            ->when($this->onlyNew, fn ($q) => $q->where(function ($qq) use ($investor) {
-                $qq->where('published_at', '>', $investor->last_portal_seen_at ?? '1970-01-01')
-                    ->orWhere(function ($qqq) use ($investor) {
-                        $qqq->whereNull('published_at')->where('created_at', '>', $investor->last_portal_seen_at ?? '1970-01-01');
-                    });
-            }))
+    /**
+     * @return LengthAwarePaginator<int, Document>
+     */
+    #[Computed]
+    public function documents(): LengthAwarePaginator
+    {
+        return Document::query()
+            ->with('emissions')
+            ->visibleToInvestor($this->investor->id)
+            ->when($this->search !== '', function (Builder $query): void {
+                $query->where('title', 'like', "%{$this->search}%");
+            })
+            ->when($this->category !== '', function (Builder $query): void {
+                $query->where('category', $this->category);
+            })
+            ->when($this->emissionId !== '', function (Builder $query): void {
+                $query->whereHas('emissions', function (Builder $emissionQuery): void {
+                    $emissionQuery->whereKey($this->emissionId);
+                });
+            })
+            ->when($this->dateFrom !== '', function (Builder $query): void {
+                $query->where(function (Builder $dateQuery): void {
+                    $dateQuery->whereDate('published_at', '>=', $this->dateFrom)
+                        ->orWhere(function (Builder $nullQuery): void {
+                            $nullQuery->whereNull('published_at')
+                                ->whereDate('created_at', '>=', $this->dateFrom);
+                        });
+                });
+            })
+            ->when($this->dateTo !== '', function (Builder $query): void {
+                $query->where(function (Builder $dateQuery): void {
+                    $dateQuery->whereDate('published_at', '<=', $this->dateTo)
+                        ->orWhere(function (Builder $nullQuery): void {
+                            $nullQuery->whereNull('published_at')
+                                ->whereDate('created_at', '<=', $this->dateTo);
+                        });
+                });
+            })
+            ->when($this->onlyNew, function (Builder $query): void {
+                $query->where(function (Builder $newQuery): void {
+                    $newQuery->where('published_at', '>', $this->portalSeenReference())
+                        ->orWhere(function (Builder $nullQuery): void {
+                            $nullQuery->whereNull('published_at')
+                                ->where('created_at', '>', $this->portalSeenReference());
+                        });
+                });
+            })
             ->orderByDesc('published_at')
-            ->orderByDesc('created_at');
+            ->orderByDesc('created_at')
+            ->paginate(20);
+    }
 
-        $categoryOptions = Document::query()
-            ->visibleToInvestor($investor->id)
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function categoryOptions(): array
+    {
+        return Document::query()
+            ->visibleToInvestor($this->investor->id)
             ->distinct()
             ->pluck('category')
             ->filter()
@@ -81,14 +128,44 @@ class DocumentList extends Component
                 $category => Document::CATEGORY_OPTIONS[$category] ?? $category,
             ])
             ->all();
+    }
 
+    /**
+     * @return Collection<int, Emission>
+     */
+    #[Computed]
+    public function emissions(): Collection
+    {
+        return Emission::query()
+            ->whereHas('investors', function (Builder $query): void {
+                $query->whereKey($this->investor->id);
+            })
+            ->orderBy('name')
+            ->get();
+    }
+
+    public function render(): View
+    {
         return view('livewire.investor.document-list', [
-            'documents' => $query->paginate(20),
-            'categoryOptions' => $categoryOptions,
-            'emissions' => Emission::query()
-                ->whereHas('investors', fn ($q) => $q->whereKey($investor->id))
-                ->get(),
-            'investor' => $investor,
+            'documents' => $this->documents,
+            'categoryOptions' => $this->categoryOptions,
+            'emissions' => $this->emissions,
+            'investor' => $this->investor,
+            'previousPortalSeenAt' => $this->previousPortalSeenAt,
         ]);
+    }
+
+    protected function resolveInvestor(): Investor
+    {
+        $investor = auth('investor')->user();
+
+        abort_unless($investor instanceof Investor, 403);
+
+        return $investor;
+    }
+
+    protected function portalSeenReference(): string
+    {
+        return $this->previousPortalSeenAt ?? '1970-01-01 00:00:00';
     }
 }

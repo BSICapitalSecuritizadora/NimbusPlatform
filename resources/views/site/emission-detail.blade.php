@@ -247,7 +247,7 @@
                             <div class="mt-2 pt-2 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
                                 <span class="char-label mb-2">Histórico</span>
                                 <div class="d-flex flex-column gap-1">
-                                    @foreach($emission->integralizationHistories()->orderByDesc('date')->get() as $intHistory)
+                                    @foreach($emission->integralizationHistories()->orderByDesc('date')->take(5)->get() as $intHistory)
                                     <div class="d-flex justify-content-between small" style="font-size: 0.8rem;">
                                         <span class="text-muted">{{ $intHistory->date->format('d/m/Y') }}</span>
                                         <span class="fw-medium text-purple">{{ number_format($intHistory->quantity, 0, ',', '.') }}</span>

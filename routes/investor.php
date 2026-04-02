@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\Investor\Auth\InvestorAuthController;
-use App\Http\Controllers\Investor\InvestorDashboardController;
-use App\Http\Controllers\Investor\InvestorDocumentsController;
-use App\Http\Controllers\Investor\InvestorEmissionsController;
+use App\Livewire\Investor\DocumentList;
+use App\Livewire\Investor\InvestorDashboard;
+use App\Livewire\Investor\InvestorEmissions;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('investidor')->name('investor.')->group(function () {
@@ -22,10 +22,10 @@ Route::prefix('investidor')->name('investor.')->group(function () {
 
     // Portal (protegido)
     Route::middleware('auth:investor')->group(function () {
-        Route::get('/', [InvestorDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', InvestorDashboard::class)->name('dashboard');
 
-        Route::get('/emissoes', [InvestorEmissionsController::class, 'index'])->name('emissions');
-        Route::get('/documentos', [InvestorDocumentsController::class, 'index'])->name('documents');
+        Route::get('/emissoes', InvestorEmissions::class)->name('emissions');
+        Route::get('/documentos', DocumentList::class)->name('documents');
 
         Route::get('/documentos/{document}/download', \App\Http\Controllers\Portal\DocumentDownloadController::class)
             ->name('documents.download')
