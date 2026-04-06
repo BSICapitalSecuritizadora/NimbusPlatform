@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Nimbus;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Nimbus\StoreSubmissionReplyRequest;
 use App\Http\Requests\Nimbus\StoreSubmissionRequest;
 use App\Models\Nimbus\Submission;
 use App\Models\Nimbus\SubmissionFile;
@@ -152,9 +153,76 @@ class SubmissionController extends Controller
             'shareholders',
             'userUploadedFiles',
             'portalVisibleResponseFiles',
+            'portalVisibleNotes',
         ]);
 
         return view('nimbus.submissions.show', compact('submission'));
+    }
+
+    public function reply(StoreSubmissionReplyRequest $request, Submission $submission): RedirectResponse
+    {
+        $user = Auth::guard('nimbus')->user();
+
+        if ($submission->nimbus_portal_user_id !== $user->id) {
+            abort(403, 'Acesso negado.');
+        }
+
+        abort_unless($submission->status === Submission::STATUS_NEEDS_CORRECTION, 403);
+
+        DB::transaction(function () use ($request, $submission, $user): void {
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $path = $file->store("nimbus/submissions/{$submission->id}/corrections", 'local');
+                $storedName = basename($path);
+                $checksum = hash_file('sha256', $file->getRealPath()) ?: null;
+
+                $submissionFile = $submission->files()->create([
+                    'document_type' => 'OTHER',
+                    'origin' => 'USER',
+                    'visible_to_user' => true,
+                    'original_name' => $file->getClientOriginalName(),
+                    'stored_name' => $storedName,
+                    'mime_type' => $file->getMimeType(),
+                    'size_bytes' => $file->getSize(),
+                    'storage_path' => $path,
+                    'checksum' => $checksum,
+                    'uploaded_at' => now(),
+                ]);
+
+                $submissionFile->versions()->create([
+                    'version' => 1,
+                    'original_name' => $file->getClientOriginalName(),
+                    'stored_name' => $storedName,
+                    'storage_path' => $path,
+                    'size_bytes' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'checksum' => $checksum,
+                    'uploaded_by_type' => 'PORTAL_USER',
+                    'uploaded_by_id' => $user->id,
+                    'notes' => 'Arquivo enviado pelo solicitante em resposta a uma solicitação de correção.',
+                ]);
+            }
+
+            $comment = trim((string) $request->input('comment'));
+
+            if ($comment !== '') {
+                $submission->notes()->create([
+                    'user_id' => null,
+                    'visibility' => 'ADMIN_ONLY',
+                    'message' => $comment,
+                ]);
+            }
+
+            $submission->update([
+                'status' => Submission::STATUS_UNDER_REVIEW,
+                'status_updated_at' => now(),
+                'status_updated_by' => null,
+            ]);
+        });
+
+        return redirect()
+            ->route('nimbus.submissions.show', $submission)
+            ->with('success', 'Correção enviada com sucesso. Sua solicitação voltou para análise.');
     }
 
     public function downloadFile(Submission $submission, SubmissionFile $file): StreamedResponse

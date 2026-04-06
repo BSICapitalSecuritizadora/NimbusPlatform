@@ -22,7 +22,7 @@ class VacancyForm
                         ->required()
                         ->lazy()
                         ->afterStateUpdated(fn (string $context, $state, $set) => $context === 'create' ? $set('slug', Str::slug($state)) : null),
-                    
+
                     TextInput::make('slug')
                         ->disabled()
                         ->required()
@@ -30,7 +30,7 @@ class VacancyForm
 
                     TextInput::make('department')
                         ->label('Departamento'),
-                    
+
                     TextInput::make('location')
                         ->label('Localização')
                         ->default('São Paulo, SP'),
@@ -65,7 +65,7 @@ class VacancyForm
                     RichEditor::make('benefits')
                         ->label('Benefícios')
                         ->columnSpanFull(),
-                ])
+                ]),
         ]);
     }
 }

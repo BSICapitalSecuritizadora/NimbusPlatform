@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 
 class VerifyProposalContinuationRequest extends FormRequest
 {
@@ -36,7 +37,7 @@ class VerifyProposalContinuationRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'code' => preg_replace('/\D/', '', (string) $this->input('code')),
+            'code' => Str::digitsOnly((string) $this->input('code')),
         ]);
     }
 }

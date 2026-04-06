@@ -56,8 +56,13 @@ class DocumentsTable
                 TextColumn::make('workflow_status')
                     ->label('Status')
                     ->state(function ($record) {
-                        if (! $record->is_published) return 'Rascunho';
-                        if ($record->is_published && ! $record->is_public) return 'Publicado';
+                        if (! $record->is_published) {
+                            return 'Rascunho';
+                        }
+                        if ($record->is_published && ! $record->is_public) {
+                            return 'Publicado';
+                        }
+
                         return 'Público';
                     })
                     ->badge()

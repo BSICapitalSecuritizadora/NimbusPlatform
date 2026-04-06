@@ -16,6 +16,7 @@ use App\Models\ProposalFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 Route::get('/', [HomeController::class, 'index'])->name('site.home');
@@ -77,15 +78,12 @@ $loadProposalContinuation = static function (ProposalContinuationAccess $access)
         ->firstOrFail();
 };
 
-$magicLinkSessionKey = static fn (ProposalContinuationAccess $access): string => "proposal_magic_link.{$access->id}";
-$verifiedSessionKey = static fn (ProposalContinuationAccess $access): string => "proposal_verified.{$access->id}";
-
-$hasAuthorizedContinuationSession = static function (Request $request, ProposalContinuationAccess $access) use ($verifiedSessionKey): bool {
-    return $request->session()->has($verifiedSessionKey($access)) && $access->isActive();
+$hasAuthorizedContinuationSession = static function (Request $request, ProposalContinuationAccess $access): bool {
+    return $request->session()->has($access->verifiedSessionKey()) && $access->isActive();
 };
 
-$ensureMagicLinkConfirmed = static function (Request $request, ProposalContinuationAccess $access) use ($magicLinkSessionKey): void {
-    abort_unless($request->session()->has($magicLinkSessionKey($access)) && $access->isActive(), 403);
+$ensureMagicLinkConfirmed = static function (Request $request, ProposalContinuationAccess $access): void {
+    abort_unless($request->session()->has($access->magicLinkSessionKey()) && $access->isActive(), 403);
 };
 
 $ensureAuthorizedContinuation = static function (Request $request, ProposalContinuationAccess $access) use ($ensureMagicLinkConfirmed, $hasAuthorizedContinuationSession): void {
@@ -100,16 +98,14 @@ $ensureContinuationCanStore = static function (Proposal $proposal): void {
     abort_unless($proposal->canBeCompletedByRequester(), 403);
 };
 
-$normalizeProposalCnpj = static fn (string $value): string => preg_replace('/\D/', '', $value) ?? '';
-
 Route::redirect('/proposta', '/proposals/create')->name('site.proposal.create');
 Route::get('/proposals/create', \App\Livewire\Proposals\CreateProposalForm::class)->name('proposal.create');
-Route::get('/proposta/continuar/{access}', function (Request $request, ProposalContinuationAccess $access) use ($hasAuthorizedContinuationSession, $loadProposalContinuation, $magicLinkSessionKey) {
+Route::get('/proposta/continuar/{access}', function (Request $request, ProposalContinuationAccess $access) use ($hasAuthorizedContinuationSession, $loadProposalContinuation) {
     abort_unless($request->hasValidSignature() && $access->isActive(), 403);
 
     $access->markLinkOpened();
 
-    $request->session()->put($magicLinkSessionKey($access), true);
+    $request->session()->put($access->magicLinkSessionKey(), true);
 
     if ($hasAuthorizedContinuationSession($request, $access)) {
         return redirect()->route('site.proposal.continuation.form', $access);
@@ -122,14 +118,14 @@ Route::get('/proposta/continuar/{access}', function (Request $request, ProposalC
 })
     ->middleware('throttle:proposal-link-access')
     ->name('site.proposal.continuation.access');
-Route::post('/proposta/continuar/{access}', function (VerifyProposalContinuationRequest $request, ProposalContinuationAccess $access) use ($ensureMagicLinkConfirmed, $loadProposalContinuation, $normalizeProposalCnpj, $verifiedSessionKey) {
+Route::post('/proposta/continuar/{access}', function (VerifyProposalContinuationRequest $request, ProposalContinuationAccess $access) use ($ensureMagicLinkConfirmed, $loadProposalContinuation) {
     $ensureMagicLinkConfirmed($request, $access);
 
     $access->markLinkOpened();
 
     $proposal = $loadProposalContinuation($access);
 
-    if ($normalizeProposalCnpj($request->validated('cnpj')) !== $normalizeProposalCnpj((string) $proposal->company?->cnpj)) {
+    if (Str::digitsOnly($request->validated('cnpj')) !== Str::digitsOnly((string) $proposal->company?->cnpj)) {
         throw ValidationException::withMessages([
             'cnpj' => 'O CNPJ informado não corresponde à proposta enviada.',
         ]);
@@ -141,7 +137,7 @@ Route::post('/proposta/continuar/{access}', function (VerifyProposalContinuation
         ]);
     }
 
-    $request->session()->put($verifiedSessionKey($access), true);
+    $request->session()->put($access->verifiedSessionKey(), true);
 
     $access->markVerified();
 
@@ -257,24 +253,7 @@ Route::prefix('nimbus')->name('nimbus.')->group(function () {
 
     // Authenticated Portal Routes
     Route::middleware(['auth:nimbus'])->group(function () {
-        Route::get('/dashboard', function () {
-            $user = \Illuminate\Support\Facades\Auth::guard('nimbus')->user();
-
-            // Dummy data for now before we implement the full controller queries
-            $stats = [
-                'total' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->count(),
-                'pending' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->whereIn('status', ['PENDING', 'UNDER_REVIEW', 'NEEDS_CORRECTION'])->count(),
-                'approved' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->whereIn('status', ['APPROVED', 'COMPLETED'])->count(),
-            ];
-
-            $submissions = \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)
-                ->orderByDesc('submitted_at')
-                ->limit(5)
-                ->get()
-                ->toArray();
-
-            return view('nimbus.dashboard', compact('stats', 'submissions'));
-        })->name('dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\Nimbus\NimbusDashboardController::class, 'index'])->name('dashboard');
 
         // Submissions
         Route::get('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'index'])->name('submissions.index');
@@ -283,6 +262,7 @@ Route::prefix('nimbus')->name('nimbus.')->group(function () {
             ->middleware('throttle:15,1')
             ->name('submissions.cnpj-lookup');
         Route::post('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'store'])->name('submissions.store');
+        Route::post('/submissions/{submission}/reply', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'reply'])->name('submissions.reply');
         Route::get('/submissions/{submission}/files/{file}/download', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'downloadFile'])->name('submissions.files.download');
         Route::get('/submissions/{submission}', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'show'])->name('submissions.show');
 

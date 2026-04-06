@@ -23,6 +23,7 @@ class SubmissionFile extends Model
         'MINUTES' => 'Ata',
         'ARTICLES_OF_INCORPORATION' => 'Contrato Social',
         'BYLAWS' => 'Estatuto',
+        'OTHER' => 'Documento Complementar',
     ];
 
     protected $table = 'nimbus_submission_files';

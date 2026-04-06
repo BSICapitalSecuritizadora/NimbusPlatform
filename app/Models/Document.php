@@ -131,10 +131,10 @@ class Document extends Model
                 $q->whereHas('investors', fn (Builder $qq) => $qq->whereKey($investorId))
 
                   // 2) Vínculo por emissão (somente se o investidor estiver vinculado à emissão)
-                  ->orWhereHas('emissions.investors', fn (Builder $qq) => $qq->whereKey($investorId));
+                    ->orWhereHas('emissions.investors', fn (Builder $qq) => $qq->whereKey($investorId));
 
-                  // 3) (Opcional) Documentos públicos também aparecem no portal:
-                  // ->orWhere('is_public', true);
+                // 3) (Opcional) Documentos públicos também aparecem no portal:
+                // ->orWhere('is_public', true);
             });
     }
 

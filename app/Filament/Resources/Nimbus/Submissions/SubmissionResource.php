@@ -193,7 +193,7 @@ class SubmissionResource extends Resource
                             ->visible(fn (Submission $record): bool => $record->notes->isNotEmpty())
                             ->schema([
                                 TextEntry::make('created_at')->label('Data/Hora')->dateTime('d/m/Y H:i'),
-                                TextEntry::make('user.name')->label('Usuário Autor'),
+                                TextEntry::make('author_label')->label('Usuário Autor'),
                                 TextEntry::make('visibility_label')->label('Visibilidade'),
                                 TextEntry::make('message')->label('Mensagem')->columnSpanFull()->wrap(),
                             ])

@@ -7,6 +7,7 @@ use App\Http\Requests\LookupNimbusCnpjRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CnpjLookupController extends Controller
 {
@@ -60,7 +61,7 @@ class CnpjLookupController extends Controller
 
     private function formatPhone(string $ddd, string $phone): string
     {
-        $digits = preg_replace('/\D/', '', $ddd.$phone) ?? '';
+        $digits = Str::digitsOnly($ddd.$phone);
 
         if (strlen($digits) === 10) {
             return preg_replace('/^(\d{2})(\d{4})(\d{4})$/', '($1) $2-$3', $digits) ?: $digits;

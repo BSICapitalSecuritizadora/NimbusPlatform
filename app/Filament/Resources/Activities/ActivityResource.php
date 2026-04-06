@@ -3,13 +3,13 @@
 namespace App\Filament\Resources\Activities;
 
 use App\Filament\Resources\Activities\Pages\ManageActivities;
-use Spatie\Activitylog\Models\Activity;
 use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Spatie\Activitylog\Models\Activity;
 
 class ActivityResource extends Resource
 {

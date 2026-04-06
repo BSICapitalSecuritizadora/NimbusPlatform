@@ -1,6 +1,19 @@
 @extends('nimbus.layouts.portal')
 @section('title', 'Detalhes da Solicitação')
 
+@push('styles')
+<style>
+    @media (min-width: 992px) {
+        .nd-sticky-files {
+            position: sticky;
+            top: 7rem;
+            max-height: calc(100vh - 8.5rem);
+            overflow-y: auto;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="d-flex align-items-center justify-content-between mb-5">
     <div class="d-flex align-items-center gap-3">
@@ -33,6 +46,7 @@
         @php
             $requestFiles = $submission->userUploadedFiles;
             $responseFiles = $submission->portalVisibleResponseFiles;
+            $portalVisibleNotes = $submission->portalVisibleNotes;
         @endphp
 
         <!-- Detalhes da Empresa -->
@@ -55,6 +69,91 @@
                 </div>
             </div>
         </div>
+
+        <div class="nd-card border-0 shadow-sm rounded-4 mb-4">
+            <div class="nd-card-header bg-white border-bottom p-4">
+                <div class="d-flex align-items-center justify-content-between gap-3">
+                    <div>
+                        <h5 class="nd-card-title fw-bold text-dark mb-0">Mensagens da Equipe</h5>
+                        <p class="text-secondary small mb-0 mt-1">Orientações e comentários compartilhados com você sobre esta solicitação.</p>
+                    </div>
+                    @if($portalVisibleNotes->isNotEmpty())
+                        <span class="nd-badge nd-badge-info">{{ $portalVisibleNotes->count() }}</span>
+                    @endif
+                </div>
+            </div>
+            <div class="nd-card-body p-0">
+                @forelse($portalVisibleNotes as $note)
+                    <div class="p-4 {{ $loop->last ? '' : 'border-bottom border-light-subtle' }}">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="fw-semibold text-dark">{{ $note->user?->name ?? 'Equipe BSI Capital' }}</span>
+                            <span class="nd-badge nd-badge-info">Mensagem</span>
+                            <span class="text-secondary small ms-auto">{{ $note->created_at?->format('d/m/Y \à\s H:i') }}</span>
+                        </div>
+                        <div class="text-dark" style="white-space: pre-line;">{{ $note->message }}</div>
+                    </div>
+                @empty
+                    <div class="p-4 text-center text-muted">Nenhuma orientação foi compartilhada com você até o momento.</div>
+                @endforelse
+            </div>
+        </div>
+
+        @if($submission->status === \App\Models\Nimbus\Submission::STATUS_NEEDS_CORRECTION)
+            <div class="nd-card border border-warning-subtle bg-warning bg-opacity-10 shadow-sm rounded-4 mb-4">
+                <div class="nd-card-header bg-transparent border-bottom border-warning-subtle p-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="rounded-circle bg-warning bg-opacity-25 text-warning d-inline-flex align-items-center justify-content-center flex-shrink-0" style="width: 2.5rem; height: 2.5rem;">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <div>
+                            <h5 class="nd-card-title fw-bold text-dark mb-1">Ação Necessária</h5>
+                            <p class="text-secondary small mb-0">
+                                Foram solicitadas correções nesta submissão. Revise os comentários acima e envie sua resposta com um comentário, um novo arquivo ou ambos.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="nd-card-body p-4">
+                    <form action="{{ route('nimbus.submissions.reply', $submission) }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+
+                        <div class="mb-3">
+                            <label for="comment" class="form-label fw-semibold text-dark">Resposta / Comentário</label>
+                            <textarea
+                                name="comment"
+                                id="comment"
+                                rows="4"
+                                class="form-control @error('comment') is-invalid @enderror"
+                                placeholder="Descreva as correções feitas ou oriente a equipe sobre o novo envio."
+                            >{{ old('comment') }}</textarea>
+                            @error('comment')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="file" class="form-label fw-semibold text-dark">Documento Corrigido <span class="text-muted fw-normal">(opcional)</span></label>
+                            <input
+                                type="file"
+                                name="file"
+                                id="file"
+                                class="form-control @error('file') is-invalid @enderror"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.jpg,.jpeg,.png"
+                            >
+                            <div class="form-text">Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, ZIP e imagens.</div>
+                            @error('file')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <button type="submit" class="btn btn-dark px-4">
+                            <i class="bi bi-send me-2"></i>
+                            Enviar Correção
+                        </button>
+                    </form>
+                </div>
+            </div>
+        @endif
 
         <!-- Sócios -->
         <div class="nd-card border-0 shadow-sm rounded-4 mb-4">
@@ -90,7 +189,7 @@
     
     <div class="col-lg-4">
         <!-- Documentos -->
-        <div class="nd-card border-0 shadow-sm rounded-4 sticky-top" style="top: 100px;">
+        <div class="nd-card border-0 shadow-sm rounded-4 nd-sticky-files">
             <div class="nd-card-header bg-white border-bottom p-4">
                 <h5 class="nd-card-title fw-bold text-dark mb-0">Arquivos Anexos</h5>
             </div>

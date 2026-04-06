@@ -2,7 +2,7 @@
 
 namespace App\DTOs\Proposals;
 
-use App\Models\ProposalProject;
+use App\Concerns\MoneyFormatter;
 
 readonly class ProposalContinuationUnitTypeDTO
 {
@@ -20,13 +20,13 @@ readonly class ProposalContinuationUnitTypeDTO
             totalUnits: self::integer($data['total_units'] ?? 0),
             bedrooms: trim((string) ($data['bedrooms'] ?? '')),
             parkingSpaces: trim((string) ($data['parking_spaces'] ?? '')),
-            usableArea: ProposalProject::normalizeDecimalValue($data['usable_area'] ?? 0),
-            averagePrice: ProposalProject::normalizeDecimalValue($data['average_price'] ?? 0),
+            usableArea: MoneyFormatter::normalizeDecimalValue($data['usable_area'] ?? 0),
+            averagePrice: MoneyFormatter::normalizeDecimalValue($data['average_price'] ?? 0),
         );
     }
 
     protected static function integer(mixed $value): int
     {
-        return (int) round(ProposalProject::normalizeDecimalValue($value));
+        return (int) round(MoneyFormatter::normalizeDecimalValue($value));
     }
 }

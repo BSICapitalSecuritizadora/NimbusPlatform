@@ -155,7 +155,7 @@ class EmissionForm
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? (float) str_replace(['.', ','], ['', '.'], (string) $state) : null)
                             ->prefix('R$')
                             ->placeholder('32.000.000,00'),
-                            
+
                         TextInput::make('current_pu')
                             ->label('PU Atual')
                             ->mask(\Filament\Support\RawJs::make(<<<'JS'
@@ -164,7 +164,7 @@ class EmissionForm
                             ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 6, ',', '.') : null)
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? (float) str_replace(['.', ','], ['', '.'], (string) $state) : null)
                             ->prefix('R$'),
-                            
+
                         TextInput::make('integralization_status')
                             ->label('Integralização')
                             ->placeholder('Ex: 100% ou 50.000 cotas')

@@ -5,6 +5,7 @@ use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -148,6 +149,7 @@ it('shows portal-visible return documents and allows secure submission file down
         ->get(route('nimbus.submissions.show', $submission))
         ->assertSuccessful()
         ->assertSee('Arquivos Anexos')
+        ->assertSee('nd-sticky-files', false)
         ->assertSee('Documentos de Retorno')
         ->assertSee('balanco.pdf')
         ->assertSee('parecer.pdf')
@@ -164,6 +166,119 @@ it('shows portal-visible return documents and allows secure submission file down
     $this->actingAs($portalUser, 'nimbus')
         ->get(route('nimbus.submissions.files.download', [$submission, $internalResponseFile]))
         ->assertNotFound();
+});
+
+it('shows only user-visible submission messages in the portal', function () {
+    $adminUser = User::factory()->create([
+        'name' => 'Equipe Nimbus',
+    ]);
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Teste Mensagem',
+        'email' => 'teste.mensagem@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'SUB-NOTE-0001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Cadastro com observação',
+        'responsible_name' => 'Teste Mensagem',
+        'company_cnpj' => '12.345.678/0001-99',
+        'company_name' => 'Empresa Mensagem',
+        'phone' => '(11) 99999-9999',
+        'status' => Submission::STATUS_NEEDS_CORRECTION,
+        'submitted_at' => now(),
+    ]);
+
+    $submission->notes()->create([
+        'user_id' => $adminUser->id,
+        'visibility' => 'USER_VISIBLE',
+        'message' => 'Ajuste a documentação societária e reenvie o contrato social atualizado.',
+    ]);
+
+    $submission->notes()->create([
+        'user_id' => $adminUser->id,
+        'visibility' => 'ADMIN_ONLY',
+        'message' => 'Comentário interno que não deve aparecer no portal.',
+    ]);
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.show', $submission))
+        ->assertSuccessful()
+        ->assertSee('Mensagens da Equipe')
+        ->assertSee('Equipe Nimbus')
+        ->assertSee('Ajuste a documentação societária e reenvie o contrato social atualizado.')
+        ->assertDontSee('Comentário interno que não deve aparecer no portal.');
+});
+
+it('allows the portal user to send a correction comment and replacement file when review requests it', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Correção Portal',
+        'email' => 'cliente.correcao.portal@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'SUB-REPLY-0001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Cadastro aguardando correção',
+        'responsible_name' => 'Cliente Correção Portal',
+        'company_cnpj' => '12.345.678/0001-99',
+        'company_name' => 'Empresa Correção Portal',
+        'phone' => '(11) 99999-9999',
+        'status' => Submission::STATUS_NEEDS_CORRECTION,
+        'submitted_at' => now(),
+    ]);
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.show', $submission))
+        ->assertSuccessful()
+        ->assertSee('Ação Necessária')
+        ->assertSee('Enviar Correção')
+        ->assertSee(route('nimbus.submissions.reply', $submission), false);
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->from(route('nimbus.submissions.show', $submission))
+        ->post(route('nimbus.submissions.reply', $submission), [
+            'comment' => 'Reenviei o documento corrigido com os ajustes solicitados.',
+            'file' => UploadedFile::fake()->create('contrato-social-atualizado.pdf', 128, 'application/pdf'),
+        ])
+        ->assertRedirect(route('nimbus.submissions.show', $submission));
+
+    $submission->refresh();
+    $correctionFile = $submission->files()->where('origin', 'USER')->latest('id')->first();
+
+    expect($submission->status)->toBe(Submission::STATUS_UNDER_REVIEW)
+        ->and($submission->status_updated_by)->toBeNull()
+        ->and($correctionFile)->not->toBeNull()
+        ->and($correctionFile?->document_type)->toBe('OTHER')
+        ->and($correctionFile?->visible_to_user)->toBeTrue()
+        ->and($correctionFile?->versions()->count())->toBe(1)
+        ->and($correctionFile?->versions()->first()?->uploaded_by_type)->toBe('PORTAL_USER')
+        ->and(Storage::disk('local')->exists((string) $correctionFile?->storage_path))->toBeTrue();
+
+    $this->assertDatabaseHas('nimbus_submission_notes', [
+        'nimbus_submission_id' => $submission->id,
+        'user_id' => null,
+        'visibility' => 'ADMIN_ONLY',
+        'message' => 'Reenviei o documento corrigido com os ajustes solicitados.',
+    ]);
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.show', $submission))
+        ->assertSuccessful()
+        ->assertSee('Documento Complementar')
+        ->assertDontSee('Ação Necessária')
+        ->assertDontSee('Enviar Correção');
+
+    Storage::disk('local')->deleteDirectory("nimbus/submissions/{$submission->id}/corrections");
 });
 
 it('renders only the authenticated portal user documents', function () {

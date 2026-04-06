@@ -16,7 +16,7 @@ const INVESTOR_DOC_DOWNLOAD_GET_PREFIX = '/investidor/documentos'; // gera: /inv
 
 function downloadUrl(Document $doc): string
 {
-    return INVESTOR_DOC_DOWNLOAD_GET_PREFIX . "/{$doc->id}/download";
+    return INVESTOR_DOC_DOWNLOAD_GET_PREFIX."/{$doc->id}/download";
 }
 
 it('investor A não acessa doc do investidor B (403)', function () {

@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
-function portalDownloadUrl(Document $doc): string {
+function portalDownloadUrl(Document $doc): string
+{
     return "/investidor/documentos/{$doc->id}/download";
 }
 

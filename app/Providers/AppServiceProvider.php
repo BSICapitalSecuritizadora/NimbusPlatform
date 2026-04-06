@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureRateLimiting();
+        $this->configureMacros();
 
         Gate::before(function ($user, $ability) {
             return $user->hasRole('super-admin') ? true : null;
@@ -60,11 +62,16 @@ class AppServiceProvider extends ServiceProvider
         );
     }
 
+    protected function configureMacros(): void
+    {
+        Str::macro('digitsOnly', fn (string $value): string => preg_replace('/\D/', '', $value) ?? '');
+    }
+
     protected function configureRateLimiting(): void
     {
         RateLimiter::for('proposal-submission', function (Request $request): Limit {
             $email = mb_strtolower((string) $request->input('email'));
-            $cnpj = preg_replace('/\D/', '', (string) $request->input('cnpj'));
+            $cnpj = Str::digitsOnly((string) $request->input('cnpj'));
 
             return Limit::perMinute(5)->by(implode('|', [
                 'proposal-submission',

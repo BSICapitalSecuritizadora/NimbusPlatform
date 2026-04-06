@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 
 class LookupNimbusCnpjRequest extends FormRequest
 {
@@ -29,7 +30,7 @@ class LookupNimbusCnpjRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'cnpj' => preg_replace('/\D/', '', (string) $this->input('cnpj')),
+            'cnpj' => Str::digitsOnly((string) $this->input('cnpj')),
         ]);
     }
 }

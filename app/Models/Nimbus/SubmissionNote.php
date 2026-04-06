@@ -32,4 +32,17 @@ class SubmissionNote extends Model
             default => (string) $this->visibility,
         };
     }
+
+    public function getAuthorLabelAttribute(): string
+    {
+        if (filled($this->user?->name)) {
+            return (string) $this->user->name;
+        }
+
+        if (filled($this->submission?->portalUser?->full_name)) {
+            return $this->submission->portalUser->full_name.' (Solicitante do Portal)';
+        }
+
+        return 'Solicitante do Portal';
+    }
 }

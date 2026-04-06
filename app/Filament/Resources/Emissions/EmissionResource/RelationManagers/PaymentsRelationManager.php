@@ -4,9 +4,8 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -19,6 +18,7 @@ class PaymentsRelationManager extends RelationManager
     protected static ?string $title = 'Fluxo de Pagamentos';
 
     protected static ?string $modelLabel = 'Pagamento';
+
     protected static ?string $pluralModelLabel = 'Pagamentos';
 
     public function form(Schema $schema): Schema

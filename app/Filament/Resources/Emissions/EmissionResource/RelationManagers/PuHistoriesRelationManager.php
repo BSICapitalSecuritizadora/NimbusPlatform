@@ -23,6 +23,7 @@ class PuHistoriesRelationManager extends RelationManager
     protected static ?string $title = 'Histórico de PU';
 
     protected static ?string $modelLabel = 'Histórico de PU';
+
     protected static ?string $pluralModelLabel = 'Histórico de PUs';
 
     public function form(Schema $schema): Schema
@@ -68,19 +69,20 @@ class PuHistoriesRelationManager extends RelationManager
                     ])
                     ->action(function (array $data, RelationManager $livewire) {
                         $path = Storage::disk('local')->path($data['file']);
-                        
+
                         try {
                             // Using noHeaderRow allows us to skip metadata at the top and read by index
                             $rows = SimpleExcelReader::create($path)->noHeaderRow()->getRows();
                         } catch (\Exception $e) {
                             Notification::make()->title('Erro ao ler o arquivo')->danger()->send();
+
                             return;
                         }
 
                         $emissionId = $livewire->ownerRecord->id;
                         $count = 0;
 
-                        $rows->each(function(array $row) use ($emissionId, &$count) {
+                        $rows->each(function (array $row) use ($emissionId, &$count) {
                             $dataDate = $row[0] ?? null;
                             $puValue = $row[11] ?? null;
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\MoneyFormatter;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,12 +34,12 @@ class ProjectUnitType extends Model
 
     public function getFormattedAveragePriceAttribute(): string
     {
-        return ProposalProject::formatCurrencyForDisplay($this->average_price);
+        return MoneyFormatter::formatCurrencyForDisplay($this->average_price);
     }
 
     public function getFormattedPricePerSquareMeterAttribute(): string
     {
-        return ProposalProject::formatCurrencyForDisplay($this->price_per_square_meter);
+        return MoneyFormatter::formatCurrencyForDisplay($this->price_per_square_meter);
     }
 
     public function getFormattedUsableAreaAttribute(): string

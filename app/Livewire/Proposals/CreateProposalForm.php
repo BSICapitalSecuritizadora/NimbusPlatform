@@ -129,7 +129,7 @@ class CreateProposalForm extends Component
             return;
         }
 
-        $digits = $this->digitsOnly($formattedValue);
+        $digits = Str::digitsOnly($formattedValue);
 
         if (strlen($digits) !== 14) {
             return;
@@ -148,7 +148,7 @@ class CreateProposalForm extends Component
             return;
         }
 
-        $digits = $this->digitsOnly($formattedValue);
+        $digits = Str::digitsOnly($formattedValue);
 
         if (strlen($digits) !== 8) {
             return;
@@ -267,7 +267,7 @@ class CreateProposalForm extends Component
             'proposal-submission',
             request()->ip(),
             mb_strtolower(trim($this->email)),
-            $this->digitsOnly($this->cnpj),
+            Str::digitsOnly($this->cnpj),
         ]);
     }
 
@@ -350,7 +350,7 @@ class CreateProposalForm extends Component
 
     protected function formatCnpj(string $value): string
     {
-        $digits = substr($this->digitsOnly($value), 0, 14);
+        $digits = substr(Str::digitsOnly($value), 0, 14);
 
         if (strlen($digits) <= 2) {
             return $digits;
@@ -373,7 +373,7 @@ class CreateProposalForm extends Component
 
     protected function formatPostalCode(string $value): string
     {
-        $digits = substr($this->digitsOnly($value), 0, 8);
+        $digits = substr(Str::digitsOnly($value), 0, 8);
 
         if (strlen($digits) <= 5) {
             return $digits;
@@ -397,11 +397,6 @@ class CreateProposalForm extends Component
         $this->companyPhone = $this->nullableString($this->companyPhone);
         $this->jobTitle = $this->nullableString($this->jobTitle);
         $this->observations = $this->nullableString($this->observations);
-    }
-
-    protected function digitsOnly(string $value): string
-    {
-        return preg_replace('/\D/', '', $value) ?? '';
     }
 
     protected function nullableString(?string $value): ?string

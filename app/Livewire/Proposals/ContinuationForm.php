@@ -339,7 +339,7 @@ class ContinuationForm extends Component
 
     protected function fetchAddress(): void
     {
-        $zipCode = preg_replace('/\D/', '', $this->zipCode);
+        $zipCode = Str::digitsOnly($this->zipCode);
 
         if (strlen($zipCode) !== 8) {
             return;
@@ -593,22 +593,12 @@ class ContinuationForm extends Component
 
     protected function ensureMagicLinkConfirmed(Request $request, ProposalContinuationAccess $access): void
     {
-        abort_unless($this->hasSessionKey($request, $this->magicLinkSessionKey($access)) && $access->isActive(), 403);
+        abort_unless($this->hasSessionKey($request, $access->magicLinkSessionKey()) && $access->isActive(), 403);
     }
 
     protected function isAuthorized(Request $request, ProposalContinuationAccess $access): bool
     {
-        return $this->hasSessionKey($request, $this->verifiedSessionKey($access)) && $access->isActive();
-    }
-
-    protected function magicLinkSessionKey(ProposalContinuationAccess $access): string
-    {
-        return "proposal_magic_link.{$access->id}";
-    }
-
-    protected function verifiedSessionKey(ProposalContinuationAccess $access): string
-    {
-        return "proposal_verified.{$access->id}";
+        return $this->hasSessionKey($request, $access->verifiedSessionKey()) && $access->isActive();
     }
 
     protected function hasSessionKey(Request $request, string $key): bool

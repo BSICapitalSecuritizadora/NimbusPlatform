@@ -318,6 +318,45 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSee('fi-wrapped', false);
 });
 
+it('identifies portal replies in the submission timeline for admins', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-submission-timeline@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Timeline',
+        'email' => 'cliente.timeline@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-TIMELINE-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitacao com resposta do portal',
+        'responsible_name' => 'Responsável Timeline',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Timeline',
+        'status' => Submission::STATUS_UNDER_REVIEW,
+        'submitted_at' => now(),
+    ]);
+
+    $submission->notes()->create([
+        'user_id' => null,
+        'visibility' => 'ADMIN_ONLY',
+        'message' => 'Documento societário reenviado pelo solicitante.',
+    ]);
+
+    $this->actingAs($user)
+        ->get(SubmissionResource::getUrl('view', ['record' => $submission], panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Cliente Timeline (Solicitante do Portal)')
+        ->assertSee('Documento societário reenviado pelo solicitante.');
+});
+
 it('allows admin users to upload return documents and renders them in the dedicated section', function () {
     $user = User::factory()->withTwoFactor()->create([
         'email' => 'nimbus-submission-response-files@example.com',

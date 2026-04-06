@@ -180,6 +180,14 @@ class Submission extends Model
         return $this->hasMany(SubmissionNote::class, 'nimbus_submission_id');
     }
 
+    public function portalVisibleNotes(): HasMany
+    {
+        return $this->hasMany(SubmissionNote::class, 'nimbus_submission_id')
+            ->where('visibility', 'USER_VISIBLE')
+            ->with('user')
+            ->latest('created_at');
+    }
+
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'nimbus_submission_tags', 'nimbus_submission_id', 'nimbus_tag_id');

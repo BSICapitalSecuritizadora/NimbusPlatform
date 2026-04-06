@@ -2,7 +2,7 @@
 
 namespace App\DTOs\Proposals;
 
-use App\Models\ProposalProject;
+use App\Concerns\MoneyFormatter;
 
 readonly class ProposalContinuationCharacteristicsDTO
 {
@@ -27,7 +27,7 @@ readonly class ProposalContinuationCharacteristicsDTO
 
     protected static function integer(mixed $value): int
     {
-        return (int) round(ProposalProject::normalizeDecimalValue($value));
+        return (int) round(MoneyFormatter::normalizeDecimalValue($value));
     }
 
     protected static function nullableInteger(mixed $value): ?int

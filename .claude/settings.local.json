@@ -4,7 +4,12 @@
       "Bash(docker exec:*)",
       "Bash(php artisan:*)",
       "Bash(sudo chmod:*)",
-      "Bash(chmod -R 755 /home/desktop/projects/bsi-capital/storage/framework/testing/)"
+      "Bash(chmod -R 755 /home/desktop/projects/bsi-capital/storage/framework/testing/)",
+      "Bash(sudo chown:*)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(install -d -m 755 -o desktop -g desktop /home/desktop/projects/bsi-capital/app/Support/)",
+      "Bash(chmod u+w /home/desktop/projects/bsi-capital/app/Support/)",
+      "Bash(vendor/bin/pint --dirty 2>&1)"
     ]
   }
 }

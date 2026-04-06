@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 
 class CaseStudyController extends Controller
 {
@@ -54,11 +53,12 @@ class CaseStudyController extends Controller
 
     public function show($slug)
     {
-        if (!isset($this->cases[$slug])) {
+        if (! isset($this->cases[$slug])) {
             abort(404);
         }
 
         $case = (object) $this->cases[$slug];
+
         return view('site.cases.show', compact('case'));
     }
 }

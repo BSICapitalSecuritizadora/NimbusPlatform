@@ -13,12 +13,12 @@ class DocumentsController extends Controller
         $investor = $request->user('investor');
 
         // === inputs ===
-        $search     = trim((string) $request->query('q', ''));
-        $category   = $request->query('category');
+        $search = trim((string) $request->query('q', ''));
+        $category = $request->query('category');
         $emissionId = $request->query('emission_id');
-        $dateFrom   = $request->query('from'); // YYYY-MM-DD
-        $dateTo     = $request->query('to');   // YYYY-MM-DD
-        $onlyNew    = (bool) $request->boolean('only_new');
+        $dateFrom = $request->query('from'); // YYYY-MM-DD
+        $dateTo = $request->query('to');   // YYYY-MM-DD
+        $onlyNew = (bool) $request->boolean('only_new');
 
         // Campo de data para filtro (recomendado: published_at se existir)
         $dateField = \Schema::hasColumn('documents', 'published_at') ? 'published_at' : 'created_at';
@@ -58,8 +58,6 @@ class DocumentsController extends Controller
             ->visibleToInvestor($investor->id)
             ->where($dateField, '>', $investor->last_portal_seen_at ?? '1970-01-01')
             ->count();
-
-
 
         return view('portal.documents.index', compact(
             'documents',

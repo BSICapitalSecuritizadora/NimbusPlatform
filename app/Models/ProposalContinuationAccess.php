@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Actions\Proposals\GenerateProposalContinuationUrl;
 use App\Enums\ProposalContinuationAccessStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\URL;
 
 class ProposalContinuationAccess extends Model
 {
@@ -50,6 +50,16 @@ class ProposalContinuationAccess extends Model
     public function getRouteKeyName(): string
     {
         return 'token';
+    }
+
+    public function magicLinkSessionKey(): string
+    {
+        return "proposal_magic_link.{$this->id}";
+    }
+
+    public function verifiedSessionKey(): string
+    {
+        return "proposal_verified.{$this->id}";
     }
 
     public function proposal(): BelongsTo
@@ -95,11 +105,7 @@ class ProposalContinuationAccess extends Model
 
     public function getGeneratedUrlAttribute(): string
     {
-        return URL::temporarySignedRoute(
-            'site.proposal.continuation.access',
-            $this->expires_at,
-            ['access' => $this],
-        );
+        return GenerateProposalContinuationUrl::for($this);
     }
 
     public function resolveStatus(): ProposalContinuationAccessStatus

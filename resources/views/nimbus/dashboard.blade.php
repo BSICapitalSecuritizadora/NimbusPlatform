@@ -98,7 +98,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (array_slice($submissions, 0, 5) as $s)
+                            @foreach ($submissions as $s)
                                 @php
                                     $status = $s['status'] ?? null;
                                     $statusConfig = [

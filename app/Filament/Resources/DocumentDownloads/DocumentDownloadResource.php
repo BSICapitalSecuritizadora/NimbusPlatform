@@ -5,10 +5,6 @@ namespace App\Filament\Resources\DocumentDownloads;
 use App\Filament\Resources\DocumentDownloads\Pages\ManageDocumentDownloads;
 use App\Models\DocumentDownload;
 use BackedEnum;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -70,11 +66,11 @@ class DocumentDownloadResource extends Resource
         // ... (Keep existing layout or add detailed view)
         return $schema
             ->components([
-                 \Filament\Infolists\Components\TextEntry::make('document.title')->label('Documento'),
-                 \Filament\Infolists\Components\TextEntry::make('investor.name')->label('Investidor'),
-                 \Filament\Infolists\Components\TextEntry::make('ip')->label('IP'),
-                 \Filament\Infolists\Components\TextEntry::make('user_agent')->label('User Agent'),
-                 \Filament\Infolists\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime(),
+                \Filament\Infolists\Components\TextEntry::make('document.title')->label('Documento'),
+                \Filament\Infolists\Components\TextEntry::make('investor.name')->label('Investidor'),
+                \Filament\Infolists\Components\TextEntry::make('ip')->label('IP'),
+                \Filament\Infolists\Components\TextEntry::make('user_agent')->label('User Agent'),
+                \Filament\Infolists\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime(),
             ]);
     }
 

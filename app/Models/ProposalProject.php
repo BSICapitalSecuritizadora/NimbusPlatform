@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Concerns\MoneyFormatter;
+use App\Concerns\ProjectCalculator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -83,10 +85,7 @@ class ProposalProject extends Model
 
     public static function calculateCostTotal(mixed $costIncurred, mixed $costToIncur): float
     {
-        return round(
-            self::normalizeDecimalValue($costIncurred) + self::normalizeDecimalValue($costToIncur),
-            2,
-        );
+        return ProjectCalculator::calculateCostTotal($costIncurred, $costToIncur);
     }
 
     public static function calculateUnitsTotal(
@@ -95,10 +94,7 @@ class ProposalProject extends Model
         mixed $unitsExchanged,
         mixed $unitsStock,
     ): int {
-        return self::normalizeIntegerValue($unitsUnpaid)
-            + self::normalizeIntegerValue($unitsPaid)
-            + self::normalizeIntegerValue($unitsExchanged)
-            + self::normalizeIntegerValue($unitsStock);
+        return ProjectCalculator::calculateUnitsTotal($unitsUnpaid, $unitsPaid, $unitsExchanged, $unitsStock);
     }
 
     public static function calculateSalesPercentage(
@@ -107,30 +103,12 @@ class ProposalProject extends Model
         mixed $unitsExchanged,
         mixed $unitsStock,
     ): float {
-        $unitsUnpaid = self::normalizeIntegerValue($unitsUnpaid);
-        $unitsPaid = self::normalizeIntegerValue($unitsPaid);
-        $unitsExchanged = self::normalizeIntegerValue($unitsExchanged);
-        $unitsStock = self::normalizeIntegerValue($unitsStock);
-        $unitsTotal = self::calculateUnitsTotal($unitsUnpaid, $unitsPaid, $unitsExchanged, $unitsStock);
-        $sellableUnits = $unitsTotal - $unitsExchanged;
-
-        if ($sellableUnits <= 0) {
-            return 0.0;
-        }
-
-        return round((($unitsUnpaid + $unitsPaid) / $sellableUnits) * 100, 2);
+        return ProjectCalculator::calculateSalesPercentage($unitsUnpaid, $unitsPaid, $unitsExchanged, $unitsStock);
     }
 
     public static function calculateWorkStagePercentage(mixed $costIncurred, mixed $costTotal): float
     {
-        $costIncurred = self::normalizeDecimalValue($costIncurred);
-        $costTotal = self::normalizeDecimalValue($costTotal);
-
-        if ($costTotal <= 0) {
-            return 0.0;
-        }
-
-        return round(($costIncurred / $costTotal) * 100, 2);
+        return ProjectCalculator::calculateWorkStagePercentage($costIncurred, $costTotal);
     }
 
     public static function calculatePaymentFlowTotal(
@@ -138,12 +116,7 @@ class ProposalProject extends Model
         mixed $valueUntilKeys,
         mixed $valuePostKeys,
     ): float {
-        return round(
-            self::normalizeDecimalValue($valueReceived)
-                + self::normalizeDecimalValue($valueUntilKeys)
-                + self::normalizeDecimalValue($valuePostKeys),
-            2,
-        );
+        return ProjectCalculator::calculatePaymentFlowTotal($valueReceived, $valueUntilKeys, $valuePostKeys);
     }
 
     public static function calculateSalesValuesTotal(
@@ -151,27 +124,22 @@ class ProposalProject extends Model
         mixed $valueUnpaid,
         mixed $valueStock,
     ): float {
-        return round(
-            self::normalizeDecimalValue($valuePaid)
-                + self::normalizeDecimalValue($valueUnpaid)
-                + self::normalizeDecimalValue($valueStock),
-            2,
-        );
+        return ProjectCalculator::calculateSalesValuesTotal($valuePaid, $valueUnpaid, $valueStock);
     }
 
     protected function syncSalesMetrics(): void
     {
-        $this->exchanged_units = self::normalizeIntegerValue($this->exchanged_units);
-        $this->paid_units = self::normalizeIntegerValue($this->paid_units);
-        $this->unpaid_units = self::normalizeIntegerValue($this->unpaid_units);
-        $this->stock_units = self::normalizeIntegerValue($this->stock_units);
-        $this->units_total = self::calculateUnitsTotal(
+        $this->exchanged_units = MoneyFormatter::normalizeIntegerValue($this->exchanged_units);
+        $this->paid_units = MoneyFormatter::normalizeIntegerValue($this->paid_units);
+        $this->unpaid_units = MoneyFormatter::normalizeIntegerValue($this->unpaid_units);
+        $this->stock_units = MoneyFormatter::normalizeIntegerValue($this->stock_units);
+        $this->units_total = ProjectCalculator::calculateUnitsTotal(
             $this->unpaid_units,
             $this->paid_units,
             $this->exchanged_units,
             $this->stock_units,
         );
-        $this->sales_percentage = self::calculateSalesPercentage(
+        $this->sales_percentage = ProjectCalculator::calculateSalesPercentage(
             $this->unpaid_units,
             $this->paid_units,
             $this->exchanged_units,
@@ -181,29 +149,29 @@ class ProposalProject extends Model
 
     protected function syncOverviewValues(): void
     {
-        $this->requested_amount = self::normalizeDecimalValue($this->requested_amount);
-        $this->land_market_value = self::normalizeDecimalValue($this->land_market_value);
-        $this->land_area = self::normalizeDecimalValue($this->land_area);
-        $this->remaining_months = self::normalizeIntegerValue($this->remaining_months);
+        $this->requested_amount = MoneyFormatter::normalizeDecimalValue($this->requested_amount);
+        $this->land_market_value = MoneyFormatter::normalizeDecimalValue($this->land_market_value);
+        $this->land_area = MoneyFormatter::normalizeDecimalValue($this->land_area);
+        $this->remaining_months = MoneyFormatter::normalizeIntegerValue($this->remaining_months);
     }
 
     protected function syncCostMetrics(): void
     {
-        $this->incurred_cost = self::normalizeDecimalValue($this->incurred_cost);
-        $this->cost_to_incur = self::normalizeDecimalValue($this->cost_to_incur);
-        $this->total_cost = self::calculateCostTotal($this->incurred_cost, $this->cost_to_incur);
-        $this->work_stage_percentage = self::calculateWorkStagePercentage($this->incurred_cost, $this->total_cost);
+        $this->incurred_cost = MoneyFormatter::normalizeDecimalValue($this->incurred_cost);
+        $this->cost_to_incur = MoneyFormatter::normalizeDecimalValue($this->cost_to_incur);
+        $this->total_cost = ProjectCalculator::calculateCostTotal($this->incurred_cost, $this->cost_to_incur);
+        $this->work_stage_percentage = ProjectCalculator::calculateWorkStagePercentage($this->incurred_cost, $this->total_cost);
     }
 
     protected function syncSaleValues(): void
     {
-        $this->paid_sales_value = self::normalizeDecimalValue($this->paid_sales_value);
-        $this->unpaid_sales_value = self::normalizeDecimalValue($this->unpaid_sales_value);
-        $this->stock_sales_value = self::normalizeDecimalValue($this->stock_sales_value);
-        $this->received_value = self::normalizeDecimalValue($this->received_value);
-        $this->value_until_keys = self::normalizeDecimalValue($this->value_until_keys);
-        $this->value_after_keys = self::normalizeDecimalValue($this->value_after_keys);
-        $this->gross_sales_value = self::calculateSalesValuesTotal(
+        $this->paid_sales_value = MoneyFormatter::normalizeDecimalValue($this->paid_sales_value);
+        $this->unpaid_sales_value = MoneyFormatter::normalizeDecimalValue($this->unpaid_sales_value);
+        $this->stock_sales_value = MoneyFormatter::normalizeDecimalValue($this->stock_sales_value);
+        $this->received_value = MoneyFormatter::normalizeDecimalValue($this->received_value);
+        $this->value_until_keys = MoneyFormatter::normalizeDecimalValue($this->value_until_keys);
+        $this->value_after_keys = MoneyFormatter::normalizeDecimalValue($this->value_after_keys);
+        $this->gross_sales_value = ProjectCalculator::calculateSalesValuesTotal(
             $this->paid_sales_value,
             $this->unpaid_sales_value,
             $this->stock_sales_value,
@@ -331,51 +299,16 @@ class ProposalProject extends Model
 
     protected static function normalizeIntegerValue(mixed $value): int
     {
-        return (int) round(self::normalizeDecimalValue($value));
+        return MoneyFormatter::normalizeIntegerValue($value);
     }
 
     public static function normalizeDecimalValue(mixed $value): float
     {
-        if ($value === null) {
-            return 0.0;
-        }
-
-        if (is_int($value) || is_float($value)) {
-            return round((float) $value, 2);
-        }
-
-        $value = trim((string) $value);
-
-        if ($value === '') {
-            return 0.0;
-        }
-
-        $value = str_replace(['R$', ' '], '', $value);
-
-        if (str_contains($value, ',')) {
-            $value = str_replace('.', '', $value);
-            $value = str_replace(',', '.', $value);
-        } elseif (str_contains($value, '.')) {
-            $parts = explode('.', $value);
-
-            if ((count($parts) > 2) || (strlen((string) end($parts)) === 3)) {
-                $value = str_replace('.', '', $value);
-            } else {
-                $value = str_replace(',', '', $value);
-            }
-        } else {
-            $value = str_replace(',', '', $value);
-        }
-
-        if (! is_numeric($value)) {
-            return 0.0;
-        }
-
-        return round((float) $value, 2);
+        return MoneyFormatter::normalizeDecimalValue($value);
     }
 
     public static function formatCurrencyForDisplay(mixed $value): string
     {
-        return number_format(self::normalizeDecimalValue($value), 2, ',', '.');
+        return MoneyFormatter::formatCurrencyForDisplay($value);
     }
 }
