@@ -4,7 +4,7 @@
 @push('styles')
 <style>
     @media (min-width: 992px) {
-        .nd-sticky-files {
+        .nd-sticky-sidebar {
             position: sticky;
             top: 7rem;
             max-height: calc(100vh - 8.5rem);
@@ -188,61 +188,63 @@
     </div>
     
     <div class="col-lg-4">
-        <!-- Documentos -->
-        <div class="nd-card border-0 shadow-sm rounded-4 nd-sticky-files">
-            <div class="nd-card-header bg-white border-bottom p-4">
-                <h5 class="nd-card-title fw-bold text-dark mb-0">Arquivos Anexos</h5>
-            </div>
-            <div class="nd-card-body p-0">
-                <ul class="list-group list-group-flush">
-                    @forelse($requestFiles as $file)
-                        <li class="list-group-item d-flex justify-content-between align-items-center p-4 border-bottom border-light-subtle">
-                            <div class="d-flex align-items-center mw-100 pe-3 overflow-hidden">
-                                <div class="bg-light text-danger rounded p-2 me-3 fs-4">
-                                    <i class="bi bi-file-earmark-pdf-fill"></i>
+        <div class="nd-sticky-sidebar">
+            <!-- Documentos -->
+            <div class="nd-card border-0 shadow-sm rounded-4">
+                <div class="nd-card-header bg-white border-bottom p-4">
+                    <h5 class="nd-card-title fw-bold text-dark mb-0">Arquivos Anexos</h5>
+                </div>
+                <div class="nd-card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        @forelse($requestFiles as $file)
+                            <li class="list-group-item d-flex justify-content-between align-items-center p-4 border-bottom border-light-subtle">
+                                <div class="d-flex align-items-center mw-100 pe-3 overflow-hidden">
+                                    <div class="bg-light text-danger rounded p-2 me-3 fs-4">
+                                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                                    </div>
+                                    <div class="text-truncate">
+                                        <div class="fw-bold text-dark text-truncate">{{ $file->document_type_label }}</div>
+                                        <small class="text-muted d-block text-truncate">{{ $file->original_name }}</small>
+                                    </div>
                                 </div>
-                                <div class="text-truncate">
-                                    <div class="fw-bold text-dark text-truncate">{{ $file->document_type_label }}</div>
-                                    <small class="text-muted d-block text-truncate">{{ $file->original_name }}</small>
-                                </div>
-                            </div>
-                            <a href="{{ route('nimbus.submissions.files.download', [$submission, $file]) }}" class="btn btn-sm btn-light border rounded-circle text-primary shadow-sm" title="Download">
-                                <i class="bi bi-download"></i>
-                            </a>
-                        </li>
-                    @empty
-                        <li class="list-group-item p-4 text-center text-muted">Nenhum arquivo enviado.</li>
-                    @endforelse
-                </ul>
+                                <a href="{{ route('nimbus.submissions.files.download', [$submission, $file]) }}" class="btn btn-sm btn-light border rounded-circle text-primary shadow-sm" title="Download">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </li>
+                        @empty
+                            <li class="list-group-item p-4 text-center text-muted">Nenhum arquivo enviado.</li>
+                        @endforelse
+                    </ul>
+                </div>
             </div>
-        </div>
 
-        <div class="nd-card border-0 shadow-sm rounded-4 mt-4">
-            <div class="nd-card-header bg-white border-bottom p-4">
-                <h5 class="nd-card-title fw-bold text-dark mb-0">Documentos de Retorno</h5>
-            </div>
-            <div class="nd-card-body p-0">
-                <ul class="list-group list-group-flush">
-                    @forelse($responseFiles as $file)
-                        <li class="list-group-item d-flex justify-content-between align-items-center p-4 border-bottom border-light-subtle">
-                            <div class="d-flex align-items-center mw-100 pe-3 overflow-hidden">
-                                <div class="bg-light text-success rounded p-2 me-3 fs-4">
-                                    <i class="bi bi-file-earmark-check"></i>
+            <div class="nd-card border-0 shadow-sm rounded-4 mt-4">
+                <div class="nd-card-header bg-white border-bottom p-4">
+                    <h5 class="nd-card-title fw-bold text-dark mb-0">Documentos de Retorno</h5>
+                </div>
+                <div class="nd-card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        @forelse($responseFiles as $file)
+                            <li class="list-group-item d-flex justify-content-between align-items-center p-4 border-bottom border-light-subtle">
+                                <div class="d-flex align-items-center mw-100 pe-3 overflow-hidden">
+                                    <div class="bg-light text-success rounded p-2 me-3 fs-4">
+                                        <i class="bi bi-file-earmark-check"></i>
+                                    </div>
+                                    <div class="text-truncate">
+                                        <div class="fw-bold text-dark text-truncate">{{ $file->original_name }}</div>
+                                        <small class="text-muted d-block text-truncate">{{ \Illuminate\Support\Number::fileSize((int) $file->size_bytes) }}</small>
+                                    </div>
                                 </div>
-                                <div class="text-truncate">
-                                    <div class="fw-bold text-dark text-truncate">{{ $file->original_name }}</div>
-                                    <small class="text-muted d-block text-truncate">{{ \Illuminate\Support\Number::fileSize((int) $file->size_bytes) }}</small>
-                                </div>
-                            </div>
-                            <a href="{{ route('nimbus.submissions.files.download', [$submission, $file]) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Baixar documento de retorno">
-                                <i class="bi bi-download me-1"></i>
-                                Baixar
-                            </a>
-                        </li>
-                    @empty
-                        <li class="list-group-item p-4 text-center text-muted">Nenhum documento de retorno disponível até o momento.</li>
-                    @endforelse
-                </ul>
+                                <a href="{{ route('nimbus.submissions.files.download', [$submission, $file]) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Baixar documento de retorno">
+                                    <i class="bi bi-download me-1"></i>
+                                    Baixar
+                                </a>
+                            </li>
+                        @empty
+                            <li class="list-group-item p-4 text-center text-muted">Nenhum documento de retorno disponível até o momento.</li>
+                        @endforelse
+                    </ul>
+                </div>
             </div>
         </div>
     </div>

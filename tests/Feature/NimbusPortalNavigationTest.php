@@ -149,7 +149,7 @@ it('shows portal-visible return documents and allows secure submission file down
         ->get(route('nimbus.submissions.show', $submission))
         ->assertSuccessful()
         ->assertSee('Arquivos Anexos')
-        ->assertSee('nd-sticky-files', false)
+        ->assertSee('nd-sticky-sidebar', false)
         ->assertSee('Documentos de Retorno')
         ->assertSee('balanco.pdf')
         ->assertSee('parecer.pdf')
