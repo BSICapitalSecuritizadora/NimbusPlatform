@@ -7,10 +7,11 @@ use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentDownloadController extends Controller
 {
-    public function __invoke(Request $request, Document $document)
+    public function __invoke(Request $request, Document $document): StreamedResponse
     {
         $investor = $request->user('investor');
 

@@ -47,11 +47,16 @@ class SubmissionResource extends Resource
     public static function infolist(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
                 Section::make('Detalhes do Envio')
                     ->icon('heroicon-o-document-text')
                     ->schema([
-                        Grid::make(3)
+                        Grid::make([
+                            'default' => 1,
+                            'md' => 2,
+                            'xl' => 4,
+                        ])
                             ->schema([
                                 TextEntry::make('reference_code')
                                     ->label('Protocolo')
@@ -60,6 +65,10 @@ class SubmissionResource extends Resource
                                     ->fontFamily('mono')
                                     ->size('xs')
                                     ->tooltip(fn (?string $state): ?string => $state)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'xl' => 2,
+                                    ])
                                     ->wrap(),
                                 TextEntry::make('portalUser.name')
                                     ->label('Solicitante')
@@ -77,6 +86,7 @@ class SubmissionResource extends Resource
 
                 Section::make('Informações Complementares')
                     ->icon('heroicon-o-information-circle')
+                    ->columns(1)
                     ->schema([
                         Section::make('Dados da Empresa')
                             ->description('Identificação e contatos informados pelo solicitante')
@@ -163,12 +173,24 @@ class SubmissionResource extends Resource
                             ]),
                     ]),
 
+                Section::make('Documentos de Retorno')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->description('Arquivos enviados pela equipe interna para devolutiva e acompanhamento do solicitante.')
+                    ->schema([
+                        View::make('filament.resources.nimbus.submissions.response-files-section'),
+                    ]),
+
                 Section::make('Timeline da Submissão')
                     ->icon('heroicon-o-chat-bubble-bottom-center-text')
                     ->description('Observações inseridas neste envio')
                     ->schema([
+                        TextEntry::make('notes_empty_state')
+                            ->hiddenLabel()
+                            ->state('Nenhuma observação interna foi registrada neste envio até o momento.')
+                            ->visible(fn (Submission $record): bool => $record->notes->isEmpty()),
                         RepeatableEntry::make('notes')
                             ->hiddenLabel()
+                            ->visible(fn (Submission $record): bool => $record->notes->isNotEmpty())
                             ->schema([
                                 TextEntry::make('created_at')->label('Data/Hora')->dateTime('d/m/Y H:i'),
                                 TextEntry::make('user.name')->label('Usuário Autor'),
@@ -176,13 +198,6 @@ class SubmissionResource extends Resource
                                 TextEntry::make('message')->label('Mensagem')->columnSpanFull()->wrap(),
                             ])
                             ->columns(3),
-                    ]),
-
-                Section::make('Documentos de Retorno')
-                    ->icon('heroicon-o-paper-airplane')
-                    ->description('Arquivos enviados pela equipe interna para devolutiva e acompanhamento do solicitante.')
-                    ->schema([
-                        View::make('filament.resources.nimbus.submissions.response-files-section'),
                     ]),
 
                 Section::make('Trilha de Auditoria')

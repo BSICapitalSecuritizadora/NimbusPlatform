@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProposalContinuationAccessStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -101,36 +102,35 @@ class ProposalContinuationAccess extends Model
         );
     }
 
-    public function getStatusLabelAttribute(): string
+    public function resolveStatus(): ProposalContinuationAccessStatus
     {
         if ($this->revoked_at) {
-            return 'Revogado';
+            return ProposalContinuationAccessStatus::Revoked;
         }
 
         if ($this->expires_at->isPast()) {
-            return 'Expirado';
+            return ProposalContinuationAccessStatus::Expired;
         }
 
         if ($this->verified_at) {
-            return 'Validado';
+            return ProposalContinuationAccessStatus::Verified;
         }
 
         if ($this->first_accessed_at) {
-            return 'Acessado';
+            return ProposalContinuationAccessStatus::Accessed;
         }
 
-        return 'Enviado';
+        return ProposalContinuationAccessStatus::Sent;
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return $this->resolveStatus()->label();
     }
 
     public function getStatusColorAttribute(): string
     {
-        return match ($this->status_label) {
-            'Validado' => 'success',
-            'Acessado' => 'info',
-            'Expirado' => 'warning',
-            'Revogado' => 'gray',
-            default => 'primary',
-        };
+        return $this->resolveStatus()->color();
     }
 
     public function markLinkOpened(): void

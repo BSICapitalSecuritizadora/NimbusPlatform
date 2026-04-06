@@ -2,11 +2,12 @@
 
 namespace App\DTOs\Proposals;
 
+use App\DTOs\BaseDTO;
 use App\Enums\ProposalStatus;
 use App\Models\User;
 use InvalidArgumentException;
 
-readonly class ProposalStatusHistoryDTO
+readonly class ProposalStatusHistoryDTO extends BaseDTO
 {
     public function __construct(
         public ?ProposalStatus $previousStatus,
@@ -31,12 +32,5 @@ readonly class ProposalStatusHistoryDTO
             user: $user instanceof User ? $user : null,
             note: self::nullableString($data['note'] ?? null),
         );
-    }
-
-    protected static function nullableString(mixed $value): ?string
-    {
-        $value = trim((string) $value);
-
-        return $value === '' ? null : $value;
     }
 }

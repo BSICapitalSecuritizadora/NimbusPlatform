@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Investor;
 
+use App\Concerns\HasInvestorSession;
 use App\Models\Emission;
 use App\Models\Investor;
 use Illuminate\Contracts\View\View;
@@ -15,14 +16,12 @@ use Livewire\Component;
 #[Title('Minhas Emissoes')]
 class InvestorEmissions extends Component
 {
+    use HasInvestorSession;
+
     #[Computed]
     public function investor(): Investor
     {
-        $investor = auth('investor')->user();
-
-        abort_unless($investor instanceof Investor, 403);
-
-        return $investor;
+        return $this->resolveInvestor();
     }
 
     /**

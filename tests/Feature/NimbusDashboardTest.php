@@ -286,8 +286,13 @@ it('renders the submission view page for authenticated admin users', function ()
     $this->actingAs($user)
         ->get(SubmissionResource::getUrl('view', ['record' => $submission], panel: 'admin'))
         ->assertSuccessful()
-        ->assertSee('Detalhes do Envio')
-        ->assertSee('Informações Complementares')
+        ->assertSeeInOrder([
+            'Detalhes do Envio',
+            'Informações Complementares',
+            'Documentos de Retorno',
+            'Timeline da Submissão',
+            'Trilha de Auditoria',
+        ])
         ->assertSeeInOrder([
             'Dados da Empresa',
             'Indicadores Financeiros',
@@ -299,6 +304,7 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSee('Trilha de Auditoria')
         ->assertSee('Documentos de Retorno')
         ->assertSee('Anexar Resposta')
+        ->assertSee('Nenhuma observação interna foi registrada neste envio até o momento.')
         ->assertSee('Sócios')
         ->assertSee('Arquivos')
         ->assertSee('Metadados do Registro')

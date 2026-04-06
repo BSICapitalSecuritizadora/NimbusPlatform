@@ -60,14 +60,17 @@ class Emission extends Model
         'integralization_status',
     ];
 
-    protected $casts = [
-        'issue_date' => 'date',
-        'maturity_date' => 'date',
-        'issued_price' => 'decimal:2',
-        'issued_volume' => 'decimal:2',
-        'prepayment_possibility' => 'boolean',
-        'is_public' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'issue_date' => 'date',
+            'maturity_date' => 'date',
+            'issued_price' => 'decimal:2',
+            'issued_volume' => 'decimal:2',
+            'prepayment_possibility' => 'boolean',
+            'is_public' => 'boolean',
+        ];
+    }
 
     public function getStatusLabelAttribute(): string
     {

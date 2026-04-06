@@ -28,11 +28,14 @@ class Investor extends Authenticatable
         'remember_token',
     ];
 
-    protected $casts = [
-        'is_active' => 'boolean',
-        'last_login_at' => 'datetime',
-        'last_portal_seen_at' => 'datetime',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
+            'last_portal_seen_at' => 'datetime',
+        ];
+    }
 
     protected $hidden = [
         'password',

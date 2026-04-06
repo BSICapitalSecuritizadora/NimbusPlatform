@@ -27,15 +27,18 @@ class Submission extends Model
 
     protected $guarded = ['id'];
 
-    protected $casts = [
-        'is_us_person' => 'boolean',
-        'is_pep' => 'boolean',
-        'shareholder_data' => 'array',
-        'submitted_at' => 'datetime',
-        'status_updated_at' => 'datetime',
-        'net_worth' => 'decimal:2',
-        'annual_revenue' => 'decimal:2',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'is_us_person' => 'boolean',
+            'is_pep' => 'boolean',
+            'shareholder_data' => 'array',
+            'submitted_at' => 'datetime',
+            'status_updated_at' => 'datetime',
+            'net_worth' => 'decimal:2',
+            'annual_revenue' => 'decimal:2',
+        ];
+    }
 
     /**
      * @return array<string, string>

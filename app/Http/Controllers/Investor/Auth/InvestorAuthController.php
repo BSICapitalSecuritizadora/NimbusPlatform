@@ -3,17 +3,19 @@
 namespace App\Http\Controllers\Investor\Auth;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class InvestorAuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(): View
     {
         return view('investor.auth.login');
     }
 
-    public function login(Request $request)
+    public function login(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
@@ -37,7 +39,7 @@ class InvestorAuthController extends Controller
         return redirect()->route('investor.dashboard');
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request): RedirectResponse
     {
         auth('investor')->logout();
 

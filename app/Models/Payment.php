@@ -16,13 +16,16 @@ class Payment extends Model
         'extra_amortization_value',
     ];
 
-    protected $casts = [
-        'payment_date' => 'date',
-        'premium_value' => 'decimal:2',
-        'interest_value' => 'decimal:2',
-        'amortization_value' => 'decimal:2',
-        'extra_amortization_value' => 'decimal:2',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'payment_date' => 'date',
+            'premium_value' => 'decimal:2',
+            'interest_value' => 'decimal:2',
+            'amortization_value' => 'decimal:2',
+            'extra_amortization_value' => 'decimal:2',
+        ];
+    }
 
     public function emission(): BelongsTo
     {

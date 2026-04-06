@@ -9,21 +9,23 @@ use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ProposalDashboardData
 {
     public function summary(?User $user = null): array
     {
         $query = $this->baseQuery($user);
+        $counts = $this->countsByStatus($user);
 
         return [
             'total' => (clone $query)->count(),
-            'awaiting_completion' => $this->countByStatus(Proposal::STATUS_AWAITING_COMPLETION, $user),
-            'in_review' => $this->countByStatus(Proposal::STATUS_IN_REVIEW, $user),
-            'awaiting_information' => $this->countByStatus(Proposal::STATUS_AWAITING_INFORMATION, $user),
-            'approved' => $this->countByStatus(Proposal::STATUS_APPROVED, $user),
-            'rejected' => $this->countByStatus(Proposal::STATUS_REJECTED, $user),
-            'completed' => $this->countByStatus(Proposal::STATUS_COMPLETED, $user),
+            'awaiting_completion' => $counts[Proposal::STATUS_AWAITING_COMPLETION] ?? 0,
+            'in_review' => $counts[Proposal::STATUS_IN_REVIEW] ?? 0,
+            'awaiting_information' => $counts[Proposal::STATUS_AWAITING_INFORMATION] ?? 0,
+            'approved' => $counts[Proposal::STATUS_APPROVED] ?? 0,
+            'rejected' => $counts[Proposal::STATUS_REJECTED] ?? 0,
+            'completed' => $counts[Proposal::STATUS_COMPLETED] ?? 0,
             'received_last_30_days' => (clone $query)
                 ->where('created_at', '>=', now()->subDays(30))
                 ->count(),
@@ -33,13 +35,15 @@ class ProposalDashboardData
 
     public function statusDistribution(?User $user = null): array
     {
+        $counts = $this->countsByStatus($user);
+
         return [
-            Proposal::STATUS_AWAITING_COMPLETION => $this->countByStatus(Proposal::STATUS_AWAITING_COMPLETION, $user),
-            Proposal::STATUS_IN_REVIEW => $this->countByStatus(Proposal::STATUS_IN_REVIEW, $user),
-            Proposal::STATUS_AWAITING_INFORMATION => $this->countByStatus(Proposal::STATUS_AWAITING_INFORMATION, $user),
-            Proposal::STATUS_APPROVED => $this->countByStatus(Proposal::STATUS_APPROVED, $user),
-            Proposal::STATUS_REJECTED => $this->countByStatus(Proposal::STATUS_REJECTED, $user),
-            Proposal::STATUS_COMPLETED => $this->countByStatus(Proposal::STATUS_COMPLETED, $user),
+            Proposal::STATUS_AWAITING_COMPLETION => $counts[Proposal::STATUS_AWAITING_COMPLETION] ?? 0,
+            Proposal::STATUS_IN_REVIEW => $counts[Proposal::STATUS_IN_REVIEW] ?? 0,
+            Proposal::STATUS_AWAITING_INFORMATION => $counts[Proposal::STATUS_AWAITING_INFORMATION] ?? 0,
+            Proposal::STATUS_APPROVED => $counts[Proposal::STATUS_APPROVED] ?? 0,
+            Proposal::STATUS_REJECTED => $counts[Proposal::STATUS_REJECTED] ?? 0,
+            Proposal::STATUS_COMPLETED => $counts[Proposal::STATUS_COMPLETED] ?? 0,
         ];
     }
 
@@ -143,11 +147,18 @@ class ProposalDashboardData
         return now()->subDays(3);
     }
 
-    protected function countByStatus(string $status, ?User $user = null): int
+    /**
+     * @return array<string, int>
+     */
+    protected function countsByStatus(?User $user = null): array
     {
         return $this->baseQuery($user)
-            ->where('status', $status)
-            ->count();
+            ->select(['status', DB::raw('COUNT(*) as count')])
+            ->groupBy('status')
+            ->get()
+            ->pluck('count', 'status')
+            ->map(fn (mixed $count): int => (int) $count)
+            ->all();
     }
 
     protected function baseQuery(?User $user = null): Builder

@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ProposalProject;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Response;
 
 class ProjectReportController extends Controller
 {
-    public function generateReport(ProposalProject $project)
+    public function generateReport(ProposalProject $project): Response
     {
         $project->load(['characteristics.unitTypes']);
 
@@ -17,7 +18,7 @@ class ProjectReportController extends Controller
         return $pdf->download("relatorio-empreendimento-{$project->id}.pdf");
     }
 
-    public function analyticalReport(ProposalProject $project)
+    public function analyticalReport(ProposalProject $project): Response
     {
         $project->load(['characteristics.unitTypes', 'indicators']);
 
