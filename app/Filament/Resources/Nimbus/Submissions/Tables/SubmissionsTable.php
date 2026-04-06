@@ -108,7 +108,7 @@ class SubmissionsTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                \Filament\Tables\Actions\ViewAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

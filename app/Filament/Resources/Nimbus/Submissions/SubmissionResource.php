@@ -10,6 +10,13 @@ use App\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm;
 use App\Filament\Resources\Nimbus\Submissions\Tables\SubmissionsTable;
 use App\Models\Nimbus\Submission;
 use BackedEnum;
+use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Components\Group;
+use App\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission;
+use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -38,6 +45,65 @@ class SubmissionResource extends Resource
         return SubmissionForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Section::make('Detalhes do Envio')
+                    ->icon('heroicon-o-document-text')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextEntry::make('reference_code')
+                                    ->label('Protocolo')
+                                    ->badge()
+                                    ->color('gray'),
+                                TextEntry::make('portalUser.name')
+                                    ->label('Solicitante')
+                                    ->description(fn (Submission $record) => $record->portalUser?->email)
+                                    ->icon('heroicon-m-user-circle')
+                                    ->iconColor('primary'),
+                                TextEntry::make('created_at')
+                                    ->label('Data do Envio')
+                                    ->date('d/m/Y \à\s H:i'),
+                                TextEntry::make('title')
+                                    ->label('Assunto')
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
+
+                Section::make('Informações Complementares')
+                    ->icon('heroicon-o-information-circle')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                Group::make([
+                                    TextEntry::make('company_name')->label('Razão Social')->inlineLabel(),
+                                    TextEntry::make('company_cnpj')->label('CNPJ')->inlineLabel(),
+                                    TextEntry::make('main_activity')->label('Atividade Principal')->inlineLabel(),
+                                    TextEntry::make('phone')->label('Telefone')->inlineLabel(),
+                                    TextEntry::make('website')->label('Website')->inlineLabel()->default('-'),
+                                ])->columns(1)->extraAttributes(['class' => 'space-y-2 border-r pr-6 border-gray-200 dark:border-white/10'])->columnSpan(1),
+
+                                Group::make([
+                                    TextEntry::make('net_worth')->label('Patrimônio Líquido')
+                                        ->money('BRL')->inlineLabel(),
+                                    TextEntry::make('annual_revenue')->label('Faturamento Anual')
+                                        ->money('BRL')->inlineLabel(),
+                                    IconEntry::make('is_us_person')
+                                        ->label('US Person?')
+                                        ->boolean()
+                                        ->inlineLabel(),
+                                    IconEntry::make('is_pep')
+                                        ->label('Pessoa Exposta (PEP)?')
+                                        ->boolean()
+                                        ->inlineLabel(),
+                                ])->columns(1)->extraAttributes(['class' => 'space-y-2 pl-4'])->columnSpan(1),
+                            ]),
+                    ]),
+            ]);
+    }
+
     public static function table(Table $table): Table
     {
         return SubmissionsTable::configure($table);
@@ -60,6 +126,7 @@ class SubmissionResource extends Resource
     {
         return [
             'index' => ListSubmissions::route('/'),
+            'view' => Pages\ViewSubmission::route('/{record}'),
             'edit' => EditSubmission::route('/{record}/edit'),
         ];
     }

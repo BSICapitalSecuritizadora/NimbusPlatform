@@ -16,53 +16,79 @@ class SubmissionForm
         return $schema
             ->components([
                 TextInput::make('nimbus_portal_user_id')
+                    ->label('ID do Usuário do Portal Nimbus')
                     ->required()
                     ->numeric(),
                 TextInput::make('reference_code')
+                    ->label('Código de Referência')
                     ->required(),
                 TextInput::make('submission_type')
+                    ->label('Tipo de Envio')
                     ->required()
                     ->default('REGISTRATION'),
                 TextInput::make('title')
+                    ->label('Assunto')
                     ->required(),
                 Textarea::make('message')
+                    ->label('Mensagem')
                     ->columnSpanFull(),
-                TextInput::make('responsible_name'),
-                TextInput::make('company_cnpj'),
-                TextInput::make('company_name'),
-                TextInput::make('main_activity'),
+                TextInput::make('responsible_name')
+                    ->label('Nome do Responsável'),
+                TextInput::make('company_cnpj')
+                    ->label('CNPJ da Empresa'),
+                TextInput::make('company_name')
+                    ->label('Razão Social / Empresa'),
+                TextInput::make('main_activity')
+                    ->label('Atividade Principal'),
                 TextInput::make('phone')
+                    ->label('Telefone')
                     ->tel(),
                 TextInput::make('website')
+                    ->label('Website')
                     ->url(),
                 TextInput::make('net_worth')
+                    ->label('Patrimônio Líquido')
                     ->numeric(),
                 TextInput::make('annual_revenue')
+                    ->label('Faturamento Anual')
                     ->numeric(),
                 Toggle::make('is_us_person')
+                    ->label('US Person?')
                     ->required(),
                 Toggle::make('is_pep')
+                    ->label('Pessoa Exposta (PEP)?')
                     ->required(),
-                TextInput::make('shareholder_data'),
-                TextInput::make('registrant_name'),
-                TextInput::make('registrant_position'),
-                TextInput::make('registrant_rg'),
-                TextInput::make('registrant_cpf'),
+                TextInput::make('shareholder_data')
+                    ->label('Dados Societários'),
+                TextInput::make('registrant_name')
+                    ->label('Nome do Cadastrante'),
+                TextInput::make('registrant_position')
+                    ->label('Cargo do Cadastrante'),
+                TextInput::make('registrant_rg')
+                    ->label('RG do Cadastrante'),
+                TextInput::make('registrant_cpf')
+                    ->label('CPF do Cadastrante'),
                 Select::make('status')
+                    ->label('Situação Atual')
                     ->options([
-                        'PENDING' => 'P e n d i n g',
-                        'UNDER_REVIEW' => 'U n d e r  r e v i e w',
-                        'COMPLETED' => 'C o m p l e t e d',
-                        'REJECTED' => 'R e j e c t e d',
+                        'PENDING' => 'Pendente',
+                        'UNDER_REVIEW' => 'Em Análise',
+                        'COMPLETED' => 'Concluído',
+                        'REJECTED' => 'Rejeitado',
                     ])
                     ->default('PENDING')
                     ->required(),
-                TextInput::make('created_ip'),
-                TextInput::make('created_user_agent'),
+                TextInput::make('created_ip')
+                    ->label('IP de Criação'),
+                TextInput::make('created_user_agent')
+                    ->label('Dispositivo/Navegador'),
                 DateTimePicker::make('submitted_at')
+                    ->label('Data e Hora de Envio')
                     ->required(),
-                DateTimePicker::make('status_updated_at'),
+                DateTimePicker::make('status_updated_at')
+                    ->label('Situação Atualizada Em'),
                 TextInput::make('status_updated_by')
+                    ->label('Atualizado Por (ID)')
                     ->numeric(),
             ]);
     }

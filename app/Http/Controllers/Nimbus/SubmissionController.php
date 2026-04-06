@@ -4,17 +4,31 @@ namespace App\Http\Controllers\Nimbus;
 
 use App\Http\Controllers\Controller;
 use App\Models\Nimbus\Submission;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Throwable;
 
 class SubmissionController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * @var array<string, string>
      */
-    public function index()
+    private const DOCUMENT_TYPE_MAP = [
+        'ultimo_balanco' => 'BALANCE_SHEET',
+        'dre' => 'DRE',
+        'politicas' => 'POLICIES',
+        'cartao_cnpj' => 'CNPJ_CARD',
+        'procuracao' => 'POWER_OF_ATTORNEY',
+        'ata' => 'MINUTES',
+        'contrato_social' => 'ARTICLES_OF_INCORPORATION',
+        'estatuto' => 'BYLAWS',
+    ];
+
+    public function index(): View
     {
         $user = Auth::guard('nimbus')->user();
         $submissions = Submission::where('nimbus_portal_user_id', $user->id)
@@ -24,29 +38,26 @@ class SubmissionController extends Controller
         return view('nimbus.submissions.index', compact('submissions'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): View
     {
         return view('nimbus.submissions.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'responsible_name' => 'required|string|max:255',
-            'company_cnpj' => 'required|string|max:20',
-            'company_name' => 'required|string|max:255',
-            'phone' => 'required|string|max:20',
+            'responsible_name' => 'required|string|max:190',
+            'company_cnpj' => 'required|string|max:18',
+            'company_name' => 'required|string|max:190',
+            'main_activity' => 'nullable|string|max:255',
+            'phone' => 'required|string|max:50',
+            'website' => 'nullable|url|max:255',
             'net_worth' => 'required|string',
             'annual_revenue' => 'required|string',
-            'registrant_name' => 'required|string|max:255',
-            'registrant_cpf' => 'required|string|max:20',
-            // File validations
+            'registrant_name' => 'required|string|max:190',
+            'registrant_position' => 'nullable|string|max:100',
+            'registrant_rg' => 'nullable|string|max:20',
+            'registrant_cpf' => 'required|string|max:14',
             'ultimo_balanco' => 'required|file|mimes:pdf|max:10240',
             'dre' => 'required|file|mimes:pdf|max:10240',
             'politicas' => 'required|file|mimes:pdf|max:10240',
@@ -58,19 +69,21 @@ class SubmissionController extends Controller
         ]);
 
         $user = Auth::guard('nimbus')->user();
-
-        // Decode shareholders JSON
         $shareholders = json_decode($request->input('shareholders', '[]'), true) ?? [];
 
         try {
             DB::beginTransaction();
 
-            // Format monetary values
-            $cleanNetWorth = str_replace(',', '.', str_replace(['R$', '.', ' '], '', $request->net_worth));
-            $cleanAnnualRevenue = str_replace(',', '.', str_replace(['R$', '.', ' '], '', $request->annual_revenue));
+            $cleanNetWorth = $this->normalizeMoneyInput((string) $request->net_worth);
+            $cleanAnnualRevenue = $this->normalizeMoneyInput((string) $request->annual_revenue);
+            $referenceCode = $this->generateReferenceCode();
 
             $submission = Submission::create([
                 'nimbus_portal_user_id' => $user->id,
+                'reference_code' => $referenceCode,
+                'submission_type' => 'REGISTRATION',
+                'title' => Str::limit("Solicitação de cadastro - {$request->company_name}", 190, ''),
+                'message' => null,
                 'status' => 'PENDING',
                 'responsible_name' => $request->responsible_name,
                 'company_cnpj' => $request->company_cnpj,
@@ -80,43 +93,60 @@ class SubmissionController extends Controller
                 'website' => $request->website,
                 'net_worth' => is_numeric($cleanNetWorth) ? $cleanNetWorth : 0,
                 'annual_revenue' => is_numeric($cleanAnnualRevenue) ? $cleanAnnualRevenue : 0,
+                'shareholder_data' => $shareholders,
                 'registrant_name' => $request->registrant_name,
                 'registrant_position' => $request->registrant_position,
                 'registrant_rg' => $request->registrant_rg,
                 'registrant_cpf' => $request->registrant_cpf,
                 'is_us_person' => $request->boolean('is_us_person'),
                 'is_pep' => $request->boolean('is_pep'),
-                'is_none_compliant' => $request->boolean('is_none_compliant'),
+                'created_ip' => $request->ip(),
+                'created_user_agent' => Str::limit((string) $request->userAgent(), 255, ''),
                 'submitted_at' => now(),
             ]);
 
-            // Save Shareholders
             foreach ($shareholders as $share) {
                 if (! empty($share['name'])) {
                     $submission->shareholders()->create([
                         'name' => $share['name'],
-                        'document_cpf' => $share['rg'] ?? null, // In JS org, rg mapped to document_cpf or similar
+                        'document_rg' => $share['rg'] ?? null,
                         'document_cnpj' => $share['cnpj'] ?? null,
-                        'percentage' => floatval($share['percentage'] ?? 0),
+                        'percentage' => (float) ($share['percentage'] ?? 0),
                     ]);
                 }
             }
 
-            // Save Files
-            $docFields = ['ultimo_balanco', 'dre', 'politicas', 'cartao_cnpj', 'procuracao', 'ata', 'contrato_social', 'estatuto'];
-            foreach ($docFields as $field) {
+            foreach (self::DOCUMENT_TYPE_MAP as $field => $documentType) {
                 if ($request->hasFile($field)) {
                     $file = $request->file($field);
                     $path = $file->store('nimbus/submissions/'.$submission->id, 'local');
+                    $storedName = basename($path);
+                    $checksum = hash_file('sha256', $file->getRealPath()) ?: null;
 
-                    $submission->files()->create([
-                        'requirement_type' => $field,
-                        'file_path' => $path,
-                        'original_filename' => $file->getClientOriginalName(),
+                    $submissionFile = $submission->files()->create([
+                        'document_type' => $documentType,
+                        'origin' => 'USER',
+                        'visible_to_user' => false,
+                        'original_name' => $file->getClientOriginalName(),
+                        'stored_name' => $storedName,
                         'mime_type' => $file->getMimeType(),
-                        'file_size' => $file->getSize(),
-                        'uploaded_by' => $user->id,
-                        'status' => 'PENDING_REVIEW',
+                        'size_bytes' => $file->getSize(),
+                        'storage_path' => $path,
+                        'checksum' => $checksum,
+                        'uploaded_at' => now(),
+                    ]);
+
+                    $submissionFile->versions()->create([
+                        'version' => 1,
+                        'original_name' => $file->getClientOriginalName(),
+                        'stored_name' => $storedName,
+                        'storage_path' => $path,
+                        'size_bytes' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                        'checksum' => $checksum,
+                        'uploaded_by_type' => 'PORTAL_USER',
+                        'uploaded_by_id' => $user->id,
+                        'notes' => null,
                     ]);
                 }
             }
@@ -126,25 +156,31 @@ class SubmissionController extends Controller
             return redirect()->route('nimbus.submissions.show', $submission->id)
                 ->with('success', 'Solicitação enviada com sucesso! Nossa equipe analisará os documentos em breve.');
 
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             DB::rollBack();
 
             return back()->withInput()->with('error', 'Ocorreu um erro ao processar sua solicitação: '.$e->getMessage());
         }
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Submission $submission)
+    public function show(Submission $submission): View
     {
         $user = Auth::guard('nimbus')->user();
 
-        // Ensure user can only see their own submissions
         if ($submission->nimbus_portal_user_id !== $user->id) {
             abort(403, 'Acesso negado.');
         }
 
         return view('nimbus.submissions.show', compact('submission'));
+    }
+
+    private function normalizeMoneyInput(string $value): string
+    {
+        return str_replace(',', '.', str_replace(['R$', '.', ' '], '', $value));
+    }
+
+    private function generateReferenceCode(): string
+    {
+        return 'NMB-'.Str::upper((string) Str::ulid());
     }
 }
