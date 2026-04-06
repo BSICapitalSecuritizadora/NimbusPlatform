@@ -220,6 +220,14 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSuccessful()
         ->assertSee('Detalhes do Envio')
         ->assertSee('Informações Complementares')
+        ->assertSeeInOrder([
+            'Dados da Empresa',
+            'Indicadores Financeiros',
+            'Dados do Cadastrante',
+        ])
+        ->assertSee('Dados da Empresa')
+        ->assertSee('Indicadores Financeiros')
+        ->assertSee('Dados do Cadastrante')
         ->assertSee('Trilha de Auditoria')
         ->assertSee('NMB-01KNHQMXVT88D6RF')
         ->assertSee('Empresa Visualizacao')

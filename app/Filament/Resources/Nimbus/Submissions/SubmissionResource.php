@@ -15,7 +15,6 @@ use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -78,37 +77,88 @@ class SubmissionResource extends Resource
                 Section::make('Informações Complementares')
                     ->icon('heroicon-o-information-circle')
                     ->schema([
-                        Grid::make(2)
+                        Section::make('Dados da Empresa')
+                            ->description('Identificação e contatos informados pelo solicitante')
+                            ->compact()
+                            ->secondary()
+                            ->columns([
+                                'default' => 1,
+                                'lg' => 2,
+                            ])
                             ->schema([
-                                Group::make([
-                                    TextEntry::make('company_name')->label('Razão Social')->inlineLabel(),
-                                    TextEntry::make('company_cnpj')->label('CNPJ')->inlineLabel(),
-                                    TextEntry::make('main_activity')->label('Atividade Principal')->inlineLabel(),
-                                    TextEntry::make('phone')->label('Telefone')->inlineLabel(),
-                                    TextEntry::make('website')->label('Website')->inlineLabel()->default('-'),
-                                ])->columns(1)->extraAttributes(['class' => 'space-y-2 border-r pr-6 border-gray-200 dark:border-white/10'])->columnSpan(1),
+                                TextEntry::make('company_name')
+                                    ->label('Razão social')
+                                    ->placeholder('-')
+                                    ->wrap()
+                                    ->columnSpanFull(),
+                                TextEntry::make('company_cnpj')
+                                    ->label('CNPJ')
+                                    ->placeholder('-'),
+                                TextEntry::make('phone')
+                                    ->label('Telefone')
+                                    ->placeholder('-'),
+                                TextEntry::make('main_activity')
+                                    ->label('Atividade principal')
+                                    ->placeholder('-')
+                                    ->wrap()
+                                    ->columnSpanFull(),
+                                TextEntry::make('website')
+                                    ->label('Website')
+                                    ->placeholder('-')
+                                    ->url(fn (?string $state): ?string => filled($state) ? $state : null, true)
+                                    ->color('primary')
+                                    ->wrap()
+                                    ->columnSpanFull(),
+                            ]),
 
-                                Group::make([
-                                    TextEntry::make('net_worth')->label('Patrimônio Líquido')
-                                        ->money('BRL')->inlineLabel(),
-                                    TextEntry::make('annual_revenue')->label('Faturamento Anual')
-                                        ->money('BRL')->inlineLabel(),
-                                    IconEntry::make('is_us_person')
-                                        ->label('US Person?')
-                                        ->boolean()
-                                        ->inlineLabel(),
-                                    IconEntry::make('is_pep')
-                                        ->label('Pessoa Exposta (PEP)?')
-                                        ->boolean()
-                                        ->inlineLabel(),
-                                ])->columns(1)->extraAttributes(['class' => 'space-y-2 border-r pr-6 border-gray-200 dark:border-white/10'])->columnSpan(1),
+                        Section::make('Indicadores Financeiros')
+                            ->description('Resumo patrimonial e classificações regulatórias')
+                            ->compact()
+                            ->secondary()
+                            ->columns([
+                                'default' => 1,
+                                'md' => 2,
+                            ])
+                            ->schema([
+                                TextEntry::make('net_worth')
+                                    ->label('Patrimônio líquido')
+                                    ->money('BRL')
+                                    ->placeholder('-'),
+                                TextEntry::make('annual_revenue')
+                                    ->label('Último faturamento anual')
+                                    ->money('BRL')
+                                    ->placeholder('-'),
+                                IconEntry::make('is_us_person')
+                                    ->label('US Person')
+                                    ->boolean(),
+                                IconEntry::make('is_pep')
+                                    ->label('Pessoa exposta politicamente (PEP)')
+                                    ->boolean(),
+                            ]),
 
-                                Group::make([
-                                    TextEntry::make('registrant_name')->label('Nome do Cadastrante')->inlineLabel(),
-                                    TextEntry::make('registrant_position')->label('Cargo / Posição')->inlineLabel(),
-                                    TextEntry::make('registrant_cpf')->label('CPF do Cadastrante')->inlineLabel(),
-                                    TextEntry::make('registrant_rg')->label('RG do Cadastrante')->inlineLabel(),
-                                ])->columns(1)->extraAttributes(['class' => 'space-y-2 pl-4'])->columnSpan(1),
+                        Section::make('Dados do Cadastrante')
+                            ->description('Responsável pelo preenchimento da solicitação')
+                            ->compact()
+                            ->secondary()
+                            ->columns([
+                                'default' => 1,
+                                'md' => 2,
+                            ])
+                            ->schema([
+                                TextEntry::make('registrant_name')
+                                    ->label('Nome completo')
+                                    ->placeholder('-')
+                                    ->wrap()
+                                    ->columnSpanFull(),
+                                TextEntry::make('registrant_position')
+                                    ->label('Cargo / posição')
+                                    ->placeholder('-'),
+                                TextEntry::make('registrant_cpf')
+                                    ->label('CPF')
+                                    ->placeholder('-'),
+                                TextEntry::make('registrant_rg')
+                                    ->label('RG')
+                                    ->placeholder('-'),
                             ]),
                     ]),
 
