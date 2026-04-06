@@ -7,6 +7,7 @@
     const config = window.SubmissionConfig || {};
     let shareholders = config.shareholders || [];
     const csrfToken = config.csrfToken || '';
+    const cnpjLookupUrl = config.cnpjLookupUrl || '/nimbus/submissions/cnpj-lookup';
 
     // Funções auxiliares globais (necessárias para o HTML gerado dinamicamente)
     window.maskCnpj = function (input) {
@@ -35,6 +36,16 @@
         value = value.replace(/(\d{3})(\d)/, '$1.$2');
         value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
         input.value = value;
+    };
+
+    const parseJsonResponse = async (response) => {
+        const contentType = response.headers.get('content-type') || '';
+
+        if (!contentType.includes('application/json')) {
+            return null;
+        }
+
+        return response.json();
     };
 
     window.updateShareholder = function (index, field, value) {
@@ -170,15 +181,24 @@
                     formData.append('cnpj', cnpj);
                     formData.append('_token', csrfToken);
 
-                    const response = await fetch('/portal/api/cnpj', {
+                    const response = await fetch(cnpjLookupUrl, {
                         method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
                         body: formData
                     });
 
-                    const result = await response.json();
+                    const result = await parseJsonResponse(response);
 
-                    if (result.error) {
-                        alert(result.error);
+                    if (!response.ok) {
+                        const message = result?.error || result?.message || 'Nao foi possivel consultar o CNPJ.';
+                        throw new Error(message);
+                    }
+
+                    if (!result || result.error) {
+                        alert(result?.error || 'Nao foi possivel consultar o CNPJ.');
                     } else {
                         const nameField = document.getElementById('company_name');
                         if (nameField) nameField.value = result.data.name || '';
@@ -188,6 +208,9 @@
 
                         const phoneField = document.getElementById('phone');
                         if (phoneField) phoneField.value = result.data.phone || '';
+
+                        const websiteField = document.getElementById('website');
+                        if (websiteField && !websiteField.value) websiteField.value = result.data.website || '';
                     }
                 } catch (error) {
                     alert('Erro ao buscar CNPJ: ' + error.message);

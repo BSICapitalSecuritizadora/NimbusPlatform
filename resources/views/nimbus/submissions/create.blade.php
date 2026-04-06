@@ -304,7 +304,8 @@
 <script>
     window.SubmissionConfig = {
         shareholders: {!! json_encode(session('old_shareholders', [])) !!},
-        csrfToken: "{{ csrf_token() }}"
+        csrfToken: "{{ csrf_token() }}",
+        cnpjLookupUrl: "{{ route('nimbus.submissions.cnpj-lookup') }}"
     };
 </script>
 <script src="{{ asset('assets/nimbus/js/submission-wizard.js') }}"></script>

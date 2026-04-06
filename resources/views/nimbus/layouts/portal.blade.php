@@ -155,13 +155,13 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link portal-nav-link {{ $isSubmissions && !request()->routeIs('nimbus.dashboard') ? 'active' : '' }}" href="#">
+                        <a class="nav-link portal-nav-link {{ $isSubmissions && !request()->routeIs('nimbus.dashboard') ? 'active' : '' }}" href="{{ route('nimbus.submissions.index') }}">
                             <i class="bi bi-inbox{{ $isSubmissions && !request()->routeIs('nimbus.dashboard') ? '-fill' : '' }}"></i>
                             <span>Meus Envios</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                         <a class="nav-link portal-nav-link {{ $isDocuments ? 'active' : '' }}" href="#">
+                         <a class="nav-link portal-nav-link {{ $isDocuments ? 'active' : '' }}" href="{{ route('nimbus.documents.index') }}">
                             <i class="bi bi-folder{{ $isDocuments ? '-fill' : '' }}"></i>
                             <span>Documentos</span>
                         </a>
@@ -169,22 +169,22 @@
                 </ul>
 
                 <div class="d-flex align-items-center gap-3">
-                    <a class="nd-btn nd-btn-gold shadow-sm portal-new-btn" href="#">
+                    <a class="nd-btn nd-btn-gold shadow-sm portal-new-btn" href="{{ route('nimbus.submissions.create') }}">
                         <i class="bi bi-plus-lg"></i>
                         <span>Novo Envio</span>
                     </a>
 
                     @if ($user)
                         <div class="dropdown">
-                            <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle portal-user-toggle" 
-                               data-bs-toggle="dropdown">
+                            <button type="button" class="btn btn-link d-flex align-items-center text-white text-decoration-none dropdown-toggle portal-user-toggle border-0 p-0 shadow-none"
+                               data-bs-toggle="dropdown" aria-expanded="false">
                                 <div class="portal-avatar">
                                     {{ strtoupper(substr($user->full_name ?? $user->email, 0, 1)) }}
                                 </div>
                                 <span class="d-none d-lg-block ms-2 text-white-50 small fw-medium">
                                     {{ explode(' ', $user->full_name ?? 'Usuário')[0] }}
                                 </span>
-                            </a>
+                            </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-3 p-0 rounded-3 overflow-hidden">
                                 <li class="p-3 bg-light border-bottom">
                                     <strong class="d-block text-dark text-truncate">{{ $user->full_name }}</strong>

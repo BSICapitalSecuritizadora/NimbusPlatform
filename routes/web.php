@@ -263,7 +263,14 @@ Route::prefix('nimbus')->name('nimbus.')->group(function () {
         // Submissions
         Route::get('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'index'])->name('submissions.index');
         Route::get('/submissions/new', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'create'])->name('submissions.create');
+        Route::post('/submissions/cnpj-lookup', \App\Http\Controllers\Nimbus\CnpjLookupController::class)
+            ->middleware('throttle:15,1')
+            ->name('submissions.cnpj-lookup');
         Route::post('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'store'])->name('submissions.store');
         Route::get('/submissions/{submission}', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'show'])->name('submissions.show');
+
+        // Documents
+        Route::get('/documents', [\App\Http\Controllers\Nimbus\DocumentController::class, 'index'])->name('documents.index');
+        Route::get('/documents/{document}/download', [\App\Http\Controllers\Nimbus\DocumentController::class, 'download'])->name('documents.download');
     });
 });

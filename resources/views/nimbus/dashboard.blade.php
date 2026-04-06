@@ -17,7 +17,7 @@
             <p class="nd-welcome-message">Bem-vindo ao seu portal exclusivo de solicitações e documentos.</p>
         </div>
         <div class="nd-welcome-cta">
-            <a href="#" class="nd-btn nd-btn-gold shadow-lg">
+            <a href="{{ route('nimbus.submissions.create') }}" class="nd-btn nd-btn-gold shadow-lg">
                 <i class="bi bi-plus-lg"></i>
                 <span>Nova Solicitação</span>
             </a>
@@ -68,7 +68,7 @@
                 <i class="bi bi-clock-history me-2"></i>
                 Suas Solicitações Recentes
             </h5>
-            <a href="#" class="nd-btn nd-btn-outline nd-btn-sm">
+            <a href="{{ route('nimbus.submissions.index') }}" class="nd-btn nd-btn-outline nd-btn-sm">
                 Ver Todas
                 <i class="bi bi-chevron-right"></i>
             </a>
@@ -81,7 +81,7 @@
                     </div>
                     <h6>Nenhuma solicitação encontrada</h6>
                     <p>Você ainda não realizou nenhum envio. Clique no botão acima para criar sua primeira solicitação.</p>
-                    <a href="#" class="nd-btn nd-btn-primary">
+                    <a href="{{ route('nimbus.submissions.create') }}" class="nd-btn nd-btn-primary">
                         <i class="bi bi-plus-lg"></i>
                         Criar Primeira Solicitação
                     </a>
@@ -126,7 +126,7 @@
                                         </span>
                                     </td>
                                     <td class="text-end">
-                                        <a href="#" class="nd-btn nd-btn-ghost nd-btn-sm" title="Ver detalhes">
+                                        <a href="{{ route('nimbus.submissions.show', $s['id']) }}" class="nd-btn nd-btn-ghost nd-btn-sm" title="Ver detalhes">
                                             Detalhes
                                             <i class="bi bi-chevron-right"></i>
                                         </a>
