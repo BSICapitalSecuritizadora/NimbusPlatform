@@ -10,106 +10,6 @@ use Illuminate\Support\Facades\Schema;
 
 class SiteController extends Controller
 {
-    public function criRealEstate()
-    {
-        return view('site.imobiliario.cri');
-    }
-
-    public function loteamentos()
-    {
-        return view('site.imobiliario.loteamentos');
-    }
-
-    public function incorporacao()
-    {
-        return view('site.imobiliario.incorporacao');
-    }
-
-    public function cra()
-    {
-        return view('site.agronegocio.cra');
-    }
-
-    public function cooperativas()
-    {
-        return view('site.agronegocio.cooperativas');
-    }
-
-    public function projetos()
-    {
-        return view('site.agronegocio.projetos');
-    }
-
-    public function crFuturo()
-    {
-        return view('site.infra-empresas.cr-futuro');
-    }
-
-    public function recebiveis()
-    {
-        return view('site.infra-empresas.recebiveis');
-    }
-
-    public function estruturacaoSobMedida()
-    {
-        return view('site.infra-empresas.estruturacao');
-    }
-
-    public function originacao()
-    {
-        return view('site.servicos.originacao');
-    }
-
-    public function estruturaJuridica()
-    {
-        return view('site.servicos.estrutura-juridica');
-    }
-
-    public function registroDistribuicao()
-    {
-        return view('site.servicos.registro-distribuicao');
-    }
-
-    public function portalInvestidor()
-    {
-        return view('site.servicos.portal-investidor');
-    }
-
-    public function relatorios()
-    {
-        return view('site.servicos.relatorios');
-    }
-
-    public function compliance()
-    {
-        return view('site.servicos.compliance');
-    }
-
-    public function documentosAcl()
-    {
-        return view('site.servicos.documentos-acl');
-    }
-
-    public function auditoriaAcessos()
-    {
-        return view('site.servicos.auditoria-acessos');
-    }
-
-    public function integracoes()
-    {
-        return view('site.servicos.integracoes');
-    }
-
-    public function services()
-    {
-        return view('site.service');
-    }
-
-    public function about()
-    {
-        return view('site.about');
-    }
-
     public function governance()
     {
         $documents = Document::query()
@@ -130,11 +30,6 @@ class SiteController extends Controller
             ->get();
 
         return view('site.compliance', compact('documents'));
-    }
-
-    public function contact()
-    {
-        return view('site.contact');
     }
 
     public function emissions(Request $request)

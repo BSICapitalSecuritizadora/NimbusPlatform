@@ -18,45 +18,45 @@ use Illuminate\Validation\ValidationException;
 
 Route::get('/', [HomeController::class, 'index'])->name('site.home');
 
-Route::get('/servicos', [SiteController::class, 'services'])->name('site.services');
-Route::get('/sobre', [SiteController::class, 'about'])->name('site.about');
+Route::view('/servicos', 'site.service')->name('site.services');
+Route::view('/sobre', 'site.about')->name('site.about');
 Route::get('/governanca', [SiteController::class, 'governance'])->name('site.governance');
 Route::get('/compliance', [SiteController::class, 'complianceBsi'])->name('site.compliance');
-Route::get('/contato', [SiteController::class, 'contact'])->name('site.contact');
+Route::view('/contato', 'site.contact')->name('site.contact');
 
 Route::get('/emissoes', [SiteController::class, 'emissions'])->name('site.emissions');
 Route::get('/emissoes/{if_code}', [SiteController::class, 'emissionShow'])->name('site.emissions.show');
 Route::get('/ri', [SiteController::class, 'ri'])->name('site.ri');
 
 // Imobiliário
-Route::get('/imobiliario/cri-real-estate', [SiteController::class, 'criRealEstate'])->name('site.imobiliario.cri');
-Route::get('/imobiliario/loteamentos', [SiteController::class, 'loteamentos'])->name('site.imobiliario.loteamentos');
-Route::get('/imobiliario/incorporacao', [SiteController::class, 'incorporacao'])->name('site.imobiliario.incorporacao');
+Route::view('/imobiliario/cri-real-estate', 'site.imobiliario.cri')->name('site.imobiliario.cri');
+Route::view('/imobiliario/loteamentos', 'site.imobiliario.loteamentos')->name('site.imobiliario.loteamentos');
+Route::view('/imobiliario/incorporacao', 'site.imobiliario.incorporacao')->name('site.imobiliario.incorporacao');
 
 // Agronegócio
-Route::get('/agronegocio/cra', [SiteController::class, 'cra'])->name('site.agronegocio.cra');
-Route::get('/agronegocio/cooperativas', [SiteController::class, 'cooperativas'])->name('site.agronegocio.cooperativas');
-Route::get('/agronegocio/projetos', [SiteController::class, 'projetos'])->name('site.agronegocio.projetos');
+Route::view('/agronegocio/cra', 'site.agronegocio.cra')->name('site.agronegocio.cra');
+Route::view('/agronegocio/cooperativas', 'site.agronegocio.cooperativas')->name('site.agronegocio.cooperativas');
+Route::view('/agronegocio/projetos', 'site.agronegocio.projetos')->name('site.agronegocio.projetos');
 
 // Infra & Empresas
-Route::get('/infra-empresas/cr-futuro', [SiteController::class, 'crFuturo'])->name('site.infra.cr');
-Route::get('/infra-empresas/recebiveis', [SiteController::class, 'recebiveis'])->name('site.infra.recebiveis');
-Route::get('/infra-empresas/estruturacao-sob-medida', [SiteController::class, 'estruturacaoSobMedida'])->name('site.infra.estruturacao');
+Route::view('/infra-empresas/cr-futuro', 'site.infra-empresas.cr-futuro')->name('site.infra.cr');
+Route::view('/infra-empresas/recebiveis', 'site.infra-empresas.recebiveis')->name('site.infra.recebiveis');
+Route::view('/infra-empresas/estruturacao-sob-medida', 'site.infra-empresas.estruturacao')->name('site.infra.estruturacao');
 
 // Serviços > Estruturação
-Route::get('/servicos/originacao', [SiteController::class, 'originacao'])->name('site.servicos.originacao');
-Route::get('/servicos/estrutura-juridica', [SiteController::class, 'estruturaJuridica'])->name('site.servicos.estrutura-juridica');
-Route::get('/servicos/registro-distribuicao', [SiteController::class, 'registroDistribuicao'])->name('site.servicos.registro-distribuicao');
+Route::view('/servicos/originacao', 'site.servicos.originacao')->name('site.servicos.originacao');
+Route::view('/servicos/estrutura-juridica', 'site.servicos.estrutura-juridica')->name('site.servicos.estrutura-juridica');
+Route::view('/servicos/registro-distribuicao', 'site.servicos.registro-distribuicao')->name('site.servicos.registro-distribuicao');
 
 // Serviços > Gestão
-Route::get('/servicos/portal-do-investidor', [SiteController::class, 'portalInvestidor'])->name('site.servicos.portal-investidor');
-Route::get('/servicos/relatorios', [SiteController::class, 'relatorios'])->name('site.servicos.relatorios');
-Route::get('/servicos/compliance', [SiteController::class, 'compliance'])->name('site.servicos.compliance');
+Route::view('/servicos/portal-do-investidor', 'site.servicos.portal-investidor')->name('site.servicos.portal-investidor');
+Route::view('/servicos/relatorios', 'site.servicos.relatorios')->name('site.servicos.relatorios');
+Route::view('/servicos/compliance', 'site.servicos.compliance')->name('site.servicos.compliance');
 
 // Serviços > Tecnologia
-Route::get('/servicos/documentos-acl', [SiteController::class, 'documentosAcl'])->name('site.servicos.documentos-acl');
-Route::get('/servicos/auditoria-acessos', [SiteController::class, 'auditoriaAcessos'])->name('site.servicos.auditoria-acessos');
-Route::get('/servicos/integracoes', [SiteController::class, 'integracoes'])->name('site.servicos.integracoes');
+Route::view('/servicos/documentos-acl', 'site.servicos.documentos-acl')->name('site.servicos.documentos-acl');
+Route::view('/servicos/auditoria-acessos', 'site.servicos.auditoria-acessos')->name('site.servicos.auditoria-acessos');
+Route::view('/servicos/integracoes', 'site.servicos.integracoes')->name('site.servicos.integracoes');
 
 Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
     ->name('public-documents');
