@@ -78,6 +78,94 @@ it('renders the correction status label in the portal pages', function () {
         ->assertSee('Aguardando Correção');
 });
 
+it('shows portal-visible return documents and allows secure submission file downloads', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Teste Retorno',
+        'email' => 'teste.retorno@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'SUB-RETORNO-0001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Cadastro com retorno',
+        'responsible_name' => 'Teste Retorno',
+        'company_cnpj' => '12.345.678/0001-99',
+        'company_name' => 'Empresa Retorno',
+        'phone' => '(11) 99999-9999',
+        'status' => Submission::STATUS_UNDER_REVIEW,
+        'submitted_at' => now(),
+    ]);
+
+    $userFilePath = 'nimbus/submissions/'.$submission->id.'/balance-sheet.pdf';
+    $visibleResponsePath = 'nimbus/submissions/'.$submission->id.'/responses/parecer.pdf';
+    $internalResponsePath = 'nimbus/submissions/'.$submission->id.'/responses/interno.pdf';
+
+    Storage::disk('local')->put($userFilePath, 'balance-sheet');
+    Storage::disk('local')->put($visibleResponsePath, 'parecer');
+    Storage::disk('local')->put($internalResponsePath, 'interno');
+
+    $userFile = $submission->files()->create([
+        'document_type' => 'BALANCE_SHEET',
+        'origin' => 'USER',
+        'visible_to_user' => false,
+        'original_name' => 'balanco.pdf',
+        'stored_name' => 'balance-sheet.pdf',
+        'mime_type' => 'application/pdf',
+        'size_bytes' => 1024,
+        'storage_path' => $userFilePath,
+        'uploaded_at' => now(),
+    ]);
+
+    $visibleResponseFile = $submission->files()->create([
+        'document_type' => 'OTHER',
+        'origin' => 'ADMIN',
+        'visible_to_user' => true,
+        'original_name' => 'parecer.pdf',
+        'stored_name' => 'parecer.pdf',
+        'mime_type' => 'application/pdf',
+        'size_bytes' => 2048,
+        'storage_path' => $visibleResponsePath,
+        'uploaded_at' => now(),
+    ]);
+
+    $internalResponseFile = $submission->files()->create([
+        'document_type' => 'OTHER',
+        'origin' => 'ADMIN',
+        'visible_to_user' => false,
+        'original_name' => 'interno.pdf',
+        'stored_name' => 'interno.pdf',
+        'mime_type' => 'application/pdf',
+        'size_bytes' => 2048,
+        'storage_path' => $internalResponsePath,
+        'uploaded_at' => now(),
+    ]);
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.show', $submission))
+        ->assertSuccessful()
+        ->assertSee('Arquivos Anexos')
+        ->assertSee('Documentos de Retorno')
+        ->assertSee('balanco.pdf')
+        ->assertSee('parecer.pdf')
+        ->assertDontSee('interno.pdf');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.files.download', [$submission, $userFile]))
+        ->assertDownload('balanco.pdf');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.files.download', [$submission, $visibleResponseFile]))
+        ->assertDownload('parecer.pdf');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.files.download', [$submission, $internalResponseFile]))
+        ->assertNotFound();
+});
+
 it('renders only the authenticated portal user documents', function () {
     $adminUser = User::factory()->create();
 

@@ -16,6 +16,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -175,6 +176,13 @@ class SubmissionResource extends Resource
                                 TextEntry::make('message')->label('Mensagem')->columnSpanFull()->wrap(),
                             ])
                             ->columns(3),
+                    ]),
+
+                Section::make('Documentos de Retorno')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->description('Arquivos enviados pela equipe interna para devolutiva e acompanhamento do solicitante.')
+                    ->schema([
+                        View::make('filament.resources.nimbus.submissions.response-files-section'),
                     ]),
 
                 Section::make('Trilha de Auditoria')

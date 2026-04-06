@@ -25,6 +25,7 @@ use App\Models\Nimbus\Submission;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -296,6 +297,8 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSee('Indicadores Financeiros')
         ->assertSee('Dados do Cadastrante')
         ->assertSee('Trilha de Auditoria')
+        ->assertSee('Documentos de Retorno')
+        ->assertSee('Anexar Resposta')
         ->assertSee('Sócios')
         ->assertSee('Arquivos')
         ->assertSee('Metadados do Registro')
@@ -307,6 +310,70 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSee('127.0.0.1')
         ->assertSee('fi-font-mono', false)
         ->assertSee('fi-wrapped', false);
+});
+
+it('allows admin users to upload return documents and renders them in the dedicated section', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-submission-response-files@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Retorno',
+        'email' => 'cliente.retorno@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-RETURN-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitacao com documentos de retorno',
+        'responsible_name' => 'Cliente Retorno',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Retorno',
+        'status' => 'PENDING',
+        'submitted_at' => now(),
+    ]);
+
+    $viewUrl = SubmissionResource::getUrl('view', ['record' => $submission], panel: 'admin');
+
+    $this->actingAs($user)
+        ->from($viewUrl)
+        ->post(route('admin.nimbus.submissions.response-files.store', $submission), [
+            'response_files' => [
+                UploadedFile::fake()->create('parecer.pdf', 128, 'application/pdf'),
+                UploadedFile::fake()->create('planilha.xlsx', 256, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+            ],
+        ])
+        ->assertRedirect($viewUrl);
+
+    $responseFiles = $submission->fresh()->responseFiles()->get();
+    $pdfResponseFile = $responseFiles->firstWhere('original_name', 'parecer.pdf');
+    $sheetResponseFile = $responseFiles->firstWhere('original_name', 'planilha.xlsx');
+
+    expect($responseFiles)->toHaveCount(2)
+        ->and($pdfResponseFile)->not->toBeNull()
+        ->and($sheetResponseFile)->not->toBeNull()
+        ->and($pdfResponseFile?->origin)->toBe('ADMIN')
+        ->and($pdfResponseFile?->visible_to_user)->toBeTrue()
+        ->and($pdfResponseFile?->document_type)->toBe('OTHER')
+        ->and($pdfResponseFile?->versions()->count())->toBe(1)
+        ->and($pdfResponseFile?->versions()->first()?->uploaded_by_type)->toBe('ADMIN')
+        ->and(Storage::disk('local')->exists((string) $pdfResponseFile?->storage_path))->toBeTrue()
+        ->and(Storage::disk('local')->exists((string) $sheetResponseFile?->storage_path))->toBeTrue();
+
+    $this->actingAs($user)
+        ->get($viewUrl)
+        ->assertSuccessful()
+        ->assertSee('Documentos de Retorno')
+        ->assertSee('parecer.pdf')
+        ->assertSee('planilha.xlsx')
+        ->assertSee('Disponível no Portal')
+        ->assertSee('Anexar Resposta')
+        ->assertSee(route('admin.nimbus.submissions.response-files.store', $submission), false);
 });
 
 it('mirrors the original NimbusDocs status review options on the submission action modal', function () {

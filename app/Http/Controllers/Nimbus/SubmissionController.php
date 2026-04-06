@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Nimbus;
 
 use App\Http\Controllers\Controller;
 use App\Models\Nimbus\Submission;
+use App\Models\Nimbus\SubmissionFile;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class SubmissionController extends Controller
@@ -171,7 +174,34 @@ class SubmissionController extends Controller
             abort(403, 'Acesso negado.');
         }
 
+        $submission->loadMissing([
+            'shareholders',
+            'userUploadedFiles',
+            'portalVisibleResponseFiles',
+        ]);
+
         return view('nimbus.submissions.show', compact('submission'));
+    }
+
+    public function downloadFile(Submission $submission, SubmissionFile $file): StreamedResponse
+    {
+        $user = Auth::guard('nimbus')->user();
+
+        if ($submission->nimbus_portal_user_id !== $user->id) {
+            abort(403, 'Acesso negado.');
+        }
+
+        abort_unless($file->nimbus_submission_id === $submission->id, 404);
+
+        if (($file->origin === 'ADMIN') && (! $file->visible_to_user)) {
+            abort(404);
+        }
+
+        if (! Storage::disk('local')->exists($file->storage_path)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->download($file->storage_path, $file->original_name);
     }
 
     private function normalizeMoneyInput(string $value): string

@@ -232,11 +232,17 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', EnsureTwoFactorEnabled::class])
-    ->prefix('/admin/nimbus/submissions/files')
-    ->name('admin.nimbus.submissions.files.')
+    ->prefix('/admin/nimbus/submissions')
+    ->name('admin.nimbus.submissions.')
     ->group(function () {
-        Route::get('/{file}/preview', [AdminSubmissionFileController::class, 'preview'])->name('preview');
-        Route::get('/{file}/download', [AdminSubmissionFileController::class, 'download'])->name('download');
+        Route::post('/{submission}/response-files', [AdminSubmissionFileController::class, 'storeResponseFiles'])->name('response-files.store');
+
+        Route::prefix('/files')
+            ->name('files.')
+            ->group(function () {
+                Route::get('/{file}/preview', [AdminSubmissionFileController::class, 'preview'])->name('preview');
+                Route::get('/{file}/download', [AdminSubmissionFileController::class, 'download'])->name('download');
+            });
     });
 
 require __DIR__.'/settings.php';
@@ -277,6 +283,7 @@ Route::prefix('nimbus')->name('nimbus.')->group(function () {
             ->middleware('throttle:15,1')
             ->name('submissions.cnpj-lookup');
         Route::post('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'store'])->name('submissions.store');
+        Route::get('/submissions/{submission}/files/{file}/download', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'downloadFile'])->name('submissions.files.download');
         Route::get('/submissions/{submission}', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'show'])->name('submissions.show');
 
         // Documents

@@ -111,6 +111,28 @@ class Submission extends Model
         return $this->hasMany(SubmissionFile::class, 'nimbus_submission_id');
     }
 
+    public function userUploadedFiles(): HasMany
+    {
+        return $this->hasMany(SubmissionFile::class, 'nimbus_submission_id')
+            ->where('origin', 'USER')
+            ->orderBy('uploaded_at');
+    }
+
+    public function responseFiles(): HasMany
+    {
+        return $this->hasMany(SubmissionFile::class, 'nimbus_submission_id')
+            ->where('origin', 'ADMIN')
+            ->orderByDesc('uploaded_at');
+    }
+
+    public function portalVisibleResponseFiles(): HasMany
+    {
+        return $this->hasMany(SubmissionFile::class, 'nimbus_submission_id')
+            ->where('origin', 'ADMIN')
+            ->where('visible_to_user', true)
+            ->orderByDesc('uploaded_at');
+    }
+
     public function notes(): HasMany
     {
         return $this->hasMany(SubmissionNote::class, 'nimbus_submission_id');
