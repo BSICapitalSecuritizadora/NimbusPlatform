@@ -121,6 +121,13 @@
         .nd-table { width: 100%; border-collapse: separate; border-spacing: 0; }
         .nd-table th { background: var(--nd-surface-50); color: var(--nd-gray-500); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 1rem 1.5rem; border-bottom: 1px solid var(--nd-surface-200); }
         .nd-table td { padding: 1rem 1.5rem; vertical-align: middle; border-bottom: 1px solid var(--nd-surface-100); }
+
+        /* Wizard Step Visibility */
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; }
+
+        /* Stepper transitions */
+        .transition-fast { transition: all 0.2s ease; }
     </style>
     @stack('styles')
 </head>

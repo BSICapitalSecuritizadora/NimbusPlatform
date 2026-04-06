@@ -210,7 +210,7 @@
     </div>
 
     <!-- STEP 2: Socios -->
-    <div class="wizard-step" data-step="2" style="display: none;">
+    <div class="wizard-step" data-step="2">
          <div class="nd-card mb-4 border-0 shadow-sm rounded-4 bg-white">
             <div class="nd-card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
                 <h5 class="nd-card-title fw-bold text-dark mb-0">Composição Societária</h5>
@@ -244,7 +244,7 @@
     </div>
 
     <!-- STEP 3: Documentos -->
-    <div class="wizard-step" data-step="3" style="display: none;">
+    <div class="wizard-step" data-step="3">
          <div class="nd-card mb-4 border-0 shadow-sm rounded-4 bg-white">
             <div class="nd-card-header bg-white border-bottom p-4">
                 <h5 class="nd-card-title fw-bold text-dark mb-0">Documentos Obrigatórios (PDF)</h5>

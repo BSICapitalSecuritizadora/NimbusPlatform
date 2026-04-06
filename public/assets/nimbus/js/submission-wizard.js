@@ -77,40 +77,40 @@
             total += parseFloat(shareholder.percentage || 0);
 
             const div = document.createElement('div');
-            div.className = 'nd-card border-light-subtle shadow-none bg-light';
+            div.className = 'nd-card border-0 shadow-sm rounded-4 bg-white mb-3';
             div.innerHTML = `
                 <div class="card-body p-3">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
-                            <label class="nd-label small mb-1">Nome</label>
-                            <input type="text" class="nd-input bg-white" value="${shareholder.name || ''}"
+                            <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">Nome</label>
+                            <input type="text" class="form-control bg-light border-0 py-3 px-3 rounded-3" value="${shareholder.name || ''}"
                                 onchange="updateShareholder(${index}, 'name', this.value)" placeholder="Nome do Sócio" aria-label="Nome do sócio">
                         </div>
                         <div class="col-md-2">
-                            <label class="nd-label small mb-1">RG</label>
-                            <input type="text" class="nd-input bg-white" value="${shareholder.rg || ''}"
+                            <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">RG</label>
+                            <input type="text" class="form-control bg-light border-0 py-3 px-3 rounded-3" value="${shareholder.rg || ''}"
                                 oninput="maskRg(this)"
                                 onchange="updateShareholder(${index}, 'rg', this.value)" placeholder="00.000.000-0" aria-label="RG do sócio">
                         </div>
                         <div class="col-md-3">
-                            <label class="nd-label small mb-1">CNPJ</label>
-                            <input type="text" class="nd-input bg-white" value="${shareholder.cnpj || ''}"
+                            <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">CNPJ</label>
+                            <input type="text" class="form-control bg-light border-0 py-3 px-3 rounded-3" value="${shareholder.cnpj || ''}"
                                 oninput="maskCnpj(this)"
                                 onchange="updateShareholder(${index}, 'cnpj', this.value)" placeholder="00.000.000/0000-00" aria-label="CNPJ do sócio">
                         </div>
                         <div class="col-md-2">
-                            <label class="nd-label small mb-1">Porcentagem (%)</label>
+                            <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">Porcentagem (%)</label>
                             <div class="input-group">
-                                <input type="number" step="0.01" class="nd-input form-control bg-white" value="${shareholder.percentage || ''}"
+                                <input type="number" step="0.01" class="form-control bg-light border-0 py-3 px-3 rounded-3 rounded-end-0" value="${shareholder.percentage || ''}"
                                     onchange="updateShareholder(${index}, 'percentage', this.value); renderShareholders();" aria-label="Porcentagem de participação">
-                                <span class="input-group-text bg-white border-start-0 text-muted">%</span>
+                                <span class="input-group-text bg-light border-0 text-muted rounded-3 rounded-start-0">%</span>
                             </div>
                         </div>
                         <div class="col-md-1">
-                            <label class="nd-label small mb-1 d-block">&nbsp;</label>
+                            <label class="form-label small d-block mb-2">&nbsp;</label>
                             <div class="d-grid">
-                                <button type="button" class="nd-btn nd-btn-sm nd-btn-danger-soft" onclick="removeShareholder(${index})" title="Remover Sócio" aria-label="Remover sócio" style="height: 48px;">
-                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                <button type="button" class="btn btn-outline-danger border-0 bg-danger-subtle text-danger rounded-3 d-flex align-items-center justify-content-center hover-scale" onclick="removeShareholder(${index})" title="Remover Sócio" aria-label="Remover sócio" style="height: 52px;">
+                                    <i class="bi bi-trash fs-5" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </div>
