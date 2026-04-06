@@ -231,6 +231,26 @@ it('renders the submissions list in Portuguese without exposing creation to inte
     ]);
     $user->assignRole('admin');
 
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Lista',
+        'email' => 'cliente.lista@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-LIST-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitação listada',
+        'responsible_name' => 'Cliente Lista',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa da Lista',
+        'status' => Submission::STATUS_NEEDS_CORRECTION,
+        'submitted_at' => now(),
+    ]);
+
     expect(SubmissionResource::canCreate())->toBeFalse()
         ->and(SubmissionResource::hasPage('create'))->toBeFalse();
 
@@ -239,10 +259,17 @@ it('renders the submissions list in Portuguese without exposing creation to inte
         ->assertSuccessful()
         ->assertSee('Envios e Solicitações')
         ->assertDontSee('Criar envio e solicitação')
-        ->assertSee('Usuário do portal Nimbus')
-        ->assertSee('Código de referência')
-        ->assertSee('Tipo de envio')
-        ->assertSee('Nome do responsável');
+        ->assertSee('CNPJ da Empresa')
+        ->assertSee('Empresa')
+        ->assertSee('Status')
+        ->assertSee('Visualizar')
+        ->assertSee('12.345.678/0001-90')
+        ->assertSee('Empresa da Lista')
+        ->assertSee('Aguardando Correção')
+        ->assertDontSee('Usuário do portal Nimbus')
+        ->assertDontSee('Código de referência')
+        ->assertDontSee('Tipo de envio')
+        ->assertDontSee('Nome do responsável');
 });
 
 it('renders the submission view page for authenticated admin users', function () {
