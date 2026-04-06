@@ -2,22 +2,21 @@
 
 namespace App\Filament\Resources\Nimbus\Submissions;
 
-use App\Filament\Resources\Nimbus\Submissions\Pages\EditSubmission;
 use App\Filament\Resources\Nimbus\Submissions\Pages\ListSubmissions;
+use App\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission;
 use App\Filament\Resources\Nimbus\Submissions\RelationManagers\FilesRelationManager;
 use App\Filament\Resources\Nimbus\Submissions\RelationManagers\ShareholdersRelationManager;
 use App\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm;
 use App\Filament\Resources\Nimbus\Submissions\Tables\SubmissionsTable;
 use App\Models\Nimbus\Submission;
 use BackedEnum;
-use Filament\Infolists\Components\Grid;
-use Filament\Infolists\Components\Group;
-use App\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission;
 use Filament\Infolists\Components\IconEntry;
-use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -56,11 +55,15 @@ class SubmissionResource extends Resource
                             ->schema([
                                 TextEntry::make('reference_code')
                                     ->label('Protocolo')
-                                    ->badge()
-                                    ->color('gray'),
+                                    ->copyable()
+                                    ->copyMessage('Protocolo copiado')
+                                    ->fontFamily('mono')
+                                    ->size('xs')
+                                    ->tooltip(fn (?string $state): ?string => $state)
+                                    ->wrap(),
                                 TextEntry::make('portalUser.name')
                                     ->label('Solicitante')
-                                    ->description(fn (Submission $record) => $record->portalUser?->email)
+                                    ->helperText(fn (Submission $record) => $record->portalUser?->email)
                                     ->icon('heroicon-m-user-circle')
                                     ->iconColor('primary'),
                                 TextEntry::make('created_at')
@@ -98,7 +101,59 @@ class SubmissionResource extends Resource
                                         ->label('Pessoa Exposta (PEP)?')
                                         ->boolean()
                                         ->inlineLabel(),
+                                ])->columns(1)->extraAttributes(['class' => 'space-y-2 border-r pr-6 border-gray-200 dark:border-white/10'])->columnSpan(1),
+
+                                Group::make([
+                                    TextEntry::make('registrant_name')->label('Nome do Cadastrante')->inlineLabel(),
+                                    TextEntry::make('registrant_position')->label('Cargo / Posição')->inlineLabel(),
+                                    TextEntry::make('registrant_cpf')->label('CPF do Cadastrante')->inlineLabel(),
+                                    TextEntry::make('registrant_rg')->label('RG do Cadastrante')->inlineLabel(),
                                 ])->columns(1)->extraAttributes(['class' => 'space-y-2 pl-4'])->columnSpan(1),
+                            ]),
+                    ]),
+
+                Section::make('Timeline da Submissão')
+                    ->icon('heroicon-o-chat-bubble-bottom-center-text')
+                    ->description('Observações inseridas neste envio')
+                    ->schema([
+                        RepeatableEntry::make('notes')
+                            ->hiddenLabel()
+                            ->schema([
+                                TextEntry::make('created_at')->label('Data/Hora')->dateTime('d/m/Y H:i'),
+                                TextEntry::make('user.name')->label('Usuário Autor'),
+                                TextEntry::make('note_text')->label('Mensagem')->columnSpanFull(),
+                            ])
+                            ->columns(2),
+                    ]),
+
+                Section::make('Anexos Recebidos')
+                    ->icon('heroicon-o-paper-clip')
+                    ->schema([
+                        RepeatableEntry::make('files')
+                            ->hiddenLabel()
+                            ->schema([
+                                IconEntry::make('is_file')->default(true)->icon('heroicon-o-document')->hiddenLabel(),
+                                TextEntry::make('original_name')->label('Arquivo')->weight('bold'),
+                                TextEntry::make('size_in_mb')->label('Tamanho')->suffix(' MB'),
+                                TextEntry::make('download_url')
+                                    ->label('Ação')
+                                    ->badge()
+                                    ->color('primary')
+                                    ->url(fn ($record) => '#', true)
+                                    ->formatStateUsing(fn () => 'Baixar Arquivo'),
+                            ])
+                            ->columns(4),
+                    ]),
+
+                Section::make('Trilha de Auditoria')
+                    ->icon('heroicon-o-clock')
+                    ->schema([
+                        Grid::make(4)
+                            ->schema([
+                                TextEntry::make('created_at')->label('Data de Criação')->dateTime('d/m/Y H:i:s'),
+                                TextEntry::make('created_user_agent')->label('User Agent'),
+                                TextEntry::make('created_ip')->label('IP de Origem'),
+                                TextEntry::make('status_updated_at')->label('Data Status Atualizado')->dateTime('d/m/Y H:i:s'),
                             ]),
                     ]),
             ]);
@@ -126,8 +181,7 @@ class SubmissionResource extends Resource
     {
         return [
             'index' => ListSubmissions::route('/'),
-            'view' => Pages\ViewSubmission::route('/{record}'),
-            'edit' => EditSubmission::route('/{record}/edit'),
+            'view' => ViewSubmission::route('/{record}'),
         ];
     }
 }

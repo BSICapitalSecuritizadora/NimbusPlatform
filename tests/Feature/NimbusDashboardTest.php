@@ -18,6 +18,7 @@ use App\Models\Nimbus\NotificationOutbox;
 use App\Models\Nimbus\NotificationSetting;
 use App\Models\Nimbus\PortalDocument;
 use App\Models\Nimbus\PortalUser;
+use App\Models\Nimbus\Submission;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,6 +48,37 @@ it('renders the Nimbus dashboard for authenticated admin users', function () {
         ->assertSee('Visão Geral')
         ->assertSee('Dashboard')
         ->assertSee('Envios e Solicitações');
+});
+
+it('renders the Nimbus dashboard widgets when recent submissions exist', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-admin-submissions@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Nimbus',
+        'email' => 'cliente.nimbus@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-DASHBOARD-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitação no dashboard',
+        'responsible_name' => 'Cliente Nimbus',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Dashboard',
+        'status' => 'PENDING',
+        'submitted_at' => now(),
+    ]);
+
+    $this->actingAs($user)
+        ->get(NimbusDashboard::getUrl(panel: 'admin'))
+        ->assertSuccessful();
 });
 
 it('loads the application vite theme for the admin panel', function () {
@@ -143,6 +175,56 @@ it('renders the submissions list in Portuguese without exposing creation to inte
         ->assertSee('Código de referência')
         ->assertSee('Tipo de envio')
         ->assertSee('Nome do responsável');
+});
+
+it('renders the submission view page for authenticated admin users', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-submission-view@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Visualizacao',
+        'email' => 'cliente.visualizacao@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-01KNHQMXVT88D6RF',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitacao para visualizacao',
+        'responsible_name' => 'Cliente Visualizacao',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Visualizacao',
+        'main_activity' => 'Servicos financeiros',
+        'phone' => '1130304040',
+        'website' => 'https://example.com.br',
+        'net_worth' => 100000,
+        'annual_revenue' => 250000,
+        'registrant_name' => 'Cliente Visualizacao',
+        'registrant_position' => 'Diretor',
+        'registrant_cpf' => '12345678901',
+        'registrant_rg' => '123456789',
+        'status' => 'PENDING',
+        'submitted_at' => now(),
+        'created_ip' => '127.0.0.1',
+        'created_user_agent' => 'Pest',
+        'status_updated_at' => now(),
+    ]);
+
+    $this->actingAs($user)
+        ->get(SubmissionResource::getUrl('view', ['record' => $submission], panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Detalhes do Envio')
+        ->assertSee('Informações Complementares')
+        ->assertSee('Trilha de Auditoria')
+        ->assertSee('NMB-01KNHQMXVT88D6RF')
+        ->assertSee('Empresa Visualizacao')
+        ->assertSee('fi-font-mono', false)
+        ->assertSee('fi-wrapped', false);
 });
 
 it('renders the portal users list under Administração', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Filament\NimbusWidgets;
 
+use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
 use App\Models\Nimbus\Submission;
 use Filament\Actions\Action;
 use Filament\Tables;
@@ -41,7 +42,7 @@ class NimbusRecentSubmissions extends BaseWidget
                 Action::make('Ver Detalhes')
                     ->icon('heroicon-m-chevron-right')
                     ->iconButton()
-                    ->url(fn (Submission $record): string => \App\Filament\Resources\Nimbus\Submissions\SubmissionResource::getUrl('edit', ['record' => $record])),
+                    ->url(fn (Submission $record): string => SubmissionResource::getUrl('view', ['record' => $record], panel: 'admin')),
             ])
             ->paginated(false);
     }
