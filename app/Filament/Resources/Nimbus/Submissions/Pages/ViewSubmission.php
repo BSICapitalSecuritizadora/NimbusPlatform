@@ -97,13 +97,17 @@ class ViewSubmission extends ViewRecord
                         ? $data['visibility']
                         : 'USER_VISIBLE';
 
-                    $status = match ($intent) {
+                    $requestedStatus = match ($intent) {
                         'approve' => Submission::STATUS_COMPLETED,
                         'request_correction' => Submission::STATUS_NEEDS_CORRECTION,
                         'reject' => Submission::STATUS_REJECTED,
                         'internal_comment' => $record->status,
                         default => $data['status'] ?? $record->status,
                     };
+
+                    $status = Submission::persistableStatusFor($requestedStatus);
+                    $usedLegacyCorrectionFallback = ($requestedStatus === Submission::STATUS_NEEDS_CORRECTION)
+                        && ($status !== Submission::STATUS_NEEDS_CORRECTION);
 
                     if (! array_key_exists($status, Submission::statusOptions())) {
                         throw ValidationException::withMessages([
@@ -142,6 +146,9 @@ class ViewSubmission extends ViewRecord
                     Notification::make()
                         ->success()
                         ->title($title)
+                        ->body($usedLegacyCorrectionFallback
+                            ? 'A coluna de status ainda usa o enum antigo. A solicitação foi registrada como Em Análise até a migration de status ser aplicada.'
+                            : null)
                         ->send();
                 }),
             Actions\Action::make('print')

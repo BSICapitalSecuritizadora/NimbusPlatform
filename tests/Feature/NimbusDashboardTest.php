@@ -446,6 +446,55 @@ it('mirrors the original NimbusDocs status review options on the submission acti
         ->and($submission->notes()->first()?->message)->toBe('Corrigir a documentação societária enviada.');
 });
 
+it('falls back to the legacy review status when the database enum does not yet support needs correction', function () {
+    config()->set('nimbus.submissions.supports_needs_correction_status', false);
+
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-submission-legacy-status@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Legado',
+        'email' => 'cliente.legado@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-STATUS-LEGACY-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitacao com banco legado',
+        'responsible_name' => 'Cliente Legado',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Legado',
+        'status' => Submission::STATUS_PENDING,
+        'submitted_at' => now(),
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test(ViewSubmission::class, [
+        'record' => $submission->getRouteKey(),
+    ])
+        ->mountAction('alterar_situacao')
+        ->setActionData([
+            'status' => Submission::STATUS_UNDER_REVIEW,
+            'visibility' => 'USER_VISIBLE',
+            'note' => 'Corrigir a documentação societária enviada.',
+        ])
+        ->callMountedAction(arguments: [
+            'intent' => 'request_correction',
+        ])
+        ->assertHasNoActionErrors();
+
+    expect($submission->fresh()->status)->toBe(Submission::STATUS_UNDER_REVIEW)
+        ->and($submission->notes()->count())->toBe(1)
+        ->and($submission->notes()->first()?->message)->toBe('Corrigir a documentação societária enviada.');
+});
+
 it('renders shareholder participation percentages in the relation manager', function () {
     $user = User::factory()->withTwoFactor()->create([
         'email' => 'nimbus-shareholders@example.com',

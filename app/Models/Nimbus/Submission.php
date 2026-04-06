@@ -54,6 +54,45 @@ class Submission extends Model
         ];
     }
 
+    public static function persistableStatusFor(string $status): string
+    {
+        if (($status === self::STATUS_NEEDS_CORRECTION) && (! static::supportsNeedsCorrectionStatus())) {
+            return self::STATUS_UNDER_REVIEW;
+        }
+
+        return $status;
+    }
+
+    public static function supportsNeedsCorrectionStatus(): bool
+    {
+        $override = config('nimbus.submissions.supports_needs_correction_status');
+
+        if (is_bool($override)) {
+            return $override;
+        }
+
+        static $supportsNeedsCorrectionStatus;
+
+        if ($supportsNeedsCorrectionStatus !== null) {
+            return $supportsNeedsCorrectionStatus;
+        }
+
+        $connection = static::query()->getConnection();
+
+        if ($connection->getDriverName() !== 'mysql') {
+            return $supportsNeedsCorrectionStatus = true;
+        }
+
+        $column = $connection->selectOne(sprintf(
+            "SHOW COLUMNS FROM `%s` LIKE 'status'",
+            (new static)->getTable(),
+        ));
+
+        $columnType = is_object($column) ? ($column->Type ?? null) : null;
+
+        return $supportsNeedsCorrectionStatus = str_contains((string) $columnType, self::STATUS_NEEDS_CORRECTION);
+    }
+
     public static function statusLabelFor(?string $status): string
     {
         return static::statusOptions()[$status] ?? match ($status) {
