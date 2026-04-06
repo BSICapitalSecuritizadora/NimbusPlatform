@@ -28,20 +28,22 @@ class NimbusStatusDistribution extends ChartWidget
                 [
                     'label' => 'Submissões',
                     'data' => [
-                        $statusCounts['COMPLETED'] ?? 0,
-                        $statusCounts['REJECTED'] ?? 0,
-                        $statusCounts['PENDING'] ?? 0,
-                        $statusCounts['UNDER_REVIEW'] ?? 0,
+                        $statusCounts[Submission::STATUS_COMPLETED] ?? 0,
+                        $statusCounts[Submission::STATUS_REJECTED] ?? 0,
+                        $statusCounts[Submission::STATUS_PENDING] ?? 0,
+                        $statusCounts[Submission::STATUS_UNDER_REVIEW] ?? 0,
+                        $statusCounts[Submission::STATUS_NEEDS_CORRECTION] ?? 0,
                     ],
                     'backgroundColor' => [
                         '#10b981', // emerald-500
                         '#f43f5e', // rose-500
                         '#f59e0b', // amber-500
                         '#3b82f6', // blue-500
+                        '#d97706', // amber-600
                     ],
                 ],
             ],
-            'labels' => ['Aprovado', 'Rejeitado', 'Pendente', 'Em Análise'],
+            'labels' => ['Aprovado', 'Rejeitado', 'Pendente', 'Em Análise', 'Aguardando Correção'],
         ];
     }
 

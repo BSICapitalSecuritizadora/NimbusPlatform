@@ -171,9 +171,10 @@ class SubmissionResource extends Resource
                             ->schema([
                                 TextEntry::make('created_at')->label('Data/Hora')->dateTime('d/m/Y H:i'),
                                 TextEntry::make('user.name')->label('Usuário Autor'),
-                                TextEntry::make('note_text')->label('Mensagem')->columnSpanFull(),
+                                TextEntry::make('visibility_label')->label('Visibilidade'),
+                                TextEntry::make('message')->label('Mensagem')->columnSpanFull()->wrap(),
                             ])
-                            ->columns(2),
+                            ->columns(3),
                     ]),
 
                 Section::make('Trilha de Auditoria')

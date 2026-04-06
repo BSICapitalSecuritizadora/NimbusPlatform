@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Nimbus\Submissions\Tables;
 
+use App\Models\Nimbus\Submission;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
@@ -74,7 +75,9 @@ class SubmissionsTable
                     ->searchable(),
                 TextColumn::make('status')
                     ->label('Status')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => Submission::statusLabelFor($state))
+                    ->color(fn (?string $state): string => Submission::statusColorFor($state)),
                 TextColumn::make('created_ip')
                     ->label('IP de criação')
                     ->searchable(),

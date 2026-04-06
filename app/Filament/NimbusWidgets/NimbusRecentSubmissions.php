@@ -30,13 +30,8 @@ class NimbusRecentSubmissions extends BaseWidget
                 Tables\Columns\TextColumn::make('status')
                     ->label('SITUAÇÃO')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'PENDING' => 'warning',
-                        'UNDER_REVIEW' => 'info',
-                        'COMPLETED' => 'success',
-                        'REJECTED' => 'danger',
-                        default => 'secondary',
-                    }),
+                    ->formatStateUsing(fn (?string $state): string => Submission::statusLabelFor($state))
+                    ->color(fn (?string $state): string => Submission::statusColorFor($state)),
             ])
             ->actions([
                 Action::make('Ver Detalhes')

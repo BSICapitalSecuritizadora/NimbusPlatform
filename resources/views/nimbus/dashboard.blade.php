@@ -100,14 +100,12 @@
                         <tbody>
                             @foreach (array_slice($submissions, 0, 5) as $s)
                                 @php
-                                    $statusConfig = match($s['status'] ?? '') {
-                                        'PENDING'       => ['label' => 'Pendente', 'class' => 'warning', 'icon' => 'bi-clock'],
-                                        'UNDER_REVIEW'  => ['label' => 'Em Análise', 'class' => 'info', 'icon' => 'bi-search'],
-                                        'APPROVED'      => ['label' => 'Aprovada', 'class' => 'success', 'icon' => 'bi-check-circle'],
-                                        'COMPLETED'     => ['label' => 'Concluída', 'class' => 'success', 'icon' => 'bi-check-all'],
-                                        'REJECTED'      => ['label' => 'Rejeitada', 'class' => 'danger', 'icon' => 'bi-x-circle'],
-                                        default         => ['label' => $s['status'] ?? '-', 'class' => 'neutral', 'icon' => 'bi-dash']
-                                    };
+                                    $status = $s['status'] ?? null;
+                                    $statusConfig = [
+                                        'label' => \App\Models\Nimbus\Submission::statusLabelFor($status),
+                                        'class' => \App\Models\Nimbus\Submission::statusColorFor($status),
+                                        'icon' => \App\Models\Nimbus\Submission::statusIconFor($status),
+                                    ];
                                 @endphp
                                 <tr>
                                     <td>

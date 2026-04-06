@@ -16,14 +16,11 @@
     </div>
     
     @php
-        $statusConfig = match($submission->status) {
-            'PENDING'       => ['label' => 'Aguardando Análise', 'class' => 'warning', 'icon' => 'bi-clock'],
-            'UNDER_REVIEW'  => ['label' => 'Em Análise', 'class' => 'info', 'icon' => 'bi-search'],
-            'APPROVED'      => ['label' => 'Aprovada', 'class' => 'success', 'icon' => 'bi-check-circle'],
-            'COMPLETED'     => ['label' => 'Concluída', 'class' => 'success', 'icon' => 'bi-check-all'],
-            'REJECTED'      => ['label' => 'Rejeitada', 'class' => 'danger', 'icon' => 'bi-x-circle'],
-            default         => ['label' => $submission->status ?? '-', 'class' => 'neutral', 'icon' => 'bi-dash']
-        };
+        $statusConfig = [
+            'label' => \App\Models\Nimbus\Submission::statusLabelFor($submission->status),
+            'class' => \App\Models\Nimbus\Submission::statusColorFor($submission->status),
+            'icon' => \App\Models\Nimbus\Submission::statusIconFor($submission->status),
+        ];
     @endphp
     <div class="nd-badge nd-badge-{{ $statusConfig['class'] }} fs-6 py-2 px-3">
         <i class="bi {{ $statusConfig['icon'] }} me-1"></i>

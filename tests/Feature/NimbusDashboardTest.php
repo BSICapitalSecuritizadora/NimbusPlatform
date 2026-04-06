@@ -9,6 +9,9 @@ use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
 use App\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource;
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
+use App\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission;
+use App\Filament\Resources\Nimbus\Submissions\RelationManagers\FilesRelationManager;
+use App\Filament\Resources\Nimbus\Submissions\RelationManagers\ShareholdersRelationManager;
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
 use App\Models\Nimbus\AccessToken;
 use App\Models\Nimbus\Announcement;
@@ -22,6 +25,7 @@ use App\Models\Nimbus\Submission;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -29,6 +33,69 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
+});
+
+it('allows admin users to preview and download submission files', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-file-access@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Download',
+        'email' => 'cliente.download@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-FILE-ACCESS-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitacao com acesso a arquivo',
+        'responsible_name' => 'Cliente Download',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Download',
+        'status' => 'PENDING',
+        'submitted_at' => now(),
+    ]);
+
+    $storagePath = 'nimbus/submissions/testing/'.uniqid('dre-', true).'.pdf';
+
+    Storage::disk('local')->put($storagePath, 'fake-pdf-content');
+
+    $file = $submission->files()->create([
+        'document_type' => 'DRE',
+        'origin' => 'USER',
+        'visible_to_user' => false,
+        'original_name' => 'dre.pdf',
+        'stored_name' => 'dre.pdf',
+        'mime_type' => 'application/pdf',
+        'size_bytes' => 2048,
+        'storage_path' => $storagePath,
+        'uploaded_at' => now(),
+    ]);
+
+    $previewResponse = $this->actingAs($user)
+        ->get(route('admin.nimbus.submissions.files.preview', $file));
+
+    $previewResponse->assertSuccessful();
+
+    expect($previewResponse->headers->get('content-type'))
+        ->toContain('application/pdf')
+        ->and($previewResponse->headers->get('content-disposition'))
+        ->toContain('inline;')
+        ->toContain('dre.pdf');
+
+    $downloadResponse = $this->actingAs($user)
+        ->get(route('admin.nimbus.submissions.files.download', $file));
+
+    $downloadResponse->assertSuccessful();
+
+    expect($downloadResponse->headers->get('content-disposition'))
+        ->toContain('attachment;')
+        ->toContain('dre.pdf');
 });
 
 it('registers a dedicated Nimbus dashboard route inside the admin panel', function () {
@@ -229,6 +296,8 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSee('Indicadores Financeiros')
         ->assertSee('Dados do Cadastrante')
         ->assertSee('Trilha de Auditoria')
+        ->assertSee('Sócios')
+        ->assertSee('Arquivos')
         ->assertSee('Metadados do Registro')
         ->assertSee('User Agent da Sessão')
         ->assertDontSee('Anexos Recebidos')
@@ -238,6 +307,186 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSee('127.0.0.1')
         ->assertSee('fi-font-mono', false)
         ->assertSee('fi-wrapped', false);
+});
+
+it('mirrors the original NimbusDocs status review options on the submission action modal', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-submission-status@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Status',
+        'email' => 'cliente.status@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-STATUS-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitacao com revisao de status',
+        'responsible_name' => 'Cliente Status',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Status',
+        'status' => Submission::STATUS_PENDING,
+        'submitted_at' => now(),
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test(ViewSubmission::class, [
+        'record' => $submission->getRouteKey(),
+    ])
+        ->assertActionExists('alterar_situacao')
+        ->mountAction('alterar_situacao')
+        ->assertSchemaStateSet([
+            'status' => Submission::STATUS_PENDING,
+            'visibility' => 'USER_VISIBLE',
+            'note' => null,
+        ])
+        ->assertMountedActionModalSee([
+            'Nova Situação',
+            'Visibilidade da Observação',
+            'Observação / Comentário (opcional)',
+            'Aprovar',
+            'Solicitar Correção',
+            'Rejeitar',
+            'Enviar Comentário Interno',
+        ])
+        ->setActionData([
+            'status' => Submission::STATUS_UNDER_REVIEW,
+            'visibility' => 'USER_VISIBLE',
+            'note' => 'Corrigir a documentação societária enviada.',
+        ])
+        ->callMountedAction(arguments: [
+            'intent' => 'request_correction',
+        ]);
+
+    expect($submission->fresh()->status)->toBe(Submission::STATUS_NEEDS_CORRECTION)
+        ->and($submission->fresh()->status_updated_by)->toBe($user->id)
+        ->and($submission->fresh()->status_updated_at)->not->toBeNull()
+        ->and($submission->notes()->count())->toBe(1)
+        ->and($submission->notes()->first()?->visibility)->toBe('USER_VISIBLE')
+        ->and($submission->notes()->first()?->message)->toBe('Corrigir a documentação societária enviada.');
+});
+
+it('renders shareholder participation percentages in the relation manager', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-shareholders@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Socios',
+        'email' => 'cliente.socios@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-SHARE-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitacao com socios',
+        'responsible_name' => 'Cliente Socios',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Socios',
+        'status' => 'PENDING',
+        'submitted_at' => now(),
+    ]);
+
+    $firstShareholder = $submission->shareholders()->create([
+        'name' => 'Caroline Evelyn Nogueira',
+        'percentage' => 32.5,
+    ]);
+
+    $secondShareholder = $submission->shareholders()->create([
+        'name' => 'Rosângela Esther da Mota',
+        'percentage' => 17.25,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test(ShareholdersRelationManager::class, [
+        'ownerRecord' => $submission,
+        'pageClass' => ViewSubmission::class,
+    ])
+        ->assertCanSeeTableRecords([$firstShareholder, $secondShareholder], inOrder: true)
+        ->assertTableColumnExists('percentage')
+        ->assertTableColumnFormattedStateSet('percentage', '32,50%', $firstShareholder)
+        ->assertTableColumnFormattedStateSet('percentage', '17,25%', $secondShareholder);
+});
+
+it('renders original NimbusDocs document labels in the files relation manager', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-files@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Arquivos',
+        'email' => 'cliente.arquivos@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'NMB-FILES-001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Solicitacao com arquivos',
+        'responsible_name' => 'Cliente Arquivos',
+        'company_cnpj' => '12.345.678/0001-90',
+        'company_name' => 'Empresa Arquivos',
+        'status' => 'PENDING',
+        'submitted_at' => now(),
+    ]);
+
+    $balanceSheet = $submission->files()->create([
+        'document_type' => 'BALANCE_SHEET',
+        'origin' => 'USER',
+        'visible_to_user' => false,
+        'original_name' => '0.pdf',
+        'stored_name' => 'balance-sheet.pdf',
+        'mime_type' => 'application/pdf',
+        'size_bytes' => 1024,
+        'storage_path' => 'nimbus/submissions/1/balance-sheet.pdf',
+        'uploaded_at' => now(),
+    ]);
+
+    $dre = $submission->files()->create([
+        'document_type' => 'DRE',
+        'origin' => 'USER',
+        'visible_to_user' => false,
+        'original_name' => '1.pdf',
+        'stored_name' => 'dre.pdf',
+        'mime_type' => 'application/pdf',
+        'size_bytes' => 2048,
+        'storage_path' => 'nimbus/submissions/1/dre.pdf',
+        'uploaded_at' => now(),
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test(FilesRelationManager::class, [
+        'ownerRecord' => $submission,
+        'pageClass' => ViewSubmission::class,
+    ])
+        ->assertCanSeeTableRecords([$balanceSheet, $dre], inOrder: true)
+        ->assertTableColumnExists('document_type_label')
+        ->assertTableColumnStateSet('document_type_label', 'Último Balanço', $balanceSheet)
+        ->assertTableColumnStateSet('document_type_label', 'DRE (Demonstração do Resultado do Exercício)', $dre)
+        ->assertTableColumnDoesNotExist('original_name')
+        ->assertTableActionExists('visualizar', null, $balanceSheet)
+        ->assertTableActionHasUrl('visualizar', route('admin.nimbus.submissions.files.preview', $balanceSheet), $balanceSheet)
+        ->assertTableActionShouldOpenUrlInNewTab('visualizar', $balanceSheet)
+        ->assertTableActionExists('baixar', null, $balanceSheet)
+        ->assertTableActionHasUrl('baixar', route('admin.nimbus.submissions.files.download', $balanceSheet), $balanceSheet);
 });
 
 it('renders the portal users list under Administração', function () {

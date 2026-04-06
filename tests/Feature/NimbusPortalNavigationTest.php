@@ -40,6 +40,44 @@ it('renders working Nimbus portal navigation and dashboard actions', function ()
         ->assertSee('href="'.route('nimbus.submissions.show', $submission).'"', false);
 });
 
+it('renders the correction status label in the portal pages', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Teste Correção',
+        'email' => 'teste.correcao@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submission = Submission::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'reference_code' => 'SUB-CORRECAO-0001',
+        'submission_type' => 'REGISTRATION',
+        'title' => 'Cadastro com correção',
+        'responsible_name' => 'Teste Correção',
+        'company_cnpj' => '12.345.678/0001-99',
+        'company_name' => 'Empresa Correção',
+        'phone' => '(11) 99999-9999',
+        'status' => Submission::STATUS_NEEDS_CORRECTION,
+        'submitted_at' => now(),
+    ]);
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.dashboard'))
+        ->assertSuccessful()
+        ->assertSee('Aguardando Correção');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.index'))
+        ->assertSuccessful()
+        ->assertSee('Aguardando Correção');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.show', $submission))
+        ->assertSuccessful()
+        ->assertSee('Aguardando Correção');
+});
+
 it('renders only the authenticated portal user documents', function () {
     $adminUser = User::factory()->create();
 

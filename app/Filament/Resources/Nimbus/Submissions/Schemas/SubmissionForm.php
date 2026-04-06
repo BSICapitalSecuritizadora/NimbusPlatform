@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Nimbus\Submissions\Schemas;
 
+use App\Models\Nimbus\Submission;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -70,13 +71,8 @@ class SubmissionForm
                     ->label('CPF do Cadastrante'),
                 Select::make('status')
                     ->label('Situação Atual')
-                    ->options([
-                        'PENDING' => 'Pendente',
-                        'UNDER_REVIEW' => 'Em Análise',
-                        'COMPLETED' => 'Concluído',
-                        'REJECTED' => 'Rejeitado',
-                    ])
-                    ->default('PENDING')
+                    ->options(Submission::statusOptions())
+                    ->default(Submission::STATUS_PENDING)
                     ->required(),
                 TextInput::make('created_ip')
                     ->label('IP de Criação'),

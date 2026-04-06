@@ -20,6 +20,8 @@ class ShareholdersRelationManager extends RelationManager
 {
     protected static string $relationship = 'shareholders';
 
+    protected static ?string $title = 'Sócios';
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -27,6 +29,11 @@ class ShareholdersRelationManager extends RelationManager
                 TextInput::make('name')
                     ->required()
                     ->maxLength(255),
+                TextInput::make('percentage')
+                    ->label('Participação')
+                    ->numeric()
+                    ->required()
+                    ->suffix('%'),
             ]);
     }
 
@@ -36,7 +43,13 @@ class ShareholdersRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 TextColumn::make('name')
+                    ->label('Nome')
                     ->searchable(),
+                TextColumn::make('percentage')
+                    ->label('Participação')
+                    ->numeric(2, ',', '.')
+                    ->suffix('%')
+                    ->sortable(),
             ])
             ->filters([
                 //

@@ -2,10 +2,12 @@
 
 use App\Actions\Proposals\StoreProposalContinuationData;
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
+use App\Http\Controllers\Nimbus\AdminSubmissionFileController;
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
 use App\Http\Controllers\Site\PublicDocumentsController;
 use App\Http\Controllers\Site\SiteController;
+use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Requests\VerifyProposalContinuationRequest;
 use App\Livewire\Proposals\ContinuationForm;
 use App\Models\Proposal;
@@ -229,6 +231,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/projetos/{project}/analitico', [App\Http\Controllers\Admin\ProjectReportController::class, 'analyticalReport'])->name('admin.projects.analytical');
 });
 
+Route::middleware(['auth', EnsureTwoFactorEnabled::class])
+    ->prefix('/admin/nimbus/submissions/files')
+    ->name('admin.nimbus.submissions.files.')
+    ->group(function () {
+        Route::get('/{file}/preview', [AdminSubmissionFileController::class, 'preview'])->name('preview');
+        Route::get('/{file}/download', [AdminSubmissionFileController::class, 'download'])->name('download');
+    });
+
 require __DIR__.'/settings.php';
 require __DIR__.'/investor.php';
 
@@ -247,8 +257,8 @@ Route::prefix('nimbus')->name('nimbus.')->group(function () {
             // Dummy data for now before we implement the full controller queries
             $stats = [
                 'total' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->count(),
-                'pending' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->whereIn('status', ['PENDING', 'UNDER_REVIEW'])->count(),
-                'approved' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->where('status', 'APPROVED')->count(),
+                'pending' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->whereIn('status', ['PENDING', 'UNDER_REVIEW', 'NEEDS_CORRECTION'])->count(),
+                'approved' => \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)->whereIn('status', ['APPROVED', 'COMPLETED'])->count(),
             ];
 
             $submissions = \App\Models\Nimbus\Submission::where('nimbus_portal_user_id', $user->id)
