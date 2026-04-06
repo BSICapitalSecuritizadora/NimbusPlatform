@@ -110,16 +110,16 @@
                                     <div class="col-md-5">
                                         <flux:field>
                                             <flux:label>Nome do Empreendimento *</flux:label>
-                                            <flux:input wire:model.blur="developmentName" />
-                                            <flux:error name="developmentName" />
+                                            <flux:input wire:model.blur="form.developmentName" />
+                                            <flux:error name="form.developmentName" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Site</flux:label>
-                                            <flux:input type="url" wire:model.blur="websiteUrl" />
-                                            <flux:error name="websiteUrl" />
+                                            <flux:input type="url" wire:model.blur="form.websiteUrl" />
+                                            <flux:error name="form.websiteUrl" />
                                         </flux:field>
                                     </div>
 
@@ -128,9 +128,9 @@
                                             <flux:label>Valor Solicitado *</flux:label>
                                             <div class="flex">
                                                 <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                <flux:input class="rounded-l-none!" wire:model.blur="requestedAmount" mask:dynamic="$money($input, ',', '.', 2)" inputmode="decimal" />
+                                                <flux:input class="rounded-l-none!" wire:model.blur="form.requestedAmount" mask:dynamic="$money($input, ',', '.', 2)" inputmode="decimal" />
                                             </div>
-                                            <flux:error name="requestedAmount" />
+                                            <flux:error name="form.requestedAmount" />
                                         </flux:field>
                                     </div>
 
@@ -139,113 +139,113 @@
                                             <flux:label>Valor atual de mercado do terreno</flux:label>
                                             <div class="flex">
                                                 <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                <flux:input class="rounded-l-none!" wire:model.blur="landMarketValue" mask:dynamic="$money($input, ',', '.', 2)" inputmode="decimal" />
+                                                <flux:input class="rounded-l-none!" wire:model.blur="form.landMarketValue" mask:dynamic="$money($input, ',', '.', 2)" inputmode="decimal" />
                                             </div>
-                                            <flux:error name="landMarketValue" />
+                                            <flux:error name="form.landMarketValue" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Área do Terreno (m²) *</flux:label>
-                                            <flux:input type="number" step="0.01" wire:model.blur="landArea" />
-                                            <flux:error name="landArea" />
+                                            <flux:input type="number" step="0.01" wire:model.blur="form.landArea" />
+                                            <flux:error name="form.landArea" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Lançamento *</flux:label>
-                                            <flux:input type="month" wire:model.blur="launchDate" />
-                                            <flux:error name="launchDate" />
+                                            <flux:input type="month" wire:model.blur="form.launchDate" />
+                                            <flux:error name="form.launchDate" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Lançamento das Vendas *</flux:label>
-                                            <flux:input type="month" wire:model.blur="salesLaunchDate" />
-                                            <flux:error name="salesLaunchDate" />
+                                            <flux:input type="month" wire:model.blur="form.salesLaunchDate" />
+                                            <flux:error name="form.salesLaunchDate" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Início das Obras *</flux:label>
-                                            <flux:input type="month" wire:model.blur="constructionStartDate" />
-                                            <flux:error name="constructionStartDate" />
+                                            <flux:input type="month" wire:model.blur="form.constructionStartDate" />
+                                            <flux:error name="form.constructionStartDate" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Previsão de Entrega *</flux:label>
-                                            <flux:input type="month" wire:model.blur="deliveryForecastDate" />
-                                            <flux:error name="deliveryForecastDate" />
+                                            <flux:input type="month" wire:model.blur="form.deliveryForecastDate" />
+                                            <flux:error name="form.deliveryForecastDate" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Prazo Remanescente (meses)</flux:label>
-                                            <flux:input type="number" wire:model="remainingMonths" readonly />
+                                            <flux:input type="number" wire:model="form.remainingMonths" readonly />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>CEP *</flux:label>
-                                            <flux:input wire:model.blur="zipCode" mask="99999-999" inputmode="numeric" />
-                                            <flux:error name="zipCode" />
-                                            <flux:description wire:loading wire:target="zipCode">Buscando endereço pelo CEP...</flux:description>
+                                            <flux:input wire:model.blur="form.zipCode" mask="99999-999" inputmode="numeric" />
+                                            <flux:error name="form.zipCode" />
+                                            <flux:description wire:loading wire:target="form.zipCode">Buscando endereço pelo CEP...</flux:description>
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-6">
                                         <flux:field>
                                             <flux:label>Rua *</flux:label>
-                                            <flux:input wire:model.blur="street" />
-                                            <flux:error name="street" />
+                                            <flux:input wire:model.blur="form.street" />
+                                            <flux:error name="form.street" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Complemento</flux:label>
-                                            <flux:input wire:model.blur="addressComplement" />
-                                            <flux:error name="addressComplement" />
+                                            <flux:input wire:model.blur="form.addressComplement" />
+                                            <flux:error name="form.addressComplement" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-3">
                                         <flux:field>
                                             <flux:label>Número *</flux:label>
-                                            <flux:input wire:model.blur="addressNumber" />
-                                            <flux:error name="addressNumber" />
+                                            <flux:input wire:model.blur="form.addressNumber" />
+                                            <flux:error name="form.addressNumber" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Bairro *</flux:label>
-                                            <flux:input wire:model.blur="neighborhood" />
-                                            <flux:error name="neighborhood" />
+                                            <flux:input wire:model.blur="form.neighborhood" />
+                                            <flux:error name="form.neighborhood" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-4">
                                         <flux:field>
                                             <flux:label>Cidade *</flux:label>
-                                            <flux:input wire:model.blur="city" />
-                                            <flux:error name="city" />
+                                            <flux:input wire:model.blur="form.city" />
+                                            <flux:error name="form.city" />
                                         </flux:field>
                                     </div>
 
                                     <div class="col-md-2">
                                         <flux:field>
                                             <flux:label>Estado *</flux:label>
-                                            <flux:input maxlength="2" wire:model.blur="state" />
-                                            <flux:error name="state" />
+                                            <flux:input maxlength="2" wire:model.blur="form.state" />
+                                            <flux:error name="form.state" />
                                         </flux:field>
                                     </div>
 
@@ -280,13 +280,13 @@
                                                         @endif
                                                     </div>
 
-                                                    <input type="hidden" wire:model="projects.{{ $index }}.id">
+                                                    <input type="hidden" wire:model="form.projects.{{ $index }}.id">
 
                                                     <div class="mb-4">
                                                         <flux:field>
                                                             <flux:label>Identificação do Empreendimento *</flux:label>
-                                                            <flux:input wire:model.blur="projects.{{ $index }}.name" />
-                                                            <flux:error name="projects.{{ $index }}.name" />
+                                                            <flux:input wire:model.blur="form.projects.{{ $index }}.name" />
+                                                            <flux:error name="form.projects.{{ $index }}.name" />
                                                         </flux:field>
                                                     </div>
 
@@ -309,12 +309,12 @@
                                                                         </thead>
                                                                         <tbody>
                                                                             <tr>
-                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.exchangedUnits" /></td>
-                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.paidUnits" /></td>
-                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.unpaidUnits" /></td>
-                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="projects.{{ $index }}.stockUnits" /></td>
-                                                                                <td><flux:input type="number" wire:model="projects.{{ $index }}.totalUnits" readonly /></td>
-                                                                                <td><flux:input wire:model="projects.{{ $index }}.salesPercentage" readonly /></td>
+                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="form.projects.{{ $index }}.exchangedUnits" /></td>
+                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="form.projects.{{ $index }}.paidUnits" /></td>
+                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="form.projects.{{ $index }}.unpaidUnits" /></td>
+                                                                                <td><flux:input type="number" min="0" wire:model.live.debounce.300ms="form.projects.{{ $index }}.stockUnits" /></td>
+                                                                                <td><flux:input type="number" wire:model="form.projects.{{ $index }}.totalUnits" readonly /></td>
+                                                                                <td><flux:input wire:model="form.projects.{{ $index }}.salesPercentage" readonly /></td>
                                                                             </tr>
                                                                         </tbody>
                                                                     </table>
@@ -343,22 +343,22 @@
                                                                                 <td>
                                                                                     <div class="flex">
                                                                                         <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                        <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.incurredCost" mask:dynamic="$money($input, ',', '.', 2)" />
+                                                                                        <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="form.projects.{{ $index }}.incurredCost" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                                     </div>
                                                                                 </td>
                                                                                 <td>
                                                                                     <div class="flex">
                                                                                         <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                        <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.costToIncur" mask:dynamic="$money($input, ',', '.', 2)" />
+                                                                                        <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="form.projects.{{ $index }}.costToIncur" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                                     </div>
                                                                                 </td>
                                                                                 <td>
                                                                                     <div class="flex">
                                                                                         <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                        <flux:input class="rounded-l-none!" wire:model="projects.{{ $index }}.totalCost" readonly />
+                                                                                        <flux:input class="rounded-l-none!" wire:model="form.projects.{{ $index }}.totalCost" readonly />
                                                                                     </div>
                                                                                 </td>
-                                                                                <td><flux:input wire:model="projects.{{ $index }}.workStagePercentage" readonly /></td>
+                                                                                <td><flux:input wire:model="form.projects.{{ $index }}.workStagePercentage" readonly /></td>
                                                                             </tr>
                                                                         </tbody>
                                                                     </table>
@@ -388,14 +388,14 @@
                                                                                     <td>
                                                                                         <div class="flex">
                                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.{{ $field }}" mask:dynamic="$money($input, ',', '.', 2)" />
+                                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="form.projects.{{ $index }}.{{ $field }}" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                                         </div>
                                                                                     </td>
                                                                                 @endforeach
                                                                                 <td>
                                                                                     <div class="flex">
                                                                                         <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                        <flux:input class="rounded-l-none!" wire:model="projects.{{ $index }}.grossSalesValue" readonly />
+                                                                                        <flux:input class="rounded-l-none!" wire:model="form.projects.{{ $index }}.grossSalesValue" readonly />
                                                                                     </div>
                                                                                 </td>
                                                                             </tr>
@@ -427,7 +427,7 @@
                                                                                     <td>
                                                                                         <div class="flex">
                                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="projects.{{ $index }}.{{ $field }}" mask:dynamic="$money($input, ',', '.', 2)" />
+                                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="form.projects.{{ $index }}.{{ $field }}" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                                         </div>
                                                                                     </td>
                                                                                 @endforeach
@@ -461,39 +461,39 @@
                                                 <div class="col-md-2">
                                                     <flux:field>
                                                         <flux:label>Blocos *</flux:label>
-                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="blockCount" />
-                                                        <flux:error name="blockCount" />
+                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="form.blockCount" />
+                                                        <flux:error name="form.blockCount" />
                                                     </flux:field>
                                                 </div>
 
                                                 <div class="col-md-2">
                                                     <flux:field>
                                                         <flux:label>Pavimentos *</flux:label>
-                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="floorCount" />
-                                                        <flux:error name="floorCount" />
+                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="form.floorCount" />
+                                                        <flux:error name="form.floorCount" />
                                                     </flux:field>
                                                 </div>
 
                                                 <div class="col-md-3">
                                                     <flux:field>
                                                         <flux:label>Andares Tipo *</flux:label>
-                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="typicalFloorCount" />
-                                                        <flux:error name="typicalFloorCount" />
+                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="form.typicalFloorCount" />
+                                                        <flux:error name="form.typicalFloorCount" />
                                                     </flux:field>
                                                 </div>
 
                                                 <div class="col-md-3">
                                                     <flux:field>
                                                         <flux:label>Unidades/Andar *</flux:label>
-                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="unitsPerFloor" />
-                                                        <flux:error name="unitsPerFloor" />
+                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="form.unitsPerFloor" />
+                                                        <flux:error name="form.unitsPerFloor" />
                                                     </flux:field>
                                                 </div>
 
                                                 <div class="col-md-2">
                                                     <flux:field>
                                                         <flux:label>Total</flux:label>
-                                                        <flux:input type="number" wire:model="totalUnits" readonly />
+                                                        <flux:input type="number" wire:model="form.totalUnits" readonly />
                                                     </flux:field>
                                                 </div>
                                             </div>
@@ -523,7 +523,7 @@
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Total *</th>
                                                                 @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-total-{{ $typeIndex }}">
-                                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="unitTypes.{{ $typeIndex }}.totalUnits" />
+                                                                        <flux:input type="number" min="1" wire:model.live.debounce.300ms="form.unitTypes.{{ $typeIndex }}.totalUnits" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
@@ -531,7 +531,7 @@
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Dormitórios *</th>
                                                                 @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-bedrooms-{{ $typeIndex }}">
-                                                                        <flux:input wire:model.blur="unitTypes.{{ $typeIndex }}.bedrooms" />
+                                                                        <flux:input wire:model.blur="form.unitTypes.{{ $typeIndex }}.bedrooms" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
@@ -539,7 +539,7 @@
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Vagas *</th>
                                                                 @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-parking-{{ $typeIndex }}">
-                                                                        <flux:input wire:model.blur="unitTypes.{{ $typeIndex }}.parkingSpaces" />
+                                                                        <flux:input wire:model.blur="form.unitTypes.{{ $typeIndex }}.parkingSpaces" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
@@ -547,7 +547,7 @@
                                                                 <th class="text-[var(--muted)] text-[0.76rem] font-bold uppercase tracking-[0.08em]">Área Útil (m²) *</th>
                                                                 @foreach ($unitTypes as $typeIndex => $typeRow)
                                                                     <td wire:key="type-area-{{ $typeIndex }}">
-                                                                        <flux:input type="number" step="0.01" wire:model.live.debounce.300ms="unitTypes.{{ $typeIndex }}.usableArea" />
+                                                                        <flux:input type="number" step="0.01" wire:model.live.debounce.300ms="form.unitTypes.{{ $typeIndex }}.usableArea" />
                                                                     </td>
                                                                 @endforeach
                                                             </tr>
@@ -557,7 +557,7 @@
                                                                     <td wire:key="type-average-price-{{ $typeIndex }}">
                                                                         <div class="flex">
                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="unitTypes.{{ $typeIndex }}.averagePrice" mask:dynamic="$money($input, ',', '.', 2)" />
+                                                                            <flux:input class="rounded-l-none!" inputmode="decimal" wire:model.blur="form.unitTypes.{{ $typeIndex }}.averagePrice" mask:dynamic="$money($input, ',', '.', 2)" />
                                                                         </div>
                                                                     </td>
                                                                 @endforeach
@@ -568,7 +568,7 @@
                                                                     <td wire:key="type-price-per-m2-{{ $typeIndex }}">
                                                                         <div class="flex">
                                                                             <span class="inline-flex items-center px-3 border border-r-0 border-zinc-300 dark:border-zinc-600 rounded-l-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-sm">R$</span>
-                                                                            <flux:input class="rounded-l-none!" wire:model="unitTypes.{{ $typeIndex }}.pricePerSquareMeter" readonly />
+                                                                            <flux:input class="rounded-l-none!" wire:model="form.unitTypes.{{ $typeIndex }}.pricePerSquareMeter" readonly />
                                                                         </div>
                                                                     </td>
                                                                 @endforeach
@@ -587,11 +587,11 @@
                                             <input
                                                 type="file"
                                                 class="block w-full text-sm text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200"
-                                                wire:model="uploads"
+                                                wire:model="form.uploads"
                                                 multiple
                                             >
-                                            <flux:error name="uploads.*" />
-                                            <p class="text-[var(--muted)] text-sm mt-1" wire:loading wire:target="uploads">Carregando arquivos para envio...</p>
+                                            <flux:error name="form.uploads.*" />
+                                            <p class="text-[var(--muted)] text-sm mt-1" wire:loading wire:target="form.uploads">Carregando arquivos para envio...</p>
                                         </flux:field>
 
                                         @if ($uploads !== [])
@@ -652,3 +652,4 @@
         </div>
     </div>
 </section>
+

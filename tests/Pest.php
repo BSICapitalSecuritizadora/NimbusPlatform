@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Forms\CreateProposalFormObject;
 use App\Livewire\Proposals\CreateProposalForm;
 use App\Models\ProposalSector;
 use Illuminate\Support\Facades\Http;
@@ -18,7 +19,7 @@ function proposalCreateFormState(ProposalSector $sector, int $index = 1): array
         'companyName' => "Construtora {$index}",
         'stateRegistration' => "12345{$index}",
         'website' => "https://construtora{$index}.example.com",
-        'sectorIds' => [$sector->id],
+        'sectorId' => (string) $sector->id,
         'postalCode' => '04567-000',
         'street' => 'Rua das Torres',
         'addressNumber' => (string) (100 + $index),
@@ -77,11 +78,11 @@ function submitProposalCreateForm(array $state): void
     $component = Livewire::test(CreateProposalForm::class);
 
     foreach ($state as $property => $value) {
-        if (! property_exists(CreateProposalForm::class, $property)) {
+        if (! property_exists(CreateProposalFormObject::class, $property)) {
             continue;
         }
 
-        $component->set($property, $value);
+        $component->set("form.{$property}", $value);
     }
 
     $component

@@ -43,12 +43,12 @@ it('looks up the zip code and hydrates the operation address fields', function (
     seedProposalContinuationSession($access);
 
     Livewire::test(ContinuationForm::class, ['access' => $access])
-        ->set('zipCode', '04567-000')
-        ->assertSet('zipCode', '04567-000')
-        ->assertSet('street', 'Rua Faria Lima')
-        ->assertSet('neighborhood', 'Itaim Bibi')
-        ->assertSet('city', 'São Paulo')
-        ->assertSet('state', 'SP');
+        ->set('form.zipCode', '04567-000')
+        ->assertSet('form.zipCode', '04567-000')
+        ->assertSet('form.street', 'Rua Faria Lima')
+        ->assertSet('form.neighborhood', 'Itaim Bibi')
+        ->assertSet('form.city', 'São Paulo')
+        ->assertSet('form.state', 'SP');
 
     Http::assertSentCount(3);
 });
@@ -61,28 +61,28 @@ it('recalculates project and unit type metrics reactively', function () {
     seedProposalContinuationSession($access);
 
     Livewire::test(ContinuationForm::class, ['access' => $access])
-        ->set('projects.0.name', 'Torre Madrid')
-        ->set('projects.0.exchangedUnits', 10)
-        ->set('projects.0.paidUnits', 20)
-        ->set('projects.0.unpaidUnits', 15)
-        ->set('projects.0.stockUnits', 55)
-        ->set('projects.0.incurredCost', '1.000.000,00')
-        ->set('projects.0.costToIncur', '3.000.000,00')
-        ->set('projects.0.paidSalesValue', '900.000,00')
-        ->set('projects.0.unpaidSalesValue', '1.500.000,50')
-        ->set('projects.0.stockSalesValue', '2.500.000,75')
-        ->set('unitTypes.0.usableArea', 82.5)
-        ->set('unitTypes.0.averagePrice', '850.000,00')
-        ->set('blockCount', 2)
-        ->set('typicalFloorCount', 15)
-        ->set('unitsPerFloor', 4)
-        ->assertSet('projects.0.totalUnits', 100)
-        ->assertSet('projects.0.salesPercentage', '38.89')
-        ->assertSet('projects.0.totalCost', '4.000.000,00')
-        ->assertSet('projects.0.workStagePercentage', '25.00')
-        ->assertSet('projects.0.grossSalesValue', '4.900.001,25')
-        ->assertSet('unitTypes.0.pricePerSquareMeter', '10.303,03')
-        ->assertSet('totalUnits', 120);
+        ->set('form.projects.0.name', 'Torre Madrid')
+        ->set('form.projects.0.exchangedUnits', 10)
+        ->set('form.projects.0.paidUnits', 20)
+        ->set('form.projects.0.unpaidUnits', 15)
+        ->set('form.projects.0.stockUnits', 55)
+        ->set('form.projects.0.incurredCost', '1.000.000,00')
+        ->set('form.projects.0.costToIncur', '3.000.000,00')
+        ->set('form.projects.0.paidSalesValue', '900.000,00')
+        ->set('form.projects.0.unpaidSalesValue', '1.500.000,50')
+        ->set('form.projects.0.stockSalesValue', '2.500.000,75')
+        ->set('form.unitTypes.0.usableArea', 82.5)
+        ->set('form.unitTypes.0.averagePrice', '850.000,00')
+        ->set('form.blockCount', 2)
+        ->set('form.typicalFloorCount', 15)
+        ->set('form.unitsPerFloor', 4)
+        ->assertSet('form.projects.0.totalUnits', 100)
+        ->assertSet('form.projects.0.salesPercentage', '38.89')
+        ->assertSet('form.projects.0.totalCost', '4.000.000,00')
+        ->assertSet('form.projects.0.workStagePercentage', '25.00')
+        ->assertSet('form.projects.0.grossSalesValue', '4.900.001,25')
+        ->assertSet('form.unitTypes.0.pricePerSquareMeter', '10.303,03')
+        ->assertSet('form.totalUnits', 120);
 });
 
 it('stores the continuation payload through the livewire component', function () {
@@ -105,11 +105,11 @@ it('stores the continuation payload through the livewire component', function ()
     $component = Livewire::test(ContinuationForm::class, ['access' => $access]);
 
     foreach ($payload as $property => $value) {
-        $component->set($property, $value);
+        $component->set("form.{$property}", $value);
     }
 
     $component
-        ->set('uploads', [
+        ->set('form.uploads', [
             UploadedFile::fake()->create('memorial-descritivo.pdf', 128, 'application/pdf'),
         ])
         ->call('save')

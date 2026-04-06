@@ -51,22 +51,22 @@ it('hydrates company and address fields from cnpj and postal code lookups', func
     ]);
 
     Livewire::test(CreateProposalForm::class)
-        ->set('cnpj', '12.345.678/0001-90')
-        ->assertSet('companyName', 'Construtora Horizonte')
-        ->assertSet('stateRegistration', '123456789')
-        ->assertSet('website', 'https://horizonte.example.com')
-        ->assertSet('postalCode', '04567-000')
-        ->assertSet('street', 'Avenida Brigadeiro')
-        ->assertSet('addressNumber', '1500')
-        ->assertSet('addressComplement', 'Conjunto 12')
-        ->assertSet('neighborhood', 'Jardins')
-        ->assertSet('city', 'São Paulo')
-        ->assertSet('state', 'SP')
-        ->set('postalCode', '04567-000')
-        ->assertSet('street', 'Rua Faria Lima')
-        ->assertSet('neighborhood', 'Itaim Bibi')
-        ->assertSet('city', 'São Paulo')
-        ->assertSet('state', 'SP');
+        ->set('form.cnpj', '12.345.678/0001-90')
+        ->assertSet('form.companyName', 'Construtora Horizonte')
+        ->assertSet('form.stateRegistration', '123456789')
+        ->assertSet('form.website', 'https://horizonte.example.com')
+        ->assertSet('form.postalCode', '04567-000')
+        ->assertSet('form.street', 'Avenida Brigadeiro')
+        ->assertSet('form.addressNumber', '1500')
+        ->assertSet('form.addressComplement', 'Conjunto 12')
+        ->assertSet('form.neighborhood', 'Jardins')
+        ->assertSet('form.city', 'São Paulo')
+        ->assertSet('form.state', 'SP')
+        ->set('form.postalCode', '04567-000')
+        ->assertSet('form.street', 'Rua Faria Lima')
+        ->assertSet('form.neighborhood', 'Itaim Bibi')
+        ->assertSet('form.city', 'São Paulo')
+        ->assertSet('form.state', 'SP');
 });
 
 it('stores the initial proposal through the livewire component and sends the continuation link', function () {
@@ -86,7 +86,7 @@ it('stores the initial proposal through the livewire component and sends the con
     $component = Livewire::test(CreateProposalForm::class);
 
     foreach ($state as $property => $value) {
-        $component->set($property, $value);
+        $component->set("form.{$property}", $value);
     }
 
     $component
@@ -117,17 +117,17 @@ it('validates the required fields before saving the proposal', function () {
     Livewire::test(CreateProposalForm::class)
         ->call('save')
         ->assertHasErrors([
-            'cnpj' => ['required'],
-            'companyName' => ['required'],
-            'sectorIds' => ['required'],
-            'postalCode' => ['required'],
-            'street' => ['required'],
-            'addressNumber' => ['required'],
-            'neighborhood' => ['required'],
-            'city' => ['required'],
-            'state' => ['required'],
-            'contactName' => ['required'],
-            'email' => ['required'],
-            'personalPhone' => ['required'],
+            'form.cnpj',
+            'form.companyName',
+            'form.sectorId',
+            'form.postalCode',
+            'form.street',
+            'form.addressNumber',
+            'form.neighborhood',
+            'form.city',
+            'form.state',
+            'form.contactName',
+            'form.email',
+            'form.personalPhone',
         ]);
 });
