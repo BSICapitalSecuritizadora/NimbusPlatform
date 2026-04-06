@@ -179,12 +179,43 @@ class SubmissionResource extends Resource
                 Section::make('Trilha de Auditoria')
                     ->icon('heroicon-o-clock')
                     ->schema([
-                        Grid::make(4)
+                        Section::make('Metadados do Registro')
+                            ->description('Datas do fluxo e origem técnica do envio')
+                            ->compact()
+                            ->secondary()
+                            ->columns([
+                                'default' => 1,
+                                'md' => 3,
+                            ])
                             ->schema([
-                                TextEntry::make('created_at')->label('Data de Criação')->dateTime('d/m/Y H:i:s'),
-                                TextEntry::make('created_user_agent')->label('User Agent'),
-                                TextEntry::make('created_ip')->label('IP de Origem'),
-                                TextEntry::make('status_updated_at')->label('Data Status Atualizado')->dateTime('d/m/Y H:i:s'),
+                                TextEntry::make('created_at')
+                                    ->label('Data de criação')
+                                    ->dateTime('d/m/Y H:i:s'),
+                                TextEntry::make('status_updated_at')
+                                    ->label('Status atualizado em')
+                                    ->dateTime('d/m/Y H:i:s')
+                                    ->placeholder('-'),
+                                TextEntry::make('created_ip')
+                                    ->label('IP de origem')
+                                    ->placeholder('-')
+                                    ->copyable()
+                                    ->copyMessage('IP copiado')
+                                    ->fontFamily('mono'),
+                            ]),
+
+                        Section::make('User Agent da Sessão')
+                            ->description('Cabeçalho completo enviado pelo navegador no momento do cadastro')
+                            ->compact()
+                            ->secondary()
+                            ->schema([
+                                TextEntry::make('created_user_agent')
+                                    ->hiddenLabel()
+                                    ->placeholder('-')
+                                    ->fontFamily('mono')
+                                    ->size('xs')
+                                    ->copyable()
+                                    ->copyMessage('User Agent copiado')
+                                    ->wrap(),
                             ]),
                     ]),
             ]);

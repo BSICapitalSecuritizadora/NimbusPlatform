@@ -211,7 +211,7 @@ it('renders the submission view page for authenticated admin users', function ()
         'status' => 'PENDING',
         'submitted_at' => now(),
         'created_ip' => '127.0.0.1',
-        'created_user_agent' => 'Pest',
+        'created_user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0',
         'status_updated_at' => now(),
     ]);
 
@@ -229,9 +229,13 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSee('Indicadores Financeiros')
         ->assertSee('Dados do Cadastrante')
         ->assertSee('Trilha de Auditoria')
+        ->assertSee('Metadados do Registro')
+        ->assertSee('User Agent da Sessão')
         ->assertDontSee('Anexos Recebidos')
         ->assertSee('NMB-01KNHQMXVT88D6RF')
         ->assertSee('Empresa Visualizacao')
+        ->assertSee('Mozilla/5.0')
+        ->assertSee('127.0.0.1')
         ->assertSee('fi-font-mono', false)
         ->assertSee('fi-wrapped', false);
 });
