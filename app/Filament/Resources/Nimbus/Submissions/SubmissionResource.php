@@ -176,25 +176,6 @@ class SubmissionResource extends Resource
                             ->columns(2),
                     ]),
 
-                Section::make('Anexos Recebidos')
-                    ->icon('heroicon-o-paper-clip')
-                    ->schema([
-                        RepeatableEntry::make('files')
-                            ->hiddenLabel()
-                            ->schema([
-                                IconEntry::make('is_file')->default(true)->icon('heroicon-o-document')->hiddenLabel(),
-                                TextEntry::make('original_name')->label('Arquivo')->weight('bold'),
-                                TextEntry::make('size_in_mb')->label('Tamanho')->suffix(' MB'),
-                                TextEntry::make('download_url')
-                                    ->label('Ação')
-                                    ->badge()
-                                    ->color('primary')
-                                    ->url(fn ($record) => '#', true)
-                                    ->formatStateUsing(fn () => 'Baixar Arquivo'),
-                            ])
-                            ->columns(4),
-                    ]),
-
                 Section::make('Trilha de Auditoria')
                     ->icon('heroicon-o-clock')
                     ->schema([
