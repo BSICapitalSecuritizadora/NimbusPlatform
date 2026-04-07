@@ -131,6 +131,8 @@ it('stores the continuation payload through the livewire component', function ()
             'Torre Manchester',
         ])
         ->and($proposal->files)->toHaveCount(1)
+        ->and($proposal->files->first()->disk)->toBe('local')
+        ->and($proposal->files->first()->file_path)->toStartWith('nimbus_docs/proposal-files/'.$proposal->id.'/')
         ->and($proposal->latestStatusHistory?->new_status)->toBe(Proposal::STATUS_IN_REVIEW);
 
     $firstProject = $proposal->projects->first();

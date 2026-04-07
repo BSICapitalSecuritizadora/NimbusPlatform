@@ -2,6 +2,7 @@
 
 namespace App\Actions\Nimbus;
 
+use App\DTOs\Nimbus\LookupNimbusCnpjDTO;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -11,15 +12,15 @@ class LookupNimbusCnpj
     /**
      * @return array{status:int,payload:array<string,mixed>}
      */
-    public function handle(string $cnpj): array
+    public function handle(LookupNimbusCnpjDTO $dto): array
     {
         try {
             $response = Http::timeout(8)
                 ->acceptJson()
-                ->get("https://publica.cnpj.ws/cnpj/{$cnpj}");
+                ->get("https://publica.cnpj.ws/cnpj/{$dto->cnpj}");
         } catch (\Throwable $exception) {
             Log::warning('Falha ao consultar CNPJ no portal Nimbus.', [
-                'cnpj' => $cnpj,
+                'cnpj' => $dto->cnpj,
                 'message' => $exception->getMessage(),
             ]);
 

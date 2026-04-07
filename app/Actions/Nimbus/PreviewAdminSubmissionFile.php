@@ -4,27 +4,29 @@ namespace App\Actions\Nimbus;
 
 use App\Models\Nimbus\SubmissionFile;
 use App\Models\User;
+use App\Services\DocumentStorageService;
 use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class PreviewAdminSubmissionFile
 {
+    public function __construct(
+        protected DocumentStorageService $documentStorageService,
+    ) {}
+
     public function handle(?User $user, SubmissionFile $file): BinaryFileResponse
     {
         $this->assertAdminPanelAccess($user);
 
-        if (! Storage::disk('local')->exists($file->storage_path)) {
+        if (! $this->documentStorageService->exists($file->storage_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        return response()->file(
-            Storage::disk('local')->path($file->storage_path),
-            [
-                'Content-Type' => $file->mime_type ?: 'application/octet-stream',
-                'Content-Disposition' => 'inline; filename="'.$file->original_name.'"',
-            ],
+        return $this->documentStorageService->preview(
+            $file->storage_path,
+            $file->mime_type,
+            $file->original_name,
         );
     }
 

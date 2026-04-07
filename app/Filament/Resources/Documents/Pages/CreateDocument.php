@@ -4,8 +4,8 @@ namespace App\Filament\Resources\Documents\Pages;
 
 use App\Filament\Resources\Documents\DocumentResource;
 use App\Models\Document;
+use App\Services\DocumentStorageService;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Storage;
 
 class CreateDocument extends CreateRecord
 {
@@ -20,12 +20,14 @@ class CreateDocument extends CreateRecord
         $data['storage_disk'] = $data['storage_disk'] ?? Document::defaultStorageDisk();
 
         if (! empty($data['file_path'])) {
-            $disk = Storage::disk($data['storage_disk']);
-            $path = $data['file_path'];
+            $metadata = app(DocumentStorageService::class)->metadata(
+                $data['file_path'],
+                $data['storage_disk'],
+            );
 
-            $data['file_name'] = $data['file_name'] ?? basename($path);
-            $data['mime_type'] = $data['mime_type'] ?? $disk->mimeType($path);
-            $data['file_size'] = $data['file_size'] ?? $disk->size($path);
+            $data['file_name'] = $data['file_name'] ?? basename($data['file_path']);
+            $data['mime_type'] = $data['mime_type'] ?? $metadata['mime_type'];
+            $data['file_size'] = $data['file_size'] ?? $metadata['size_bytes'];
         }
 
         if (! empty($data['is_published'])) {

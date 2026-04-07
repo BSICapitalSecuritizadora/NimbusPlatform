@@ -11,7 +11,7 @@ class CnpjLookupController extends Controller
 {
     public function __invoke(LookupNimbusCnpjRequest $request, LookupNimbusCnpj $lookupNimbusCnpj): JsonResponse
     {
-        $result = $lookupNimbusCnpj->handle((string) $request->validated('cnpj'));
+        $result = $lookupNimbusCnpj->handle($request->toDTO());
 
         return response()->json($result['payload'], $result['status']);
     }

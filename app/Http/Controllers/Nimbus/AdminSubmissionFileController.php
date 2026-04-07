@@ -38,7 +38,11 @@ class AdminSubmissionFileController extends Controller
         Submission $submission,
         StoreAdminSubmissionResponseFiles $storeAdminSubmissionResponseFiles,
     ): RedirectResponse {
-        $result = $storeAdminSubmissionResponseFiles->handle($request, $submission);
+        $result = $storeAdminSubmissionResponseFiles->handle(
+            $request->toDTO(),
+            $submission,
+            $request->user(),
+        );
 
         if ($result['uploaded'] > 0) {
             Notification::make()

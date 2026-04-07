@@ -19,7 +19,12 @@ class NimbusRecentSubmissions extends BaseWidget
     public function table(Table $table): Table
     {
         return $table
-            ->query(Submission::query()->latest('submitted_at')->take(6))
+            ->query(
+                Submission::query()
+                    ->with(['portalUser'])
+                    ->latest('submitted_at')
+                    ->take(6),
+            )
             ->columns([
                 Tables\Columns\TextColumn::make('portalUser.full_name')
                     ->label('SOLICITANTE')

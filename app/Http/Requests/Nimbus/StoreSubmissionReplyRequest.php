@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Nimbus;
 
+use App\DTOs\Nimbus\SubmissionReplyDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -39,5 +40,10 @@ class StoreSubmissionReplyRequest extends FormRequest
                 $validator->errors()->add('comment', 'Informe uma resposta ou anexe um arquivo corrigido.');
             }
         });
+    }
+
+    public function toDTO(): SubmissionReplyDTO
+    {
+        return SubmissionReplyDTO::fromArray($this->validated());
     }
 }

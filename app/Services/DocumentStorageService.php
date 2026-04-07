@@ -1,0 +1,132 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+class DocumentStorageService
+{
+    public const PRIVATE_DISK = 'local';
+
+    public const PRIVATE_PREFIX = 'nimbus_docs';
+
+    /**
+     * @var array<int, string>
+     */
+    private const SUPPORTED_DISKS = [
+        'local',
+        'public',
+    ];
+
+    /**
+     * @return array{
+     *     disk: string,
+     *     path: string,
+     *     stored_name: string,
+     *     original_name: string,
+     *     mime_type: ?string,
+     *     size_bytes: int,
+     *     checksum: ?string
+     * }
+     */
+    public function storePrivateFile(UploadedFile $file, string $directory): array
+    {
+        $path = $file->store($this->privateDirectory($directory), self::PRIVATE_DISK);
+
+        return [
+            'disk' => self::PRIVATE_DISK,
+            'path' => $path,
+            'stored_name' => basename($path),
+            'original_name' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType(),
+            'size_bytes' => (int) $file->getSize(),
+            'checksum' => hash_file('sha256', $file->getRealPath()) ?: null,
+        ];
+    }
+
+    public function exists(string $path, string $disk = self::PRIVATE_DISK): bool
+    {
+        return $this->filesystem($disk)->exists($path);
+    }
+
+    public function download(
+        string $path,
+        string $downloadName,
+        string $disk = self::PRIVATE_DISK,
+    ): StreamedResponse {
+        return $this->filesystem($disk)->download($path, $downloadName);
+    }
+
+    public function preview(
+        string $path,
+        ?string $mimeType = null,
+        ?string $downloadName = null,
+        string $disk = self::PRIVATE_DISK,
+    ): BinaryFileResponse {
+        $resolvedDownloadName = $downloadName ?: basename($path);
+
+        return response()->file($this->absolutePath($path, $disk), [
+            'Content-Type' => $mimeType ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.$resolvedDownloadName.'"',
+        ]);
+    }
+
+    /**
+     * @return array{mime_type: ?string, size_bytes: ?int}
+     */
+    public function metadata(string $path, string $disk = self::PRIVATE_DISK): array
+    {
+        if (! $this->exists($path, $disk)) {
+            return [
+                'mime_type' => null,
+                'size_bytes' => null,
+            ];
+        }
+
+        $filesystem = $this->filesystem($disk);
+
+        return [
+            'mime_type' => $filesystem->mimeType($path),
+            'size_bytes' => $filesystem->size($path),
+        ];
+    }
+
+    public function absolutePath(string $path, string $disk = self::PRIVATE_DISK): string
+    {
+        return Storage::disk($this->normalizeDisk($disk))->path($path);
+    }
+
+    protected function privateDirectory(string $directory): string
+    {
+        $normalizedDirectory = trim($directory, '/');
+
+        if ($normalizedDirectory === '') {
+            return self::PRIVATE_PREFIX;
+        }
+
+        if (($normalizedDirectory === self::PRIVATE_PREFIX) || str_starts_with($normalizedDirectory, self::PRIVATE_PREFIX.'/')) {
+            return $normalizedDirectory;
+        }
+
+        return self::PRIVATE_PREFIX.'/'.$normalizedDirectory;
+    }
+
+    protected function filesystem(string $disk): FilesystemAdapter
+    {
+        return Storage::disk($this->normalizeDisk($disk));
+    }
+
+    protected function normalizeDisk(string $disk): string
+    {
+        if (! in_array($disk, self::SUPPORTED_DISKS, true)) {
+            throw new InvalidArgumentException("Unsupported storage disk [{$disk}].");
+        }
+
+        return $disk;
+    }
+}

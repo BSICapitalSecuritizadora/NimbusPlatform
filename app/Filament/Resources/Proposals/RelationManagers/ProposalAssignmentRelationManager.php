@@ -6,6 +6,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProposalAssignmentRelationManager extends RelationManager
 {
@@ -25,6 +26,9 @@ class ProposalAssignmentRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'representative',
+            ]))
             ->recordTitleAttribute('sequence')
             ->columns([
                 TextColumn::make('sequence')

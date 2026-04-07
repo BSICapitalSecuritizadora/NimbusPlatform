@@ -7,6 +7,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProposalStatusHistoryRelationManager extends RelationManager
 {
@@ -26,6 +27,9 @@ class ProposalStatusHistoryRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'changedByUser',
+            ]))
             ->recordTitleAttribute('new_status')
             ->columns([
                 TextColumn::make('previous_status')

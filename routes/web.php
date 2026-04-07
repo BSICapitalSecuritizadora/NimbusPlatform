@@ -13,9 +13,9 @@ use App\Livewire\Proposals\ContinuationForm;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalFile;
+use App\Services\DocumentStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -167,12 +167,25 @@ Route::post('/proposta/continuar/{access}/formulario', function (Request $reques
 })
     ->middleware('throttle:proposal-continuation-store')
     ->name('site.proposal.continuation.store');
-Route::get('/proposta/continuar/{access}/arquivos/{file}', function (Request $request, ProposalContinuationAccess $access, ProposalFile $file) use ($ensureAuthorizedContinuation) {
+Route::get('/proposta/continuar/{access}/arquivos/{file}', function (
+    Request $request,
+    ProposalContinuationAccess $access,
+    ProposalFile $file,
+    DocumentStorageService $documentStorageService,
+) use ($ensureAuthorizedContinuation) {
     $ensureAuthorizedContinuation($request, $access);
 
     abort_unless($file->proposal_id === $access->proposal_id, 404);
+    abort_unless(
+        $documentStorageService->exists($file->file_path, $file->disk ?: DocumentStorageService::PRIVATE_DISK),
+        404,
+    );
 
-    return Storage::disk($file->disk)->download($file->file_path, $file->original_name);
+    return $documentStorageService->download(
+        $file->file_path,
+        $file->original_name,
+        $file->disk ?: DocumentStorageService::PRIVATE_DISK,
+    );
 })
     ->name('site.proposal.continuation.files.download');
 

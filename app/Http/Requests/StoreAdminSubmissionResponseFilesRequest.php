@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\Nimbus\StoreAdminSubmissionResponseFilesDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAdminSubmissionResponseFilesRequest extends FormRequest
@@ -32,5 +33,10 @@ class StoreAdminSubmissionResponseFilesRequest extends FormRequest
             'response_files.*.max' => 'Cada arquivo de resposta pode ter no máximo 50 MB.',
             'visible_to_user.boolean' => 'A visibilidade do arquivo precisa ser válida.',
         ];
+    }
+
+    public function toDTO(): StoreAdminSubmissionResponseFilesDTO
+    {
+        return StoreAdminSubmissionResponseFilesDTO::fromArray($this->validated());
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\Proposals\VerifyProposalContinuationDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
@@ -39,5 +40,10 @@ class VerifyProposalContinuationRequest extends FormRequest
         $this->merge([
             'code' => Str::digitsOnly((string) $this->input('code')),
         ]);
+    }
+
+    public function toDTO(): VerifyProposalContinuationDTO
+    {
+        return VerifyProposalContinuationDTO::fromArray($this->validated());
     }
 }

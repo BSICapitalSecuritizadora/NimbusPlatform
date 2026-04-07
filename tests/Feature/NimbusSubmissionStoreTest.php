@@ -92,8 +92,9 @@ it('stores a nimbus submission using the current database schema', function () {
         expect($file->origin)->toBe('USER')
             ->and($file->visible_to_user)->toBeFalse()
             ->and($file->versions)->toHaveCount(1)
+            ->and($file->storage_path)->toStartWith('nimbus_docs/submissions/'.$submission->id.'/')
             ->and(Storage::disk('local')->exists($file->storage_path))->toBeTrue();
     }
 
-    Storage::disk('local')->deleteDirectory('nimbus/submissions/'.$submission->id);
+    Storage::disk('local')->deleteDirectory('nimbus_docs/submissions/'.$submission->id);
 });

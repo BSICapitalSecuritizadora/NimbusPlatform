@@ -5,12 +5,16 @@ namespace App\Actions\Nimbus;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
 use App\Models\Nimbus\SubmissionFile;
-use Illuminate\Support\Facades\Storage;
+use App\Services\DocumentStorageService;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DownloadPortalSubmissionFile
 {
+    public function __construct(
+        protected DocumentStorageService $documentStorageService,
+    ) {}
+
     public function handle(Submission $submission, SubmissionFile $file, PortalUser $portalUser): StreamedResponse
     {
         abort_unless(
@@ -25,10 +29,10 @@ class DownloadPortalSubmissionFile
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        if (! Storage::disk('local')->exists($file->storage_path)) {
+        if (! $this->documentStorageService->exists($file->storage_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        return Storage::disk('local')->download($file->storage_path, $file->original_name);
+        return $this->documentStorageService->download($file->storage_path, $file->original_name);
     }
 }

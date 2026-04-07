@@ -2,7 +2,7 @@
 
 namespace App\Actions\Nimbus;
 
-use App\Http\Requests\Nimbus\StoreSubmissionReplyRequest;
+use App\DTOs\Nimbus\SubmissionReplyDTO;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +15,7 @@ class ReplyToSubmission
     ) {}
 
     public function handle(
-        StoreSubmissionReplyRequest $request,
+        SubmissionReplyDTO $dto,
         Submission $submission,
         PortalUser $portalUser,
     ): Submission {
@@ -27,28 +27,26 @@ class ReplyToSubmission
 
         abort_unless($submission->status === Submission::STATUS_NEEDS_CORRECTION, Response::HTTP_FORBIDDEN);
 
-        DB::transaction(function () use ($request, $submission, $portalUser): void {
-            if ($request->hasFile('file')) {
+        DB::transaction(function () use ($dto, $submission, $portalUser): void {
+            if ($dto->file !== null) {
                 $this->storeSubmissionFile->handle(
                     submission: $submission,
-                    file: $request->file('file'),
+                    file: $dto->file,
                     documentType: 'OTHER',
                     origin: 'USER',
                     visibleToUser: true,
                     uploadedByType: 'PORTAL_USER',
                     uploadedById: $portalUser->id,
                     notes: 'Arquivo enviado pelo solicitante em resposta a uma solicitação de correção.',
-                    directory: "nimbus/submissions/{$submission->id}/corrections",
+                    directory: "submissions/{$submission->id}/corrections",
                 );
             }
 
-            $comment = trim((string) $request->input('comment'));
-
-            if ($comment !== '') {
+            if ($dto->comment !== null) {
                 $submission->notes()->create([
                     'user_id' => null,
                     'visibility' => 'ADMIN_ONLY',
-                    'message' => $comment,
+                    'message' => $dto->comment,
                 ]);
             }
 

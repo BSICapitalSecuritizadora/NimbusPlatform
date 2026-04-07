@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\DTOs\Nimbus\LookupNimbusCnpjDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
@@ -32,5 +33,10 @@ class LookupNimbusCnpjRequest extends FormRequest
         $this->merge([
             'cnpj' => Str::digitsOnly((string) $this->input('cnpj')),
         ]);
+    }
+
+    public function toDTO(): LookupNimbusCnpjDTO
+    {
+        return LookupNimbusCnpjDTO::fromArray($this->validated());
     }
 }

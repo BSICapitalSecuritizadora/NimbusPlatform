@@ -8,7 +8,12 @@ use Illuminate\Support\Facades\Storage;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Storage::fake(Document::defaultStorageDisk());
+    $disk = Document::defaultStorageDisk();
+
+    Storage::set($disk, Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/'.$disk.'-'.uniqid()),
+        'throw' => false,
+    ]));
 });
 
 it('allows investor to download a document they have access to', function () {

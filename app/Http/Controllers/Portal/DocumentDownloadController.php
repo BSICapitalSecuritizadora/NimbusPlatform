@@ -4,15 +4,18 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Services\DocumentStorageService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentDownloadController extends Controller
 {
-    public function __invoke(Request $request, Document $document): StreamedResponse
-    {
+    public function __invoke(
+        Request $request,
+        Document $document,
+        DocumentStorageService $documentStorageService,
+    ): StreamedResponse {
         $investor = $request->user('investor');
 
         // 1) Valida ACL usando o "motor" (scope)
@@ -45,13 +48,12 @@ class DocumentDownloadController extends Controller
         $disk = $document->resolved_storage_disk;
         $path = $document->file_path;
 
-        if (! Storage::disk($disk)->exists($path)) {
+        if (! $documentStorageService->exists($path, $disk)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
         $downloadName = $document->file_name ?: basename($path);
 
-        // Se estiver em S3/Azure e quiser URL temporária, depois trocamos aqui
-        return Storage::disk($disk)->download($path, $downloadName);
+        return $documentStorageService->download($path, $downloadName, $disk);
     }
 }

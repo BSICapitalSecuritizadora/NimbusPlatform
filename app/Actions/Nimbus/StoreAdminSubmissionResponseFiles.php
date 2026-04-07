@@ -2,7 +2,7 @@
 
 namespace App\Actions\Nimbus;
 
-use App\Http\Requests\StoreAdminSubmissionResponseFilesRequest;
+use App\DTOs\Nimbus\StoreAdminSubmissionResponseFilesDTO;
 use App\Models\Nimbus\Submission;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -19,15 +19,16 @@ class StoreAdminSubmissionResponseFiles
      * @return array{uploaded:int,errors:array<int,string>}
      */
     public function handle(
-        StoreAdminSubmissionResponseFilesRequest $request,
+        StoreAdminSubmissionResponseFilesDTO $dto,
         Submission $submission,
+        ?User $user,
     ): array {
-        $user = $this->authorizedUser($request->user());
+        $user = $this->authorizedUser($user);
         $uploaded = 0;
         $errors = [];
-        $isVisibleToUser = $request->boolean('visible_to_user', true);
+        $isVisibleToUser = $dto->visibleToUser;
 
-        foreach ($request->file('response_files', []) as $uploadedFile) {
+        foreach ($dto->responseFiles as $uploadedFile) {
             try {
                 $this->storeSubmissionFile->handle(
                     submission: $submission,

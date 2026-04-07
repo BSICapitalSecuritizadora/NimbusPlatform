@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Nimbus;
 
+use App\DTOs\Nimbus\StoreSubmissionDTO;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSubmissionRequest extends FormRequest
@@ -29,6 +30,9 @@ class StoreSubmissionRequest extends FormRequest
             'registrant_position' => ['nullable', 'string', 'max:100'],
             'registrant_rg' => ['nullable', 'string', 'max:20'],
             'registrant_cpf' => ['required', 'string', 'max:14'],
+            'shareholders' => ['nullable', 'json'],
+            'is_us_person' => ['nullable', 'boolean'],
+            'is_pep' => ['nullable', 'boolean'],
             'ultimo_balanco' => ['required', 'file', 'mimes:pdf', 'max:10240'],
             'dre' => ['required', 'file', 'mimes:pdf', 'max:10240'],
             'politicas' => ['required', 'file', 'mimes:pdf', 'max:10240'],
@@ -54,6 +58,7 @@ class StoreSubmissionRequest extends FormRequest
             'annual_revenue.required' => 'Informe o faturamento anual.',
             'registrant_name.required' => 'Informe o nome do cadastrante.',
             'registrant_cpf.required' => 'Informe o CPF do cadastrante.',
+            'shareholders.json' => 'Os dados dos sócios precisam estar em um formato válido.',
             'ultimo_balanco.required' => 'Anexe o ultimo balanco patrimonial.',
             'dre.required' => 'Anexe a DRE.',
             'politicas.required' => 'Anexe as politicas da empresa.',
@@ -63,5 +68,14 @@ class StoreSubmissionRequest extends FormRequest
             'contrato_social.required' => 'Anexe o contrato social.',
             'estatuto.required' => 'Anexe o estatuto social.',
         ];
+    }
+
+    public function toDTO(): StoreSubmissionDTO
+    {
+        return StoreSubmissionDTO::fromArray([
+            ...$this->validated(),
+            'ip' => $this->ip(),
+            'user_agent' => $this->userAgent(),
+        ]);
     }
 }

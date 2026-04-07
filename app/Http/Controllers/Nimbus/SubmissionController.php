@@ -36,7 +36,7 @@ class SubmissionController extends Controller
     public function store(StoreSubmissionRequest $request, CreateSubmission $createSubmission): RedirectResponse
     {
         try {
-            $submission = $createSubmission->handle($request, $this->portalUser());
+            $submission = $createSubmission->handle($request->toDTO(), $this->portalUser());
 
             return redirect()->route('nimbus.submissions.show', $submission->id)
                 ->with('success', 'Solicitação enviada com sucesso! Nossa equipe analisará os documentos em breve.');
@@ -58,7 +58,7 @@ class SubmissionController extends Controller
         Submission $submission,
         ReplyToSubmission $replyToSubmission,
     ): RedirectResponse {
-        $replyToSubmission->handle($request, $submission, $this->portalUser());
+        $replyToSubmission->handle($request->toDTO(), $submission, $this->portalUser());
 
         return redirect()
             ->route('nimbus.submissions.show', $submission)

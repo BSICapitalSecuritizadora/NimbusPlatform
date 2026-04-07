@@ -10,6 +10,7 @@ use App\DTOs\Proposals\UpdateProposalStatusDTO;
 use App\Models\ProjectCharacteristic;
 use App\Models\Proposal;
 use App\Models\ProposalProject;
+use App\Services\DocumentStorageService;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ class StoreProposalContinuationData
 {
     public function __construct(
         protected UpdateProposalStatus $updateProposalStatus,
+        protected DocumentStorageService $documentStorageService,
     ) {}
 
     /**
@@ -176,15 +178,18 @@ class StoreProposalContinuationData
     protected function storeUploadedFiles(Proposal $proposal, array $files): void
     {
         foreach ($files as $file) {
-            $storedPath = $file->store("proposal-files/{$proposal->id}", 'local');
+            $storedFile = $this->documentStorageService->storePrivateFile(
+                $file,
+                "proposal-files/{$proposal->id}",
+            );
 
             $proposal->files()->create([
-                'disk' => 'local',
-                'file_path' => $storedPath,
-                'file_name' => basename($storedPath),
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'file_size' => $file->getSize(),
+                'disk' => $storedFile['disk'],
+                'file_path' => $storedFile['path'],
+                'file_name' => $storedFile['stored_name'],
+                'original_name' => $storedFile['original_name'],
+                'mime_type' => $storedFile['mime_type'],
+                'file_size' => $storedFile['size_bytes'],
             ]);
         }
     }

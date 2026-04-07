@@ -12,12 +12,20 @@ use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProposalsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'company',
+                'contact',
+                'representative',
+                'latestContinuationAccess',
+                'latestStatusHistory.changedByUser',
+            ]))
             ->columns([
                 TextColumn::make('distribution_sequence')
                     ->label('# Fila')

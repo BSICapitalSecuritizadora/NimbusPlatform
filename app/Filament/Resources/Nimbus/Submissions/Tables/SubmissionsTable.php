@@ -6,12 +6,16 @@ use App\Models\Nimbus\Submission;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SubmissionsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'portalUser',
+            ]))
             ->columns([
                 TextColumn::make('company_cnpj')
                     ->label('CNPJ da Empresa')
