@@ -281,6 +281,9 @@ Route::prefix('nimbus')->name('nimbus.')->group(function () {
 
         // Documents
         Route::get('/documents', [\App\Http\Controllers\Nimbus\DocumentController::class, 'index'])->name('documents.index');
+        Route::get('/documents/{document}/preview', [\App\Http\Controllers\Nimbus\DocumentController::class, 'preview'])->name('documents.preview');
         Route::get('/documents/{document}/download', [\App\Http\Controllers\Nimbus\DocumentController::class, 'download'])->name('documents.download');
+        Route::get('/documents/general/{document}/preview', [\App\Http\Controllers\Nimbus\DocumentController::class, 'previewGeneral'])->name('documents.general.preview');
+        Route::get('/documents/general/{document}/download', [\App\Http\Controllers\Nimbus\DocumentController::class, 'downloadGeneral'])->name('documents.general.download');
     });
 });
