@@ -104,6 +104,12 @@ it('registers a dedicated Nimbus dashboard route inside the admin panel', functi
         ->assertRedirect('/admin/login');
 });
 
+it('renders the admin login page', function () {
+    $this->get('/admin/login')
+        ->assertSuccessful()
+        ->assertSee('Entrar no sistema');
+});
+
 it('renders the Nimbus dashboard for authenticated admin users', function () {
     $user = User::factory()->withTwoFactor()->create([
         'email' => 'nimbus-admin@example.com',
