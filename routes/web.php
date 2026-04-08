@@ -14,10 +14,15 @@ use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalFile;
 use App\Services\DocumentStorageService;
+use App\Http\Controllers\Auth\AzureController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+
+// Microsoft Azure Auth
+Route::get('/auth/azure/redirect', [AzureController::class, 'redirect'])->name('auth.azure.redirect');
+Route::get('/auth/azure/callback', [AzureController::class, 'callback'])->name('auth.azure.callback');
 
 Route::get('/', [HomeController::class, 'index'])->name('site.home');
 

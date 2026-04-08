@@ -43,4 +43,11 @@ return [
         'auth_mode' => env('OUTLOOK_MAIL_AUTH_MODE', 'smtp_oauth'),
     ],
 
+    'azure' => [
+        'client_id' => env('AZURE_CLIENT_ID'),
+        'client_secret' => env('AZURE_CLIENT_SECRET'),
+        'redirect' => env('AZURE_REDIRECT_URI'),
+        'tenant' => env('AZURE_TENANT_ID', 'common'),
+    ],
+
 ];

@@ -32,6 +32,7 @@ class User extends Authenticatable implements FilamentUser
         'departamento',
         'approved_at',
         'invited_by',
+        'azure_id',
     ];
 
     /**

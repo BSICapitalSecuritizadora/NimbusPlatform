@@ -39,7 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(\App\Filament\Pages\Auth\CustomLogin::class)
             ->brandName('BSI Capital')
             ->brandLogo(fn () => view('filament.logo'))
             ->brandLogoHeight('2.5rem')
