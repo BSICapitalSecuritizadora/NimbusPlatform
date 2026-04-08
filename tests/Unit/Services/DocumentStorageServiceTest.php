@@ -27,10 +27,22 @@ it('stores private files on the local disk under the nimbus docs prefix', functi
 
     Storage::disk('local')->assertExists($storedFile['path']);
 
-    $metadata = app(DocumentStorageService::class)->metadata($storedFile['path']);
+    $service = app(DocumentStorageService::class);
+    $metadata = $service->privateMetadata($storedFile['path']);
 
     expect($metadata['mime_type'])->toBe('application/pdf')
-        ->and($metadata['size_bytes'])->not->toBeNull();
+        ->and($metadata['size_bytes'])->not->toBeNull()
+        ->and($service->privateExists($storedFile['path']))->toBeTrue()
+        ->and($service->absolutePrivatePath($storedFile['path']))->toContain('nimbus_docs');
+});
+
+it('normalizes private directories without ever escaping the private prefix', function () {
+    $service = app(DocumentStorageService::class);
+
+    expect($service->privateDirectoryPath('submissions/42'))->toBe('nimbus_docs/submissions/42')
+        ->and($service->privateDirectoryPath('/submissions/42/'))->toBe('nimbus_docs/submissions/42')
+        ->and($service->privateDirectoryPath('nimbus_docs/submissions/42'))->toBe('nimbus_docs/submissions/42')
+        ->and($service->privateDirectoryPath(''))->toBe('nimbus_docs');
 });
 
 it('rejects unsupported storage disks', function () {

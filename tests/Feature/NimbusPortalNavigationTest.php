@@ -1,12 +1,25 @@
 <?php
 
+use App\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm;
+use App\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm;
+use App\Models\Nimbus\DocumentCategory;
+use App\Models\Nimbus\GeneralDocument;
 use App\Models\Nimbus\PortalDocument;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
 use App\Models\User;
+use App\Services\DocumentStorageService;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\FileUpload;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Schemas\Schema;
+use Filament\Support\Contracts\TranslatableContentDriver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Component as LivewireComponent;
 
 uses(RefreshDatabase::class);
 
@@ -39,6 +52,99 @@ it('renders working Nimbus portal navigation and dashboard actions', function ()
         ->assertSee('href="'.route('nimbus.submissions.create').'"', false)
         ->assertSee('href="'.route('nimbus.documents.index').'"', false)
         ->assertSee('href="'.route('nimbus.submissions.show', $submission).'"', false);
+});
+
+it('serves Nimbus documents from the private disk even when the default filesystem is public', function () {
+    config()->set('filesystems.default', 'public');
+
+    Storage::set('local', Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
+        'throw' => false,
+    ]));
+    Storage::set('public', Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/public-'.uniqid()),
+        'throw' => false,
+    ]));
+
+    $adminUser = User::factory()->create();
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Teste Documentos Privados',
+        'email' => 'teste.documentos.privados@example.com',
+        'document_number' => '12345678901',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $category = DocumentCategory::query()->create([
+        'name' => 'Governança',
+    ]);
+
+    $portalDocumentPath = DocumentStorageService::PRIVATE_PREFIX.'/portal-documents/contrato-social.pdf';
+    $generalDocumentPath = DocumentStorageService::PRIVATE_PREFIX.'/general-documents/politica-kyc.pdf';
+
+    Storage::disk('local')->put($portalDocumentPath, 'portal-document');
+    Storage::disk('local')->put($generalDocumentPath, 'general-document');
+
+    $portalDocument = PortalDocument::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'title' => 'Contrato Social',
+        'description' => 'Documento societário privado.',
+        'file_path' => $portalDocumentPath,
+        'file_original_name' => 'contrato-social.pdf',
+        'file_size' => 1024,
+        'file_mime' => 'application/pdf',
+        'created_by_user_id' => $adminUser->id,
+    ]);
+
+    $generalDocument = GeneralDocument::query()->create([
+        'nimbus_category_id' => $category->id,
+        'title' => 'Política KYC',
+        'description' => 'Documento institucional sigiloso.',
+        'file_path' => $generalDocumentPath,
+        'file_original_name' => 'politica-kyc.pdf',
+        'file_size' => 2048,
+        'file_mime' => 'application/pdf',
+        'is_active' => true,
+        'created_by_user_id' => $adminUser->id,
+    ]);
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.documents.preview', $portalDocument))
+        ->assertSuccessful()
+        ->assertHeader('content-disposition', 'inline; filename="contrato-social.pdf"');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.documents.download', $portalDocument))
+        ->assertDownload('contrato-social.pdf');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.documents.general.preview', $generalDocument))
+        ->assertSuccessful()
+        ->assertHeader('content-disposition', 'inline; filename="politica-kyc.pdf"');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.documents.general.download', $generalDocument))
+        ->assertDownload('politica-kyc.pdf');
+});
+
+it('pins Nimbus backoffice uploads to the private local disk', function () {
+    $livewire = makeNimbusSchemaTestLivewire();
+
+    $portalSchema = PortalDocumentForm::configure(Schema::make($livewire));
+    $generalSchema = GeneralDocumentForm::configure(Schema::make($livewire));
+
+    $portalUpload = collect(flattenNimbusSchemaComponents($portalSchema))
+        ->first(fn (mixed $component): bool => $component instanceof FileUpload && $component->getName() === 'file_path');
+
+    $generalUpload = collect(flattenNimbusSchemaComponents($generalSchema))
+        ->first(fn (mixed $component): bool => $component instanceof FileUpload && $component->getName() === 'file_path');
+
+    expect($portalUpload)->toBeInstanceOf(FileUpload::class)
+        ->and($portalUpload?->getDiskName())->toBe(DocumentStorageService::PRIVATE_DISK)
+        ->and($portalUpload?->getDirectory())->toBe(DocumentStorageService::PRIVATE_PREFIX.'/portal-documents')
+        ->and($generalUpload)->toBeInstanceOf(FileUpload::class)
+        ->and($generalUpload?->getDiskName())->toBe(DocumentStorageService::PRIVATE_DISK)
+        ->and($generalUpload?->getDirectory())->toBe(DocumentStorageService::PRIVATE_PREFIX.'/general-documents');
 });
 
 it('renders the correction status label in the portal pages', function () {
@@ -387,3 +493,67 @@ it('allows the portal user to download only their own documents', function () {
         'nimbus/portal-documents/arquivo-restrito.pdf',
     ]);
 });
+
+/**
+ * @return array<int, Component>
+ */
+function flattenNimbusSchemaComponents(Schema $schema): array
+{
+    $components = [];
+
+    foreach ($schema->getComponents() as $component) {
+        if (! $component instanceof Component) {
+            continue;
+        }
+
+        $components[] = $component;
+
+        foreach ($component->getChildSchemas(withHidden: true) as $childSchema) {
+            $components = [
+                ...$components,
+                ...flattenNimbusSchemaComponents($childSchema),
+            ];
+        }
+    }
+
+    return $components;
+}
+
+function makeNimbusSchemaTestLivewire(): LivewireComponent&HasSchemas
+{
+    return new class extends LivewireComponent implements HasSchemas
+    {
+        public function __construct()
+        {
+            $this->setId('nimbus-storage-schema-test');
+            $this->setName('nimbus-storage-schema-test');
+        }
+
+        public function makeFilamentTranslatableContentDriver(): ?TranslatableContentDriver
+        {
+            return null;
+        }
+
+        public function getOldSchemaState(string $statePath): mixed
+        {
+            return null;
+        }
+
+        public function getSchemaComponent(string $key, bool $withHidden = false, array $skipComponentsChildContainersWhileSearching = []): Component|Action|ActionGroup|null
+        {
+            return null;
+        }
+
+        public function getSchema(string $name): ?Schema
+        {
+            return null;
+        }
+
+        public function currentlyValidatingSchema(?Schema $schema): void {}
+
+        public function getDefaultTestingSchemaName(): ?string
+        {
+            return null;
+        }
+    };
+}

@@ -19,4 +19,26 @@
             @apply !text-4xl !font-bold !tracking-tight !text-white;
         }
     }
+
+    .fi-simple-layout {
+        background:
+            radial-gradient(circle at top left, rgba(0, 32, 91, 0.08), transparent 28%),
+            radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 22%),
+            #f6f8fc !important;
+    }
+
+    .dark .fi-simple-layout {
+        background:
+            radial-gradient(circle at top left, rgba(53, 94, 216, 0.12), transparent 26%),
+            radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 20%),
+            #08111d !important;
+    }
+
+    .fi-simple-main-ctn > main, .fi-simple-main-ctn > section {
+        @apply shadow-[0_20px_45px_rgba(0,32,91,0.08)] bg-white/90 backdrop-blur border border-zinc-200/80 rounded-[26px];
+    }
+    
+    .dark .fi-simple-main-ctn > main, .dark .fi-simple-main-ctn > section {
+        @apply shadow-[0_24px_52px_rgba(0,0,0,0.35)] bg-white/[0.04] border-white/10;
+    }
 }

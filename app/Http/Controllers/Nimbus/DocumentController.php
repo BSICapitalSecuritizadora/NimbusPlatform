@@ -33,7 +33,7 @@ class DocumentController extends Controller
             ->when($q, function (Builder $query, $q) {
                 $query->where(function (Builder $qBuilder) use ($q) {
                     $qBuilder->where('title', 'like', "%{$q}%")
-                             ->orWhere('description', 'like', "%{$q}%");
+                        ->orWhere('description', 'like', "%{$q}%");
                 });
             })
             ->with('category')
@@ -64,17 +64,14 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        $disk = (string) config('filesystems.default');
-
-        if (! $documentStorageService->exists($document->file_path, $disk)) {
+        if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        return $documentStorageService->preview(
+        return $documentStorageService->previewPrivate(
             $document->file_path,
             null,
             $document->file_original_name ?: basename($document->file_path),
-            $disk,
         );
     }
 
@@ -89,16 +86,13 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        $disk = (string) config('filesystems.default');
-
-        if (! $documentStorageService->exists($document->file_path, $disk)) {
+        if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        return $documentStorageService->download(
+        return $documentStorageService->downloadPrivate(
             $document->file_path,
             $document->file_original_name ?: basename($document->file_path),
-            $disk,
         );
     }
 
@@ -111,17 +105,14 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        $disk = (string) config('filesystems.default');
-
-        if (! $documentStorageService->exists($document->file_path, $disk)) {
+        if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        return $documentStorageService->preview(
+        return $documentStorageService->previewPrivate(
             $document->file_path,
             $document->file_mime,
             $document->file_original_name ?: basename($document->file_path),
-            $disk,
         );
     }
 
@@ -134,16 +125,13 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        $disk = (string) config('filesystems.default');
-
-        if (! $documentStorageService->exists($document->file_path, $disk)) {
+        if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        return $documentStorageService->download(
+        return $documentStorageService->downloadPrivate(
             $document->file_path,
             $document->file_original_name ?: basename($document->file_path),
-            $disk,
         );
     }
 }

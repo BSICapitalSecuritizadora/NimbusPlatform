@@ -40,8 +40,11 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->brandName('BSI Capital')
+            ->brandLogo(fn () => view('filament.logo'))
+            ->brandLogoHeight('2.5rem')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#d4af37'),
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->navigationItems([

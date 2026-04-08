@@ -8,6 +8,7 @@ use Filament\Actions\Action;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class NimbusRecentSubmissions extends BaseWidget
 {
@@ -21,10 +22,12 @@ class NimbusRecentSubmissions extends BaseWidget
         return $table
             ->query(
                 Submission::query()
-                    ->with(['portalUser'])
                     ->latest('submitted_at')
                     ->take(6),
             )
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'portalUser',
+            ]))
             ->columns([
                 Tables\Columns\TextColumn::make('portalUser.full_name')
                     ->label('SOLICITANTE')

@@ -4,9 +4,12 @@ use App\Filament\NimbusWidgets\NimbusRecentSubmissions;
 use App\Filament\Resources\Nimbus\Submissions\Pages\ListSubmissions;
 use App\Filament\Resources\Proposals\Pages\ListProposals;
 use App\Filament\Resources\Proposals\Pages\ViewProposal;
+use App\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager;
 use App\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager;
 use App\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager;
 use App\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager;
+use App\Filament\Widgets\Proposals\ProposalAttentionTableWidget;
+use App\Filament\Widgets\Proposals\ProposalRecentTableWidget;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
@@ -66,9 +69,42 @@ it('configures eager loading on proposal relation managers that render nested re
         ])->instance(),
     );
 
+    $projectQuery = filamentTableQuery(
+        Livewire::test(ProjectRelationManager::class, [
+            'ownerRecord' => $proposal,
+            'pageClass' => ViewProposal::class,
+        ])->instance(),
+    );
+
     expect(array_keys($assignmentQuery->getEagerLoads()))->toContain('representative')
         ->and(array_keys($continuationAccessQuery->getEagerLoads()))->toContain('proposal.contact')
-        ->and(array_keys($statusHistoryQuery->getEagerLoads()))->toContain('changedByUser');
+        ->and(array_keys($statusHistoryQuery->getEagerLoads()))->toContain('changedByUser')
+        ->and(array_keys($projectQuery->getEagerLoads()))->toContain(
+            'characteristics.unitTypes',
+            'indicators',
+        );
+});
+
+it('configures eager loading on proposal dashboard tables', function () {
+    $this->actingAs(makeAdminUser());
+
+    $recentQuery = filamentTableQuery(
+        Livewire::test(ProposalRecentTableWidget::class)->instance(),
+    );
+
+    $attentionQuery = filamentTableQuery(
+        Livewire::test(ProposalAttentionTableWidget::class)->instance(),
+    );
+
+    expect(array_keys($recentQuery->getEagerLoads()))->toContain(
+        'company',
+        'representative',
+        'latestStatusHistory.changedByUser',
+    )->and(array_keys($attentionQuery->getEagerLoads()))->toContain(
+        'company',
+        'representative',
+        'latestStatusHistory.changedByUser',
+    );
 });
 
 it('configures eager loading on the submissions list table and recent widget', function () {

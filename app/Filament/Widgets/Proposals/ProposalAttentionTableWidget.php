@@ -8,6 +8,7 @@ use App\Support\Proposals\ProposalDashboardData;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProposalAttentionTableWidget extends TableWidget
 {
@@ -21,6 +22,11 @@ class ProposalAttentionTableWidget extends TableWidget
     {
         return $table
             ->query(app(ProposalDashboardData::class)->attentionQuery())
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'company',
+                'representative',
+                'latestStatusHistory.changedByUser',
+            ]))
             ->recordUrl(fn (Proposal $record): string => route('filament.admin.resources.proposals.view', ['record' => $record]))
             ->defaultPaginationPageOption(5)
             ->paginationPageOptions([5, 10])

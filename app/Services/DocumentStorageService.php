@@ -36,7 +36,7 @@ class DocumentStorageService
      */
     public function storePrivateFile(UploadedFile $file, string $directory): array
     {
-        $path = $file->store($this->privateDirectory($directory), self::PRIVATE_DISK);
+        $path = $file->store($this->privateDirectoryPath($directory), self::PRIVATE_DISK);
 
         return [
             'disk' => self::PRIVATE_DISK,
@@ -47,6 +47,42 @@ class DocumentStorageService
             'size_bytes' => (int) $file->getSize(),
             'checksum' => hash_file('sha256', $file->getRealPath()) ?: null,
         ];
+    }
+
+    public function privateDirectoryPath(string $directory): string
+    {
+        return $this->privateDirectory($directory);
+    }
+
+    public function privateExists(string $path): bool
+    {
+        return $this->exists($path, self::PRIVATE_DISK);
+    }
+
+    public function downloadPrivate(string $path, string $downloadName): StreamedResponse
+    {
+        return $this->download($path, $downloadName, self::PRIVATE_DISK);
+    }
+
+    public function previewPrivate(
+        string $path,
+        ?string $mimeType = null,
+        ?string $downloadName = null,
+    ): BinaryFileResponse {
+        return $this->preview($path, $mimeType, $downloadName, self::PRIVATE_DISK);
+    }
+
+    /**
+     * @return array{mime_type: ?string, size_bytes: ?int}
+     */
+    public function privateMetadata(string $path): array
+    {
+        return $this->metadata($path, self::PRIVATE_DISK);
+    }
+
+    public function absolutePrivatePath(string $path): string
+    {
+        return $this->absolutePath($path, self::PRIVATE_DISK);
     }
 
     public function exists(string $path, string $disk = self::PRIVATE_DISK): bool

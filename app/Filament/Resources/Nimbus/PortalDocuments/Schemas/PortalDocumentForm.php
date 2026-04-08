@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Nimbus\PortalDocuments\Schemas;
 
 use App\Models\Nimbus\PortalUser;
+use App\Services\DocumentStorageService;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -63,7 +64,8 @@ class PortalDocumentForm
                                 FileUpload::make('file_path')
                                     ->label('Arquivo')
                                     ->required()
-                                    ->directory('nimbus/portal-documents')
+                                    ->disk(DocumentStorageService::PRIVATE_DISK)
+                                    ->directory(DocumentStorageService::PRIVATE_PREFIX.'/portal-documents')
                                     ->preserveFilenames()
                                     ->maxSize(51200)
                                     ->acceptedFileTypes([

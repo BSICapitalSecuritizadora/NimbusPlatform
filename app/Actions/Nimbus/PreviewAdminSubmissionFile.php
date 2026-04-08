@@ -19,11 +19,11 @@ class PreviewAdminSubmissionFile
     {
         $this->assertAdminPanelAccess($user);
 
-        if (! $this->documentStorageService->exists($file->storage_path)) {
+        if (! $this->documentStorageService->privateExists($file->storage_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        return $this->documentStorageService->preview(
+        return $this->documentStorageService->previewPrivate(
             $file->storage_path,
             $file->mime_type,
             $file->original_name,

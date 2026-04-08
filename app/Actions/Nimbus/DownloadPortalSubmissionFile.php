@@ -29,10 +29,10 @@ class DownloadPortalSubmissionFile
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        if (! $this->documentStorageService->exists($file->storage_path)) {
+        if (! $this->documentStorageService->privateExists($file->storage_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        return $this->documentStorageService->download($file->storage_path, $file->original_name);
+        return $this->documentStorageService->downloadPrivate($file->storage_path, $file->original_name);
     }
 }

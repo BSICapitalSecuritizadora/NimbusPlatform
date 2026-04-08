@@ -16,6 +16,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Http;
 
 class ProjectRelationManager extends RelationManager
@@ -406,6 +407,10 @@ class ProjectRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'characteristics.unitTypes',
+                'indicators',
+            ]))
             ->recordTitleAttribute('name')
             ->columns([
                 Tables\Columns\TextColumn::make('name')

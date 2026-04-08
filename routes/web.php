@@ -176,15 +176,11 @@ Route::get('/proposta/continuar/{access}/arquivos/{file}', function (
     $ensureAuthorizedContinuation($request, $access);
 
     abort_unless($file->proposal_id === $access->proposal_id, 404);
-    abort_unless(
-        $documentStorageService->exists($file->file_path, $file->disk ?: DocumentStorageService::PRIVATE_DISK),
-        404,
-    );
+    abort_unless($documentStorageService->privateExists($file->file_path), 404);
 
-    return $documentStorageService->download(
+    return $documentStorageService->downloadPrivate(
         $file->file_path,
         $file->original_name,
-        $file->disk ?: DocumentStorageService::PRIVATE_DISK,
     );
 })
     ->name('site.proposal.continuation.files.download');

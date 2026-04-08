@@ -41,3 +41,17 @@ it('calculates the total gross sales value', function () {
     expect(ProjectCalculator::calculateSalesValuesTotal('900.000,00', '1.500.000,50', '2.500.000,75'))
         ->toBe(4900001.25);
 });
+
+it('rounds recurring decimal monetary fragments before aggregating totals', function () {
+    expect(ProjectCalculator::calculatePaymentFlowTotal('33,3333', '33,3333', '33,3333'))->toBe(99.99)
+        ->and(ProjectCalculator::calculateSalesValuesTotal('R$ 33,335', null, ''))->toBe(33.34)
+        ->and(ProjectCalculator::calculateCostTotal('33.3333', '66.6666'))->toBe(100.0);
+});
+
+it('returns zero safely when a percentage calculation would divide by zero', function () {
+    expect(ProjectCalculator::calculateSalesPercentage(0, 0, 0, 0))->toBe(0.0)
+        ->and(ProjectCalculator::calculateSalesPercentage(0, 0, 15, 0))->toBe(0.0)
+        ->and(ProjectCalculator::calculateWorkStagePercentage('33,3333', 0))->toBe(0.0)
+        ->and(ProjectCalculator::calculateWorkStagePercentage('33,3333', ''))->toBe(0.0)
+        ->and(ProjectCalculator::calculateWorkStagePercentage(null, null))->toBe(0.0);
+});

@@ -103,7 +103,6 @@ class ProposalDashboardData
     public function recentQuery(?User $user = null): Builder
     {
         return $this->baseQuery($user)
-            ->with(['company', 'representative', 'latestStatusHistory'])
             ->latest('created_at');
     }
 
@@ -112,7 +111,6 @@ class ProposalDashboardData
         $staleThreshold = $this->staleThreshold();
 
         return $this->baseQuery($user)
-            ->with(['company', 'representative', 'latestStatusHistory'])
             ->where(function (Builder $query) use ($staleThreshold): void {
                 $query
                     ->whereIn('status', [

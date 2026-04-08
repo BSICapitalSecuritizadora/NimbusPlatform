@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Nimbus\GeneralDocuments\Schemas;
 
+use App\Services\DocumentStorageService;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -63,7 +64,8 @@ class GeneralDocumentForm
                                 FileUpload::make('file_path')
                                     ->label('Arquivo')
                                     ->required()
-                                    ->directory('nimbus/general-documents')
+                                    ->disk(DocumentStorageService::PRIVATE_DISK)
+                                    ->directory(DocumentStorageService::PRIVATE_PREFIX.'/general-documents')
                                     ->preserveFilenames()
                                     ->maxSize(51200)
                                     ->acceptedFileTypes([

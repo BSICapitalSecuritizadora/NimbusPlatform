@@ -6,6 +6,7 @@ use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalRepresentative;
 use App\Models\ProposalSector;
+use App\Services\DocumentStorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -145,6 +146,39 @@ it('stores the continuation payload through the livewire component', function ()
         ->and($firstProject->characteristics->unitTypes)->toHaveCount(2);
 
     Storage::disk('local')->assertExists($proposal->files->first()->file_path);
+});
+
+it('downloads continuation files from the private disk even if the stored disk says public', function () {
+    Mail::fake();
+    config()->set('filesystems.default', 'public');
+
+    Storage::set('local', Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
+        'throw' => false,
+    ]));
+    Storage::set('public', Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/public-'.uniqid()),
+        'throw' => false,
+    ]));
+
+    [$proposal, $access] = createProposalContinuationContext($this);
+
+    $filePath = DocumentStorageService::PRIVATE_PREFIX."/proposal-files/{$proposal->id}/memorial.pdf";
+
+    Storage::disk('local')->put($filePath, 'conteudo-privado');
+
+    $file = $proposal->files()->create([
+        'disk' => 'public',
+        'file_path' => $filePath,
+        'file_name' => 'memorial.pdf',
+        'original_name' => 'memorial.pdf',
+        'mime_type' => 'application/pdf',
+        'file_size' => 128,
+    ]);
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->get(route('site.proposal.continuation.files.download', [$access, $file]))
+        ->assertDownload('memorial.pdf');
 });
 
 /**
