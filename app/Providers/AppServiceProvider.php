@@ -8,14 +8,14 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Support\Facades\Event;
+use SocialiteProviders\Azure\Provider as AzureProvider;
 use SocialiteProviders\Manager\SocialiteWasCalled;
-use SocialiteProviders\Azure\AzureExtendSocialite;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,8 +42,8 @@ class AppServiceProvider extends ServiceProvider
 
         Paginator::useBootstrapFive();
 
-        Event::listen(function (SocialiteWasCalled $event) {
-            $event->extendConfig('azure', AzureExtendSocialite::class);
+        Event::listen(function (SocialiteWasCalled $event): void {
+            $event->extendSocialite('azure', AzureProvider::class);
         });
     }
 
