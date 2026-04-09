@@ -89,9 +89,9 @@
                 <div class="card border-0 shadow-sm overflow-hidden">
                     <div class="row g-0 align-items-center">
                         <div class="col">
-                            <div class="p-4">
+                            <div class="p-3 p-lg-4">
                                 <div class="d-flex align-items-start gap-3">
-                                    <div class="d-flex align-items-center justify-content-center flex-shrink-0" style="width: 52px; height: 52px; border-radius: 16px; background: rgba(0, 32, 91, 0.06); color: var(--brand);">
+                                    <div class="d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; border-radius: 14px; background: rgba(0, 32, 91, 0.06); color: var(--brand);">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                     </div>
                                     <div class="flex-grow-1">
@@ -113,8 +113,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-auto px-4 pb-4 pb-lg-0">
-                            <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-brand px-4" download>
+                        <div class="col-lg-auto px-3 px-lg-4 pb-3 pb-lg-0">
+                            <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-brand btn-sm px-4" download>
                                 Baixar
                             </a>
                         </div>

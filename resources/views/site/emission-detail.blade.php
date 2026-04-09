@@ -6,7 +6,7 @@
 <style>
     :root {
         --opea-purple: var(--brand); /* Navy Blue instead of Purple */
-        --opea-bg: var(--brand-light);
+        --opea-bg: var(--surface-alt);
     }
     .emission-page {
         background-color: var(--opea-bg);

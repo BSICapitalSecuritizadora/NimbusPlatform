@@ -73,13 +73,13 @@
                 <div class="col-md-6 col-xl-4">
                     <div class="card h-100 border-0 shadow-sm emission-card overflow-hidden">
                         <div style="height: 4px; background: linear-gradient(90deg, var(--brand), var(--gold), var(--brand));"></div>
-                        <div class="card-body p-4">
-                            <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+                        <div class="card-body p-3 p-lg-4">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                                 <div class="flex-grow-1">
                                     <div class="small text-uppercase text-muted fw-semibold mb-2">{{ $e->if_code ?? 'CRI' }}</div>
                                     <h3 class="h5 fw-bold text-brand mb-0" style="line-height: 1.45; word-wrap: break-word;">{{ $e->name }}</h3>
                                 </div>
-                                <div class="d-flex align-items-center justify-content-center flex-shrink-0 p-2" style="width: 72px; height: 72px; border-radius: 16px; background: rgba(0,32,91,0.06); color: var(--brand);">
+                                <div class="d-flex align-items-center justify-content-center flex-shrink-0 p-2" style="width: 64px; height: 64px; border-radius: 14px; background: rgba(0,32,91,0.06); color: var(--brand);">
                                     @if($e->logo_path)
                                         <img src="{{ Storage::url($e->logo_path) }}" alt="{{ $e->name }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                                     @else
@@ -94,7 +94,7 @@
                                 </div>
                             </div>
 
-                            <div class="row g-3 small">
+                            <div class="row g-2 small">
                                 <div class="col-6">
                                     <div class="text-uppercase text-muted fw-semibold mb-1">Emissão</div>
                                     <div class="fw-semibold">{{ $e->emission_number ?? '—' }}</div>
@@ -125,8 +125,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card-footer bg-transparent border-0 p-4 pt-0">
-                            <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand w-100">Ver detalhes</a>
+                        <div class="card-footer bg-transparent border-0 p-3 p-lg-4 pt-0">
+                            <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand btn-sm w-100">Ver detalhes</a>
                         </div>
                     </div>
                 </div>

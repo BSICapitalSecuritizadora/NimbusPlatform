@@ -24,61 +24,20 @@
             --brand-soft: #0f2f73;
             --gold: #d4af37;
             --gold-soft: #f3e4a8;
-            --bg: #f4f7fb;
+            --bg: #f2f5f9;
             --surface: #ffffff;
-            --surface-alt: #f8fbff;
+            --surface-alt: #f6f9fd;
             --text: #081224;
             --muted: #5c6980;
-            --border: #dfe7f2;
-            --shadow-soft: 0 20px 45px rgba(0, 32, 91, 0.08);
-            --shadow-hover: 0 24px 55px rgba(0, 32, 91, 0.12);
-            --nav-bg: rgba(255, 255, 255, 0.92);
+            --border: #d5deea;
+            --shadow-soft: 0 14px 32px rgba(0, 32, 91, 0.07);
+            --shadow-hover: 0 18px 38px rgba(0, 32, 91, 0.1);
+            --nav-bg: rgba(255, 255, 255, 0.97);
             --brand-outline: var(--brand);
             --brand-outline-border: color-mix(in srgb, var(--brand) 18%, var(--border));
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #070a10;
-                --surface: #0c111a;
-                --surface-alt: #101826;
-                --text: #edf2fb;
-                --muted: #9aa8bd;
-                --border: rgba(255, 255, 255, 0.1);
-                --nav-bg: rgba(12, 17, 26, 0.84);
-                --brand-outline: #9dc0ff;
-                --brand-outline-border: rgba(157, 192, 255, 0.3);
-                --shadow-soft: 0 24px 52px rgba(0, 0, 0, 0.35);
-                --shadow-hover: 0 28px 58px rgba(0, 0, 0, 0.45);
-            }
-        }
-
-        html[data-theme="light"] {
-            --bg: #f4f7fb;
-            --surface: #ffffff;
-            --surface-alt: #f8fbff;
-            --text: #081224;
-            --muted: #5c6980;
-            --border: #dfe7f2;
-            --nav-bg: rgba(255, 255, 255, 0.92);
-            --brand-outline: var(--brand);
-            --brand-outline-border: color-mix(in srgb, var(--brand) 18%, var(--border));
-            --shadow-soft: 0 20px 45px rgba(0, 32, 91, 0.08);
-            --shadow-hover: 0 24px 55px rgba(0, 32, 91, 0.12);
-        }
-
-        html[data-theme="dark"] {
-            --bg: #070a10;
-            --surface: #0c111a;
-            --surface-alt: #101826;
-            --text: #edf2fb;
-            --muted: #9aa8bd;
-            --border: rgba(255, 255, 255, 0.1);
-            --nav-bg: rgba(12, 17, 26, 0.84);
-            --brand-outline: #9dc0ff;
-            --brand-outline-border: rgba(157, 192, 255, 0.3);
-            --shadow-soft: 0 24px 52px rgba(0, 0, 0, 0.35);
-            --shadow-hover: 0 28px 58px rgba(0, 0, 0, 0.45);
+            --radius-shell: 18px;
+            --radius-card: 16px;
+            --radius-control: 12px;
         }
 
         html {
@@ -88,8 +47,8 @@
         body {
             font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background:
-                radial-gradient(900px 420px at 0% 0%, rgba(0, 32, 91, 0.08), transparent 60%),
-                radial-gradient(720px 360px at 100% 10%, rgba(212, 175, 55, 0.08), transparent 62%),
+                radial-gradient(880px 380px at 0% 0%, rgba(0, 32, 91, 0.06), transparent 58%),
+                radial-gradient(620px 300px at 100% 4%, rgba(212, 175, 55, 0.05), transparent 58%),
                 var(--bg);
             color: var(--text);
             min-height: 100vh;
@@ -133,8 +92,8 @@
             content: "";
             position: absolute;
             inset: 0 0 auto 0;
-            height: 220px;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent);
+            height: 180px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent);
             pointer-events: none;
         }
 
@@ -144,8 +103,8 @@
         }
 
         .section-divider {
-            width: 72px;
-            height: 4px;
+            width: 64px;
+            height: 3px;
             border-radius: 999px;
             background: linear-gradient(90deg, var(--gold), color-mix(in srgb, var(--gold) 35%, var(--brand) 65%), var(--brand));
         }
@@ -161,9 +120,9 @@
 
         .surface-card,
         .card {
-            background: color-mix(in srgb, var(--surface) 96%, var(--brand) 4%);
+            background: color-mix(in srgb, var(--surface) 97%, var(--brand) 3%);
             border: 1px solid var(--border);
-            border-radius: 24px;
+            border-radius: var(--radius-card);
             color: var(--text);
             box-shadow: var(--shadow-soft);
         }
@@ -174,9 +133,10 @@
         }
 
         .surface-card-dark {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+            border: 1px solid rgba(255, 255, 255, 0.12);
             color: #fff;
+            border-radius: var(--radius-card);
         }
 
         .card-hover,
@@ -189,14 +149,13 @@
         .card-hover:hover,
         .hover-lift:hover,
         .emission-card:hover {
-            transform: translateY(-6px);
+            transform: translateY(-3px);
             box-shadow: var(--shadow-hover) !important;
-            border-color: color-mix(in srgb, var(--gold) 28%, var(--border));
+            border-color: color-mix(in srgb, var(--gold) 22%, var(--border));
         }
 
         .ri-item:hover {
-            background: color-mix(in srgb, var(--brand) 4%, var(--surface)) !important;
-            transform: translateX(4px);
+            background: color-mix(in srgb, var(--brand) 3%, var(--surface)) !important;
         }
 
         .badge {
@@ -213,8 +172,8 @@
         }
 
         .btn {
-            border-radius: 999px;
-            padding: 0.72rem 1.3rem;
+            border-radius: 14px;
+            padding: 0.72rem 1.2rem;
             font-weight: 600;
             letter-spacing: -0.01em;
             transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, border-color 0.2s ease, background 0.2s ease;
@@ -228,7 +187,7 @@
             background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 82%, black));
             border-color: var(--brand);
             color: #fff;
-            box-shadow: 0 12px 30px rgba(0, 32, 91, 0.18);
+            box-shadow: 0 10px 24px rgba(0, 32, 91, 0.16);
         }
 
         .btn-brand:hover,
@@ -241,7 +200,7 @@
         .btn-outline-brand {
             border-color: var(--brand-outline-border);
             color: var(--brand-outline);
-            background: transparent;
+            background: color-mix(in srgb, var(--surface) 88%, transparent);
         }
 
         .btn-outline-brand:hover,
@@ -265,10 +224,10 @@
         }
 
         .btn-light {
-            background: color-mix(in srgb, var(--surface) 88%, white 12%);
+            background: color-mix(in srgb, var(--surface) 92%, white 8%);
             color: var(--brand);
             border-color: color-mix(in srgb, var(--border) 85%, white);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.05);
         }
 
         .btn-light:hover,
@@ -281,11 +240,11 @@
         .form-control,
         .form-select,
         textarea.form-control {
-            border-radius: 18px;
-            border: 1px solid color-mix(in srgb, var(--border) 88%, var(--brand) 12%);
-            background: color-mix(in srgb, var(--surface) 94%, var(--brand) 6%);
+            border-radius: var(--radius-control);
+            border: 1px solid color-mix(in srgb, var(--border) 86%, var(--brand) 14%);
+            background: color-mix(in srgb, var(--surface) 96%, var(--brand) 4%);
             color: var(--text);
-            padding: 0.88rem 1rem;
+            padding: 0.82rem 0.95rem;
             box-shadow: none !important;
         }
 
@@ -305,9 +264,9 @@
         }
 
         .input-group-text {
-            border-radius: 18px;
-            border: 1px solid color-mix(in srgb, var(--border) 88%, var(--brand) 12%);
-            background: color-mix(in srgb, var(--surface) 94%, var(--brand) 6%);
+            border-radius: var(--radius-control);
+            border: 1px solid color-mix(in srgb, var(--border) 86%, var(--brand) 14%);
+            background: color-mix(in srgb, var(--surface) 96%, var(--brand) 4%);
             color: var(--muted);
         }
 
@@ -345,7 +304,7 @@
 
         .table-shell {
             overflow: hidden;
-            border-radius: 24px;
+            border-radius: var(--radius-card);
             border: 1px solid var(--border);
             background: color-mix(in srgb, var(--surface) 96%, var(--brand) 4%);
             box-shadow: var(--shadow-soft);
@@ -360,7 +319,7 @@
         .pagination .page-item .page-link {
             width: 44px;
             height: 44px;
-            border-radius: 999px !important;
+            border-radius: 14px !important;
             border: 1px solid var(--border);
             background: color-mix(in srgb, var(--surface) 95%, var(--brand) 5%);
             color: var(--muted);
@@ -391,14 +350,14 @@
 
         .navbar {
             background: var(--nav-bg);
-            backdrop-filter: blur(16px);
-            border: 1px solid color-mix(in srgb, var(--border) 88%, white 12%);
-            box-shadow: 0 16px 44px rgba(0, 0, 0, 0.08);
-            border-radius: 28px;
-            max-width: 1240px;
-            margin: 1.1rem auto 0;
-            top: 1rem;
-            padding: 0.2rem 0.4rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid color-mix(in srgb, var(--border) 92%, white 8%);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05);
+            border-radius: var(--radius-shell);
+            max-width: 1220px;
+            margin: 1rem auto 0;
+            top: 0.85rem;
+            padding: 0.15rem 0.35rem;
         }
 
         .navbar .container {
@@ -408,6 +367,11 @@
         .navbar-brand {
             color: var(--brand) !important;
             letter-spacing: -0.03em;
+        }
+
+        .navbar-brand img {
+            max-height: 44px;
+            width: auto;
         }
 
         .navbar-toggler {
@@ -428,8 +392,8 @@
             position: relative;
             color: color-mix(in srgb, var(--text) 86%, transparent) !important;
             font-weight: 600;
-            padding: 0.8rem 0.95rem !important;
-            border-radius: 14px;
+            padding: 0.7rem 0.85rem !important;
+            border-radius: 10px;
         }
 
         .nav-link:hover,
@@ -441,9 +405,9 @@
         .nav-link.active::after {
             content: "";
             position: absolute;
-            left: 0.95rem;
-            right: 0.95rem;
-            bottom: 0.35rem;
+            left: 0.85rem;
+            right: 0.85rem;
+            bottom: 0.45rem;
             height: 2px;
             border-radius: 999px;
             background: linear-gradient(90deg, var(--gold), var(--brand));
@@ -454,18 +418,19 @@
         }
 
         .mega-menu {
-            width: min(1120px, 96vw);
-            margin-top: 1rem;
+            width: min(1080px, 96vw);
+            margin-top: 0.8rem;
             border: 1px solid var(--border);
-            background: color-mix(in srgb, var(--surface) 97%, var(--brand) 3%);
-            border-radius: 24px;
-            padding: 1rem;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.14);
+            background: color-mix(in srgb, var(--surface) 98%, var(--brand) 2%);
+            border-radius: var(--radius-card);
+            padding: 0.8rem;
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.1);
         }
 
         .mega-menu .col-lg-4 {
-            border-radius: 20px;
-            background: color-mix(in srgb, var(--surface-alt) 92%, var(--brand) 8%);
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--surface-alt) 94%, var(--brand) 6%);
+            border: 1px solid color-mix(in srgb, var(--brand) 8%, var(--border));
         }
 
         .mega-title {
@@ -484,11 +449,11 @@
 
         .mega-link {
             display: block;
-            padding: 0.75rem 0.9rem;
-            border-radius: 14px;
+            padding: 0.65rem 0.8rem;
+            border-radius: 10px;
             color: var(--text);
             text-decoration: none;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         .mega-link:hover {
@@ -576,10 +541,10 @@
             position: relative;
             overflow: hidden;
             margin-top: 5rem;
-            border-top: 1px solid color-mix(in srgb, var(--gold) 14%, var(--border));
+            border-top: 1px solid color-mix(in srgb, var(--gold) 12%, var(--border));
             background:
-                radial-gradient(800px 300px at 0% 0%, rgba(0, 32, 91, 0.08), transparent 65%),
-                linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--brand) 8%), color-mix(in srgb, var(--surface) 96%, var(--brand) 4%));
+                radial-gradient(720px 260px at 0% 0%, rgba(0, 32, 91, 0.05), transparent 65%),
+                linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, var(--brand) 6%), color-mix(in srgb, var(--surface) 97%, var(--brand) 3%));
             color: var(--muted);
         }
 
@@ -590,7 +555,7 @@
             right: -80px;
             width: 280px;
             height: 280px;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.12), transparent 68%);
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.08), transparent 68%);
             pointer-events: none;
         }
 
@@ -616,51 +581,31 @@
             color: var(--brand);
         }
 
-        .brand-dark,
-        .anbima-dark {
-            display: none;
+        .footer-seal {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.9rem;
+            min-width: 220px;
+            padding: 1rem 1.1rem;
+            border: 1px solid color-mix(in srgb, var(--gold) 16%, var(--border));
+            border-radius: var(--radius-card);
+            background: color-mix(in srgb, var(--surface) 96%, var(--brand) 4%);
+            box-shadow: var(--shadow-soft);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .brand-light,
-            .anbima-light {
-                display: none;
-            }
-
-            .brand-dark,
-            .anbima-dark {
-                display: inline-block;
-            }
-        }
-
-        html[data-theme="light"] .brand-light,
-        html[data-theme="light"] .anbima-light {
-            display: inline-block !important;
-        }
-
-        html[data-theme="light"] .brand-dark,
-        html[data-theme="light"] .anbima-dark {
-            display: none !important;
-        }
-
-        html[data-theme="dark"] .brand-light,
-        html[data-theme="dark"] .anbima-light {
-            display: none !important;
-        }
-
-        html[data-theme="dark"] .brand-dark,
-        html[data-theme="dark"] .anbima-dark {
-            display: inline-block !important;
-        }
-
-        .theme-select {
-            min-width: 140px;
+        .footer-seal-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--brand);
         }
 
         @media (max-width: 991.98px) {
             .navbar {
                 margin: 0.9rem 0.85rem 0;
-                border-radius: 22px;
+                border-radius: 16px;
             }
 
             .navbar .container {
@@ -690,7 +635,7 @@
 
             .surface-card,
             .card {
-                border-radius: 22px;
+                border-radius: 14px;
             }
 
             .btn {
@@ -709,8 +654,7 @@
 <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container py-2">
         <a class="navbar-brand fw-bold" href="{{ route('site.home') }}">
-            <img src="https://bsicapital.com.br/wp-content/uploads/2022/05/logo-mob.png" alt="BSI Capital" class="brand-light" style="max-height: 48px;">
-            <img src="https://bsicapital.com.br/wp-content/uploads/2022/06/logo.png" alt="BSI Capital" class="brand-dark" style="max-height: 48px;">
+            <img src="https://bsicapital.com.br/wp-content/uploads/2022/05/logo-mob.png" alt="BSI Capital">
         </a>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Alternar navegação">
@@ -826,7 +770,7 @@
                 </li>
             </ul>
 
-            <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0">
+            <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0 ps-lg-3 border-lg-start border-brand-subtle">
                 <a href="{{ $portalUrl }}" class="btn btn-outline-brand btn-sm">Portal do Investidor</a>
                 <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-sm">Envie sua proposta</a>
             </div>
@@ -847,8 +791,7 @@
         <div class="row gy-4 align-items-center">
             <div class="col-md-4 text-center text-md-start">
                 <a class="navbar-brand fw-bold mb-3 d-inline-block" href="{{ route('site.home') }}">
-                    <img src="https://bsicapital.com.br/wp-content/uploads/2022/05/logo-mob.png" alt="BSI Capital" class="brand-light" style="max-height: 48px;">
-                    <img src="https://bsicapital.com.br/wp-content/uploads/2022/06/logo.png" alt="BSI Capital" class="brand-dark" style="max-height: 48px;">
+                    <img src="https://bsicapital.com.br/wp-content/uploads/2022/05/logo-mob.png" alt="BSI Capital" style="max-height: 48px;">
                 </a>
                 <p class="section-copy small mb-3">
                     Securitizadora registrada na CVM. Estruturamos e gerimos operações de crédito — CRI, CRA e CR — com rigor técnico, controle documental e reporte contínuo aos investidores.
@@ -877,9 +820,10 @@
             </div>
 
             <div class="col-md-4 text-center text-md-end">
-                <!-- Theme responsive ANBIMA logos -->
-                <img src="https://www.anbima.com.br/lumis-theme/br/com/anbima/portal/theme/portal-anbima/assets/img/selos-anbima/ofertas-securitizadora-provisorio.jpg" class="img-fluid anbima-light" alt="Selo ANBIMA Securitizadora (Claro)" style="max-height: 80px; border-radius: 4px;">
-                <img src="https://sosu.com.br/wp-content/uploads/2025/04/securitizadoras-adesao-provisoria-pagina-3-300x225.png" class="img-fluid anbima-dark" alt="Selo ANBIMA Securitizadora (Escuro)" style="max-height: 80px; border-radius: 4px;">
+                <div class="footer-seal">
+                    <div class="footer-seal-label">Autorregulação</div>
+                    <img src="https://www.anbima.com.br/lumis-theme/br/com/anbima/portal/theme/portal-anbima/assets/img/selos-anbima/ofertas-securitizadora-provisorio.jpg" class="img-fluid" alt="Selo ANBIMA Securitizadora" style="max-height: 84px; border-radius: 6px;">
+                </div>
             </div>
         </div>
         
@@ -893,35 +837,6 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-    // Theme system: auto (prefers-color-scheme), light, dark
-    (function () {
-        const key = 'bsi_theme'; // 'auto' | 'light' | 'dark'
-        const saved = localStorage.getItem(key) || 'auto';
-
-        function apply(mode){
-            if(mode === 'auto'){
-                document.documentElement.removeAttribute('data-theme');
-            } else {
-                document.documentElement.setAttribute('data-theme', mode);
-            }
-        }
-        apply(saved);
-
-        window.BSITheme = {
-            set(mode){
-                localStorage.setItem(key, mode);
-                apply(mode);
-            },
-            get(){ return localStorage.getItem(key) || 'auto'; }
-        };
-
-        // Set select value on load
-        const sel = document.querySelector('.theme-select');
-        if (sel) sel.value = saved;
-    })();
-</script>
 
 @stack('scripts')
 </body>

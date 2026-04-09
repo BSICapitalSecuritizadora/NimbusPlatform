@@ -76,3 +76,15 @@ it('renders the branded internal dashboard experience for authenticated users', 
         ->assertSeeText('Nova proposta')
         ->assertSeeText('Relações com investidores');
 });
+
+it('renders the public layout without dark mode assets or theme scripts', function () {
+    $this->get(route('site.home'))
+        ->assertSuccessful()
+        ->assertDontSee('prefers-color-scheme')
+        ->assertDontSee('data-theme')
+        ->assertDontSee('window.BSITheme')
+        ->assertDontSee('bsi_theme')
+        ->assertDontSee('brand-dark')
+        ->assertDontSee('anbima-dark')
+        ->assertSee('Selo ANBIMA Securitizadora');
+});
