@@ -95,7 +95,7 @@
         </div>
 
         <div class="surface-card p-3 p-lg-4 mb-4">
-            <ul class="nav nav-pills gap-2" id="emissionTabs" role="tablist">
+            <ul class="nav nav-pills gap-2 emission-detail-tabs" id="emissionTabs" role="tablist">
                 <li class="nav-item"><a class="nav-link active" href="#caracteristicas">Características</a></li>
                 <li class="nav-item"><a class="nav-link" href="#pagamentos">Pagamentos</a></li>
                 <li class="nav-item"><a class="nav-link" href="#documentos">Documentos</a></li>
@@ -230,24 +230,29 @@
         </div>
 
         <div class="surface-card p-4 p-lg-5" id="documentos">
+            @php
+                $allCategories = [
+                    'anuncios' => 'Anúncios',
+                    'assembleias' => 'Assembleias',
+                    'convocacoes_assembleias' => 'Convocações para Assembleias',
+                    'demonstracoes_financeiras' => 'Demonstrações Financeiras',
+                    'documentos_operacao' => 'Documentos da Operação',
+                    'fatos_relevantes' => 'Fatos Relevantes',
+                    'relatorios_anuais' => 'Relatórios Anuais',
+                ];
+                $documents = $emission->documents;
+                $documentDisplayLimit = 5;
+            @endphp
+
             <div class="row g-4 align-items-end mb-4">
                 <div class="col-lg-8">
                     <div class="section-kicker mb-2">Consulta documental</div>
                     <h2 class="h3 fw-bold text-brand mb-2">Documentos da operação</h2>
                     <p class="section-copy mb-0">Arquivos publicados para consulta, com filtros por categoria e acesso direto ao download.</p>
                 </div>
-                @if($emission->documents->count() > 0)
+                @if($documents->count() > 0)
                     @php
-                        $allCategories = [
-                            'anuncios' => 'Anúncios',
-                            'assembleias' => 'Assembleias',
-                            'convocacoes_assembleias' => 'Convocações para Assembleias',
-                            'demonstracoes_financeiras' => 'Demonstrações Financeiras',
-                            'documentos_operacao' => 'Documentos da Operação',
-                            'fatos_relevantes' => 'Fatos Relevantes',
-                            'relatorios_anuais' => 'Relatórios Anuais',
-                        ];
-                        $docCategories = $emission->documents->pluck('category')
+                        $docCategories = $documents->pluck('category')
                             ->filter()
                             ->unique()
                             ->sortBy(fn (string $category): string => strtolower($allCategories[$category] ?? $category));
@@ -255,7 +260,7 @@
                     <div class="col-lg-4">
                         @if($docCategories->isNotEmpty())
                             <label for="docCategoryFilter" class="form-label">Categoria</label>
-                            <select id="docCategoryFilter" class="form-select">
+                            <select id="docCategoryFilter" class="form-select" data-limit="{{ $documentDisplayLimit }}">
                                 <option value="">Todas</option>
                                 @foreach($docCategories as $category)
                                     <option value="{{ $category }}">{{ $allCategories[$category] ?? ucfirst($category) }}</option>
@@ -266,8 +271,48 @@
                 @endif
             </div>
 
-            @if($emission->documents->count() > 0)
-                <div class="table-shell">
+            @if($documents->count() > 0)
+                <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+                    <div class="small text-muted">
+                        @if($documents->count() > $documentDisplayLimit)
+                            Exibindo os {{ $documentDisplayLimit }} documentos mais recentes por padrão. Use o filtro por categoria para aprofundar a consulta.
+                        @else
+                            {{ $documents->count() }} documento(s) disponível(is) para download imediato.
+                        @endif
+                    </div>
+                    <div class="small text-muted">A listagem prioriza arquivos publicados com acesso direto e leitura mais confortável no desktop e no mobile.</div>
+                </div>
+
+                <div class="d-grid gap-3 d-lg-none">
+                    @foreach($documents as $index => $doc)
+                        <article class="surface-card-soft p-4 emission-doc-card doc-entry" data-category="{{ $doc->category }}" data-index="{{ $index }}" style="{{ $index >= $documentDisplayLimit ? 'display: none;' : '' }}">
+                            <div class="d-flex flex-column gap-3">
+                                <div>
+                                    <div class="small text-muted mb-2">{{ optional($doc->published_at)->format('d/m/Y') ?? '—' }}</div>
+                                    <div class="fw-semibold text-brand mb-2">{{ $doc->title }}</div>
+
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @if($doc->category)
+                                            <span class="badge px-3 py-2" style="background: rgba(212,175,55,0.12); border: 1px solid rgba(212,175,55,0.22); color: var(--brand);">
+                                                {{ $allCategories[$doc->category] ?? ucfirst($doc->category) }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                @if($doc->description)
+                                    <div class="small text-muted">{{ $doc->description }}</div>
+                                @endif
+
+                                <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-outline-brand btn-sm px-3">
+                                    Baixar
+                                </a>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+
+                <div class="table-shell d-none d-lg-block">
                     <table class="table align-middle mb-0">
                         <thead>
                             <tr>
@@ -277,8 +322,8 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($emission->documents as $index => $doc)
-                                <tr class="doc-row" data-category="{{ $doc->category }}" style="{{ $index >= 5 ? 'display: none;' : '' }}">
+                            @foreach($documents as $index => $doc)
+                                <tr class="doc-entry" data-category="{{ $doc->category }}" data-index="{{ $index }}" style="{{ $index >= $documentDisplayLimit ? 'display: none;' : '' }}">
                                     <td class="text-muted">{{ optional($doc->published_at)->format('d/m/Y') ?? '—' }}</td>
                                     <td>
                                         <div class="fw-semibold text-brand mb-1">{{ $doc->title }}</div>
@@ -330,20 +375,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const docFilter = document.getElementById('docCategoryFilter');
 
     if (docFilter) {
+        const defaultVisibleCount = Number(docFilter.dataset.limit || 5);
+
         docFilter.addEventListener('change', function() {
             const selectedCategory = this.value;
-            const rows = document.querySelectorAll('.doc-row');
+            const entries = document.querySelectorAll('.doc-entry');
 
             if (selectedCategory === '') {
-                rows.forEach(function(row, index) {
-                    row.style.display = index < 5 ? '' : 'none';
+                entries.forEach(function(entry) {
+                    entry.style.display = Number(entry.dataset.index) < defaultVisibleCount ? '' : 'none';
                 });
 
                 return;
             }
 
-            rows.forEach(function(row) {
-                row.style.display = row.dataset.category === selectedCategory ? '' : 'none';
+            entries.forEach(function(entry) {
+                entry.style.display = entry.dataset.category === selectedCategory ? '' : 'none';
             });
         });
     }

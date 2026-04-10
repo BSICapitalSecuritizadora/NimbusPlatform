@@ -146,4 +146,29 @@ select:focus[data-flux-control] {
     .bsi-portal-meta {
         @apply inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700;
     }
+
+    .pagination {
+        @apply flex flex-wrap items-center justify-center gap-2;
+    }
+
+    .page-item {
+        @apply list-none;
+    }
+
+    .page-link {
+        @apply inline-flex h-11 min-w-11 items-center justify-center rounded-[14px] border border-zinc-200/80 bg-white px-3 text-sm font-semibold text-zinc-500 no-underline shadow-sm transition hover:border-gold-500/50 hover:bg-gold-400/10 hover:text-brand-700;
+    }
+
+    .page-item.active .page-link {
+        @apply border-brand-700 bg-brand-700 text-white shadow-[0_14px_30px_rgba(0,32,91,0.18)] hover:border-brand-700 hover:bg-brand-700 hover:text-white;
+    }
+
+    .page-item.disabled .page-link {
+        @apply border-zinc-200 bg-zinc-100 text-zinc-400 hover:border-zinc-200 hover:bg-zinc-100 hover:text-zinc-400;
+    }
+
+    .page-item:first-child .page-link,
+    .page-item:last-child .page-link {
+        @apply h-11 min-w-[44px] px-4;
+    }
 }

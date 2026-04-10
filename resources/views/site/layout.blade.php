@@ -330,6 +330,13 @@
             font-weight: 600;
         }
 
+        .pagination .page-item:first-child .page-link,
+        .pagination .page-item:last-child .page-link {
+            width: auto;
+            min-width: 44px;
+            padding-inline: 1rem;
+        }
+
         .pagination .page-item.active .page-link {
             background: var(--brand);
             border-color: var(--brand);
@@ -520,6 +527,29 @@
             color: #b7c5dd !important;
         }
 
+        .emission-detail-tabs {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 0.35rem;
+            scrollbar-width: none;
+        }
+
+        .emission-detail-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .emission-detail-tabs .nav-item {
+            flex: 0 0 auto;
+        }
+
+        .emission-detail-tabs .nav-link {
+            white-space: nowrap;
+        }
+
+        .emission-doc-card {
+            border-radius: var(--radius-card);
+        }
+
         .section-dark {
             background:
                 radial-gradient(900px 420px at 15% 0%, rgba(212, 175, 55, 0.08), transparent 60%),
@@ -640,6 +670,15 @@
 
             .btn {
                 width: auto;
+            }
+
+            .pagination .page-item .page-link {
+                height: 42px;
+                min-width: 42px;
+            }
+
+            .emission-doc-card .btn {
+                width: 100%;
             }
         }
     </style>

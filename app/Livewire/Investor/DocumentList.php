@@ -9,6 +9,7 @@ use App\Models\Investor;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -39,6 +40,18 @@ class DocumentList extends Component
         if (in_array($property, ['search', 'category', 'emissionId', 'dateFrom', 'dateTo', 'onlyNew'], true)) {
             $this->resetPage();
         }
+    }
+
+    public function resetFilters(): void
+    {
+        $this->search = '';
+        $this->category = '';
+        $this->emissionId = '';
+        $this->dateFrom = '';
+        $this->dateTo = '';
+        $this->onlyNew = false;
+
+        $this->resetPage();
     }
 
     #[Computed]
@@ -132,12 +145,42 @@ class DocumentList extends Component
             ->get();
     }
 
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function activeFilters(): array
+    {
+        $selectedEmission = $this->emissionId !== ''
+            ? $this->emissions->firstWhere('id', (int) $this->emissionId)
+            : null;
+
+        return collect([
+            'Busca' => $this->search !== '' ? '"'.$this->search.'"' : null,
+            'Categoria' => $this->category !== '' ? ($this->categoryOptions[$this->category] ?? $this->category) : null,
+            'Emissão' => $selectedEmission?->name,
+            'De' => $this->dateFrom !== '' ? Carbon::parse($this->dateFrom)->format('d/m/Y') : null,
+            'Até' => $this->dateTo !== '' ? Carbon::parse($this->dateTo)->format('d/m/Y') : null,
+            'Status' => $this->onlyNew ? 'Somente novos desde o último acesso' : null,
+        ])
+            ->filter(fn (?string $value): bool => filled($value))
+            ->all();
+    }
+
+    #[Computed]
+    public function hasActiveFilters(): bool
+    {
+        return $this->activeFilters !== [];
+    }
+
     public function render(): View
     {
         return view('livewire.investor.document-list', [
             'documents' => $this->documents,
             'categoryOptions' => $this->categoryOptions,
             'emissions' => $this->emissions,
+            'activeFilters' => $this->activeFilters,
+            'hasActiveFilters' => $this->hasActiveFilters,
             'investor' => $this->investor,
             'previousPortalSeenAt' => $this->previousPortalSeenAt,
         ]);

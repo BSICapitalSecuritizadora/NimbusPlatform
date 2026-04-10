@@ -63,3 +63,24 @@ it('sums all integralization history entries while showing only the latest five 
         ->assertSee('11/10/2024')
         ->assertDontSee('27/09/2024');
 });
+
+it('explains that only the latest five documents are highlighted by default', function () {
+    $emission = Emission::factory()->active()->create([
+        'name' => 'CRI Documentos',
+        'type' => 'CRI',
+        'if_code' => 'IF-DOCS-01',
+        'is_public' => true,
+    ]);
+
+    Document::factory()
+        ->count(6)
+        ->public()
+        ->create()
+        ->each(function (Document $document) use ($emission): void {
+            $emission->documents()->attach($document->id);
+        });
+
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertSee('Exibindo os 5 documentos mais recentes por padrão');
+});

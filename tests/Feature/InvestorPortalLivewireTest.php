@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\Emission;
 use App\Models\Investor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -93,4 +94,35 @@ it('renders the investor documents page through a full-page livewire component',
         ->assertSee('Novo');
 
     expect($investor->fresh()->last_portal_seen_at)->not->toBeNull();
+});
+
+it('loads pagination translations in portuguese', function () {
+    expect(__('pagination.previous'))->toBe('Anterior');
+    expect(__('pagination.next'))->toBe('Próxima');
+});
+
+it('can reset investor document filters without leaving the page', function () {
+    $investor = Investor::factory()->create();
+    $emission = Emission::factory()->active()->create([
+        'name' => 'Debênture Azul',
+    ]);
+
+    $investor->emissions()->attach($emission->id);
+
+    $this->actingAs($investor, 'investor');
+
+    Livewire::test(DocumentList::class)
+        ->set('search', 'Relatório')
+        ->set('category', 'fatos_relevantes')
+        ->set('emissionId', (string) $emission->id)
+        ->set('dateFrom', '2024-01-01')
+        ->set('dateTo', '2024-12-31')
+        ->set('onlyNew', true)
+        ->call('resetFilters')
+        ->assertSet('search', '')
+        ->assertSet('category', '')
+        ->assertSet('emissionId', '')
+        ->assertSet('dateFrom', '')
+        ->assertSet('dateTo', '')
+        ->assertSet('onlyNew', false);
 });
