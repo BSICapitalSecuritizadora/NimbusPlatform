@@ -1,29 +1,131 @@
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-semibold text-zinc-900">Bem-vindo, {{ $investor->name }}</h1>
-            <p class="mt-1 text-sm text-zinc-500">Acesse suas emissoes e documentos pelo menu acima.</p>
-        </div>
-    </div>
-
-    @if ($newDocumentsCount > 0)
-        <flux:card class="border-blue-100 bg-blue-50/50">
-            <div class="flex items-start gap-4">
-                <div class="mt-1">
-                    <flux:icon.document-text class="h-6 w-6 text-blue-600" />
-                </div>
+<div class="space-y-8">
+    <section class="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_22rem]">
+        <div class="bsi-portal-panel p-8 lg:p-10">
+            <div class="flex h-full flex-col gap-8">
                 <div>
-                    <h3 class="text-sm font-medium text-blue-900">Novos documentos disponiveis</h3>
-                    <p class="mt-1 text-sm text-blue-700">
-                        Voce tem <strong>{{ $newDocumentsCount }}</strong> documento(s) publicado(s) desde o seu ultimo acesso ao portal.
+                    <div class="bsi-kicker mb-4 text-gold-400">Portal do investidor</div>
+                    <h1 class="max-w-3xl text-4xl font-semibold tracking-[-0.05em] text-white md:text-5xl">
+                        Bem-vindo, {{ $investor->name }}.
+                    </h1>
+                    <p class="mt-5 max-w-2xl text-base leading-8 text-brand-100">
+                        Acesse suas emissões, acompanhe documentos publicados e concentre o relacionamento operacional em uma interface alinhada à identidade institucional da BSI Capital.
                     </p>
-                    <div class="mt-4">
-                        <flux:button size="sm" variant="primary" as="a" href="{{ route('investor.documents') }}">
-                            Ver documentos
-                        </flux:button>
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <flux:button variant="primary" as="a" href="{{ route('investor.documents') }}" class="!rounded-full !px-5 !py-3">
+                        Ver documentos
+                    </flux:button>
+                    <flux:button variant="ghost" as="a" href="{{ route('investor.emissions') }}" class="!rounded-full !border !border-white/15 !bg-white/10 !px-5 !py-3 !text-white hover:!bg-white/15">
+                        Minhas emissões
+                    </flux:button>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="bsi-portal-stat">
+                        <div class="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">Emissões</div>
+                        <div class="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">{{ number_format($emissionsCount) }}</div>
+                        <p class="mt-2 text-sm leading-6 text-brand-100">Operações vinculadas ao seu cadastro.</p>
+                    </div>
+                    <div class="bsi-portal-stat">
+                        <div class="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">Documentos</div>
+                        <div class="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">{{ number_format($documentsCount) }}</div>
+                        <p class="mt-2 text-sm leading-6 text-brand-100">Arquivos acessíveis dentro do seu escopo.</p>
+                    </div>
+                    <div class="bsi-portal-stat">
+                        <div class="text-xs font-semibold uppercase tracking-[0.2em] text-gold-400">Último login</div>
+                        <div class="mt-3 text-lg font-semibold text-white">
+                            {{ $investor->last_login_at?->format('d/m/Y H:i') ?? 'Primeiro acesso' }}
+                        </div>
+                        <p class="mt-2 text-sm leading-6 text-brand-100">Registro de autenticação mais recente.</p>
                     </div>
                 </div>
             </div>
-        </flux:card>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div class="bsi-shell-card p-6">
+                <div class="bsi-kicker mb-2">Perfil</div>
+                <div class="text-2xl font-semibold tracking-[-0.04em] text-brand-800">Acesso institucional</div>
+                <div class="mt-4 space-y-3 text-sm text-zinc-600">
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">E-mail</div>
+                        <div class="mt-1 font-semibold text-zinc-800">{{ $investor->email }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Telefone</div>
+                        <div class="mt-1 font-semibold text-zinc-800">{{ $investor->mobile ?: ($investor->phone ?: 'Não informado') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bsi-shell-card p-6">
+                <div class="bsi-kicker mb-2">Governança</div>
+                <div class="text-2xl font-semibold tracking-[-0.04em] text-brand-800">Documentos rastreáveis</div>
+                <p class="mt-3 text-sm leading-7 text-zinc-600">
+                    Consulte publicações e comunicações com a mesma lógica de controle documental aplicada ao site e às áreas operacionais da BSI.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    @if ($newDocumentsCount > 0)
+        <section class="bsi-portal-surface p-6 lg:p-7">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-start gap-4">
+                    <span class="mt-1 flex size-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+                        <flux:icon.document-text class="size-6" />
+                    </span>
+                    <div>
+                        <h2 class="text-xl font-semibold tracking-[-0.03em] text-brand-800">Novos documentos disponíveis</h2>
+                        <p class="mt-2 max-w-2xl text-sm leading-7 text-zinc-600">
+                            Você tem <strong>{{ $newDocumentsCount }}</strong> documento(s) publicado(s) desde o seu último acesso ao portal.
+                        </p>
+                    </div>
+                </div>
+
+                <flux:button variant="primary" as="a" href="{{ route('investor.documents') }}" class="!rounded-full !px-5">
+                    Ver documentos
+                </flux:button>
+            </div>
+        </section>
     @endif
+
+    <section class="grid gap-4 lg:grid-cols-2">
+        <article class="bsi-shell-card p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex size-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+                    <flux:icon.chart-bar class="size-6" />
+                </span>
+                <div>
+                    <div class="bsi-kicker mb-2">Acesso rápido</div>
+                    <h2 class="text-2xl font-semibold tracking-[-0.04em] text-brand-800">Minhas emissões</h2>
+                    <p class="mt-3 text-sm leading-7 text-zinc-600">
+                        Consulte operações associadas ao seu cadastro com status, vencimento e informações essenciais para acompanhamento.
+                    </p>
+                    <flux:button variant="subtle" as="a" href="{{ route('investor.emissions') }}" class="mt-4 !rounded-full !px-5">
+                        Abrir emissões
+                    </flux:button>
+                </div>
+            </div>
+        </article>
+
+        <article class="bsi-shell-card p-6">
+            <div class="flex items-start gap-4">
+                <span class="flex size-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+                    <flux:icon.folder class="size-6" />
+                </span>
+                <div>
+                    <div class="bsi-kicker mb-2">Consulta documental</div>
+                    <h2 class="text-2xl font-semibold tracking-[-0.04em] text-brand-800">Documentos e relatórios</h2>
+                    <p class="mt-3 text-sm leading-7 text-zinc-600">
+                        Filtre por emissão, categoria ou período e mantenha uma rotina de consulta alinhada ao padrão institucional do portal.
+                    </p>
+                    <flux:button variant="subtle" as="a" href="{{ route('investor.documents') }}" class="mt-4 !rounded-full !px-5">
+                        Abrir documentos
+                    </flux:button>
+                </div>
+            </div>
+        </article>
+    </section>
 </div>

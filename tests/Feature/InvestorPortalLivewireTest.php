@@ -19,6 +19,14 @@ it('keeps the investor auth middleware on protected portal routes', function (st
     'documents' => 'investor.documents',
 ]);
 
+it('renders the branded investor login experience', function () {
+    $this->get(route('investor.login'))
+        ->assertOk()
+        ->assertSee('Portal do Investidor')
+        ->assertSee('Entrar no portal')
+        ->assertSee('Acompanhe emissões, documentos e eventos do seu investimento');
+});
+
 it('renders the investor dashboard through a full-page livewire component', function () {
     $investor = Investor::factory()->create([
         'name' => 'Investidor Portal',
@@ -35,7 +43,8 @@ it('renders the investor dashboard through a full-page livewire component', func
         ->assertOk()
         ->assertSeeLivewire(InvestorDashboard::class)
         ->assertSee('Bem-vindo, Investidor Portal')
-        ->assertSee('Novos documentos disponiveis');
+        ->assertSee('Novos documentos disponíveis')
+        ->assertSee('Portal do investidor');
 
     expect($investor->fresh()->last_portal_seen_at)->not->toBeNull();
 });
@@ -53,7 +62,7 @@ it('renders the investor emissions page through a full-page livewire component',
         ->get(route('investor.emissions'))
         ->assertOk()
         ->assertSeeLivewire(InvestorEmissions::class)
-        ->assertSee('Minhas Emissoes')
+        ->assertSee('Minhas emissões')
         ->assertSee('CRI Atlantico')
         ->assertSee('Ativa');
 });
@@ -79,7 +88,7 @@ it('renders the investor documents page through a full-page livewire component',
         ->get(route('investor.documents'))
         ->assertOk()
         ->assertSeeLivewire(DocumentList::class)
-        ->assertSee('Meus Documentos')
+        ->assertSee('Meus documentos')
         ->assertSee('Relatorio Gerencial')
         ->assertSee('Novo');
 

@@ -118,4 +118,32 @@ select:focus[data-flux-control] {
     .bsi-action-secondary {
         @apply inline-flex items-center justify-center rounded-full border border-brand-200 bg-white px-5 py-3 font-semibold text-brand-700 transition hover:-translate-y-0.5 hover:border-gold-500/60 hover:bg-gold-400/10 dark:border-white/15 dark:bg-transparent dark:text-brand-100;
     }
+
+    .bsi-portal-panel {
+        @apply relative overflow-hidden rounded-[32px] border border-brand-200/50 bg-[linear-gradient(145deg,#001233_0%,#00205b_56%,#0a1734_100%)] text-white shadow-[0_28px_72px_rgba(0,32,91,0.24)];
+    }
+
+    .bsi-portal-panel-soft {
+        @apply rounded-[24px] border border-white/10 bg-white/10 backdrop-blur;
+    }
+
+    .bsi-portal-surface {
+        @apply rounded-[28px] border border-zinc-200/80 bg-white/95 shadow-[0_20px_45px_rgba(0,32,91,0.08)] backdrop-blur;
+    }
+
+    .bsi-portal-nav-link {
+        @apply inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-zinc-500 transition hover:bg-brand-50 hover:text-brand-700;
+    }
+
+    .bsi-portal-nav-link-active {
+        @apply bg-brand-700 text-white shadow-[0_12px_30px_rgba(0,32,91,0.18)] hover:bg-brand-700 hover:text-white;
+    }
+
+    .bsi-portal-stat {
+        @apply rounded-[24px] border border-white/10 bg-white/10 p-4 backdrop-blur;
+    }
+
+    .bsi-portal-meta {
+        @apply inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700;
+    }
 }

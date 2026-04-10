@@ -1,272 +1,242 @@
 @extends('site.layout')
 
-@section('title', $emission->name . ' — Detalhes da Emissão — BSI Capital')
+@section('title', $emission->name . ' - Detalhes da Emissao - BSI Capital')
 
 @section('content')
-<style>
-    :root {
-        --opea-purple: var(--brand); /* Navy Blue instead of Purple */
-        --opea-bg: var(--surface-alt);
-    }
-    .emission-page {
-        background-color: var(--opea-bg);
-        color: var(--opea-purple);
-        font-family: 'Inter', sans-serif;
-    }
-    .text-purple { color: var(--opea-purple); }
-    .bg-purple-light { background-color: rgba(0, 32, 91, 0.1); }
-    
-    .breadcrumb-item + .breadcrumb-item::before { content: ""; }
-    
-    .nav-pills .nav-link {
-        color: var(--opea-purple);
-        border-radius: 50rem;
-        padding: 0.5rem 1.25rem;
-        font-weight: 500;
-        font-size: 0.9rem;
-    }
-    .nav-pills .nav-link.active {
-        background-color: rgba(0, 32, 91, 0.1);
-        color: var(--opea-purple);
-    }
-    
-    .char-label {
-        font-size: 0.65rem;
-        color: #8e8e8e;
-        text-transform: uppercase;
-        margin-bottom: 0.25rem;
-        display: block;
-    }
-    .char-value {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: var(--opea-purple);
-    }
-    
-    .card-opea {
-        border: 1px solid rgba(0,0,0,0.05);
-        border-radius: 8px;
-        background: #fff;
-    }
-</style>
+@php
+    $statusPalette = match ($emission->status) {
+        'active' => ['bg' => 'rgba(34,197,94,0.12)', 'border' => 'rgba(34,197,94,0.22)', 'text' => '#15803d', 'label' => $emission->status_label],
+        'closed' => ['bg' => 'rgba(239,68,68,0.12)', 'border' => 'rgba(239,68,68,0.22)', 'text' => '#b91c1c', 'label' => $emission->status_label],
+        default => ['bg' => 'rgba(245,158,11,0.12)', 'border' => 'rgba(245,158,11,0.22)', 'text' => '#b45309', 'label' => $emission->status_label],
+    };
 
-<div class="emission-page pb-5" style="min-height: 100vh;">
-    <!-- Top Logo -->
-    <div class="py-5 text-center">
-        @if($emission->logo_path)
-            <img src="{{ Storage::url($emission->logo_path) }}" alt="{{ $emission->name }}" style="max-height: 80px; max-width: 250px; object-fit: contain;">
-        @else
-            <h2 class="h1 fw-normal text-purple mb-0">Emissão</h2>
-        @endif
-    </div>
+    $summaryCards = [
+        ['label' => 'Tipo', 'value' => $emission->type ?? '—'],
+        ['label' => 'Remuneração', 'value' => $emission->remuneration ?? '—'],
+        ['label' => 'Vencimento', 'value' => $emission->maturity_date?->format('d/m/Y') ?? '—'],
+        ['label' => 'Volume emitido', 'value' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 2, ',', '.') : '—'],
+    ];
+@endphp
 
-    <div class="container pb-4">
-        <!-- Hero Section -->
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-end mb-4 gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="fs-3 text-purple opacity-75">
-                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+<section class="hero position-relative overflow-hidden" style="padding-top: 4.75rem; padding-bottom: 4rem;">
+    <div class="container position-relative">
+        <div class="row g-4 align-items-end">
+            <div class="col-lg-8">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <span class="badge px-3 py-2 text-uppercase">Detalhe da emissão</span>
+                    @if($emission->type)
+                        <span class="badge badge-soft px-3 py-2">{{ $emission->type }}</span>
+                    @endif
+                    <span class="badge px-3 py-2" style="background: {{ $statusPalette['bg'] }}; border: 1px solid {{ $statusPalette['border'] }}; color: {{ $statusPalette['text'] }};">
+                        {{ $statusPalette['label'] }}
+                    </span>
                 </div>
-                <h1 class="h3 fw-bold mb-0 text-purple">{{ $emission->name }}</h1>
+
+                <div class="d-flex flex-wrap align-items-center gap-4 mb-4">
+                    @if($emission->logo_path)
+                        <div class="surface-card-dark d-inline-flex align-items-center justify-content-center px-4 py-3" style="min-height: 86px; min-width: 180px;">
+                            <img src="{{ Storage::url($emission->logo_path) }}" alt="{{ $emission->name }}" style="max-height: 52px; max-width: 180px; object-fit: contain;">
+                        </div>
+                    @endif
+                    <div>
+                        <h1 class="display-5 fw-bold mb-2">{{ $emission->name }}</h1>
+                        <div class="d-flex flex-wrap gap-3 small text-white-50">
+                            <span>IF {{ $emission->if_code ?? '—' }}</span>
+                            <span>ISIN {{ $emission->isin_code ?? '—' }}</span>
+                            <span>Emissor: {{ $emission->issuer ?? '—' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="lead mb-0" style="max-width: 860px;">
+                    Consulte características da operação, fluxo de pagamentos, documentos e dados operacionais em uma leitura mais clara e consistente com a experiência institucional da BSI Capital.
+                </p>
             </div>
-            
-            <div class="d-flex flex-wrap align-items-center gap-3 small">
-                <span class="text-muted opacity-75">ISIN {{ $emission->isin_code ?? 'N/A' }}</span>
-                <span class="text-muted opacity-75">IF {{ $emission->if_code }}</span>
-                <span class="badge rounded-pill px-3 py-1" style="background-color: #e6f6ec; color: #1e6e44;">
-                    {{ $emission->status_label }}
-                </span>
+
+            <div class="col-lg-4">
+                <div class="surface-card-dark p-4 p-lg-5 h-100">
+                    <div class="section-kicker mb-2">Visão rápida</div>
+                    <h2 class="h3 fw-bold text-white mb-3">Resumo operacional</h2>
+                    <div class="d-flex flex-column gap-3">
+                        <div class="d-flex justify-content-between gap-3">
+                            <span class="text-white-50">Número da emissão</span>
+                            <span class="fw-semibold text-white">{{ $emission->emission_number ?? '—' }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between gap-3">
+                            <span class="text-white-50">Série</span>
+                            <span class="fw-semibold text-white">{{ $emission->series ?? '—' }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between gap-3">
+                            <span class="text-white-50">Data de emissão</span>
+                            <span class="fw-semibold text-white">{{ $emission->issue_date?->format('d/m/Y') ?? '—' }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between gap-3">
+                            <span class="text-white-50">Segmento</span>
+                            <span class="fw-semibold text-white">{{ $emission->segment ?? '—' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container py-lg-4">
+        <div class="row g-4 mb-4">
+            @foreach($summaryCards as $summaryCard)
+                <div class="col-sm-6 col-xl-3">
+                    <div class="surface-card h-100 p-4">
+                        <div class="section-kicker mb-2">{{ $summaryCard['label'] }}</div>
+                        <div class="h4 fw-bold text-brand mb-0" style="line-height: 1.4;">{{ $summaryCard['value'] }}</div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div class="surface-card p-3 p-lg-4 mb-4">
+            <ul class="nav nav-pills gap-2" id="emissionTabs" role="tablist">
+                <li class="nav-item"><a class="nav-link active" href="#caracteristicas">Características</a></li>
+                <li class="nav-item"><a class="nav-link" href="#pagamentos">Pagamentos</a></li>
+                <li class="nav-item"><a class="nav-link" href="#documentos">Documentos</a></li>
+            </ul>
+        </div>
+
+        <div class="surface-card p-4 p-lg-5 mb-4" id="caracteristicas">
+            <div class="row g-4 align-items-end mb-4">
+                <div class="col-lg-8">
+                    <div class="section-kicker mb-2">Características</div>
+                    <h2 class="h3 fw-bold text-brand mb-2">Informações essenciais da operação</h2>
+                    <p class="section-copy mb-0">Dados jurídicos, comerciais e operacionais organizados para leitura rápida e comparação direta.</p>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                @foreach([
+                    'Série' => $emission->series,
+                    'Número da emissão' => $emission->emission_number,
+                    'Emissor' => $emission->issuer,
+                    'Coordenador líder' => $emission->lead_coordinator,
+                    'Agente fiduciário' => $emission->trustee_agent,
+                    'Data de emissão' => $emission->issue_date?->format('d/m/Y'),
+                    'Data de vencimento' => $emission->maturity_date?->format('d/m/Y'),
+                    'Remuneração' => $emission->remuneration,
+                    'Tipo de oferta' => $emission->offer_type,
+                    'Segmento' => $emission->segment,
+                    'Concentração' => $emission->concentration,
+                    'Preço de emissão' => $emission->issued_price ? 'R$ ' . number_format((float) $emission->issued_price, 2, ',', '.') : null,
+                    'Quantidade emitida' => $emission->issued_quantity ? number_format((float) $emission->issued_quantity, 0, ',', '.') : null,
+                    'Quantidade integralizada' => $emission->integralized_quantity ? number_format((float) $emission->integralized_quantity, 0, ',', '.') : null,
+                    'Volume emitido' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 0, ',', '.') : null,
+                ] as $label => $value)
+                    <div class="col-sm-6 col-xl-4">
+                        <div class="surface-card-soft h-100 p-4">
+                            <div class="small text-uppercase text-muted fw-semibold mb-2">{{ $label }}</div>
+                            <div class="fw-semibold text-brand">{{ $value ?: '—' }}</div>
+                        </div>
+                    </div>
+                @endforeach
             </div>
         </div>
 
-        <!-- Tab Navigation -->
-        <ul class="nav nav-pills mb-5 gap-2" id="emissionTabs" role="tablist">
-            <li class="nav-item"><a class="nav-link active" href="#caracteristicas">Características</a></li>
-            <li class="nav-item"><a class="nav-link" href="#pagamentos">Pagamentos</a></li>
-            <li class="nav-item"><a class="nav-link" href="#documentos">Documentos</a></li>
-        </ul>
-
-        <!-- Content Sections -->
-        <div class="d-grid gap-4">
-            
-            <!-- Characteristics Card -->
-            <div class="card card-opea p-4 shadow-sm" id="caracteristicas">
-                <div class="mb-4">
-                    <h3 class="h5 fw-bold text-purple mb-0">Características</h3>
-                </div>
-
-                <style>
-                    @media (min-width: 992px) {
-                        .grid-characteristics {
-                            display: grid !important;
-                            grid-template-columns: repeat(5, 1fr) !important;
-                            gap: 1.5rem;
-                        }
-                        .grid-characteristics .col {
-                            width: 100% !important;
-                            flex: 0 0 100% !important;
-                            max-width: 100% !important;
-                        }
-                    }
-                </style>
-                <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 grid-characteristics g-4 mb-4">
-                    <div class="col">
-                        <span class="char-label">Série</span>
-                        <div class="char-value">{{ $emission->series ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Número da emissão</span>
-                        <div class="char-value">{{ $emission->emission_number ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Emissor</span>
-                        <div class="char-value">{{ $emission->issuer ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Coordenador Líder</span>
-                        <div class="char-value">{{ $emission->lead_coordinator ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Agente Fiduciário</span>
-                        <div class="char-value">{{ $emission->trustee_agent ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Data de Emissão</span>
-                        <div class="char-value">{{ optional($emission->issue_date)->format('d/m/Y') ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Data de Vencimento</span>
-                        <div class="char-value">{{ optional($emission->maturity_date)->format('d/m/Y') ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Remuneração</span>
-                        <div class="char-value">{{ $emission->remuneration ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Tipo de Oferta</span>
-                        <div class="char-value">{{ $emission->offer_type ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Segmento</span>
-                        <div class="char-value">{{ $emission->segment ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Concentração</span>
-                        <div class="char-value">{{ $emission->concentration ?? 'N/A' }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Preço de emissão</span>
-                        <div class="char-value">R$ {{ number_format($emission->issued_price, 2, ',', '.') }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Quantidade Emitida</span>
-                        <div class="char-value">{{ number_format($emission->issued_quantity, 0, ',', '.') }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Quantidade integralizada</span>
-                        <div class="char-value">{{ number_format($emission->integralized_quantity, 0, ',', '.') }}</div>
-                    </div>
-                    <div class="col">
-                        <span class="char-label">Volume emitido</span>
-                        <div class="char-value">R$ {{ number_format($emission->issued_volume, 0, ',', '.') }}</div>
-                    </div>
+        <div class="surface-card p-4 p-lg-5 mb-4" id="pagamentos">
+            <div class="row g-4 align-items-end mb-4">
+                <div class="col-lg-8">
+                    <div class="section-kicker mb-2">Fluxo financeiro</div>
+                    <h2 class="h3 fw-bold text-brand mb-2">Fluxo de pagamentos e acompanhamento</h2>
+                    <p class="section-copy mb-0">Consolidação dos eventos financeiros da operação, incluindo histórico de PU e integralização.</p>
                 </div>
             </div>
 
-            <!-- Pagamentos Card -->
-            <div class="card card-opea p-4 shadow-sm" id="pagamentos">
-                <h3 class="h5 fw-bold text-purple mb-4">Fluxo de Pagamentos</h3>
-                
-                <div style="position: relative; height: 350px; width: 100%;" class="mb-4">
-                    @if(isset($emission->payments) && $emission->payments->count() > 0)
+            <div class="surface-card-soft p-4 mb-4" style="min-height: 360px;">
+                @if(isset($emission->payments) && $emission->payments->count() > 0)
+                    <div style="position: relative; height: 320px; width: 100%;">
                         <canvas id="paymentsChart"></canvas>
-                    @else
-                        <div class="d-flex align-items-center justify-content-center h-100 text-muted bg-light rounded" style="border: 1px dashed var(--border);">
-                            Nenhum dado de pagamento registrado até o momento.
-                        </div>
-                    @endif
-                </div>
+                    </div>
+                @else
+                    <div class="d-flex align-items-center justify-content-center rounded-4 border border-brand-subtle text-muted text-center px-4" style="min-height: 320px; border-style: dashed !important;">
+                        Nenhum dado de pagamento registrado até o momento.
+                    </div>
+                @endif
+            </div>
 
-                <!-- Resumo PU e Integralização -->
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="d-flex flex-column h-100 p-3 rounded" style="background-color: var(--opea-bg); border: 1px solid rgba(0,0,0,0.05);">
-                            @php
-                                $lastFiveDays = collect();
-                                for($i = 0; $i < 5; $i++) {
-                                    $date = \Carbon\Carbon::today()->subDays($i);
-                                    $pu = $emission->puHistories()->where('date', '<=', $date->format('Y-m-d'))->orderByDesc('date')->first();
-                                    $lastFiveDays->push([
-                                        'date' => $date,
-                                        'value' => $pu ? $pu->unit_value : null
-                                    ]);
-                                }
-                                $todayPu = $lastFiveDays->first()['value'] ?? $emission->current_pu;
-                            @endphp
-                            
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="char-label mb-0">PU Atual</span>
-                                <span class="fs-5 fw-bold" style="color: var(--gold);">
-                                    {{ $todayPu ? 'R$ ' . number_format($todayPu, 6, ',', '.') : '—' }}
-                                </span>
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="surface-card-soft h-100 p-4">
+                        @php
+                            $lastFiveDays = collect();
+                            for ($i = 0; $i < 5; $i++) {
+                                $date = \Carbon\Carbon::today()->subDays($i);
+                                $pu = $emission->puHistories()->where('date', '<=', $date->format('Y-m-d'))->orderByDesc('date')->first();
+                                $lastFiveDays->push([
+                                    'date' => $date,
+                                    'value' => $pu?->unit_value,
+                                ]);
+                            }
+                            $todayPu = $lastFiveDays->first()['value'] ?? $emission->current_pu;
+                        @endphp
+
+                        <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                            <div>
+                                <div class="section-kicker mb-1">PU atual</div>
+                                <div class="h4 fw-bold text-brand mb-0">{{ $todayPu ? 'R$ ' . number_format((float) $todayPu, 6, ',', '.') : '—' }}</div>
                             </div>
-                            
-                            @if($lastFiveDays->whereNotNull('value')->count() > 0)
-                            <div class="mt-2 pt-2 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
-                                <span class="char-label mb-2">Histórico (Últimos 5 dias)</span>
-                                <div class="d-flex flex-column gap-1">
-                                    @foreach($lastFiveDays as $dayPu)
-                                    <div class="d-flex justify-content-between small" style="font-size: 0.8rem;">
-                                        <span class="text-muted">{{ $dayPu['date']->format('d/m/Y') }}</span>
-                                        <span class="fw-medium text-purple">
-                                            {{ $dayPu['value'] ? 'R$ ' . number_format($dayPu['value'], 6, ',', '.') : '—' }}
-                                        </span>
-                                    </div>
-                                    @endforeach
+                            <span class="badge badge-soft px-3 py-2">Últimos 5 dias</span>
+                        </div>
+
+                        <div class="d-flex flex-column gap-2">
+                            @foreach($lastFiveDays as $dayPu)
+                                <div class="d-flex justify-content-between gap-3 rounded-4 bg-white px-3 py-2">
+                                    <span class="small text-muted">{{ $dayPu['date']->format('d/m/Y') }}</span>
+                                    <span class="small fw-semibold text-brand">{{ $dayPu['value'] ? 'R$ ' . number_format((float) $dayPu['value'], 6, ',', '.') : '—' }}</span>
                                 </div>
-                            </div>
-                            @endif
+                            @endforeach
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex flex-column h-100 p-3 rounded" style="background-color: var(--opea-bg); border: 1px solid rgba(0,0,0,0.05);">
-                            @php
-                                $totalInt = isset($emission->integralizationHistories) && $emission->integralizationHistories()->count() > 0 
-                                            ? $emission->integralizationHistories()->sum('quantity') 
-                                            : null;
-                            @endphp
-                            
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="char-label mb-0">Integralização</span>
-                                <span class="fs-5 fw-bold text-purple">
-                                    {{ $totalInt ? number_format($totalInt, 0, ',', '.') : ($emission->integralization_status ?? '—') }}
-                                </span>
-                            </div>
-                            
-                            @if(isset($emission->integralizationHistories) && $emission->integralizationHistories()->count() > 0)
-                            <div class="mt-2 pt-2 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
-                                <span class="char-label mb-2">Histórico</span>
-                                <div class="d-flex flex-column gap-1">
-                                    @foreach($emission->integralizationHistories()->orderByDesc('date')->take(5)->get() as $intHistory)
-                                    <div class="d-flex justify-content-between small" style="font-size: 0.8rem;">
-                                        <span class="text-muted">{{ $intHistory->date->format('d/m/Y') }}</span>
-                                        <span class="fw-medium text-purple">{{ number_format($intHistory->quantity, 0, ',', '.') }}</span>
-                                    </div>
-                                    @endforeach
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="surface-card-soft h-100 p-4">
+                        @php
+                            $integralizationHistory = $emission->integralizationHistories()->orderByDesc('date')->take(5)->get();
+                            $totalIntegralization = $emission->integralizationHistories()->sum('quantity');
+                        @endphp
+
+                        <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                            <div>
+                                <div class="section-kicker mb-1">Integralização</div>
+                                <div class="h4 fw-bold text-brand mb-0">
+                                    {{ $totalIntegralization ? number_format((float) $totalIntegralization, 0, ',', '.') : ($emission->integralization_status ?: '—') }}
                                 </div>
                             </div>
-                            @endif
+                            <span class="badge badge-soft px-3 py-2">Histórico</span>
+                        </div>
+
+                        <div class="d-flex flex-column gap-2">
+                            @forelse($integralizationHistory as $history)
+                                <div class="d-flex justify-content-between gap-3 rounded-4 bg-white px-3 py-2">
+                                    <span class="small text-muted">{{ $history->date->format('d/m/Y') }}</span>
+                                    <span class="small fw-semibold text-brand">{{ number_format((float) $history->quantity, 0, ',', '.') }}</span>
+                                </div>
+                            @empty
+                                <div class="rounded-4 bg-white px-3 py-4 small text-muted text-center">
+                                    Nenhum evento de integralização registrado.
+                                </div>
+                            @endforelse
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Documents Card -->
-            <div id="documentos" class="mt-5">
-                <div class="card card-opea p-4 shadow-sm">
-                    <h3 class="h5 fw-bold text-purple mb-4">Documentos</h3>
-                    
-                    @if($emission->documents->count() > 0)
+        <div class="surface-card p-4 p-lg-5" id="documentos">
+            <div class="row g-4 align-items-end mb-4">
+                <div class="col-lg-8">
+                    <div class="section-kicker mb-2">Consulta documental</div>
+                    <h2 class="h3 fw-bold text-brand mb-2">Documentos da operação</h2>
+                    <p class="section-copy mb-0">Arquivos publicados para consulta, com filtros por categoria e acesso direto ao download.</p>
+                </div>
+                @if($emission->documents->count() > 0)
                     @php
                         $allCategories = [
                             'anuncios' => 'Anúncios',
@@ -280,95 +250,101 @@
                         $docCategories = $emission->documents->pluck('category')
                             ->filter()
                             ->unique()
-                            ->sortBy(function($cat) use ($allCategories) {
-                                return strtolower($allCategories[$cat] ?? $cat);
-                            });
+                            ->sortBy(fn (string $category): string => strtolower($allCategories[$category] ?? $category));
                     @endphp
-                    
-                    @if($docCategories->isNotEmpty())
-                    <div class="mb-4">
-                        <select id="docCategoryFilter" class="form-select border-0 border-bottom rounded-0 text-muted shadow-none" style="padding-left: 0; padding-right: 32px; max-width: 320px; border-color: rgba(0,0,0,0.1) !important; background-position: right 0 center;">
-                            <option value="">Todos</option>
-                            @foreach($docCategories as $cat)
-                                <option value="{{ $cat }}">{{ $allCategories[$cat] ?? ucfirst($cat) }}</option>
-                            @endforeach
-                        </select>
+                    <div class="col-lg-4">
+                        @if($docCategories->isNotEmpty())
+                            <label for="docCategoryFilter" class="form-label">Categoria</label>
+                            <select id="docCategoryFilter" class="form-select">
+                                <option value="">Todas</option>
+                                @foreach($docCategories as $category)
+                                    <option value="{{ $category }}">{{ $allCategories[$category] ?? ucfirst($category) }}</option>
+                                @endforeach
+                            </select>
+                        @endif
                     </div>
-                    @endif
+                @endif
+            </div>
 
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead>
-                                <tr>
-                                    <th class="border-0 text-purple small fw-bold pb-3 text-center" style="font-size: 0.8rem; width: 120px;">Data</th>
-                                    <th class="border-0 text-purple small fw-bold pb-3 text-center" style="font-size: 0.8rem;">Título</th>
-                                    <th class="border-0 text-purple small fw-bold pb-3 text-center" style="font-size: 0.8rem; width: 80px;">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($emission->documents as $index => $doc)
-                                <tr class="doc-row" data-category="{{ $doc->category }}" style="{{ $index >= 3 ? 'display: none;' : '' }}">
-                                    <td class="text-muted small border-bottom py-3 text-center">{{ optional($doc->published_at)->format('d/m/Y') }}</td>
-                                    <td class="border-bottom text-center py-3">
-                                        <div class="text-muted small">{{ $doc->title }}</div>
-                                        @if($doc->description)
-                                        <div class="small opacity-50" style="font-size: 0.75rem;">{{ $doc->description }}</div>
-                                        @endif
+            @if($emission->documents->count() > 0)
+                <div class="table-shell">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 160px;">Data</th>
+                                <th>Título</th>
+                                <th style="width: 120px;" class="text-end">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($emission->documents as $index => $doc)
+                                <tr class="doc-row" data-category="{{ $doc->category }}" style="{{ $index >= 5 ? 'display: none;' : '' }}">
+                                    <td class="text-muted">{{ optional($doc->published_at)->format('d/m/Y') ?? '—' }}</td>
+                                    <td>
+                                        <div class="fw-semibold text-brand mb-1">{{ $doc->title }}</div>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            @if($doc->category)
+                                                <span class="badge px-3 py-2" style="background: rgba(212,175,55,0.12); border: 1px solid rgba(212,175,55,0.22); color: var(--brand);">
+                                                    {{ $allCategories[$doc->category] ?? ucfirst($doc->category) }}
+                                                </span>
+                                            @endif
+                                            @if($doc->description)
+                                                <span class="small text-muted">{{ $doc->description }}</span>
+                                            @endif
+                                        </div>
                                     </td>
-                                    <td class="text-center border-bottom py-3">
-                                        <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="text-purple">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                    <td class="text-end">
+                                        <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-outline-brand btn-sm px-3">
+                                            Baixar
                                         </a>
                                     </td>
                                 </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    @else
-                    <div class="text-center py-5 opacity-50">
-                        <p class="mb-0">Nenhum documento disponível para esta operação.</p>
-                    </div>
-                    @endif
+                            @endforeach
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-
+            @else
+                <div class="surface-card-soft p-5 text-center text-muted">
+                    Nenhum documento disponível para esta operação.
+                </div>
+            @endif
         </div>
     </div>
-</div>
+</section>
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tabLinks = document.querySelectorAll('#emissionTabs .nav-link');
-    tabLinks.forEach(link => {
+
+    tabLinks.forEach(function(link) {
         link.addEventListener('click', function() {
-            tabLinks.forEach(l => l.classList.remove('active'));
+            tabLinks.forEach(function(item) {
+                item.classList.remove('active');
+            });
+
             this.classList.add('active');
         });
     });
 
     const docFilter = document.getElementById('docCategoryFilter');
-    if(docFilter) {
+
+    if (docFilter) {
         docFilter.addEventListener('change', function() {
-            const val = this.value;
+            const selectedCategory = this.value;
             const rows = document.querySelectorAll('.doc-row');
-            
-            if (val === '') {
-                // If "Todos" is selected, only show the first 3 recent documents
-                rows.forEach((row, index) => {
-                    row.style.display = index < 3 ? '' : 'none';
+
+            if (selectedCategory === '') {
+                rows.forEach(function(row, index) {
+                    row.style.display = index < 5 ? '' : 'none';
                 });
-            } else {
-                // If a specific category is selected, show all matching documents
-                rows.forEach(row => {
-                    if(row.dataset.category === val) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
+
+                return;
             }
+
+            rows.forEach(function(row) {
+                row.style.display = row.dataset.category === selectedCategory ? '' : 'none';
+            });
         });
     }
 });
@@ -378,12 +354,15 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const ctx = document.getElementById('paymentsChart');
-    if(!ctx) return;
+    const chartElement = document.getElementById('paymentsChart');
 
-    const labels = {!! json_encode($emission->payments->pluck('payment_date')->map(fn($d) => $d->format('d/m/Y'))) !!};
-    
-    new Chart(ctx, {
+    if (! chartElement) {
+        return;
+    }
+
+    const labels = {!! json_encode($emission->payments->pluck('payment_date')->map(fn($date) => $date->format('d/m/Y'))) !!};
+
+    new Chart(chartElement, {
         type: 'bar',
         data: {
             labels: labels,
@@ -391,30 +370,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 {
                     label: 'Prêmio',
                     data: {!! json_encode($emission->payments->pluck('premium_value')) !!},
-                    backgroundColor: '#d4af37', // Gold
-                    borderRadius: 4,
-                    barPercentage: 0.5
+                    backgroundColor: '#d4af37',
+                    borderRadius: 6,
+                    barPercentage: 0.52,
                 },
                 {
                     label: 'Juros',
                     data: {!! json_encode($emission->payments->pluck('interest_value')) !!},
-                    backgroundColor: '#5b667a', // Muted/Gray
-                    borderRadius: 4,
-                    barPercentage: 0.5
+                    backgroundColor: '#64748b',
+                    borderRadius: 6,
+                    barPercentage: 0.52,
                 },
                 {
                     label: 'Amortização Extraordinária',
                     data: {!! json_encode($emission->payments->pluck('extra_amortization_value')) !!},
-                    backgroundColor: '#4e2a4e', // Brand Dark/Purple
-                    borderRadius: 4,
-                    barPercentage: 0.5
+                    backgroundColor: '#1d3fb8',
+                    borderRadius: 6,
+                    barPercentage: 0.52,
                 },
                 {
                     label: 'Amortização',
                     data: {!! json_encode($emission->payments->pluck('amortization_value')) !!},
-                    backgroundColor: '#00205b', // Brand Navy
-                    borderRadius: 4,
-                    barPercentage: 0.5
+                    backgroundColor: '#00205b',
+                    borderRadius: 6,
+                    barPercentage: 0.52,
                 }
             ]
         },
@@ -428,16 +407,25 @@ document.addEventListener('DOMContentLoaded', function() {
             scales: {
                 x: {
                     stacked: true,
-                    grid: { display: false }
+                    grid: {
+                        display: false,
+                    },
+                    ticks: {
+                        color: '#5c6980',
+                    }
                 },
                 y: {
                     stacked: true,
-                    border: { display: false },
-                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                    border: {
+                        display: false,
+                    },
+                    grid: {
+                        color: 'rgba(0, 32, 91, 0.08)',
+                    },
                     ticks: {
-                        color: '#5b667a',
+                        color: '#5c6980',
                         callback: function(value) {
-                            return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                            return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
                         }
                     }
                 }
@@ -445,21 +433,33 @@ document.addEventListener('DOMContentLoaded', function() {
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { usePointStyle: true, boxWidth: 10, padding: 25, font: { family: 'Inter', size: 13 } }
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 10,
+                        padding: 18,
+                        color: '#00205b',
+                    }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(11, 18, 32, 0.9)',
-                    titleFont: { family: 'Inter', size: 14 },
-                    bodyFont: { family: 'Inter', size: 13 },
+                    backgroundColor: 'rgba(11, 18, 32, 0.92)',
                     padding: 12,
-                    cornerRadius: 8,
+                    cornerRadius: 10,
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            if (context.parsed.y !== null) {
-                                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }).format(context.parsed.y);
+
+                            if (label) {
+                                label += ': ';
                             }
+
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('pt-BR', {
+                                    style: 'currency',
+                                    currency: 'BRL',
+                                    minimumFractionDigits: 2
+                                }).format(context.parsed.y);
+                            }
+
                             return label;
                         }
                     }

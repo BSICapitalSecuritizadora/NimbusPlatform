@@ -39,11 +39,27 @@ class InvestorDashboard extends Component
             ->count();
     }
 
+    #[Computed]
+    public function emissionsCount(): int
+    {
+        return $this->investor->emissions()->count();
+    }
+
+    #[Computed]
+    public function documentsCount(): int
+    {
+        return Document::query()
+            ->visibleToInvestor($this->investor->id)
+            ->count();
+    }
+
     public function render(): View
     {
         return view('livewire.investor.investor-dashboard', [
             'investor' => $this->investor,
             'newDocumentsCount' => $this->newDocumentsCount,
+            'emissionsCount' => $this->emissionsCount,
+            'documentsCount' => $this->documentsCount,
         ]);
     }
 }
