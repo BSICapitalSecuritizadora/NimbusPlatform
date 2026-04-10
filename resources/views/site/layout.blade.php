@@ -62,6 +62,19 @@
             transition: color 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
         }
 
+        a:focus-visible,
+        button:focus-visible,
+        .btn:focus-visible,
+        .nav-link:focus-visible,
+        .mega-link:focus-visible,
+        .footer-link:focus-visible,
+        .navbar-toggler:focus-visible,
+        .form-control:focus-visible,
+        .form-select:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 0.24rem rgba(0, 32, 91, 0.12), 0 0 0 0.42rem rgba(212, 175, 55, 0.18) !important;
+        }
+
         img {
             max-width: 100%;
         }
@@ -353,6 +366,20 @@
         .pagination .page-item.disabled .page-link {
             background: color-mix(in srgb, var(--surface) 88%, var(--border) 12%);
             color: color-mix(in srgb, var(--muted) 68%, transparent);
+        }
+
+        .result-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 999px;
+            padding: 0.55rem 0.85rem;
+            border: 1px solid color-mix(in srgb, var(--brand) 10%, var(--border));
+            background: color-mix(in srgb, var(--surface) 94%, var(--brand) 6%);
+            color: var(--brand);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
         }
 
         .navbar {
@@ -670,6 +697,11 @@
 
             .btn {
                 width: auto;
+            }
+
+            .result-chip {
+                font-size: 0.72rem;
+                padding: 0.5rem 0.8rem;
             }
 
             .pagination .page-item .page-link {

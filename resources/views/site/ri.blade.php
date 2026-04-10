@@ -2,6 +2,13 @@
 @section('title', 'Relações com Investidores — BSI Capital')
 
 @section('content')
+@php
+    $activeFilters = array_filter([
+        'Categoria' => $category ? ($categories[$category] ?? $category) : null,
+        'Busca' => $q !== '' ? '"'.$q.'"' : null,
+    ]);
+@endphp
+
 <section class="hero position-relative d-flex align-items-center" style="min-height: 38vh;">
     <div class="container position-relative">
         <div class="row g-4 align-items-end">
@@ -48,7 +55,7 @@
                                 class="form-control border-end-0"
                                 name="q"
                                 value="{{ $q }}"
-                                placeholder="Pesquisar documentos e comunicados"
+                                placeholder="Pesquisar documentos e comunicados..."
                             >
                             <button type="submit" class="input-group-text border-start-0 bg-transparent px-3">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -81,7 +88,20 @@
                     para a busca <strong>"{{ $q }}"</strong>
                 @endif
             </div>
-            <div class="small text-muted">Atualizações públicas, fatos relevantes e arquivos institucionais.</div>
+            <div class="d-flex flex-wrap gap-2">
+                @if($activeFilters !== [])
+                    <a href="{{ route('site.ri') }}" class="btn btn-outline-brand btn-sm px-4">Limpar filtros</a>
+                @endif
+                <span class="result-chip">{{ $docs->currentPage() }} / {{ $docs->lastPage() }} página(s)</span>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            @forelse($activeFilters as $label => $value)
+                <span class="result-chip">{{ $label }}: {{ $value }}</span>
+            @empty
+                <span class="result-chip">Sem filtros ativos</span>
+            @endforelse
         </div>
 
         <div class="d-flex flex-column gap-3">
@@ -113,8 +133,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-lg-auto px-3 px-lg-4 pb-3 pb-lg-0">
-                            <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-brand btn-sm px-4" download>
+                        <div class="col-12 col-lg-auto px-3 px-lg-4 pb-3 pb-lg-0 d-grid">
+                            <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-brand btn-sm px-4 d-block text-center" download>
                                 Baixar
                             </a>
                         </div>
@@ -143,7 +163,7 @@
             <div class="row g-0 align-items-center">
                 <div class="col-lg-8">
                     <div class="p-4 p-lg-5">
-                        <div class="section-kicker mb-2">Canal RI</div>
+                        <div class="section-kicker mb-2">Canal de contato com investidores</div>
                         <h2 class="h3 fw-bold text-white mb-3">Precisa de apoio sobre documentos públicos ou comunicados?</h2>
                         <p class="text-white-50 mb-0">
                             Entre em contato com nossa equipe para esclarecimentos sobre publicações, informações institucionais e temas de relacionamento com investidores.

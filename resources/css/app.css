@@ -67,6 +67,15 @@
         color: #0f172a;
     }
 
+    a:focus-visible,
+    button:focus-visible,
+    [role='button']:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+        @apply outline-hidden ring-2 ring-brand-300 ring-offset-2 ring-offset-white dark:ring-gold-400 dark:ring-offset-zinc-950;
+    }
+
     .dark body {
         background:
             radial-gradient(circle at top left, rgba(53, 94, 216, 0.12), transparent 26%),

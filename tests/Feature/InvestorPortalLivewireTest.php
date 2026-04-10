@@ -99,6 +99,8 @@ it('renders the investor documents page through a full-page livewire component',
 it('loads pagination translations in portuguese', function () {
     expect(__('pagination.previous'))->toBe('Anterior');
     expect(__('pagination.next'))->toBe('Próxima');
+    expect(__('Showing'))->toBe('Exibindo');
+    expect(__('results'))->toBe('resultados');
 });
 
 it('can reset investor document filters without leaving the page', function () {

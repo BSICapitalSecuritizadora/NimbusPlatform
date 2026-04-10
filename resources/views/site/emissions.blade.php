@@ -2,6 +2,15 @@
 @section('title', 'Emissões — BSI Capital')
 
 @section('content')
+@php
+    $activeFilters = array_filter([
+        'Busca' => ($q ?? '') !== '' ? '"'.($q ?? '').'"' : null,
+        'Tipo' => ($type ?? '') !== '' ? $type : null,
+        'Data de emissão' => ($issue_date_order ?? '') !== '' ? ($issue_date_order === 'desc' ? 'Mais recente para mais antiga' : 'Mais antiga para mais recente') : null,
+        'Data de vencimento' => ($maturity_date_order ?? '') !== '' ? ($maturity_date_order === 'desc' ? 'Mais recente para mais antiga' : 'Mais antiga para mais recente') : null,
+    ]);
+@endphp
+
 <section class="hero position-relative d-flex align-items-center" style="min-height: 34vh;">
     <div class="container">
         <div class="row g-4 align-items-end">
@@ -68,6 +77,32 @@
             </div>
         </div>
 
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-4">
+            <div class="section-copy">
+                <strong>{{ $emissions->total() }}</strong> operação(ões) pública(s)
+                @if($activeFilters !== [])
+                    com filtros ativos para leitura dirigida
+                @else
+                    disponíveis para consulta pública
+                @endif
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+                @if($activeFilters !== [])
+                    <a href="{{ route('site.emissions') }}" class="btn btn-outline-brand btn-sm px-4">Limpar filtros</a>
+                @endif
+                <span class="result-chip">{{ $emissions->currentPage() }} / {{ $emissions->lastPage() }} página(s)</span>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            @forelse($activeFilters as $label => $value)
+                <span class="result-chip">{{ $label }}: {{ $value }}</span>
+            @empty
+                <span class="result-chip">Sem filtros ativos</span>
+            @endforelse
+        </div>
+
         <div class="row g-4">
             @forelse($emissions as $e)
                 <div class="col-md-6 col-xl-4">
@@ -77,6 +112,16 @@
                             <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                                 <div class="flex-grow-1">
                                     <div class="small text-uppercase text-muted fw-semibold mb-2">{{ $e->if_code ?? 'CRI' }}</div>
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        @if($e->type)
+                                            <span class="badge badge-soft px-3 py-2">{{ $e->type }}</span>
+                                        @endif
+                                        @if($e->status_label)
+                                            <span class="badge px-3 py-2" style="background: rgba(0,32,91,0.08); color: var(--brand); border: 1px solid rgba(0,32,91,0.12);">
+                                                {{ $e->status_label }}
+                                            </span>
+                                        @endif
+                                    </div>
                                     <h3 class="h5 fw-bold text-brand mb-0" style="line-height: 1.45; word-wrap: break-word;">{{ $e->name }}</h3>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-center flex-shrink-0 p-2" style="width: 64px; height: 64px; border-radius: 14px; background: rgba(0,32,91,0.06); color: var(--brand);">
@@ -125,21 +170,29 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card-footer bg-transparent border-0 p-3 p-lg-4 pt-0">
+                        <div class="card-footer bg-transparent border-0 p-3 p-lg-4 pt-0 d-grid">
                             <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand btn-sm w-100">Ver detalhes</a>
                         </div>
                     </div>
                 </div>
             @empty
                 <div class="col-12">
-                    <div class="card p-5 text-center text-muted">Nenhuma emissão pública cadastrada no momento.</div>
+                    <div class="card p-5 text-center text-muted">
+                        <div class="fw-semibold mb-2">Nenhuma operação corresponde aos filtros atuais.</div>
+                        <div class="small">Revise os critérios selecionados ou limpe a pesquisa para ampliar o universo de consulta.</div>
+                    </div>
                 </div>
             @endforelse
         </div>
 
-        <div class="mt-4">
-            {{ $emissions->links() }}
-        </div>
+        @if($emissions->hasPages())
+            <div class="mt-4 text-center small text-muted">
+                Exibindo <strong>{{ $emissions->firstItem() }}</strong> a <strong>{{ $emissions->lastItem() }}</strong> de <strong>{{ $emissions->total() }}</strong> operações
+            </div>
+            <div class="mt-3">
+                {{ $emissions->links() }}
+            </div>
+        @endif
     </div>
 </section>
 @endsection

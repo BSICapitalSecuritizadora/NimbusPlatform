@@ -1,3 +1,9 @@
+@php
+    $activeEmissionsCount = $emissions->where('status', 'active')->count();
+    $closedEmissionsCount = $emissions->where('status', 'closed')->count();
+    $otherEmissionsCount = $emissions->count() - $activeEmissionsCount - $closedEmissionsCount;
+@endphp
+
 <div class="space-y-6">
     <section class="bsi-shell-card p-6 lg:p-8">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -20,6 +26,48 @@
             </div>
         </div>
     </section>
+
+    <section class="grid gap-4 lg:grid-cols-3">
+        <article class="bsi-shell-card p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Status ativo</div>
+            <div class="mt-3 text-3xl font-semibold tracking-[-0.04em] text-brand-800">{{ $activeEmissionsCount }}</div>
+            <p class="mt-2 text-sm leading-7 text-zinc-600">Operações em acompanhamento corrente e com maior probabilidade de novas publicações.</p>
+        </article>
+
+        <article class="bsi-shell-card p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Status encerrado</div>
+            <div class="mt-3 text-3xl font-semibold tracking-[-0.04em] text-brand-800">{{ $closedEmissionsCount }}</div>
+            <p class="mt-2 text-sm leading-7 text-zinc-600">Operações fechadas, preservadas no portal para consulta histórica e rastreabilidade.</p>
+        </article>
+
+        <article class="bsi-shell-card p-5">
+            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Em observação</div>
+            <div class="mt-3 text-3xl font-semibold tracking-[-0.04em] text-brand-800">{{ $otherEmissionsCount }}</div>
+            <p class="mt-2 text-sm leading-7 text-zinc-600">Operações com outro status operacional, úteis para leitura de pipeline ou transição de carteira.</p>
+        </article>
+    </section>
+
+    @if ($emissions->isNotEmpty() && $activeEmissionsCount === 0)
+        <section class="bsi-portal-surface p-6 lg:p-7">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-start gap-4">
+                    <span class="mt-1 flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+                        <flux:icon.clock class="size-6" />
+                    </span>
+                    <div>
+                        <h2 class="text-xl font-semibold tracking-[-0.03em] text-brand-800">Nenhuma operação ativa no momento</h2>
+                        <p class="mt-2 max-w-2xl text-sm leading-7 text-zinc-600">
+                            As emissões vinculadas ao seu cadastro seguem disponíveis para consulta, mas nenhuma delas está marcada como ativa neste instante.
+                        </p>
+                    </div>
+                </div>
+
+                <flux:button variant="primary" as="a" href="{{ route('investor.documents') }}" class="!rounded-full !px-5">
+                    Ver documentos
+                </flux:button>
+            </div>
+        </section>
+    @endif
 
     @if ($emissions->isEmpty())
         <section class="bsi-shell-card p-10 text-center">
@@ -102,6 +150,27 @@
                     </div>
                 </article>
             @endforeach
+        </section>
+
+        <section class="bsi-shell-card p-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="max-w-2xl">
+                    <div class="bsi-kicker mb-2">Próximo passo</div>
+                    <h2 class="text-2xl font-semibold tracking-[-0.04em] text-brand-800">Cruze operações com a trilha documental</h2>
+                    <p class="mt-3 text-sm leading-7 text-zinc-600">
+                        Para leitura mais completa, combine a consulta das emissões com os documentos publicados no portal e acompanhe os eventos mais recentes da carteira.
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <flux:button variant="primary" as="a" href="{{ route('investor.documents') }}" class="!rounded-full !px-5">
+                        Ir para documentos
+                    </flux:button>
+                    <flux:button variant="subtle" as="a" href="{{ route('investor.dashboard') }}" class="!rounded-full !px-5">
+                        Voltar ao início
+                    </flux:button>
+                </div>
+            </div>
         </section>
     @endif
 </div>

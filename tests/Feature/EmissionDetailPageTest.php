@@ -3,6 +3,7 @@
 use App\Models\Document;
 use App\Models\Emission;
 use App\Models\IntegralizationHistory;
+use App\Models\Payment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -83,4 +84,28 @@ it('explains that only the latest five documents are highlighted by default', fu
     $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
         ->assertSee('Exibindo os 5 documentos mais recentes por padrão');
+});
+
+it('renders the payment flow with the legacy chart model', function () {
+    $emission = Emission::factory()->active()->create([
+        'name' => 'CRI Fluxo',
+        'type' => 'CRI',
+        'if_code' => 'IF-FLUXO-01',
+        'is_public' => true,
+    ]);
+
+    Payment::query()->create([
+        'emission_id' => $emission->id,
+        'payment_date' => '2025-01-15',
+        'premium_value' => 1000,
+        'interest_value' => 250,
+        'amortization_value' => 3000,
+        'extra_amortization_value' => 500,
+    ]);
+
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertSee('paymentsChart')
+        ->assertSee('cdn.jsdelivr.net/npm/chart.js')
+        ->assertSee('ticks: { display: false }', false);
 });

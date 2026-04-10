@@ -3,18 +3,16 @@
 namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
-use App\Models\Document;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class PublicDocumentsController extends Controller
 {
-    public function index()
+    public function index(Request $request): RedirectResponse
     {
-        $documents = Document::query()
-            ->visibleOnPublicSite()
-            ->orderByDesc('published_at')
-            ->orderByDesc('created_at')
-            ->paginate(20);
-
-        return view('site.public-documents', compact('documents'));
+        return redirect()->route('site.ri', array_filter([
+            'q' => $request->query('q'),
+            'category' => $request->query('category'),
+        ]));
     }
 }

@@ -16,6 +16,7 @@
         ['label' => 'Vencimento', 'value' => $emission->maturity_date?->format('d/m/Y') ?? '—'],
         ['label' => 'Volume emitido', 'value' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 2, ',', '.') : '—'],
     ];
+
 @endphp
 
 <section class="hero position-relative overflow-hidden" style="padding-top: 4.75rem; padding-bottom: 4rem;">
@@ -407,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    const labels = {!! json_encode($emission->payments->pluck('payment_date')->map(fn($date) => $date->format('d/m/Y'))) !!};
+    const labels = {!! json_encode($emission->payments->pluck('payment_date')->map(fn ($date) => $date->format('d/m/Y'))) !!};
 
     new Chart(chartElement, {
         type: 'bar',
@@ -463,18 +464,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 y: {
                     stacked: true,
+                    display: false,
                     border: {
                         display: false,
                     },
                     grid: {
-                        color: 'rgba(0, 32, 91, 0.08)',
+                        display: false,
                     },
-                    ticks: {
-                        color: '#5c6980',
-                        callback: function(value) {
-                            return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                        }
-                    }
+                    ticks: { display: false },
                 }
             },
             plugins: {
@@ -517,5 +514,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endif
+
 @endpush
 @endsection

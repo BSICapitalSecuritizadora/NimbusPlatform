@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
+use App\Actions\Emissions\ImportPaymentsFromSpreadsheet;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentsRelationManager extends RelationManager
 {
@@ -78,10 +82,42 @@ class PaymentsRelationManager extends RelationManager
                     ->money('BRL')
                     ->sortable(),
             ])
+            ->defaultSort('payment_date', 'desc')
             ->filters([
                 //
             ])
             ->headerActions([
+                \Filament\Actions\Action::make('import')
+                    ->label('Importar Planilha')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->form([
+                        FileUpload::make('file')
+                            ->label('Arquivo Excel (.xlsx)')
+                            ->disk('local')
+                            ->directory('imports')
+                            ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
+                            ->required(),
+                    ])
+                    ->action(function (array $data, RelationManager $livewire): void {
+                        $path = Storage::disk('local')->path($data['file']);
+
+                        try {
+                            $count = app(ImportPaymentsFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
+                        } catch (\Throwable) {
+                            Notification::make()
+                                ->title('Erro ao ler o arquivo')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Importação concluída!')
+                            ->body("{$count} pagamentos foram importados ou atualizados.")
+                            ->success()
+                            ->send();
+                    }),
                 \Filament\Actions\CreateAction::make(),
             ])
             ->actions([
