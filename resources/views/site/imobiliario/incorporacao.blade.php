@@ -48,8 +48,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Capital para fases iniciais</h3>
-                    <p class="text-muted mb-0">Estruturas voltadas ao reforço de caixa nas etapas iniciais do projeto, com disciplina financeira e aderência ao plano de negócios da incorporadora.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Eficiência de Equity</h3>
+                    <p class="text-muted mb-0">Estruturas de crédito desenhadas para reduzir a necessidade de aporte de capital próprio nas fases iniciais, preservando o caixa para novos lançamentos.</p>
                 </div>
             </div>
 
@@ -58,18 +58,18 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">CRI de produção</h3>
-                    <p class="text-muted mb-0">Estruturação lastreada na carteira de recebíveis do empreendimento, com liberações e controles aderentes ao andamento físico-financeiro da obra.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">CRI de Produção</h3>
+                    <p class="text-muted mb-0">Securitização lastreada na carteira de recebíveis do empreendimento, com liberações e controles aderentes ao andamento físico-financeiro da obra.</p>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM12 8v8M8 12h8"/></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento e transparência</h3>
-                    <p class="text-muted mb-0">Gestão dos recebíveis de venda, da conta vinculada e das obrigações da operação, com visibilidade para os participantes e foco em conformidade.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança Fiduciária</h3>
+                    <p class="text-muted mb-0">Monitoramento do Patrimônio de Afetação e contas centralizadoras, assegurando que o fluxo de caixa do projeto seja aplicado com transparência.</p>
                 </div>
             </div>
         </div>
