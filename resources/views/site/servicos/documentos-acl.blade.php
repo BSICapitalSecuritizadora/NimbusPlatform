@@ -46,8 +46,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Permissões por perfil</h3>
-                    <p class="text-muted mb-0">As regras de acesso podem ser configuradas por investidor, operação, série ou perfil de usuário, de acordo com a política definida para cada documento.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança por Perfil de Acesso</h3>
+                    <p class="text-muted mb-0">Gestão Granular: Configuração de acessos segmentados por série, operação ou tipo de investidor, assegurando a confidencialidade e o sigilo operacional.</p>
                 </div>
             </div>
             
@@ -56,8 +56,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visibilidade segregada</h3>
-                    <p class="text-muted mb-0">Materiais públicos, restritos ou confidenciais podem seguir critérios distintos de exposição, reduzindo risco de acesso indevido e dispersão de informação.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Trilha de Custódia Digital</h3>
+                    <p class="text-muted mb-0">Auditabilidade Total: Cada interação com o repositório documental gera registros auditáveis, permitindo o acompanhamento da custódia informacional da operação.</p>
                 </div>
             </div>
 
@@ -66,8 +66,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Distribuição protegida</h3>
-                    <p class="text-muted mb-0">O acesso ao conteúdo é controlado com validações de permissão e registros de uso, fortalecendo segurança, conformidade e trilha de auditoria.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segurança e LGPD</h3>
+                    <p class="text-muted mb-0">Conformidade Informacional: Nossa infraestrutura está alinhada às exigências da LGPD e às melhores práticas de segurança de dados do mercado financeiro.</p>
                 </div>
             </div>
         </div>
