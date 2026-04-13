@@ -15,7 +15,7 @@
                     CRI e <span style="color: var(--gold);">Real Estate</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Emissão e gestão de CRI com cobertura jurídica, controle do lastro e acompanhamento da carteira — do fechamento da operação ao seu encerramento.
+                    Emissão e gestão de CRI com cobertura jurídica, controle do lastro e acompanhamento da carteira, do fechamento da operação ao seu encerramento.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Falar com nossa equipe
@@ -71,8 +71,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Covenants</h3>
-                    <p class="text-muted mb-0">Verificação periódica do lastro, das garantias e da performance financeira, com reporte de eventos relevantes ao agente fiduciário e investidores.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Diligência e Monitoramento</h3>
+                    <p class="text-muted mb-0">Diligência contínua do lastro, das garantias e dos covenants financeiros, com reporte imediato de eventos relevantes ao mercado.</p>
                 </div>
             </div>
 
@@ -97,7 +97,7 @@
             <div class="col-lg-6 order-lg-2">
                 <h2 class="h3 fw-bold text-dark mb-4">Gestão pós-emissão com controle e reporte</h2>
                 <p class="text-muted mb-4 lead">
-                    A BSI assume a gestão operacional do CRI após o fechamento — com controle de fluxo de caixa, monitoramento do lastro e cumprimento das obrigações previstas na escritura.
+                    A BSI assume a gestão operacional do CRI após o fechamento, com controle de fluxo de caixa, monitoramento do lastro e cumprimento das obrigações previstas na escritura.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
@@ -126,12 +126,6 @@
     @keyframes float {
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
-        100% { transform: translateY(0px); }
-    }
-</style>
-@endpush
-@endsection
-  50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
     }
 </style>

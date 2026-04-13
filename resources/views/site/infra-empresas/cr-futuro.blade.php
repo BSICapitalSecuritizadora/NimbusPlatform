@@ -76,8 +76,3 @@
     </div>
 </section>
 @endsection
-iv>
-        </div>
-    </div>
-</section>
-@endsection

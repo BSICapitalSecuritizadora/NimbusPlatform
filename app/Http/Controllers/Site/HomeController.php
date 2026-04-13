@@ -8,7 +8,7 @@ use App\Models\Emission;
 
 class HomeController extends Controller
 {
-    public function index()
+    public function index(): \Illuminate\Contracts\View\View
     {
         $emissions = Emission::query()
             ->where('is_public', true)
@@ -20,7 +20,7 @@ class HomeController extends Controller
             ->published()
             ->public()
             ->orderByDesc('published_at')
-            ->limit(3)
+            ->limit(5)
             ->get(['id', 'title', 'category', 'published_at', 'file_path', 'storage_disk']);
 
         return view('site.home', compact('emissions', 'riDocuments'));
