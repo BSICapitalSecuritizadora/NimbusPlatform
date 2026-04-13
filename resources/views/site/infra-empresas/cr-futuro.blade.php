@@ -48,8 +48,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Abrangência de projetos</h3>
-                    <p class="text-muted mb-0">A estrutura pode atender projetos de saneamento, energia, logística, mobilidade e outros ativos com fluxos previsíveis e horizonte de longo prazo.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Ativos de Longo Prazo</h3>
+                    <p class="text-muted mb-0">Estruturas ideais para projetos de infraestrutura com fluxos previsíveis e horizontes de maturidade estendidos (Project Finance).</p>
                 </div>
             </div>
             
@@ -58,8 +58,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Atratividade ao investidor</h3>
-                    <p class="text-muted mb-0">O instrumento nasce com potencial para ampliar a base de investidores e apoiar emissões com perfil compatível ao financiamento de infraestrutura.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acesso ao Mercado de Capitais</h3>
+                    <p class="text-muted mb-0">Instrumento desenhado para ampliar a base de investidores institucionais através de notas estruturadas com governança ativa.</p>
                 </div>
             </div>
 
@@ -68,10 +68,15 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Preparação regulatória</h3>
-                    <p class="text-muted mb-0">A BSI já trabalha em modelagens preliminares, critérios de elegibilidade e arquitetura operacional para acelerar a entrada desse instrumento no mercado.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência Regulatória</h3>
+                    <p class="text-muted mb-0">A BSI atua na vanguarda da estruturação do CR, definindo critérios de elegibilidade e arquitetura operacional para antecipar demandas do mercado.</p>
                 </div>
             </div>
+        </div>
+    </div>
+</section>
+@endsection
+iv>
         </div>
     </div>
 </section>

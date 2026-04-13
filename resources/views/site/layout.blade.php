@@ -152,6 +152,15 @@
             border-radius: var(--radius-card);
         }
 
+        .hero-metric-value {
+            font-size: clamp(1.5rem, 1.2rem + 0.9vw, 2rem);
+            line-height: 1.08;
+            letter-spacing: -0.04em;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            text-wrap: balance;
+        }
+
         .card-hover,
         .hover-lift,
         .emission-card,

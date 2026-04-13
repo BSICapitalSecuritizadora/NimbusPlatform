@@ -60,8 +60,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Estrutura documental</h3>
-                    <p class="text-muted mb-0">Organização e controle da documentação jurídica, financeira e operacional exigida na emissão — escritura, termo de securitização, cessão de recebíveis e registros.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segurança Jurídica e Colaterais</h3>
+                    <p class="text-muted mb-0">Rigor na formalização de garantias reais, cessão fiduciária e estruturação de veículos de securitização com plena aderência regulatória.</p>
                 </div>
             </div>
             
@@ -71,8 +71,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança e monitoramento</h3>
-                    <p class="text-muted mb-0">Verificação periódica do lastro, das garantias e dos covenants, com reporte de eventos relevantes ao agente fiduciário e aos investidores.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Covenants</h3>
+                    <p class="text-muted mb-0">Verificação periódica do lastro, das garantias e da performance financeira, com reporte de eventos relevantes ao agente fiduciário e investidores.</p>
                 </div>
             </div>
 
@@ -82,8 +82,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Modelagem financeira</h3>
-                    <p class="text-muted mb-0">Estruturação do fluxo de pagamentos, remuneração dos títulos e adequação das condições da emissão ao perfil do ativo, do cedente e da carteira.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Arquitetura Financeira</h3>
+                    <p class="text-muted mb-0">Modelagem de fluxos de caixa complexos, adequação de taxas e indexadores à natureza do ativo e ao perfil da carteira imobiliária.</p>
                 </div>
             </div>
         </div>
@@ -126,6 +126,12 @@
     @keyframes float {
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+    }
+</style>
+@endpush
+@endsection
+  50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
     }
 </style>

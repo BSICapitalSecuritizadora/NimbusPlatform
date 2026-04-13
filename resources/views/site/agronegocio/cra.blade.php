@@ -12,10 +12,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Agronegócio</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    CRA e <br><span style="color: var(--gold);">Recebíveis do Agro</span>
+                    CRA e <br><span style="color: var(--gold);">Financiamento das Cadeias do Agro</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Estruturação de Certificados de Recebíveis do Agronegócio com foco em governança, qualidade de lastro e eficiência na conexão entre o setor produtivo e o mercado de capitais.
+                    Soluções de crédito estruturado para o ecossistema agro, conectando o setor produtivo ao mercado de capitais através de lastros resilientes, garantias rurais e conformidade rigorosa com o ciclo da cultura.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Falar com nossa equipe

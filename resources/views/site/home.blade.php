@@ -12,37 +12,37 @@
             <div class="col-xl-7">
                 <div class="kicker mb-3">Securitização • Mercado de Capitais • Crédito Estruturado</div>
                 <h1 class="display-3 fw-bold mb-4">
-                    Securitização e crédito estruturado com rigor técnico, governança e presença ativa ao longo de toda a operação.
+                    Securitização e crédito estruturado com excelência técnica, governança rigorosa e presença ativa em todo o ciclo do ativo.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    A BSI Capital estrutura e coordena operações de crédito com critério técnico e gestão próxima — conectando emissores, originadores e investidores com transparência e consistência.
+                    A BSI Capital viabiliza o acesso ao mercado de capitais através de modelagens financeiras precisas e gestão de alta proximidade, conectando emissores e investidores com transparência operacional e consistência regulatória.
                 </p>
 
                 <div class="d-flex flex-wrap gap-3 mb-4">
-                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Enviar proposta</a>
-                    <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Explorar emissões</a>
+                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Consultar viabilidade</a>
+                    <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Pipeline de emissões</a>
                 </div>
 
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
                             <div class="kicker mb-2">Desde</div>
-                            <div class="fs-2 fw-bold">2009</div>
+                            <div class="hero-metric-value fw-bold">2009</div>
                             <div class="small text-white-50">Atuação contínua no mercado de capitais.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
                             <div class="kicker mb-2">Governança</div>
-                            <div class="fs-2 fw-bold">CVM</div>
+                            <div class="hero-metric-value fw-bold">CVM</div>
                             <div class="small text-white-50">Companhia aberta registrada e orientada por conformidade.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
-                            <div class="kicker mb-2">Operação</div>
-                            <div class="fs-2 fw-bold">Portal</div>
-                            <div class="small text-white-50">Documentos, prestação de informações e rastreabilidade.</div>
+                            <div class="kicker mb-2">Gestão de Ativos</div>
+                            <div class="hero-metric-value fw-bold">Controle</div>
+                            <div class="small text-white-50">Lastro, covenants e transparência com acompanhamento contínuo.</div>
                         </div>
                     </div>
                 </div>
@@ -60,22 +60,22 @@
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">1</div>
                             <div>
-                                <div class="fw-semibold text-white mb-1">Originação e estruturação</div>
-                                <div class="small text-white-50">Análise da tese, modelagem jurídico-financeira e coordenação da oferta junto aos participantes.</div>
+                                <div class="fw-semibold text-white mb-1">Arquitetura e Modelagem</div>
+                                <div class="small text-white-50">Desenho estratégico da tese, estruturação jurídico-financeira e coordenação integral da oferta.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">2</div>
                             <div>
-                                <div class="fw-semibold text-white mb-1">Gestão e acompanhamento</div>
-                                <div class="small text-white-50">Controle da rotina operacional, eventos de crédito, covenants e reporte periódico às partes.</div>
+                                <div class="fw-semibold text-white mb-1">Monitoramento de Riscos</div>
+                                <div class="small text-white-50">Gestão ativa de colaterais, acompanhamento de covenants e reporte de eventos de crédito.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">3</div>
                             <div>
-                                <div class="fw-semibold text-white mb-1">Tecnologia e transparência</div>
-                                <div class="small text-white-50">Plataforma própria com acesso segmentado, trilha de auditoria e visibilidade para emissores e investidores.</div>
+                                <div class="fw-semibold text-white mb-1">Infraestrutura e Transparência</div>
+                                <div class="small text-white-50">Plataforma própria para controle de dados, trilha de auditoria e visibilidade para investidores.</div>
                             </div>
                         </div>
                     </div>
@@ -104,7 +104,7 @@
             $industries = [
                 ['Imobiliário', 'CRI com estrutura adequada ao ativo — incorporação, loteamento, built-to-suit ou portfólio —, com gestão documental e acompanhamento da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
                 ['Agronegócio', 'CRA e operações de crédito estruturado para produtores, cooperativas e tradings, com aderência às particularidades de prazo, sazonalidade e garantia do agro.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
-                ['Infra & Empresas', 'Securitização de recebíveis e estruturação de dívida para empresas em expansão, refinanciamento ou captação de capital de giro com garantias reais ou performadas.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
+                ['Infra & Empresas', 'Estruturas de capital customizadas para Capex, projetos de expansão ou recomposição de passivo, utilizando recebíveis performados ou fluxos futuros como lastro estratégico.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
             ];
         @endphp
 
@@ -272,7 +272,7 @@
             </div>
 
             <div class="col-xl-5">
-                <div class="card h-100 overflow-hidden">
+                <div class="card overflow-hidden">
                     <div class="p-4 p-lg-5 border-bottom border-brand-subtle">
                         <div class="section-kicker mb-2">Relações com investidores</div>
                         <h3 class="h3 fw-bold text-brand mb-2">Divulgações ao mercado</h3>
