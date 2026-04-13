@@ -46,8 +46,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Relatórios periódicos</h3>
-                    <p class="text-muted mb-0">Consolidamos indicadores do lastro, inadimplência, pagamentos, garantias e posição financeira para acompanhamento recorrente das séries emitidas.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Performance</h3>
+                    <p class="text-muted mb-0">Consolidação detalhada de indicadores do lastro, curvas de inadimplência, fluxos de recebimento e status das garantias reais para cada série emitida.</p>
                 </div>
             </div>
             
@@ -56,8 +56,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Demonstrações e obrigações informacionais</h3>
-                    <p class="text-muted mb-0">Publicamos demonstrações e documentos informacionais de acordo com os requisitos regulatórios e os padrões contábeis aplicáveis.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Conformidade Regulatória</h3>
+                    <p class="text-muted mb-0">Reportes desenhados em estrita observância às normas da CVM e aos manuais de autorregulação, assegurando integridade informacional ao mercado.</p>
                 </div>
             </div>
 
@@ -66,8 +66,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visualização complementar</h3>
-                    <p class="text-muted mb-0">Os relatórios podem ser combinados com painéis de consulta no portal para facilitar leitura, filtros e acompanhamento por período ou operação.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência de Dados</h3>
+                    <p class="text-muted mb-0">Acesso a reportes customizados e painéis estruturados que permitem uma análise profunda do comportamento dos ativos ao longo do tempo.</p>
                 </div>
             </div>
         </div>

@@ -47,8 +47,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acesso controlado</h3>
-                    <p class="text-muted mb-0">Autenticação reforçada, sessões protegidas e controle granular de permissões para preservar a confidencialidade das informações do investidor.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segurança e Segregação de Dados</h3>
+                    <p class="text-muted mb-0">Protocolos de autenticação multifator e criptografia de ponta, garantindo a segregação de informações e o cumprimento rigoroso da LGPD e normas da CVM.</p>
                 </div>
             </div>
             
@@ -57,8 +57,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Documentação centralizada</h3>
-                    <p class="text-muted mb-0">Termos, relatórios, comunicados, assembleias e demais documentos da operação ficam disponíveis em um único ambiente de consulta.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Trilha de Auditoria e Documentos</h3>
+                    <p class="text-muted mb-0">Rastreabilidade Total: Repositório estruturado de termos, relatórios fiduciários e fatos relevantes, com trilha de acesso para suporte a processos de auditoria.</p>
                 </div>
             </div>
 
@@ -67,8 +67,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acompanhamento da operação</h3>
-                    <p class="text-muted mb-0">Informações sobre preço unitário, eventos financeiros, histórico de pagamentos e evolução da posição ficam disponíveis de forma contínua.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Ativos e PU</h3>
+                    <p class="text-muted mb-0">Consulta contínua de Preço Unitário (PU), cronogramas de amortização, rentabilidade acumulada e histórico financeiro detalhado das operações.</p>
                 </div>
             </div>
         </div>

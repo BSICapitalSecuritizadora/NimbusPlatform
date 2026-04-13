@@ -12,13 +12,13 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Agronegócio</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Soluções para <br><span style="color: var(--gold);">Cooperativas</span>
+                    Estruturas de Capital para <br><span style="color: var(--gold);">Cooperativas</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Estruturas financeiras voltadas a cooperativas agropecuárias, com foco em liquidez, governança e sustentação da operação junto aos cooperados.
+                    Fortalecemos a cadeia agroindustrial através de soluções de financiamento estruturado que otimizam o caixa da cooperativa, diversificam as fontes de funding e garantem liquidez para o fomento junto aos cooperados.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Falar com nossa equipe
+                    Consultar viabilidade estrutural
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -48,28 +48,28 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Antecipação estruturada de recebíveis</h3>
-                    <p class="text-muted mb-0">Conversão de recebíveis futuros em liquidez para capital de giro, com modelagem adequada ao fluxo financeiro da cooperativa.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monetização da Cadeia</h3>
+                    <p class="text-muted mb-0">Antecipação de fluxos futuros e recebíveis comerciais, convertendo o crédito mercantil em liquidez imediata para o giro da cooperativa.</p>
                 </div>
             </div>
             
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Estruturação com garantias</h3>
-                    <p class="text-muted mb-0">Modelagem com instrumentos de garantia e mecanismos de proteção compatíveis com a estrutura operacional e patrimonial da cooperativa.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Desintermediação e Funding</h3>
+                    <p class="text-muted mb-0">Acesso direto ao mercado de capitais através do CRA, reduzindo a dependência bancária e otimizando o custo médio de capital (WACC).</p>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acompanhamento operacional</h3>
-                    <p class="text-muted mb-0">Monitoramento financeiro e controle dos fluxos da operação para apoiar a gestão de safra, comercialização e armazenagem.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança de Crédito</h3>
+                    <p class="text-muted mb-0">Modelagem de garantias e monitoramento de riscos em conformidade com as particularidades do sistema cooperativista e as exigências do mercado.</p>
                 </div>
             </div>
         </div>
