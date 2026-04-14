@@ -10,7 +10,7 @@
                 <span class="badge mb-3 px-3 py-2 text-uppercase">Carreiras</span>
                 <h1 class="display-4 fw-bold mb-3">Construa sua trajetória com a <span style="color: var(--gold);">BSI Capital</span></h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Buscamos profissionais comprometidos com excelência, diligência e visão de longo prazo para atuar em um ambiente orientado por governança, execução e mercado de capitais.
+                    Faça parte da inteligência por trás do mercado de capitais: buscamos profissionais comprometidos com a excelência técnica e o rigor fiduciário para integrar uma equipe de alta performance em securitização.
                 </p>
             </div>
         </div>
@@ -22,9 +22,9 @@
         <div class="row g-4 align-items-end mb-5">
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Oportunidades</div>
-                <h2 class="h2 fw-bold text-brand mb-3">Vagas abertas com a mesma clareza e consistência do restante da plataforma</h2>
+                <h2 class="h2 fw-bold text-brand mb-3">Encontre seu espaço em um ambiente de alto rigor técnico e visão estratégica</h2>
                 <p class="section-copy mb-0">
-                    Organizamos as oportunidades em uma leitura objetiva, facilitando a identificação de área, localidade e tipo de vínculo logo no primeiro contato.
+                    Nossa estrutura de carreiras prioriza profissionais que buscam excelência na execução e o domínio das complexidades do mercado de securitização e crédito estruturado.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -47,7 +47,7 @@
                                 {{ $vacancy->location }}
                             </div>
                             <div class="mt-auto">
-                                <a href="{{ route('site.vacancies.show', $vacancy->slug) }}" class="btn btn-outline-brand w-100">Ver detalhes</a>
+                                <a href="{{ route('site.vacancies.show', $vacancy->slug) }}" class="btn btn-outline-brand w-100">Conhecer Oportunidade</a>
                             </div>
                         </div>
                     </div>

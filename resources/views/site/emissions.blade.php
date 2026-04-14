@@ -1,6 +1,61 @@
 @extends('site.layout')
 @section('title', 'Emissões — BSI Capital')
 
+@push('head')
+<style>
+    .emissions-pagination-shell {
+        margin-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border: 1px solid color-mix(in srgb, var(--brand) 10%, var(--border));
+        border-radius: 22px;
+        background: color-mix(in srgb, var(--surface) 95%, var(--brand) 5%);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .emissions-pagination-summary {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    .emissions-pagination-summary strong {
+        color: var(--brand);
+    }
+
+    .emissions-pagination-nav {
+        width: 100%;
+    }
+
+    .emissions-pagination-nav .pagination {
+        margin-top: 0;
+    }
+
+    @media (min-width: 992px) {
+        .emissions-pagination-shell {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .emissions-pagination-summary {
+            text-align: left;
+        }
+
+        .emissions-pagination-nav {
+            display: flex;
+            justify-content: flex-end;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 @php
     $activeFilters = array_filter([
@@ -16,9 +71,9 @@
         <div class="row g-4 align-items-end">
             <div class="col-lg-8">
                 <span class="badge mb-3 px-3 py-2 text-uppercase">Mercado primário</span>
-                <h1 class="display-4 fw-bold mb-3">Operações estruturadas e coordenadas pela BSI Capital</h1>
+                <h1 class="display-4 fw-bold mb-3">Pipeline de Operações: Inteligência em Securitização e Crédito Estruturado</h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Consulte as emissões públicas com dados operacionais, tipo de instrumento, status e documentação — organizados para análise direta por investidores e originadores.
+                    Acesse o histórico detalhado das emissões estruturadas pela BSI Capital. Transparência operacional e rigor técnico aplicados na conexão entre ativos de alta qualidade e o mercado de capitais.
                 </p>
             </div>
         </div>
@@ -31,9 +86,9 @@
             <div class="row g-4 align-items-end">
                 <div class="col-lg-5">
                     <div class="section-kicker mb-2">Pesquisa e filtros</div>
-                    <h2 class="h3 fw-bold text-brand mb-3">Filtre por instrumento, setor ou emissor</h2>
+                    <h2 class="h3 fw-bold text-brand mb-3">Análise e Comparação de Ativos</h2>
                     <p class="section-copy mb-0">
-                        Busca por nome, tipo de ativo ou critério operacional para identificar e comparar operações com precisão.
+                        Localize operações por instrumento, setor ou emissor. Nossa plataforma assegura o acesso a dados estruturados para fundamentar decisões de investimento e monitoramento de ativos.
                     </p>
                 </div>
                 <div class="col-lg-7">
@@ -171,7 +226,7 @@
                             </div>
                         </div>
                         <div class="card-footer bg-transparent border-0 p-3 p-lg-4 pt-0 d-grid">
-                            <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand btn-sm w-100">Ver detalhes</a>
+                            <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand btn-sm w-100">Consultar Operação</a>
                         </div>
                     </div>
                 </div>
@@ -186,11 +241,13 @@
         </div>
 
         @if($emissions->hasPages())
-            <div class="mt-4 text-center small text-muted">
+            <div class="emissions-pagination-shell">
+                <p class="emissions-pagination-summary">
                 Exibindo <strong>{{ $emissions->firstItem() }}</strong> a <strong>{{ $emissions->lastItem() }}</strong> de <strong>{{ $emissions->total() }}</strong> operações
-            </div>
-            <div class="mt-3">
-                {{ $emissions->links() }}
+                </p>
+                <div class="emissions-pagination-nav">
+                    {{ $emissions->links('site.ri-pagination') }}
+                </div>
             </div>
         @endif
     </div>

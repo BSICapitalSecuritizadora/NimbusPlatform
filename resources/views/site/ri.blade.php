@@ -1,6 +1,61 @@
 @extends('site.layout')
 @section('title', 'Relações com Investidores — BSI Capital')
 
+@push('head')
+<style>
+    .ri-pagination-shell {
+        margin-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        border: 1px solid color-mix(in srgb, var(--brand) 10%, var(--border));
+        border-radius: 22px;
+        background: color-mix(in srgb, var(--surface) 95%, var(--brand) 5%);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .ri-pagination-summary {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    .ri-pagination-summary strong {
+        color: var(--brand);
+    }
+
+    .ri-pagination-nav {
+        width: 100%;
+    }
+
+    .ri-pagination-nav .pagination {
+        margin-top: 0;
+    }
+
+    @media (min-width: 992px) {
+        .ri-pagination-shell {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .ri-pagination-summary {
+            text-align: left;
+        }
+
+        .ri-pagination-nav {
+            display: flex;
+            justify-content: flex-end;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 @php
     $activeFilters = array_filter([
@@ -16,12 +71,12 @@
                 <span class="badge mb-3 px-3 py-2 text-uppercase">Institucional</span>
                 <h1 class="display-4 fw-bold mb-3">Relações com <span style="color: var(--gold);">Investidores</span></h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Consulte documentos públicos, comunicados e publicações institucionais organizados para apoiar o acompanhamento transparente da BSI Capital por investidores e demais públicos interessados.
+                    Acesso integral a documentos públicos e comunicados oficiais, garantindo a transparência e a fidelidade informacional necessárias para o acompanhamento rigoroso das nossas operações.
                 </p>
             </div>
             <div class="col-lg-4">
                 <div class="surface-card-dark p-4">
-                    <div class="small text-uppercase text-white-50 fw-semibold mb-2">Visão rápida</div>
+                    <div class="small text-uppercase text-white-50 fw-semibold mb-2">Repositório Institucional</div>
                     <div class="d-flex justify-content-between align-items-end mb-2">
                         <div>
                             <div class="fs-2 fw-bold text-white">{{ $docs->total() }}</div>
@@ -42,9 +97,9 @@
             <div class="row g-4 align-items-end">
                 <div class="col-lg-7">
                     <div class="section-kicker mb-2">Consulta pública</div>
-                    <h2 class="h3 fw-bold text-brand mb-3">Documentos públicos organizados para consulta rápida</h2>
+                    <h2 class="h3 fw-bold text-brand mb-3">Repositório de Documentos Públicos: Navegação estruturada</h2>
                     <p class="section-copy mb-0">
-                        Pesquise comunicados e documentos institucionais por palavra-chave ou categoria, com uma navegação mais objetiva e compatível com o contexto de RI.
+                        Localize publicações oficiais por categoria ou palavra-chave, assegurando o acesso direto ao histórico documental da BSI Capital com precisão e clareza.
                     </p>
                 </div>
                 <div class="col-lg-5">
@@ -135,7 +190,7 @@
                         </div>
                         <div class="col-12 col-lg-auto px-3 px-lg-4 pb-3 pb-lg-0 d-grid">
                             <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-brand btn-sm px-4 d-block text-center" download>
-                                Baixar
+                                Acessar
                             </a>
                         </div>
                     </div>
@@ -149,10 +204,14 @@
         </div>
 
         @if($docs->hasPages())
-            <div class="mt-5 text-center small text-muted">
-                Exibindo <strong>{{ $docs->firstItem() }}</strong> a <strong>{{ $docs->lastItem() }}</strong> de <strong>{{ $docs->total() }}</strong> documentos
+            <div class="ri-pagination-shell">
+                <p class="ri-pagination-summary">
+                    Exibindo <strong>{{ $docs->firstItem() }}</strong> a <strong>{{ $docs->lastItem() }}</strong> de <strong>{{ $docs->total() }}</strong> documentos
+                </p>
+                <div class="ri-pagination-nav">
+                    {{ $docs->links('site.ri-pagination') }}
+                </div>
             </div>
-            {{ $docs->links() }}
         @endif
     </div>
 </section>

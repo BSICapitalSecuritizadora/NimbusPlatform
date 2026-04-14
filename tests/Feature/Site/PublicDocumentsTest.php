@@ -23,3 +23,17 @@ it('public site should only list published+public documents', function () {
         ->assertSee('OK')
         ->assertDontSee('NO');
 });
+
+it('shows only the custom document summary on the investor relations paginator', function () {
+    Document::factory()
+        ->count(16)
+        ->public()
+        ->create([
+            'category' => 'fatos_relevantes',
+        ]);
+
+    $this->get(route('site.ri'))
+        ->assertSuccessful()
+        ->assertSeeText('Exibindo 1 a 15 de 16 documentos')
+        ->assertDontSeeText('resultados');
+});

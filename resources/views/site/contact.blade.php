@@ -81,13 +81,13 @@
                     <div class="mb-4">
                         <div class="section-kicker mb-2">Formulário</div>
                         <h2 class="h3 fw-bold text-brand mb-2">Envie sua mensagem</h2>
-                        <p class="section-copy mb-0">As informações abaixo ajudam a direcionar seu atendimento com mais precisão e agilidade.</p>
+                        <p class="section-copy mb-0">As informações abaixo permitem um direcionamento técnico e seguro da sua demanda para a área responsável.</p>
                     </div>
 
                     <form action="#" method="POST" class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nome</label>
-                            <input type="text" class="form-control" placeholder="Informe seu nome" required>
+                            <input type="text" class="form-control" placeholder="Informe seu nome completo" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">E-mail</label>
@@ -100,7 +100,7 @@
                         <div class="col-md-6">
                             <label class="form-label">Assunto</label>
                             <select class="form-select">
-                                <option selected disabled>Selecione o assunto</option>
+                                <option selected disabled>Selecione a área de interesse</option>
                                 <option>Relações com investidores</option>
                                 <option>Comercial e novos negócios</option>
                                 <option>Compliance e canal de ética</option>
@@ -110,10 +110,10 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">Mensagem</label>
-                            <textarea class="form-control" rows="5" placeholder="Descreva como podemos ajudar" required></textarea>
+                            <textarea class="form-control" rows="5" placeholder="Descreva brevemente sua demanda ou tese de operação" required></textarea>
                         </div>
                         <div class="col-12 pt-2">
-                            <button type="submit" class="btn btn-brand btn-lg px-5">Enviar contato</button>
+                            <button type="submit" class="btn btn-brand btn-lg px-5">Iniciar Atendimento</button>
                         </div>
                     </form>
                 </div>
@@ -128,9 +128,9 @@
             <div class="row g-0">
                 <div class="col-lg-4 p-4 p-lg-5">
                     <div class="section-kicker mb-2">Localização</div>
-                    <h2 class="h3 fw-bold text-brand mb-3">Escritório BSI Capital</h2>
+                    <h2 class="h3 fw-bold text-brand mb-3">Sede Institucional</h2>
                     <p class="section-copy mb-0">
-                        Nossa base em São Paulo concentra relacionamento institucional, atividades operacionais e atendimento corporativo.
+                        Nossa base em São Paulo concentra a inteligência estratégica, operacional e fiduciária da BSI Capital.
                     </p>
                 </div>
                 <div class="col-lg-8">
