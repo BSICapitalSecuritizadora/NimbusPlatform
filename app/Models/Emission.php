@@ -21,6 +21,7 @@ class Emission extends Model
 
     public const STATUS_OPTIONS = [
         'draft' => 'Rascunho',
+        'default' => 'Default',
         'active' => 'Ativa',
         'closed' => 'Encerrada',
     ];

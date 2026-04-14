@@ -15,7 +15,7 @@
                     <span style="color: var(--gold);">Integrações</span> <br>& APIs
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Conectamos sistemas e agentes do ecossistema financeiro para automatizar rotinas operacionais, reduzir retrabalho e melhorar a consistência dos fluxos de informação.
+                    Conectividade estratégica para o mercado de capitais: automatizamos o fluxo de ativos e garantias através de APIs robustas, eliminando gargalos operacionais e assegurando a integridade do lastro.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Fale com nossa equipe
@@ -51,7 +51,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Infraestrutura de mercado</h3>
-                    <p class="text-muted mb-0">As integrações podem contemplar B3, escrituradores, custodiante e outros agentes envolvidos na manutenção, liquidação e acompanhamento das operações.</p>
+                    <p class="text-muted mb-0">Conexão nativa com a infraestrutura de mercado (B3, escrituradores e custodiantes), otimizando a liquidação e o reporte regulatório das emissões.</p>
                 </div>
             </div>
             
@@ -60,8 +60,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Automação de processamento</h3>
-                    <p class="text-muted mb-0">A captura e o tratamento automatizado de dados operacionais reduzem intervenções manuais e aumentam a confiabilidade das rotinas críticas.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Ativos</h3>
+                    <p class="text-muted mb-0">Processamento de Dados em Tempo Real: Captura automatizada de indicadores de performance e colaterais, permitindo um monitoramento dinâmico de covenants e eventos de crédito.</p>
                 </div>
             </div>
 
@@ -70,7 +70,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">APIs e eventos</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">APIs e eventos fiduciários</h3>
                     <p class="text-muted mb-0">A arquitetura de integração permite trocas estruturadas de dados, sincronização entre plataformas e fluxos customizados conforme a necessidade operacional.</p>
                 </div>
             </div>

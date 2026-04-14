@@ -18,7 +18,7 @@
                     Manutenção de uma trilha de auditoria contínua e imutável para todas as interações na plataforma, assegurando a integridade da custódia informacional e o pleno atendimento a requisitos de fiscalização.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Consultar protocolos de auditoria
+                    Conhecer protocolos de segurança
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -37,7 +37,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Rastreabilidade operacional e evidência de acesso</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">A trilha de auditoria organiza eventos críticos da plataforma para suportar governança, verificação interna e atendimento a demandas de controle.</p>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossa trilha de auditoria fornece o embasamento necessário para governança corporativa e verificação de eventos críticos em tempo real.</p>
         </div>
 
         <div class="row g-4">
@@ -67,7 +67,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Integridade Informacional</h3>
-                    <p class="text-muted mb-0">Segurança de Dados: Acompanhamento rigoroso do fluxo informacional para mitigar riscos operacionais e assegurar o sigilo de dados da operação.</p>
+                    <p class="text-muted mb-0">Segurança de Dados: Monitoramento do fluxo de documentos e dados sensíveis, assegurando a blindagem operacional das informações da emissão.</p>
                 </div>
             </div>
         </div>

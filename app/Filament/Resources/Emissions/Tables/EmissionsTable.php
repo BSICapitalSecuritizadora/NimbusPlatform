@@ -38,6 +38,7 @@ class EmissionsTable
                     ->formatStateUsing(fn (?string $state): string => Emission::STATUS_OPTIONS[$state] ?? (string) $state)
                     ->color(fn (?string $state): string => match ($state) {
                         'draft' => 'gray',
+                        'default' => 'warning',
                         'active' => 'success',
                         'closed' => 'danger',
                         default => 'gray',

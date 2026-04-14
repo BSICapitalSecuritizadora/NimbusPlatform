@@ -13,9 +13,20 @@ it('exposes the finalized emission core enums', function () {
         'CRI' => 'CRI',
     ])->and(Emission::STATUS_OPTIONS)->toBe([
         'draft' => 'Rascunho',
+        'default' => 'Default',
         'active' => 'Ativa',
         'closed' => 'Encerrada',
     ]);
+});
+
+it('resolves the default emission status label', function () {
+    $emission = Emission::query()->create([
+        'name' => 'Operacao Default CR 001',
+        'type' => 'CR',
+        'status' => 'default',
+    ]);
+
+    expect($emission->status_label)->toBe('Default');
 });
 
 it('stores the finalized emission defaults', function () {
