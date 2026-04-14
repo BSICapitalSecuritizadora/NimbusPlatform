@@ -99,7 +99,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Auditoria Interna</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Verificação independente da aderência dos processos e da efetividade dos controles</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Verificação independente com segregação de funções, assegurando a efetividade dos controles e a mitigação de conflitos de interesse.</div>
                             </div>
                         </div>
                     </div>
@@ -114,7 +114,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Manuais & Políticas Regulatórias</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #a5b4fc;">Documentos que formalizam diretrizes, procedimentos e referenciais aplicáveis à atuação da companhia.</p>
+            <p class="mx-auto" style="max-width: 600px; color: #a5b4fc;">Referenciais de Conduta: Documentos que consolidam nossa cultura fiduciária, estabelecendo padrões éticos e operacionais para a segurança do investidor.</p>
         </div>
 
         <div class="row g-4">
@@ -164,7 +164,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Risco de Crédito</h3>
-                    <p class="text-muted mb-0">Análise do lastro, da qualidade dos recebíveis e do histórico das contrapartes envolvidas para apoiar a solidez da estrutura.</p>
+                    <p class="text-muted mb-0">Avaliação rigorosa do lastro e formalização de garantias, com análise de qualidade dos recebíveis para assegurar a blindagem patrimonial da estrutura.</p>
                 </div>
             </div>
             
@@ -184,7 +184,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Risco Operacional</h3>
-                    <p class="text-muted mb-0">Controles internos, segregação de funções e trilhas de verificação para reduzir falhas de processo, sistemas e execução.</p>
+                    <p class="text-muted mb-0">Segregação de funções e trilhas de auditoria imutáveis, com controles internos desenhados para eliminar falhas de processo e garantir a integridade dos dados.</p>
                 </div>
             </div>
         </div>

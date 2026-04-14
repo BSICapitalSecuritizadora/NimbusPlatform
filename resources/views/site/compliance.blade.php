@@ -15,7 +15,7 @@
                     <span style="color: var(--gold);">Compliance</span> <br>& Ética Corporativa
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    A BSI Capital adota diretrizes de compliance e ética corporativa para sustentar a integridade de suas atividades, a conformidade regulatória e a confiança de seus públicos de relacionamento.
+                    Nosso programa de compliance é o alicerce fiduciário da BSI Capital, garantindo aderência regulatória estrita, integridade operacional e total segurança nas relações com o mercado.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Fale com nossa equipe
@@ -61,7 +61,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Conformidade CVM</h3>
-                    <p class="text-muted mb-0">Nossa atuação considera os normativos aplicáveis ao mercado de securitização e às atividades desempenhadas pela companhia, com atenção contínua às exigências regulatórias.</p>
+                    <p class="text-muted mb-0">Aderência rigorosa às instruções da Comissão de Valores Mobiliários (CVM), assegurando conformidade contínua em todas as etapas da estruturação e gestão dos ativos.</p>
                 </div>
             </div>
         </div>
@@ -114,7 +114,7 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Canal de Denúncia</span>
                 <h2 class="h3 fw-bold text-dark mb-3">Canal de Ética e Denúncia</h2>
-                <p class="text-muted mb-4">A BSI Capital disponibiliza um canal para recebimento de relatos sobre condutas inadequadas, irregularidades ou descumprimento de normas internas e regulatórias.</p>
+                <p class="text-muted mb-4">A BSI Capital disponibiliza um Canal de Ética independente para o relato seguro de desvios de conduta, fraudes ou descumprimento de normas. Garantimos o sigilo absoluto e a política de não retaliação ao denunciante de boa-fé.</p>
                 <p class="text-muted mb-4">As manifestações são tratadas com confidencialidade e encaminhadas conforme os procedimentos internos de apuração aplicáveis.</p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand d-inline-flex align-items-center gap-2 px-4 py-2">
                     Entrar em contato

@@ -122,7 +122,7 @@
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     </div>
                     <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Inovação</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Buscamos evolução contínua em processos, tecnologia e estruturação para entregar soluções mais eficientes e aderentes às necessidades do mercado.</p>
+                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Transformação Digital: Integramos tecnologia proprietária à inteligência fiduciária para automatizar processos, garantindo agilidade sem comprometer o rigor regulatório.</p>
                 </div>
             </div>
 
@@ -132,7 +132,7 @@
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     </div>
                     <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Foco no Cliente</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Construímos relações de proximidade com atendimento qualificado, leitura cuidadosa do contexto e soluções compatíveis com cada desafio.</p>
+                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Expertise sob demanda: Atuamos com uma leitura minuciosa da tese de crédito e do perfil dos ativos, entregando soluções de securitização personalizadas para as necessidades de cada emissor e investidor.</p>
                 </div>
             </div>
         </div>
@@ -171,8 +171,8 @@
                     <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: rgba(0,32,91,0.08); color: var(--brand);">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="font-size: 1rem; color: #0b1220;">Variáveis Econômicas</h4>
-                    <p class="text-muted mb-0" style="font-size: 0.9rem;">Monitoramento de fatores macroeconômicos e setoriais que influenciam o desempenho e a atratividade das operações.</p>
+                    <h4 class="fw-bold mb-2" style="font-size: 1rem; color: #0b1220;">Monitoramento de Mercado</h4>
+                    <p class="text-muted mb-0" style="font-size: 0.9rem;">Análise contínua dos ciclos macroeconômicos e setoriais, permitindo ajustes estratégicos e a preservação do valor das operações sob nossa gestão.</p>
                 </div>
             </div>
             <div class="col-md-6 col-lg-3">
@@ -180,8 +180,8 @@
                     <div class="mb-3 mx-auto d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 56px; height: 56px; background: rgba(0,32,91,0.08); color: var(--brand);">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="font-size: 1rem; color: #0b1220;">Risco & Oportunidade</h4>
-                    <p class="text-muted mb-0" style="font-size: 0.9rem;">Leitura equilibrada entre riscos, garantias, estrutura e oportunidades de execução em cada mandato.</p>
+                    <h4 class="fw-bold mb-2" style="font-size: 1rem; color: #0b1220;">Inteligência de Risco</h4>
+                    <p class="text-muted mb-0" style="font-size: 0.9rem;">Metodologia proprietária para precificação, estruturação de garantias e mitigação de riscos, assegurando o equilíbrio fiduciário de cada mandato.</p>
                 </div>
             </div>
         </div>
