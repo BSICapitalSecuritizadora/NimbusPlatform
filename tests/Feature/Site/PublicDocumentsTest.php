@@ -35,5 +35,7 @@ it('shows only the custom document summary on the investor relations paginator',
     $this->get(route('site.ri'))
         ->assertSuccessful()
         ->assertSeeText('Exibindo 1 a 15 de 16 documentos')
+        ->assertSee('site-pagination-mobile-list', false)
+        ->assertSee('site-pagination-mobile-link', false)
         ->assertDontSeeText('resultados');
 });

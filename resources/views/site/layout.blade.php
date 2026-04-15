@@ -679,6 +679,40 @@
             color: var(--brand);
         }
 
+        .site-pagination-mobile {
+            width: 100%;
+        }
+
+        .site-pagination-mobile-list {
+            width: 100%;
+            max-width: 24rem;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .site-pagination-mobile-list .page-item {
+            margin: 0;
+        }
+
+        .site-pagination-mobile-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 3rem;
+            width: 100%;
+            margin-left: 0 !important;
+            padding: 0.75rem 1rem;
+            border-radius: 16px !important;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .site-pagination-mobile-list .page-item.disabled .site-pagination-mobile-link {
+            opacity: 0.72;
+        }
+
         @media (max-width: 991.98px) {
             .navbar {
                 margin: 0.9rem 0.85rem 0;
@@ -731,6 +765,12 @@
 
             .emission-doc-card .btn {
                 width: 100%;
+            }
+        }
+
+        @media (max-width: 399.98px) {
+            .site-pagination-mobile-list {
+                grid-template-columns: 1fr;
             }
         }
     </style>

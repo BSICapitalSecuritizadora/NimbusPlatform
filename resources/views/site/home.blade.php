@@ -92,7 +92,7 @@
                 <div class="section-kicker mb-2">Atuação setorial</div>
                 <h2 class="display-6 fw-bold mb-3 text-brand">Atuação por setor, com aderência ao ativo e à operação</h2>
                 <p class="section-copy mb-0">
-                    Cada setor tem sua lógica de ativo, garantia e fluxo de caixa. Estruturamos operações com conhecimento setorial aplicado — não soluções genéricas.
+                    Cada setor exige uma lógica própria de ativo e fluxo de caixa. Estruturamos operações com inteligência setorial sob medida, respeitando as particularidades de cada negócio.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -102,9 +102,9 @@
 
         @php
             $industries = [
-                ['Imobiliário', 'CRI com estrutura adequada ao ativo — incorporação, loteamento, built-to-suit ou portfólio —, com gestão documental e acompanhamento da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
-                ['Agronegócio', 'CRA e operações de crédito estruturado para produtores, cooperativas e tradings, com aderência às particularidades de prazo, sazonalidade e garantia do agro.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
-                ['Infra & Empresas', 'Estruturas de capital customizadas para Capex, projetos de expansão ou recomposição de passivo, utilizando recebíveis performados ou fluxos futuros como lastro estratégico.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
+                ['Imobiliário', 'Estruturas de CRI moldadas ao perfil do ativo, abrangendo incorporação, loteamento, built-to-suit e portfólio, com gestão documental e monitoramento ativo da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
+                ['Agronegócio', 'Operações de CRA e crédito estruturado para produtores e cooperativas, respeitando a sazonalidade e as garantias específicas do agronegócio com agilidade e rigor técnico.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
+                ['Infra & Empresas', 'Estruturas de capital inteligentes para Capex, expansão ou recomposição de passivo, utilizando fluxos futuros ou recebíveis performados como lastro estratégico.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
             ];
         @endphp
 
@@ -147,13 +147,13 @@
             $cases = [
                 [
                     'title' => 'Estruturação CRI',
-                    'desc' => 'Modelagem jurídico-financeira, coordenação com escritório jurídico e agente fiduciário, controle documental e acompanhamento da carteira até o vencimento.',
+                    'desc' => 'Modelagem integral da tese, coordenação jurídica e financeira, controle de lastro e monitoramento ativo da operação até a liquidação final.',
                     'img' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'estruturacao-cri',
                 ],
                 [
                     'title' => 'Gestão de Documentos',
-                    'desc' => 'Ambiente segmentado por perfil de acesso — emissor, originador ou investidor — com repositório documental, histórico de interações e visibilidade sobre o status da operação.',
+                    'desc' => 'Plataforma com acessos dedicados para emissores, originadores e investidores, integrando custódia documental e histórico de interações com total visibilidade sobre a operação.',
                     'img' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'gestao-de-documentos',
                 ],
@@ -193,7 +193,7 @@
                 <div class="section-kicker mb-2">Mercado e transparência</div>
                 <h2 class="h2 fw-bold text-brand mb-3">Emissões e informações públicas com acesso direto</h2>
                 <p class="section-copy mb-0">
-                    Dados das operações, documentos regulatórios e comunicados ao mercado disponíveis em um único ponto de consulta — sem intermediários.
+                    Centralizamos dados operacionais, documentos regulatórios e comunicados oficiais em um portal de transparência unificado e intuitivo.
                 </p>
             </div>
             <div class="col-lg-6 text-lg-end">
@@ -276,7 +276,7 @@
                     <div class="p-4 p-lg-5 border-bottom border-brand-subtle">
                         <div class="section-kicker mb-2">Relações com investidores</div>
                         <h3 class="h3 fw-bold text-brand mb-2">Divulgações ao mercado</h3>
-                        <p class="section-copy mb-0">Fatos relevantes, relatórios periódicos e documentos da oferta publicados conforme obrigações regulatórias e de autorregulação.</p>
+                        <p class="section-copy mb-0">Asseguramos a integridade da operação com a publicação rigorosa de fatos relevantes e relatórios periódicos, em total aderência às normas regulatórias e de autorregulação.</p>
                     </div>
                     <div class="list-group list-group-flush">
                         @forelse($riDocuments as $d)
@@ -318,7 +318,7 @@
                         <div class="section-kicker mb-2">Relacionamento institucional</div>
                         <h2 class="h2 fw-bold text-white mb-3">Entre em contato com a BSI Capital</h2>
                         <p class="text-white-50 mb-0" style="max-width: 640px;">
-                            Para estruturação de operações, coordenação de oferta ou gestão de relações com investidores — respondemos com agilidade e direcionamos para a área responsável.
+                            Nossa equipe técnica está pronta para atuar na estruturação de operações, coordenação de ofertas ou relações com investidores, garantindo agilidade e suporte consultivo em cada contato.
                         </p>
                     </div>
                 </div>

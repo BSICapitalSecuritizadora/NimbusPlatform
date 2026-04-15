@@ -1,24 +1,24 @@
 @if ($paginator->hasPages())
-    <nav class="d-flex justify-items-center justify-content-between">
-        <div class="d-flex justify-content-between flex-fill d-sm-none">
-            <ul class="pagination">
+    <nav class="site-pagination d-flex justify-items-center justify-content-between">
+        <div class="site-pagination-mobile d-sm-none">
+            <ul class="pagination site-pagination-mobile-list">
                 @if ($paginator->onFirstPage())
-                    <li class="page-item disabled" aria-disabled="true">
-                        <span class="page-link">@lang('pagination.previous')</span>
+                    <li class="page-item disabled flex-fill" aria-disabled="true">
+                        <span class="page-link site-pagination-mobile-link">@lang('pagination.previous')</span>
                     </li>
                 @else
-                    <li class="page-item">
-                        <a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev">@lang('pagination.previous')</a>
+                    <li class="page-item flex-fill">
+                        <a class="page-link site-pagination-mobile-link" href="{{ $paginator->previousPageUrl() }}" rel="prev">@lang('pagination.previous')</a>
                     </li>
                 @endif
 
                 @if ($paginator->hasMorePages())
-                    <li class="page-item">
-                        <a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next">@lang('pagination.next')</a>
+                    <li class="page-item flex-fill">
+                        <a class="page-link site-pagination-mobile-link" href="{{ $paginator->nextPageUrl() }}" rel="next">@lang('pagination.next')</a>
                     </li>
                 @else
-                    <li class="page-item disabled" aria-disabled="true">
-                        <span class="page-link">@lang('pagination.next')</span>
+                    <li class="page-item disabled flex-fill" aria-disabled="true">
+                        <span class="page-link site-pagination-mobile-link">@lang('pagination.next')</span>
                     </li>
                 @endif
             </ul>

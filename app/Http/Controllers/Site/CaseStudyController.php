@@ -10,21 +10,27 @@ class CaseStudyController extends Controller
         'estruturacao-cri' => [
             'title' => 'Estruturação de CRI',
             'kicker' => 'Real Estate',
-            'image' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1200&auto=format&fit=crop',
-            'description' => 'Operação completa com governança e relatórios recorrentes, utilizando nossa infraestrutura para garantir o lastro perfeitamente auditável.',
+            'image' => 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200&auto=format&fit=crop',
+            'description' => 'Estruturação e gestão completa de Certificado de Recebíveis Imobiliários para incorporadora de médio porte, com foco em antecipação de recebíveis e governança ativa.',
+            'highlights' => [
+                ['label' => 'Volume Total', 'value' => 'R$ 42 Mi', 'icon' => 'currency-dollar'],
+                ['label' => 'Prazo Médio', 'value' => '60 Meses', 'icon' => 'calendar'],
+                ['label' => 'Rating Inicial', 'value' => 'A (bra)', 'icon' => 'shield-check'],
+                ['label' => 'Liquidação', 'value' => '45 Dias', 'icon' => 'lightning-bolt'],
+            ],
             'content' => '
-                <p class="lead">A BSI Capital atuou na estruturação de um Certificado de Recebíveis Imobiliários (CRI) de alta complexidade para um player relevante do setor de desenvolvimento urbano.</p>
+                <p class="lead">A BSI Capital atuou como securitizadora na estruturação de um Certificado de Recebíveis Imobiliários (CRI) para uma incorporadora com forte atuação no interior de São Paulo, visando a expansão de novos empreendimentos residenciais.</p>
                 <h3>O Desafio</h3>
-                <p>O cliente necessitava de uma estrutura que permitisse a antecipação de recebíveis de longo prazo com uma taxa competitiva, mantendo um rigoroso controle de garantias e fluxos financeiros para os investidores.</p>
+                <p>O cliente possuía uma carteira de recebíveis pulverizada e precisava de liquidez imediata para acelerar o ciclo de construção de novas torres. O desafio era estruturar uma operação que oferecesse segurança aos investidores institucionais, mesmo com um fluxo de caixa futuro sujeito a variações de inadimplência do setor imobiliário.</p>
                 <h3>A Solução</h3>
-                <p>Nossa equipe estruturou a operação em regime fiduciário, implementando um portal de transparência dedicado onde o agente fiduciário e os investidores podem acompanhar em tempo real a evolução do lastro.</p>
+                <p>Nossa equipe implementou uma estrutura de <strong>Regime Fiduciário</strong>, isolando o patrimônio da operação e garantindo a segregação de riscos. Além disso:</p>
                 <ul>
-                    <li>Estruturação jurídica e financeira completa.</li>
-                    <li>Gestão automatizada de recebíveis.</li>
-                    <li>Relatórios de governança mensais detalhados.</li>
+                    <li>Criamos um mecanismo de <strong>Fundo de Reserva</strong> dinâmico para mitigar riscos de inadimplência pontual.</li>
+                    <li>Desenvolvemos um dashboard de acompanhamento de lastro em tempo real para o Agente Fiduciário.</li>
+                    <li>Realizamos a coordenação completa entre custodiante, auditoria e investidores.</li>
                 </ul>
                 <h3>O Resultado</h3>
-                <p>A operação foi liquidada em tempo recorde, com 100% de captação e manutenção de um rating sólido ao longo de todo o período, consolidando a confiança do mercado na governança da BSI Capital.</p>
+                <p>A operação obteve demanda superior à oferta (oversubscription), permitindo uma redução na taxa final do cupom para o emissor. A governança implementada pela BSI Capital garantiu que todos os relatórios mensais fossem entregues com precisão de D+5, consolidando a confiança dos investidores no ativo.</p>
             ',
             'badges' => ['CRI', 'Real Estate', 'Governança'],
         ],
@@ -32,7 +38,13 @@ class CaseStudyController extends Controller
             'title' => 'Gestão de Documentos',
             'kicker' => 'Tecnologia & Controle',
             'image' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1200&auto=format&fit=crop',
-            'description' => 'Desenvolvimento de um portal customizado com controle de acesso granular e auditoria completa para todos os investidores da operação.',
+            'description' => 'Implementação de ecossistema digital para custódia e auditoria de documentos em operações complexas de securitização.',
+            'highlights' => [
+                ['label' => 'Arquivos Geridos', 'value' => '150k+', 'icon' => 'document-duplicate'],
+                ['label' => 'Tempo Auditoria', 'value' => '-70%', 'icon' => 'clock'],
+                ['label' => 'Acesso Seguro', 'value' => '24/7', 'icon' => 'lock-closed'],
+                ['label' => 'Disponibilidade', 'value' => '99.9%', 'icon' => 'cloud-upload'],
+            ],
             'content' => '
                 <p class="lead">Implementamos um ecossistema digital robusto para centralizar a custódia e auditoria de documentos sensíveis em operações de securitização.</p>
                 <h3>O Desafio</h3>
