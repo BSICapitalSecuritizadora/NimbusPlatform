@@ -16,6 +16,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
@@ -47,6 +48,17 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::hex('#d4af37'),
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
+            ->navigationGroups([
+                NavigationGroup::make('NimbusDocs'),
+                NavigationGroup::make('Auditoria'),
+                NavigationGroup::make('Comercial'),
+                NavigationGroup::make('Cadastro'),
+                NavigationGroup::make('Gestão'),
+                NavigationGroup::make('Gestão de Acesso'),
+                NavigationGroup::make('Recrutamento'),
+                NavigationGroup::make('Relatórios'),
+                NavigationGroup::make('Configurações'),
+            ])
             ->navigationItems([
                 NavigationItem::make('Visão Geral')
                     ->group('NimbusDocs')

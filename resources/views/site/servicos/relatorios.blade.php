@@ -15,11 +15,12 @@
                     <span style="color: var(--gold);">Relatórios</span> <br>Gerenciais
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Reportes periódicos e sob demanda com informações estruturadas sobre desempenho da operação, comportamento do lastro, garantias e eventos relevantes.
+                    <strong>Informação precisa para o controle total das operações.</strong><br>
+                    Oferecemos reportes estruturados e análises periódicas que traduzem o desempenho do lastro, o comportamento das garantias e os eventos críticos em dados acionáveis.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Fale com nossa equipe
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    Consultar Especialista
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" x2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
             
@@ -36,8 +37,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Prestação de informações com rigor técnico</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Os relatórios são estruturados para apoiar o acompanhamento da operação com clareza, consistência metodológica e aderência às exigências do mercado.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Transparência e rigor técnico</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossos relatórios são desenhados para apoiar o acompanhamento das operações com máxima clareza e aderência às exigências do mercado.</p>
         </div>
 
         <div class="row g-4">
@@ -46,8 +47,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Performance</h3>
-                    <p class="text-muted mb-0">Consolidação detalhada de indicadores do lastro, curvas de inadimplência, fluxos de recebimento e status das garantias reais para cada série emitida.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visibilidade de Performance</h3>
+                    <p class="text-muted mb-0">Consolidamos indicadores vitais como curvas de inadimplência, fluxos de recebimento e a saúde das garantias reais de cada série emitida.</p>
                 </div>
             </div>
             
@@ -56,8 +57,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Conformidade Regulatória</h3>
-                    <p class="text-muted mb-0">Reportes desenhados em estrita observância às normas da CVM e aos manuais de autorregulação, assegurando integridade informacional ao mercado.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Rigor e Conformidade</h3>
+                    <p class="text-muted mb-0">Garantimos reportes em total conformidade com as normas da CVM e diretrizes de autorregulação, assegurando transparência perante o mercado.</p>
                 </div>
             </div>
 
@@ -66,8 +67,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência de Dados</h3>
-                    <p class="text-muted mb-0">Acesso a reportes customizados e painéis estruturados que permitem uma análise profunda do comportamento dos ativos ao longo do tempo.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Análise Estratégica</h3>
+                    <p class="text-muted mb-0">Transformamos dados brutos em inteligência, oferecendo painéis e relatórios customizados que permitem uma leitura profunda do comportamento dos ativos.</p>
                 </div>
             </div>
         </div>

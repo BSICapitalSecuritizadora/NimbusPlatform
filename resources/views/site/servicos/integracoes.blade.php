@@ -15,10 +15,11 @@
                     <span style="color: var(--gold);">Integrações</span> <br>& APIs
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Conectividade estratégica para o mercado de capitais: automatizamos o fluxo de ativos e garantias através de APIs robustas, eliminando gargalos operacionais e assegurando a integridade do lastro.
+                    <strong>Conectividade inteligente para escalar suas operações.</strong><br>
+                    Automatizamos o fluxo de ativos e garantias através de APIs robustas que eliminam o trabalho manual, garantindo a integridade do lastro e a agilidade que o mercado de capitais exige.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Fale com nossa equipe
+                    Consultar Especialista
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -40,8 +41,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Integração para escala e disciplina operacional</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">A interoperabilidade entre sistemas fortalece a eficiência operacional, a qualidade dos dados e a continuidade dos processos críticos da operação.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Integração para escala e eficiência</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">A interoperabilidade entre sistemas fortalece a agilidade operacional, a qualidade dos dados e a continuidade dos processos críticos.</p>
         </div>
 
         <div class="row g-4">
@@ -50,8 +51,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Infraestrutura de mercado</h3>
-                    <p class="text-muted mb-0">Conexão nativa com a infraestrutura de mercado (B3, escrituradores e custodiantes), otimizando a liquidação e o reporte regulatório das emissões.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Conexão com Ecossistema</h3>
+                    <p class="text-muted mb-0">Integração nativa com os principais players do mercado — B3, escrituradores e custodiantes — agilizando a liquidação e o reporte regulatório.</p>
                 </div>
             </div>
             
@@ -60,8 +61,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Ativos</h3>
-                    <p class="text-muted mb-0">Processamento de Dados em Tempo Real: Captura automatizada de indicadores de performance e colaterais, permitindo um monitoramento dinâmico de covenants e eventos de crédito.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento Dinâmico</h3>
+                    <p class="text-muted mb-0">Captura automatizada de indicadores de performance e colaterais em tempo real, permitindo a gestão ágil de covenants e eventos de crédito.</p>
                 </div>
             </div>
 
@@ -70,8 +71,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">APIs e eventos fiduciários</h3>
-                    <p class="text-muted mb-0">A arquitetura de integração permite trocas estruturadas de dados, sincronização entre plataformas e fluxos customizados conforme a necessidade operacional.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Arquitetura Flexível</h3>
+                    <p class="text-muted mb-0">Nossas APIs permitem trocas estruturadas de dados e sincronização entre plataformas, criando fluxos customizados que se adaptam à sua operação.</p>
                 </div>
             </div>
         </div>

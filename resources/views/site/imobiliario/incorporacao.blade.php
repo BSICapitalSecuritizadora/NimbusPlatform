@@ -12,10 +12,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Imobiliário</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Capital estruturado para <br><span style="color: var(--gold);">Incorporação</span>
+                    Alavancagem e <br><span style="color: var(--gold);">Liquidez</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Estruturamos operações para incorporação imobiliária com governança, controle financeiro e instrumentos adequados para sustentar a evolução do projeto.
+                    Estruturas de crédito desenhadas para sustentar o ciclo completo da incorporação, unindo governança rigorosa à otimização do uso de capital próprio.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Falar com nossa equipe
@@ -38,8 +38,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Estruturas compatíveis com cada fase da incorporação</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Modelos de financiamento e acompanhamento ajustados ao ciclo do empreendimento, desde a fase inicial até a gestão dos recebíveis.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Ciclo de crédito inteligente</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Modelos de financiamento moldados à dinâmica da incorporação, com gestão ativa de garantias e suporte consultivo desde o lançamento até a quitação final.</p>
         </div>
 
         <div class="row g-4">
@@ -49,7 +49,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Eficiência de Equity</h3>
-                    <p class="text-muted mb-0">Estruturas de crédito desenhadas para reduzir a necessidade de aporte de capital próprio nas fases iniciais, preservando o caixa para novos lançamentos.</p>
+                    <p class="text-muted mb-0">Estruturas desenhadas para otimizar o retorno sobre o equity, reduzindo aportes iniciais de capital próprio e preservando a liquidez para novos lançamentos.</p>
                 </div>
             </div>
 
@@ -59,7 +59,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">CRI de Produção</h3>
-                    <p class="text-muted mb-0">Securitização lastreada na carteira de recebíveis do empreendimento, com liberações e controles aderentes ao andamento físico-financeiro da obra.</p>
+                    <p class="text-muted mb-0">Securitização de recebíveis com ciclos de desembolso sincronizados ao andamento físico-financeiro, garantindo fluxo de recursos aderente à curva de construção.</p>
                 </div>
             </div>
 
@@ -69,7 +69,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança Fiduciária</h3>
-                    <p class="text-muted mb-0">Monitoramento do Patrimônio de Afetação e contas centralizadoras, assegurando que o fluxo de caixa do projeto seja aplicado com transparência.</p>
+                    <p class="text-muted mb-0">Monitoramento técnico do Patrimônio de Afetação e das contas centralizadoras, assegurando segregação de riscos e transparência absoluta na aplicação dos recursos.</p>
                 </div>
             </div>
         </div>

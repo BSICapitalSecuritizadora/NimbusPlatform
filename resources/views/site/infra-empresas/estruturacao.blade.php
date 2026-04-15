@@ -15,10 +15,11 @@
                     Estruturação <br><span style="color: var(--gold);">sob Medida</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Modelamos estruturas de captação compatíveis com o estágio da empresa, o perfil do ativo e os objetivos de expansão, investimento ou reorganização financeira.
+                    <strong>Viabilizamos sua expansão com inteligência financeira.</strong><br>
+                    Modelamos estruturas de captação de recursos alinhadas ao estágio da sua empresa, ao perfil dos seus ativos e aos seus objetivos estratégicos.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Fale com nossa equipe
+                    Consultar Especialista
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -38,8 +39,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Estruturação alinhada à realidade da operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Cada captação exige uma combinação adequada de prazo, garantias, covenants e fluxo de amortização para sustentar a estratégia da companhia.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Estruturação alinhada à sua operação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Cada empresa é única. Criamos a combinação ideal de prazo, garantias e fluxo de amortização para que o serviço da dívida nunca comprometa a saúde do seu negócio.</p>
         </div>
 
         <div class="row g-4">
@@ -48,8 +49,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Modelagem integrada</h3>
-                    <p class="text-muted mb-0">Da definição da tese ao fechamento da operação, coordenamos estrutura jurídica, análise de crédito, documentação e governança da emissão.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Modelagem 360º (Integrada)</h3>
+                    <p class="text-muted mb-0">Coordenamos todo o ecossistema da operação: da definição da tese financeira à coordenação jurídica, análise de crédito, governança e fechamento.</p>
                 </div>
             </div>
             
@@ -58,8 +59,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Instrumentos sob medida</h3>
-                    <p class="text-muted mb-0">Debêntures, notas comerciais e outras estruturas podem ser combinadas de acordo com o objetivo da captação, o perfil de risco e a capacidade de serviço da dívida.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Instrumentos Estratégicos</h3>
+                    <p class="text-muted mb-0">Estruturamos operações via Debêntures, Notas Comerciais e veículos híbridos, definindo a melhor solução com base na capacidade de pagamento e no apetite de risco da companhia.</p>
                 </div>
             </div>
 
@@ -68,8 +69,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Assessoria estratégica</h3>
-                    <p class="text-muted mb-0">Avaliamos viabilidade, estrutura de garantias, requisitos regulatórios e posicionamento da oferta para construir operações consistentes e executáveis.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Assessoria de Ponta a Ponta</h3>
+                    <p class="text-muted mb-0">Analisamos a viabilidade regulatória e o posicionamento da oferta para garantir que sua operação seja executada com sucesso.</p>
                 </div>
             </div>
         </div>

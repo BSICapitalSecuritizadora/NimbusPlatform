@@ -15,10 +15,11 @@
                     <span style="color: var(--gold);">Compliance</span> <br>& Governança
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Estrutura de compliance e governança voltada à condução responsável das operações, com aderência regulatória, monitoramento e disciplina de controles.
+                    <strong>Integridade e rigor técnico para sustentar operações de longo prazo.</strong><br>
+                    Atuamos com uma estrutura de governança ativa, focada na detecção precoce de riscos e no cumprimento rigoroso das normas, garantindo segurança a todos os envolvidos.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Fale com nossa equipe
+                    Consultar Especialista
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -36,8 +37,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Controles e governança ao longo da operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">O ambiente de compliance sustenta a integridade da operação com políticas, monitoramento e procedimentos compatíveis com o mercado regulado.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Vigilância ativa ao longo da operação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nosso ambiente de compliance sustenta a integridade das operações com políticas e procedimentos rigorosos, compatíveis com o mercado regulado.</p>
         </div>
 
         <div class="row g-4">
@@ -46,8 +47,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Prevenção e KYC/KYP</h3>
-                    <p class="text-muted mb-0">Rigorosos procedimentos de KYC (Know Your Customer) e KYP (Know Your Partner), integrados a uma estrutura robusta de PLD/FTP baseada em risco.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Prevenção e Análise de Risco</h3>
+                    <p class="text-muted mb-0">Rigorosos protocolos de KYC e KYP integrados a uma estrutura de PLD/FTP, garantindo a idoneidade das partes e a mitigação de riscos reputacionais.</p>
                 </div>
             </div>
             
@@ -56,8 +57,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento de Covenants</h3>
-                    <p class="text-muted mb-0">Verificação sistemática das obrigações contratuais e financeiras, com foco na detecção precoce de eventos que possam impactar a higidez da operação.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Vigilância de Covenants</h3>
+                    <p class="text-muted mb-0">Monitoramento contínuo das obrigações contratuais e financeiras para detectar precocemente qualquer evento que possa comprometer a higidez da operação.</p>
                 </div>
             </div>
 
@@ -66,8 +67,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segregação e Independência</h3>
-                    <p class="text-muted mb-0">Processos desenhados para garantir a independência na tomada de decisão e a mitigação de conflitos de interesse, sustentando a confiança institucional.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Independência Institucional</h3>
+                    <p class="text-muted mb-0">Processos desenhados para garantir a segregação de funções e a independência na tomada de decisão, fortalecendo a confiança dos investidores.</p>
                 </div>
             </div>
         </div>

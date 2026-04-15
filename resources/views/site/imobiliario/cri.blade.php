@@ -12,10 +12,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Imobiliário</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    CRI e <span style="color: var(--gold);">Real Estate</span>
+                    Securitização <span style="color: var(--gold);">Imobiliária</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Emissão e gestão de CRI com cobertura jurídica, controle do lastro e acompanhamento da carteira, do fechamento da operação ao seu encerramento.
+                    Expertise integral na estruturação e gestão de CRI, unindo segurança jurídica, monitoramento rigoroso do lastro e governança ativa da carteira.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Falar com nossa equipe
@@ -49,8 +49,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Cobertura técnica em cada fase da operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Estruturamos e gerimos o CRI com processo definido, documentação controlada e comunicação regular entre originadores, agente fiduciário e investidores.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Inteligência técnica em cada fase da operação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Estruturamos e gerimos o CRI com governança ativa, documentação controlada e fluxo informacional contínuo entre todas as partes.</p>
         </div>
 
         <div class="row g-4">
@@ -61,7 +61,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segurança Jurídica e Colaterais</h3>
-                    <p class="text-muted mb-0">Rigor na formalização de garantias reais, cessão fiduciária e estruturação de veículos de securitização com plena aderência regulatória.</p>
+                    <p class="text-muted mb-0">Rigor na formalização de garantias reais e cessão fiduciária, desenhando veículos de securitização com conformidade normativa absoluta.</p>
                 </div>
             </div>
             
@@ -71,8 +71,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Diligência e Monitoramento</h3>
-                    <p class="text-muted mb-0">Diligência contínua do lastro, das garantias e dos covenants financeiros, com reporte imediato de eventos relevantes ao mercado.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento e Diligência</h3>
+                    <p class="text-muted mb-0">Diligência contínua do lastro e dos covenants financeiros, com prontidão no reporte de eventos de crédito ao mercado.</p>
                 </div>
             </div>
 
@@ -82,8 +82,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Arquitetura Financeira</h3>
-                    <p class="text-muted mb-0">Modelagem de fluxos de caixa complexos, adequação de taxas e indexadores à natureza do ativo e ao perfil da carteira imobiliária.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Engenharia Financeira</h3>
+                    <p class="text-muted mb-0">Modelagem de fluxos de caixa complexos com indexadores moldados à natureza do ativo e ao perfil estratégico da carteira.</p>
                 </div>
             </div>
         </div>
@@ -95,22 +95,22 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Gestão pós-emissão com controle e reporte</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Excelência Operacional e Transparência Pós-Fechamento</h2>
                 <p class="text-muted mb-4 lead">
-                    A BSI assume a gestão operacional do CRI após o fechamento, com controle de fluxo de caixa, monitoramento do lastro e cumprimento das obrigações previstas na escritura.
+                    Asseguramos a perenidade da operação através de uma gestão ativa. Nossa plataforma integra o controle de fluxos de caixa e o monitoramento de contas vinculadas ao cumprimento rigoroso das obrigações da escritura.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Relatórios periódicos de desempenho da carteira para investidores e agente fiduciário.</span>
+                        <span class="text-dark fw-medium">Relatórios granulares de desempenho da carteira para investidores e agente fiduciário.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Acompanhamento do lastro, da conta vinculada, dos covenants e dos eventos de crédito.</span>
+                        <span class="text-dark fw-medium">Monitoramento contínuo de lastro, covenants e eventos de crédito com suporte técnico.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Acesso segmentado via Portal do Investidor, com histórico documental e trilha de auditoria.</span>
+                        <span class="text-dark fw-medium">Acessos dedicados via Portal do Investidor, com custódia documental e trilha de auditoria.</span>
                     </li>
                 </ul>
             </div>

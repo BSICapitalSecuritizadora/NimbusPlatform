@@ -12,10 +12,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Infra & Empresas</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Certificados de <br><span style="color: var(--gold);">Recebíveis (CR)</span>
+                    Inovação em <br><span style="color: var(--gold);">Securitização: CR</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Estrutura em evolução para viabilizar captação de longo prazo em infraestrutura e operações empresariais, com lastro em recebíveis e aderência ao mercado de capitais.
+                    O novo padrão de captação para infraestrutura e grandes corporações. Viabilizamos estruturas versáteis para conectar diversos setores ao mercado de capitais.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Fale com nossa equipe

@@ -25,12 +25,15 @@ it('renders the branded investor login experience', function () {
         ->assertOk()
         ->assertSee('Portal do Investidor')
         ->assertSee('images/logo-mob.png', false)
-        ->assertSee('Entrar no portal')
-        ->assertSeeInOrder(['Acesso seguro', 'Voltar ao site'])
-        ->assertSee('Documentos, emissões e comunicação institucional em um único acesso.')
-        ->assertSee('Consulta desenhada para leitura objetiva')
-        ->assertSee('Acesso institucional')
-        ->assertSee('Canal institucional');
+        ->assertSee('Voltar ao site')
+        ->assertSee('Canal institucional')
+        ->assertSee('bsi-investor-credential-field', false)
+        ->assertDontSee('bg-zinc-50/70', false)
+        ->assertDontSee('Acesso institucional')
+        ->assertDontSee('Autenticação')
+        ->assertDontSee('Entrar no portal')
+        ->assertDontSee('Acesse documentos, emissões e comunicados vinculados ao seu relacionamento com investidores.')
+        ->assertDontSee('Consulta desenhada para leitura objetiva');
 });
 
 it('renders the investor dashboard through a full-page livewire component', function () {

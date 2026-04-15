@@ -12,10 +12,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Imobiliário</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Estruturação para <br><span style="color: var(--gold);">Loteamentos</span>
+                    Desenvolvimento <br><span style="color: var(--gold);">Urbano</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Soluções de crédito estruturado para aquisição de áreas, implantação de infraestrutura e aceleração do desenvolvimento de loteamentos residenciais e comerciais.
+                    Modelagem estratégica para aquisição de áreas, infraestrutura e aceleração de vendas, convertendo recebíveis futuros em liquidez imediata.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Falar com nossa equipe
@@ -38,8 +38,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Estrutura de capital alinhada ao projeto</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Modelos financeiros estruturados de acordo com o cronograma físico-financeiro, a dinâmica comercial e as garantias da operação.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Estrutura de capital sob medida</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Modelos financeiros desenhados com total aderência ao cronograma físico-financeiro, respeitando a dinâmica comercial e a curva de garantias de cada empreendimento.</p>
         </div>
 
         <div class="row g-4">
@@ -48,8 +48,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monetização de Recebíveis</h3>
-                    <p class="text-muted mb-0">Antecipação de fluxos de vendas (performados ou em comercialização), convertendo parcelas futuras em capital de giro imediato para novos projetos.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Liquidez e Monetização</h3>
+                    <p class="text-muted mb-0">Antecipação estratégica de fluxos de vendas (performados ou em comercialização), otimizando o capital de giro e potencializando a rentabilidade do projeto.</p>
                 </div>
             </div>
             
@@ -58,8 +58,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Financiamento de Infraestrutura</h3>
-                    <p class="text-muted mb-0">Estruturas de crédito sintonizadas ao cronograma físico-financeiro, garantindo que o aporte de capital acompanhe rigorosamente a evolução das obras.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Infraestrutura e Obras</h3>
+                    <p class="text-muted mb-0">Captação de recursos alinhada à evolução física do projeto, garantindo que o fluxo de caixa acompanhe rigorosamente os marcos construtivos e metas de infraestrutura.</p>
                 </div>
             </div>
 
@@ -68,8 +68,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Garantias e Governança</h3>
-                    <p class="text-muted mb-0">Modelagem com alienação fiduciária de cotas, do imóvel e cessão de fluxo de recebíveis, assegurando robustez jurídica e proteção aos investidores.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Robustez Jurídica</h3>
+                    <p class="text-muted mb-0">Modelagem avançada com alienação fiduciária de cotas, garantias reais e cessão de recebíveis, assegurando máxima proteção institucional à estrutura.</p>
                 </div>
             </div>
         </div>

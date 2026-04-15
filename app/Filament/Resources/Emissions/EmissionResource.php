@@ -30,7 +30,7 @@ class EmissionResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastro';
+    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
 
     protected static ?int $navigationSort = 20;
 

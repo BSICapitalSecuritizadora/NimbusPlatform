@@ -12,10 +12,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Agronegócio</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Estruturas de Capital para <br><span style="color: var(--gold);">Cooperativas</span>
+                    Capital Estratégico para <span style="color: var(--gold);">Cooperativas</span>
                 </h1>
                 <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
-                    Fortalecemos a cadeia agroindustrial através de soluções de financiamento estruturado que otimizam o caixa da cooperativa, diversificam as fontes de funding e garantem liquidez para o fomento junto aos cooperados.
+                    Soluções de financiamento estruturado que otimizam o caixa, diversificam as fontes de funding e garantem liquidez imediata para o suporte aos cooperados.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                     Consultar viabilidade estrutural
@@ -38,8 +38,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Estruturas aderentes ao sistema cooperativista</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Operações desenhadas de acordo com a dinâmica financeira, operacional e associativa das cooperativas do agronegócio.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Sincronia Operacional e Associativa</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Operações desenhadas para respeitar a dinâmica financeira e associativa, integrando-se perfeitamente aos ciclos de produção e pagamento da cooperativa.</p>
         </div>
 
         <div class="row g-4">
@@ -48,8 +48,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monetização da Cadeia</h3>
-                    <p class="text-muted mb-0">Antecipação de fluxos futuros e recebíveis comerciais, convertendo o crédito mercantil em liquidez imediata para o giro da cooperativa.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Liquidez da Cadeia</h3>
+                    <p class="text-muted mb-0">Antecipação estratégica de recebíveis comerciais, convertendo o crédito mercantil em liquidez imediata para sustentar o giro e o fomento aos cooperados.</p>
                 </div>
             </div>
             
@@ -58,8 +58,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Desintermediação e Funding</h3>
-                    <p class="text-muted mb-0">Acesso direto ao mercado de capitais através do CRA, reduzindo a dependência bancária e otimizando o custo médio de capital (WACC).</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Otimização do WACC</h3>
+                    <p class="text-muted mb-0">Acesso direto ao mercado de capitais via CRA, reduzindo a exposição bancária e captando recursos com taxas competitivas e aderentes ao balanço.</p>
                 </div>
             </div>
 
@@ -68,8 +68,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança de Crédito</h3>
-                    <p class="text-muted mb-0">Modelagem de garantias e monitoramento de riscos em conformidade com as particularidades do sistema cooperativista e as exigências do mercado.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Rigor Associativo</h3>
+                    <p class="text-muted mb-0">Modelagem de garantias e monitoramento de riscos em total conformidade com as particularidades do sistema cooperativista e as exigências do mercado.</p>
                 </div>
             </div>
         </div>

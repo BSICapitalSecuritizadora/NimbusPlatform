@@ -13,6 +13,7 @@
         $investorUser = auth('investor')->user();
         $isAuthenticatedInvestor = $investorUser instanceof \App\Models\Investor;
         $portalInitial = $isAuthenticatedInvestor ? strtoupper(mb_substr($investorUser->name, 0, 1)) : 'I';
+        $showInvestorHeader = $isAuthenticatedInvestor || ! request()->routeIs('investor.login');
     @endphp
 
     <div class="relative min-h-screen overflow-hidden">
@@ -20,64 +21,56 @@
         <div class="pointer-events-none absolute left-0 top-[18rem] h-[360px] w-[360px] rounded-full bg-brand-100/55 blur-3xl"></div>
         <div class="pointer-events-none absolute right-0 top-[7rem] h-[280px] w-[280px] rounded-full bg-gold-400/12 blur-3xl"></div>
 
-        <header class="relative z-20">
-            <div class="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
-                <div class="bsi-investor-header-surface flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div class="flex items-center justify-between gap-4">
-                        <a href="{{ $isAuthenticatedInvestor ? route('investor.dashboard') : route('investor.login') }}" class="flex min-w-0 items-center no-underline">
-                            <img src="{{ asset('images/logo-mob.png') }}" alt="BSI Capital" style="max-height: 44px;">
-                        </a>
-                    </div>
-
-                    @if($isAuthenticatedInvestor)
-                        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-end">
-                            <nav class="flex flex-wrap items-center gap-2">
-                                <a href="{{ route('investor.dashboard') }}" class="bsi-portal-nav-link {{ request()->routeIs('investor.dashboard') ? 'bsi-portal-nav-link-active' : '' }}">
-                                    <flux:icon.home class="size-4" />
-                                    <span>Início</span>
-                                </a>
-                                <a href="{{ route('investor.emissions') }}" class="bsi-portal-nav-link {{ request()->routeIs('investor.emissions') ? 'bsi-portal-nav-link-active' : '' }}">
-                                    <flux:icon.chart-bar class="size-4" />
-                                    <span>Minhas emissões</span>
-                                </a>
-                                <a href="{{ route('investor.documents') }}" class="bsi-portal-nav-link {{ request()->routeIs('investor.documents*') ? 'bsi-portal-nav-link-active' : '' }}">
-                                    <flux:icon.document-text class="size-4" />
-                                    <span>Documentos</span>
-                                </a>
-                            </nav>
-
-                            <div class="flex items-center gap-3 rounded-full border border-brand-100 bg-brand-50/80 px-3 py-2">
-                                <span class="flex size-10 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">
-                                    {{ $portalInitial }}
-                                </span>
-                                <div class="hidden min-w-0 sm:block">
-                                    <div class="truncate text-sm font-semibold text-brand-800">{{ $investorUser->name }}</div>
-                                    <div class="truncate text-xs text-zinc-500">{{ $investorUser->email }}</div>
-                                </div>
-                                <form method="POST" action="{{ route('investor.logout') }}">
-                                    @csrf
-                                    <flux:button variant="subtle" size="sm" type="submit" class="!rounded-full !px-4">
-                                        Sair
-                                    </flux:button>
-                                </form>
-                            </div>
-                        </div>
-                    @else
-                        <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-                            <span class="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 shadow-sm">
-                                <flux:icon.shield-check class="size-4" />
-                                <span>Acesso seguro</span>
-                            </span>
-                            <a href="{{ route('site.home') }}" class="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50/80 px-4 py-2 text-sm font-semibold text-brand-700 transition hover:border-gold-500/50 hover:bg-white">
-                                Voltar ao site
+        @if ($showInvestorHeader)
+            <header class="relative z-20">
+                <div class="mx-auto max-w-7xl px-4 pt-4 sm:px-6 lg:px-8">
+                    <div class="bsi-investor-header-surface flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="flex items-center justify-between gap-4">
+                            <a href="{{ $isAuthenticatedInvestor ? route('investor.dashboard') : route('investor.login') }}" class="flex min-w-0 items-center no-underline">
+                                <img src="{{ asset('images/logo-mob.png') }}" alt="BSI Capital" style="max-height: 44px;">
                             </a>
                         </div>
-                    @endif
-                </div>
-            </div>
-        </header>
 
-        <main class="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                        @if ($isAuthenticatedInvestor)
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-end">
+                                <nav class="flex flex-wrap items-center gap-2">
+                                    <a href="{{ route('investor.dashboard') }}" class="bsi-portal-nav-link {{ request()->routeIs('investor.dashboard') ? 'bsi-portal-nav-link-active' : '' }}">
+                                        <flux:icon.home class="size-4" />
+                                        <span>Início</span>
+                                    </a>
+                                    <a href="{{ route('investor.emissions') }}" class="bsi-portal-nav-link {{ request()->routeIs('investor.emissions') ? 'bsi-portal-nav-link-active' : '' }}">
+                                        <flux:icon.chart-bar class="size-4" />
+                                        <span>Minhas emissões</span>
+                                    </a>
+                                    <a href="{{ route('investor.documents') }}" class="bsi-portal-nav-link {{ request()->routeIs('investor.documents*') ? 'bsi-portal-nav-link-active' : '' }}">
+                                        <flux:icon.document-text class="size-4" />
+                                        <span>Documentos</span>
+                                    </a>
+                                </nav>
+
+                                <div class="flex items-center gap-3 rounded-full border border-brand-100 bg-brand-50/80 px-3 py-2">
+                                    <span class="flex size-10 items-center justify-center rounded-full bg-brand-700 text-sm font-bold text-white">
+                                        {{ $portalInitial }}
+                                    </span>
+                                    <div class="hidden min-w-0 sm:block">
+                                        <div class="truncate text-sm font-semibold text-brand-800">{{ $investorUser->name }}</div>
+                                        <div class="truncate text-xs text-zinc-500">{{ $investorUser->email }}</div>
+                                    </div>
+                                    <form method="POST" action="{{ route('investor.logout') }}">
+                                        @csrf
+                                        <flux:button variant="subtle" size="sm" type="submit" class="!rounded-full !px-4">
+                                            Sair
+                                        </flux:button>
+                                    </form>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </header>
+        @endif
+
+        <main class="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 {{ $showInvestorHeader ? '' : 'flex min-h-screen items-center justify-center' }}">
             @if (session('success'))
                 <div class="mb-6 rounded-[24px] border border-emerald-200 bg-emerald-50/90 px-5 py-4 text-sm font-medium text-emerald-700 shadow-sm">
                     {{ session('success') }}
