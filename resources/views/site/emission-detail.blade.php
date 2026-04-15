@@ -50,7 +50,7 @@
                 </div>
 
                 <p class="lead mb-0" style="max-width: 860px;">
-                    Consulte características da operação, fluxo de pagamentos, documentos e dados operacionais em uma leitura mais clara e consistente com a experiência institucional da BSI Capital.
+                    Detalhamento técnico completo da estrutura, cronograma de fluxos e documentos regulatórios. Centralizamos todas as informações vitais da emissão para garantir a rastreabilidade e o monitoramento preciso do ativo.
                 </p>
             </div>
 
@@ -107,8 +107,8 @@
             <div class="row g-4 align-items-end mb-4">
                 <div class="col-lg-8">
                     <div class="section-kicker mb-2">Características</div>
-                    <h2 class="h3 fw-bold text-brand mb-2">Informações essenciais da operação</h2>
-                    <p class="section-copy mb-0">Dados jurídicos, comerciais e operacionais organizados para leitura rápida e comparação direta.</p>
+                    <h2 class="h3 fw-bold text-brand mb-2">Ficha Técnica e Variáveis da Operação</h2>
+                    <p class="section-copy mb-0">Informações consolidadas sobre os aspectos jurídicos, comerciais e de governança. Dados estruturados para fundamentar o monitoramento contínuo e a análise de conformidade do ativo.</p>
                 </div>
             </div>
 
@@ -248,8 +248,8 @@
             <div class="row g-4 align-items-end mb-4">
                 <div class="col-lg-8">
                     <div class="section-kicker mb-2">Consulta documental</div>
-                    <h2 class="h3 fw-bold text-brand mb-2">Documentos da operação</h2>
-                    <p class="section-copy mb-0">Arquivos publicados para consulta, com filtros por categoria e acesso direto ao download.</p>
+                    <h2 class="h3 fw-bold text-brand mb-2">Repositório de Documentos e Atos da Operação</h2>
+                    <p class="section-copy mb-0">Acesso integral aos fatos relevantes, relatórios e documentos regulatórios da emissão. Utilize os filtros por categoria para navegar pelo histórico documental com total transparência e rastreabilidade.</p>
                 </div>
                 @if($documents->count() > 0)
                     @php
@@ -276,12 +276,11 @@
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
                     <div class="small text-muted">
                         @if($documents->count() > $documentDisplayLimit)
-                            Exibindo os {{ $documentDisplayLimit }} documentos mais recentes por padrão. Use o filtro por categoria para aprofundar a consulta.
+                            Exibindo os documentos mais recentes por padrão. Utilize o filtro para aprofundar a consulta.
                         @else
-                            {{ $documents->count() }} documento(s) disponível(is) para download imediato.
+                            {{ $documents->count() }} documento(s) disponível(is) para consulta técnica e download.
                         @endif
                     </div>
-                    <div class="small text-muted">A listagem prioriza arquivos publicados com acesso direto e leitura mais confortável no desktop e no mobile.</div>
                 </div>
 
                 <div class="d-grid gap-3 d-lg-none">

@@ -140,6 +140,27 @@ select:focus[data-flux-control] {
         @apply rounded-[28px] border border-zinc-200/80 bg-white/95 shadow-[0_20px_45px_rgba(0,32,91,0.08)] backdrop-blur;
     }
 
+    .bsi-investor-body {
+        background:
+            radial-gradient(circle at top left, rgba(0, 32, 91, 0.14), transparent 30%),
+            radial-gradient(circle at top right, rgba(212, 175, 55, 0.16), transparent 18%),
+            linear-gradient(180deg, #f8fafd 0%, #eef3fa 100%);
+        color: #0f172a;
+        color-scheme: light;
+    }
+
+    .bsi-investor-header-surface {
+        @apply rounded-[28px] border border-white/80 bg-white/88 shadow-[0_20px_45px_rgba(0,32,91,0.08)] backdrop-blur;
+    }
+
+    .bsi-investor-form-card {
+        @apply rounded-[30px] border border-brand-100/80 bg-white/96 shadow-[0_28px_60px_rgba(0,32,91,0.12)] backdrop-blur;
+    }
+
+    .bsi-investor-chip {
+        @apply inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/10 px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/80;
+    }
+
     .bsi-portal-nav-link {
         @apply inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold text-zinc-500 transition hover:bg-brand-50 hover:text-brand-700;
     }

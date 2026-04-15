@@ -24,8 +24,13 @@ it('renders the branded investor login experience', function () {
     $this->get(route('investor.login'))
         ->assertOk()
         ->assertSee('Portal do Investidor')
+        ->assertSee('images/logo-mob.png', false)
         ->assertSee('Entrar no portal')
-        ->assertSee('Acompanhe emissões, documentos e eventos do seu investimento');
+        ->assertSeeInOrder(['Acesso seguro', 'Voltar ao site'])
+        ->assertSee('Documentos, emissões e comunicação institucional em um único acesso.')
+        ->assertSee('Consulta desenhada para leitura objetiva')
+        ->assertSee('Acesso institucional')
+        ->assertSee('Canal institucional');
 });
 
 it('renders the investor dashboard through a full-page livewire component', function () {

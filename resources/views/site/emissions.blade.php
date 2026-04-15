@@ -71,9 +71,9 @@
         <div class="row g-4 align-items-end">
             <div class="col-lg-8">
                 <span class="badge mb-3 px-3 py-2 text-uppercase">Mercado primário</span>
-                <h1 class="display-4 fw-bold mb-3">Pipeline de Operações: Inteligência em Securitização e Crédito Estruturado</h1>
+                <h1 class="display-4 fw-bold mb-3">Track Record de Operações: Especialidade em Securitização e Crédito Estruturado</h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Acesse o histórico detalhado das emissões estruturadas pela BSI Capital. Transparência operacional e rigor técnico aplicados na conexão entre ativos de alta qualidade e o mercado de capitais.
+                    Explore o detalhamento técnico das emissões estruturadas pela BSI Capital. Unimos transparência ativa e rigor na análise do lastro para sustentar estruturas sólidas e auditáveis no mercado de capitais.
                 </p>
             </div>
         </div>
@@ -86,9 +86,9 @@
             <div class="row g-4 align-items-end">
                 <div class="col-lg-5">
                     <div class="section-kicker mb-2">Pesquisa e filtros</div>
-                    <h2 class="h3 fw-bold text-brand mb-3">Análise e Comparação de Ativos</h2>
+                    <h2 class="h3 fw-bold text-brand mb-3">Inteligência de Dados e Filtros Dinâmicos</h2>
                     <p class="section-copy mb-0">
-                        Localize operações por instrumento, setor ou emissor. Nossa plataforma assegura o acesso a dados estruturados para fundamentar decisões de investimento e monitoramento de ativos.
+                        Localize operações com precisão por setor, instrumento ou emissor. Disponibilizamos dados estruturados e granulares para dar suporte às análises mais exigentes e ao monitoramento estratégico de ativos no mercado de capitais.
                     </p>
                 </div>
                 <div class="col-lg-7">
