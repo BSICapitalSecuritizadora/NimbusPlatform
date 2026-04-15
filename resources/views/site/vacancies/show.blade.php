@@ -106,9 +106,12 @@
                         </div>
                         <div class="mb-4">
                             <label class="form-label small fw-semibold text-muted">Mensagem / Observação (opcional)</label>
-                            <textarea name="message" rows="3" class="form-control bg-light border-0 shadow-none ps-3 py-2" placeholder="Fale um pouco sobre você...">{{ old('message') }}</textarea>
+                            <textarea name="message" rows="3" class="form-control bg-light border-0 shadow-none ps-3 py-2" placeholder="Destaque brevemente sua experiência mais relevante ou motivação para integrar o time..."></textarea>
                         </div>
-                        <button type="submit" class="btn btn-brand w-100 btn-lg shadow-sm fw-bold">Enviar Candidatura</button>
+                        <button type="submit" class="btn btn-brand w-100 btn-lg shadow-sm fw-bold mb-3">Enviar Candidatura</button>
+                        <p class="small text-muted mb-0" style="font-size: 0.72rem; line-height: 1.4;">
+                            Os dados e arquivos enviados são tratados exclusivamente para fins de recrutamento, sob protocolos de sigilo em conformidade com a LGPD.
+                        </p>
                     </form>
                 </div>
             </div>

@@ -71,7 +71,7 @@
                 <span class="badge mb-3 px-3 py-2 text-uppercase">Institucional</span>
                 <h1 class="display-4 fw-bold mb-3">Relações com <span style="color: var(--gold);">Investidores</span></h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Acesso integral a documentos públicos e comunicados oficiais, garantindo a transparência e a fidelidade informacional necessárias para o acompanhamento rigoroso das nossas operações.
+                    Seja bem-vindo à nossa Central de Transparência. Aqui você acessa documentos e comunicados oficiais em tempo real, com a fidelidade informacional necessária para sua tomada de decisão.
                 </p>
             </div>
             <div class="col-lg-4">
@@ -197,8 +197,11 @@
                 </div>
             @empty
                 <div class="card p-5 text-center border-0 shadow-sm">
-                    <div class="fw-semibold text-muted mb-2">Nenhum documento foi localizado.</div>
-                    <div class="small text-muted">Revise os filtros aplicados ou tente uma nova busca.</div>
+                    <div class="fw-semibold text-muted mb-2">Nenhum documento foi localizado para os critérios aplicados.</div>
+                    <div class="small text-muted mb-4">Caso não encontre o que procura, nossa equipe de RI está à disposição para auxiliá-lo.</div>
+                    <div class="d-flex justify-content-center">
+                        <a href="{{ route('site.contact') }}" class="btn btn-outline-brand btn-sm px-4">Solicitar documento específico</a>
+                    </div>
                 </div>
             @endforelse
         </div>

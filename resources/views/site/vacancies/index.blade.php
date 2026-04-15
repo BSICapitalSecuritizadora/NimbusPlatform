@@ -8,9 +8,9 @@
         <div class="row g-4 align-items-end">
             <div class="col-lg-8">
                 <span class="badge mb-3 px-3 py-2 text-uppercase">Carreiras</span>
-                <h1 class="display-4 fw-bold mb-3">Construa sua trajetória com a <span style="color: var(--gold);">BSI Capital</span></h1>
+                <h1 class="display-4 fw-bold mb-3">Integre o time da <span style="color: var(--gold);">BSI Capital</span></h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Faça parte da inteligência por trás do mercado de capitais: buscamos profissionais comprometidos com a excelência técnica e o rigor fiduciário para integrar uma equipe de alta performance em securitização.
+                    Atuamos na estruturação de operações complexas e de alto impacto no mercado de capitais. Buscamos profissionais orientados a resultados técnicos, com domínio regulatório e foco em execução fiduciária.
                 </p>
             </div>
         </div>
@@ -21,10 +21,10 @@
     <div class="container py-lg-4">
         <div class="row g-4 align-items-end mb-5">
             <div class="col-lg-8">
-                <div class="section-kicker mb-2">Oportunidades</div>
-                <h2 class="h2 fw-bold text-brand mb-3">Encontre seu espaço em um ambiente de alto rigor técnico e visão estratégica</h2>
+                <div class="section-kicker mb-2">Ambiente de Operações</div>
+                <h2 class="h2 fw-bold text-brand mb-3">Exposição técnica e meritocracia no mercado de securitização</h2>
                 <p class="section-copy mb-0">
-                    Nossa estrutura de carreiras prioriza profissionais que buscam excelência na execução e o domínio das complexidades do mercado de securitização e crédito estruturado.
+                    Nossa estrutura de talentos prioriza o domínio das complexidades do crédito estruturado. Oferecemos um ambiente de alto nível técnico, focado em execução e crescimento pautado por resultados reais.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -54,12 +54,15 @@
                 </div>
             @empty
                 <div class="col-12">
-                    <div class="card p-5 text-center">
+                    <div class="card p-5 text-center border-0 shadow-sm">
                         <div class="mb-3">
                             <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#ced4da" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                         </div>
-                        <div class="fw-semibold text-muted mb-2">No momento, não temos vagas abertas.</div>
-                        <div class="small text-muted">Acompanhe nossas atualizações institucionais para futuras oportunidades.</div>
+                        <div class="fw-semibold text-muted mb-2">Nossas vagas são abertas sob demanda técnica pontual.</div>
+                        <div class="small text-muted mb-4">Caso não visualize uma posição aberta para seu perfil, nosso Banco de Talentos está sempre ativo.</div>
+                        <div class="d-flex justify-content-center">
+                            <a href="{{ route('site.contact') }}" class="btn btn-outline-brand btn-sm px-4">Cadastrar no Banco de Talentos</a>
+                        </div>
                     </div>
                 </div>
             @endforelse

@@ -28,8 +28,8 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Compliance</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Programa de Compliance</h2>
-                <p class="text-muted mb-3">A BSI mantém um programa de compliance voltado à definição de regras, responsabilidades e procedimentos para apoiar a integridade dos processos internos e a qualidade dos serviços prestados.</p>
-                <p class="text-muted mb-4">Essa estrutura reforça a aderência a normas, políticas e regulamentações vigentes, além de contribuir para a mitigação de riscos operacionais, reputacionais e regulatórios.</p>
+                <p class="text-muted mb-3">A BSI mantém um programa de compliance dinâmico, submetido a revisões periódicas que asseguram o alinhamento contínuo às melhores práticas globais do setor financeiro.</p>
+                <p class="text-muted mb-4">Esta estrutura é o alicerce para a definição de regras e procedimentos que apoiam a integridade dos processos internos, mitigando riscos operacionais, reputacionais e regulatórios com rigor e transparência.</p>
 
                 <div class="d-flex flex-column gap-3">
                     <div class="d-flex align-items-start gap-3">
@@ -185,6 +185,33 @@
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Risco Operacional</h3>
                     <p class="text-muted mb-0">Segregação de funções e trilhas de auditoria imutáveis, com controles internos desenhados para eliminar falhas de processo e garantir a integridade dos dados.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Nossos Inegociáveis -->
+<section class="py-5" style="background: #ffffff;">
+    <div class="container py-4">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-10">
+                <div class="p-5 rounded-4 border shadow-sm" style="background: linear-gradient(to right, rgba(212,175,55,0.02), rgba(0,32,91,0.02));">
+                    <h2 class="h4 fw-bold mb-4" style="color: var(--brand);">Princípios Inegociáveis</h2>
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="fw-bold mb-2" style="color: var(--gold);">Transparência Radical</div>
+                            <p class="small text-muted mb-0">Comunicação aberta e precisa com todos os stakeholders sobre o desempenho e os riscos das operações.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="fw-bold mb-2" style="color: var(--gold);">Equidade de Tratamento</div>
+                            <p class="small text-muted mb-0">Garantia de isonomia e respeito aos direitos de todos os investidores, independentemente do porte ou perfil.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="fw-bold mb-2" style="color: var(--gold);">Accountability</div>
+                            <p class="small text-muted mb-0">Prestação de contas rigorosa, com responsabilidade clara sobre cada decisão e resultado alcançado.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

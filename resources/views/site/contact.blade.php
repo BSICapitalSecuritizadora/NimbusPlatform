@@ -11,7 +11,7 @@
                     Entre em contato com a <span style="color: var(--gold);">BSI Capital</span>
                 </h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Nossa equipe atende demandas comerciais, institucionais, regulatórias e de relacionamento com a objetividade e a segurança esperadas em um ambiente financeiro.
+                    Estamos à disposição para avaliar novas teses de operação ou suportar demandas institucionais. Nosso atendimento prioriza o rigor técnico e a viabilidade fiduciária exigidos pelo mercado.
                 </p>
             </div>
         </div>
@@ -33,7 +33,7 @@
                 <div class="surface-card h-100 p-4">
                     <div class="section-kicker mb-2">Atendimento</div>
                     <h2 class="h4 fw-bold text-brand mb-2">Telefone</h2>
-                    <p class="section-copy mb-3">Atendimento corporativo para relacionamento com clientes, parceiros e investidores.</p>
+                    <p class="section-copy mb-3">Atendimento corporativo e suporte direto em dias úteis, das 09h às 18h.</p>
                     <a href="tel:+551123678793" class="fw-semibold text-brand text-decoration-none">+55 (11) 2367-8793</a>
                 </div>
             </div>
@@ -56,7 +56,7 @@
                     <div class="section-kicker mb-2">Fale conosco</div>
                     <h2 class="h3 fw-bold text-brand mb-3">Atendimento claro e direcionado à área responsável</h2>
                     <p class="section-copy mb-4">
-                        Preencha o formulário com sua demanda. Sua mensagem será encaminhada ao time adequado, com tratamento compatível com a natureza institucional do contato.
+                        Sua demanda será analisada diretamente pelo time responsável. Priorizamos um retorno inicial em até 24 horas úteis, focado em clareza técnica e direcionamento jurídico.
                     </p>
 
                     <div class="d-flex flex-column gap-3">
@@ -113,7 +113,10 @@
                             <textarea class="form-control" rows="5" placeholder="Descreva brevemente sua demanda ou tese de operação" required></textarea>
                         </div>
                         <div class="col-12 pt-2">
-                            <button type="submit" class="btn btn-brand btn-lg px-5">Iniciar Atendimento</button>
+                            <button type="submit" class="btn btn-brand btn-lg px-5 mb-3">Iniciar Atendimento</button>
+                            <p class="small text-muted mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+                                As informações fornecidas são protegidas por protocolos de sigilo em conformidade com a LGPD e nossa política de integridade corporativa.
+                            </p>
                         </div>
                     </form>
                 </div>
