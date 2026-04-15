@@ -142,7 +142,7 @@
     <nav class="navbar navbar-expand-lg portal-navbar sticky-top">
         <div class="container-xxl">
             <a class="navbar-brand d-flex align-items-center gap-3" href="{{ route('nimbus.dashboard') }}">
-                <img src="https://bsicapital.com.br/wp-content/uploads/2022/06/logo.png" alt="BSI Capital" style="max-height: 44px;">
+                <img src="{{ asset('images/bsi-logo.png') }}" alt="BSI Capital" style="max-height: 44px;">
                 <div class="border-start border-light border-opacity-25 ps-3 py-1 d-none d-sm-block">
                      <span class="text-white-50 fw-semibold text-uppercase" style="letter-spacing: 1px; font-size: 0.75rem;"></span>
                 </div>

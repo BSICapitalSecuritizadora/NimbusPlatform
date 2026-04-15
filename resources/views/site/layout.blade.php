@@ -28,7 +28,7 @@
             --surface: #ffffff;
             --surface-alt: #f6f9fd;
             --text: #081224;
-            --muted: #5c6980;
+            --muted: #4a5568;
             --border: #d5deea;
             --shadow-soft: 0 14px 32px rgba(0, 32, 91, 0.07);
             --shadow-hover: 0 18px 38px rgba(0, 32, 91, 0.1);
@@ -647,6 +647,17 @@
             color: var(--brand);
         }
 
+        .footer-legal-link {
+            color: var(--muted);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-legal-link:hover {
+            color: var(--brand);
+            text-decoration: underline;
+        }
+
         .footer-seal {
             display: inline-flex;
             flex-direction: column;
@@ -734,7 +745,7 @@
 <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container py-2">
         <a class="navbar-brand fw-bold" href="{{ route('site.home') }}">
-            <img src="https://bsicapital.com.br/wp-content/uploads/2022/05/logo-mob.png" alt="BSI Capital">
+            <img src="{{ asset('images/logo-mob.png') }}" alt="BSI Capital">
         </a>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Alternar navegação">
@@ -871,10 +882,10 @@
         <div class="row gy-4 align-items-center">
             <div class="col-md-4 text-center text-md-start">
                 <a class="navbar-brand fw-bold mb-3 d-inline-block" href="{{ route('site.home') }}">
-                    <img src="https://bsicapital.com.br/wp-content/uploads/2022/05/logo-mob.png" alt="BSI Capital" style="max-height: 48px;">
+                    <img src="{{ asset('images/logo-mob.png') }}" alt="BSI Capital" style="max-height: 48px;">
                 </a>
                 <p class="section-copy small mb-3">
-                    Securitizadora registrada na CVM. Estruturamos e gerimos operações de crédito — CRI, CRA e CR — com rigor técnico, controle documental e reporte contínuo aos investidores.
+                    Securitizadora registrada na CVM. Estruturamos e gerimos operações de crédito (CRI, CRA e CR) com rigor técnico, controle documental e reporte contínuo aos investidores.
                 </p>
                 <div class="d-flex gap-3 justify-content-center justify-content-md-start mt-2">
                     <a href="https://br.linkedin.com/company/bsi-capital-securitizadora-s-a" target="_blank" class="text-muted text-decoration-none" title="LinkedIn">
@@ -902,16 +913,22 @@
             <div class="col-md-4 text-center text-md-end">
                 <div class="footer-seal">
                     <div class="footer-seal-label">Autorregulação</div>
-                    <img src="https://www.anbima.com.br/lumis-theme/br/com/anbima/portal/theme/portal-anbima/assets/img/selos-anbima/ofertas-securitizadora-provisorio.jpg" class="img-fluid" alt="Selo ANBIMA Securitizadora" style="max-height: 84px; border-radius: 6px;">
+                    <img src="{{ asset('images/selo-anbima.jpg') }}" class="img-fluid" alt="Selo ANBIMA Securitizadora" style="max-height: 84px; border-radius: 6px;">
                 </div>
             </div>
         </div>
         
         <hr class="my-4 border-brand-subtle opacity-100">
 
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 small pb-2">
-            <div>© {{ date('Y') }} BSI Capital Securitizadora S.A. Todos os direitos reservados.</div>
-            <div>Companhia aberta registrada na CVM e alinhada a referenciais de autorregulação aplicáveis.</div>
+        <div class="text-center small pb-2">
+            <div class="text-muted mb-1">
+                © {{ date('Y') }} BSI Capital Securitizadora S.A. Todos os direitos reservados.
+            </div>
+            <div class="d-flex justify-content-center gap-2 align-items-center">
+                <a href="{{ route('site.privacy-policy') }}" class="footer-legal-link">Política de Privacidade</a>
+                <span class="text-muted opacity-50">•</span>
+                <a href="{{ route('site.terms-of-use') }}" class="footer-legal-link">Termos de Uso</a>
+            </div>
         </div>
     </div>
 </footer>

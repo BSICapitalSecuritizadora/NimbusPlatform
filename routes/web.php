@@ -28,6 +28,8 @@ Route::get('/', [HomeController::class, 'index'])->name('site.home');
 
 Route::view('/servicos', 'site.service')->name('site.services');
 Route::view('/sobre', 'site.about')->name('site.about');
+Route::view('/politica-de-privacidade', 'site.privacy-policy')->name('site.privacy-policy');
+Route::view('/termos-de-uso', 'site.terms-of-use')->name('site.terms-of-use');
 Route::get('/governanca', [SiteController::class, 'governance'])->name('site.governance');
 Route::get('/compliance', [SiteController::class, 'complianceBsi'])->name('site.compliance');
 Route::view('/contato', 'site.contact')->name('site.contact');
