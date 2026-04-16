@@ -1,7 +1,8 @@
 <?php
 
 use App\Filament\Resources\Emissions\EmissionResource;
-use App\Filament\Resources\Payments\PaymentResource;
+use App\Filament\Resources\Expenses\ExpenseResource;
+use App\Filament\Resources\ExpenseServiceProviders\ExpenseServiceProviderResource;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
 
@@ -29,9 +30,11 @@ it('registers the Despesas subsection inside Gestão', function () {
     $expenseItem = collect(Filament::getPanel('admin')->getNavigationItems())
         ->first(fn ($item) => $item->getLabel() === 'Despesas');
 
-    expect(PaymentResource::getNavigationGroup())->toBe('Gestão')
-        ->and(PaymentResource::getNavigationParentItem())->toBe('Despesas')
-        ->and(PaymentResource::getNavigationLabel())->toBe('Pagamentos')
+    expect(ExpenseResource::getNavigationGroup())->toBe('Gestão')
+        ->and(ExpenseResource::shouldRegisterNavigation())->toBeFalse()
+        ->and(ExpenseServiceProviderResource::getNavigationGroup())->toBe('Gestão')
+        ->and(ExpenseServiceProviderResource::getNavigationParentItem())->toBe('Despesas')
+        ->and(ExpenseServiceProviderResource::getNavigationLabel())->toBe('Prestadores de serviço')
         ->and($expenseItem)->not->toBeNull()
-        ->and($expenseItem->getUrl())->toBe(PaymentResource::getUrl(panel: 'admin'));
+        ->and($expenseItem->getUrl())->toBe(ExpenseResource::getUrl(panel: 'admin'));
 });

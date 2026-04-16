@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -96,17 +97,22 @@ class Emission extends Model
         return $this->belongsToMany(Document::class, 'emission_document')->withTimestamps();
     }
 
-    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
     }
 
-    public function puHistories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
+    public function puHistories(): HasMany
     {
         return $this->hasMany(PuHistory::class);
     }
 
-    public function integralizationHistories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function integralizationHistories(): HasMany
     {
         return $this->hasMany(IntegralizationHistory::class);
     }
