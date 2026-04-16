@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ProposalStatus;
 use App\Filament\NimbusWidgets\NimbusRecentSubmissions;
 use App\Filament\Resources\Nimbus\Submissions\Pages\ListSubmissions;
 use App\Filament\Resources\Proposals\Pages\ListProposals;
@@ -153,7 +154,7 @@ function makeProposalForFilament(): Proposal
         'company_id' => $company->id,
         'contact_id' => $contact->id,
         'assigned_representative_id' => $representative->id,
-        'status' => Proposal::STATUS_IN_REVIEW,
+        'status' => ProposalStatus::InReview->value,
         'distribution_sequence' => 1,
         'distributed_at' => now(),
     ]);

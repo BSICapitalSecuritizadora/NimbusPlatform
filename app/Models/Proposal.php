@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Enums\ProposalStatus;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,18 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Proposal extends Model
 {
     use HasFactory;
-
-    public const string STATUS_AWAITING_COMPLETION = ProposalStatus::AwaitingCompletion->value;
-
-    public const string STATUS_IN_REVIEW = ProposalStatus::InReview->value;
-
-    public const string STATUS_AWAITING_INFORMATION = ProposalStatus::AwaitingInformation->value;
-
-    public const string STATUS_APPROVED = ProposalStatus::Approved->value;
-
-    public const string STATUS_REJECTED = ProposalStatus::Rejected->value;
-
-    public const string STATUS_COMPLETED = ProposalStatus::Completed->value;
 
     protected $fillable = [
         'company_id',
@@ -97,25 +83,6 @@ class Proposal extends Model
         return $this->hasMany(ProposalFile::class);
     }
 
-    public function scopeVisibleTo(Builder $query, ?User $user): Builder
-    {
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        if ($user->hasAnyRole(['super-admin', 'admin'])) {
-            return $query;
-        }
-
-        $representativeId = $user->proposalRepresentative?->id;
-
-        if (! $representativeId) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->where('assigned_representative_id', $representativeId);
-    }
-
     public function isAssignedToUser(?User $user): bool
     {
         if (! $user) {
@@ -133,26 +100,5 @@ class Proposal extends Model
     public function canBeCompletedByRequester(): bool
     {
         return ProposalStatus::fromValue($this->status)?->canBeCompletedByRequester() ?? false;
-    }
-
-    protected function statusLabel(): Attribute
-    {
-        return Attribute::make(
-            get: fn (): string => ProposalStatus::labelFor($this->status),
-        );
-    }
-
-    protected function statusColor(): Attribute
-    {
-        return Attribute::make(
-            get: fn (): string => ProposalStatus::colorFor($this->status),
-        );
-    }
-
-    protected function companyAddress(): Attribute
-    {
-        return Attribute::make(
-            get: fn (): string => $this->company?->full_address ?? '—',
-        );
     }
 }

@@ -15,6 +15,7 @@ use App\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelat
 use App\Filament\Resources\Proposals\Tables\ProposalsTable;
 use App\Models\Proposal;
 use App\Models\User;
+use App\Services\ProposalVisibilityFilter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -277,15 +278,16 @@ class ProposalResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->with([
+        return ProposalVisibilityFilter::apply(
+            parent::getEloquentQuery()->with([
                 'company.sectors',
                 'contact',
                 'representative.user',
                 'latestContinuationAccess',
                 'latestStatusHistory.changedByUser',
-            ])
-            ->visibleTo(static::resolveCurrentUser());
+            ]),
+            static::resolveCurrentUser(),
+        );
     }
 
     public static function getChangeStatusAction(): Action
@@ -300,7 +302,7 @@ class ProposalResource extends Resource
             ->form([
                 Placeholder::make('current_status')
                     ->label('Status atual')
-                    ->content(fn (Proposal $record): string => $record->status_label),
+                    ->content(fn (Proposal $record): string => ProposalStatus::labelFor($record->status)),
                 Placeholder::make('current_representative')
                     ->label('Representante responsável')
                     ->content(fn (Proposal $record): string => $record->representative?->name ?? 'Não atribuído'),

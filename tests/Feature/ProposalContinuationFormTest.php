@@ -1,6 +1,7 @@
 <?php
 
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
+use App\Enums\ProposalStatus;
 use App\Livewire\Proposals\ContinuationForm;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
@@ -124,7 +125,7 @@ it('stores the continuation payload through the livewire component', function ()
         'latestStatusHistory',
     ]);
 
-    expect($proposal->status)->toBe(Proposal::STATUS_IN_REVIEW)
+    expect($proposal->status)->toBe(ProposalStatus::InReview->value)
         ->and($proposal->completed_at)->not->toBeNull()
         ->and($proposal->projects)->toHaveCount(2)
         ->and($proposal->projects->pluck('name')->all())->toBe([
@@ -134,7 +135,7 @@ it('stores the continuation payload through the livewire component', function ()
         ->and($proposal->files)->toHaveCount(1)
         ->and($proposal->files->first()->disk)->toBe('local')
         ->and($proposal->files->first()->file_path)->toStartWith('nimbus_docs/proposal-files/'.$proposal->id.'/')
-        ->and($proposal->latestStatusHistory?->new_status)->toBe(Proposal::STATUS_IN_REVIEW);
+        ->and($proposal->latestStatusHistory?->new_status)->toBe(ProposalStatus::InReview->value);
 
     $firstProject = $proposal->projects->first();
 

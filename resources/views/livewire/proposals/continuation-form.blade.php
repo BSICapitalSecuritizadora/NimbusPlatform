@@ -40,7 +40,7 @@
                                     <div class="mb-[0.45rem] text-[0.76rem] font-bold tracking-[0.08em] uppercase text-[var(--muted)]">Status Atual</div>
                                     <span class="inline-flex items-center gap-[0.65rem] px-4 py-3 rounded-full border border-[color-mix(in_oklab,var(--gold)_30%,var(--border)_70%)] bg-[color-mix(in_oklab,var(--gold)_10%,var(--surface)_90%)] font-bold text-[var(--brand)]">
                                         <span class="inline-block w-[0.7rem] h-[0.7rem] rounded-full bg-[var(--gold)] shadow-[0_0_0_0.35rem_rgba(212,175,55,0.18)]"></span>
-                                        {{ $proposal->status_label }}
+                                        {{ \App\Enums\ProposalStatus::labelFor($proposal->status) }}
                                     </span>
                                 </div>
                             </div>
@@ -74,12 +74,12 @@
                                     <div class="col-lg-7">
                                         <div class="text-[0.78rem] font-bold tracking-[0.12em] uppercase text-[var(--gold)] mb-2">Próxima Etapa</div>
                                         <h2 class="text-[1.65rem] font-extrabold tracking-[-0.03em] text-[var(--brand)] mb-[0.35rem]">
-                                            {{ $proposal->status === \App\Models\Proposal::STATUS_AWAITING_INFORMATION
+                                            {{ $proposal->status === \App\Enums\ProposalStatus::AwaitingInformation->value
                                                 ? 'Atualize as informações solicitadas'
                                                 : 'Complementar informações do empreendimento' }}
                                         </h2>
                                         <p class="text-[var(--muted)] mb-0">
-                                            {{ $proposal->status === \App\Models\Proposal::STATUS_AWAITING_INFORMATION
+                                            {{ $proposal->status === \App\Enums\ProposalStatus::AwaitingInformation->value
                                                 ? 'O time comercial solicitou novos dados. Revise os campos abaixo, atualize o que for necessário e salve novamente a proposta.'
                                                 : 'Preencha os dados abaixo com atenção. Essa etapa organiza o empreendimento, unidades, cronograma, fluxo financeiro e documentos complementares.' }}
                                         </p>

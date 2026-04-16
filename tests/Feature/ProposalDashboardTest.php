@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ProposalStatus;
 use App\Filament\Pages\ProposalDashboard;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
@@ -44,14 +45,14 @@ it('builds proposal dashboard metrics according to the authenticated user scope'
         'queue_position' => 2,
     ]);
 
-    $awaitingCompletion = createDashboardProposal($representative, Proposal::STATUS_AWAITING_COMPLETION, updatedAt: now()->subDay());
-    $staleReview = createDashboardProposal($representative, Proposal::STATUS_IN_REVIEW, updatedAt: now()->subDays(5));
-    $awaitingInformation = createDashboardProposal($representative, Proposal::STATUS_AWAITING_INFORMATION, updatedAt: now()->subDays(2));
-    createDashboardProposal($representative, Proposal::STATUS_APPROVED, updatedAt: now()->subHours(10));
+    $awaitingCompletion = createDashboardProposal($representative, ProposalStatus::AwaitingCompletion->value, updatedAt: now()->subDay());
+    $staleReview = createDashboardProposal($representative, ProposalStatus::InReview->value, updatedAt: now()->subDays(5));
+    $awaitingInformation = createDashboardProposal($representative, ProposalStatus::AwaitingInformation->value, updatedAt: now()->subDays(2));
+    createDashboardProposal($representative, ProposalStatus::Approved->value, updatedAt: now()->subHours(10));
 
-    createDashboardProposal($otherRepresentative, Proposal::STATUS_COMPLETED, completedAt: now(), updatedAt: now()->subHours(4));
-    createDashboardProposal($otherRepresentative, Proposal::STATUS_REJECTED, updatedAt: now()->subHours(6));
-    createDashboardProposal($otherRepresentative, Proposal::STATUS_IN_REVIEW, updatedAt: now()->subHour());
+    createDashboardProposal($otherRepresentative, ProposalStatus::Completed->value, completedAt: now(), updatedAt: now()->subHours(4));
+    createDashboardProposal($otherRepresentative, ProposalStatus::Rejected->value, updatedAt: now()->subHours(6));
+    createDashboardProposal($otherRepresentative, ProposalStatus::InReview->value, updatedAt: now()->subHour());
 
     $dashboardData = app(ProposalDashboardData::class);
 
@@ -104,7 +105,7 @@ it('renders the proposal dashboard only for users with proposal access', functio
         'email' => $representativeUser->email,
     ]);
 
-    createDashboardProposal($representative, Proposal::STATUS_IN_REVIEW, updatedAt: now()->subDays(4));
+    createDashboardProposal($representative, ProposalStatus::InReview->value, updatedAt: now()->subDays(4));
 
     $this->actingAs($representativeUser);
 

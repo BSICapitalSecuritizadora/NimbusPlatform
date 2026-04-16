@@ -1,14 +1,16 @@
 <?php
 
 use App\Actions\Proposals\UpdateProposalStatus;
+use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
+use App\Presenters\ProposalPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('exposes translated status and company address accessors', function () {
+it('exposes translated status and company address via the presenter', function () {
     $company = ProposalCompany::query()->create([
         'name' => 'Construtora Exemplo',
         'cnpj' => '12.345.678/0001-99',
@@ -29,12 +31,14 @@ it('exposes translated status and company address accessors', function () {
     $proposal = Proposal::query()->create([
         'company_id' => $company->id,
         'contact_id' => $contact->id,
-        'status' => Proposal::STATUS_AWAITING_INFORMATION,
+        'status' => ProposalStatus::AwaitingInformation->value,
     ])->load('company');
 
-    expect($proposal->company_address)->toBe('Rua das Palmeiras, 100 - Jardins. São Paulo/SP - CEP: 04567-000')
-        ->and($proposal->status_label)->toBe(__('proposals.status.'.Proposal::STATUS_AWAITING_INFORMATION))
-        ->and($proposal->status_color)->toBe('warning');
+    $presenter = new ProposalPresenter($proposal);
+
+    expect($presenter->companyAddress())->toBe('Rua das Palmeiras, 100 - Jardins. São Paulo/SP - CEP: 04567-000')
+        ->and($presenter->statusLabel())->toBe(__('proposals.status.'.ProposalStatus::AwaitingInformation->value))
+        ->and($presenter->statusColor())->toBe('warning');
 });
 
 it('moves phone summary formatting to the proposal contact model', function () {
@@ -56,12 +60,12 @@ it('moves phone summary formatting to the proposal contact model', function () {
 });
 
 it('keeps status transition rules outside the proposal model', function () {
-    $options = app(UpdateProposalStatus::class)->availableStatusOptions(Proposal::STATUS_IN_REVIEW);
+    $options = app(UpdateProposalStatus::class)->availableStatusOptions(ProposalStatus::InReview->value);
 
     expect($options)->toBe([
-        Proposal::STATUS_AWAITING_INFORMATION => __('proposals.status.'.Proposal::STATUS_AWAITING_INFORMATION),
-        Proposal::STATUS_APPROVED => __('proposals.status.'.Proposal::STATUS_APPROVED),
-        Proposal::STATUS_REJECTED => __('proposals.status.'.Proposal::STATUS_REJECTED),
+        ProposalStatus::AwaitingInformation->value => __('proposals.status.'.ProposalStatus::AwaitingInformation->value),
+        ProposalStatus::Approved->value => __('proposals.status.'.ProposalStatus::Approved->value),
+        ProposalStatus::Rejected->value => __('proposals.status.'.ProposalStatus::Rejected->value),
     ])
         ->and(method_exists(Proposal::class, 'allowedStatusTransitions'))->toBeFalse()
         ->and(method_exists(Proposal::class, 'nextAvailableStatusOptions'))->toBeFalse();

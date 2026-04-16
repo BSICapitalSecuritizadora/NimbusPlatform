@@ -7,6 +7,7 @@ use App\DTOs\Proposals\ProposalContinuationProjectDTO;
 use App\DTOs\Proposals\ProposalContinuationUnitTypeDTO;
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\DTOs\Proposals\UpdateProposalStatusDTO;
+use App\Enums\ProposalStatus;
 use App\Models\ProjectCharacteristic;
 use App\Models\Proposal;
 use App\Models\ProposalProject;
@@ -84,13 +85,13 @@ class StoreProposalContinuationData
             ])->save();
 
             if (in_array($proposal->status, [
-                Proposal::STATUS_AWAITING_COMPLETION,
-                Proposal::STATUS_AWAITING_INFORMATION,
+                ProposalStatus::AwaitingCompletion->value,
+                ProposalStatus::AwaitingInformation->value,
             ], true)) {
                 $this->updateProposalStatus->handle(
                     $proposal,
                     UpdateProposalStatusDTO::fromArray([
-                        'status' => Proposal::STATUS_IN_REVIEW,
+                        'status' => ProposalStatus::InReview->value,
                         'note' => 'Informações complementares enviadas pelo proponente.',
                         'authorize' => false,
                     ]),

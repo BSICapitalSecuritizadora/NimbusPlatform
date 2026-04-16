@@ -5,6 +5,7 @@ namespace App\Livewire\Forms;
 use App\Actions\Proposals\AssignProposalRepresentative;
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\DTOs\Proposals\ProposalStatusHistoryDTO;
+use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
@@ -186,7 +187,7 @@ class CreateProposalFormObject extends Form
                 'company_id' => $company->id,
                 'contact_id' => $contact->id,
                 'observations' => $this->nullableString($validated['observations']),
-                'status' => Proposal::STATUS_AWAITING_COMPLETION,
+                'status' => ProposalStatus::AwaitingCompletion->value,
             ]);
 
             $assignProposalRepresentative->handle($proposal);
@@ -194,7 +195,7 @@ class CreateProposalFormObject extends Form
                 $proposal,
                 ProposalStatusHistoryDTO::fromArray([
                     'previousStatus' => null,
-                    'status' => Proposal::STATUS_AWAITING_COMPLETION,
+                    'status' => ProposalStatus::AwaitingCompletion->value,
                     'note' => 'Proposta recebida e aguardando complementação do cliente.',
                 ]),
             );

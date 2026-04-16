@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
@@ -36,7 +37,7 @@ class ProposalStatusHistoryFactory extends Factory
                 return Proposal::query()->create([
                     'company_id' => $company->id,
                     'contact_id' => $contact->id,
-                    'status' => Proposal::STATUS_IN_REVIEW,
+                    'status' => ProposalStatus::InReview->value,
                 ])->id;
             },
             'previous_status' => fake()->randomElement([

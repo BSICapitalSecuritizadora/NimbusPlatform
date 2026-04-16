@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ProposalStatus;
 use App\Livewire\Proposals\CreateProposalForm;
 use App\Mail\ProposalContinuationLinkMail;
 use App\Models\Proposal;
@@ -98,7 +99,7 @@ it('stores the initial proposal through the livewire component and sends the con
         ->with(['company.sectors', 'contact', 'statusHistories', 'latestContinuationAccess'])
         ->firstOrFail();
 
-    expect($proposal->status)->toBe(Proposal::STATUS_AWAITING_COMPLETION)
+    expect($proposal->status)->toBe(ProposalStatus::AwaitingCompletion->value)
         ->and($proposal->company->name)->toBe($state['companyName'])
         ->and($proposal->company->cnpj)->toBe($state['cnpj'])
         ->and($proposal->company->site)->toBe($state['website'])

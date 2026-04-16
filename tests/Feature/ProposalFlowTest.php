@@ -3,6 +3,7 @@
 use App\Actions\Proposals\SendProposalContinuationLink;
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\DTOs\Proposals\UpdateProposalStatusDTO;
+use App\Enums\ProposalStatus;
 use App\Mail\ProposalContinuationLinkMail;
 use App\Models\Proposal;
 use App\Models\ProposalAssignment;
@@ -121,14 +122,14 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->with(['company', 'contact', 'latestContinuationAccess', 'statusHistories'])
         ->firstOrFail();
 
-    expect($proposal->status)->toBe(Proposal::STATUS_AWAITING_COMPLETION)
+    expect($proposal->status)->toBe(ProposalStatus::AwaitingCompletion->value)
         ->and($proposal->assigned_representative_id)->not->toBeNull()
         ->and($proposal->latestContinuationAccess)->not->toBeNull()
         ->and($proposal->latestContinuationAccess?->display_code)->not->toBe('Indisponivel')
         ->and($proposal->latestContinuationAccess?->sent_at)->not->toBeNull()
         ->and($proposal->statusHistories)->toHaveCount(1)
         ->and($proposal->statusHistories->first()->previous_status)->toBeNull()
-        ->and($proposal->statusHistories->first()->new_status)->toBe(Proposal::STATUS_AWAITING_COMPLETION);
+        ->and($proposal->statusHistories->first()->new_status)->toBe(ProposalStatus::AwaitingCompletion->value);
 
     $mailData = captureContinuationMail();
     $access = $proposal->latestContinuationAccess;
@@ -206,7 +207,7 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         'latestStatusHistory',
     ]);
 
-    expect($proposal->status)->toBe(Proposal::STATUS_IN_REVIEW)
+    expect($proposal->status)->toBe(ProposalStatus::InReview->value)
         ->and($proposal->completed_at)->not->toBeNull()
         ->and($proposal->projects)->toHaveCount(2)
         ->and($proposal->projects->pluck('name')->all())->toBe([
@@ -216,8 +217,8 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->and($proposal->files)->toHaveCount(1)
         ->and($proposal->latestContinuationAccess?->verified_at)->not->toBeNull()
         ->and($proposal->statusHistories)->toHaveCount(2)
-        ->and($proposal->latestStatusHistory?->previous_status)->toBe(Proposal::STATUS_AWAITING_COMPLETION)
-        ->and($proposal->latestStatusHistory?->new_status)->toBe(Proposal::STATUS_IN_REVIEW)
+        ->and($proposal->latestStatusHistory?->previous_status)->toBe(ProposalStatus::AwaitingCompletion->value)
+        ->and($proposal->latestStatusHistory?->new_status)->toBe(ProposalStatus::InReview->value)
         ->and($proposal->latestStatusHistory?->note)->toBe('Informações complementares enviadas pelo proponente.');
 
     $firstProject = $proposal->projects->first();
@@ -312,7 +313,7 @@ it('preserves project level internal analysis when the proposer resubmits reques
     app(UpdateProposalStatus::class)->handle(
         $proposal->fresh(),
         UpdateProposalStatusDTO::fromArray([
-            'status' => Proposal::STATUS_AWAITING_INFORMATION,
+            'status' => ProposalStatus::AwaitingInformation->value,
             'user' => $representativeUser,
             'note' => 'Atualizar vendas da Torre Madrid.',
         ]),
@@ -321,7 +322,7 @@ it('preserves project level internal analysis when the proposer resubmits reques
     $proposal->refresh();
     $proposal->load(['company', 'latestContinuationAccess', 'projects']);
 
-    expect($proposal->status)->toBe(Proposal::STATUS_AWAITING_INFORMATION)
+    expect($proposal->status)->toBe(ProposalStatus::AwaitingInformation->value)
         ->and($proposal->continuationAccesses()->count())->toBe(2)
         ->and($proposal->latestContinuationAccess?->id)->not->toBeNull();
 
@@ -353,13 +354,13 @@ it('preserves project level internal analysis when the proposer resubmits reques
 
     $updatedFirstProject = $proposal->projects()->oldest('id')->firstOrFail();
 
-    expect($proposal->status)->toBe(Proposal::STATUS_IN_REVIEW)
+    expect($proposal->status)->toBe(ProposalStatus::InReview->value)
         ->and($updatedFirstProject->id)->toBe($firstProject->id)
         ->and((float) $updatedFirstProject->paid_sales_value)->toBe(950000.0)
         ->and($updatedFirstProject->indicators)->not->toBeNull()
         ->and($updatedFirstProject->indicators?->id)->toBe($indicator->id)
         ->and((float) $updatedFirstProject->indicators?->ltv_ideal)->toBe(55.0)
-        ->and($proposal->latestStatusHistory?->new_status)->toBe(Proposal::STATUS_IN_REVIEW);
+        ->and($proposal->latestStatusHistory?->new_status)->toBe(ProposalStatus::InReview->value);
 });
 
 it('revokes the previous access and records a new send when the link is resent', function () {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalRepresentative;
@@ -37,7 +38,7 @@ it('stores continuation submissions through the legacy public endpoint without a
     $proposal->refresh();
     $proposal->load('projects');
 
-    expect($proposal->status)->toBe(Proposal::STATUS_IN_REVIEW)
+    expect($proposal->status)->toBe(ProposalStatus::InReview->value)
         ->and($proposal->completed_at)->not->toBeNull()
         ->and($proposal->projects)->toHaveCount(2)
         ->and($proposal->projects->pluck('name')->all())->toBe([

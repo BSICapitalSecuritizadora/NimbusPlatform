@@ -3,6 +3,7 @@
 namespace App\Actions\Nimbus;
 
 use App\DTOs\Nimbus\StoreSubmissionDTO;
+use App\DTOs\Nimbus\StoreSubmissionFileDTO;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
 use Illuminate\Support\Facades\DB;
@@ -70,15 +71,14 @@ class CreateSubmission
             }
 
             foreach ($dto->documentFiles as $field => $documentFile) {
-                $this->storeSubmissionFile->handle(
-                    submission: $submission,
+                $this->storeSubmissionFile->handle($submission, new StoreSubmissionFileDTO(
                     file: $documentFile,
                     documentType: self::DOCUMENT_TYPE_MAP[$field],
                     origin: 'USER',
                     visibleToUser: false,
                     uploadedByType: 'PORTAL_USER',
                     uploadedById: $portalUser->id,
-                );
+                ));
             }
 
             return $submission;

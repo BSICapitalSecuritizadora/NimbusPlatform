@@ -3,6 +3,7 @@
 namespace App\Actions\Nimbus;
 
 use App\DTOs\Nimbus\StoreAdminSubmissionResponseFilesDTO;
+use App\DTOs\Nimbus\StoreSubmissionFileDTO;
 use App\Models\Nimbus\Submission;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -30,15 +31,14 @@ class StoreAdminSubmissionResponseFiles
 
         foreach ($dto->responseFiles as $uploadedFile) {
             try {
-                $this->storeSubmissionFile->handle(
-                    submission: $submission,
+                $this->storeSubmissionFile->handle($submission, new StoreSubmissionFileDTO(
                     file: $uploadedFile,
                     documentType: 'OTHER',
                     origin: 'ADMIN',
                     visibleToUser: $isVisibleToUser,
                     uploadedByType: 'ADMIN',
                     uploadedById: $user->id,
-                );
+                ));
 
                 $uploaded++;
             } catch (Throwable $exception) {

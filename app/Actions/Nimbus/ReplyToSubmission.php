@@ -2,6 +2,7 @@
 
 namespace App\Actions\Nimbus;
 
+use App\DTOs\Nimbus\StoreSubmissionFileDTO;
 use App\DTOs\Nimbus\SubmissionReplyDTO;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
@@ -29,8 +30,7 @@ class ReplyToSubmission
 
         DB::transaction(function () use ($dto, $submission, $portalUser): void {
             if ($dto->file !== null) {
-                $this->storeSubmissionFile->handle(
-                    submission: $submission,
+                $this->storeSubmissionFile->handle($submission, new StoreSubmissionFileDTO(
                     file: $dto->file,
                     documentType: 'OTHER',
                     origin: 'USER',
@@ -39,7 +39,7 @@ class ReplyToSubmission
                     uploadedById: $portalUser->id,
                     notes: 'Arquivo enviado pelo solicitante em resposta a uma solicitação de correção.',
                     directory: "submissions/{$submission->id}/corrections",
-                );
+                ));
             }
 
             if ($dto->comment !== null) {

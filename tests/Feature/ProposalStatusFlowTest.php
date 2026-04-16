@@ -2,6 +2,7 @@
 
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\DTOs\Proposals\UpdateProposalStatusDTO;
+use App\Enums\ProposalStatus;
 use App\Filament\Resources\Proposals\ProposalResource;
 use App\Mail\ProposalContinuationLinkMail;
 use App\Mail\ProposalStatusUpdatedMail;
@@ -51,8 +52,8 @@ it('limits the commercial representative to proposals assigned to their queue re
         'queue_position' => 2,
     ]);
 
-    $assignedProposal = createProposalForRepresentative($representative, Proposal::STATUS_IN_REVIEW);
-    $otherProposal = createProposalForRepresentative($otherRepresentative, Proposal::STATUS_AWAITING_INFORMATION);
+    $assignedProposal = createProposalForRepresentative($representative, ProposalStatus::InReview->value);
+    $otherProposal = createProposalForRepresentative($otherRepresentative, ProposalStatus::AwaitingInformation->value);
 
     $this->actingAs($representativeUser);
 
@@ -76,20 +77,20 @@ it('records the status transition history with the responsible user and note', f
         'email' => $representativeUser->email,
     ]);
 
-    $proposal = createProposalForRepresentative($representative, Proposal::STATUS_IN_REVIEW);
+    $proposal = createProposalForRepresentative($representative, ProposalStatus::InReview->value);
 
     $history = app(UpdateProposalStatus::class)->handle(
         $proposal,
         UpdateProposalStatusDTO::fromArray([
-            'status' => Proposal::STATUS_AWAITING_INFORMATION,
+            'status' => ProposalStatus::AwaitingInformation->value,
             'user' => $representativeUser,
             'note' => 'Solicitar memorial descritivo atualizado ao cliente.',
         ]),
     );
 
-    expect($proposal->fresh()->status)->toBe(Proposal::STATUS_AWAITING_INFORMATION)
-        ->and($history->previous_status)->toBe(Proposal::STATUS_IN_REVIEW)
-        ->and($history->new_status)->toBe(Proposal::STATUS_AWAITING_INFORMATION)
+    expect($proposal->fresh()->status)->toBe(ProposalStatus::AwaitingInformation->value)
+        ->and($history->previous_status)->toBe(ProposalStatus::InReview->value)
+        ->and($history->new_status)->toBe(ProposalStatus::AwaitingInformation->value)
         ->and($history->changed_by_user_id)->toBe($representativeUser->id)
         ->and($history->note)->toBe('Solicitar memorial descritivo atualizado ao cliente.')
         ->and($history->changed_at)->not->toBeNull()
@@ -119,12 +120,12 @@ it('rejects unauthorized or inconsistent status changes', function () {
         'queue_position' => 2,
     ]);
 
-    $proposal = createProposalForRepresentative($representative, Proposal::STATUS_AWAITING_COMPLETION);
+    $proposal = createProposalForRepresentative($representative, ProposalStatus::AwaitingCompletion->value);
 
     expect(fn () => app(UpdateProposalStatus::class)->handle(
         $proposal,
         UpdateProposalStatusDTO::fromArray([
-            'status' => Proposal::STATUS_IN_REVIEW,
+            'status' => ProposalStatus::InReview->value,
             'user' => $otherUser,
             'note' => 'Tentativa indevida.',
         ]),
@@ -133,7 +134,7 @@ it('rejects unauthorized or inconsistent status changes', function () {
     expect(fn () => app(UpdateProposalStatus::class)->handle(
         $proposal,
         UpdateProposalStatusDTO::fromArray([
-            'status' => Proposal::STATUS_APPROVED,
+            'status' => ProposalStatus::Approved->value,
             'user' => $assignedUser,
             'note' => 'Pular etapas não é permitido.',
         ]),
@@ -141,10 +142,10 @@ it('rejects unauthorized or inconsistent status changes', function () {
 
     expect(fn () => app(UpdateProposalStatus::class)->handle(
         tap($proposal->fresh(), function (Proposal $proposal): void {
-            $proposal->forceFill(['status' => Proposal::STATUS_IN_REVIEW])->save();
+            $proposal->forceFill(['status' => ProposalStatus::InReview->value])->save();
         }),
         UpdateProposalStatusDTO::fromArray([
-            'status' => Proposal::STATUS_REJECTED,
+            'status' => ProposalStatus::Rejected->value,
             'user' => $assignedUser,
             'note' => null,
         ]),
@@ -164,12 +165,12 @@ it('notifies the client when the proposal is approved', function () {
         'email' => $representativeUser->email,
     ]);
 
-    $proposal = createProposalForRepresentative($representative, Proposal::STATUS_IN_REVIEW);
+    $proposal = createProposalForRepresentative($representative, ProposalStatus::InReview->value);
 
     app(UpdateProposalStatus::class)->handle(
         $proposal,
         UpdateProposalStatusDTO::fromArray([
-            'status' => Proposal::STATUS_APPROVED,
+            'status' => ProposalStatus::Approved->value,
             'user' => $representativeUser,
             'note' => 'Documentação validada.',
         ]),
@@ -177,7 +178,7 @@ it('notifies the client when the proposal is approved', function () {
 
     Mail::assertSent(ProposalStatusUpdatedMail::class, function (ProposalStatusUpdatedMail $mail) use ($proposal): bool {
         return $mail->proposal->is($proposal->fresh())
-            && $mail->status === Proposal::STATUS_APPROVED;
+            && $mail->status === ProposalStatus::Approved->value;
     });
 });
 

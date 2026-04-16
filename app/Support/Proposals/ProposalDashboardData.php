@@ -2,9 +2,11 @@
 
 namespace App\Support\Proposals;
 
+use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalRepresentative;
 use App\Models\User;
+use App\Services\ProposalVisibilityFilter;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,12 +22,12 @@ class ProposalDashboardData
 
         return [
             'total' => (clone $query)->count(),
-            'awaiting_completion' => $counts[Proposal::STATUS_AWAITING_COMPLETION] ?? 0,
-            'in_review' => $counts[Proposal::STATUS_IN_REVIEW] ?? 0,
-            'awaiting_information' => $counts[Proposal::STATUS_AWAITING_INFORMATION] ?? 0,
-            'approved' => $counts[Proposal::STATUS_APPROVED] ?? 0,
-            'rejected' => $counts[Proposal::STATUS_REJECTED] ?? 0,
-            'completed' => $counts[Proposal::STATUS_COMPLETED] ?? 0,
+            'awaiting_completion' => $counts[ProposalStatus::AwaitingCompletion->value] ?? 0,
+            'in_review' => $counts[ProposalStatus::InReview->value] ?? 0,
+            'awaiting_information' => $counts[ProposalStatus::AwaitingInformation->value] ?? 0,
+            'approved' => $counts[ProposalStatus::Approved->value] ?? 0,
+            'rejected' => $counts[ProposalStatus::Rejected->value] ?? 0,
+            'completed' => $counts[ProposalStatus::Completed->value] ?? 0,
             'received_last_30_days' => (clone $query)
                 ->where('created_at', '>=', now()->subDays(30))
                 ->count(),
@@ -38,12 +40,12 @@ class ProposalDashboardData
         $counts = $this->countsByStatus($user);
 
         return [
-            Proposal::STATUS_AWAITING_COMPLETION => $counts[Proposal::STATUS_AWAITING_COMPLETION] ?? 0,
-            Proposal::STATUS_IN_REVIEW => $counts[Proposal::STATUS_IN_REVIEW] ?? 0,
-            Proposal::STATUS_AWAITING_INFORMATION => $counts[Proposal::STATUS_AWAITING_INFORMATION] ?? 0,
-            Proposal::STATUS_APPROVED => $counts[Proposal::STATUS_APPROVED] ?? 0,
-            Proposal::STATUS_REJECTED => $counts[Proposal::STATUS_REJECTED] ?? 0,
-            Proposal::STATUS_COMPLETED => $counts[Proposal::STATUS_COMPLETED] ?? 0,
+            ProposalStatus::AwaitingCompletion->value => $counts[ProposalStatus::AwaitingCompletion->value] ?? 0,
+            ProposalStatus::InReview->value => $counts[ProposalStatus::InReview->value] ?? 0,
+            ProposalStatus::AwaitingInformation->value => $counts[ProposalStatus::AwaitingInformation->value] ?? 0,
+            ProposalStatus::Approved->value => $counts[ProposalStatus::Approved->value] ?? 0,
+            ProposalStatus::Rejected->value => $counts[ProposalStatus::Rejected->value] ?? 0,
+            ProposalStatus::Completed->value => $counts[ProposalStatus::Completed->value] ?? 0,
         ];
     }
 
@@ -89,8 +91,8 @@ class ProposalDashboardData
             ->where('is_active', true)
             ->withCount([
                 'proposals as active_proposals_count' => fn (Builder $query): Builder => $query->whereNotIn('status', [
-                    Proposal::STATUS_REJECTED,
-                    Proposal::STATUS_COMPLETED,
+                    ProposalStatus::Rejected->value,
+                    ProposalStatus::Completed->value,
                 ]),
             ])
             ->orderByDesc('active_proposals_count')
@@ -114,18 +116,18 @@ class ProposalDashboardData
             ->where(function (Builder $query) use ($staleThreshold): void {
                 $query
                     ->whereIn('status', [
-                        Proposal::STATUS_AWAITING_COMPLETION,
-                        Proposal::STATUS_AWAITING_INFORMATION,
+                        ProposalStatus::AwaitingCompletion->value,
+                        ProposalStatus::AwaitingInformation->value,
                     ])
                     ->orWhere(function (Builder $reviewQuery) use ($staleThreshold): void {
                         $reviewQuery
-                            ->where('status', Proposal::STATUS_IN_REVIEW)
+                            ->where('status', ProposalStatus::InReview->value)
                             ->where('updated_at', '<=', $staleThreshold);
                     });
             })
             ->orderByRaw(
                 'case when status = ? then 0 when status = ? then 1 else 2 end',
-                [Proposal::STATUS_AWAITING_INFORMATION, Proposal::STATUS_AWAITING_COMPLETION],
+                [ProposalStatus::AwaitingInformation->value, ProposalStatus::AwaitingCompletion->value],
             )
             ->latest('updated_at');
     }
@@ -133,9 +135,9 @@ class ProposalDashboardData
     public function attentionReason(Proposal $proposal): string
     {
         return match ($proposal->status) {
-            Proposal::STATUS_AWAITING_INFORMATION => 'Aguardando retorno do cliente.',
-            Proposal::STATUS_AWAITING_COMPLETION => 'Cliente ainda não concluiu a complementação.',
-            Proposal::STATUS_IN_REVIEW => 'Sem movimentação recente do comercial.',
+            ProposalStatus::AwaitingInformation->value => 'Aguardando retorno do cliente.',
+            ProposalStatus::AwaitingCompletion->value => 'Cliente ainda não concluiu a complementação.',
+            ProposalStatus::InReview->value => 'Sem movimentação recente do comercial.',
             default => 'Acompanhamento recomendado.',
         };
     }
@@ -161,7 +163,10 @@ class ProposalDashboardData
 
     protected function baseQuery(?User $user = null): Builder
     {
-        return Proposal::query()->visibleTo($user ?? $this->resolveCurrentUser());
+        return ProposalVisibilityFilter::apply(
+            Proposal::query(),
+            $user ?? $this->resolveCurrentUser(),
+        );
     }
 
     protected function resolveCurrentUser(): ?User
