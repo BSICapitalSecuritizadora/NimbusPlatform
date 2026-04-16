@@ -12,6 +12,7 @@ use App\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResourc
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
+use App\Filament\Resources\Payments\PaymentResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -84,6 +85,12 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(10)
                     ->url(fn (): string => AnnouncementResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(AnnouncementResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationOutboxResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationSettings::getNavigationItemActiveRoutePattern())),
+                NavigationItem::make('Despesas')
+                    ->group('Gestão')
+                    ->icon(Heroicon::OutlinedRectangleStack)
+                    ->sort(10)
+                    ->url(fn (): string => PaymentResource::getUrl(panel: 'admin'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(PaymentResource::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
