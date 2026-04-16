@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Nimbus\Submission;
+use App\Policies\Nimbus\SubmissionPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -36,8 +38,10 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
         $this->configureMacros();
 
+        Gate::policy(Submission::class, SubmissionPolicy::class);
+
         Gate::before(function ($user, $ability) {
-            return $user->hasRole('super-admin') ? true : null;
+            return (method_exists($user, 'hasRole') && $user->hasRole('super-admin')) ? true : null;
         });
 
         Paginator::useBootstrapFive();

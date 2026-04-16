@@ -16,6 +16,8 @@ use App\Models\Nimbus\SubmissionFile;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -42,7 +44,12 @@ class SubmissionController extends Controller
                 ->with('success', 'Solicitação enviada com sucesso! Nossa equipe analisará os documentos em breve.');
 
         } catch (Throwable $e) {
-            return back()->withInput()->with('error', 'Ocorreu um erro ao processar sua solicitação: '.$e->getMessage());
+            Log::error('Erro ao processar submissão Nimbus.', [
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withInput()->with('error', 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.');
         }
     }
 
@@ -70,6 +77,8 @@ class SubmissionController extends Controller
         SubmissionFile $file,
         DownloadPortalSubmissionFile $downloadPortalSubmissionFile,
     ): StreamedResponse {
+        Gate::forUser($this->portalUser())->authorize('downloadFile', [$submission, $file]);
+
         return $downloadPortalSubmissionFile->handle($submission, $file, $this->portalUser());
     }
 

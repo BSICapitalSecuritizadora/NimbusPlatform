@@ -33,14 +33,14 @@ class StoreSubmissionRequest extends FormRequest
             'shareholders' => ['nullable', 'json'],
             'is_us_person' => ['nullable', 'boolean'],
             'is_pep' => ['nullable', 'boolean'],
-            'ultimo_balanco' => ['required', 'file', 'mimes:pdf', 'max:10240'],
-            'dre' => ['required', 'file', 'mimes:pdf', 'max:10240'],
-            'politicas' => ['required', 'file', 'mimes:pdf', 'max:10240'],
-            'cartao_cnpj' => ['required', 'file', 'mimes:pdf', 'max:10240'],
-            'procuracao' => ['required', 'file', 'mimes:pdf', 'max:10240'],
-            'ata' => ['required', 'file', 'mimes:pdf', 'max:10240'],
-            'contrato_social' => ['required', 'file', 'mimes:pdf', 'max:10240'],
-            'estatuto' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+            'ultimo_balanco' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'dre' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'politicas' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'cartao_cnpj' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'procuracao' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'ata' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'contrato_social' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'estatuto' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
         ];
     }
 
