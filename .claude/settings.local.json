@@ -10,7 +10,8 @@
       "Bash(install -d -m 755 -o desktop -g desktop /home/desktop/projects/bsi-capital/app/Support/)",
       "Bash(chmod u+w /home/desktop/projects/bsi-capital/app/Support/)",
       "Bash(vendor/bin/pint --dirty 2>&1)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(vendor/bin/pint --dirty)"
     ]
   }
 }
