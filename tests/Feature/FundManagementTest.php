@@ -11,6 +11,8 @@ use App\Models\FundName;
 use App\Models\FundType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Forms\Components\TextInput;
+use Filament\Support\RawJs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -67,6 +69,7 @@ it('creates a fund linked to the selected auxiliary records', function () {
             'fund_name_id' => $fundName->id,
             'fund_application_id' => $fundApplication->id,
             'bank_id' => $bank->id,
+            'agency' => '1234-5',
             'account' => '12345-6',
         ])
         ->call('create');
@@ -79,6 +82,7 @@ it('creates a fund linked to the selected auxiliary records', function () {
         ->and($fund?->fund_name_id)->toBe($fundName->id)
         ->and($fund?->fund_application_id)->toBe($fundApplication->id)
         ->and($fund?->bank_id)->toBe($bank->id)
+        ->and($fund?->agency)->toBe('1234-5')
         ->and($fund?->account)->toBe('12345-6');
 });
 
@@ -93,7 +97,52 @@ it('requires all mandatory fields when creating a fund', function () {
             'fund_name_id' => 'required',
             'fund_application_id' => 'required',
             'bank_id' => 'required',
+            'agency' => 'required',
             'account' => 'required',
+        ]);
+});
+
+it('shows the expected masks for agency and current account fields', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(CreateFund::class)
+        ->assertFormFieldExists('agency', function (TextInput $field): bool {
+            return $field->getMask() === '9999-9';
+        })
+        ->assertFormFieldExists('account', function (TextInput $field): bool {
+            $mask = $field->getMask();
+
+            return ($mask instanceof RawJs)
+                && str_contains((string) $mask, '99999-9')
+                && str_contains((string) $mask, '999999999-9');
+        });
+});
+
+it('validates the agency and current account formats', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $emission = Emission::factory()->create();
+    $fundType = FundType::factory()->create();
+    $fundName = FundName::factory()->create([
+        'fund_type_id' => $fundType->id,
+    ]);
+    $fundApplication = FundApplication::factory()->create();
+    $bank = Bank::factory()->create();
+
+    Livewire::test(CreateFund::class)
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'fund_type_id' => $fundType->id,
+            'fund_name_id' => $fundName->id,
+            'fund_application_id' => $fundApplication->id,
+            'bank_id' => $bank->id,
+            'agency' => '123-4',
+            'account' => '1234-5',
+        ])
+        ->call('create')
+        ->assertHasFormErrors([
+            'agency' => 'regex',
+            'account' => 'regex',
         ]);
 });
 
@@ -114,6 +163,7 @@ it('prevents duplicate account registrations within the same operation and appli
         'fund_name_id' => $fundName->id,
         'fund_application_id' => $fundApplication->id,
         'bank_id' => $bank->id,
+        'agency' => '1111-1',
         'account' => '98765-4',
     ]);
 
@@ -124,6 +174,7 @@ it('prevents duplicate account registrations within the same operation and appli
             'fund_name_id' => $fundName->id,
             'fund_application_id' => $fundApplication->id,
             'bank_id' => $bank->id,
+            'agency' => '2222-2',
             'account' => '98765-4',
         ])
         ->call('create')
@@ -148,6 +199,7 @@ it('allows reusing the same account in another application', function () {
         'fund_name_id' => $fundName->id,
         'fund_application_id' => $primaryApplication->id,
         'bank_id' => $bank->id,
+        'agency' => '3333-3',
         'account' => '45678-9',
     ]);
 
@@ -158,6 +210,7 @@ it('allows reusing the same account in another application', function () {
             'fund_name_id' => $fundName->id,
             'fund_application_id' => $secondaryApplication->id,
             'bank_id' => $bank->id,
+            'agency' => '4444-4',
             'account' => '45678-9',
         ])
         ->call('create');

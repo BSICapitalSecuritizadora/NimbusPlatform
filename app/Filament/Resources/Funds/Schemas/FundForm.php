@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rules\Unique;
 
@@ -151,11 +152,48 @@ class FundForm
                                 ->modalWidth('2xl'),
                         ),
 
-                    TextInput::make('account')
-                        ->label('Conta')
+                    TextInput::make('agency')
+                        ->label('Agência')
                         ->required()
-                        ->maxLength(255)
+                        ->maxLength(6)
+                        ->mask('9999-9')
+                        ->placeholder('1234-5')
+                        ->rule('regex:/^\d{4}-\d$/')
+                        ->validationMessages([
+                            'required' => 'Informe a agência.',
+                            'regex' => 'Informe a agência no formato 1234-5.',
+                        ]),
+
+                    TextInput::make('account')
+                        ->label('Conta Corrente')
+                        ->required()
+                        ->maxLength(11)
+                        ->mask(RawJs::make(<<<'JS'
+                            (() => {
+                                const digits = $input.replace(/\D/g, '');
+
+                                if (digits.length <= 6) {
+                                    return '99999-9';
+                                }
+
+                                if (digits.length <= 7) {
+                                    return '999999-9';
+                                }
+
+                                if (digits.length <= 8) {
+                                    return '9999999-9';
+                                }
+
+                                if (digits.length <= 9) {
+                                    return '99999999-9';
+                                }
+
+                                return '999999999-9';
+                            })()
+                            JS))
+                        ->placeholder('12345-6')
                         ->live(onBlur: true)
+                        ->rule('regex:/^\d{5,9}-\d$/')
                         ->unique(
                             table: Fund::class,
                             column: 'account',
@@ -165,7 +203,8 @@ class FundForm
                                 ->where('fund_application_id', $get('fund_application_id')),
                         )
                         ->validationMessages([
-                            'required' => 'Informe a conta.',
+                            'required' => 'Informe a conta corrente.',
+                            'regex' => 'Informe a conta corrente no formato 12345-6 até 123456789-0.',
                             'unique' => 'Já existe um fundo cadastrado com esta combinação de operação, aplicação e conta.',
                         ]),
                 ])

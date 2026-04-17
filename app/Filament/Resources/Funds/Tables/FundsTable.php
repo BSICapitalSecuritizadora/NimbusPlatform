@@ -41,8 +41,13 @@ class FundsTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('agency')
+                    ->label('Agência')
+                    ->searchable()
+                    ->sortable(),
+
                 TextColumn::make('account')
-                    ->label('Conta')
+                    ->label('Conta Corrente')
                     ->searchable()
                     ->sortable(),
             ])

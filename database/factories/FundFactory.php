@@ -32,7 +32,8 @@ class FundFactory extends Factory
             },
             'fund_application_id' => FundApplication::factory(),
             'bank_id' => Bank::factory(),
-            'account' => fake()->unique()->numerify('000000-#'),
+            'agency' => fake()->numerify('####-#'),
+            'account' => fake()->unique()->numerify('#####-#'),
         ];
     }
 }

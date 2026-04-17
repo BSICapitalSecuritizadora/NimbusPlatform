@@ -17,6 +17,7 @@ class Fund extends Model
         'fund_name_id',
         'fund_application_id',
         'bank_id',
+        'agency',
         'account',
     ];
 
