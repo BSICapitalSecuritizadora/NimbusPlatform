@@ -25,6 +25,7 @@ class ExpenseFactory extends Factory
             'emission_id' => Emission::factory(),
             'expense_service_provider_id' => ExpenseServiceProvider::factory(),
             'category' => fake()->randomElement(array_keys(Expense::CATEGORY_OPTIONS)),
+            'amount' => fake()->randomFloat(2, 100, 50000),
             'period' => Expense::PERIOD_SINGLE,
             'start_date' => fake()->date(),
             'end_date' => null,

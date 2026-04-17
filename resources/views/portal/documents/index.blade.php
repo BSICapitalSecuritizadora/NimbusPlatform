@@ -89,7 +89,7 @@
                             • Data: {{ optional($docDate)->format('d/m/Y') ?? '-' }}
                         </div>
 
-                        @if($doc->emissions()->exists())
+                        @if($doc->emissions->isNotEmpty())
                             <div class="small mt-1">
                                 Séries:
                                 @foreach($doc->emissions as $em)
@@ -100,10 +100,12 @@
                     </div>
 
                     <div class="text-end">
-                        <a class="btn btn-sm btn-outline-primary"
-                           href="{{ route('portal.documents.download', $doc) }}">
-                           Baixar
-                        </a>
+                        @can('download', $doc)
+                            <a class="btn btn-sm btn-outline-primary"
+                               href="{{ route('portal.documents.download', $doc) }}">
+                               Baixar
+                            </a>
+                        @endcan
                     </div>
                 </div>
             @empty

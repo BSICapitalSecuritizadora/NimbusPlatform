@@ -43,6 +43,7 @@ class DocumentsController extends Controller
         // Base ACL
         $query = Document::query()
             ->visibleToInvestor($investor->id)
+            ->with('emissions')
             ->when($search !== '', fn ($q) => $q->where('title', 'like', "%{$search}%"))
             ->when($category, fn ($q) => $q->where('category', $category))
             ->when($emissionId, fn ($q) => $q->whereHas('emissions', fn ($qq) => $qq->whereKey($emissionId)))

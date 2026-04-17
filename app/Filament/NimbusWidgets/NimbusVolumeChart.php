@@ -8,7 +8,7 @@ use Illuminate\Support\Carbon;
 
 class NimbusVolumeChart extends ChartWidget
 {
-    protected ?string $heading = 'Volume de Envios (30 Dias)';
+    protected ?string $heading = 'Volume de envios (30 dias)';
 
     // Span 2 cols out of 3
     protected int|string|array $columnSpan = 2;
@@ -38,7 +38,7 @@ class NimbusVolumeChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Submissões Totais',
+                    'label' => 'Envios totais',
                     'data' => $data,
                     'fill' => 'start',
                     'backgroundColor' => 'rgba(59, 130, 246, 0.2)', // blue-500 light

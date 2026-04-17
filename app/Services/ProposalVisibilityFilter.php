@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ProposalRepresentative;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -22,12 +23,9 @@ class ProposalVisibilityFilter
             return $query;
         }
 
-        $representativeId = $user->proposalRepresentative?->id;
-
-        if (! $representativeId) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->where('assigned_representative_id', $representativeId);
+        return $query->whereIn(
+            'assigned_representative_id',
+            ProposalRepresentative::query()->select('id')->where('user_id', $user->id),
+        );
     }
 }

@@ -20,6 +20,7 @@ use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SubmissionResource extends Resource
 {
@@ -253,6 +254,14 @@ class SubmissionResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with([
+            'portalUser',
+            'notes',
+        ]);
     }
 
     public static function getRelations(): array

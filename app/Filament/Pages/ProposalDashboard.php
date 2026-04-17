@@ -16,9 +16,9 @@ class ProposalDashboard extends Dashboard
 {
     protected static string $routePath = '/proposal-dashboard';
 
-    protected static ?string $title = 'Dashboard de Propostas';
+    protected static ?string $title = 'Painel de propostas';
 
-    protected static ?string $navigationLabel = 'Dashboard de Propostas';
+    protected static ?string $navigationLabel = 'Painel de propostas';
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 

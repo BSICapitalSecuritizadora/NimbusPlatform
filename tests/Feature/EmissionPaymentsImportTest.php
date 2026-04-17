@@ -5,7 +5,6 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsR
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
 use App\Models\Payment;
-use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -92,16 +91,6 @@ it('preserves non interest fields when reimporting an existing payment date', fu
         ->and($existingPayment->extra_amortization_value)->toBe('3500.00')
         ->and(Payment::query()->where('emission_id', $emission->id)->count())->toBe(1);
 });
-
-function makeAdminUser(): User
-{
-    $user = User::factory()->withTwoFactor()->create([
-        'email' => fake()->unique()->safeEmail(),
-    ]);
-    $user->assignRole('admin');
-
-    return $user;
-}
 
 /**
  * @param  array<int, array<int, string>>  $rows

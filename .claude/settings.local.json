@@ -15,7 +15,8 @@
       "Bash(grep -l \"declare\\(strict_types=1\\)\" /home/desktop/projects/bsi-capital/app/DTOs/**/*.php /home/desktop/projects/bsi-capital/app/DTOs/*.php)",
       "Bash(ls /home/desktop/projects/bsi-capital/app/DTOs/**/*.php /home/desktop/projects/bsi-capital/app/DTOs/*.php)",
       "Bash(python3 *)",
-      "Bash(find *)"
+      "Bash(find *)",
+      "Bash(chmod -R u+rwX /home/desktop/projects/bsi-capital/storage/framework/testing/disks/local/)"
     ]
   }
 }

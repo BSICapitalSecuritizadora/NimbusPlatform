@@ -120,7 +120,6 @@ it('renders the Nimbus dashboard for authenticated admin users', function () {
         ->get(NimbusDashboard::getUrl(panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Visão Geral')
-        ->assertSee('Dashboard')
         ->assertSee('Envios e Solicitações');
 });
 
@@ -194,7 +193,7 @@ it('organizes communication items under the Comunicação subsection', function 
         ->and(NotificationOutboxResource::getNavigationParentItem())->toBe('Comunicação')
         ->and(NotificationOutboxResource::getNavigationLabel())->toBe('Auditoria de Envios')
         ->and(NotificationSettings::getNavigationParentItem())->toBe('Comunicação')
-        ->and(NotificationSettings::getNavigationLabel())->toBe('Configurar Notificações')
+        ->and(NotificationSettings::getNavigationLabel())->toBe('Configurações de notificações')
         ->and(collect(Filament::getPanel('admin')->getNavigationItems())->first(fn ($item) => $item->getLabel() === 'Comunicação'))
         ->not->toBeNull();
 });
@@ -336,7 +335,7 @@ it('renders the submission view page for authenticated admin users', function ()
         ->assertSee('Dados do Cadastrante')
         ->assertSee('Trilha de Auditoria')
         ->assertSee('Documentos de Retorno')
-        ->assertSee('Anexar Resposta')
+        ->assertSee('Anexar resposta')
         ->assertSee('Nenhuma observação interna foi registrada neste envio até o momento.')
         ->assertSee('Sócios')
         ->assertSee('Arquivos')
@@ -449,8 +448,8 @@ it('allows admin users to upload return documents and renders them in the dedica
         ->assertSee('Documentos de Retorno')
         ->assertSee('parecer.pdf')
         ->assertSee('planilha.xlsx')
-        ->assertSee('Disponível no Portal')
-        ->assertSee('Anexar Resposta')
+        ->assertSee('Disponível no portal')
+        ->assertSee('Anexar resposta')
         ->assertSee(route('admin.nimbus.submissions.response-files.store', $submission), false);
 });
 
@@ -836,15 +835,16 @@ it('renders and saves notification settings under Comunicação', function () {
     $this->actingAs($user)
         ->get(NotificationSettings::getUrl(panel: 'admin'))
         ->assertSuccessful()
-        ->assertSee('Configurar Notificações')
-        ->assertSee('Portal do Usuário')
+        ->assertSee('Configurações de notificações')
+        ->assertSee('Notificações do portal')
         ->assertSee('Nova submissão')
         ->assertSee('Alteração de status')
         ->assertSee('Documento de resposta')
         ->assertSee('Link de acesso')
         ->assertSee('Microsoft 365 / Outlook')
         ->assertSee('Conectar conta corporativa')
-        ->assertSee('Ver Auditoria de Envios');
+        ->assertSee('Salvar configurações')
+        ->assertSee('Ver auditoria de envios');
 
     Livewire::test(NotificationSettings::class)
         ->set('data.portal_notify_new_submission', false)

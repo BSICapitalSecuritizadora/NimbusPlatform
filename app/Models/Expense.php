@@ -50,6 +50,7 @@ class Expense extends Model
         'emission_id',
         'expense_service_provider_id',
         'category',
+        'amount',
         'period',
         'start_date',
         'end_date',
@@ -58,6 +59,7 @@ class Expense extends Model
     protected function casts(): array
     {
         return [
+            'amount' => 'decimal:2',
             'start_date' => 'date',
             'end_date' => 'date',
         ];
@@ -76,5 +78,16 @@ class Expense extends Model
     public static function isRecurringPeriod(?string $period): bool
     {
         return filled($period) && $period !== self::PERIOD_SINGLE;
+    }
+
+    public static function periodIntervalInMonths(?string $period): ?int
+    {
+        return match ($period) {
+            self::PERIOD_MONTHLY => 1,
+            self::PERIOD_QUARTERLY => 3,
+            self::PERIOD_SEMIANNUAL => 6,
+            self::PERIOD_ANNUAL => 12,
+            default => null,
+        };
     }
 }

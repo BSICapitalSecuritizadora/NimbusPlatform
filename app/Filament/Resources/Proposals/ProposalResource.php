@@ -121,10 +121,10 @@ class ProposalResource extends Resource
                             ->badge()
                             ->color(fn (Proposal $record): string => $record->latestContinuationAccess?->status_color ?? 'gray'),
                         TextEntry::make('latestContinuationAccess.sent_to_email')
-                            ->label('E-mail do magic link')
+                            ->label('E-mail do link de acesso')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.display_code')
-                            ->label('Codigo enviado')
+                            ->label('Código enviado')
                             ->placeholder('—')
                             ->copyable(),
                         TextEntry::make('latestContinuationAccess.sent_at')
@@ -141,7 +141,7 @@ class ProposalResource extends Resource
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.last_accessed_at')
-                            ->label('Ultimo acesso')
+                            ->label('Último acesso')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.verified_at')
@@ -149,7 +149,7 @@ class ProposalResource extends Resource
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.last_used_at')
-                            ->label('Ultimo uso autenticado')
+                            ->label('Último uso autenticado')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.generated_url')

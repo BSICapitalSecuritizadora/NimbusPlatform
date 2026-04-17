@@ -22,6 +22,12 @@ class DocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
+    protected static ?string $navigationLabel = 'Documentos';
+
+    protected static ?string $modelLabel = 'Documento';
+
+    protected static ?string $pluralModelLabel = 'Documentos';
+
     protected static ?string $recordTitleAttribute = 'title';
 
     protected static string|UnitEnum|null $navigationGroup = 'Cadastro';

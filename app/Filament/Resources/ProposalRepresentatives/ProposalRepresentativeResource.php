@@ -25,9 +25,11 @@ class ProposalRepresentativeResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Comercial';
 
-    protected static ?string $modelLabel = 'Representante Comercial';
+    protected static ?string $navigationLabel = 'Representantes comerciais';
 
-    protected static ?string $pluralModelLabel = 'Representantes Comerciais';
+    protected static ?string $modelLabel = 'Representante comercial';
+
+    protected static ?string $pluralModelLabel = 'Representantes comerciais';
 
     protected static ?int $navigationSort = 11;
 

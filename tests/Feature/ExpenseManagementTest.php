@@ -2,6 +2,7 @@
 
 use App\Actions\Expenses\LookupExpenseServiceProviderCnpj;
 use App\Filament\Resources\Expenses\Pages\CreateExpense;
+use App\Filament\Resources\Expenses\Pages\EditExpense;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Filament\Resources\ExpenseServiceProviders\Pages\CreateExpenseServiceProvider;
 use App\Models\Emission;
@@ -29,6 +30,14 @@ it('shows the create expense action on the expenses list page', function () {
         ->assertActionHasLabel('create', 'Criar despesa');
 });
 
+it('shows filters for operation and category on the expenses list page', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    Livewire::test(ListExpenses::class)
+        ->assertTableFilterExists('emission_id')
+        ->assertTableFilterExists('category');
+});
+
 it('creates an expense linked to the selected operation and service provider', function () {
     $this->actingAs(makeExpenseAdminUser());
 
@@ -44,6 +53,7 @@ it('creates an expense linked to the selected operation and service provider', f
             'emission_id' => $emission->id,
             'category' => 'Servicer',
             'expense_service_provider_id' => $serviceProvider->id,
+            'amount' => '1.250,50',
             'period' => Expense::PERIOD_SINGLE,
             'start_date' => '2026-04-16',
         ])
@@ -56,6 +66,7 @@ it('creates an expense linked to the selected operation and service provider', f
         ->and($expense?->emission_id)->toBe($emission->id)
         ->and($expense?->expense_service_provider_id)->toBe($serviceProvider->id)
         ->and($expense?->category)->toBe('Servicer')
+        ->and($expense?->amount)->toBe('1250.50')
         ->and($expense?->period)->toBe(Expense::PERIOD_SINGLE)
         ->and($expense?->start_date?->toDateString())->toBe('2026-04-16')
         ->and($expense?->end_date)->toBeNull();
@@ -80,12 +91,99 @@ it('requires an end date for recurring expense periods and hides it for single e
             'emission_id' => $emission->id,
             'category' => 'Cartório',
             'expense_service_provider_id' => $serviceProvider->id,
+            'amount' => '350,00',
             'period' => Expense::PERIOD_MONTHLY,
             'start_date' => '2026-04-16',
             'end_date' => null,
         ])
         ->call('create')
         ->assertHasFormErrors(['end_date' => 'required']);
+});
+
+it('requires the expense amount', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $emission = Emission::factory()->create();
+    $serviceProvider = ExpenseServiceProvider::factory()->create();
+
+    Livewire::test(CreateExpense::class)
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'category' => 'Servicer',
+            'expense_service_provider_id' => $serviceProvider->id,
+            'period' => Expense::PERIOD_SINGLE,
+            'start_date' => '2026-04-16',
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['amount' => 'required']);
+});
+
+it('filters expenses by operation', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $selectedEmission = Emission::factory()->create([
+        'name' => 'CRI Conviva',
+    ]);
+    $otherEmission = Emission::factory()->create([
+        'name' => 'CRI Atlas',
+    ]);
+    $serviceProvider = ExpenseServiceProvider::factory()->create();
+
+    $selectedExpense = Expense::factory()->create([
+        'emission_id' => $selectedEmission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Servicer',
+    ]);
+    $otherExpense = Expense::factory()->create([
+        'emission_id' => $otherEmission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Cartório',
+    ]);
+
+    Livewire::test(ListExpenses::class)
+        ->assertCanSeeTableRecords([$selectedExpense, $otherExpense])
+        ->filterTable('emission_id', $selectedEmission->id)
+        ->assertCanSeeTableRecords([$selectedExpense])
+        ->assertCanNotSeeTableRecords([$otherExpense]);
+});
+
+it('filters expenses by category', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $emission = Emission::factory()->create();
+    $serviceProvider = ExpenseServiceProvider::factory()->create();
+
+    $selectedExpense = Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Engenharia',
+    ]);
+    $otherExpense = Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Cartório',
+    ]);
+
+    Livewire::test(ListExpenses::class)
+        ->assertCanSeeTableRecords([$selectedExpense, $otherExpense])
+        ->filterTable('category', 'Engenharia')
+        ->assertCanSeeTableRecords([$selectedExpense])
+        ->assertCanNotSeeTableRecords([$otherExpense]);
+});
+
+it('formats the saved amount correctly when reopening an expense for editing', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $expense = Expense::factory()->create([
+        'amount' => 750.00,
+    ]);
+
+    Livewire::test(EditExpense::class, [
+        'record' => $expense->getRouteKey(),
+    ])
+        ->assertFormSet([
+            'amount' => '750,00',
+        ]);
 });
 
 it('creates a service provider inline from the expense form', function () {

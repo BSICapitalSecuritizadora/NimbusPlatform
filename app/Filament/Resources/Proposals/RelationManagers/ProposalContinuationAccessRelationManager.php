@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Proposals\RelationManagers;
 
 use App\Actions\Proposals\SendProposalContinuationLink;
+use App\Filament\Resources\Proposals\ProposalResource;
 use App\Models\ProposalContinuationAccess;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -16,7 +17,7 @@ class ProposalContinuationAccessRelationManager extends RelationManager
 {
     protected static string $relationship = 'continuationAccesses';
 
-    protected static ?string $title = 'Links e Codigos Enviados';
+    protected static ?string $title = 'Links e códigos enviados';
 
     protected static ?string $modelLabel = 'Envio';
 
@@ -36,13 +37,13 @@ class ProposalContinuationAccessRelationManager extends RelationManager
             ->recordTitleAttribute('sent_to_email')
             ->columns([
                 TextColumn::make('proposal.contact.name')
-                    ->label('Usuario')
+                    ->label('Usuário')
                     ->placeholder('—'),
                 TextColumn::make('sent_to_email')
                     ->label('E-mail')
                     ->searchable(),
                 TextColumn::make('display_code')
-                    ->label('Codigo enviado'),
+                    ->label('Código enviado'),
                 TextColumn::make('generated_url')
                     ->label('Link gerado')
                     ->wrap(),
@@ -61,7 +62,7 @@ class ProposalContinuationAccessRelationManager extends RelationManager
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('last_accessed_at')
-                    ->label('Ultimo acesso')
+                    ->label('Último acesso')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
@@ -76,13 +77,14 @@ class ProposalContinuationAccessRelationManager extends RelationManager
                     ->label('Reenviar acesso')
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
+                    ->visible(fn (RelationManager $livewire): bool => ProposalResource::canEdit($livewire->getOwnerRecord()))
                     ->action(function (): void {
                         app(SendProposalContinuationLink::class)->handle(
                             $this->getOwnerRecord()->loadMissing(['company', 'contact']),
                         );
 
                         Notification::make()
-                            ->title('Novo link e codigo enviados ao cliente.')
+                            ->title('Novo link e código enviados ao cliente.')
                             ->success()
                             ->send();
                     }),
@@ -91,6 +93,7 @@ class ProposalContinuationAccessRelationManager extends RelationManager
                 Action::make('open_link')
                     ->label('Abrir link')
                     ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->visible(fn (RelationManager $livewire): bool => ProposalResource::canEdit($livewire->getOwnerRecord()))
                     ->url(fn (ProposalContinuationAccess $record): string => $record->generated_url)
                     ->openUrlInNewTab(),
             ])

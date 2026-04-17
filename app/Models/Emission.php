@@ -107,6 +107,11 @@ class Emission extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function funds(): HasMany
+    {
+        return $this->hasMany(Fund::class);
+    }
+
     public function puHistories(): HasMany
     {
         return $this->hasMany(PuHistory::class);

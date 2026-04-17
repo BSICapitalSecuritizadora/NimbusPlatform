@@ -203,17 +203,19 @@
                             </div>
 
                             <div class="w-full lg:w-auto">
-                                <flux:button
-                                    icon="arrow-down-tray"
-                                    variant="primary"
-                                    class="w-full !rounded-full !px-5 lg:w-auto"
-                                    as="a"
-                                    href="{{ route('investor.documents.download', $doc) }}"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Baixar
-                                </flux:button>
+                                @can('download', $doc)
+                                    <flux:button
+                                        icon="arrow-down-tray"
+                                        variant="primary"
+                                        class="w-full !rounded-full !px-5 lg:w-auto"
+                                        as="a"
+                                        href="{{ route('investor.documents.download', $doc) }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Baixar
+                                    </flux:button>
+                                @endcan
                             </div>
                         </div>
                     </article>

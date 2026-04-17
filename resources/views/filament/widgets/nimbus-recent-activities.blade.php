@@ -10,9 +10,9 @@
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
                     <x-filament::icon :icon="Heroicon::Bolt" class="h-5 w-5 text-gray-500" />
-                    <h3 class="text-base font-medium text-gray-950 dark:text-white">Últimas Atividades</h3>
+                    <h3 class="text-base font-medium text-gray-950 dark:text-white">Últimas atividades</h3>
                 </div>
-                <a href="#" class="text-xs text-primary-600 hover:text-primary-500 font-medium">Ver Todas</a>
+                <a href="#" class="text-xs text-primary-600 hover:text-primary-500 font-medium">Ver todas</a>
             </div>
             
             <ul class="divide-y divide-gray-200 dark:divide-white/10">
@@ -36,7 +36,7 @@
         <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-gray-900">
             <div class="flex items-center gap-2 mb-4">
                 <x-filament::icon :icon="Heroicon::ExclamationTriangle" class="h-5 w-5 text-amber-500" />
-                <h3 class="text-base font-medium text-gray-950 dark:text-white">Atenções Necessárias</h3>
+                <h3 class="text-base font-medium text-gray-950 dark:text-white">Atenções necessárias</h3>
             </div>
             
             <div class="flex flex-col gap-2">

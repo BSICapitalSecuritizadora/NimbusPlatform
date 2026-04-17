@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class NimbusRecentSubmissions extends BaseWidget
 {
-    protected static ?string $heading = 'Envios Recentes';
+    protected static ?string $heading = 'Envios recentes';
 
     // Span 2 of 3 columns
     protected int|string|array $columnSpan = 2;
@@ -30,19 +30,19 @@ class NimbusRecentSubmissions extends BaseWidget
             ]))
             ->columns([
                 Tables\Columns\TextColumn::make('portalUser.full_name')
-                    ->label('SOLICITANTE')
+                    ->label('Solicitante')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('submitted_at')
-                    ->label('DATA DE ENVIO')
+                    ->label('Data de envio')
                     ->dateTime('d/m/Y H:i'),
                 Tables\Columns\TextColumn::make('status')
-                    ->label('SITUAÇÃO')
+                    ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => Submission::statusLabelFor($state))
                     ->color(fn (?string $state): string => Submission::statusColorFor($state)),
             ])
             ->actions([
-                Action::make('Ver Detalhes')
+                Action::make('Ver detalhes')
                     ->icon('heroicon-m-chevron-right')
                     ->iconButton()
                     ->url(fn (Submission $record): string => SubmissionResource::getUrl('view', ['record' => $record], panel: 'admin')),

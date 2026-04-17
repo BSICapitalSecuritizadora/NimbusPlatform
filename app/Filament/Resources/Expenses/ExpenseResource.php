@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Expenses;
 
 use App\Filament\Resources\Expenses\Pages\CreateExpense;
 use App\Filament\Resources\Expenses\Pages\EditExpense;
+use App\Filament\Resources\Expenses\Pages\ExpenseCalendar;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Filament\Resources\Expenses\Schemas\ExpenseForm;
 use App\Filament\Resources\Expenses\Tables\ExpensesTable;
@@ -95,6 +96,7 @@ class ExpenseResource extends Resource
     {
         return [
             'index' => ListExpenses::route('/'),
+            'calendar' => ExpenseCalendar::route('/calendar'),
             'create' => CreateExpense::route('/create'),
             'edit' => EditExpense::route('/{record}/edit'),
         ];

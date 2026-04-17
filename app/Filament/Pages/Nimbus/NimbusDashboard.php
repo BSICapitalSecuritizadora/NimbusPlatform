@@ -19,7 +19,7 @@ class NimbusDashboard extends BaseDashboard
 
     protected static ?string $title = 'Visão Geral';
 
-    protected static ?string $navigationLabel = 'Dashboard';
+    protected static ?string $navigationLabel = 'Visão Geral';
 
     protected static ?int $navigationSort = -10;
 

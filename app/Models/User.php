@@ -96,6 +96,7 @@ class User extends Authenticatable implements FilamentUser
             'editor',
             'commercial-representative',
         ]) || $this->canAny([
+            'funds.view',
             'investors.view',
             'emissions.view',
             'documents.view',

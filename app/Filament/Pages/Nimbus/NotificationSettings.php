@@ -21,9 +21,9 @@ class NotificationSettings extends Page
 
     protected static ?string $navigationParentItem = 'Comunicação';
 
-    protected static ?string $navigationLabel = 'Configurar Notificações';
+    protected static ?string $navigationLabel = 'Configurações de notificações';
 
-    protected static ?string $title = 'Configurar Notificações';
+    protected static ?string $title = 'Configurações de notificações';
 
     protected static ?int $navigationSort = 32;
 
@@ -80,8 +80,8 @@ class NotificationSettings extends Page
             ],
             [
                 'state_path' => 'portal_notify_access_link',
-                'title' => 'Link de acesso (Magic Link)',
-                'description' => 'Enviar e-mail automático com o token de acesso sempre que solicitado.',
+                'title' => 'Link de acesso',
+                'description' => 'Enviar automaticamente um e-mail com o link de acesso sempre que solicitado.',
                 'icon' => Heroicon::OutlinedKey,
                 'icon_background' => 'bg-amber-500/15',
                 'icon_color' => 'text-amber-300',

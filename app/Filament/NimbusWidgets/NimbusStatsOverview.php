@@ -22,11 +22,11 @@ class NimbusStatsOverview extends BaseWidget
     protected function getStats(): array
     {
         return [
-            Stat::make('Envios Recebidos', Submission::count())
+            Stat::make('Envios recebidos', Submission::count())
                 ->icon('heroicon-m-inbox-arrow-down')
                 ->extraAttributes(['class' => 'nimbus-stat-card bg-slate-500 border border-slate-600 shadow-sm']),
 
-            Stat::make('Aguardando Análise', Submission::whereIn('status', [
+            Stat::make('Aguardando análise', Submission::whereIn('status', [
                 Submission::STATUS_PENDING,
                 Submission::STATUS_UNDER_REVIEW,
                 Submission::STATUS_NEEDS_CORRECTION,
@@ -42,11 +42,11 @@ class NimbusStatsOverview extends BaseWidget
                 ->icon('heroicon-m-x-circle')
                 ->extraAttributes(['class' => 'nimbus-stat-card bg-rose-500 border border-rose-600 shadow-sm']),
 
-            Stat::make('Usuários Cadastrados', PortalUser::where('status', 'ACTIVE')->count())
+            Stat::make('Usuários cadastrados', PortalUser::where('status', 'ACTIVE')->count())
                 ->icon('heroicon-m-users')
                 ->extraAttributes(['class' => 'nimbus-stat-card bg-yellow-500 border border-yellow-600 shadow-sm']),
 
-            Stat::make('Documentos Vigentes', GeneralDocument::where('is_active', true)->count())
+            Stat::make('Documentos vigentes', GeneralDocument::where('is_active', true)->count())
                 ->icon('heroicon-m-document-text')
                 ->extraAttributes(['class' => 'nimbus-stat-card bg-sky-500 border border-sky-600 shadow-sm']),
         ];

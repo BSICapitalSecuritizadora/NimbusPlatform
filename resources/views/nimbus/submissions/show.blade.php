@@ -47,6 +47,7 @@
             $requestFiles = $submission->userUploadedFiles;
             $responseFiles = $submission->portalVisibleResponseFiles;
             $portalVisibleNotes = $submission->portalVisibleNotes;
+            $nimbusUser = auth('nimbus')->user();
         @endphp
 
         <!-- Detalhes da Empresa -->
@@ -207,9 +208,11 @@
                                         <small class="text-muted d-block text-truncate">{{ $file->original_name }}</small>
                                     </div>
                                 </div>
-                                <a href="{{ route('nimbus.submissions.files.download', [$submission, $file]) }}" class="btn btn-sm btn-light border rounded-circle text-primary shadow-sm" title="Download">
-                                    <i class="bi bi-download"></i>
-                                </a>
+                                @if(\Illuminate\Support\Facades\Gate::forUser($nimbusUser)->check('downloadFile', [$submission, $file]))
+                                    <a href="{{ route('nimbus.submissions.files.download', [$submission, $file]) }}" class="btn btn-sm btn-light border rounded-circle text-primary shadow-sm" title="Download">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                @endif
                             </li>
                         @empty
                             <li class="list-group-item p-4 text-center text-muted">Nenhum arquivo enviado.</li>
@@ -235,10 +238,12 @@
                                         <small class="text-muted d-block text-truncate">{{ \Illuminate\Support\Number::fileSize((int) $file->size_bytes) }}</small>
                                     </div>
                                 </div>
-                                <a href="{{ route('nimbus.submissions.files.download', [$submission, $file]) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Baixar documento de retorno">
-                                    <i class="bi bi-download me-1"></i>
-                                    Baixar
-                                </a>
+                                @if(\Illuminate\Support\Facades\Gate::forUser($nimbusUser)->check('downloadFile', [$submission, $file]))
+                                    <a href="{{ route('nimbus.submissions.files.download', [$submission, $file]) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Baixar documento de retorno">
+                                        <i class="bi bi-download me-1"></i>
+                                        Baixar
+                                    </a>
+                                @endif
                             </li>
                         @empty
                             <li class="list-group-item p-4 text-center text-muted">Nenhum documento de retorno disponível até o momento.</li>

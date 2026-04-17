@@ -28,7 +28,7 @@ class ViewProposal extends ViewRecord
                     $this->record->refresh();
 
                     Notification::make()
-                        ->title('Novo link e codigo gerados para esta proposta.')
+                        ->title('Novo link e código gerados para esta proposta.')
                         ->success()
                         ->send();
                 }),

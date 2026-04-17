@@ -13,9 +13,9 @@
                         </div>
 
                         <div class="space-y-1">
-                            <h2 class="text-xl font-semibold text-white sm:text-2xl">Portal do Usuário</h2>
+                            <h2 class="text-xl font-semibold text-white sm:text-2xl">Notificações do portal</h2>
                             <p class="max-w-2xl text-sm leading-6 text-gray-400">
-                                Gerencie quando e como os usuários recebem notificações do NimbusDocs.
+                                Gerencie quando e como os usuários recebem as notificações do NimbusDocs.
                             </p>
                         </div>
                     </div>
@@ -59,7 +59,7 @@
                             wire:target="save"
                         >
                             <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedCheck" class="h-5 w-5" />
-                            <span>Salvar Configurações</span>
+                            <span>Salvar configurações</span>
                         </button>
                     </div>
                 </div>
@@ -84,7 +84,7 @@
                             </div>
 
                             <div class="space-y-2">
-                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Conta Corporativa</p>
+                                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Conta corporativa</p>
                                 <h3 class="text-lg font-semibold text-white">Microsoft 365 / Outlook</h3>
 
                                 <div class="flex flex-wrap items-center gap-2">
@@ -123,7 +123,7 @@
                     <div class="border-b border-white/10 px-6 py-5">
                         <div class="flex items-center gap-2">
                             <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedInboxStack" class="h-5 w-5 text-rose-300" />
-                            <span class="text-lg font-semibold text-white">Fila e Logs</span>
+                            <span class="text-lg font-semibold text-white">Fila e logs</span>
                         </div>
                     </div>
 
@@ -137,7 +137,7 @@
                             class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white transition hover:border-primary-400/40 hover:bg-primary-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60"
                         >
                             <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedArrowUpOnSquare" class="h-5 w-5 text-primary-300" />
-                            <span>Ver Auditoria de Envios</span>
+                            <span>Ver auditoria de envios</span>
                         </a>
                     </div>
                 </section>

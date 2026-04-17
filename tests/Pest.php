@@ -95,3 +95,13 @@ function submitInitialProposalThroughComponent(ProposalSector $sector, int $inde
 {
     submitProposalCreateForm(proposalCreateFormState($sector, $index));
 }
+
+function makeAdminUser(): \App\Models\User
+{
+    $user = \App\Models\User::factory()->withTwoFactor()->create([
+        'email' => fake()->unique()->safeEmail(),
+    ]);
+    $user->assignRole('admin');
+
+    return $user;
+}

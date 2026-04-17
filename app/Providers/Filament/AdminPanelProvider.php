@@ -4,8 +4,14 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Pages\Nimbus\NotificationSettings;
+use App\Filament\Resources\Banks\BankResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
+use App\Filament\Resources\Expenses\Pages\ExpenseCalendar;
 use App\Filament\Resources\ExpenseServiceProviders\ExpenseServiceProviderResource;
+use App\Filament\Resources\FundApplications\FundApplicationResource;
+use App\Filament\Resources\FundNames\FundNameResource;
+use App\Filament\Resources\Funds\FundResource;
+use App\Filament\Resources\FundTypes\FundTypeResource;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
 use App\Filament\Resources\Nimbus\Announcements\AnnouncementResource;
 use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
@@ -86,12 +92,18 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(10)
                     ->url(fn (): string => AnnouncementResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(AnnouncementResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationOutboxResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationSettings::getNavigationItemActiveRoutePattern())),
+                NavigationItem::make('Fundos')
+                    ->group('Cadastro')
+                    ->icon(Heroicon::OutlinedRectangleStack)
+                    ->sort(20)
+                    ->url(fn (): string => FundResource::getUrl(panel: 'admin'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(FundResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundTypeResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundNameResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundApplicationResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(BankResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Despesas')
                     ->group('Gestão')
                     ->icon(Heroicon::OutlinedRectangleStack)
                     ->sort(10)
                     ->url(fn (): string => ExpenseResource::getUrl(panel: 'admin'))
-                    ->isActiveWhen(fn (): bool => request()->routeIs(ExpenseResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseServiceProviderResource::getNavigationItemActiveRoutePattern())),
+                    ->isActiveWhen(fn (): bool => request()->routeIs(ExpenseResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseCalendar::getRouteName()) || request()->routeIs(ExpenseServiceProviderResource::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

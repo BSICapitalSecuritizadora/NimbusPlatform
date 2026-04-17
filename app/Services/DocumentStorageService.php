@@ -15,6 +15,8 @@ class DocumentStorageService
 
     public const PRIVATE_PREFIX = 'nimbus_docs';
 
+    public const TMP_DIRECTORY = 'tmp_uploads';
+
     /**
      * @var array<int, string>
      */
@@ -47,6 +49,31 @@ class DocumentStorageService
             'size_bytes' => (int) $file->getSize(),
             'checksum' => hash_file('sha256', $file->getRealPath()) ?: null,
         ];
+    }
+
+    /**
+     * Write the file to the temporary staging area. Returns the same shape as storePrivateFile().
+     *
+     * @return array{disk: string, path: string, stored_name: string, original_name: string, mime_type: ?string, size_bytes: int, checksum: ?string}
+     */
+    public function stagePrivateFile(UploadedFile $file): array
+    {
+        return $this->storePrivateFile($file, self::TMP_DIRECTORY);
+    }
+
+    /**
+     * Move a staged file from the tmp directory to its permanent directory.
+     * Creates the destination directory if needed, then renames the file in-place on disk.
+     */
+    public function moveStagedFile(string $fromPath, string $toDirectory, string $storedName): string
+    {
+        $disk = $this->filesystem(self::PRIVATE_DISK);
+        $finalPath = $this->privateDirectoryPath($toDirectory).'/'.$storedName;
+
+        $disk->makeDirectory(dirname($finalPath));
+        $disk->move($fromPath, $finalPath);
+
+        return $finalPath;
     }
 
     public function privateDirectoryPath(string $directory): string

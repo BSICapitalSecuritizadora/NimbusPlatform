@@ -33,11 +33,11 @@
 
                                 @if ($file->visible_to_user)
                                     <span class="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-300 ring-1 ring-inset ring-emerald-400/30">
-                                        Disponível no Portal
+                                        Disponível no portal
                                     </span>
                                 @else
                                     <span class="inline-flex items-center rounded-full bg-gray-500/15 px-2.5 py-1 text-[11px] font-medium text-gray-300 ring-1 ring-inset ring-gray-400/30">
-                                        Restrito (Interno)
+                                        Restrito (interno)
                                     </span>
                                 @endif
                             </div>
@@ -54,7 +54,7 @@
                             class="fi-btn fi-btn-size-sm inline-flex items-center justify-center gap-2 rounded-xl border border-primary-400/40 px-4 py-2 text-sm font-medium text-primary-200 transition hover:border-primary-300 hover:bg-primary-500/10 hover:text-primary-100"
                         >
                             <x-filament::icon icon="heroicon-o-arrow-down-tray" class="h-4 w-4" />
-                            <span>Download</span>
+                            <span>Baixar</span>
                         </a>
                     </div>
                 </div>
@@ -65,7 +65,7 @@
     <div class="rounded-2xl border border-dashed border-gray-700 bg-gray-900/30 p-4 md:p-5">
         <div class="mb-4 flex items-center gap-2 text-sm font-semibold text-white">
             <x-filament::icon icon="heroicon-o-cloud-arrow-up" class="h-5 w-5 text-gray-400" />
-            <span>Anexar Resposta</span>
+            <span>Anexar resposta</span>
         </div>
 
         @if ($responseFileErrors->isNotEmpty())
@@ -105,7 +105,7 @@
                     class="fi-btn fi-color-warning fi-btn-size-sm inline-flex items-center justify-center gap-2 rounded-xl bg-warning-500 px-4 py-2 text-sm font-semibold text-warning-950 transition hover:bg-warning-400"
                 >
                     <x-filament::icon icon="heroicon-o-paper-airplane" class="h-4 w-4" />
-                    <span>Enviar Arquivos</span>
+                    <span>Enviar arquivos</span>
                 </button>
             </div>
         </form>

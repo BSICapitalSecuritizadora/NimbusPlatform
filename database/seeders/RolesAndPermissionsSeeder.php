@@ -26,6 +26,12 @@ class RolesAndPermissionsSeeder extends Seeder
             'emissions.update',
             'emissions.delete',
 
+            // Funds
+            'funds.view',
+            'funds.create',
+            'funds.update',
+            'funds.delete',
+
             // Documents
             'documents.view',
             'documents.create',
@@ -53,6 +59,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $editor->syncPermissions([
             'investors.view', 'investors.create', 'investors.update',
             'emissions.view', 'emissions.create', 'emissions.update',
+            'funds.view', 'funds.create', 'funds.update',
             'documents.view', 'documents.create', 'documents.update',
         ]);
 

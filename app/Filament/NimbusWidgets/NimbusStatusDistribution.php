@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class NimbusStatusDistribution extends ChartWidget
 {
-    protected ?string $heading = 'Distribuição por Situação';
+    protected ?string $heading = 'Distribuição por situação';
 
     // Span 1 col out of 3
     protected int|string|array $columnSpan = 1;
@@ -43,7 +43,7 @@ class NimbusStatusDistribution extends ChartWidget
                     ],
                 ],
             ],
-            'labels' => ['Aprovado', 'Rejeitado', 'Pendente', 'Em Análise', 'Aguardando Correção'],
+            'labels' => ['Aprovados', 'Rejeitados', 'Pendentes', 'Em análise', 'Aguardando correção'],
         ];
     }
 

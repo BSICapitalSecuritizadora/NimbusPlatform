@@ -1,0 +1,899 @@
+﻿\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\FundNameResource.php:26: protected static ?string $navigationLabel = 'Nomes de fundo';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Schemas\FundNameForm.php:28: ->label('Tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Schemas\FundNameForm.php:40: ->label('Cadastrar tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Schemas\FundNameForm.php:41: ->modalHeading('Cadastrar tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Schemas\FundNameForm.php:46: ->label('Editar tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Schemas\FundNameForm.php:47: ->modalHeading('Editar tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Schemas\FundNameForm.php:55: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Tables\FundNamesTable.php:17: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Tables\FundNamesTable.php:22: ->label('Tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Tables\FundNamesTable.php:27: ->label('Fundos vinculados')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundNames\Tables\FundNamesTable.php:32: ->label('Tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:40: protected static ?string $navigationLabel = 'Propostas';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:56: ->label('Observações internas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:58: ->helperText('Visível apenas ao time comercial no painel administrativo.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:71: ->label('Ordem na fila')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:73: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:75: ->label('Representante')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:76: ->placeholder('Não atribuído'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:78: ->label('Distribuída em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:80: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:82: ->label('Complementada em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:84: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:90: ->label('Nome da Empresa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:91: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:93: ->label('CNPJ')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:94: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:96: ->label('IE')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:97: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:99: ->label('Site')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:100: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:104: ->label('Endereço')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:105: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:108: ->label('Setores de Atuação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:111: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:118: ->label('Status do link')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:120: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:124: ->label('E-mail do magic link')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:125: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:127: ->label('Codigo enviado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:128: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:131: ->label('Enviado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:134: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:136: ->label('Expira em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:138: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:140: ->label('Primeiro acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:142: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:144: ->label('Ultimo acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:146: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:148: ->label('Validado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:150: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:152: ->label('Ultimo uso autenticado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:154: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:156: ->label('Link gerado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:157: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:168: ->label('Status atual')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:173: ->label('Próximos status possíveis')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:179: ->placeholder('Sem novas transições disponíveis.'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:181: ->label('Última alteração por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:187: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:189: ->label('Última alteração em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:191: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:193: ->label('Última observação da movimentação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:194: ->placeholder('Sem observação registrada.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:197: ->label('Observações internas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:198: ->placeholder('Sem observações internas.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:206: ->label('Nome do Contato')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:207: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:209: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:210: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:212: ->label('Telefones')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:213: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:215: ->label('Cargo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:216: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:222: ->label('Observações')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:223: ->placeholder('Sem observações.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:296: ->label('Atualizar status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:299: ->modalHeading('Atualizar andamento da proposta')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:304: ->label('Status atual')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:307: ->label('Representante responsável')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:310: ->label('Novo status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:315: ->label('Observação da movimentação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:317: ->helperText('Obrigatório ao rejeitar a proposta ou solicitar novas informações.'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\ProposalResource.php:332: ->title('Status da proposta atualizado com sucesso.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:23: ->label('# Fila')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:24: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:27: ->label('Empresa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:31: ->label('CNPJ')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:34: ->label('Contato')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:38: ->label('Representante')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:41: ->placeholder('Não atribuído'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:43: ->label('Link')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:48: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:53: ->label('Distribuída')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:55: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:58: ->label('Última movimentação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:60: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:62: ->label('Último acesso link')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:64: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:67: ->label('Complementada')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:69: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:72: ->label('Entrada')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:79: ->label('Reenviar acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Tables\ProposalsTable.php:90: ->title('Novo magic link enviado ao cliente.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Pages\ViewProposal.php:20: ->label('Reenviar acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Pages\ViewProposal.php:31: ->title('Novo link e codigo gerados para esta proposta.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Pages\EditProposal.php:20: ->label('Reenviar acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\Pages\EditProposal.php:31: ->title('Novo link e codigo gerados para esta proposta.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:20: protected static ?string $title = 'Links e Codigos Enviados';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:40: ->label('Usuario')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:41: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:43: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:46: ->label('Codigo enviado'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:48: ->label('Link gerado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:51: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:55: ->label('Enviado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:57: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:60: ->label('Primeiro acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:62: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:65: ->label('Ultimo acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:67: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:70: ->label('Validado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:72: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:77: ->label('Reenviar acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:87: ->title('Novo link e codigo enviados ao cliente.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalContinuationAccessRelationManager.php:94: ->label('Abrir link')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:28: protected static ?string $title = 'Empreendimentos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:38: ->label('Nome do Empreendimento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:43: ->label('Site')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:57: ->label('Área do Terreno (m²)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:62: ->label('Data de lançamento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:70: ->label('Lançamento das Vendas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:73: ->label('Início das Obras')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:78: ->label('Previsão de Entrega')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:83: ->label('Prazo Remanescente')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:94: ->label('CEP')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:123: ->label('Rua')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:127: ->label('Complemento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:130: ->label('Número')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:134: ->label('Bairro')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:137: ->label('Cidade')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:141: ->label('Estado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:150: ->label('Quantidade de Blocos')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:153: ->label('Quantidade de Andares')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:156: ->label('Unidades por Andar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:159: ->label('Total de Unidades')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:169: ->label('Tipos de Unidades')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:172: ->label('Ordem')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:176: ->label('Dormitórios')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:179: ->label('Garagem')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:182: ->label('Unidades')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:186: ->label('Área Útil (m²)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:193: ->label('Preço Médio')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:207: ->label('Preço m²')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:229: ->label('Vendidas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:235: ->label('Quitadas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:241: ->label('Permutadas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:247: ->label('Estoque')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:253: ->label('Total')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:260: ->label('Vendas (%)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:273: ->label('Custo Incorrido')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:288: ->label('Custo a Incorrer')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:303: ->label('Custo Total')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:316: ->label('Estágio da Obra (%)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:343: ->label('VGV Total')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:371: ->label('Total')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:385: TextInput::make('financiamento_custo_obra_ideal')->label('Financ/Custo Obra Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:386: TextInput::make('financiamento_custo_obra_limite')->label('Financ/Custo Obra Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:387: TextInput::make('financiamento_vgv_ideal')->label('Financ/VGV Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:388: TextInput::make('financiamento_vgv_limite')->label('Financ/VGV Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:389: TextInput::make('custo_obra_vgv_ideal')->label('Custo Obra/VGV Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:390: TextInput::make('custo_obra_vgv_limite')->label('Custo Obra/VGV Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:391: TextInput::make('recebiveis_vfcto_ideal')->label('Rec/V fcto Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:392: TextInput::make('recebiveis_vfcto_limite')->label('Rec/V fcto Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:393: TextInput::make('recebiveis_terreno_vfcto_ideal')->label('Rec+Terr/V fcto Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:394: TextInput::make('recebiveis_terreno_vfcto_limite')->label('Rec+Terr/V fcto Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:395: TextInput::make('vendas_liquido_permutas_ideal')->label('% Vendas Liq. Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:396: TextInput::make('vendas_liquido_permutas_limite')->label('% Vendas Liq. Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:397: TextInput::make('terreno_vgv_ideal')->label('Terreno/VGV Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:398: TextInput::make('terreno_vgv_limite')->label('Terreno/VGV Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:399: TextInput::make('terreno_custo_obra_ideal')->label('Terreno/Custo Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:400: TextInput::make('terreno_custo_obra_limite')->label('Terreno/Custo Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:401: TextInput::make('ltv_ideal')->label('LTV Ideal (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:402: TextInput::make('ltv_limite')->label('LTV Limite (%)')->numeric()->default(0),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:417: ->label('Empreendimento'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:419: ->label('Vlr. Solicitado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:422: ->label('Obra')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:427: ->label('Adicionar Empreendimento'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:432: ->label('Relatório')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:438: ->label('Analítico')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProjectRelationManager.php:596: ->label($label)
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager.php:15: protected static ?string $title = 'Histórico de Distribuição';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager.php:35: ->label('# Fila')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager.php:38: ->label('Representante')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager.php:42: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager.php:45: ->label('Estratégia')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalAssignmentRelationManager.php:52: ->label('Atribuída em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager.php:16: protected static ?string $title = 'Histórico de Status';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager.php:36: ->label('Status anterior')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager.php:41: ->label('Novo status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager.php:46: ->label('Responsável')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager.php:47: ->placeholder('Sistema')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager.php:50: ->label('Alterado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager.php:54: ->label('Observação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Proposals\RelationManagers\ProposalStatusHistoryRelationManager.php:56: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\ExpenseServiceProviderResource.php:26: protected static ?string $navigationLabel = 'Prestadores de serviço';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm.php:23: ->label('CNPJ')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm.php:24: ->placeholder('00.000.000/0000-00')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm.php:45: ->title((string) ($result['payload']['error'] ?? 'Não foi possível consultar o CNPJ informado.'))
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm.php:56: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Tables\ExpenseServiceProvidersTable.php:16: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Tables\ExpenseServiceProvidersTable.php:21: ->label('CNPJ')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Tables\ExpenseServiceProvidersTable.php:27: ->label('Despesas vinculadas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Pages\ListExpenseServiceProviders.php:13: protected static ?string $title = 'Prestadores de serviço';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Pages\ListExpenseServiceProviders.php:19: ->label('Cadastrar prestador'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Pages\EditExpenseServiceProvider.php:13: protected static ?string $title = 'Editar prestador de serviço';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ExpenseServiceProviders\Pages\CreateExpenseServiceProvider.php:12: protected static ?string $title = 'Cadastrar prestador de serviço';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundApplications\FundApplicationResource.php:26: protected static ?string $navigationLabel = 'Aplicacoes';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundApplications\Schemas\FundApplicationForm.php:19: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundApplications\Tables\FundApplicationsTable.php:16: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundApplications\Tables\FundApplicationsTable.php:21: ->label('Fundos vinculados')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\PortalUserResource.php:27: protected static ?string $navigationLabel = 'Usuários do Portal';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:37: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:38: ->placeholder('Ex: João da Silva')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:44: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:46: ->placeholder('Ex: joao@email.com')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:51: ->label('CPF')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:52: ->placeholder('000.000.000-00')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:63: ->label('Telefone/Celular')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:64: ->placeholder('(00) 00000-0000')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:85: ->label('Situação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm.php:99: ->helperText('Estado atual do acesso ao portal.'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:22: ->label('Nome completo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:25: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:28: ->label('Documento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:32: ->label('Telefone')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:36: ->label('ID externo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:39: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:49: ->label('Último acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:53: ->label('Método do último acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:56: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:61: ->label('Atualizado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:72: ->label('Gerar chave')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:76: ->modalHeading('Gerar chave de acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:77: ->modalDescription('Isso irá revogar a chave atual do usuário, se existir, e gerar um novo código no formato XXXX-XXXX-XXXX.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:100: ->title('Chave enviada')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:107: ->title('Erro ao gerar chave')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Tables\PortalUsersTable.php:116: DeleteBulkAction::make()->label('Excluir selecionados'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Pages\CreatePortalUser.php:12: protected static ?string $title = 'Novo Usuário';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Pages\ListPortalUsers.php:13: protected static ?string $title = 'Usuários do Portal';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Pages\ListPortalUsers.php:20: CreateAction::make()->label('Novo usuário'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalUsers\Pages\EditPortalUser.php:13: protected static ?string $title = 'Editar usuário do portal';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource.php:28: protected static ?string $navigationLabel = 'Documentos por Usuário';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:43: ->label('Usuário do portal')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:51: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:52: ->placeholder('Ex: Contrato Social Atualizado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:57: ->label('Descrição')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:58: ->placeholder('Informações adicionais para o usuário sobre este arquivo.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:65: ->label('Arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:100: ->label('Arquivo atual')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:104: ->label('Tamanho')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm.php:108: ->label('Tipo do arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:20: ->label('Usuário do portal')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:23: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:24: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:27: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:30: ->label('Arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:33: ->label('Tamanho')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:37: ->label('Enviado por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:38: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Tables\PortalDocumentsTable.php:41: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Pages\EditPortalDocument.php:14: protected static ?string $title = 'Editar Documento do Usuário';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Pages\CreatePortalDocument.php:13: protected static ?string $title = 'Novo Documento do Usuário';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Pages\ListPortalDocuments.php:13: protected static ?string $title = 'Documentos por Usuário';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\PortalDocuments\Pages\ListPortalDocuments.php:20: CreateAction::make()->label('Novo documento do usuário'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:30: protected static ?string $navigationLabel = 'Chaves de Acesso';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:50: ->label('Usuário do portal')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:51: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:53: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:54: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:56: ->label('Código')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:59: ->label('Situação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:63: ->label('Gerada em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:66: ->label('Expira em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:69: ->label('Utilizada em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:71: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:73: ->label('IP de uso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:74: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:76: ->label('Navegador / dispositivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:77: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:113: ->label('Revogar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:117: ->modalHeading('Revogar chave de acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:118: ->modalDescription('A chave será invalidada imediatamente e não poderá mais ser usada no portal.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource.php:124: ->title('Chave revogada com sucesso.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:18: ->label('Usuário do portal')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:22: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:26: ->label('Código')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:30: ->label('Situação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:35: ->label('Gerada em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:39: ->label('Expira em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:43: ->label('Utilizada em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:45: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:49: ->label('IP de uso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:50: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:55: ->label('Somente válidas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:61: ->label('Somente expiradas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable.php:68: ViewAction::make()->label('Ver detalhes'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Pages\ViewAccessToken.php:12: protected static ?string $title = 'Detalhes da chave de acesso';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\AccessTokens\Pages\ListAccessTokens.php:12: protected static ?string $title = 'Chaves de Acesso';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource.php:27: protected static ?string $navigationLabel = 'Categorias de Documentos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Schemas\DocumentCategoryForm.php:20: ->label('Nome da categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Schemas\DocumentCategoryForm.php:21: ->placeholder('Ex: Contratos, Regulamentos, Institucional')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Tables\DocumentCategoriesTable.php:19: ->label('Categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Tables\DocumentCategoriesTable.php:23: ->label('Documentos vinculados')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Tables\DocumentCategoriesTable.php:28: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Pages\CreateDocumentCategory.php:12: protected static ?string $title = 'Nova Categoria de Documento';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Pages\EditDocumentCategory.php:13: protected static ?string $title = 'Editar Categoria de Documento';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Pages\ListDocumentCategories.php:13: protected static ?string $title = 'Categorias de Documentos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\DocumentCategories\Pages\ListDocumentCategories.php:20: CreateAction::make()->label('Nova categoria'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource.php:28: protected static ?string $navigationLabel = 'Biblioteca Geral';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:44: ->label('Categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:51: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:52: ->placeholder('Ex: Regulamento Interno 2026')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:57: ->label('Descrição')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:58: ->placeholder('Resumo do conteúdo e da finalidade do documento.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:65: ->label('Arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:100: ->label('Disponível no portal')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:103: ->helperText('Quando ativo, o documento pode ser disponibilizado aos usuários.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:106: ->label('Publicado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:109: ->helperText('Se vazio, o documento fica sem data definida de publicação.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:112: ->label('Arquivo atual')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:116: ->label('Tamanho')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm.php:120: ->label('Tipo do arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:20: ->label('Categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:25: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:28: ->label('Arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:31: ->label('Tamanho')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:35: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:40: ->label('Publicado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:44: ->label('Criado por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:45: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:48: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Tables\GeneralDocumentsTable.php:53: ->label('Atualizado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Pages\EditGeneralDocument.php:14: protected static ?string $title = 'Editar Documento Geral';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Pages\CreateGeneralDocument.php:13: protected static ?string $title = 'Novo Documento Geral';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Pages\ListGeneralDocuments.php:13: protected static ?string $title = 'Biblioteca Geral';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\GeneralDocuments\Pages\ListGeneralDocuments.php:20: CreateAction::make()->label('Novo documento geral'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\AnnouncementResource.php:28: protected static ?string $navigationLabel = 'Avisos Gerais';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Schemas\AnnouncementForm.php:34: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Schemas\AnnouncementForm.php:38: ->label('Mensagem')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Schemas\AnnouncementForm.php:50: ->label('Nível')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Schemas\AnnouncementForm.php:60: ->label('Início de exibição')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Schemas\AnnouncementForm.php:64: ->label('Fim de exibição')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Schemas\AnnouncementForm.php:68: ->label('Ativo no portal')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:19: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:22: ->label('Nível')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:32: ->label('Início')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:36: ->label('Fim')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:40: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:45: ->label('Criado por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:46: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:48: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Tables\AnnouncementsTable.php:53: ->label('Atualizado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Pages\EditAnnouncement.php:13: protected static ?string $title = 'Editar Aviso Geral';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Pages\CreateAnnouncement.php:12: protected static ?string $title = 'Novo Aviso Geral';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Pages\ListAnnouncements.php:13: protected static ?string $title = 'Avisos Gerais';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Announcements\Pages\ListAnnouncements.php:20: CreateAction::make()->label('Novo aviso'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:35: protected static ?string $navigationLabel = 'Envios e Solicitações';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:63: ->label('Protocolo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:75: ->label('Solicitante')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:76: ->helperText(fn (Submission $record) => $record->portalUser?->email)
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:80: ->label('Data do Envio')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:83: ->label('Assunto')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:102: ->label('Razão social')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:103: ->placeholder('-')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:107: ->label('CNPJ')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:108: ->placeholder('-'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:110: ->label('Telefone')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:111: ->placeholder('-'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:113: ->label('Atividade principal')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:114: ->placeholder('-')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:118: ->label('Website')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:119: ->placeholder('-')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:136: ->label('Patrimônio líquido')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:138: ->placeholder('-'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:140: ->label('Último faturamento anual')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:142: ->placeholder('-'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:144: ->label('US Person')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:147: ->label('Pessoa exposta politicamente (PEP)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:161: ->label('Nome completo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:162: ->placeholder('-')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:166: ->label('Cargo / posição')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:167: ->placeholder('-'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:169: ->label('CPF')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:170: ->placeholder('-'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:172: ->label('RG')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:173: ->placeholder('-'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:196: TextEntry::make('created_at')->label('Data/Hora')->dateTime('d/m/Y H:i'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:197: TextEntry::make('author_label')->label('Usuário Autor'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:198: TextEntry::make('visibility_label')->label('Visibilidade'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:199: TextEntry::make('message')->label('Mensagem')->columnSpanFull()->wrap(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:217: ->label('Data de criação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:220: ->label('Status atualizado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:222: ->placeholder('-'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:224: ->label('IP de origem')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:225: ->placeholder('-')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\SubmissionResource.php:238: ->placeholder('-')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:20: ->label('ID do Usuário do Portal Nimbus')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:24: ->label('Código de Referência')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:27: ->label('Tipo de Envio')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:31: ->label('Assunto')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:34: ->label('Mensagem')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:37: ->label('Nome do Responsável'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:39: ->label('CNPJ da Empresa'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:41: ->label('Razão Social / Empresa'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:43: ->label('Atividade Principal'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:45: ->label('Telefone')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:48: ->label('Website')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:51: ->label('Patrimônio Líquido')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:54: ->label('Faturamento Anual')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:57: ->label('US Person?')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:60: ->label('Pessoa Exposta (PEP)?')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:63: ->label('Dados Societários'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:65: ->label('Nome do Cadastrante'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:67: ->label('Cargo do Cadastrante'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:69: ->label('RG do Cadastrante'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:71: ->label('CPF do Cadastrante'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:73: ->label('Situação Atual')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:78: ->label('IP de Criação'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:80: ->label('Dispositivo/Navegador'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:82: ->label('Data e Hora de Envio')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:85: ->label('Situação Atualizada Em'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Schemas\SubmissionForm.php:87: ->label('Atualizado Por (ID)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Tables\SubmissionsTable.php:21: ->label('CNPJ da Empresa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Tables\SubmissionsTable.php:25: ->label('Empresa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Tables\SubmissionsTable.php:30: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Tables\SubmissionsTable.php:41: ->label('Visualizar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:23: ->label('Reenviar Notificação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:30: ->title('Reenvio ainda não implementado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:35: ->label('Alterar Situação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:39: ->modalHeading('Alterar Situação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:50: ->label('Nova Situação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:60: ->label('Visibilidade da Observação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:68: ->label('Observação / Comentário (opcional)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:69: ->placeholder('Adicione um comentário ou detalhe o que precisa ser corrigido pelo usuário...')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:75: ->label('Aprovar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:79: ->label('Solicitar Correção')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:84: ->label('Rejeitar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:89: ->label('Enviar Comentário Interno')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:138: $title = match ($intent) {
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:148: ->title($title)
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission.php:155: ->label('Imprimir')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\ListSubmissions.php:12: protected static ?string $title = 'Envios e Solicitações';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\Pages\EditSubmission.php:13: protected static ?string $title = 'Editar envio e solicitação';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\RelationManagers\FilesRelationManager.php:26: protected static ?string $title = 'Arquivos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\RelationManagers\FilesRelationManager.php:44: ->label('Documento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\RelationManagers\FilesRelationManager.php:72: ->label('Visualizar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\RelationManagers\FilesRelationManager.php:79: ->label('Baixar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\RelationManagers\ShareholdersRelationManager.php:23: protected static ?string $title = 'Sócios';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\RelationManagers\ShareholdersRelationManager.php:33: ->label('Participação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\RelationManagers\ShareholdersRelationManager.php:46: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\Submissions\RelationManagers\ShareholdersRelationManager.php:49: ->label('Participação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource.php:31: protected static ?string $navigationLabel = 'Auditoria de Envios';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource.php:85: ->label('Cancelar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource.php:96: ->title('Envio cancelado com sucesso.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource.php:105: ->label('Reprocessar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource.php:119: ->title('Envio marcado para reprocessamento.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:20: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:24: ->label('Classificação'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:26: ->label('Destinatário'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:28: ->label('Nome do destinatário')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:29: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:31: ->label('Assunto'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:33: ->label('Template'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:35: ->label('Correlação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:36: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:38: ->label('Tentativas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:41: ->label('Próxima tentativa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:43: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:45: ->label('Enviado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:47: ->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:49: ->label('Último erro')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:50: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Schemas\NotificationOutboxInfolist.php:57: ->label('Dados enviados')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Tables\NotificationOutboxesTable.php:19: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Tables\NotificationOutboxesTable.php:24: ->label('Classificação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Tables\NotificationOutboxesTable.php:28: ->label('Destinatário')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Tables\NotificationOutboxesTable.php:31: ->label('Assunto')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Tables\NotificationOutboxesTable.php:35: ->label('Tentativas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Tables\NotificationOutboxesTable.php:38: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Tables\NotificationOutboxesTable.php:44: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Tables\NotificationOutboxesTable.php:53: ->label('Classificação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Pages\ListNotificationOutboxes.php:13: protected static ?string $title = 'Auditoria de Envios';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Nimbus\NotificationOutboxes\Pages\ViewNotificationOutbox.php:13: protected static ?string $title = 'Detalhes do Envio';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:34: protected static ?string $navigationLabel = 'Investidores';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:53: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:58: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:65: ->label('Senha')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:74: ->label('Telefone')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:76: ->placeholder('(11) 3333-4444')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:85: ->label('Celular')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:87: ->placeholder('(11) 98888-7777')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:96: ->label('CPF')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:97: ->placeholder('123.456.789-00')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:106: ->label('RG')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:107: ->placeholder('12.345.678-9')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:116: ->label('Emissões')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:121: ->placeholder('Nenhuma emissão vinculada no momento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:125: ->label('Ativo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:129: ->label('Último login'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:132: ->label('Última visualização do portal'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:135: ->label('Observações')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:148: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:153: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:158: ->label('Telefone')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:162: ->label('Celular')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:166: ->label('CPF')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:170: ->label('RG')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:174: ->label('Ativo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:178: ->label('Último login')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:184: ->label('Última visualização do portal')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Investors\InvestorResource.php:190: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:27: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:32: ->label('Categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:43: ->label('Arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:58: ->label('Série')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:63: ->placeholder('Selecione uma ou mais séries')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:70: ->label('Publicado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:71: ->helperText('Quando marcado, o documento fica disponível no Portal (respeitando permissões).')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:82: ->label('Público')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:83: ->helperText('Quando marcado, o documento aparece no site público (somente se estiver publicado).')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:98: ->label('Nome do arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:102: ->label('Tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:106: ->label('Tamanho')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:112: ->label('Disco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:116: ->label('Publicado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:120: ->label('Publicado por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Schemas\DocumentForm.php:124: ->label('Link')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:27: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:32: ->label('Categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:38: ->label('Séries')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:43: ->label('Arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:47: ->label('Tamanho')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:52: ->label('Disco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:57: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:81: ->label('Site')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:86: ->label('Publicado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:92: ->label('Publicado por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:96: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:102: ->label('Nova Versão')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:108: ->label('Novo Arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:165: ->title('Nova versão criada com sucesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:171: ->label('Publicar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:175: ->modalHeading('Publicar Documento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:176: ->modalDescription('Tem certeza que deseja publicar este documento para os investidores vinculados?')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:177: ->modalSubmitActionLabel('Sim, publicar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:186: ->title('Documento publicado!')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:193: ->label('Tornar Público')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:197: ->modalHeading('Tornar Documento Público')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:198: ->modalDescription('Tem certeza que deseja deixar este documento aberto para o público em geral?')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:199: ->modalSubmitActionLabel('Sim, tornar público')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:209: ->title('Documento agora é público!')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:216: ->label('Baixar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:232: ->label('Rascunho')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:236: ->label('Publicado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\Tables\DocumentsTable.php:240: ->label('Público')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\RelationManagers\VersionsRelationManager.php:34: ->label('Versão')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\RelationManagers\VersionsRelationManager.php:38: ->label('Título'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\RelationManagers\VersionsRelationManager.php:40: ->label('Arquivo'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\RelationManagers\VersionsRelationManager.php:42: ->label('Disco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\RelationManagers\VersionsRelationManager.php:45: ->label('Substituído Em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Documents\RelationManagers\VersionsRelationManager.php:56: ->label('Baixar')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\UserResource.php:25: protected static ?string $navigationLabel = 'Usuários';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\UserResource.php:62: ->label('Aprovar acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\UserResource.php:66: ->modalHeading('Aprovar acesso do usuário')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\UserResource.php:67: ->modalDescription('Ao confirmar, o usuário terá acesso liberado ao portal BSI Capital.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\UserResource.php:73: ->title('Acesso do usuário '.$record->name.' aprovado com sucesso.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Schemas\UserForm.php:16: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Schemas\UserForm.php:20: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Schemas\UserForm.php:25: ->label('Cargo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Schemas\UserForm.php:28: ->label('Departamento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Schemas\UserForm.php:31: ->label('Aprovado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:20: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:24: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:28: ->label('Cargo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:29: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:32: ->label('Departamento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:33: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:36: ->label('Status de acesso')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:42: ->label('Convidado por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:43: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Users\Tables\UsersTable.php:46: ->label('Cadastrado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource.php:25: protected static ?string $navigationLabel = 'Emissões';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:22: protected static ?string $title = 'Fluxo de Pagamentos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:33: ->label('Data do Pagamento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:36: ->label('Prêmio (R$)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:41: ->label('Juros (R$)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:46: ->label('Amortização (R$)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:51: ->label('Amortização Extraordinária (R$)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:64: ->label('Data')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:69: ->label('Prêmio')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:73: ->label('Juros')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:77: ->label('Amortização')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:81: ->label('Amortização Extra')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:91: ->label('Importar Planilha')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:95: ->label('Arquivo Excel (.xlsx)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:108: ->title('Erro ao ler o arquivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager.php:116: ->title('Importação concluída!')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:23: protected static ?string $title = 'Histórico de PU';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:34: ->label('Data')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:37: ->label('PU Atualizado (R$)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:49: ->label('Data')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:53: ->label('PU')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:60: ->label('Importar Planilha')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:64: ->label('Arquivo Excel (.xlsx)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:77: Notification::make()->title('Erro ao ler o arquivo')->danger()->send();
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager.php:130: ->title('Importação concluída!')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager.php:18: protected static ?string $title = 'Histórico de Integralizações';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager.php:25: ->label('Data')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager.php:28: ->label('Quantidade')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager.php:40: ->label('Data')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager.php:44: ->label('Quantidade')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:24: ->label('Nome da operação/série')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:29: ->label('Tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:34: ->label('Código IF')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:38: ->label('Código ISIN')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:42: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:52: ->label('Emissor')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:56: ->label('Coordenador líder')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:60: ->label('Regime fiduciário')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:64: ->label('Data de emissão'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:67: ->label('Data de vencimento'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:70: ->label('Período de atualização monetária')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:74: ->label('Série')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:78: ->label('Número da emissão')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:82: ->label('Quantidade emitida')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:88: ->placeholder('32.600'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:91: ->label('Meses de atualização monetária')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:95: ->label('Periodicidade de pagamento de juros')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:99: ->label('Tipo de oferta')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:103: ->label('Concentração')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:107: ->label('Preço de emissão')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:114: ->placeholder('1.000,00'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:117: ->label('Periodicidade de amortização')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:121: ->label('Quantidade integralizada')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:127: ->placeholder('13.200'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:130: ->label('Agente fiduciário')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:134: ->label('Devedor')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:138: ->label('Remuneração')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:142: ->label('Possibilidade de pré-pagamento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:146: ->label('Segmento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:150: ->label('Volume emitido')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:157: ->placeholder('32.000.000,00'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:160: ->label('PU Atual')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:169: ->label('Integralização')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:170: ->placeholder('Ex: 100% ou 50.000 cotas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:178: ->label('Disponível no site público')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:182: ->label('Logo da Operação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Schemas\EmissionForm.php:189: ->label('Descrição')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:19: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:24: ->label('Tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:28: ->label('Código IF')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:32: ->label('Código ISIN')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:36: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:49: ->label('Emissor')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:53: ->label('Série')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:57: ->label('Vencimento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Emissions\Tables\EmissionsTable.php:63: ->label('Site')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\FundResource.php:28: protected static ?string $navigationLabel = 'Fundos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:28: ->label('Operacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:38: ->label('Tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:56: ->label('Cadastrar tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:57: ->modalHeading('Cadastrar tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:62: ->label('Editar tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:63: ->modalHeading('Editar tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:68: ->label('Nome do fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:81: ->helperText('Selecione primeiro o tipo de fundo para listar apenas os nomes compativeis.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:95: ->label('Cadastrar nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:96: ->modalHeading('Cadastrar nome do fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:101: ->label('Editar nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:102: ->modalHeading('Editar nome do fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:107: ->label('Aplicacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:119: ->label('Cadastrar aplicacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:120: ->modalHeading('Cadastrar aplicacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:125: ->label('Editar aplicacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:126: ->modalHeading('Editar aplicacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:131: ->label('Banco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:143: ->label('Cadastrar banco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:144: ->modalHeading('Cadastrar banco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:149: ->label('Editar banco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:150: ->modalHeading('Editar banco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Schemas\FundForm.php:155: ->label('Conta')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:19: ->label('Operacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:24: ->label('Tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:29: ->label('Nome do fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:35: ->label('Aplicacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:40: ->label('Banco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:45: ->label('Conta')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:51: ->label('Operacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:56: ->label('Tipo de fundo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:61: ->label('Aplicacao')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Tables\FundsTable.php:66: ->label('Banco')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Pages\EditFund.php:13: protected static ?string $title = 'Editar fundo';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Pages\ListFunds.php:13: protected static ?string $title = 'Fundos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Pages\ListFunds.php:19: ->label('Criar fundo'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Funds\Pages\CreateFund.php:12: protected static ?string $title = 'Criar fundo';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\ExpenseResource.php:29: protected static ?string $navigationLabel = 'Despesas';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:25: ->label('Operação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:32: ->label('Categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:37: ->label('Prestador de serviço')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:42: ->helperText('Se o prestador ainda não estiver cadastrado, use a ação "Cadastrar prestador".')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:47: ->label('Cadastrar prestador')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:48: ->modalHeading('Cadastrar prestador de serviço')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:53: ->label('Editar prestador')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:54: ->modalHeading('Editar prestador de serviço')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:59: ->label('Valor')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:72: ->placeholder('1.000,00'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:75: ->label('Data / Período')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:87: ->label('Data de início')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Schemas\ExpenseForm.php:91: ->label('Data de fim')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:20: ->label('Operação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:25: ->label('Categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:30: ->label('Prestador de serviço')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:35: ->label('Valor')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:40: ->label('Período')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:46: ->label('Início')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:51: ->label('Fim')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:53: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:58: ->label('Operação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Tables\ExpensesTable.php:63: ->label('Categoria')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Pages\CreateExpense.php:12: protected static ?string $title = 'Criar despesa';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Pages\ListExpenses.php:15: protected static ?string $title = 'Despesas';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Pages\ListExpenses.php:21: ->label('Calendário')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Pages\ListExpenses.php:25: ->label('Criar despesa'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Pages\EditExpense.php:13: protected static ?string $title = 'Editar despesa';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Pages\ExpenseCalendar.php:18: protected static ?string $title = 'Calendário de pagamentos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Pages\ExpenseCalendar.php:114: ->label('Listagem')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Expenses\Pages\ExpenseCalendar.php:119: ->label('Criar despesa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:37: TextInput::make('name')->label('Nome')->required()->maxLength(255),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:38: TextInput::make('email')->label('E-mail')->email()->required()->maxLength(255),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:40: ->label('Usuário interno')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:45: ->helperText('Vincule o representante ao usuário que acessa o painel administrativo.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:47: TextInput::make('queue_position')->label('Posição na fila')->numeric()->default(1)->required(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:48: Toggle::make('is_active')->label('Ativo na fila')->default(true),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:56: TextColumn::make('queue_position')->label('Fila')->sortable(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:57: TextColumn::make('name')->label('Nome')->searchable()->sortable(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:58: TextColumn::make('email')->label('E-mail')->searchable(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:59: TextColumn::make('user.name')->label('Usuário interno')->placeholder('Não vinculado'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:60: TextColumn::make('is_active')->label('Status')->badge()->formatStateUsing(fn (bool $state) => $state ? 'Ativo' : 'Inativo')->color(fn (bool $state) => $state ? 'success' : 'gray'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource.php:61: TextColumn::make('proposals_count')->counts('proposals')->label('Propostas'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:22: protected static ?string $navigationLabel = 'Downloads do Portal';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:49: ->label('Documento'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:52: ->label('Investidor'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:54: ->label('Endereço IP'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:56: ->label('User Agent'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:58: ->label('Referer'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:60: ->label('Data do Download'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:69: \Filament\Infolists\Components\TextEntry::make('document.title')->label('Documento'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:70: \Filament\Infolists\Components\TextEntry::make('investor.name')->label('Investidor'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:71: \Filament\Infolists\Components\TextEntry::make('ip')->label('IP'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:72: \Filament\Infolists\Components\TextEntry::make('user_agent')->label('User Agent'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:73: \Filament\Infolists\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:82: ->label('Documento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:86: ->label('Investidor')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:90: ->label('Data')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:94: ->label('IP')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:98: ->label('User Agent')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:105: ->label('Investidor')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:110: ->label('Documento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:116: \Filament\Forms\Components\DatePicker::make('created_from')->label('De'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\DocumentDownloads\DocumentDownloadResource.php:117: \Filament\Forms\Components\DatePicker::make('created_until')->label('Até'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundTypes\FundTypeResource.php:26: protected static ?string $navigationLabel = 'Tipos de fundo';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundTypes\Schemas\FundTypeForm.php:19: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundTypes\Tables\FundTypesTable.php:16: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundTypes\Tables\FundTypesTable.php:21: ->label('Nomes vinculados')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\FundTypes\Tables\FundTypesTable.php:25: ->label('Fundos vinculados')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Banks\BankResource.php:26: protected static ?string $navigationLabel = 'Bancos';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Banks\Schemas\BankForm.php:20: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Banks\Schemas\BankForm.php:30: ->label('Logo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Banks\Tables\BanksTable.php:17: ->label('Logo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Banks\Tables\BanksTable.php:21: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Banks\Tables\BanksTable.php:26: ->label('Fundos vinculados')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:22: protected static ?string $navigationLabel = 'Logs do Sistema';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:48: ->label('Log Name'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:50: ->label('Descrição'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:52: ->label('Entidade Afetada'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:54: ->label('Valores Alterados')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:64: \Filament\Infolists\Components\TextEntry::make('log_name')->label('Log'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:65: \Filament\Infolists\Components\TextEntry::make('description')->label('Ação'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:66: \Filament\Infolists\Components\TextEntry::make('causer.name')->label('Autor (Causer)'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:67: \Filament\Infolists\Components\TextEntry::make('subject_type')->label('Modificou'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:68: \Filament\Infolists\Components\TextEntry::make('created_at')->label('Data')->dateTime(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:70: ->label('Detalhes (JSON)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:82: ->label('Log')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:87: ->label('Ação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:90: ->label('Modificou (Modelo)')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:94: ->label('Usuário Autor')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:98: ->label('Data e Hora')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:105: \Filament\Forms\Components\DatePicker::make('created_from')->label('De'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Activities\ActivityResource.php:106: \Filament\Forms\Components\DatePicker::make('created_until')->label('Até'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\InvitationResource.php:23: protected static ?string $navigationLabel = 'Convites';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Schemas\InvitationForm.php:15: ->label('E-mail do convidado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Schemas\InvitationForm.php:20: ->placeholder('email@empresa.com.br'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Tables\InvitationsTable.php:19: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Tables\InvitationsTable.php:23: ->label('Convidado por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Tables\InvitationsTable.php:24: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Tables\InvitationsTable.php:27: ->label('Expira em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Tables\InvitationsTable.php:31: ->label('Utilizado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Tables\InvitationsTable.php:33: ->placeholder('Não utilizado')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Tables\InvitationsTable.php:36: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Tables\InvitationsTable.php:49: ->label('Criado em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Invitations\Pages\CreateInvitation.php:34: ->title('Convite enviado com sucesso para '.$invitation->email)
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\VacancyResource.php:22: protected static ?string $navigationLabel = 'Vagas';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:30: protected static ?string $navigationLabel = 'Candidaturas';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:65: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:70: ->label('Vaga')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:73: ->label('Recebida em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:76: ->label('Última movimentação por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:79: ->label('Última movimentação em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:82: ->label('Currículo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:89: ->label('Notas internas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:93: ->label('Mensagem enviada')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:101: TextInput::make('name')->label('Nome')->disabled(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:102: TextInput::make('email')->label('E-mail')->disabled(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:103: TextInput::make('phone')->label('Telefone')->disabled(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:104: TextInput::make('linkedin_url')->label('LinkedIn')->disabled(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:116: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:118: TextEntry::make('vacancy.title')->label('Vaga'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:119: TextEntry::make('created_at')->label('Recebida em')->dateTime('d/m/Y H:i'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:120: TextEntry::make('reviewedBy.name')->label('Última movimentação por')->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:121: TextEntry::make('reviewed_at')->label('Última movimentação em')->dateTime('d/m/Y H:i')->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:122: TextEntry::make('internal_notes')->label('Notas internas')->placeholder('Sem notas')->columnSpanFull(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:127: TextEntry::make('name')->label('Nome'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:128: TextEntry::make('email')->label('E-mail'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:129: TextEntry::make('phone')->label('Telefone'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:130: TextEntry::make('linkedin_url')->label('LinkedIn')->placeholder('—'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:131: TextEntry::make('message')->label('Mensagem')->placeholder('Sem mensagem')->columnSpanFull(),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\JobApplicationResource.php:133: ->label('Currículo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Schemas\VacancyForm.php:21: ->label('Título da Vaga')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Schemas\VacancyForm.php:32: ->label('Departamento'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Schemas\VacancyForm.php:35: ->label('Localização')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Schemas\VacancyForm.php:39: ->label('Tipo de Contrato')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Schemas\VacancyForm.php:49: ->label('Vaga Ativa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Schemas\VacancyForm.php:57: ->label('Descrição da Vaga')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Schemas\VacancyForm.php:62: ->label('Requisitos')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Schemas\VacancyForm.php:66: ->label('Benefícios')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:23: ->label('Nome')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:27: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:33: ->label('Vaga')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:37: ->label('E-mail')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:40: ->label('Telefone'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:42: ->label('Última movimentação por')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:43: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:46: ->label('Última movimentação')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:48: ->placeholder('—')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:51: ->label('Data')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:57: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:60: ->label('Vaga')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:66: \Filament\Forms\Components\DatePicker::make('created_from')->label('De'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:67: \Filament\Forms\Components\DatePicker::make('created_until')->label('Até'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\JobApplicationsTable.php:85: ->label('Currículo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:22: ->label('Título')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:26: ->label('Departamento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:29: ->placeholder('Geral'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:31: ->label('Tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:35: ->label('Localização')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:38: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:43: ->label('Candidatos')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:48: ->label('Criada em')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:55: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:56: ->placeholder('Todas')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:60: ->label('Departamento')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:67: ->label('Tipo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:75: ->label(fn (Vacancy $record): string => $record->is_active ? 'Pausar' : 'Reabrir')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:85: ->title($record->is_active ? 'Vaga reaberta com sucesso.' : 'Vaga pausada com sucesso.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Resources\Recruitment\Tables\VacanciesTable.php:90: ->label('Página pública')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalAttentionTableWidget.php:36: ->label('Empresa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalAttentionTableWidget.php:40: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalAttentionTableWidget.php:45: ->label('Motivo')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalAttentionTableWidget.php:49: ->label('Última atualização')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalRecentTableWidget.php:36: ->label('Empresa')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalRecentTableWidget.php:40: ->label('Representante')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalRecentTableWidget.php:41: ->placeholder('Não atribuído'),
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalRecentTableWidget.php:43: ->label('Status')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Widgets\Proposals\ProposalRecentTableWidget.php:48: ->label('Entrada')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\ProposalDashboard.php:19: protected static ?string $title = 'Dashboard de Propostas';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\ProposalDashboard.php:21: protected static ?string $navigationLabel = 'Dashboard de Propostas';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Reports.php:19: protected static ?string $navigationLabel = 'Relatórios';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Reports.php:21: protected static ?string $title = 'Relatórios';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Settings.php:19: protected static ?string $navigationLabel = 'Configurações';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Settings.php:21: protected static ?string $title = 'Configurações';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Nimbus\NotificationSettings.php:24: protected static ?string $navigationLabel = 'Configurar Notificações';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Nimbus\NotificationSettings.php:26: protected static ?string $title = 'Configurar Notificações';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Nimbus\NotificationSettings.php:102: ->title('Configurações salvas com sucesso.')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Nimbus\NotificationSettings.php:112: ->title($connection['notification_title'])
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Nimbus\NimbusDashboard.php:20: protected static ?string $title = 'Visão Geral';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\Pages\Nimbus\NimbusDashboard.php:22: protected static ?string $navigationLabel = 'Dashboard';
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\NimbusWidgets\NimbusRecentSubmissions.php:33: ->label('SOLICITANTE')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\NimbusWidgets\NimbusRecentSubmissions.php:36: ->label('DATA DE ENVIO')
+\\wsl.localhost\Ubuntu\home\desktop\projects\bsi-capital\app\Filament\NimbusWidgets\NimbusRecentSubmissions.php:39: ->label('SITUAÇÃO')

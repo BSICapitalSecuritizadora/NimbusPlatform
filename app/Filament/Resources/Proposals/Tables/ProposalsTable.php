@@ -12,20 +12,12 @@ use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class ProposalsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'company',
-                'contact',
-                'representative',
-                'latestContinuationAccess',
-                'latestStatusHistory.changedByUser',
-            ]))
             ->columns([
                 TextColumn::make('distribution_sequence')
                     ->label('# Fila')
@@ -87,20 +79,24 @@ class ProposalsTable
                     ->label('Reenviar acesso')
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
-                    ->visible(fn (Proposal $record): bool => filled($record->contact?->email))
+                    ->visible(fn (Proposal $record): bool => ProposalResource::canEdit($record)
+                        && filled($record->contact?->email))
                     ->action(function (Proposal $record): void {
                         app(SendProposalContinuationLink::class)->handle(
                             $record->loadMissing(['company', 'contact']),
                         );
 
                         Notification::make()
-                            ->title('Novo magic link enviado ao cliente.')
+                            ->title('Novo link de acesso enviado ao cliente.')
                             ->success()
                             ->send();
                     }),
-                ViewAction::make(),
-                EditAction::make(),
+                ViewAction::make()
+                    ->visible(fn (Proposal $record): bool => ProposalResource::canView($record)),
+                EditAction::make()
+                    ->visible(fn (Proposal $record): bool => ProposalResource::canEdit($record)),
             ])
+
             ->defaultSort('distribution_sequence', 'desc');
     }
 }

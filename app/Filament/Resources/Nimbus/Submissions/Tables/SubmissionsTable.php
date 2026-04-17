@@ -38,7 +38,8 @@ class SubmissionsTable
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->label('Visualizar'),
+                    ->label('Visualizar')
+                    ->visible(fn (Submission $record): bool => auth()->user()->can('view', $record)),
             ]);
     }
 }

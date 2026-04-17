@@ -15,11 +15,18 @@ class VersionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'versions';
 
+    protected static ?string $title = 'Versões';
+
+    protected static ?string $modelLabel = 'Versão';
+
+    protected static ?string $pluralModelLabel = 'Versões';
+
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
                 TextInput::make('title')
+                    ->label('Título')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -42,7 +49,7 @@ class VersionsRelationManager extends RelationManager
                     ->label('Disco')
                     ->formatStateUsing(fn (?string $state, Document $record): string => $state ?: $record->resolved_storage_disk),
                 TextColumn::make('replaced_at')
-                    ->label('Substituído Em')
+                    ->label('Substituído em')
                     ->dateTime('d/m/Y H:i'),
             ])
             ->filters([

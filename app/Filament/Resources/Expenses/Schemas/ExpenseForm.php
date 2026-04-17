@@ -7,10 +7,12 @@ use App\Models\Expense;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 
 class ExpenseForm
 {
@@ -53,6 +55,22 @@ class ExpenseForm
                                 ->modalWidth('2xl'),
                         ),
 
+                    TextInput::make('amount')
+                        ->label('Valor')
+                        ->required()
+                        ->prefix('R$')
+                        ->inputMode('decimal')
+                        ->mask(RawJs::make(<<<'JS'
+                            $money($input, ',', '.')
+                        JS))
+                        ->formatStateUsing(fn (mixed $state): ?string => self::formatCurrencyForDisplay($state))
+                        ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
+                        ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
+                        ->validationMessages([
+                            'required' => 'Informe o valor da despesa.',
+                        ])
+                        ->placeholder('1.000,00'),
+
                     Select::make('period')
                         ->label('Data / Período')
                         ->options(Expense::PERIOD_OPTIONS)
@@ -81,5 +99,56 @@ class ExpenseForm
                 ])
                 ->columns(2),
         ]);
+    }
+
+    protected static function normalizeCurrencyValue(mixed $value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return round((float) $value, 2);
+        }
+
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $value = str_replace(['R$', ' '], '', $value);
+
+        if (str_contains($value, ',')) {
+            $value = str_replace('.', '', $value);
+            $value = str_replace(',', '.', $value);
+        } elseif (str_contains($value, '.')) {
+            $parts = explode('.', $value);
+
+            if ((count($parts) > 2) || (strlen((string) end($parts)) === 3)) {
+                $value = str_replace('.', '', $value);
+            } else {
+                $value = str_replace(',', '', $value);
+            }
+        } else {
+            $value = str_replace(',', '', $value);
+        }
+
+        if (! is_numeric($value)) {
+            return null;
+        }
+
+        return round((float) $value, 2);
+    }
+
+    protected static function formatCurrencyForDisplay(mixed $value): ?string
+    {
+        $value = self::normalizeCurrencyValue($value);
+
+        if ($value === null) {
+            return null;
+        }
+
+        return number_format($value, 2, ',', '.');
     }
 }

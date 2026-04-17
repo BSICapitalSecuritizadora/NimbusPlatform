@@ -15,7 +15,6 @@ use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
 use App\Models\ProposalRepresentative;
-use App\Models\User;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -122,16 +121,6 @@ it('configures eager loading on the submissions list table and recent widget', f
     expect(array_keys($listQuery->getEagerLoads()))->toContain('portalUser')
         ->and(array_keys($widgetQuery->getEagerLoads()))->toContain('portalUser');
 });
-
-function makeAdminUser(): User
-{
-    $user = User::factory()->withTwoFactor()->create([
-        'email' => fake()->unique()->safeEmail(),
-    ]);
-    $user->assignRole('admin');
-
-    return $user;
-}
 
 function makeProposalForFilament(): Proposal
 {

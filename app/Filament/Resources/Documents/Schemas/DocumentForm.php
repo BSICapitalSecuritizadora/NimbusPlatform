@@ -68,7 +68,7 @@ class DocumentForm
                      */
                     Toggle::make('is_published')
                         ->label('Publicado')
-                        ->helperText('Quando marcado, o documento fica disponível no Portal (respeitando permissões).')
+                        ->helperText('Quando marcado, o documento fica disponível no portal, respeitando as permissões configuradas.')
                         ->live()
                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
                             // se despublicar, não pode continuar público

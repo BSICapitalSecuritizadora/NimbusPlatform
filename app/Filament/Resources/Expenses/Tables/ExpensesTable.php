@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources\Expenses\Tables;
 
+use App\Models\Expense;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class ExpensesTable
@@ -29,6 +31,11 @@ class ExpensesTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('amount')
+                    ->label('Valor')
+                    ->money('BRL')
+                    ->sortable(),
+
                 TextColumn::make('period')
                     ->label('Período')
                     ->formatStateUsing(fn (string $state): string => \App\Models\Expense::PERIOD_OPTIONS[$state] ?? $state)
@@ -47,7 +54,14 @@ class ExpensesTable
                     ->sortable(),
             ])
             ->filters([
-                //
+                SelectFilter::make('emission_id')
+                    ->label('Operação')
+                    ->relationship('emission', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('category')
+                    ->label('Categoria')
+                    ->options(Expense::CATEGORY_OPTIONS),
             ])
             ->defaultSort('start_date', 'desc')
             ->recordActions([

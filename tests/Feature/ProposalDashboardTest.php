@@ -115,7 +115,7 @@ it('renders the proposal dashboard only for users with proposal access', functio
     $this
         ->get(ProposalDashboard::getUrl(panel: 'admin'))
         ->assertSuccessful()
-        ->assertSee('Dashboard de Propostas');
+        ->assertSee('Painel de propostas');
 
     $userWithoutPermission = User::factory()->create([
         'email' => 'sem-acesso-propostas@example.com',

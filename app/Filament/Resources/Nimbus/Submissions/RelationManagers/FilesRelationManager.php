@@ -62,28 +62,37 @@ class FilesRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
-                AttachAction::make(),
+                CreateAction::make()
+                    ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
+                AttachAction::make()
+                    ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
             ])
             ->recordActions([
                 Action::make('visualizar')
                     ->label('Visualizar')
                     ->icon('heroicon-o-eye')
                     ->color('gray')
+                    ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('downloadFile', [$record->submission, $record]))
                     ->url(fn (SubmissionFile $record): string => route('admin.nimbus.submissions.files.preview', $record))
                     ->openUrlInNewTab(),
                 Action::make('baixar')
                     ->label('Baixar')
                     ->icon('heroicon-o-arrow-down-tray')
+                    ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('downloadFile', [$record->submission, $record]))
                     ->url(fn (SubmissionFile $record): string => route('admin.nimbus.submissions.files.download', $record)),
-                EditAction::make(),
-                DetachAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('update', $record->submission)),
+                DetachAction::make()
+                    ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('update', $record->submission)),
+                DeleteAction::make()
+                    ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('update', $record->submission)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DetachBulkAction::make(),
-                    DeleteBulkAction::make(),
+                    DetachBulkAction::make()
+                        ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
+                    DeleteBulkAction::make()
+                        ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
                 ]),
             ]);
     }

@@ -14,3 +14,7 @@ Artisan::command('inspire', function () {
         ->orWhere('expires_at', '<', now()->subHours(24))
         ->delete();
 })->dailyAt('03:00')->name('nimbus-tokens-cleanup');
+
+\Illuminate\Support\Facades\Schedule::command('app:cleanup-temporary-uploads')
+    ->dailyAt('02:00')
+    ->name('cleanup-temporary-uploads');
