@@ -55,7 +55,7 @@ class ProposalsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state, Proposal $record): string => $record->status_label)
+                    ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                     ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('distributed_at')
                     ->label('Distribuída')

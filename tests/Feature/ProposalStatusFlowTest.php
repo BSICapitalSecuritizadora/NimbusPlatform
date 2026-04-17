@@ -3,6 +3,7 @@
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\DTOs\Proposals\UpdateProposalStatusDTO;
 use App\Enums\ProposalStatus;
+use App\Filament\Resources\Proposals\Pages\ListProposals;
 use App\Filament\Resources\Proposals\ProposalResource;
 use App\Mail\ProposalContinuationLinkMail;
 use App\Mail\ProposalStatusUpdatedMail;
@@ -64,6 +65,31 @@ it('limits the commercial representative to proposals assigned to their queue re
 
     expect(ProposalResource::getEloquentQuery()->pluck('id')->all())
         ->toBe([$assignedProposal->id, $otherProposal->id]);
+});
+
+it('renders the proposals list page for admin users with legacy proposal statuses', function () {
+    $adminUser = User::factory()->withTwoFactor()->create([
+        'email' => 'admin-list@example.com',
+    ]);
+    $adminUser->assignRole('admin');
+
+    $representativeUser = User::factory()->create([
+        'email' => 'representante-list@example.com',
+    ]);
+    $representativeUser->assignRole('commercial-representative');
+
+    $representative = ProposalRepresentative::factory()->create([
+        'user_id' => $representativeUser->id,
+        'email' => $representativeUser->email,
+    ]);
+
+    createProposalForRepresentative($representative, 'pending');
+
+    $this->actingAs($adminUser)
+        ->get(ListProposals::getUrl(panel: 'admin'))
+        ->assertSuccessful()
+        ->assertSee('Propostas')
+        ->assertSee('Pending');
 });
 
 it('records the status transition history with the responsible user and note', function () {
