@@ -224,7 +224,20 @@ class FundForm
                             'required' => 'Informe o saldo do fundo.',
                         ])
                         ->placeholder('1.000,00')
-                        ->helperText('Atualize o saldo no primeiro dia de cada mes. O valor do mes anterior sera salvo automaticamente no historico de saldo.')
+                        ->helperText('Atualize o saldo no primeiro dia de cada mes. O valor do mes anterior sera salvo automaticamente no historico de saldo. Se o saldo ficar abaixo do valor minimo, um aviso informativo sera exibido apos o salvamento.')
+                        ->columnSpanFull(),
+
+                    TextInput::make('minimum_balance')
+                        ->label('Valor minimo')
+                        ->prefix('R$')
+                        ->inputMode('decimal')
+                        ->mask(RawJs::make(<<<'JS'
+                            $money($input, ',', '.')
+                        JS))
+                        ->formatStateUsing(fn (mixed $state): ?string => self::formatCurrencyForDisplay($state))
+                        ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
+                        ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
+                        ->placeholder('1.000,00')
                         ->columnSpanFull(),
                 ])
                 ->columns(2),

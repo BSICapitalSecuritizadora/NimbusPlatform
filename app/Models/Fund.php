@@ -22,6 +22,7 @@ class Fund extends Model
         'agency',
         'account',
         'balance',
+        'minimum_balance',
         'balance_updated_at',
     ];
 
@@ -29,6 +30,7 @@ class Fund extends Model
     {
         return [
             'balance' => 'decimal:2',
+            'minimum_balance' => 'decimal:2',
             'balance_updated_at' => 'datetime',
         ];
     }
@@ -61,6 +63,15 @@ class Fund extends Model
     public function balanceHistories(): HasMany
     {
         return $this->hasMany(FundBalanceHistory::class);
+    }
+
+    public function isBalanceBelowMinimum(): bool
+    {
+        if (($this->balance === null) || ($this->minimum_balance === null)) {
+            return false;
+        }
+
+        return ((int) round(((float) $this->balance) * 100)) < ((int) round(((float) $this->minimum_balance) * 100));
     }
 
     public function requiresMonthlyBalanceUpdate(?CarbonInterface $referenceDate = null): bool

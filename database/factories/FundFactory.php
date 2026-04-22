@@ -35,6 +35,7 @@ class FundFactory extends Factory
             'agency' => fake()->numerify('####-#'),
             'account' => fake()->unique()->numerify('#####-#'),
             'balance' => fake()->randomFloat(2, 1000, 500000),
+            'minimum_balance' => null,
             'balance_updated_at' => now(),
         ];
     }

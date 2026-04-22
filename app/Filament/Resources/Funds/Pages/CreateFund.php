@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Funds\Pages;
 
 use App\Filament\Resources\Funds\FundResource;
+use App\Models\Fund;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateFund extends CreateRecord
@@ -22,6 +24,22 @@ class CreateFund extends CreateRecord
         $data['balance_updated_at'] = now();
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        if (! ($this->record instanceof Fund)) {
+            return;
+        }
+
+        if (! $this->record->isBalanceBelowMinimum()) {
+            return;
+        }
+
+        Notification::make()
+            ->warning()
+            ->title('Atencao: o saldo informado esta abaixo do valor minimo definido.')
+            ->send();
     }
 
     protected function getCreatedNotificationTitle(): ?string

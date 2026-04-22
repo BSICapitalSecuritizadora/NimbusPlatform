@@ -72,6 +72,7 @@ it('creates a fund linked to the selected auxiliary records', function () {
             'agency' => '1234-5',
             'account' => '12345-6',
             'balance' => '150.000,25',
+            'minimum_balance' => '125.000,00',
         ])
         ->call('create');
 
@@ -86,6 +87,7 @@ it('creates a fund linked to the selected auxiliary records', function () {
         ->and($fund?->agency)->toBe('1234-5')
         ->and($fund?->account)->toBe('12345-6')
         ->and($fund?->balance)->toBe('150000.25')
+        ->and($fund?->minimum_balance)->toBe('125000.00')
         ->and($fund?->balance_updated_at)->not->toBeNull();
 });
 
@@ -106,7 +108,7 @@ it('requires all mandatory fields when creating a fund', function () {
         ]);
 });
 
-it('shows the expected masks for agency, current account and balance fields', function () {
+it('shows the expected masks for agency, current account, balance and minimum balance fields', function () {
     $this->actingAs(makeFundAdminUser());
 
     Livewire::test(CreateFund::class)
@@ -121,6 +123,12 @@ it('shows the expected masks for agency, current account and balance fields', fu
                 && str_contains((string) $mask, '999999999-9');
         })
         ->assertFormFieldExists('balance', function (TextInput $field): bool {
+            $mask = $field->getMask();
+
+            return ($mask instanceof RawJs)
+                && str_contains((string) $mask, '$money($input');
+        })
+        ->assertFormFieldExists('minimum_balance', function (TextInput $field): bool {
             $mask = $field->getMask();
 
             return ($mask instanceof RawJs)

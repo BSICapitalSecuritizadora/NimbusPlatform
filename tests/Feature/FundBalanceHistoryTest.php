@@ -1,9 +1,15 @@
 <?php
 
+use App\Filament\Resources\Funds\Pages\CreateFund;
 use App\Filament\Resources\Funds\Pages\EditFund;
 use App\Filament\Resources\Funds\RelationManagers\FundBalanceHistoriesRelationManager;
+use App\Models\Bank;
+use App\Models\Emission;
 use App\Models\Fund;
+use App\Models\FundApplication;
 use App\Models\FundBalanceHistory;
+use App\Models\FundName;
+use App\Models\FundType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,6 +44,39 @@ it('formats the saved balance correctly when reopening a fund for editing', func
         ]);
 });
 
+it('shows an informational warning when creating a fund with balance below the minimum value', function () {
+    $this->actingAs(makeFundBalanceAdminUser());
+
+    $emission = Emission::factory()->create();
+    $fundType = FundType::factory()->create();
+    $fundName = FundName::factory()->create([
+        'fund_type_id' => $fundType->id,
+    ]);
+    $fundApplication = FundApplication::factory()->create();
+    $bank = Bank::factory()->create();
+
+    Livewire::test(CreateFund::class)
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'fund_type_id' => $fundType->id,
+            'fund_name_id' => $fundName->id,
+            'fund_application_id' => $fundApplication->id,
+            'bank_id' => $bank->id,
+            'agency' => '1234-5',
+            'account' => '12345-6',
+            'balance' => '49.000,00',
+            'minimum_balance' => '50.000,00',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertNotified('Atencao: o saldo informado esta abaixo do valor minimo definido.');
+
+    expect(Fund::query()->first())
+        ->not->toBeNull()
+        ->and(Fund::query()->first()?->balance)->toBe('49000.00')
+        ->and(Fund::query()->first()?->minimum_balance)->toBe('50000.00');
+});
+
 it('stores the previous monthly balance in history when a pending fund is updated', function () {
     $this->actingAs(makeFundBalanceAdminUser());
 
@@ -67,6 +106,27 @@ it('stores the previous monthly balance in history when a pending fund is update
     expect($history)->not->toBeNull()
         ->and($history?->date?->toDateString())->toBe('2026-04-30')
         ->and($history?->balance)->toBe('125000.40');
+});
+
+it('does not show the below minimum warning when the saved balance is equal to or above the minimum value', function () {
+    $this->actingAs(makeFundBalanceAdminUser());
+
+    $fund = Fund::factory()->create([
+        'balance' => 60000.00,
+        'minimum_balance' => 55000.00,
+        'balance_updated_at' => now(),
+    ]);
+
+    Livewire::test(EditFund::class, [
+        'record' => $fund->getRouteKey(),
+    ])
+        ->fillForm([
+            'balance' => '60.000,00',
+            'minimum_balance' => '55.000,00',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotNotified('Atencao: o saldo informado esta abaixo do valor minimo definido.');
 });
 
 it('creates monthly balance snapshots only once for funds pending update', function () {

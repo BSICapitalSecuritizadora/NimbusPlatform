@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Funds\Pages;
 
 use App\Filament\Resources\Funds\FundResource;
+use App\Models\Fund;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -44,6 +45,22 @@ class EditFund extends EditRecord
         $data['balance_updated_at'] = now();
 
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        if (! ($this->getRecord() instanceof Fund)) {
+            return;
+        }
+
+        if (! $this->getRecord()->isBalanceBelowMinimum()) {
+            return;
+        }
+
+        Notification::make()
+            ->warning()
+            ->title('Atencao: o saldo informado esta abaixo do valor minimo definido.')
+            ->send();
     }
 
     protected function getSavedNotificationTitle(): ?string

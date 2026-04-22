@@ -57,6 +57,11 @@ class FundsTable
                     ->money('BRL')
                     ->sortable(),
 
+                TextColumn::make('minimum_balance')
+                    ->label('Valor minimo')
+                    ->money('BRL')
+                    ->sortable(),
+
                 TextColumn::make('balance_status')
                     ->label('Status do saldo')
                     ->state(fn (Fund $record): string => $record->requiresMonthlyBalanceUpdate() ? 'Atualizacao pendente' : 'Em dia')
