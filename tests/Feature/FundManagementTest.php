@@ -71,6 +71,7 @@ it('creates a fund linked to the selected auxiliary records', function () {
             'bank_id' => $bank->id,
             'agency' => '1234-5',
             'account' => '12345-6',
+            'balance' => '150.000,25',
         ])
         ->call('create');
 
@@ -83,7 +84,9 @@ it('creates a fund linked to the selected auxiliary records', function () {
         ->and($fund?->fund_application_id)->toBe($fundApplication->id)
         ->and($fund?->bank_id)->toBe($bank->id)
         ->and($fund?->agency)->toBe('1234-5')
-        ->and($fund?->account)->toBe('12345-6');
+        ->and($fund?->account)->toBe('12345-6')
+        ->and($fund?->balance)->toBe('150000.25')
+        ->and($fund?->balance_updated_at)->not->toBeNull();
 });
 
 it('requires all mandatory fields when creating a fund', function () {
@@ -99,10 +102,11 @@ it('requires all mandatory fields when creating a fund', function () {
             'bank_id' => 'required',
             'agency' => 'required',
             'account' => 'required',
+            'balance' => 'required',
         ]);
 });
 
-it('shows the expected masks for agency and current account fields', function () {
+it('shows the expected masks for agency, current account and balance fields', function () {
     $this->actingAs(makeFundAdminUser());
 
     Livewire::test(CreateFund::class)
@@ -115,6 +119,12 @@ it('shows the expected masks for agency and current account fields', function ()
             return ($mask instanceof RawJs)
                 && str_contains((string) $mask, '99999-9')
                 && str_contains((string) $mask, '999999999-9');
+        })
+        ->assertFormFieldExists('balance', function (TextInput $field): bool {
+            $mask = $field->getMask();
+
+            return ($mask instanceof RawJs)
+                && str_contains((string) $mask, '$money($input');
         });
 });
 
@@ -138,6 +148,7 @@ it('validates the agency and current account formats', function () {
             'bank_id' => $bank->id,
             'agency' => '123-4',
             'account' => '1234-5',
+            'balance' => '1.500,00',
         ])
         ->call('create')
         ->assertHasFormErrors([
@@ -176,6 +187,7 @@ it('prevents duplicate account registrations within the same operation and appli
             'bank_id' => $bank->id,
             'agency' => '2222-2',
             'account' => '98765-4',
+            'balance' => '98.765,43',
         ])
         ->call('create')
         ->assertHasFormErrors(['account']);
@@ -212,6 +224,7 @@ it('allows reusing the same account in another application', function () {
             'bank_id' => $bank->id,
             'agency' => '4444-4',
             'account' => '45678-9',
+            'balance' => '45.000,00',
         ])
         ->call('create');
 

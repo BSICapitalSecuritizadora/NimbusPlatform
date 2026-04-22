@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Funds\Schemas;
 
+use App\Concerns\MoneyFormatter;
 use App\Filament\Resources\Banks\Schemas\BankForm;
 use App\Filament\Resources\FundApplications\Schemas\FundApplicationForm;
 use App\Filament\Resources\FundNames\Schemas\FundNameForm;
@@ -26,13 +27,13 @@ class FundForm
             Section::make('Dados do fundo')
                 ->schema([
                     Select::make('emission_id')
-                        ->label('Operação')
+                        ->label('Operacao')
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()
                         ->required()
                         ->validationMessages([
-                            'required' => 'Selecione a operação.',
+                            'required' => 'Selecione a operacao.',
                         ]),
 
                     Select::make('fund_type_id')
@@ -79,7 +80,7 @@ class FundForm
                         ->preload()
                         ->required()
                         ->disabled(fn (Get $get): bool => blank($get('fund_type_id')))
-                        ->helperText('Selecione primeiro o tipo de fundo para listar apenas os nomes compatíveis.')
+                        ->helperText('Selecione primeiro o tipo de fundo para listar apenas os nomes compativeis.')
                         ->validationMessages([
                             'required' => 'Selecione o nome do fundo.',
                         ])
@@ -105,26 +106,26 @@ class FundForm
                         ),
 
                     Select::make('fund_application_id')
-                        ->label('Aplicação')
+                        ->label('Aplicacao')
                         ->relationship('fundApplication', 'name')
                         ->searchable()
                         ->preload()
                         ->required()
                         ->validationMessages([
-                            'required' => 'Selecione a aplicação.',
+                            'required' => 'Selecione a aplicacao.',
                         ])
                         ->createOptionForm(FundApplicationForm::fields())
                         ->editOptionForm(FundApplicationForm::fields())
                         ->createOptionAction(
                             fn (Action $action): Action => $action
-                                ->label('Cadastrar aplicação')
-                                ->modalHeading('Cadastrar aplicação')
+                                ->label('Cadastrar aplicacao')
+                                ->modalHeading('Cadastrar aplicacao')
                                 ->modalWidth('2xl'),
                         )
                         ->editOptionAction(
                             fn (Action $action): Action => $action
-                                ->label('Editar aplicação')
-                                ->modalHeading('Editar aplicação')
+                                ->label('Editar aplicacao')
+                                ->modalHeading('Editar aplicacao')
                                 ->modalWidth('2xl'),
                         ),
 
@@ -153,15 +154,15 @@ class FundForm
                         ),
 
                     TextInput::make('agency')
-                        ->label('Agência')
+                        ->label('Agencia')
                         ->required()
                         ->maxLength(6)
                         ->mask('9999-9')
                         ->placeholder('1234-5')
                         ->rule('regex:/^\d{4}-\d$/')
                         ->validationMessages([
-                            'required' => 'Informe a agência.',
-                            'regex' => 'Informe a agência no formato 1234-5.',
+                            'required' => 'Informe a agencia.',
+                            'regex' => 'Informe a agencia no formato 1234-5.',
                         ]),
 
                     TextInput::make('account')
@@ -204,9 +205,27 @@ class FundForm
                         )
                         ->validationMessages([
                             'required' => 'Informe a conta corrente.',
-                            'regex' => 'Informe a conta corrente no formato 12345-6 até 123456789-0.',
-                            'unique' => 'Já existe um fundo cadastrado com esta combinação de operação, aplicação e conta.',
+                            'regex' => 'Informe a conta corrente no formato 12345-6 ate 123456789-0.',
+                            'unique' => 'Ja existe um fundo cadastrado com esta combinacao de operacao, aplicacao e conta.',
                         ]),
+
+                    TextInput::make('balance')
+                        ->label('Saldo')
+                        ->required()
+                        ->prefix('R$')
+                        ->inputMode('decimal')
+                        ->mask(RawJs::make(<<<'JS'
+                            $money($input, ',', '.')
+                        JS))
+                        ->formatStateUsing(fn (mixed $state): ?string => self::formatCurrencyForDisplay($state))
+                        ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
+                        ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
+                        ->validationMessages([
+                            'required' => 'Informe o saldo do fundo.',
+                        ])
+                        ->placeholder('1.000,00')
+                        ->helperText('Atualize o saldo no primeiro dia de cada mes. O valor do mes anterior sera salvo automaticamente no historico de saldo.')
+                        ->columnSpanFull(),
                 ])
                 ->columns(2),
         ]);
@@ -219,5 +238,31 @@ class FundForm
         }
 
         return (int) $value;
+    }
+
+    protected static function normalizeCurrencyValue(mixed $value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value) && (trim($value) === '')) {
+            return null;
+        }
+
+        return MoneyFormatter::normalizeDecimalValue($value);
+    }
+
+    protected static function formatCurrencyForDisplay(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_string($value) && (trim($value) === '')) {
+            return null;
+        }
+
+        return MoneyFormatter::formatCurrencyForDisplay($value);
     }
 }

@@ -13,6 +13,17 @@ class CreateFund extends CreateRecord
 
     protected static ?string $breadcrumb = 'Criar';
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['balance_updated_at'] = now();
+
+        return $data;
+    }
+
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Fundo criado com sucesso.';

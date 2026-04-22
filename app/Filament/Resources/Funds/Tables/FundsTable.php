@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Funds\Tables;
 
+use App\Models\Fund;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -16,7 +17,7 @@ class FundsTable
         return $table
             ->columns([
                 TextColumn::make('emission.name')
-                    ->label('Operação')
+                    ->label('Operacao')
                     ->searchable()
                     ->sortable(),
 
@@ -32,7 +33,7 @@ class FundsTable
                     ->wrap(),
 
                 TextColumn::make('fundApplication.name')
-                    ->label('Aplicação')
+                    ->label('Aplicacao')
                     ->searchable()
                     ->sortable(),
 
@@ -42,7 +43,7 @@ class FundsTable
                     ->sortable(),
 
                 TextColumn::make('agency')
-                    ->label('Agência')
+                    ->label('Agencia')
                     ->searchable()
                     ->sortable(),
 
@@ -50,10 +51,26 @@ class FundsTable
                     ->label('Conta Corrente')
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('balance')
+                    ->label('Saldo')
+                    ->money('BRL')
+                    ->sortable(),
+
+                TextColumn::make('balance_status')
+                    ->label('Status do saldo')
+                    ->state(fn (Fund $record): string => $record->requiresMonthlyBalanceUpdate() ? 'Atualizacao pendente' : 'Em dia')
+                    ->badge()
+                    ->color(fn (Fund $record): string => $record->requiresMonthlyBalanceUpdate() ? 'warning' : 'success'),
+
+                TextColumn::make('balance_updated_at')
+                    ->label('Saldo atualizado em')
+                    ->date('d/m/Y')
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('emission_id')
-                    ->label('Operação')
+                    ->label('Operacao')
                     ->relationship('emission', 'name')
                     ->searchable()
                     ->preload(),
@@ -63,7 +80,7 @@ class FundsTable
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('fund_application_id')
-                    ->label('Aplicação')
+                    ->label('Aplicacao')
                     ->relationship('fundApplication', 'name')
                     ->searchable()
                     ->preload(),

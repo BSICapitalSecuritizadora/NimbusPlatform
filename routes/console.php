@@ -18,3 +18,7 @@ Artisan::command('inspire', function () {
 \Illuminate\Support\Facades\Schedule::command('app:cleanup-temporary-uploads')
     ->dailyAt('02:00')
     ->name('cleanup-temporary-uploads');
+
+\Illuminate\Support\Facades\Schedule::command('app:snapshot-monthly-fund-balances')
+    ->monthlyOn(1, '00:05')
+    ->name('fund-balances-monthly-snapshot');

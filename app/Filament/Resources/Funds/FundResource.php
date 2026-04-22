@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Funds;
 use App\Filament\Resources\Funds\Pages\CreateFund;
 use App\Filament\Resources\Funds\Pages\EditFund;
 use App\Filament\Resources\Funds\Pages\ListFunds;
+use App\Filament\Resources\Funds\RelationManagers\FundBalanceHistoriesRelationManager;
 use App\Filament\Resources\Funds\Schemas\FundForm;
 use App\Filament\Resources\Funds\Tables\FundsTable;
 use App\Models\Fund;
@@ -48,7 +49,7 @@ class FundResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            FundBalanceHistoriesRelationManager::class,
         ];
     }
 

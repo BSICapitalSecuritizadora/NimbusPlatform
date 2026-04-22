@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Fund extends Model
 {
@@ -19,7 +21,17 @@ class Fund extends Model
         'bank_id',
         'agency',
         'account',
+        'balance',
+        'balance_updated_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'balance' => 'decimal:2',
+            'balance_updated_at' => 'datetime',
+        ];
+    }
 
     public function emission(): BelongsTo
     {
@@ -44,5 +56,51 @@ class Fund extends Model
     public function bank(): BelongsTo
     {
         return $this->belongsTo(Bank::class);
+    }
+
+    public function balanceHistories(): HasMany
+    {
+        return $this->hasMany(FundBalanceHistory::class);
+    }
+
+    public function requiresMonthlyBalanceUpdate(?CarbonInterface $referenceDate = null): bool
+    {
+        $referenceDate ??= now();
+
+        if ($this->balance === null) {
+            return true;
+        }
+
+        if ($this->balance_updated_at === null) {
+            return true;
+        }
+
+        return $this->balance_updated_at->lt($referenceDate->copy()->startOfMonth());
+    }
+
+    public function snapshotPreviousMonthBalanceIfMissing(?CarbonInterface $referenceDate = null): ?FundBalanceHistory
+    {
+        $referenceDate ??= now();
+
+        if (($this->balance === null) || (! $this->exists) || (! $this->requiresMonthlyBalanceUpdate($referenceDate))) {
+            return null;
+        }
+
+        $snapshotDate = $referenceDate->copy()->startOfMonth()->subDay()->toDateString();
+
+        $history = $this->balanceHistories()
+            ->whereDate('date', $snapshotDate)
+            ->first();
+
+        if ($history instanceof FundBalanceHistory) {
+            return null;
+        }
+
+        $history = $this->balanceHistories()->create([
+            'date' => $snapshotDate,
+            'balance' => $this->balance,
+        ]);
+
+        return $history;
     }
 }

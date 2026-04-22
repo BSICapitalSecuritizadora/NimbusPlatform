@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Funds\Pages;
 
 use App\Filament\Resources\Funds\FundResource;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 class EditFund extends EditRecord
@@ -12,11 +13,37 @@ class EditFund extends EditRecord
 
     protected static ?string $title = 'Editar fundo';
 
+    public function mount(int|string $record): void
+    {
+        parent::mount($record);
+
+        if ($this->getRecord()->requiresMonthlyBalanceUpdate()) {
+            Notification::make()
+                ->warning()
+                ->title('Atualizacao mensal de saldo pendente.')
+                ->body('Confirme e salve o saldo deste fundo. O valor do mes anterior sera preservado automaticamente no historico.')
+                ->persistent()
+                ->send();
+        }
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             DeleteAction::make(),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $this->getRecord()->snapshotPreviousMonthBalanceIfMissing();
+        $data['balance_updated_at'] = now();
+
+        return $data;
     }
 
     protected function getSavedNotificationTitle(): ?string
