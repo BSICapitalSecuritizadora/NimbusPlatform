@@ -2,17 +2,35 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('project_indicators', function (Blueprint $table) {
+        if (Schema::hasTable('project_indicators')) {
+            $fkExists = collect(DB::select(
+                "SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME = 'project_indicators'
+                 AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+                 LIMIT 1"
+            ))->isNotEmpty();
+
+            if (! $fkExists) {
+                Schema::table('project_indicators', function (Blueprint $table): void {
+                    $table->foreign('project_id')->references('id')->on('proposal_projects')->cascadeOnDelete();
+                });
+            }
+
+            return;
+        }
+
+        Schema::create('project_indicators', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('project_id')->constrained('proposal_projects')->cascadeOnDelete();
 
-            // Pairs of Ideal and Limit thresholds
             $table->decimal('financiamento_custo_obra_ideal', 10, 2)->nullable();
             $table->decimal('financiamento_custo_obra_limite', 10, 2)->nullable();
 
