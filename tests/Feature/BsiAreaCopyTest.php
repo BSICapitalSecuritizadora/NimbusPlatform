@@ -29,23 +29,23 @@ beforeEach(function () {
 it('renders the revised about copy on the bsi area page', function () {
     $this->get(route('site.about'))
         ->assertSuccessful()
-        ->assertSee('Desde 2009, atuamos na estruturação de operações no mercado de capitais')
+        ->assertSee('Desde 2009, transformamos ativos em oportunidades estratégicas')
         ->assertSee('Missão, visão e valores')
-        ->assertSee('Conheça melhor a BSI Capital');
+        ->assertSee('Ética inegociável');
 });
 
 it('renders the revised governance copy on the bsi area page', function () {
     $this->get(route('site.governance'))
         ->assertSuccessful()
         ->assertSee('Nossa governança combina estrutura decisória, controles internos e disciplina regulatória')
-        ->assertSee('Documentos que formalizam diretrizes, procedimentos e referenciais')
-        ->assertSee('Abordagem estruturada para identificar, avaliar, monitorar e mitigar os riscos');
+        ->assertSee('Regras e Procedimentos Internos')
+        ->assertSee('Mitigação de Riscos');
 });
 
 it('renders the revised compliance copy on the bsi area page', function () {
     $this->get(route('site.compliance'))
         ->assertSuccessful()
-        ->assertSee('A BSI Capital adota diretrizes de compliance e ética corporativa')
         ->assertSee('Pilares do Nosso Compliance')
-        ->assertSee('Tratamento confidencial');
+        ->assertSee('Tratamento confidencial')
+        ->assertSee('Canal de Denúncia');
 });

@@ -29,7 +29,7 @@ it('renders the branded public emission detail experience', function () {
         ->assertSee('Detalhe da emissão')
         ->assertSee('Resumo operacional')
         ->assertSee('Fluxo de pagamentos e acompanhamento')
-        ->assertSee('Documentos da operação')
+        ->assertSee('Repositório de Documentos e Atos da Operação')
         ->assertSee('Termo de Securitizacao');
 });
 
@@ -83,7 +83,7 @@ it('explains that only the latest five documents are highlighted by default', fu
 
     $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
-        ->assertSee('Exibindo os 5 documentos mais recentes por padrão');
+        ->assertSee('Exibindo os documentos mais recentes por padrão');
 });
 
 it('renders the payment flow with the legacy chart model', function () {

@@ -16,7 +16,9 @@
       "Bash(ls /home/desktop/projects/bsi-capital/app/DTOs/**/*.php /home/desktop/projects/bsi-capital/app/DTOs/*.php)",
       "Bash(python3 *)",
       "Bash(find *)",
-      "Bash(chmod -R u+rwX /home/desktop/projects/bsi-capital/storage/framework/testing/disks/local/)"
+      "Bash(chmod -R u+rwX /home/desktop/projects/bsi-capital/storage/framework/testing/disks/local/)",
+      "Bash(xargs ls *)",
+      "Bash(chmod 755 /home/desktop/projects/bsi-capital/storage/framework/testing/disks/public/resumes)"
     ]
   }
 }

@@ -9,16 +9,16 @@ dataset('public-layout-routes', [
     'home' => [
         'site.home',
         [
-            'Envie sua proposta',
-            'Securitização e crédito estruturado com rigor técnico, governança e presença ativa ao longo de toda a operação.',
+            'Securitização e crédito estruturado com excelência técnica, governança rigorosa e presença ativa em todo o ciclo do ativo.',
             'Atuação por setor, com aderência ao ativo e à operação',
+            'Da estruturação à gestão: cobertura em todas as fases',
         ],
     ],
     'services' => [
         'site.services',
         [
             'Uma plataforma de serviços para cada etapa da operação',
-            'Converse com a BSI sobre o desenho da sua operação',
+            'Converse com a BSI',
         ],
     ],
     'contact' => [
@@ -32,7 +32,7 @@ dataset('public-layout-routes', [
     'emissions' => [
         'site.emissions',
         [
-            'Operações estruturadas e coordenadas pela BSI Capital',
+            'Mercado primário',
             'Tipo de emissão',
         ],
     ],
@@ -40,15 +40,15 @@ dataset('public-layout-routes', [
         'site.ri',
         [
             'Relações com Investidores',
-            'Documentos públicos organizados para consulta rápida',
+            'Repositório Institucional',
             'Precisa de apoio sobre documentos públicos ou comunicados?',
         ],
     ],
     'careers' => [
         'site.vacancies.index',
         [
-            'Construa sua trajetória com a BSI Capital',
-            'No momento, não temos vagas abertas.',
+            'Integre o time da',
+            'Nossas vagas são abertas sob demanda técnica pontual.',
         ],
     ],
 ]);
@@ -73,7 +73,7 @@ it('renders the branded internal dashboard experience for authenticated users', 
         ->assertOk()
         ->assertSeeText('Ambiente interno')
         ->assertSeeText('Operação clara')
-        ->assertSeeText('Nova proposta')
+        ->assertSeeText('Enviar proposta')
         ->assertSeeText('Relações com investidores');
 });
 

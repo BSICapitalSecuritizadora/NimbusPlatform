@@ -5,6 +5,6 @@ it('renders the revised contact copy', function () {
         ->assertSuccessful()
         ->assertSee('Entre em contato com a')
         ->assertSee('Envie sua mensagem')
-        ->assertSee('Selecione o assunto')
-        ->assertSee('Enviar contato');
+        ->assertSee('Selecione a área de interesse')
+        ->assertSee('Iniciar Atendimento');
 });

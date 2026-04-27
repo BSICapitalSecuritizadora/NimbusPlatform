@@ -1,10 +1,7 @@
 name: Deploy Laravel to Azure App Service
 
 on:
-  push:
-    branches:
-      - main  # Ou a sua branch principal (ex: master)
-  workflow_dispatch:
+  workflow_dispatch: # Desativado: deploy via main_bsicapital.yml com OIDC
 
 jobs:
   build-php:
