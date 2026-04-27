@@ -15,7 +15,9 @@ it('exposes the finalized document categories', function () {
         'demonstracoes_financeiras' => 'Demonstrações Financeiras',
         'documentos_operacao' => 'Documentos da Operação',
         'fatos_relevantes' => 'Fatos Relevantes',
+        'governanca' => 'Governança',
         'relatorios_anuais' => 'Relatórios Anuais',
+        'societarios' => 'Societários',
     ]);
 });
 
