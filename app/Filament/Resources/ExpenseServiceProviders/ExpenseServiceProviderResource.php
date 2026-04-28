@@ -57,6 +57,7 @@ class ExpenseServiceProviderResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->with('type')
             ->withCount('expenses');
     }
 

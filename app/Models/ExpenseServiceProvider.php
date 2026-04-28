@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -16,6 +17,7 @@ class ExpenseServiceProvider extends Model
     protected $fillable = [
         'cnpj',
         'name',
+        'expense_service_provider_type_id',
     ];
 
     protected function cnpj(): Attribute
@@ -28,6 +30,11 @@ class ExpenseServiceProvider extends Model
     public function expenses(): HasMany
     {
         return $this->hasMany(Expense::class);
+    }
+
+    public function type(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseServiceProviderType::class, 'expense_service_provider_type_id');
     }
 
     public function getFormattedCnpjAttribute(): string

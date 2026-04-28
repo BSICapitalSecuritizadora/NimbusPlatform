@@ -8,6 +8,7 @@ use App\Filament\Resources\ExpenseServiceProviders\Pages\CreateExpenseServicePro
 use App\Models\Emission;
 use App\Models\Expense;
 use App\Models\ExpenseServiceProvider;
+use App\Models\ExpenseServiceProviderType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -188,6 +189,9 @@ it('formats the saved amount correctly when reopening an expense for editing', f
 
 it('creates a service provider inline from the expense form', function () {
     $this->actingAs(makeExpenseAdminUser());
+    $serviceProviderType = ExpenseServiceProviderType::factory()->create([
+        'name' => 'Administrador',
+    ]);
 
     Http::fake([
         'https://publica.cnpj.ws/cnpj/*' => Http::response([
@@ -204,6 +208,7 @@ it('creates a service provider inline from the expense form', function () {
         ->mountFormComponentAction('expense_service_provider_id', 'createOption')
         ->fillForm([
             'cnpj' => '12.345.678/0001-90',
+            'expense_service_provider_type_id' => $serviceProviderType->id,
         ])
         ->assertFormComponentActionDataSet([
             'name' => 'Prestador Inline',
@@ -213,11 +218,13 @@ it('creates a service provider inline from the expense form', function () {
 
     expect(ExpenseServiceProvider::query()->where('cnpj', '12345678000190')->first())
         ->not->toBeNull()
-        ->name->toBe('Prestador Inline');
+        ->name->toBe('Prestador Inline')
+        ->expense_service_provider_type_id->toBe($serviceProviderType->id);
 });
 
 it('prevents duplicate service provider cnpj registrations', function () {
     $this->actingAs(makeExpenseAdminUser());
+    $serviceProviderType = ExpenseServiceProviderType::factory()->create();
 
     ExpenseServiceProvider::factory()->create([
         'cnpj' => '12345678000190',
@@ -227,9 +234,22 @@ it('prevents duplicate service provider cnpj registrations', function () {
         ->fillForm([
             'cnpj' => '12.345.678/0001-90',
             'name' => 'Prestador Duplicado',
+            'expense_service_provider_type_id' => $serviceProviderType->id,
         ])
         ->call('create')
         ->assertHasFormErrors(['cnpj']);
+});
+
+it('requires the service provider type when creating a service provider', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    Livewire::test(CreateExpenseServiceProvider::class)
+        ->fillForm([
+            'cnpj' => '12.345.678/0001-90',
+            'name' => 'Prestador Sem Tipo',
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['expense_service_provider_type_id' => 'required']);
 });
 
 it('uses the trade name first and falls back to the legal name during cnpj lookup', function (array $payload, string $expectedName) {

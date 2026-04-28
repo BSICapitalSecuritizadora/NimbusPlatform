@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\ExpenseServiceProvider;
+use App\Models\ExpenseServiceProviderType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -22,6 +23,7 @@ class ExpenseServiceProviderFactory extends Factory
         return [
             'cnpj' => fake()->unique()->numerify('##############'),
             'name' => fake()->company(),
+            'expense_service_provider_type_id' => ExpenseServiceProviderType::factory(),
         ];
     }
 }

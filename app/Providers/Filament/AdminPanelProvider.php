@@ -8,6 +8,7 @@ use App\Filament\Resources\Banks\BankResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\Expenses\Pages\ExpenseCalendar;
 use App\Filament\Resources\ExpenseServiceProviders\ExpenseServiceProviderResource;
+use App\Filament\Resources\ExpenseServiceProviderTypes\ExpenseServiceProviderTypeResource;
 use App\Filament\Resources\FundApplications\FundApplicationResource;
 use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
@@ -103,7 +104,7 @@ class AdminPanelProvider extends PanelProvider
                     ->icon(Heroicon::OutlinedRectangleStack)
                     ->sort(10)
                     ->url(fn (): string => ExpenseResource::getUrl(panel: 'admin'))
-                    ->isActiveWhen(fn (): bool => request()->routeIs(ExpenseResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseCalendar::getRouteName()) || request()->routeIs(ExpenseServiceProviderResource::getNavigationItemActiveRoutePattern())),
+                    ->isActiveWhen(fn (): bool => request()->routeIs(ExpenseResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseCalendar::getRouteName()) || request()->routeIs(ExpenseServiceProviderTypeResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseServiceProviderResource::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

@@ -7,6 +7,7 @@ use App\Filament\Resources\Documents\DocumentResource;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Filament\Resources\ExpenseServiceProviders\ExpenseServiceProviderResource;
+use App\Filament\Resources\ExpenseServiceProviderTypes\ExpenseServiceProviderTypeResource;
 use App\Filament\Resources\FundApplications\FundApplicationResource;
 use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
@@ -53,16 +54,22 @@ it('registers the Despesas subsection inside Gestão', function () {
         ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Gestão');
     $expenseItem = collect($expensesGroup?->getItems() ?? [])
         ->first(fn ($item) => $item->getLabel() === 'Despesas');
+    $serviceProviderTypeItem = collect($expenseItem?->getChildItems() ?? [])
+        ->first(fn ($item) => $item->getLabel() === 'Tipos de prestador de serviço');
     $serviceProviderItem = collect($expenseItem?->getChildItems() ?? [])
         ->first(fn ($item) => $item->getLabel() === 'Prestadores de serviço');
 
-    expect(ExpenseResource::getNavigationGroup())->toBe(ExpenseServiceProviderResource::getNavigationGroup())
+    expect(ExpenseResource::getNavigationGroup())->toBe(ExpenseServiceProviderTypeResource::getNavigationGroup())
+        ->and(ExpenseResource::getNavigationGroup())->toBe(ExpenseServiceProviderResource::getNavigationGroup())
         ->and(ExpenseResource::shouldRegisterNavigation())->toBeFalse()
+        ->and(ExpenseServiceProviderTypeResource::getNavigationParentItem())->toBe('Despesas')
+        ->and(ExpenseServiceProviderTypeResource::getNavigationLabel())->toBe('Tipos de prestador de serviço')
         ->and(ExpenseServiceProviderResource::getNavigationParentItem())->toBe('Despesas')
         ->and(ExpenseServiceProviderResource::getNavigationLabel())->toBe('Prestadores de serviço')
         ->and($expensesGroup)->not->toBeNull()
         ->and($expenseItem)->not->toBeNull()
         ->and($expenseItem->getUrl())->toBe(ExpenseResource::getUrl(panel: 'admin'))
+        ->and($serviceProviderTypeItem)->not->toBeNull()
         ->and($serviceProviderItem)->not->toBeNull();
 });
 

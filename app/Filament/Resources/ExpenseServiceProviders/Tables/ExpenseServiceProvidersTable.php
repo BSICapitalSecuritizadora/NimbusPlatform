@@ -17,6 +17,11 @@ class ExpenseServiceProvidersTable
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('type.name')
+                    ->label('Tipo')
+                    ->searchable()
+                    ->sortable(),
+
                 TextColumn::make('cnpj')
                     ->label('CNPJ')
                     ->formatStateUsing(fn (?string $state): string => \App\Models\ExpenseServiceProvider::formatCnpj($state))

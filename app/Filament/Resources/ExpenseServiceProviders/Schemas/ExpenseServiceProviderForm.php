@@ -3,7 +3,10 @@
 namespace App\Filament\Resources\ExpenseServiceProviders\Schemas;
 
 use App\Actions\Expenses\LookupExpenseServiceProviderCnpj;
+use App\Filament\Resources\ExpenseServiceProviderTypes\Schemas\ExpenseServiceProviderTypeForm;
 use App\Models\ExpenseServiceProvider;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
@@ -14,7 +17,7 @@ use Illuminate\Support\Str;
 class ExpenseServiceProviderForm
 {
     /**
-     * @return array<int, TextInput>
+     * @return array<int, Select|TextInput>
      */
     public static function fields(): array
     {
@@ -52,10 +55,33 @@ class ExpenseServiceProviderForm
                     $set('name', (string) data_get($result, 'payload.data.name', ''));
                 }),
 
+            Select::make('expense_service_provider_type_id')
+                ->label('Tipo')
+                ->relationship('type', 'name')
+                ->searchable()
+                ->preload()
+                ->required()
+                ->createOptionForm(ExpenseServiceProviderTypeForm::fields())
+                ->editOptionForm(ExpenseServiceProviderTypeForm::fields())
+                ->createOptionAction(
+                    fn (Action $action): Action => $action
+                        ->label('Cadastrar tipo')
+                        ->modalHeading('Cadastrar tipo de prestador de serviço'),
+                )
+                ->editOptionAction(
+                    fn (Action $action): Action => $action
+                        ->label('Editar tipo')
+                        ->modalHeading('Editar tipo de prestador de serviço'),
+                )
+                ->validationMessages([
+                    'required' => 'Selecione o tipo do prestador de serviço.',
+                ]),
+
             TextInput::make('name')
                 ->label('Nome')
                 ->required()
-                ->maxLength(255),
+                ->maxLength(255)
+                ->columnSpanFull(),
         ];
     }
 
