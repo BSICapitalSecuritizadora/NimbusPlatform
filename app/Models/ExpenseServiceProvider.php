@@ -32,6 +32,11 @@ class ExpenseServiceProvider extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function measuredConstructions(): HasMany
+    {
+        return $this->hasMany(Construction::class, 'measurement_company_id');
+    }
+
     public function type(): BelongsTo
     {
         return $this->belongsTo(ExpenseServiceProviderType::class, 'expense_service_provider_type_id');

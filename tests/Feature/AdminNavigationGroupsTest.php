@@ -3,6 +3,7 @@
 use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Pages\Nimbus\NotificationSettings;
 use App\Filament\Resources\Banks\BankResource;
+use App\Filament\Resources\Constructions\ConstructionResource;
 use App\Filament\Resources\Documents\DocumentResource;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Expenses\ExpenseResource;
@@ -74,18 +75,28 @@ it('registers the Despesas subsection inside Gestão', function () {
 });
 
 it('registers the Fundos subsection inside Cadastro', function () {
+    $this->actingAs(makeNavigationAdminUser());
+
+    $registrationGroup = collect(Filament::getPanel('admin')->getNavigation())
+        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Cadastro');
     $fundItem = collect(Filament::getPanel('admin')->getNavigationItems())
         ->first(fn ($item) => $item->getLabel() === 'Fundos');
+    $constructionItem = collect($registrationGroup?->getItems() ?? [])
+        ->first(fn ($item) => $item->getLabel() === 'Obras');
 
     expect(FundResource::getNavigationGroup())->toBe('Cadastro')
         ->and(FundResource::shouldRegisterNavigation())->toBeFalse()
+        ->and(ConstructionResource::getNavigationGroup())->toBe('Cadastro')
+        ->and(ConstructionResource::getNavigationLabel())->toBe('Obras')
         ->and(FundTypeResource::getNavigationGroup())->toBe('Cadastro')
         ->and(FundTypeResource::getNavigationParentItem())->toBe('Fundos')
         ->and(FundNameResource::getNavigationParentItem())->toBe('Fundos')
         ->and(FundApplicationResource::getNavigationParentItem())->toBe('Fundos')
         ->and(BankResource::getNavigationParentItem())->toBe('Fundos')
         ->and($fundItem)->not->toBeNull()
-        ->and($fundItem->getUrl())->toBe(FundResource::getUrl(panel: 'admin'));
+        ->and($fundItem->getUrl())->toBe(FundResource::getUrl(panel: 'admin'))
+        ->and($constructionItem)->not->toBeNull()
+        ->and($constructionItem->getUrl())->toBe(ConstructionResource::getUrl(panel: 'admin'));
 });
 
 it('uses pt-BR labels and translations for admin resources', function () {
