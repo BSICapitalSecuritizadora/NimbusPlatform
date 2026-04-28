@@ -87,6 +87,37 @@ it('creates multiple constructions for the same emission', function () {
         ->and($constructions->first()?->measurement_company_id)->toBe($measurementCompany->id);
 });
 
+it('keeps the selected emission when saving and creating another construction', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    $emission = Emission::factory()->create();
+    $measurementCompany = makeEngineeringMeasurementCompany([
+        'cnpj' => '11222333000144',
+    ]);
+
+    Livewire::test(CreateConstruction::class)
+        ->assertSee('Salvar e criar outro da mesma emissão')
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'development_name' => 'Residencial Alpha',
+            'development_cnpj' => '12.345.678/0001-90',
+            'city' => 'São Paulo',
+            'state' => 'SP',
+            'construction_start_date' => '2026-05-01',
+            'construction_end_date' => '2028-12-31',
+            'estimated_value' => '1.250.000,75',
+            'measurement_company_id' => $measurementCompany->id,
+        ])
+        ->call('createAnother')
+        ->assertHasNoFormErrors()
+        ->assertFormSet([
+            'emission_id' => $emission->id,
+            'development_name' => null,
+        ]);
+
+    expect(Construction::query()->count())->toBe(1);
+});
+
 it('requires a measurement company with Engenharia type', function () {
     $this->actingAs(makeConstructionAdminUser());
 
