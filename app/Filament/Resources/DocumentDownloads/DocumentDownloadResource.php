@@ -30,6 +30,11 @@ class DocumentDownloadResource extends Resource
         return false;
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('audit.document-downloads.view') ?? false;
+    }
+
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
         return false;

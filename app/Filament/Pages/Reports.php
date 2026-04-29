@@ -19,4 +19,9 @@ class Reports extends Page
     protected static ?string $navigationLabel = 'Relatórios';
 
     protected static ?string $title = 'Relatórios';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can('reports.view') ?? false;
+    }
 }

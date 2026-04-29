@@ -63,6 +63,11 @@ class NotificationOutboxResource extends Resource
         return false;
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('nimbus.notification-outboxes.view') ?? false;
+    }
+
     public static function canEdit(Model $record): bool
     {
         return false;
@@ -86,7 +91,7 @@ class NotificationOutboxResource extends Resource
             ->icon('heroicon-o-stop-circle')
             ->color('danger')
             ->requiresConfirmation()
-            ->visible(fn (NotificationOutbox $record): bool => $record->canBeCancelled())
+            ->visible(fn (NotificationOutbox $record): bool => $record->canBeCancelled() && (auth()->user()?->can('nimbus.notification-settings.update') ?? false))
             ->action(function (NotificationOutbox $record): void {
                 $record->update([
                     'status' => 'CANCELLED',
@@ -106,7 +111,7 @@ class NotificationOutboxResource extends Resource
             ->icon('heroicon-o-arrow-path')
             ->color('warning')
             ->requiresConfirmation()
-            ->visible(fn (NotificationOutbox $record): bool => $record->canBeReprocessed())
+            ->visible(fn (NotificationOutbox $record): bool => $record->canBeReprocessed() && (auth()->user()?->can('nimbus.notification-settings.update') ?? false))
             ->action(function (NotificationOutbox $record): void {
                 $record->update([
                     'status' => 'PENDING',

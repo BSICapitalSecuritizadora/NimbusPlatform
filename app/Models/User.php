@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\AccessPermission;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,6 +32,8 @@ class User extends Authenticatable implements FilamentUser
         'cargo',
         'departamento',
         'approved_at',
+        'is_active',
+        'last_login_at',
         'invited_by',
         'azure_id',
     ];
@@ -57,8 +60,15 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function isActive(): bool
+    {
+        return $this->is_active ?? true;
     }
 
     public function isApproved(): bool
@@ -90,17 +100,15 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
+        if (! $this->isActive()) {
+            return false;
+        }
+
         return $this->hasAnyRole([
             'super-admin',
             'admin',
             'editor',
             'commercial-representative',
-        ]) || $this->canAny([
-            'funds.view',
-            'investors.view',
-            'emissions.view',
-            'documents.view',
-            'proposals.view',
-        ]);
+        ]) || $this->canAny(AccessPermission::panelEntryValues());
     }
 }

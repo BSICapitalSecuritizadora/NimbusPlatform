@@ -2,46 +2,19 @@
 
 namespace Database\Seeders;
 
+use App\Enums\AccessPermission;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Limpa cache de permissões
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $permissions = [
-            // Investors
-            'investors.view',
-            'investors.create',
-            'investors.update',
-            'investors.delete',
-
-            // Emissions
-            'emissions.view',
-            'emissions.create',
-            'emissions.update',
-            'emissions.delete',
-
-            // Funds
-            'funds.view',
-            'funds.create',
-            'funds.update',
-            'funds.delete',
-
-            // Documents
-            'documents.view',
-            'documents.create',
-            'documents.update',
-            'documents.delete',
-
-            // Proposals
-            'proposals.view',
-            'proposals.update',
-        ];
+        $permissions = AccessPermission::values();
 
         foreach ($permissions as $perm) {
             Permission::firstOrCreate(['name' => $perm]);
@@ -52,23 +25,22 @@ class RolesAndPermissionsSeeder extends Seeder
         $editor = Role::firstOrCreate(['name' => 'editor']);
         $commercialRepresentative = Role::firstOrCreate(['name' => 'commercial-representative']);
 
-        // admin: tudo
+        $superAdmin->syncPermissions($permissions);
         $admin->syncPermissions($permissions);
 
-        // editor: tudo menos delete
         $editor->syncPermissions([
             'investors.view', 'investors.create', 'investors.update',
             'emissions.view', 'emissions.create', 'emissions.update',
+            'expenses.view', 'expenses.create', 'expenses.update',
             'funds.view', 'funds.create', 'funds.update',
             'documents.view', 'documents.create', 'documents.update',
+            'constructions.view', 'constructions.create', 'constructions.update',
+            'sales-boards.view', 'sales-boards.create', 'sales-boards.update',
         ]);
 
         $commercialRepresentative->syncPermissions([
             'proposals.view',
             'proposals.update',
         ]);
-
-        // super-admin: não precisa sync (Gate::before dá bypass),
-        // mas não faz mal se quiser manter organizado.
     }
 }

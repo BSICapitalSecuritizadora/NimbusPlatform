@@ -1,20 +1,20 @@
 <?php
 
-namespace App\Filament\Resources\Users\Pages;
+namespace App\Filament\Resources\Roles\Pages;
 
-use App\Filament\Resources\Users\UserResource;
+use App\Filament\Resources\Roles\RoleResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
-class EditUser extends EditRecord
+class EditRole extends EditRecord
 {
-    protected static string $resource = UserResource::class;
+    protected static string $resource = RoleResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
             DeleteAction::make()
-                ->visible(fn (): bool => $this->record->getKey() !== auth()->id()),
+                ->visible(fn (): bool => ! in_array($this->record->name, RoleResource::systemRoles(), true)),
         ];
     }
 
@@ -24,7 +24,7 @@ class EditUser extends EditRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $data['email'] = str((string) $data['email'])->lower()->toString();
+        $data['guard_name'] = 'web';
 
         return $data;
     }

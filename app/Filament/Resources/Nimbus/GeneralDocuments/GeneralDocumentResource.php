@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class GeneralDocumentResource extends Resource
 {
@@ -63,5 +64,25 @@ class GeneralDocumentResource extends Resource
             'create' => CreateGeneralDocument::route('/create'),
             'edit' => EditGeneralDocument::route('/{record}/edit'),
         ];
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('nimbus.general-documents.view') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('nimbus.general-documents.create') ?? false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()?->can('nimbus.general-documents.update') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('nimbus.general-documents.delete') ?? false;
     }
 }

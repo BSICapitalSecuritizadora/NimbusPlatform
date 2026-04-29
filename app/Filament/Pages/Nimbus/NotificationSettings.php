@@ -36,6 +36,11 @@ class NotificationSettings extends Page
         'portal.notify.access_link' => true,
     ];
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can('nimbus.notification-settings.view') ?? false;
+    }
+
     public function mount(): void
     {
         $this->data = $this->getFormState();
@@ -91,6 +96,8 @@ class NotificationSettings extends Page
 
     public function save(): void
     {
+        abort_unless(auth()->user()?->can('nimbus.notification-settings.update') ?? false, 403);
+
         NotificationSetting::setValues([
             'portal.notify.new_submission' => ! empty($this->data['portal_notify_new_submission']) ? '1' : '0',
             'portal.notify.status_change' => ! empty($this->data['portal_notify_status_change']) ? '1' : '0',

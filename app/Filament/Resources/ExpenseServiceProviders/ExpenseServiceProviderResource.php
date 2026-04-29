@@ -63,22 +63,22 @@ class ExpenseServiceProviderResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('emissions.view') ?? false;
+        return auth()->user()?->can('expenses.view') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('emissions.update') ?? false;
+        return auth()->user()?->can('expenses.create') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->can('emissions.update') ?? false;
+        return auth()->user()?->can('expenses.update') ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return (auth()->user()?->can('emissions.update') ?? false)
+        return (auth()->user()?->can('expenses.delete') ?? false)
             && (! $record->expenses()->exists());
     }
 

@@ -62,22 +62,22 @@ class SalesBoardResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('emissions.view') ?? false;
+        return auth()->user()?->can('sales-boards.view') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('emissions.create') ?? false;
+        return auth()->user()?->can('sales-boards.create') ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->can('emissions.update') ?? false;
+        return auth()->user()?->can('sales-boards.update') ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->can('emissions.delete') ?? false;
+        return auth()->user()?->can('sales-boards.delete') ?? false;
     }
 
     public static function getPages(): array

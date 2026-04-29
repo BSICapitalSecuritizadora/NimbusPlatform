@@ -23,6 +23,8 @@ class InitialDemoSeeder extends Seeder
             [
                 'name' => 'Admin Super',
                 'password' => Hash::make('Admin@123456'),
+                'approved_at' => now(),
+                'is_active' => true,
             ]
         );
 

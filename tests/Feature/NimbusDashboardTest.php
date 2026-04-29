@@ -868,6 +868,13 @@ it('renders and saves notification settings under Comunicação', function () {
 });
 
 it('shows the microsoft connection as connected when corporate credentials are configured', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-connected-settings@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $this->actingAs($user);
+
     config()->set('services.outlook.tenant_id', 'tenant-id');
     config()->set('services.outlook.client_id', 'client-id');
     config()->set('services.outlook.client_secret', 'client-secret');

@@ -7,6 +7,7 @@ use App\Filament\NimbusWidgets\NimbusRecentSubmissions;
 use App\Filament\NimbusWidgets\NimbusStatsOverview;
 use App\Filament\NimbusWidgets\NimbusStatusDistribution;
 use App\Filament\NimbusWidgets\NimbusVolumeChart;
+use Filament\Facades\Filament;
 use Filament\Pages\Dashboard as BaseDashboard;
 
 class NimbusDashboard extends BaseDashboard
@@ -24,6 +25,11 @@ class NimbusDashboard extends BaseDashboard
     protected static ?int $navigationSort = -10;
 
     protected static string $routePath = '/nimbus-dashboard';
+
+    public static function canAccess(): bool
+    {
+        return Filament::auth()->user()?->can('nimbus.submissions.view') ?? false;
+    }
 
     public function getColumns(): int|array
     {

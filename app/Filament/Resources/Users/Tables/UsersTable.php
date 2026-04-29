@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Enums\AccessPermission;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use Filament\Actions\BulkActionGroup;
@@ -32,12 +33,26 @@ class UsersTable
                     ->label('Departamento')
                     ->placeholder('—')
                     ->sortable(),
-                TextColumn::make('approved_at')
+                TextColumn::make('roles.name')
+                    ->label('Perfis')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => AccessPermission::roleLabel($state))
+                    ->placeholder('Sem perfil'),
+                TextColumn::make('is_active')
                     ->label('Status de acesso')
                     ->badge()
-                    ->state(fn (User $record): string => $record->isApproved() ? 'Aprovado' : 'Aguardando aprovação')
-                    ->color(fn (User $record): string => $record->isApproved() ? 'success' : 'warning')
+                    ->state(fn (User $record): string => $record->isActive() ? 'Ativo' : 'Inativo')
+                    ->color(fn (User $record): string => $record->isActive() ? 'success' : 'danger')
                     ->sortable(),
+                TextColumn::make('last_login_at')
+                    ->label('Último login')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->sortable(),
+                TextColumn::make('azure_id')
+                    ->label('Microsoft ID')
+                    ->placeholder('Aguardando login')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('invitedByUser.name')
                     ->label('Convidado por')
                     ->placeholder('—')

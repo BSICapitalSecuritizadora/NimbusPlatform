@@ -91,6 +91,11 @@ class AccessTokenResource extends Resource
         return false;
     }
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('nimbus.access-tokens.view') ?? false;
+    }
+
     public static function canEdit(Model $record): bool
     {
         return false;
@@ -98,7 +103,7 @@ class AccessTokenResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        return false;
+        return auth()->user()?->can('nimbus.access-tokens.delete') ?? false;
     }
 
     public static function getEloquentQuery(): Builder
@@ -116,7 +121,7 @@ class AccessTokenResource extends Resource
             ->requiresConfirmation()
             ->modalHeading('Revogar chave de acesso')
             ->modalDescription('A chave será invalidada imediatamente e não poderá mais ser usada no portal.')
-            ->visible(fn (AccessToken $record): bool => $record->isValid())
+            ->visible(fn (AccessToken $record): bool => $record->isValid() && (auth()->user()?->can('nimbus.access-tokens.update') ?? false))
             ->action(function (AccessToken $record): void {
                 $record->update(['status' => 'REVOKED']);
 

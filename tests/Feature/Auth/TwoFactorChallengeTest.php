@@ -22,7 +22,7 @@ class TwoFactorChallengeTest extends TestCase
         $response->assertRedirect(route('login'));
     }
 
-    public function test_two_factor_challenge_can_be_rendered(): void
+    public function test_local_password_login_does_not_start_two_factor_challenge(): void
     {
         if (! Features::canManageTwoFactorAuthentication()) {
             $this->markTestSkipped('Two-factor authentication is not enabled.');
@@ -38,6 +38,8 @@ class TwoFactorChallengeTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'password',
-        ])->assertRedirect(route('two-factor.login'));
+        ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
     }
 }

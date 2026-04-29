@@ -21,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class SubmissionResource extends Resource
 {
@@ -254,6 +255,26 @@ class SubmissionResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('nimbus.submissions.view') ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('nimbus.submissions.view') ?? false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()?->can('nimbus.submissions.update') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('nimbus.submissions.delete') ?? false;
     }
 
     public static function getEloquentQuery(): Builder

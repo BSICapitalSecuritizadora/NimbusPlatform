@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class DocumentCategoryResource extends Resource
 {
@@ -56,5 +57,25 @@ class DocumentCategoryResource extends Resource
             'create' => CreateDocumentCategory::route('/create'),
             'edit' => EditDocumentCategory::route('/{record}/edit'),
         ];
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('nimbus.document-categories.view') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('nimbus.document-categories.create') ?? false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()?->can('nimbus.document-categories.update') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('nimbus.document-categories.delete') ?? false;
     }
 }

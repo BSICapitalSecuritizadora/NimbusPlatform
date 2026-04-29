@@ -19,4 +19,9 @@ class Settings extends Page
     protected static ?string $navigationLabel = 'Configurações';
 
     protected static ?string $title = 'Configurações';
+
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->can('settings.view') ?? false;
+    }
 }

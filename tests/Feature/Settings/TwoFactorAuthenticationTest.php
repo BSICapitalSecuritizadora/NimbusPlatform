@@ -22,7 +22,7 @@ class TwoFactorAuthenticationTest extends TestCase
 
         Features::twoFactorAuthentication([
             'confirm' => true,
-            'confirmPassword' => true,
+            'confirmPassword' => false,
         ]);
     }
 
@@ -31,21 +31,20 @@ class TwoFactorAuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('two-factor.show'))
             ->assertOk()
             ->assertSee('Autenticação em dois fatores')
             ->assertSee('Desabilitada');
     }
 
-    public function test_two_factor_settings_page_requires_password_confirmation_when_enabled(): void
+    public function test_two_factor_settings_page_does_not_require_local_password_confirmation(): void
     {
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
             ->get(route('two-factor.show'));
 
-        $response->assertRedirect(route('password.confirm'));
+        $response->assertOk();
     }
 
     public function test_two_factor_settings_page_returns_forbidden_response_when_two_factor_is_disabled(): void
@@ -55,7 +54,6 @@ class TwoFactorAuthenticationTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->withSession(['auth.password_confirmed_at' => time()])
             ->get(route('two-factor.show'));
 
         $response->assertForbidden();

@@ -73,36 +73,50 @@ class AdminPanelProvider extends PanelProvider
                     ->group('NimbusDocs')
                     ->icon(Heroicon::OutlinedSquares2x2)
                     ->sort(-20)
+                    ->visible(fn (): bool => auth()->user()?->can('nimbus.submissions.view') ?? false)
                     ->url(fn (): string => NimbusDashboard::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(NimbusDashboard::getNavigationItemActiveRoutePattern()) || request()->routeIs(SubmissionResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Administração')
                     ->group('NimbusDocs')
                     ->icon(Heroicon::OutlinedCog6Tooth)
                     ->sort(-10)
+                    ->visible(fn (): bool => auth()->user()?->can('nimbus.portal-users.view') ?? false)
                     ->url(fn (): string => PortalUserResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(PortalUserResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(AccessTokenResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Gestão Documental')
                     ->group('NimbusDocs')
                     ->icon(Heroicon::OutlinedFolder)
                     ->sort(0)
+                    ->visible(fn (): bool => auth()->user()?->canAny([
+                        'nimbus.document-categories.view',
+                        'nimbus.general-documents.view',
+                        'nimbus.portal-documents.view',
+                    ]) ?? false)
                     ->url(fn (): string => DocumentCategoryResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(DocumentCategoryResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(GeneralDocumentResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(PortalDocumentResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Comunicação')
                     ->group('NimbusDocs')
                     ->icon(Heroicon::OutlinedMegaphone)
                     ->sort(10)
+                    ->visible(fn (): bool => auth()->user()?->canAny([
+                        'nimbus.announcements.view',
+                        'nimbus.notification-outboxes.view',
+                        'nimbus.notification-settings.view',
+                    ]) ?? false)
                     ->url(fn (): string => AnnouncementResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(AnnouncementResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationOutboxResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationSettings::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Fundos')
                     ->group('Cadastro')
                     ->icon(Heroicon::OutlinedRectangleStack)
                     ->sort(20)
+                    ->visible(fn (): bool => auth()->user()?->can('funds.view') ?? false)
                     ->url(fn (): string => FundResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(FundResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundTypeResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundNameResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundApplicationResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(BankResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Despesas')
                     ->group('Gestão')
                     ->icon(Heroicon::OutlinedRectangleStack)
                     ->sort(10)
+                    ->visible(fn (): bool => auth()->user()?->can('expenses.view') ?? false)
                     ->url(fn (): string => ExpenseResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(ExpenseResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseCalendar::getRouteName()) || request()->routeIs(ExpenseServiceProviderTypeResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseServiceProviderResource::getNavigationItemActiveRoutePattern())),
             ])
