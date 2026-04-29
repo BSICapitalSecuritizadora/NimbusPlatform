@@ -16,7 +16,7 @@ class EmissionsTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Nome')
+                    ->label('Denominação da Operação')
                     ->searchable()
                     ->sortable(),
 
@@ -33,7 +33,7 @@ class EmissionsTable
                     ->toggleable(),
 
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => Emission::STATUS_OPTIONS[$state] ?? (string) $state)
                     ->color(fn (?string $state): string => match ($state) {

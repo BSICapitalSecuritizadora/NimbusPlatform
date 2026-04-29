@@ -50,10 +50,10 @@ class ProposalResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Análise Comercial')
+            Section::make('Parecer Técnico/Comercial')
                 ->schema([
                     Textarea::make('internal_notes')
-                        ->label('Observações internas')
+                        ->label('Informações Complementares Internas')
                         ->rows(6)
                         ->helperText('Visível apenas ao time comercial no painel administrativo.')
                         ->columnSpanFull(),
@@ -65,7 +65,7 @@ class ProposalResource extends Resource
     {
         return $schema->components([
             Grid::make(2)->schema([
-                Section::make('Distribuição')
+                Section::make('Fluxo de Distribuição')
                     ->schema([
                         TextEntry::make('distribution_sequence')
                             ->label('Ordem na fila')
@@ -75,19 +75,19 @@ class ProposalResource extends Resource
                             ->label('Representante')
                             ->placeholder('Não atribuído'),
                         TextEntry::make('distributed_at')
-                            ->label('Distribuída em')
+                            ->label('Data de Distribuição')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('completed_at')
-                            ->label('Complementada em')
+                            ->label('Data de Formalização')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                     ])
                     ->columns(2),
-                Section::make('Dados da Empresa')
+                Section::make('Dados da Proponente')
                     ->schema([
                         TextEntry::make('company.name')
-                            ->label('Nome da Empresa')
+                            ->label('Razão Social')
                             ->placeholder('—'),
                         TextEntry::make('company.cnpj')
                             ->label('CNPJ')
@@ -112,10 +112,10 @@ class ProposalResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-                Section::make('Acesso do Cliente')
+                Section::make('Controle de Acessos')
                     ->schema([
                         TextEntry::make('latestContinuationAccess.status_label')
-                            ->label('Status do link')
+                            ->label('Situação do Acesso')
                             ->state(fn (Proposal $record): ?string => $record->latestContinuationAccess?->status_label)
                             ->placeholder('—')
                             ->badge()
@@ -141,7 +141,7 @@ class ProposalResource extends Resource
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.last_accessed_at')
-                            ->label('Último acesso')
+                            ->label('Último Acesso')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.verified_at')
@@ -162,15 +162,15 @@ class ProposalResource extends Resource
                     ])
                     ->columns(2)
                     ->columnSpanFull(),
-                Section::make('Análise Comercial')
+                Section::make('Parecer Técnico/Comercial')
                     ->schema([
                         TextEntry::make('status')
-                            ->label('Status atual')
+                            ->label('Situação Atual')
                             ->badge()
                             ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                             ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                         TextEntry::make('next_statuses')
-                            ->label('Próximos status possíveis')
+                            ->label('Próximas Etapas Disponíveis')
                             ->state(fn (?Proposal $record): array => $record ? array_values(
                                 app(UpdateProposalStatus::class)->availableStatusOptions($record->status),
                             ) : [])
@@ -178,7 +178,7 @@ class ProposalResource extends Resource
                             ->bulleted()
                             ->placeholder('Sem novas transições disponíveis.'),
                         TextEntry::make('latest_status_changed_by')
-                            ->label('Última alteração por')
+                            ->label('Última Atualização por')
                             ->state(fn (?Proposal $record): ?string => match (true) {
                                 ! $record?->latestStatusHistory => null,
                                 (bool) $record->latestStatusHistory->changedByUser?->name => $record->latestStatusHistory->changedByUser->name,
@@ -186,15 +186,15 @@ class ProposalResource extends Resource
                             })
                             ->placeholder('—'),
                         TextEntry::make('latestStatusHistory.changed_at')
-                            ->label('Última alteração em')
+                            ->label('Data da Última Atualização')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestStatusHistory.note')
-                            ->label('Última observação da movimentação')
+                            ->label('Histórico de Observações')
                             ->placeholder('Sem observação registrada.')
                             ->columnSpanFull(),
                         TextEntry::make('internal_notes')
-                            ->label('Observações internas')
+                            ->label('Informações Complementares Internas')
                             ->placeholder('Sem observações internas.')
                             ->columnSpanFull(),
                     ])
@@ -219,7 +219,7 @@ class ProposalResource extends Resource
                 Section::make('Proposta')
                     ->schema([
                         TextEntry::make('observations')
-                            ->label('Observações')
+                            ->label('Informações Complementares')
                             ->placeholder('Sem observações.')
                             ->columnSpanFull(),
                     ])
@@ -293,21 +293,21 @@ class ProposalResource extends Resource
     public static function getChangeStatusAction(): Action
     {
         return Action::make('change_status')
-            ->label('Atualizar status')
+            ->label('Alterar Situação')
             ->icon('heroicon-o-arrow-path')
             ->color('primary')
-            ->modalHeading('Atualizar andamento da proposta')
+            ->modalHeading('Alterar andamento da proposta')
             ->visible(fn (Proposal $record): bool => static::userCanManageRecord(static::resolveCurrentUser(), $record)
                 && filled(app(UpdateProposalStatus::class)->availableStatusOptions($record->status)))
             ->form([
                 Placeholder::make('current_status')
-                    ->label('Status atual')
+                    ->label('Situação atual')
                     ->content(fn (Proposal $record): string => ProposalStatus::labelFor($record->status)),
                 Placeholder::make('current_representative')
                     ->label('Representante responsável')
                     ->content(fn (Proposal $record): string => $record->representative?->name ?? 'Não atribuído'),
                 Select::make('status')
-                    ->label('Novo status')
+                    ->label('Nova situação')
                     ->options(fn (Proposal $record): array => app(UpdateProposalStatus::class)->availableStatusOptions($record->status))
                     ->required()
                     ->native(false),
@@ -329,7 +329,7 @@ class ProposalResource extends Resource
                 $record->refresh();
 
                 Notification::make()
-                    ->title('Status da proposta atualizado com sucesso.')
+                    ->title('Situação da proposta atualizada com êxito.')
                     ->success()
                     ->send();
             });

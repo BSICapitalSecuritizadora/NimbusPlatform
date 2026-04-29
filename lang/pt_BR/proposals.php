@@ -2,12 +2,12 @@
 
 return [
     'status' => [
-        'aguardando_complementacao' => 'Aguardando complementação',
-        'em_analise' => 'Em análise',
-        'aguardando_informacoes' => 'Aguardando informações',
-        'aprovado' => 'Aprovada',
-        'rejeitado' => 'Rejeitada',
-        'concluida' => 'Concluída',
+        'aguardando_complementacao' => 'Aguardando Documentação Complementar',
+        'em_analise' => 'Em Análise Técnica',
+        'aguardando_informacoes' => 'Aguardando Informações Adicionais',
+        'aprovado' => 'Proposta Aprovada',
+        'rejeitado' => 'Proposta Indeferida',
+        'concluida' => 'Formalização Concluída',
         'unknown' => '—',
     ],
     'mail' => [

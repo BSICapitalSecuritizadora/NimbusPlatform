@@ -33,10 +33,10 @@ class Emission extends Model
     ];
 
     public const STATUS_OPTIONS = [
-        'draft' => 'Rascunho',
-        'default' => 'Default',
-        'active' => 'Ativa',
-        'closed' => 'Encerrada',
+        'draft' => 'Em Elaboração',
+        'default' => 'Em Inadimplência',
+        'active' => 'Em Operação',
+        'closed' => 'Liquidada',
     ];
 
     protected $fillable = [

@@ -4,5 +4,20 @@
     "of": "de",
     "results": "resultados",
     "Go to page :page": "Ir para a página :page",
-    "Saved.": "Salvo."
+    "Saved.": "Alterações salvas com sucesso.",
+    "Log in": "Acesso ao Sistema",
+    "Register": "Cadastrar-se",
+    "Dashboard": "Painel de Controle",
+    "Welcome": "Bem-vindo",
+    "Profile": "Meu Perfil",
+    "Settings": "Configurações",
+    "Log out": "Encerrar Sessão",
+    "Email": "E-mail Institucional",
+    "Password": "Senha de Acesso",
+    "Remember me": "Lembrar meu acesso",
+    "Forgot your password?": "Esqueceu sua senha?",
+    "Confirm Password": "Confirmar Senha",
+    "Reset Password": "Redefinir Senha",
+    "Send Password Reset Link": "Enviar Link de Redefinição",
+    "Name": "Nome Completo / Razão Social"
 }

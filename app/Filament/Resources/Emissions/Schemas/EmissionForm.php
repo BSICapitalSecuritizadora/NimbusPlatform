@@ -19,10 +19,10 @@ class EmissionForm
     {
         return $schema
             ->components([
-                Section::make('Informações gerais')
+                Section::make('Dados Identificadores')
                     ->schema([
                         TextInput::make('name')
-                            ->label('Nome da operação/série')
+                            ->label('Denominação da Operação')
                             ->required()
                             ->maxLength(255),
 
@@ -40,14 +40,14 @@ class EmissionForm
                             ->maxLength(255),
 
                         Select::make('status')
-                            ->label('Status')
+                            ->label('Situação')
                             ->options(Emission::STATUS_OPTIONS)
                             ->default('draft')
                             ->required(),
                     ])
                     ->columns(2),
 
-                Section::make('Características')
+                Section::make('Atributos da Emissão')
                     ->schema([
                         TextInput::make('issuer')
                             ->label('Emissor')
@@ -140,7 +140,7 @@ class EmissionForm
                             ->maxLength(255),
 
                         Toggle::make('prepayment_possibility')
-                            ->label('Possibilidade de pré-pagamento')
+                            ->label('Opção de Resgate Antecipado')
                             ->default(false),
 
                         TextInput::make('segment')
@@ -158,7 +158,7 @@ class EmissionForm
                             ->placeholder('32.000.000,00'),
 
                         TextInput::make('current_pu')
-                            ->label('PU Atual')
+                            ->label('Preço Unitário (PU) Atual')
                             ->mask(\Filament\Support\RawJs::make(<<<'JS'
                                 $money($input, ',', '.', 6)
                             JS))
@@ -173,7 +173,7 @@ class EmissionForm
                     ])
                     ->columns(2),
 
-                Section::make('Publicação no site')
+                Section::make('Divulgação Institucional')
                     ->schema([
                         Toggle::make('is_public')
                             ->label('Disponível no site público')
@@ -188,7 +188,7 @@ class EmissionForm
                             ->columnSpanFull(),
 
                         Textarea::make('description')
-                            ->label('Descrição')
+                            ->label('Informações Complementares')
                             ->rows(6)
                             ->columnSpanFull(),
                     ])

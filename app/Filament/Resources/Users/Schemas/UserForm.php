@@ -87,10 +87,13 @@ class UserForm
                             ->label('Identificador Microsoft')
                             ->content(fn ($record) => $record?->azure_id ?: 'Aguardando primeiro login via Microsoft 365'),
                         Placeholder::make('last_login_at')
-                            ->label('Último login')
+                            ->label('Último Acesso')
                             ->content(fn ($record) => $record?->last_login_at?->format('d/m/Y H:i') ?? 'Nenhum login registrado'),
                     ])
                     ->columns(3),
             ]);
+    }
+}
+   ]);
     }
 }

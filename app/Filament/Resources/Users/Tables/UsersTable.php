@@ -58,7 +58,7 @@ class UsersTable
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->label('Cadastrado em')
+                    ->label('Data de Registro')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -76,5 +76,8 @@ class UsersTable
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+}
+ 'desc');
     }
 }

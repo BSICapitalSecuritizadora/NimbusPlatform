@@ -145,7 +145,7 @@ class InvestorResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Nome')
+                    ->label('Denominação do Investidor')
                     ->searchable()
                     ->sortable(),
 
@@ -171,11 +171,11 @@ class InvestorResource extends Resource
                     ->toggleable(),
 
                 IconColumn::make('is_active')
-                    ->label('Ativo')
+                    ->label('Status')
                     ->boolean(),
 
                 TextColumn::make('last_login_at')
-                    ->label('Último login')
+                    ->label('Último Acesso')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(),
@@ -187,7 +187,7 @@ class InvestorResource extends Resource
                     ->toggleable(),
 
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label('Data de Registro')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
