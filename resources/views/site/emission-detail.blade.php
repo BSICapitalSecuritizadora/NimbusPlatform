@@ -36,7 +36,7 @@
                 <div class="d-flex flex-wrap align-items-center gap-4 mb-4">
                     @if($emission->logo_path)
                         <div class="surface-card-dark d-inline-flex align-items-center justify-content-center px-4 py-3" style="min-height: 86px; min-width: 180px;">
-                            <img src="{{ Storage::url($emission->logo_path) }}" alt="{{ $emission->name }}" style="max-height: 52px; max-width: 180px; object-fit: contain;">
+                            <img src="{{ Storage::disk($emission->logo_storage_disk)->url($emission->logo_path) }}" alt="{{ $emission->name }}" style="max-height: 52px; max-width: 180px; object-fit: contain;">
                         </div>
                     @endif
                     <div>
@@ -304,7 +304,7 @@
                                     <div class="small text-muted">{{ $doc->description }}</div>
                                 @endif
 
-                                <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-outline-brand btn-sm px-3">
+                                <a href="{{ Storage::disk($doc->resolved_storage_disk)->url($doc->file_path) }}" target="_blank" class="btn btn-outline-brand btn-sm px-3">
                                     Baixar
                                 </a>
                             </div>
@@ -339,7 +339,7 @@
                                         </div>
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="btn btn-outline-brand btn-sm px-3">
+                                        <a href="{{ Storage::disk($doc->resolved_storage_disk)->url($doc->file_path) }}" target="_blank" class="btn btn-outline-brand btn-sm px-3">
                                             Baixar
                                         </a>
                                     </td>

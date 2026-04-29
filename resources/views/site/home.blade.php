@@ -216,7 +216,7 @@
                                         <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                                             <div style="min-width: 0;">
                                                 @if($e->logo_path)
-                                                    <img src="{{ asset('storage/' . $e->logo_path) }}" alt="{{ $e->name }}" style="max-height: 40px; max-width: 170px; object-fit: contain;" loading="lazy">
+                                                    <img src="{{ Storage::disk($e->logo_storage_disk)->url($e->logo_path) }}" alt="{{ $e->name }}" style="max-height: 40px; max-width: 170px; object-fit: contain;" loading="lazy">
                                                 @else
                                                     <h3 class="h5 fw-bold mb-0 text-brand">{{ $e->name }}</h3>
                                                 @endif

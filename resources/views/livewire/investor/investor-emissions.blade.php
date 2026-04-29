@@ -110,7 +110,7 @@
 
                             <div class="flex size-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-[24px] border border-brand-100 bg-brand-50/70 p-3">
                                 @if($emission->logo_path)
-                                    <img src="{{ Storage::url($emission->logo_path) }}" alt="{{ $emission->name }}" class="h-full w-full object-contain">
+                                    <img src="{{ Storage::disk($emission->logo_storage_disk)->url($emission->logo_path) }}" alt="{{ $emission->name }}" class="h-full w-full object-contain">
                                 @else
                                     <flux:icon.chart-bar class="size-7 text-brand-700" />
                                 @endif

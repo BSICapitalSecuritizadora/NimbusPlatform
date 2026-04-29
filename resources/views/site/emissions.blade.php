@@ -181,7 +181,7 @@
                                 </div>
                                 <div class="d-flex align-items-center justify-content-center flex-shrink-0 p-2" style="width: 64px; height: 64px; border-radius: 14px; background: rgba(0,32,91,0.06); color: var(--brand);">
                                     @if($e->logo_path)
-                                        <img src="{{ Storage::url($e->logo_path) }}" alt="{{ $e->name }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                                        <img src="{{ Storage::disk($e->logo_storage_disk)->url($e->logo_path) }}" alt="{{ $e->name }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                                     @else
                                         @if($e->type === 'CRI')
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M9 8h1m4 0h1m-5 4h1m4 0h1M9 16h1m4 0h1M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path></svg>

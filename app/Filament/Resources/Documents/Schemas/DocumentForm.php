@@ -42,6 +42,8 @@ class DocumentForm
                     FileUpload::make('file_path')
                         ->label('Arquivo')
                         ->required()
+                        ->disk(Document::defaultStorageDisk())
+                        ->visibility('public')
                         ->directory('documents')
                         ->preserveFilenames()
                         ->afterStateUpdated(function ($state, callable $set) {

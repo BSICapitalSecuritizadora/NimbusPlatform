@@ -4,9 +4,9 @@ namespace App\Filament\Resources\Documents\Pages;
 
 use App\Filament\Resources\Documents\DocumentResource;
 use App\Models\Document;
-use App\Services\DocumentStorageService;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Storage;
 
 class EditDocument extends EditRecord
 {
@@ -29,15 +29,16 @@ class EditDocument extends EditRecord
 
         $data['storage_disk'] = $data['storage_disk'] ?? $record->storage_disk ?? Document::defaultStorageDisk();
 
-        if (! empty($data['file_path'])) {
-            $metadata = app(DocumentStorageService::class)->metadata(
-                $data['file_path'],
-                $data['storage_disk'],
-            );
+        if (is_array($data['file_path'] ?? null)) {
+            $data['file_path'] = reset($data['file_path']) ?: null;
+        }
 
-            $data['file_name'] = $data['file_name'] ?? basename($data['file_path']);
-            $data['mime_type'] = $data['mime_type'] ?? $metadata['mime_type'];
-            $data['file_size'] = $data['file_size'] ?? $metadata['size_bytes'];
+        if (! empty($data['file_path'])) {
+            $disk = Storage::disk($data['storage_disk']);
+
+            $data['file_name'] = $data['file_name'] ?: basename((string) $data['file_path']);
+            $data['mime_type'] = $data['mime_type'] ?: rescue(fn () => $disk->mimeType($data['file_path']), 'application/octet-stream');
+            $data['file_size'] = $data['file_size'] ?: rescue(fn () => $disk->size($data['file_path']), 0);
         }
 
         if (! empty($data['is_published']) && ! $record->is_published) {

@@ -14,6 +14,18 @@ class Emission extends Model
     /** @use HasFactory<\Database\Factories\EmissionFactory> */
     use HasFactory, LogsActivity;
 
+    public static function defaultStorageDisk(): string
+    {
+        $defaultDisk = (string) config('filesystems.default', 'public');
+
+        return $defaultDisk === 'local' ? 'public' : $defaultDisk;
+    }
+
+    public function getLogoStorageDiskAttribute(): string
+    {
+        return self::defaultStorageDisk();
+    }
+
     public const TYPE_OPTIONS = [
         'CR' => 'CR',
         'CRA' => 'CRA',

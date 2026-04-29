@@ -18,7 +18,13 @@
       "Bash(find *)",
       "Bash(chmod -R u+rwX /home/desktop/projects/bsi-capital/storage/framework/testing/disks/local/)",
       "Bash(xargs ls *)",
-      "Bash(chmod 755 /home/desktop/projects/bsi-capital/storage/framework/testing/disks/public/resumes)"
+      "Bash(chmod 755 /home/desktop/projects/bsi-capital/storage/framework/testing/disks/public/resumes)",
+      "Bash(php -l app/Models/Emission.php)",
+      "Bash(php -l app/Filament/Resources/Emissions/Schemas/EmissionForm.php)",
+      "Bash(php -l app/Filament/Resources/Documents/Schemas/DocumentForm.php)",
+      "Bash(php -l app/Filament/Resources/Documents/Pages/CreateDocument.php)",
+      "Bash(php -l app/Filament/Resources/Documents/Pages/EditDocument.php)",
+      "Bash(vendor/bin/pint *)"
     ]
   }
 }

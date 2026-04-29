@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Emissions\Schemas;
 
 use App\Models\Emission;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -178,10 +179,11 @@ class EmissionForm
                             ->label('Disponível no site público')
                             ->default(false),
 
-                        \Filament\Forms\Components\FileUpload::make('logo_path')
+                        FileUpload::make('logo_path')
                             ->label('Logo da Operação')
                             ->image()
-                            ->disk('public')
+                            ->disk(Emission::defaultStorageDisk())
+                            ->visibility('public')
                             ->directory('emissions/logos')
                             ->columnSpanFull(),
 
