@@ -6,10 +6,10 @@ use App\Concerns\MoneyFormatter;
 use App\Models\Construction;
 use App\Models\ExpenseServiceProvider;
 use Closure;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
@@ -70,20 +70,42 @@ class ConstructionForm
                             'required' => 'Selecione o estado.',
                         ]),
 
-                    DatePicker::make('construction_start_date')
+                    TextInput::make('construction_start_date')
                         ->label('Início da obra')
+                        ->placeholder('mm/aaaa')
+                        ->mask('99/9999')
                         ->required()
+                        ->formatStateUsing(fn (mixed $state): string => Construction::formatMonthForDisplay($state))
+                        ->dehydrateStateUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state))
+                        ->mutateStateForValidationUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state))
                         ->validationMessages([
-                            'required' => 'Informe a data de início da obra.',
+                            'required' => 'Informe o mês de início da obra no formato mm/aaaa.',
                         ]),
 
-                    DatePicker::make('construction_end_date')
+                    TextInput::make('construction_end_date')
                         ->label('Conclusão da obra')
+                        ->placeholder('mm/aaaa')
+                        ->mask('99/9999')
                         ->required()
-                        ->afterOrEqual('construction_start_date')
+                        ->formatStateUsing(fn (mixed $state): string => Construction::formatMonthForDisplay($state))
+                        ->dehydrateStateUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state))
+                        ->mutateStateForValidationUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state))
+                        ->rule(static function (Get $get): Closure {
+                            return static function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                                $startDate = Construction::normalizeMonthDate($get('construction_start_date'));
+                                $endDate = Construction::normalizeMonthDate($value);
+
+                                if (($startDate === null) || ($endDate === null)) {
+                                    return;
+                                }
+
+                                if ($endDate < $startDate) {
+                                    $fail('A conclusão da obra deve ser igual ou posterior ao início da obra.');
+                                }
+                            };
+                        })
                         ->validationMessages([
-                            'required' => 'Informe a data de conclusão da obra.',
-                            'after_or_equal' => 'A conclusão da obra deve ser igual ou posterior ao início da obra.',
+                            'required' => 'Informe o mês de conclusão da obra no formato mm/aaaa.',
                         ]),
 
                     TextInput::make('estimated_value')

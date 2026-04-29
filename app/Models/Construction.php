@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Construction extends Model
@@ -67,6 +70,14 @@ class Construction extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $construction): void {
+            $construction->construction_start_date = self::normalizeMonthDate($construction->construction_start_date);
+            $construction->construction_end_date = self::normalizeMonthDate($construction->construction_end_date);
+        });
+    }
+
     protected function developmentCnpj(): Attribute
     {
         return Attribute::make(
@@ -84,6 +95,11 @@ class Construction extends Model
         return $this->belongsTo(ExpenseServiceProvider::class, 'measurement_company_id');
     }
 
+    public function salesBoards(): HasMany
+    {
+        return $this->hasMany(SalesBoard::class);
+    }
+
     public function getFormattedDevelopmentCnpjAttribute(): string
     {
         return ExpenseServiceProvider::formatCnpj($this->development_cnpj);
@@ -92,5 +108,53 @@ class Construction extends Model
     public function getFormattedEstimatedValueAttribute(): string
     {
         return MoneyFormatter::formatCurrencyForDisplay($this->estimated_value);
+    }
+
+    public static function normalizeMonthDate(mixed $value): ?string
+    {
+        if ($value instanceof CarbonInterface) {
+            return $value->copy()->startOfMonth()->toDateString();
+        }
+
+        if (blank($value)) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        if (preg_match('/^(\d{2})\/(\d{4})$/', $value, $matches) === 1) {
+            $month = (int) $matches[1];
+            $year = (int) $matches[2];
+
+            return checkdate($month, 1, $year)
+                ? sprintf('%04d-%02d-01', $year, $month)
+                : null;
+        }
+
+        if (preg_match('/^(\d{4})-(\d{2})(?:-\d{2})?$/', $value, $matches) === 1) {
+            $year = (int) $matches[1];
+            $month = (int) $matches[2];
+
+            return checkdate($month, 1, $year)
+                ? sprintf('%04d-%02d-01', $year, $month)
+                : null;
+        }
+
+        try {
+            return Carbon::parse($value)->startOfMonth()->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public static function formatMonthForDisplay(mixed $value): string
+    {
+        $monthDate = self::normalizeMonthDate($value);
+
+        if ($monthDate === null) {
+            return '';
+        }
+
+        return Carbon::parse($monthDate)->format('m/Y');
     }
 }

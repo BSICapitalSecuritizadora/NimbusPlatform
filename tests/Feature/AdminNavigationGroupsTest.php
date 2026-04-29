@@ -14,6 +14,7 @@ use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
 use App\Filament\Resources\FundTypes\FundTypeResource;
 use App\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource;
+use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Facades\Filament;
@@ -55,6 +56,8 @@ it('registers the Despesas subsection inside Gestão', function () {
         ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Gestão');
     $expenseItem = collect($expensesGroup?->getItems() ?? [])
         ->first(fn ($item) => $item->getLabel() === 'Despesas');
+    $salesBoardItem = collect($expensesGroup?->getItems() ?? [])
+        ->first(fn ($item) => $item->getLabel() === 'Quadro de Vendas');
     $serviceProviderTypeItem = collect($expenseItem?->getChildItems() ?? [])
         ->first(fn ($item) => $item->getLabel() === 'Tipos de prestador de serviço');
     $serviceProviderItem = collect($expenseItem?->getChildItems() ?? [])
@@ -63,6 +66,8 @@ it('registers the Despesas subsection inside Gestão', function () {
     expect(ExpenseResource::getNavigationGroup())->toBe(ExpenseServiceProviderTypeResource::getNavigationGroup())
         ->and(ExpenseResource::getNavigationGroup())->toBe(ExpenseServiceProviderResource::getNavigationGroup())
         ->and(ExpenseResource::shouldRegisterNavigation())->toBeFalse()
+        ->and(SalesBoardResource::getNavigationGroup())->toBe('Gestão')
+        ->and(SalesBoardResource::getNavigationLabel())->toBe('Quadro de Vendas')
         ->and(ExpenseServiceProviderTypeResource::getNavigationParentItem())->toBe('Despesas')
         ->and(ExpenseServiceProviderTypeResource::getNavigationLabel())->toBe('Tipos de prestador de serviço')
         ->and(ExpenseServiceProviderResource::getNavigationParentItem())->toBe('Despesas')
@@ -70,6 +75,8 @@ it('registers the Despesas subsection inside Gestão', function () {
         ->and($expensesGroup)->not->toBeNull()
         ->and($expenseItem)->not->toBeNull()
         ->and($expenseItem->getUrl())->toBe(ExpenseResource::getUrl(panel: 'admin'))
+        ->and($salesBoardItem)->not->toBeNull()
+        ->and($salesBoardItem->getUrl())->toBe(SalesBoardResource::getUrl(panel: 'admin'))
         ->and($serviceProviderTypeItem)->not->toBeNull()
         ->and($serviceProviderItem)->not->toBeNull();
 });

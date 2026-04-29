@@ -45,12 +45,12 @@ class ConstructionsTable
 
                 TextColumn::make('construction_start_date')
                     ->label('Início')
-                    ->date('d/m/Y')
+                    ->date('m/Y')
                     ->sortable(),
 
                 TextColumn::make('construction_end_date')
                     ->label('Conclusão')
-                    ->date('d/m/Y')
+                    ->date('m/Y')
                     ->sortable(),
 
                 TextColumn::make('estimated_value')

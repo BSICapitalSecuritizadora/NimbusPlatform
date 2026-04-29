@@ -46,8 +46,8 @@ it('creates multiple constructions for the same emission', function () {
             'development_cnpj' => '12.345.678/0001-90',
             'city' => 'São Paulo',
             'state' => 'SP',
-            'construction_start_date' => '2026-05-01',
-            'construction_end_date' => '2028-12-31',
+            'construction_start_date' => '05/2026',
+            'construction_end_date' => '12/2028',
             'estimated_value' => '1.250.000,75',
             'measurement_company_id' => $measurementCompany->id,
         ])
@@ -64,8 +64,8 @@ it('creates multiple constructions for the same emission', function () {
             'development_cnpj' => '98.765.432/0001-10',
             'city' => 'Campinas',
             'state' => 'SP',
-            'construction_start_date' => '2026-07-01',
-            'construction_end_date' => '2029-01-31',
+            'construction_start_date' => '07/2026',
+            'construction_end_date' => '01/2029',
             'estimated_value' => '2.000.000,00',
             'measurement_company_id' => $measurementCompany->id,
         ])
@@ -83,6 +83,8 @@ it('creates multiple constructions for the same emission', function () {
             'Residencial Beta',
         ])
         ->and($constructions->first()?->development_cnpj)->toBe('12345678000190')
+        ->and($constructions->first()?->construction_start_date?->toDateString())->toBe('2026-05-01')
+        ->and($constructions->first()?->construction_end_date?->toDateString())->toBe('2028-12-01')
         ->and($constructions->first()?->estimated_value)->toBe('1250000.75')
         ->and($constructions->first()?->measurement_company_id)->toBe($measurementCompany->id);
 });
@@ -103,8 +105,8 @@ it('keeps the selected emission when saving and creating another construction', 
             'development_cnpj' => '12.345.678/0001-90',
             'city' => 'São Paulo',
             'state' => 'SP',
-            'construction_start_date' => '2026-05-01',
-            'construction_end_date' => '2028-12-31',
+            'construction_start_date' => '05/2026',
+            'construction_end_date' => '12/2028',
             'estimated_value' => '1.250.000,75',
             'measurement_company_id' => $measurementCompany->id,
         ])
@@ -136,8 +138,8 @@ it('requires a measurement company with Engenharia type', function () {
             'development_cnpj' => '12.345.678/0001-90',
             'city' => 'São Paulo',
             'state' => 'SP',
-            'construction_start_date' => '2026-05-01',
-            'construction_end_date' => '2028-12-31',
+            'construction_start_date' => '05/2026',
+            'construction_end_date' => '12/2028',
             'estimated_value' => '1.250.000,75',
             'measurement_company_id' => $invalidMeasurementCompany->id,
         ])
@@ -145,6 +147,28 @@ it('requires a measurement company with Engenharia type', function () {
         ->assertHasFormErrors(['measurement_company_id']);
 
     expect(Construction::query()->count())->toBe(0);
+});
+
+it('requires the construction conclusion month to be after or equal to the start month', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    $emission = Emission::factory()->create();
+    $measurementCompany = makeEngineeringMeasurementCompany();
+
+    Livewire::test(CreateConstruction::class)
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'development_name' => 'Residencial com data inválida',
+            'development_cnpj' => '12.345.678/0001-90',
+            'city' => 'São Paulo',
+            'state' => 'SP',
+            'construction_start_date' => '05/2026',
+            'construction_end_date' => '04/2026',
+            'estimated_value' => '1.250.000,75',
+            'measurement_company_id' => $measurementCompany->id,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['construction_end_date']);
 });
 
 it('requires the construction mandatory fields', function () {
@@ -174,6 +198,8 @@ it('formats derived values when editing a construction', function () {
     $construction = Construction::factory()->create([
         'measurement_company_id' => $measurementCompany->id,
         'development_cnpj' => '12345678000190',
+        'construction_start_date' => '2026-04-01',
+        'construction_end_date' => '2028-12-01',
         'estimated_value' => 1250000.75,
     ]);
 
@@ -182,6 +208,8 @@ it('formats derived values when editing a construction', function () {
     ])
         ->assertFormSet([
             'development_cnpj' => '12.345.678/0001-90',
+            'construction_start_date' => '04/2026',
+            'construction_end_date' => '12/2028',
             'estimated_value' => '1.250.000,75',
             'measurement_company_cnpj' => '11.222.333/0001-44',
         ]);
