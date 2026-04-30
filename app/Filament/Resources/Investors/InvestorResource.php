@@ -47,22 +47,22 @@ class InvestorResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('Dados do investidor')
+                Section::make('Identificação do Investidor')
                     ->schema([
                         TextInput::make('name')
-                            ->label('Nome')
+                            ->label('Nome Completo / Razão Social')
                             ->required()
                             ->maxLength(255),
 
                         TextInput::make('email')
-                            ->label('E-mail')
+                            ->label('E-mail Institucional')
                             ->email()
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
 
                         TextInput::make('password')
-                            ->label('Senha')
+                            ->label('Senha de Acesso')
                             ->password()
                             ->revealable()
                             ->required(fn (string $operation): bool => $operation === 'create')
@@ -71,7 +71,7 @@ class InvestorResource extends Resource
                             ->maxLength(255),
 
                         TextInput::make('phone')
-                            ->label('Telefone')
+                            ->label('Telefone Fixo')
                             ->tel()
                             ->placeholder('(11) 3333-4444')
                             ->mask('(99) 9999-9999')
@@ -82,7 +82,7 @@ class InvestorResource extends Resource
                             ->maxLength(20),
 
                         TextInput::make('mobile')
-                            ->label('Celular')
+                            ->label('Telefone Celular')
                             ->tel()
                             ->placeholder('(11) 98888-7777')
                             ->mask('(99) 99999-9999')
@@ -113,26 +113,26 @@ class InvestorResource extends Resource
                             ->maxLength(12),
 
                         Select::make('emissions')
-                            ->label('Emissões')
+                            ->label('Operações Vinculadas')
                             ->relationship('emissions', 'name')
                             ->multiple()
                             ->preload()
                             ->searchable()
-                            ->placeholder('Nenhuma emissão vinculada no momento')
+                            ->placeholder('Nenhuma operação vinculada.')
                             ->columnSpanFull(),
 
                         Toggle::make('is_active')
-                            ->label('Ativo')
+                            ->label('Status de Ativação')
                             ->default(true),
 
                         DateTimePicker::make('last_login_at')
-                            ->label('Último login'),
+                            ->label('Último Acesso ao Sistema'),
 
                         DateTimePicker::make('last_portal_seen_at')
-                            ->label('Última visualização do portal'),
+                            ->label('Última Interação no Portal'),
 
                         Textarea::make('notes')
-                            ->label('Observações')
+                            ->label('Informações Complementares / Notas')
                             ->rows(6)
                             ->columnSpanFull(),
                     ])
@@ -155,11 +155,11 @@ class InvestorResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('phone')
-                    ->label('Telefone')
+                    ->label('Telefone Fixo')
                     ->toggleable(),
 
                 TextColumn::make('mobile')
-                    ->label('Celular')
+                    ->label('Telefone Celular')
                     ->toggleable(),
 
                 TextColumn::make('cpf')
@@ -171,7 +171,7 @@ class InvestorResource extends Resource
                     ->toggleable(),
 
                 IconColumn::make('is_active')
-                    ->label('Status')
+                    ->label('Situação')
                     ->boolean(),
 
                 TextColumn::make('last_login_at')
@@ -181,7 +181,7 @@ class InvestorResource extends Resource
                     ->toggleable(),
 
                 TextColumn::make('last_portal_seen_at')
-                    ->label('Última visualização do portal')
+                    ->label('Última Interação')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(),

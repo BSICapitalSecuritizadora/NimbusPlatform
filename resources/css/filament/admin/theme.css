@@ -3,42 +3,67 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
-@layer components {
-    .nimbus-stat-card {
-        @apply !text-white;
+/*
+ * Custom BSI Capital theme overrides.
+ * Using plain CSS instead of @apply inside @layer components to avoid
+ * Tailwind v4 source(none) resolution issues with utility classes.
+ */
 
-        & .fi-icon {
-            @apply !text-white/90;
-        }
+/* ── Nimbus stat card overrides ── */
+.nimbus-stat-card {
+    color: #fff !important;
+}
 
-        & .fi-wi-stats-overview-stat-label {
-            @apply !text-sm !font-semibold !text-white/90;
-        }
+.nimbus-stat-card .fi-icon {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
 
-        & .fi-wi-stats-overview-stat-value {
-            @apply !text-4xl !font-bold !tracking-tight !text-white;
-        }
-    }
+.nimbus-stat-card .fi-wi-stats-overview-stat-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+}
 
-    .fi-simple-layout {
-        background:
-            radial-gradient(circle at top left, rgba(0, 32, 91, 0.08), transparent 28%),
-            radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 22%),
-            #f6f8fc !important;
-    }
+.nimbus-stat-card .fi-wi-stats-overview-stat-value {
+    font-size: 2.25rem !important;
+    line-height: 2.5rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+    color: #fff !important;
+}
 
-    .dark .fi-simple-layout {
-        background:
-            radial-gradient(circle at top left, rgba(53, 94, 216, 0.12), transparent 26%),
-            radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 20%),
-            #08111d !important;
-    }
+/* ── Simple layout (login page) background ── */
+.fi-simple-layout {
+    background:
+        radial-gradient(circle at top left, rgba(0, 32, 91, 0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 22%),
+        #f6f8fc !important;
+}
 
-    .fi-simple-main-ctn > main, .fi-simple-main-ctn > section {
-        @apply shadow-[0_20px_45px_rgba(0,32,91,0.08)] bg-white/90 backdrop-blur border border-zinc-200/80 rounded-[26px];
-    }
-    
-    .dark .fi-simple-main-ctn > main, .dark .fi-simple-main-ctn > section {
-        @apply shadow-[0_24px_52px_rgba(0,0,0,0.35)] bg-white/[0.04] border-white/10;
-    }
+:is(.dark, .dark *) .fi-simple-layout,
+.dark .fi-simple-layout {
+    background:
+        radial-gradient(circle at top left, rgba(53, 94, 216, 0.12), transparent 26%),
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 20%),
+        #08111d !important;
+}
+
+/* ── Simple layout main card (glassmorphism) ── */
+.fi-simple-main-ctn > main,
+.fi-simple-main-ctn > section {
+    box-shadow: 0 20px 45px rgba(0, 32, 91, 0.08) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    border-radius: 26px !important;
+}
+
+:is(.dark, .dark *) .fi-simple-main-ctn > main,
+:is(.dark, .dark *) .fi-simple-main-ctn > section,
+.dark .fi-simple-main-ctn > main,
+.dark .fi-simple-main-ctn > section {
+    box-shadow: 0 24px 52px rgba(0, 0, 0, 0.35) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
 }

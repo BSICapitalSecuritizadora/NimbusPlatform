@@ -24,7 +24,9 @@
       "Bash(php -l app/Filament/Resources/Documents/Schemas/DocumentForm.php)",
       "Bash(php -l app/Filament/Resources/Documents/Pages/CreateDocument.php)",
       "Bash(php -l app/Filament/Resources/Documents/Pages/EditDocument.php)",
-      "Bash(vendor/bin/pint *)"
+      "Bash(vendor/bin/pint *)",
+      "Bash(./vendor/bin/sail php *)",
+      "Bash(./vendor/bin/sail artisan *)"
     ]
   }
 }

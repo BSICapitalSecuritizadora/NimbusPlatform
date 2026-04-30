@@ -9,12 +9,12 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-7">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">A BSI</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Governança <br><span style="color: var(--gold);">Corporativa</span>
                 </h1>
                 <p class="lead mb-0" style="color: #a5b4fc; max-width: 90%;">
-                    Nossa governança combina estrutura decisória, controles internos e disciplina regulatória para sustentar a integridade da companhia e das operações que conduzimos.
+                    Nossa estrutura de governança integra instâncias decisórias, controles internos rigorosos e disciplina regulatória, assegurando a integridade institucional e a perenidade das operações estruturadas.
                 </p>
             </div>
         </div>
@@ -28,8 +28,8 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Compliance</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Programa de Compliance</h2>
-                <p class="text-muted mb-3">A BSI mantém um programa de compliance dinâmico, submetido a revisões periódicas que asseguram o alinhamento contínuo às melhores práticas globais do setor financeiro.</p>
-                <p class="text-muted mb-4">Esta estrutura é o alicerce para a definição de regras e procedimentos que apoiam a integridade dos processos internos, mitigando riscos operacionais, reputacionais e regulatórios com rigor e transparência.</p>
+                <p class="text-muted mb-3">A BSI Capital mantém um Programa de Compliance robusto, pautado por revisões periódicas que asseguram a aderência contínua às melhores práticas do mercado financeiro e de capitais.</p>
+                <p class="text-muted mb-4">Essa estrutura fundamenta a definição de políticas e procedimentos que resguardam a integridade dos fluxos internos, mitigando riscos operacionais, reputacionais e de conformidade com transparência e rigor analítico.</p>
 
                 <div class="d-flex flex-column gap-3">
                     <div class="d-flex align-items-start gap-3">
@@ -37,8 +37,8 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
                         <div>
-                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Regras e Procedimentos Internos</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Diretrizes e normativos aplicáveis aos colaboradores e prestadores envolvidos nas atividades da companhia.</div>
+                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Políticas e Normativos Internos</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Diretrizes aplicáveis a colaboradores e prestadores de serviços, alinhadas aos valores da companhia.</div>
                         </div>
                     </div>
                     <div class="d-flex align-items-start gap-3">
@@ -46,8 +46,8 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
                         <div>
-                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Monitoramento Contínuo</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Acompanhamento recorrente das exigências regulatórias e dos referenciais aplicáveis ao setor.</div>
+                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Vigilância Regulatória</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Acompanhamento contínuo das exigências da CVM e demais órgãos reguladores do setor.</div>
                         </div>
                     </div>
                     <div class="d-flex align-items-start gap-3">
@@ -55,8 +55,8 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
                         <div>
-                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Mitigação de Riscos</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Controles e procedimentos desenhados para reduzir exposição a riscos operacionais, reputacionais e de conformidade.</div>
+                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Gerenciamento de Riscos</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Controles desenhados para mitigar a exposição a riscos operacionais e de imagem institucional.</div>
                         </div>
                     </div>
                 </div>
@@ -72,7 +72,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Diretoria Executiva</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Condução estratégica e supervisão da execução operacional da companhia</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Gestão estratégica e supervisão integral das diretrizes operacionais da companhia.</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
@@ -81,7 +81,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Comitê de Compliance</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Acompanhamento das diretrizes de conformidade, ética e controles internos</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Zelo pelas diretrizes de conformidade, conduta ética e eficiência dos controles internos.</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
@@ -90,7 +90,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Comitê de Riscos</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Avaliação e monitoramento dos principais riscos associados às operações</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Monitoramento fiduciário e mitigação de riscos associados às operações de securitização.</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
@@ -99,7 +99,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Auditoria Interna</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Verificação independente com segregação de funções, assegurando a efetividade dos controles e a mitigação de conflitos de interesse.</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Avaliação independente com estrita segregação de funções, visando a eficácia do ambiente de controle.</div>
                             </div>
                         </div>
                     </div>
@@ -114,7 +114,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Manuais & Políticas Regulatórias</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #a5b4fc;">Referenciais de Conduta: Documentos que consolidam nossa cultura fiduciária, estabelecendo padrões éticos e operacionais para a segurança do investidor.</p>
+            <p class="mx-auto" style="max-width: 600px; color: #a5b4fc;">Referenciais Normativos: Documentos que consolidam nossa cultura fiduciária e estabelecem padrões éticos e operacionais em prol da segurança dos investidores.</p>
         </div>
 
         <div class="row g-4">
@@ -141,7 +141,7 @@
             @empty
             <div class="col-12 text-center py-4">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                <p class="mb-0" style="color: #8892b0;">Os documentos de governança serão disponibilizados neste ambiente assim que publicados.</p>
+                <p class="mb-0" style="color: #8892b0;">Os documentos normativos de governança estarão disponíveis nesta seção após sua publicação oficial.</p>
             </div>
             @endforelse
         </div>

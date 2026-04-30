@@ -14,14 +14,14 @@
                     Somos a <span style="color: var(--gold);">BSI Capital</span> <br>Securitizadora S.A.
                 </h1>
                 <p class="lead mb-4" style="color: #a5b4fc; max-width: 90%;">
-                    <strong>Desde 2009, transformamos ativos em oportunidades estratégicas no mercado de capitais.</strong><br>
-                    Unimos disciplina técnica e rigor regulatório para estruturar operações que conectam emissores e investidores com segurança jurídica e visão de longo prazo.
+                    <strong>Fundada em 2009, a BSI Capital estrutura soluções estratégicas para a transformação de ativos em títulos de crédito no mercado de capitais.</strong><br>
+                    Combinamos excelência técnica e rigor regulatório na estruturação de operações que integram emissores e investidores, pautadas pela segurança jurídica e perenidade.
                 </p>
                 <p class="mb-5" style="color: #8892b0; max-width: 85%;">
-                    Como companhia aberta registrada na CVM, a BSI Capital reúne experiência em securitização e governança para entregar execuções precisas, transparência absoluta e solidez institucional em cada operação.
+                    Como companhia aberta registrada na CVM, a BSI Capital reúne vasta experiência em securitização e governança corporativa para entregar execuções precisas, transparência absoluta e solidez institucional em cada operação.
                 </p>
                 <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg">
-                    Consultar Especialista
+                    Falar com Especialista
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
             </div>
@@ -35,15 +35,15 @@
         <div class="row text-center g-4">
             <div class="col-6 col-md-3">
                 <div class="display-5 fw-bold" style="color: var(--gold);">2009</div>
-                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Ano de Fundação</div>
+                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Fundação</div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="display-5 fw-bold" style="color: var(--gold);">+R$ 1 Bi</div>
-                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Em Operações</div>
+                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Volume Estruturado</div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="display-5 fw-bold" style="color: var(--gold);">CVM</div>
-                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Registrada</div>
+                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Registro CVM</div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="display-5 fw-bold" style="color: var(--gold);">ANBIMA</div>
@@ -58,7 +58,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Missão, visão e valores</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Diretrizes fundamentais que orientam nossa atuação institucional e o relacionamento com clientes, investidores e parceiros.</p>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Diretrizes fundamentais que orientam nossa atuação institucional e o relacionamento com o mercado e stakeholders.</p>
         </div>
 
         <div class="row g-4">
@@ -69,7 +69,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Missão</h3>
-                    <p class="text-muted mb-0">Estruturar operações com excelência técnica, eficiência operacional e total compromisso com a qualidade e segurança no mercado de capitais.</p>
+                    <p class="text-muted mb-0">Prover soluções de securitização com alto padrão técnico e eficiência operacional, assegurando integridade e conformidade em todas as etapas do mercado de capitais.</p>
                 </div>
             </div>
 
@@ -80,7 +80,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visão</h3>
-                    <p class="text-muted mb-0">Consolidar a BSI Capital como referência em securitização, fundamentada em uma atuação responsável e na excelência contínua na execução.</p>
+                    <p class="text-muted mb-0">Consolidar a BSI Capital como referência em securitização e crédito estruturado, fundamentada em uma atuação fiduciária responsável e na excelência contínua na execução.</p>
                 </div>
             </div>
 
@@ -91,7 +91,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Valores</h3>
-                    <p class="text-muted mb-0">Ética, transparência absoluta, diligência e o cultivo de relações de longo prazo que sustentam a confiança no ambiente financeiro.</p>
+                    <p class="text-muted mb-0">Governança corporativa, transparência absoluta, diligência fiduciária e o fomento de parcerias sólidas, pilares que sustentam a credibilidade institucional.</p>
                 </div>
             </div>
         </div>
@@ -103,7 +103,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Nossa Cultura</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #a5b4fc;">Princípios ativos que orientam como conduzimos operações e preservamos a confiança dos nossos públicos.</p>
+            <p class="mx-auto" style="max-width: 600px; color: #a5b4fc;">Princípios ativos que orientam a condução das operações e preservam o valor entregue aos nossos públicos.</p>
         </div>
 
         <div class="row g-4">
@@ -112,8 +112,8 @@
                     <div class="mb-3">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Ética inegociável</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Atuamos com integridade absoluta e adesão rigorosa às normas que regem o mercado, garantindo segurança a todos os envolvidos.</p>
+                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Integridade e Ética</h4>
+                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Atuamos com integridade absoluta e adesão rigorosa às normas regulatórias, garantindo segurança fiduciária a todos os envolvidos.</p>
                 </div>
             </div>
 
@@ -122,8 +122,8 @@
                     <div class="mb-3">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Tecnologia e Inovação</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Integramos tecnologia proprietária à inteligência fiduciária para automatizar processos críticos, trazendo agilidade sem abrir mão do rigor regulatório.</p>
+                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Inovação Aplicada</h4>
+                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Integramos tecnologia de ponta à inteligência fiduciária para otimizar processos críticos, provendo agilidade e conformidade escalável.</p>
                 </div>
             </div>
 
@@ -132,8 +132,8 @@
                     <div class="mb-3">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Foco em Resultados</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Entregamos soluções de securitização personalizadas, baseadas em uma leitura minuciosa da tese de crédito e na necessidade real de cada stakeholder.</p>
+                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Foco em Soluções</h4>
+                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Entregamos estruturas de securitização personalizadas, baseadas em uma análise minuciosa de cada tese de crédito e ativo.</p>
                 </div>
             </div>
         </div>

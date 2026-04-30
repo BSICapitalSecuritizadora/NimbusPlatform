@@ -40,7 +40,7 @@ class EmissionForm
                             ->maxLength(255),
 
                         Select::make('status')
-                            ->label('Situação')
+                            ->label('Status da Operação')
                             ->options(Emission::STATUS_OPTIONS)
                             ->default('draft')
                             ->required(),
@@ -54,21 +54,21 @@ class EmissionForm
                             ->maxLength(255),
 
                         TextInput::make('lead_coordinator')
-                            ->label('Coordenador líder')
+                            ->label('Coordenador Líder')
                             ->maxLength(255),
 
                         TextInput::make('fiduciary_regime')
-                            ->label('Regime fiduciário')
+                            ->label('Regime Fiduciário')
                             ->maxLength(255),
 
                         DatePicker::make('issue_date')
-                            ->label('Data de emissão'),
+                            ->label('Data de Emissão'),
 
                         DatePicker::make('maturity_date')
-                            ->label('Data de vencimento'),
+                            ->label('Data de Vencimento'),
 
                         TextInput::make('monetary_update_period')
-                            ->label('Período de atualização monetária')
+                            ->label('Periodicidade de Atualização Monetária')
                             ->maxLength(255),
 
                         TextInput::make('series')
@@ -76,11 +76,11 @@ class EmissionForm
                             ->maxLength(255),
 
                         TextInput::make('emission_number')
-                            ->label('Número da emissão')
+                            ->label('Número da Emissão')
                             ->maxLength(255),
 
                         TextInput::make('issued_quantity')
-                            ->label('Quantidade emitida')
+                            ->label('Quantidade Emitida')
                             ->mask(RawJs::make(<<<'JS'
                                 $money($input, ',', '.', 0)
                             JS))
@@ -89,23 +89,23 @@ class EmissionForm
                             ->placeholder('32.600'),
 
                         TextInput::make('monetary_update_months')
-                            ->label('Meses de atualização monetária')
+                            ->label('Ciclo de Atualização Monetária (Meses)')
                             ->maxLength(255),
 
                         TextInput::make('interest_payment_frequency')
-                            ->label('Periodicidade de pagamento de juros')
+                            ->label('Fluxo de Pagamento de Juros')
                             ->maxLength(255),
 
                         TextInput::make('offer_type')
-                            ->label('Tipo de oferta')
+                            ->label('Modalidade de Oferta')
                             ->maxLength(255),
 
                         TextInput::make('concentration')
-                            ->label('Concentração')
+                            ->label('Nível de Concentração')
                             ->maxLength(255),
 
                         TextInput::make('issued_price')
-                            ->label('Preço de emissão')
+                            ->label('Preço de Emissão')
                             ->mask(RawJs::make(<<<'JS'
                                 $money($input, ',', '.', 2)
                             JS))
@@ -115,11 +115,11 @@ class EmissionForm
                             ->placeholder('1.000,00'),
 
                         TextInput::make('amortization_frequency')
-                            ->label('Periodicidade de amortização')
+                            ->label('Fluxo de Amortização')
                             ->maxLength(255),
 
                         TextInput::make('integralized_quantity')
-                            ->label('Quantidade integralizada')
+                            ->label('Quantidade Integralizada')
                             ->mask(RawJs::make(<<<'JS'
                                 $money($input, ',', '.', 0)
                             JS))
@@ -128,7 +128,7 @@ class EmissionForm
                             ->placeholder('13.200'),
 
                         TextInput::make('trustee_agent')
-                            ->label('Agente fiduciário')
+                            ->label('Agente Fiduciário')
                             ->maxLength(255),
 
                         TextInput::make('debtor')
@@ -136,7 +136,7 @@ class EmissionForm
                             ->maxLength(255),
 
                         TextInput::make('remuneration')
-                            ->label('Remuneração')
+                            ->label('Taxa de Remuneração')
                             ->maxLength(255),
 
                         Toggle::make('prepayment_possibility')
@@ -144,11 +144,11 @@ class EmissionForm
                             ->default(false),
 
                         TextInput::make('segment')
-                            ->label('Segmento')
+                            ->label('Segmento de Atuação')
                             ->maxLength(255),
 
                         TextInput::make('issued_volume')
-                            ->label('Volume emitido')
+                            ->label('Volume Emitido')
                             ->mask(RawJs::make(<<<'JS'
                                 $money($input, ',', '.', 2)
                             JS))
@@ -167,7 +167,7 @@ class EmissionForm
                             ->prefix('R$'),
 
                         TextInput::make('integralization_status')
-                            ->label('Integralização')
+                            ->label('Status de Integralização')
                             ->placeholder('Ex: 100% ou 50.000 cotas')
                             ->maxLength(255),
                     ])
@@ -176,11 +176,11 @@ class EmissionForm
                 Section::make('Divulgação Institucional')
                     ->schema([
                         Toggle::make('is_public')
-                            ->label('Disponível no site público')
+                            ->label('Divulgação em Ambiente Público')
                             ->default(false),
 
                         FileUpload::make('logo_path')
-                            ->label('Logo da Operação')
+                            ->label('Identidade Visual da Operação')
                             ->image()
                             ->disk(Emission::defaultStorageDisk())
                             ->visibility('public')
@@ -188,7 +188,7 @@ class EmissionForm
                             ->columnSpanFull(),
 
                         Textarea::make('description')
-                            ->label('Informações Complementares')
+                            ->label('Notas Institucionais / Sumário')
                             ->rows(6)
                             ->columnSpanFull(),
                     ])

@@ -12,15 +12,15 @@
             <div class="col-xl-7">
                 <div class="kicker mb-3">Securitização • Mercado de Capitais • Crédito Estruturado</div>
                 <h1 class="display-3 fw-bold mb-4">
-                    Securitização e crédito estruturado com excelência técnica, governança rigorosa e presença ativa em todo o ciclo do ativo.
+                    Securitização e crédito estruturado com excelência técnica, governança rigorosa e presença ativa em todo o ciclo de vida da operação.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    A BSI Capital viabiliza o acesso ao mercado de capitais através de modelagens financeiras precisas e gestão de alta proximidade, conectando emissores e investidores com transparência operacional e consistência regulatória.
+                    A BSI Capital viabiliza o acesso ao mercado de capitais por meio de modelagens financeiras precisas e gestão de alta proximidade, conectando emissores e investidores com transparência operacional e consistência regulatória.
                 </p>
 
                 <div class="d-flex flex-wrap gap-3 mb-4">
-                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Consultar viabilidade</a>
-                    <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Pipeline de emissões</a>
+                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Consultar Viabilidade</a>
+                    <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Pipeline de Emissões</a>
                 </div>
 
                 <div class="row g-3">
@@ -28,21 +28,21 @@
                         <div class="surface-card-dark p-4 h-100">
                             <div class="kicker mb-2">Desde</div>
                             <div class="hero-metric-value fw-bold">2009</div>
-                            <div class="small text-white-50">Atuação contínua no mercado de capitais.</div>
+                            <div class="small text-white-50">Sólida atuação no mercado de capitais brasileiro.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
                             <div class="kicker mb-2">Governança</div>
                             <div class="hero-metric-value fw-bold">CVM</div>
-                            <div class="small text-white-50">Companhia aberta registrada e orientada por conformidade.</div>
+                            <div class="small text-white-50">Companhia aberta registrada e aderente aos padrões de compliance.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
                             <div class="kicker mb-2">Gestão de Ativos</div>
                             <div class="hero-metric-value fw-bold">Controle</div>
-                            <div class="small text-white-50">Lastro, covenants e transparência com acompanhamento contínuo.</div>
+                            <div class="small text-white-50">Monitoramento de lastro, covenants e transparência contínua.</div>
                         </div>
                     </div>
                 </div>
@@ -118,7 +118,7 @@
                             <h3 class="h4 fw-bold mb-3 text-white">{{ $title }}</h3>
                             <p class="mb-4 text-white-50">{{ $desc }}</p>
                             <div>
-                                <a href="{{ $link }}" class="btn btn-light px-4">Conhecer solução</a>
+                                <a href="{{ $link }}" class="btn btn-light px-4">Explorar Solução</a>
                             </div>
                         </div>
                     </div>
@@ -132,10 +132,10 @@
     <div class="container py-5">
         <div class="row align-items-end g-4 mb-5">
             <div class="col-lg-8">
-                <div class="section-kicker mb-2">Experiência aplicada</div>
-                <h2 class="display-6 fw-bold mb-3">Execução com padrão institucional, do fechamento ao acompanhamento</h2>
+                <div class="section-kicker mb-2">Experiência Aplicada</div>
+                <h2 class="display-6 fw-bold mb-3">Execução com padrão institucional, da estruturação ao monitoramento</h2>
                 <p class="text-muted mb-0">
-                    Governança, tecnologia e processo definido para que cada etapa da operação seja rastreável, auditável e comunicada com clareza às partes envolvidas.
+                    Governança, tecnologia e processos rigorosos para que cada etapa da operação seja rastreável, auditável e reportada com precisão aos stakeholders.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -146,14 +146,14 @@
         @php
             $cases = [
                 [
-                    'title' => 'Estruturação CRI',
-                    'desc' => 'Modelagem integral da tese, coordenação jurídica e financeira, controle de lastro e monitoramento ativo da operação até a liquidação final.',
+                    'title' => 'Estruturação de CRI',
+                    'desc' => 'Modelagem técnica integral, coordenação jurídica e financeira, controle de lastro e monitoramento ativo da operação até o vencimento final.',
                     'img' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'estruturacao-cri',
                 ],
                 [
-                    'title' => 'Gestão de Documentos',
-                    'desc' => 'Plataforma com acessos dedicados para emissores, originadores e investidores, integrando custódia documental e histórico de interações com total visibilidade sobre a operação.',
+                    'title' => 'Gestão de Ativos e Documentos',
+                    'desc' => 'Ecosistema digital com acessos dedicados para emissores e investidores, integrando custódia de documentos e trilha de auditoria com total transparência.',
                     'img' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'gestao-de-documentos',
                 ],
@@ -170,11 +170,11 @@
                             </div>
                             <div class="col-md-7">
                                 <div class="p-4 p-lg-5 d-flex flex-column h-100">
-                                    <div class="section-kicker mb-2">Estudo de caso</div>
+                                    <div class="section-kicker mb-2">Estudo de Caso</div>
                                     <h3 class="h3 fw-bold mb-3">{{ $case['title'] }}</h3>
                                     <p class="text-muted mb-4">{{ $case['desc'] }}</p>
                                     <div class="mt-auto">
-                                        <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-gold px-4">Ver estudo de caso</a>
+                                        <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-gold px-4">Analisar Caso</a>
                                     </div>
                                 </div>
                             </div>
@@ -190,16 +190,16 @@
     <div class="container py-4">
         <div class="row g-4 mb-4 align-items-end">
             <div class="col-lg-6">
-                <div class="section-kicker mb-2">Mercado e transparência</div>
-                <h2 class="h2 fw-bold text-brand mb-3">Emissões e informações públicas com acesso direto</h2>
+                <div class="section-kicker mb-2">Transparência e Mercado</div>
+                <h2 class="h2 fw-bold text-brand mb-3">Emissões e informações regulatórias com acesso centralizado</h2>
                 <p class="section-copy mb-0">
-                    Centralizamos dados operacionais, documentos regulatórios e comunicados oficiais em um portal de transparência unificado e intuitivo.
+                    Disponibilizamos dados operacionais, documentos regulatórios e comunicados oficiais por meio de um portal de transparência robusto e intuitivo.
                 </p>
             </div>
             <div class="col-lg-6 text-lg-end">
                 <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                    <a class="btn btn-outline-brand" href="{{ route('site.emissions') }}">Ver emissões</a>
-                    <a class="btn btn-outline-brand" href="{{ route('site.ri') }}">Acessar RI</a>
+                    <a class="btn btn-outline-brand" href="{{ route('site.emissions') }}">Explorar Emissões</a>
+                    <a class="btn btn-outline-brand" href="{{ route('site.ri') }}">Portal de R.I.</a>
                 </div>
             </div>
         </div>
