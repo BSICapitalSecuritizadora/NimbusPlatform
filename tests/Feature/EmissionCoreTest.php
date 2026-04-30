@@ -12,10 +12,10 @@ it('exposes the finalized emission core enums', function () {
         'CRA' => 'CRA',
         'CRI' => 'CRI',
     ])->and(Emission::STATUS_OPTIONS)->toBe([
-        'draft' => 'Rascunho',
-        'default' => 'Default',
-        'active' => 'Ativa',
-        'closed' => 'Encerrada',
+        'draft' => 'Em Elaboração',
+        'default' => 'Em Inadimplência',
+        'active' => 'Em Operação',
+        'closed' => 'Liquidada',
     ]);
 });
 
@@ -26,7 +26,7 @@ it('resolves the default emission status label', function () {
         'status' => 'default',
     ]);
 
-    expect($emission->status_label)->toBe('Default');
+    expect($emission->status_label)->toBe('Em Inadimplência');
 });
 
 it('stores the finalized emission defaults', function () {
@@ -88,7 +88,7 @@ it('supports the finalized emission core fields and casts', function () {
         ->and($emission->issued_volume)->toBe('1481472.90')
         ->and($emission->prepayment_possibility)->toBeTrue()
         ->and($emission->is_public)->toBeTrue()
-        ->and($emission->status_label)->toBe('Ativa')
+        ->and($emission->status_label)->toBe('Em Operação')
         ->and($emission->only([
             'name',
             'type',

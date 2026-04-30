@@ -8,7 +8,7 @@ uses(RefreshDatabase::class);
 it('renders the revised institutional copy on the home page', function () {
     $this->get(route('site.home'))
         ->assertSuccessful()
-        ->assertSeeText('Securitização e crédito estruturado com excelência técnica, governança rigorosa e presença ativa em todo o ciclo do ativo.')
+        ->assertSeeText('Securitização e crédito estruturado com excelência técnica, governança rigorosa e presença ativa em todo o ciclo de vida da operação.')
         ->assertSeeText('Da estruturação à gestão: cobertura em todas as fases')
         ->assertSeeText('Relacionamento institucional')
         ->assertSeeText('Entre em contato com a BSI Capital');

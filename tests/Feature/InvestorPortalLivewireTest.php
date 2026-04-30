@@ -73,7 +73,7 @@ it('renders the investor emissions page through a full-page livewire component',
         ->assertSeeLivewire(InvestorEmissions::class)
         ->assertSee('Minhas emissões')
         ->assertSee('CRI Atlantico')
-        ->assertSee('Ativa');
+        ->assertSee('Em Operação');
 });
 
 it('renders the investor documents page through a full-page livewire component', function () {

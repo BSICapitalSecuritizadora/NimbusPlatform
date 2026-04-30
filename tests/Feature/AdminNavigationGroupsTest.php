@@ -118,7 +118,7 @@ it('uses pt-BR labels and translations for admin resources', function () {
         ->and(NotificationSettings::getNavigationLabel())->toBe('Configurações de notificações')
         ->and(__('Go to page :page', ['page' => 2]))->toBe('Ir para a página 2')
         ->and(trans('pagination.next'))->toBe('Próxima')
-        ->and(trans('proposals.status.em_analise'))->toBe('Em análise');
+        ->and(trans('proposals.status.em_analise'))->toBe('Em Análise Técnica');
 });
 
 function makeNavigationAdminUser(): User
