@@ -58,7 +58,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->navigationGroups([
-                NavigationGroup::make('NimbusDocs'),
+                NavigationGroup::make('Gestão Documental Externa'),
                 NavigationGroup::make('Auditoria'),
                 NavigationGroup::make('Comercial'),
                 NavigationGroup::make('Cadastro'),
@@ -70,21 +70,21 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->navigationItems([
                 NavigationItem::make('Visão Geral')
-                    ->group('NimbusDocs')
+                    ->group('Gestão Documental Externa')
                     ->icon(Heroicon::OutlinedSquares2x2)
                     ->sort(-20)
                     ->visible(fn (): bool => auth()->user()?->can('nimbus.submissions.view') ?? false)
                     ->url(fn (): string => NimbusDashboard::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(NimbusDashboard::getNavigationItemActiveRoutePattern()) || request()->routeIs(SubmissionResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Administração')
-                    ->group('NimbusDocs')
+                    ->group('Gestão Documental Externa')
                     ->icon(Heroicon::OutlinedCog6Tooth)
                     ->sort(-10)
                     ->visible(fn (): bool => auth()->user()?->can('nimbus.portal-users.view') ?? false)
                     ->url(fn (): string => PortalUserResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(PortalUserResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(AccessTokenResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Gestão Documental')
-                    ->group('NimbusDocs')
+                    ->group('Gestão Documental Externa')
                     ->icon(Heroicon::OutlinedFolder)
                     ->sort(0)
                     ->visible(fn (): bool => auth()->user()?->canAny([
@@ -95,7 +95,7 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn (): string => DocumentCategoryResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(DocumentCategoryResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(GeneralDocumentResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(PortalDocumentResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Comunicação')
-                    ->group('NimbusDocs')
+                    ->group('Gestão Documental Externa')
                     ->icon(Heroicon::OutlinedMegaphone)
                     ->sort(10)
                     ->visible(fn (): bool => auth()->user()?->canAny([

@@ -21,7 +21,7 @@ class DocumentCategoryResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookmarkSquare;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Gestão Documental';
 
@@ -30,6 +30,8 @@ class DocumentCategoryResource extends Resource
     protected static ?string $modelLabel = 'categoria de documento';
 
     protected static ?string $pluralModelLabel = 'Categorias de Documentos';
+
+    protected static ?string $slug = 'gestao-documental-externa/document-categories';
 
     protected static ?int $navigationSort = 20;
 

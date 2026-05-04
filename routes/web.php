@@ -2,6 +2,7 @@
 
 use App\Actions\Proposals\StoreProposalContinuationData;
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
+use App\Http\Controllers\Auth\AzureController;
 use App\Http\Controllers\Nimbus\AdminSubmissionFileController;
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
@@ -14,7 +15,6 @@ use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalFile;
 use App\Services\DocumentStorageService;
-use App\Http\Controllers\Auth\AzureController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -243,28 +243,49 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/projetos/{project}/analitico', [App\Http\Controllers\Admin\ProjectReportController::class, 'analyticalReport'])->name('admin.projects.analytical');
 });
 
-Route::middleware(['auth', EnsureTwoFactorEnabled::class])
-    ->prefix('/admin/nimbus/submissions')
-    ->name('admin.nimbus.submissions.')
-    ->group(function () {
-        Route::post('/{submission}/response-files', [AdminSubmissionFileController::class, 'storeResponseFiles'])->name('response-files.store');
+Route::redirect('/admin/nimbus-dashboard', '/admin/gestao-documental-externa-dashboard');
+Route::redirect('/admin/nimbus/submissions', '/admin/gestao-documental-externa/submissions');
 
-        Route::prefix('/files')
-            ->name('files.')
+Route::middleware(['auth', EnsureTwoFactorEnabled::class])
+    ->prefix('/admin/gestao-documental-externa')
+    ->name('admin.nimbus.')
+    ->group(function () {
+        Route::prefix('/submissions')
+            ->name('submissions.')
             ->group(function () {
-                Route::get('/{file}/preview', [AdminSubmissionFileController::class, 'preview'])->name('preview');
-                Route::get('/{file}/download', [AdminSubmissionFileController::class, 'download'])->name('download');
+                Route::post('/{submission}/response-files', [AdminSubmissionFileController::class, 'storeResponseFiles'])->name('response-files.store');
+
+                Route::prefix('/files')
+                    ->name('files.')
+                    ->group(function () {
+                        Route::get('/{file}/preview', [AdminSubmissionFileController::class, 'preview'])->name('preview');
+                        Route::get('/{file}/download', [AdminSubmissionFileController::class, 'download'])->name('download');
+                    });
+            });
+
+        Route::prefix('/documents')
+            ->name('documents.')
+            ->group(function () {
+                Route::get('/general/{document}/preview', [\App\Http\Controllers\Nimbus\AdminDocumentController::class, 'previewGeneral'])->name('general.preview');
+                Route::get('/general/{document}/download', [\App\Http\Controllers\Nimbus\AdminDocumentController::class, 'downloadGeneral'])->name('general.download');
+                Route::get('/portal/{document}/preview', [\App\Http\Controllers\Nimbus\AdminDocumentController::class, 'previewPortal'])->name('portal.preview');
+                Route::get('/portal/{document}/download', [\App\Http\Controllers\Nimbus\AdminDocumentController::class, 'downloadPortal'])->name('portal.download');
             });
     });
 
 require __DIR__.'/settings.php';
 require __DIR__.'/investor.php';
 
-// NimbusDocs Portal Routes
-Route::prefix('nimbus')->name('nimbus.')->group(function () {
+Route::redirect('/nimbus', '/gestao-documental-externa/login');
+Route::redirect('/nimbus/login', '/gestao-documental-externa/login');
+
+// Gestão Documental Externa Portal Routes
+Route::prefix('gestao-documental-externa')->name('nimbus.')->group(function () {
     // Auth Routes...
     Route::get('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'showRequestForm'])->name('auth.request');
-    Route::post('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'verifyPin'])->name('auth.verify.post');
+    Route::post('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'verifyPin'])
+        ->middleware('throttle:5,1')
+        ->name('auth.verify.post');
     Route::post('/sair', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'logout'])->name('auth.logout');
 
     // Authenticated Portal Routes

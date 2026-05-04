@@ -20,6 +20,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component as LivewireComponent;
+use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -127,6 +128,86 @@ it('serves Nimbus documents from the private disk even when the default filesyst
     $this->actingAs($portalUser, 'nimbus')
         ->get(route('nimbus.documents.general.download', $generalDocument))
         ->assertDownload('politica-kyc.pdf');
+});
+
+it('serves document previews and downloads through the renamed admin URLs', function () {
+    Storage::set('local', Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
+        'throw' => false,
+    ]));
+
+    $adminUser = User::factory()->withTwoFactor()->create([
+        'email' => 'admin.documentos.externos@example.com',
+    ]);
+
+    Permission::findOrCreate('nimbus.general-documents.view');
+    Permission::findOrCreate('nimbus.portal-documents.view');
+    $adminUser->givePermissionTo([
+        'nimbus.general-documents.view',
+        'nimbus.portal-documents.view',
+    ]);
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Teste Documentos Admin',
+        'email' => 'teste.documentos.admin@example.com',
+        'document_number' => '12345678903',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $category = DocumentCategory::query()->create([
+        'name' => 'Compliance',
+    ]);
+
+    $portalDocumentPath = DocumentStorageService::PRIVATE_PREFIX.'/portal-documents/admin-contrato.pdf';
+    $generalDocumentPath = DocumentStorageService::PRIVATE_PREFIX.'/general-documents/admin-politica.pdf';
+
+    Storage::disk('local')->put($portalDocumentPath, 'portal-admin-document');
+    Storage::disk('local')->put($generalDocumentPath, 'general-admin-document');
+
+    $portalDocument = PortalDocument::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'title' => 'Contrato Admin',
+        'description' => 'Documento privado para admin.',
+        'file_path' => $portalDocumentPath,
+        'file_original_name' => 'admin-contrato.pdf',
+        'file_size' => 1024,
+        'file_mime' => 'application/pdf',
+        'created_by_user_id' => $adminUser->id,
+    ]);
+
+    $generalDocument = GeneralDocument::query()->create([
+        'nimbus_category_id' => $category->id,
+        'title' => 'Política Admin',
+        'description' => 'Documento geral para admin.',
+        'file_path' => $generalDocumentPath,
+        'file_original_name' => 'admin-politica.pdf',
+        'file_size' => 2048,
+        'file_mime' => 'application/pdf',
+        'is_active' => true,
+        'created_by_user_id' => $adminUser->id,
+    ]);
+
+    expect(route('admin.nimbus.documents.general.preview', $generalDocument, false))
+        ->toStartWith('/admin/gestao-documental-externa/documents/general/');
+
+    $this->actingAs($adminUser)
+        ->get(route('admin.nimbus.documents.general.preview', $generalDocument))
+        ->assertSuccessful()
+        ->assertHeader('content-disposition', 'inline; filename="admin-politica.pdf"');
+
+    $this->actingAs($adminUser)
+        ->get(route('admin.nimbus.documents.general.download', $generalDocument))
+        ->assertDownload('admin-politica.pdf');
+
+    $this->actingAs($adminUser)
+        ->get(route('admin.nimbus.documents.portal.preview', $portalDocument))
+        ->assertSuccessful()
+        ->assertHeader('content-disposition', 'inline; filename="admin-contrato.pdf"');
+
+    $this->actingAs($adminUser)
+        ->get(route('admin.nimbus.documents.portal.download', $portalDocument))
+        ->assertDownload('admin-contrato.pdf');
 });
 
 it('pins Nimbus backoffice uploads to the private local disk', function () {

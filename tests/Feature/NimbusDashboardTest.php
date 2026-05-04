@@ -159,7 +159,7 @@ it('loads the application vite theme for the admin panel', function () {
         ->toBe('resources/css/filament/admin/theme.css');
 });
 
-it('organizes NimbusDocs navigation under the Visão Geral subsection', function () {
+it('organizes Gestão Documental Externa navigation under the Visão Geral subsection', function () {
     expect(NimbusDashboard::getNavigationParentItem())->toBe('Visão Geral')
         ->and(SubmissionResource::getNavigationParentItem())->toBe('Visão Geral')
         ->and(SubmissionResource::getNavigationLabel())->toBe('Envios e Solicitações')
@@ -453,7 +453,7 @@ it('allows admin users to upload return documents and renders them in the dedica
         ->assertSee(route('admin.nimbus.submissions.response-files.store', $submission), false);
 });
 
-it('mirrors the original NimbusDocs status review options on the submission action modal', function () {
+it('mirrors the original Gestão Documental Externa status review options on the submission action modal', function () {
     $user = User::factory()->withTwoFactor()->create([
         'email' => 'nimbus-submission-status@example.com',
     ]);
@@ -614,7 +614,7 @@ it('renders shareholder participation percentages in the relation manager', func
         ->assertTableColumnFormattedStateSet('percentage', '17,25%', $secondShareholder);
 });
 
-it('renders original NimbusDocs document labels in the files relation manager', function () {
+it('renders original Gestão Documental Externa document labels in the files relation manager', function () {
     $user = User::factory()->withTwoFactor()->create([
         'email' => 'nimbus-files@example.com',
     ]);
@@ -674,7 +674,8 @@ it('renders original NimbusDocs document labels in the files relation manager', 
         ->assertTableColumnExists('document_type_label')
         ->assertTableColumnStateSet('document_type_label', 'Último Balanço', $balanceSheet)
         ->assertTableColumnStateSet('document_type_label', 'DRE (Demonstração do Resultado do Exercício)', $dre)
-        ->assertTableColumnDoesNotExist('original_name')
+        ->assertTableColumnExists('original_name')
+        ->assertTableColumnStateSet('original_name', '0.pdf', $balanceSheet)
         ->assertTableActionExists('visualizar', null, $balanceSheet)
         ->assertTableActionHasUrl('visualizar', route('admin.nimbus.submissions.files.preview', $balanceSheet), $balanceSheet)
         ->assertTableActionShouldOpenUrlInNewTab('visualizar', $balanceSheet)
@@ -709,7 +710,7 @@ it('renders the portal users list under Administração', function () {
         ->assertSee('(11) 99999-9999');
 });
 
-it('renders the portal user create form with the same core fields as the NimbusDocs reference', function () {
+it('renders the portal user create form with the same core fields as the Gestão Documental Externa reference', function () {
     $user = User::factory()->withTwoFactor()->create([
         'email' => 'nimbus-portal-users-create@example.com',
     ]);

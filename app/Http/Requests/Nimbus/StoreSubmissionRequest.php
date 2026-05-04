@@ -4,6 +4,7 @@ namespace App\Http\Requests\Nimbus;
 
 use App\DTOs\Nimbus\StoreSubmissionDTO;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreSubmissionRequest extends FormRequest
 {
@@ -30,7 +31,7 @@ class StoreSubmissionRequest extends FormRequest
             'registrant_position' => ['nullable', 'string', 'max:100'],
             'registrant_rg' => ['nullable', 'string', 'max:20'],
             'registrant_cpf' => ['required', 'string', 'max:14'],
-            'shareholders' => ['nullable', 'json'],
+            'shareholders' => ['required', 'json'],
             'is_us_person' => ['nullable', 'boolean'],
             'is_pep' => ['nullable', 'boolean'],
             'ultimo_balanco' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
@@ -58,6 +59,7 @@ class StoreSubmissionRequest extends FormRequest
             'annual_revenue.required' => 'Informe o faturamento anual.',
             'registrant_name.required' => 'Informe o nome do cadastrante.',
             'registrant_cpf.required' => 'Informe o CPF do cadastrante.',
+            'shareholders.required' => 'Informe a composição societária.',
             'shareholders.json' => 'Os dados dos sócios precisam estar em um formato válido.',
             'ultimo_balanco.required' => 'Anexe o ultimo balanco patrimonial.',
             'dre.required' => 'Anexe a DRE.',
@@ -70,6 +72,28 @@ class StoreSubmissionRequest extends FormRequest
         ];
     }
 
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $shareholders = $this->decodedShareholders();
+
+            if ($shareholders === []) {
+                $validator->errors()->add('shareholders', 'Informe ao menos um sócio na composição societária.');
+
+                return;
+            }
+
+            $totalPercentage = array_sum(array_map(
+                static fn (array $shareholder): float => (float) ($shareholder['percentage'] ?? 0),
+                $shareholders,
+            ));
+
+            if (abs($totalPercentage - 100.0) > 0.01) {
+                $validator->errors()->add('shareholders', 'A soma da participação dos sócios deve ser exatamente 100%.');
+            }
+        });
+    }
+
     public function toDTO(): StoreSubmissionDTO
     {
         return StoreSubmissionDTO::fromArray([
@@ -77,5 +101,19 @@ class StoreSubmissionRequest extends FormRequest
             'ip' => $this->ip(),
             'user_agent' => $this->userAgent(),
         ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function decodedShareholders(): array
+    {
+        $shareholders = json_decode((string) $this->input('shareholders'), true);
+
+        if (! is_array($shareholders)) {
+            return [];
+        }
+
+        return array_values(array_filter($shareholders, is_array(...)));
     }
 }

@@ -8,6 +8,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -64,7 +65,14 @@ class PortalUsersTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'INVITED' => 'Aguardando Cadastro',
+                        'ACTIVE' => 'Ativo',
+                        'INACTIVE' => 'Inativo',
+                        'BLOCKED' => 'Suspenso',
+                    ]),
             ])
             ->recordActions([
                 EditAction::make(),
@@ -72,6 +80,10 @@ class PortalUsersTable
                     ->label('Gerar chave')
                     ->icon('heroicon-o-key')
                     ->color('warning')
+                    ->visible(fn ($record): bool => filled($record->email) && (
+                        auth()->user()?->can('nimbus.access-tokens.create')
+                        || auth()->user()?->can('nimbus.portal-users.update')
+                    ))
                     ->requiresConfirmation()
                     ->modalHeading('Gerar chave de acesso')
                     ->modalDescription('Isso irá revogar a chave atual do usuário, se existir, e gerar um novo código no formato XXXX-XXXX-XXXX.')

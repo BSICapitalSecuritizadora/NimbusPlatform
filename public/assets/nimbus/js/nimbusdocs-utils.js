@@ -1,5 +1,5 @@
 /**
- * NimbusDocs Utilities
+ * Gestão Documental Externa Utilities
  */
 document.addEventListener('DOMContentLoaded', function () {
 

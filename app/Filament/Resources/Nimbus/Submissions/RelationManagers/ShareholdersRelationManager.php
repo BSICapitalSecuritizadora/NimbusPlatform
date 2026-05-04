@@ -2,13 +2,10 @@
 
 namespace App\Filament\Resources\Nimbus\Submissions\RelationManagers;
 
-use Filament\Actions\AttachAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DetachAction;
-use Filament\Actions\DetachBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -27,8 +24,15 @@ class ShareholdersRelationManager extends RelationManager
         return $schema
             ->components([
                 TextInput::make('name')
+                    ->label('Nome')
                     ->required()
                     ->maxLength(255),
+                TextInput::make('document_rg')
+                    ->label('RG')
+                    ->maxLength(20),
+                TextInput::make('document_cnpj')
+                    ->label('CNPJ')
+                    ->maxLength(18),
                 TextInput::make('percentage')
                     ->label('Participação')
                     ->numeric()
@@ -45,6 +49,14 @@ class ShareholdersRelationManager extends RelationManager
                 TextColumn::make('name')
                     ->label('Nome')
                     ->searchable(),
+                TextColumn::make('document_rg')
+                    ->label('RG')
+                    ->placeholder('—')
+                    ->searchable(),
+                TextColumn::make('document_cnpj')
+                    ->label('CNPJ')
+                    ->placeholder('—')
+                    ->searchable(),
                 TextColumn::make('percentage')
                     ->label('Participação')
                     ->numeric(2, ',', '.')
@@ -55,18 +67,19 @@ class ShareholdersRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                CreateAction::make(),
-                AttachAction::make(),
+                CreateAction::make()
+                    ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
             ])
             ->recordActions([
-                EditAction::make(),
-                DetachAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
+                DeleteAction::make()
+                    ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DetachBulkAction::make(),
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
                 ]),
             ]);
     }

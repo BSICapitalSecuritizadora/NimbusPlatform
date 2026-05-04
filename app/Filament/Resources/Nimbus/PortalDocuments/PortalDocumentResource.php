@@ -22,7 +22,7 @@ class PortalDocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolderOpen;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Gestão Documental';
 
@@ -31,6 +31,8 @@ class PortalDocumentResource extends Resource
     protected static ?string $modelLabel = 'documento por usuário';
 
     protected static ?string $pluralModelLabel = 'Documentos por Usuário';
+
+    protected static ?string $slug = 'gestao-documental-externa/portal-documents';
 
     protected static ?int $navigationSort = 22;
 

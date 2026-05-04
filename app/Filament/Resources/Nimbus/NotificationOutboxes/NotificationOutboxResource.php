@@ -24,7 +24,7 @@ class NotificationOutboxResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Comunicação';
 
@@ -33,6 +33,8 @@ class NotificationOutboxResource extends Resource
     protected static ?string $modelLabel = 'envio de notificação';
 
     protected static ?string $pluralModelLabel = 'Auditoria de Envios';
+
+    protected static ?string $slug = 'gestao-documental-externa/notification-outboxes';
 
     protected static ?int $navigationSort = 31;
 

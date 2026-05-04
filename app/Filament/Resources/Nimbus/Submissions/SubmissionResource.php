@@ -29,7 +29,7 @@ class SubmissionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Visão Geral';
 
@@ -38,6 +38,8 @@ class SubmissionResource extends Resource
     protected static ?string $modelLabel = 'envio e solicitação';
 
     protected static ?string $pluralModelLabel = 'Envios e Solicitações';
+
+    protected static ?string $slug = 'gestao-documental-externa/submissions';
 
     protected static ?int $navigationSort = -9;
 

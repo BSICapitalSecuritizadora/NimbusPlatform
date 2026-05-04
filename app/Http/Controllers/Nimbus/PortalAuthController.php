@@ -4,45 +4,40 @@ namespace App\Http\Controllers\Nimbus;
 
 use App\Http\Controllers\Controller;
 use App\Models\Nimbus\AccessToken;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PortalAuthController extends Controller
 {
-    /**
-     * Mostra o formulário inicial onde o usuário informa o e-mail ou documento.
-     */
-    /**
-     * Mostra o formulário de login (único passo com o código XXXX-XXXX-XXXX).
-     */
-    public function showRequestForm()
+    public function showRequestForm(): View
     {
         return view('nimbus.auth.login');
     }
 
-    /**
-     * Faz a verificação e o login direto pela submissão do código.
-     */
-    public function verifyPin(Request $request)
+    public function verifyPin(Request $request): RedirectResponse
     {
-        $request->validate(['access_code' => 'required|string']);
+        $request->validate([
+            'access_code' => ['required', 'string', 'max:32'],
+        ]);
 
         $normalizedCode = $this->normalizeAccessCode((string) $request->input('access_code'));
         $rawCode = str_replace('-', '', $normalizedCode);
 
-        $token = AccessToken::whereIn('code', [$normalizedCode, $rawCode])
+        $token = AccessToken::query()
+            ->whereIn('code', [$normalizedCode, $rawCode])
+            ->where('status', 'PENDING')
             ->first();
 
         if (! $token || ! $token->portalUser || $token->portalUser->status !== 'ACTIVE') {
             return back()->withErrors(['access_code' => 'Código inválido ou expirado.'])->withInput();
         }
 
-        // Verifica se ainda é válido (Você pode alterar a regra de PENDING depois conforme o original)
-        if ($token->status === 'REVOKED' || ($token->expires_at && $token->expires_at < now())) {
+        if ($token->expires_at && $token->expires_at->isPast()) {
             return back()->withErrors(['access_code' => 'Código expirado. Solicite um novo com a administração.'])->withInput();
         }
 
-        // Marca como usado
         $token->update([
             'status' => 'USED',
             'used_at' => now(),
@@ -68,7 +63,7 @@ class PortalAuthController extends Controller
         return implode('-', str_split($sanitizedCode, 4));
     }
 
-    public function logout()
+    public function logout(): RedirectResponse
     {
         Auth::guard('nimbus')->logout();
 

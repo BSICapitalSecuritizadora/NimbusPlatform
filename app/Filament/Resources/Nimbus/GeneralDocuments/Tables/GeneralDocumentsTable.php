@@ -2,11 +2,14 @@
 
 namespace App\Filament\Resources\Nimbus\GeneralDocuments\Tables;
 
+use App\Models\Nimbus\GeneralDocument;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Number;
 
@@ -56,9 +59,31 @@ class GeneralDocumentsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('nimbus_category_id')
+                    ->label('Categoria')
+                    ->relationship('category', 'name')
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('is_active')
+                    ->label('Status')
+                    ->options([
+                        '1' => 'Ativo',
+                        '0' => 'Inativo',
+                    ]),
             ])
             ->recordActions([
+                Action::make('preview')
+                    ->label('Visualizar')
+                    ->icon('heroicon-o-eye')
+                    ->color('gray')
+                    ->url(fn (GeneralDocument $record): string => route('admin.nimbus.documents.general.preview', $record))
+                    ->openUrlInNewTab()
+                    ->visible(fn (GeneralDocument $record): bool => filled($record->file_path) && (auth()->user()?->can('nimbus.general-documents.view') ?? false)),
+                Action::make('download')
+                    ->label('Baixar')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->url(fn (GeneralDocument $record): string => route('admin.nimbus.documents.general.download', $record))
+                    ->visible(fn (GeneralDocument $record): bool => filled($record->file_path) && (auth()->user()?->can('nimbus.general-documents.view') ?? false)),
                 EditAction::make(),
                 DeleteAction::make(),
             ])

@@ -17,7 +17,7 @@ class SubmissionForm
         return $schema
             ->components([
                 TextInput::make('nimbus_portal_user_id')
-                    ->label('ID do Usuário do Portal Nimbus')
+                    ->label('ID do usuário do portal externo')
                     ->required()
                     ->numeric(),
                 TextInput::make('reference_code')

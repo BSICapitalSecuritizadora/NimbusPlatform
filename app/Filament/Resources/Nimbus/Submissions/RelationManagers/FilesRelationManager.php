@@ -4,13 +4,9 @@ namespace App\Filament\Resources\Nimbus\Submissions\RelationManagers;
 
 use App\Models\Nimbus\SubmissionFile;
 use Filament\Actions\Action;
-use Filament\Actions\AttachAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DetachAction;
-use Filament\Actions\DetachBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -57,15 +53,29 @@ class FilesRelationManager extends RelationManager
                             }
                         });
                     }),
+                TextColumn::make('original_name')
+                    ->label('Arquivo')
+                    ->searchable()
+                    ->wrap(),
+                TextColumn::make('origin')
+                    ->label('Origem')
+                    ->formatStateUsing(fn (?string $state): string => $state === 'ADMIN' ? 'Equipe interna' : 'Portal')
+                    ->badge(),
+                TextColumn::make('visible_to_user')
+                    ->label('Visibilidade')
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Portal' : 'Interno')
+                    ->badge()
+                    ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
+                TextColumn::make('uploaded_at')
+                    ->label('Enviado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
             ])
             ->filters([
                 //
             ])
             ->headerActions([
-                CreateAction::make()
-                    ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
-                AttachAction::make()
-                    ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
+                //
             ])
             ->recordActions([
                 Action::make('visualizar')
@@ -82,15 +92,11 @@ class FilesRelationManager extends RelationManager
                     ->url(fn (SubmissionFile $record): string => route('admin.nimbus.submissions.files.download', $record)),
                 EditAction::make()
                     ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('update', $record->submission)),
-                DetachAction::make()
-                    ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('update', $record->submission)),
                 DeleteAction::make()
                     ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('update', $record->submission)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DetachBulkAction::make()
-                        ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
                     DeleteBulkAction::make()
                         ->visible(fn (RelationManager $livewire): bool => auth()->user()->can('update', $livewire->getOwnerRecord())),
                 ]),

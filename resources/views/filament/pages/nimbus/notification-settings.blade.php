@@ -15,7 +15,7 @@
                         <div class="space-y-1">
                             <h2 class="text-xl font-semibold text-white sm:text-2xl">Notificações do portal</h2>
                             <p class="max-w-2xl text-sm leading-6 text-gray-400">
-                                Gerencie quando e como os usuários recebem as notificações do NimbusDocs.
+                                Gerencie quando e como os usuários recebem as notificações do Gestão Documental Externa.
                             </p>
                         </div>
                     </div>

@@ -37,7 +37,7 @@ it('registers the Gestão section between Cadastro and Gestão de Acesso', funct
 
     expect(EmissionResource::getNavigationGroup())->toBe(ExpenseResource::getNavigationGroup())
         ->and($navigationGroups)->toBe([
-            'NimbusDocs',
+            'Gestão Documental Externa',
             'Auditoria',
             'Comercial',
             'Cadastro',

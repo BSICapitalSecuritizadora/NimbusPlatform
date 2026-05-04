@@ -14,7 +14,7 @@ class NimbusDashboard extends BaseDashboard
 {
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-chart-bar';
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Visão Geral';
 
@@ -24,7 +24,7 @@ class NimbusDashboard extends BaseDashboard
 
     protected static ?int $navigationSort = -10;
 
-    protected static string $routePath = '/nimbus-dashboard';
+    protected static string $routePath = '/gestao-documental-externa-dashboard';
 
     public static function canAccess(): bool
     {

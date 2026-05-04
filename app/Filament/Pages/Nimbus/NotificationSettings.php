@@ -17,7 +17,7 @@ class NotificationSettings extends Page
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedBell;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Comunicação';
 

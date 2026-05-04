@@ -19,18 +19,6 @@ class ViewSubmission extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('reenviar_notificacao')
-                ->label('Reenviar Notificação')
-                ->icon('heroicon-o-envelope')
-                ->color('gray')
-                ->requiresConfirmation()
-                ->action(function (): void {
-                    Notification::make()
-                        ->warning()
-                        ->title('Reenvio ainda não implementado')
-                        ->body('A integração de reenvio de notificação será ligada em seguida.')
-                        ->send();
-                }),
             Actions\Action::make('alterar_situacao')
                 ->label('Alterar Situação')
                 ->icon('heroicon-o-arrow-path')
@@ -151,12 +139,6 @@ class ViewSubmission extends ViewRecord
                             : null)
                         ->send();
                 }),
-            Actions\Action::make('print')
-                ->label('Imprimir')
-                ->icon('heroicon-o-printer')
-                ->color('gray')
-                ->url('#')
-                ->openUrlInNewTab(),
         ];
     }
 }

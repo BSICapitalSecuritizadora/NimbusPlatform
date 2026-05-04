@@ -44,7 +44,7 @@ class SubmissionController extends Controller
                 ->with('success', 'Solicitação enviada com sucesso! Nossa equipe analisará os documentos em breve.');
 
         } catch (Throwable $e) {
-            Log::error('Erro ao processar submissão Nimbus.', [
+            Log::error('Erro ao processar submissão do portal externo.', [
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

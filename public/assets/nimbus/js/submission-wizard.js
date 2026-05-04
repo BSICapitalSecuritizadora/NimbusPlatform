@@ -1,5 +1,5 @@
 /**
- * NimbusDocs - Submission Create Script
+ * Gestão Documental Externa - Submission Create Script
  * Responsável pela lógica de máscaras, validação e manipulação de sócios no formulário de criação.
  */
 
@@ -7,7 +7,7 @@
     const config = window.SubmissionConfig || {};
     let shareholders = config.shareholders || [];
     const csrfToken = config.csrfToken || '';
-    const cnpjLookupUrl = config.cnpjLookupUrl || '/nimbus/submissions/cnpj-lookup';
+    const cnpjLookupUrl = config.cnpjLookupUrl || '/gestao-documental-externa/submissions/cnpj-lookup';
 
     // Funções auxiliares globais (necessárias para o HTML gerado dinamicamente)
     window.maskCnpj = function (input) {

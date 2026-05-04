@@ -22,7 +22,7 @@ class AnnouncementResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMegaphone;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Comunicação';
 
@@ -31,6 +31,8 @@ class AnnouncementResource extends Resource
     protected static ?string $modelLabel = 'aviso geral';
 
     protected static ?string $pluralModelLabel = 'Avisos Gerais';
+
+    protected static ?string $slug = 'gestao-documental-externa/announcements';
 
     protected static ?int $navigationSort = 30;
 

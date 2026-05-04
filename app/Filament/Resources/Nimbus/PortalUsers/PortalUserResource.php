@@ -21,7 +21,7 @@ class PortalUserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Administração';
 
@@ -30,6 +30,8 @@ class PortalUserResource extends Resource
     protected static ?string $modelLabel = 'usuário do portal';
 
     protected static ?string $pluralModelLabel = 'Usuários do Portal';
+
+    protected static ?string $slug = 'gestao-documental-externa/portal-users';
 
     protected static ?int $navigationSort = 10;
 

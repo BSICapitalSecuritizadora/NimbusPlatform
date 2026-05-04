@@ -22,7 +22,7 @@ class GeneralDocumentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'NimbusDocs';
+    protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
     protected static ?string $navigationParentItem = 'Gestão Documental';
 
@@ -31,6 +31,8 @@ class GeneralDocumentResource extends Resource
     protected static ?string $modelLabel = 'documento geral';
 
     protected static ?string $pluralModelLabel = 'Biblioteca Geral';
+
+    protected static ?string $slug = 'gestao-documental-externa/general-documents';
 
     protected static ?int $navigationSort = 21;
 

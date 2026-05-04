@@ -177,7 +177,7 @@
                             @foreach($submission->shareholders as $share)
                                 <tr>
                                     <td class="ps-4 py-3 text-dark fw-medium">{{ $share->name }}</td>
-                                    <td class="text-secondary">{{ $share->document_cpf ?? $share->document_cnpj ?? '-' }}</td>
+                                    <td class="text-secondary">{{ $share->document_rg ?? $share->document_cnpj ?? '-' }}</td>
                                     <td class="pe-4 text-end text-dark fw-bold">{{ number_format($share->percentage, 2) }}%</td>
                                 </tr>
                             @endforeach

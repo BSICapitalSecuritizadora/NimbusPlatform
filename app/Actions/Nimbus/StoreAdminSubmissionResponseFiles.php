@@ -57,7 +57,9 @@ class StoreAdminSubmissionResponseFiles
         $adminPanel = Filament::getPanel('admin');
 
         abort_unless(
-            $user && $user->canAccessPanel($adminPanel),
+            $user
+                && $user->canAccessPanel($adminPanel)
+                && ($user->hasAnyRole(['super-admin', 'admin']) || $user->can('nimbus.submissions.update')),
             Response::HTTP_FORBIDDEN,
         );
 

@@ -119,7 +119,7 @@
             </p>
             
             <div class="btn-wrapper">
-                <a href="{{ url('/nimbus/login') }}" class="btn">Acessar o Portal</a>
+                <a href="{{ route('nimbus.auth.request') }}" class="btn">Acessar o Portal</a>
             </div>
         </div>
         

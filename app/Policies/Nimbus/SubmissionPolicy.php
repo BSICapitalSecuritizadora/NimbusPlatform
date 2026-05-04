@@ -21,6 +21,18 @@ class SubmissionPolicy
         return $user->hasAnyRole(['super-admin', 'admin']);
     }
 
+    public function update(User $user, Submission $submission): bool
+    {
+        return $user->hasAnyRole(['super-admin', 'admin'])
+            || $user->can('nimbus.submissions.update');
+    }
+
+    public function delete(User $user, Submission $submission): bool
+    {
+        return $user->hasAnyRole(['super-admin', 'admin'])
+            || $user->can('nimbus.submissions.delete');
+    }
+
     /**
      * Determine if the portal user can download the given submission file.
      * Covers ownership (IDOR prevention) and ADMIN-only visibility.
@@ -28,6 +40,18 @@ class SubmissionPolicy
      */
     public function downloadFile(Authenticatable $user, Submission $submission, SubmissionFile $file): Response
     {
+        if ($user instanceof User) {
+            if (! $user->hasAnyRole(['super-admin', 'admin']) && ! $user->can('nimbus.submissions.view')) {
+                return Response::denyAsNotFound();
+            }
+
+            if ($file->nimbus_submission_id !== $submission->id) {
+                return Response::denyAsNotFound();
+            }
+
+            return Response::allow();
+        }
+
         if (! $user instanceof PortalUser) {
             return Response::denyAsNotFound();
         }

@@ -98,3 +98,51 @@ it('stores a nimbus submission using the current database schema', function () {
 
     Storage::disk('local')->deleteDirectory('nimbus_docs/submissions/'.$submission->id);
 });
+
+it('rejects submissions when shareholder participation does not total 100 percent', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Nimbus',
+        'email' => 'cliente.percentual@example.com',
+        'document_number' => '12345678902',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $response = $this->actingAs($portalUser, 'nimbus')
+        ->post(route('nimbus.submissions.store'), [
+            'responsible_name' => 'Cliente Percentual',
+            'company_cnpj' => '11.257.352/0001-43',
+            'company_name' => 'BSI Capital Securitizadora S/A',
+            'main_activity' => 'Securitizacao de creditos',
+            'phone' => '(11) 4330-9780',
+            'website' => 'https://bsicapital.com.br/',
+            'net_worth' => 'R$ 10,00',
+            'annual_revenue' => 'R$ 100,00',
+            'registrant_name' => 'Cliente Percentual',
+            'registrant_position' => 'Teste',
+            'registrant_rg' => '49.424.335-1',
+            'registrant_cpf' => '019.348.404-83',
+            'is_us_person' => '0',
+            'is_pep' => '0',
+            'shareholders' => json_encode([
+                [
+                    'name' => 'Socio Parcial',
+                    'rg' => '12.345.678-9',
+                    'cnpj' => '11.111.111/0001-11',
+                    'percentage' => 50,
+                ],
+            ], JSON_THROW_ON_ERROR),
+            'ultimo_balanco' => UploadedFile::fake()->create('ultimo-balanco.pdf', 100, 'application/pdf'),
+            'dre' => UploadedFile::fake()->create('dre.pdf', 100, 'application/pdf'),
+            'politicas' => UploadedFile::fake()->create('politicas.pdf', 100, 'application/pdf'),
+            'cartao_cnpj' => UploadedFile::fake()->create('cartao-cnpj.pdf', 100, 'application/pdf'),
+            'procuracao' => UploadedFile::fake()->create('procuracao.pdf', 100, 'application/pdf'),
+            'ata' => UploadedFile::fake()->create('ata.pdf', 100, 'application/pdf'),
+            'contrato_social' => UploadedFile::fake()->create('contrato-social.pdf', 100, 'application/pdf'),
+            'estatuto' => UploadedFile::fake()->create('estatuto.pdf', 100, 'application/pdf'),
+        ]);
+
+    $response->assertSessionHasErrors('shareholders');
+
+    $this->assertDatabaseCount('nimbus_submissions', 0);
+});
