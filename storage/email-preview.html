@@ -5,43 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Código de Acesso ao Portal - BSI Capital</title>
-    <!--[if mso]>
-    <noscript>
-        <xml>
-            <o:OfficeDocumentSettings>
-                <o:PixelsPerInch>96</o:PixelsPerInch>
-            </o:OfficeDocumentSettings>
-        </xml>
-    </noscript>
-    <![endif]-->
     <style>
-        /* Reset */
         body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
         table, td { mso-table-rspace: 0pt; mso-table-lspace: 0pt; }
         img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
         body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #f0f2f5; }
-
-        /* Dark mode support */
-        @media (prefers-color-scheme: dark) {
-            .email-body { background-color: #1a1a2e !important; }
-            .email-card { background-color: #16213e !important; }
-        }
     </style>
 </head>
 <body style="margin:0; padding:0; background-color:#f0f2f5; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased;">
 
-    <!-- Wrapper -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f2f5;">
         <tr>
             <td align="center" style="padding:40px 16px;">
 
-                <!-- Main Card -->
                 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,18,51,0.12), 0 4px 16px rgba(0,18,51,0.06);">
 
-                    <!-- ═══════════════ HEADER ═══════════════ -->
+                    <!-- HEADER -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #001233 0%, #001845 50%, #002855 100%); padding:0;">
-                            <!-- Gold top accent line -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="height:4px; background: linear-gradient(90deg, #c8982c, #e8c468, #c8982c);"></td>
@@ -50,7 +31,7 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding:36px 40px 32px 40px; text-align:center;">
-                                        <img src="{{ asset('images/logo-bsi-email.png') }}"
+                                        <img src="../public/images/logo-bsi-email.png"
                                              alt="BSI Capital Securitizadora"
                                              width="220"
                                              style="display:inline-block; max-width:220px; height:auto;">
@@ -60,7 +41,7 @@
                         </td>
                     </tr>
 
-                    <!-- ═══════════════ BODY ═══════════════ -->
+                    <!-- BODY -->
                     <tr>
                         <td style="background-color:#ffffff; padding:0;">
 
@@ -71,7 +52,6 @@
                                         <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                             <tr>
                                                 <td style="vertical-align:middle; padding-right:14px;">
-                                                    <!-- Shield icon (SVG-safe for email) -->
                                                     <div style="width:40px; height:40px; background: linear-gradient(135deg, #d4a84b 0%, #c8982c 100%); border-radius:10px; text-align:center; line-height:40px; font-size:20px;">
                                                         &#128274;
                                                     </div>
@@ -90,12 +70,12 @@
                                 </tr>
                             </table>
 
-                            <!-- Greeting + Message -->
+                            <!-- Greeting -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding:36px 40px 0 40px;">
                                         <p style="margin:0 0 20px 0; font-size:20px; font-weight:700; color:#0c1b2e; line-height:1.3;">
-                                            Olá, {{ explode(' ', $user->full_name ?? 'Parceiro')[0] }}!
+                                            Olá, Anderson!
                                         </p>
                                         <p style="margin:0 0 32px 0; font-size:15px; line-height:1.7; color:#4b5563;">
                                             Para darmos andamento à sua solicitação e envio de documentos com toda a segurança,
@@ -106,12 +86,11 @@
                                 </tr>
                             </table>
 
-                            <!-- ─── CODE BOX ─── -->
+                            <!-- CODE BOX -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding:0 40px;">
                                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
-                                            <!-- Code label header -->
                                             <tr>
                                                 <td style="background-color:#f9fafb; padding:14px 24px; border-bottom:1px solid #e5e7eb;">
                                                     <div style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:#6b7280; font-weight:600; text-align:center;">
@@ -119,15 +98,13 @@
                                                     </div>
                                                 </td>
                                             </tr>
-                                            <!-- Code value -->
                                             <tr>
                                                 <td style="background-color:#ffffff; padding:28px 24px; text-align:center;">
                                                     <div style="font-family:'Courier New',Courier,monospace; font-size:32px; font-weight:700; color:#001233; letter-spacing:4px; line-height:1;">
-                                                        {{ $code }}
+                                                        8239-EC56-D4A0
                                                     </div>
                                                 </td>
                                             </tr>
-                                            <!-- Expiry footer -->
                                             <tr>
                                                 <td style="background-color:#fefce8; padding:12px 24px; border-top:1px solid #fef08a;">
                                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -135,11 +112,7 @@
                                                             <td style="text-align:center;">
                                                                 <span style="font-size:12px; color:#854d0e;">
                                                                     &#9200;&nbsp;
-                                                                    @if ($expiresAt)
-                                                                        Válido até <strong>{{ $expiresAt->format('d/m/Y') }}</strong> às <strong>{{ $expiresAt->format('H:i') }}</strong>
-                                                                    @else
-                                                                        Este código expirará em breve
-                                                                    @endif
+                                                                    Válido até <strong>12/05/2026</strong> às <strong>12:22</strong>
                                                                 </span>
                                                             </td>
                                                         </tr>
@@ -163,23 +136,15 @@
                                 </tr>
                             </table>
 
-                            <!-- ─── CTA BUTTON ─── -->
+                            <!-- CTA BUTTON -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding:0 40px; text-align:center;">
-                                        <!--[if mso]>
-                                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $accessUrl }}" style="height:52px;v-text-anchor:middle;width:280px;" arcsize="50%" fillcolor="#001233">
-                                            <w:anchorlock/>
-                                            <center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;">Acessar o Portal &rarr;</center>
-                                        </v:roundrect>
-                                        <![endif]-->
-                                        <!--[if !mso]><!-->
-                                        <a href="{{ $accessUrl }}"
+                                        <a href="#"
                                            target="_blank"
-                                           style="display:inline-block; background:linear-gradient(135deg, #001233 0%, #001845 100%); color:#ffffff; text-decoration:none; font-weight:700; font-size:15px; padding:16px 48px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(0,18,51,0.25); mso-hide:all;">
+                                           style="display:inline-block; background:linear-gradient(135deg, #001233 0%, #001845 100%); color:#ffffff; text-decoration:none; font-weight:700; font-size:15px; padding:16px 48px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(0,18,51,0.25);">
                                             Acessar o Portal &rarr;
                                         </a>
-                                        <!--<![endif]-->
                                     </td>
                                 </tr>
                             </table>
@@ -192,13 +157,13 @@
                                             Se o botão não funcionar, copie e cole este link no navegador:
                                         </p>
                                         <p style="margin:0; font-size:12px; color:#001233; word-break:break-all; text-align:center; line-height:1.5;">
-                                            <a href="{{ $accessUrl }}" style="color:#2563eb; text-decoration:underline;">{{ $accessUrl }}</a>
+                                            <a href="#" style="color:#2563eb; text-decoration:underline;">https://bsicapital-dfgsf6buagfrh8dn.westus3-01.azurewebsites.net/gestao-documental-externa/login</a>
                                         </p>
                                     </td>
                                 </tr>
                             </table>
 
-                            <!-- ─── SECURITY TIPS ─── -->
+                            <!-- SECURITY TIPS -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding:32px 40px 0 40px;">
@@ -235,7 +200,6 @@
                                 </tr>
                             </table>
 
-                            <!-- Bottom spacing -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding:36px 0 0 0;"></td>
@@ -245,7 +209,7 @@
                         </td>
                     </tr>
 
-                    <!-- ═══════════════ FOOTER ═══════════════ -->
+                    <!-- FOOTER -->
                     <tr>
                         <td style="background-color:#f9fafb; border-top:1px solid #e5e7eb; padding:0;">
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -255,7 +219,7 @@
                                             Este é um e-mail automático. Por favor, não responda.
                                         </p>
                                         <p style="margin:0 0 4px 0; font-size:12px; color:#9ca3af; line-height:1.5;">
-                                            &copy; {{ date('Y') }} BSI Capital Securitizadora S/A
+                                            &copy; 2026 BSI Capital Securitizadora S/A
                                         </p>
                                         <p style="margin:0; font-size:11px; color:#c4c8cc;">
                                             Todos os direitos reservados
@@ -267,12 +231,10 @@
                     </tr>
 
                 </table>
-                <!-- /Main Card -->
 
             </td>
         </tr>
     </table>
-    <!-- /Wrapper -->
 
 </body>
 </html>
