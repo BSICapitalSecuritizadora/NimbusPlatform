@@ -106,7 +106,12 @@
             
             <p class="message">
                 Para darmos andamento à sua solicitação e envio de documentos com toda a segurança, geramos
-                o seu código único de validação. Ele é pessoal, intransferível e expirará em 7 dias.
+                o seu código único de validação. Ele é pessoal, intransferível
+                @if ($expiresAt)
+                    e expirará em {{ $expiresAt->format('d/m/Y \à\s H:i') }}.
+                @else
+                    e expirará em breve.
+                @endif
             </p>
             
             <div class="code-box">
@@ -119,8 +124,16 @@
             </p>
             
             <div class="btn-wrapper">
-                <a href="{{ route('nimbus.auth.request') }}" class="btn">Acessar o Portal</a>
+                <a href="{{ $accessUrl }}" class="btn">Acessar o Portal</a>
             </div>
+
+            <p class="message" style="font-size: 14px; color: #6b7280; margin-top: 24px;">
+                Se o botão acima não funcionar, copie e cole este link no navegador:
+            </p>
+
+            <p style="font-size: 13px; color: #06101c; word-break: break-all;">
+                {{ $accessUrl }}
+            </p>
         </div>
         
         <div class="footer">

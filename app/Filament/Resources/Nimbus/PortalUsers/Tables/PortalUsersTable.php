@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Nimbus\PortalUsers\Tables;
 
+use App\Mail\Nimbus\SendPortalAccessCode;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -87,9 +88,9 @@ class PortalUsersTable
                     ->requiresConfirmation()
                     ->modalHeading('Gerar chave de acesso')
                     ->modalDescription('Isso irá revogar a chave atual do usuário, se existir, e gerar um novo código no formato XXXX-XXXX-XXXX.')
-                    ->action(function ($record) {
+                    ->action(function ($record): void {
                         try {
-                            DB::transaction(function () use ($record, &$code) {
+                            [$code, $expiresAt] = DB::transaction(function () use ($record): array {
                                 $record->accessTokens()
                                     ->where('status', 'PENDING')
                                     ->update(['status' => 'REVOKED']);
@@ -98,15 +99,25 @@ class PortalUsersTable
                                     strtoupper(substr(bin2hex(random_bytes(2)), 0, 4)).'-'.
                                     strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
 
+                                $expiresAt = now()->addDays((int) config('nimbus.access_tokens.expires_in_days', 7));
+
                                 $record->accessTokens()->create([
                                     'code' => $code,
                                     'status' => 'PENDING',
-                                    'expires_at' => now()->addDays(7),
+                                    'expires_at' => $expiresAt,
                                 ]);
+
+                                return [$code, $expiresAt];
                             });
 
-                            Mail::to($record->email)
-                                ->send(new \App\Mail\Nimbus\SendPortalAccessCode($record, $code));
+                            Mail::mailer((string) config('nimbus.mail.mailer', config('mail.default')))
+                                ->to($record->email)
+                                ->send(new SendPortalAccessCode(
+                                    user: $record,
+                                    code: $code,
+                                    accessUrl: route('nimbus.auth.request'),
+                                    expiresAt: $expiresAt,
+                                ));
 
                             Notification::make()
                                 ->title('Chave enviada')
