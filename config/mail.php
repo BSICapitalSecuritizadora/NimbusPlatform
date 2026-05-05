@@ -60,6 +60,17 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        'graph' => [
+            'transport' => 'graph',
+            'tenant_id' => env('OUTLOOK_TENANT_ID'),
+            'client_id' => env('OUTLOOK_CLIENT_ID'),
+            'client_secret' => env('OUTLOOK_CLIENT_SECRET'),
+            'mailbox' => env('OUTLOOK_MAILBOX', env('NIMBUS_MAIL_FROM_ADDRESS')),
+            'save_to_sent_items' => filter_var(env('OUTLOOK_GRAPH_SAVE_TO_SENT_ITEMS', true), FILTER_VALIDATE_BOOL),
+            'timeout' => (int) env('OUTLOOK_GRAPH_TIMEOUT', 30),
+            'base_url' => env('OUTLOOK_GRAPH_BASE_URL', 'https://graph.microsoft.com/v1.0'),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

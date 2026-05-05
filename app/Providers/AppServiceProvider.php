@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\Document;
 use App\Models\Nimbus\Submission;
 use App\Policies\DocumentPolicy;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -40,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureRateLimiting();
         $this->configureMacros();
+        $this->configureMailTransports();
 
         Gate::policy(Submission::class, SubmissionPolicy::class);
         Gate::policy(Document::class, DocumentPolicy::class);
@@ -84,6 +87,19 @@ class AppServiceProvider extends ServiceProvider
     protected function configureMacros(): void
     {
         Str::macro('digitsOnly', fn (string $value): string => preg_replace('/\D/', '', $value) ?? '');
+    }
+
+    protected function configureMailTransports(): void
+    {
+        Mail::extend('graph', fn (array $config): MicrosoftGraphTransport => new MicrosoftGraphTransport(
+            tenantId: (string) ($config['tenant_id'] ?? config('services.outlook.tenant_id')),
+            clientId: (string) ($config['client_id'] ?? config('services.outlook.client_id')),
+            clientSecret: (string) ($config['client_secret'] ?? config('services.outlook.client_secret')),
+            mailbox: (string) ($config['mailbox'] ?? config('services.outlook.mailbox')),
+            saveToSentItems: (bool) ($config['save_to_sent_items'] ?? true),
+            timeout: (int) ($config['timeout'] ?? 30),
+            graphBaseUrl: (string) ($config['base_url'] ?? 'https://graph.microsoft.com/v1.0'),
+        ));
     }
 
     protected function configureRateLimiting(): void
