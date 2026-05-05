@@ -49,11 +49,11 @@
                             </table>
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <td style="padding:36px 40px 32px 40px; text-align:center;">
+                                    <td style="padding:40px 40px 36px 40px; text-align:center;">
                                         <img src="{{ asset('images/logo-bsi-email.png') }}"
                                              alt="BSI Capital Securitizadora"
-                                             width="220"
-                                             style="display:inline-block; max-width:220px; height:auto;">
+                                             width="300"
+                                             style="display:inline-block; max-width:300px; height:auto;">
                                     </td>
                                 </tr>
                             </table>
