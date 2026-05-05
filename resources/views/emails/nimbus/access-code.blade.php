@@ -40,7 +40,7 @@
 
                     <!-- ═══════════════ HEADER ═══════════════ -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #001233 0%, #001845 50%, #002855 100%); padding:0;">
+                        <td bgcolor="#001845" style="background-color: #001845; background: linear-gradient(135deg, #001233 0%, #001845 50%, #002855 100%); padding:0;">
                             <!-- Gold top accent line -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
@@ -176,7 +176,7 @@
                                         <!--[if !mso]><!-->
                                         <a href="{{ $accessUrl }}"
                                            target="_blank"
-                                           style="display:inline-block; background:linear-gradient(135deg, #001233 0%, #001845 100%); color:#ffffff; text-decoration:none; font-weight:700; font-size:15px; padding:16px 48px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(0,18,51,0.25); mso-hide:all;">
+                                           style="display:inline-block; background-color: #001845; background:linear-gradient(135deg, #001233 0%, #001845 100%); color:#ffffff; text-decoration:none; font-weight:700; font-size:15px; padding:16px 48px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(0,18,51,0.25); mso-hide:all;">
                                             Acessar o Portal &rarr;
                                         </a>
                                         <!--<![endif]-->
