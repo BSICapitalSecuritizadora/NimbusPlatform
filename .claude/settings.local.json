@@ -26,7 +26,8 @@
       "Bash(php -l app/Filament/Resources/Documents/Pages/EditDocument.php)",
       "Bash(vendor/bin/pint *)",
       "Bash(./vendor/bin/sail php *)",
-      "Bash(./vendor/bin/sail artisan *)"
+      "Bash(./vendor/bin/sail artisan *)",
+      "Bash(claude plugin *)"
     ]
   }
 }

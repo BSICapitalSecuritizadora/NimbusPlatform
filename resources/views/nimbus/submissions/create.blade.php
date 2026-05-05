@@ -199,6 +199,53 @@
                  <div id="complianceError" class="text-danger small mt-2 fw-bold" role="alert" style="display: none;">
                     <i class="bi bi-exclamation-circle me-1"></i> Selecione pelo menos uma opção.
                 </div>
+
+                <div class="mt-4 pt-4 border-top">
+                    <label class="form-label small fw-bold text-secondary text-uppercase ls-1 d-block mb-3">
+                        Você é filiado à Anbima? <span class="text-danger">*</span>
+                    </label>
+                    <div class="d-flex gap-4 flex-wrap">
+                        <div class="form-check">
+                            <input
+                                class="form-check-input @error('is_anbima_affiliated') is-invalid @enderror"
+                                type="radio"
+                                id="is_anbima_affiliated_yes"
+                                name="is_anbima_affiliated"
+                                value="1"
+                                {{ old('is_anbima_affiliated') == '1' ? 'checked' : '' }}
+                            >
+                            <label class="form-check-label text-secondary fw-medium" for="is_anbima_affiliated_yes">
+                                Sim
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input
+                                class="form-check-input @error('is_anbima_affiliated') is-invalid @enderror"
+                                type="radio"
+                                id="is_anbima_affiliated_no"
+                                name="is_anbima_affiliated"
+                                value="0"
+                                {{ old('is_anbima_affiliated') == '0' ? 'checked' : '' }}
+                            >
+                            <label class="form-check-label text-secondary fw-medium" for="is_anbima_affiliated_no">
+                                Não
+                            </label>
+                        </div>
+                    </div>
+                    <div
+                        id="anbimaAffiliationError"
+                        class="text-danger small mt-2 fw-bold"
+                        role="alert"
+                        style="{{ $errors->has('is_anbima_affiliated') ? 'display: block;' : 'display: none;' }}"
+                    >
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        @error('is_anbima_affiliated')
+                            {{ $message }}
+                        @else
+                            Selecione uma opção.
+                        @enderror
+                    </div>
+                </div>
             </div>
         </div>
 

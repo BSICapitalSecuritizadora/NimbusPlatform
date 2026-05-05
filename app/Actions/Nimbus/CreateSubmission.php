@@ -54,6 +54,7 @@ class CreateSubmission
                 'registrant_cpf' => $dto->registrantCpf,
                 'is_us_person' => $dto->isUsPerson,
                 'is_pep' => $dto->isPep,
+                'is_anbima_affiliated' => $dto->isAnbimaAffiliated,
                 'created_ip' => $dto->ip,
                 'created_user_agent' => Str::limit((string) $dto->userAgent, 255, ''),
                 'submitted_at' => now(),

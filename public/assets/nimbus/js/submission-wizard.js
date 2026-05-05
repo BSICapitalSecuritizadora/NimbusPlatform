@@ -226,6 +226,8 @@
         const pep = document.getElementById('is_pep');
         const noneCompliant = document.getElementById('is_none_compliant');
         const complianceError = document.getElementById('complianceError');
+        const anbimaAffiliationRadios = document.querySelectorAll('input[name="is_anbima_affiliated"]');
+        const anbimaAffiliationError = document.getElementById('anbimaAffiliationError');
 
         if (usPerson && pep && noneCompliant) {
             function updateComplianceChecks(e) {
@@ -253,6 +255,21 @@
             usPerson.addEventListener('change', updateComplianceChecks);
             pep.addEventListener('change', updateComplianceChecks);
             noneCompliant.addEventListener('change', updateComplianceChecks);
+        }
+
+        if (anbimaAffiliationRadios.length > 0) {
+            anbimaAffiliationRadios.forEach(radio => {
+                radio.addEventListener('change', function () {
+                    anbimaAffiliationRadios.forEach(input => {
+                        input.classList.remove('is-invalid');
+                        input.removeAttribute('aria-invalid');
+                    });
+
+                    if (anbimaAffiliationError) {
+                        anbimaAffiliationError.style.display = 'none';
+                    }
+                });
+            });
         }
 
         // Add Shareholder Button
@@ -345,6 +362,10 @@
             // 1. HTML5 Validation for inputs in this step
             const inputs = stepEl.querySelectorAll('input, select, textarea');
             inputs.forEach(input => {
+                if ((input instanceof HTMLInputElement) && (input.type === 'radio') && (input.name === 'is_anbima_affiliated')) {
+                    return;
+                }
+
                 if (!input.checkValidity()) {
                     isValid = false;
                     input.classList.add('is-invalid');
@@ -364,6 +385,22 @@
                     pep.classList.add('is-invalid');
                     noneCompliant.classList.add('is-invalid');
                     if (complianceError) complianceError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                const hasAnbimaAffiliation = Array.from(anbimaAffiliationRadios).some(radio => radio.checked);
+
+                if (anbimaAffiliationRadios.length > 0 && !hasAnbimaAffiliation) {
+                    isValid = false;
+
+                    anbimaAffiliationRadios.forEach(radio => {
+                        radio.classList.add('is-invalid');
+                        radio.setAttribute('aria-invalid', 'true');
+                    });
+
+                    if (anbimaAffiliationError) {
+                        anbimaAffiliationError.style.display = 'block';
+                        anbimaAffiliationError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
             }
 
