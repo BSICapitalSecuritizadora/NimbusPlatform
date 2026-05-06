@@ -26,6 +26,7 @@ it('maps the nimbus submission request into a typed dto', function () {
         'registrant_position' => 'Diretora',
         'registrant_rg' => '49.424.335-1',
         'registrant_cpf' => '019.348.404-83',
+        'is_anbima_affiliated' => '0',
         'is_us_person' => '1',
         'is_pep' => '0',
         'shareholders' => json_encode([
@@ -55,6 +56,7 @@ it('maps the nimbus submission request into a typed dto', function () {
         ->and($dto->annualRevenue)->toBe(100.0)
         ->and($dto->isUsPerson)->toBeTrue()
         ->and($dto->isPep)->toBeFalse()
+        ->and($dto->isAnbimaAffiliated)->toBeFalse()
         ->and($dto->shareholders)->toHaveCount(1)
         ->and($dto->shareholderData()[0]['name'])->toBe('Socio Principal')
         ->and($dto->documentFiles)->toHaveCount(8)
@@ -150,6 +152,10 @@ function attachValidator(object $request, array $payload): void
 {
     /** @var Validator $validator */
     $validator = validator($payload, $request->rules(), $request->messages());
+
+    if (method_exists($request, 'withValidator')) {
+        $request->withValidator($validator);
+    }
 
     $request
         ->setContainer(app())
