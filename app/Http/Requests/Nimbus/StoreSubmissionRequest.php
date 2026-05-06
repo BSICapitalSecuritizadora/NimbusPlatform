@@ -39,8 +39,8 @@ class StoreSubmissionRequest extends FormRequest
             'dre' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
             'politicas' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
             'cartao_cnpj' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
-            'procuracao' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
-            'ata' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'procuracao' => ['nullable', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
+            'ata' => ['nullable', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
             'contrato_social' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
             'estatuto' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
         ];
@@ -68,8 +68,6 @@ class StoreSubmissionRequest extends FormRequest
             'dre.required' => 'Anexe a DRE.',
             'politicas.required' => 'Anexe as politicas da empresa.',
             'cartao_cnpj.required' => 'Anexe o cartao CNPJ.',
-            'procuracao.required' => 'Anexe a procuracao.',
-            'ata.required' => 'Anexe a ata.',
             'contrato_social.required' => 'Anexe o contrato social.',
             'estatuto.required' => 'Anexe o estatuto social.',
         ];

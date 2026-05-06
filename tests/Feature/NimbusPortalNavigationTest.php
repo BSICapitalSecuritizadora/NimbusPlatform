@@ -67,6 +67,23 @@ it('renders working Nimbus portal navigation and dashboard actions', function ()
         ->assertSee('href="'.route('nimbus.submissions.show', $submission).'"', false);
 });
 
+it('renders the updated optional document labels in the registration form', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Teste Formulario',
+        'email' => 'teste.formulario@example.com',
+        'document_number' => '12345678904',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.create'))
+        ->assertSuccessful()
+        ->assertSee('Documentos (PDF)')
+        ->assertSee('Procuração (Caso houver)')
+        ->assertSee('Ata de eleição de diretoria');
+});
+
 it('serves Nimbus documents from the private disk even when the default filesystem is public', function () {
     config()->set('filesystems.default', 'public');
 

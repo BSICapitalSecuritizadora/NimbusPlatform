@@ -57,8 +57,6 @@ it('stores a nimbus submission using the current database schema', function () {
             'dre' => UploadedFile::fake()->create('dre.pdf', 100, 'application/pdf'),
             'politicas' => UploadedFile::fake()->create('politicas.pdf', 100, 'application/pdf'),
             'cartao_cnpj' => UploadedFile::fake()->create('cartao-cnpj.pdf', 100, 'application/pdf'),
-            'procuracao' => UploadedFile::fake()->create('procuracao.pdf', 100, 'application/pdf'),
-            'ata' => UploadedFile::fake()->create('ata.pdf', 100, 'application/pdf'),
             'contrato_social' => UploadedFile::fake()->create('contrato-social.pdf', 100, 'application/pdf'),
             'estatuto' => UploadedFile::fake()->create('estatuto.pdf', 100, 'application/pdf'),
         ]);
@@ -79,7 +77,7 @@ it('stores a nimbus submission using the current database schema', function () {
         ->and($submission->shareholder_data)->toBe($shareholders)
         ->and($submission->shareholders)->toHaveCount(1)
         ->and($submission->shareholders->first()->document_rg)->toBe('12.345.678-9')
-        ->and($submission->files)->toHaveCount(8);
+        ->and($submission->files)->toHaveCount(6);
 
     $documentTypes = $submission->files
         ->pluck('document_type')
@@ -93,9 +91,7 @@ it('stores a nimbus submission using the current database schema', function () {
         'BYLAWS',
         'CNPJ_CARD',
         'DRE',
-        'MINUTES',
         'POLICIES',
-        'POWER_OF_ATTORNEY',
     ]);
 
     foreach ($submission->files as $file) {

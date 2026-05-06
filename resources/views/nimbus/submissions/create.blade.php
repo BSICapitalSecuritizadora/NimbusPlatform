@@ -294,29 +294,32 @@
     <div class="wizard-step" data-step="3">
          <div class="nd-card mb-4 border-0 shadow-sm rounded-4 bg-white">
             <div class="nd-card-header bg-white border-bottom p-4">
-                <h5 class="nd-card-title fw-bold text-dark mb-0">Documentos Obrigatórios (PDF)</h5>
+                <h5 class="nd-card-title fw-bold text-dark mb-0">Documentos (PDF)</h5>
             </div>
             <div class="nd-card-body p-4">
                 <div class="row g-4">
-                     @php
+                    @php
                     $docs = [
-                        'ultimo_balanco' => 'Último Balanço',
-                        'dre' => 'DRE (Demonstração do Resultado do Exercício)',
-                        'politicas' => 'Políticas',
-                        'cartao_cnpj' => 'Cartão CNPJ',
-                        'procuracao' => 'Procuração',
-                        'ata' => 'Ata',
-                        'contrato_social' => 'Contrato Social',
-                        'estatuto' => 'Estatuto',
+                        'ultimo_balanco' => ['label' => 'Último Balanço', 'required' => true],
+                        'dre' => ['label' => 'DRE (Demonstração do Resultado do Exercício)', 'required' => true],
+                        'politicas' => ['label' => 'Políticas', 'required' => true],
+                        'cartao_cnpj' => ['label' => 'Cartão CNPJ', 'required' => true],
+                        'procuracao' => ['label' => 'Procuração (Caso houver)', 'required' => false],
+                        'ata' => ['label' => 'Ata de eleição de diretoria', 'required' => false],
+                        'contrato_social' => ['label' => 'Contrato Social', 'required' => true],
+                        'estatuto' => ['label' => 'Estatuto', 'required' => true],
                     ];
                     @endphp
-                    @foreach ($docs as $name => $label)
+                    @foreach ($docs as $name => $document)
                     <div class="col-md-6">
-                         <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">
-                            {{ $label }} <span class="text-danger">*</span>
+                        <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">
+                            {{ $document['label'] }}
+                            @if ($document['required'])
+                                <span class="text-danger">*</span>
+                            @endif
                         </label>
                         <input type="file" class="form-control bg-light border-0 py-3 px-3 rounded-3 @error($name) is-invalid @enderror"
-                            id="{{ $name }}" name="{{ $name }}" accept=".pdf" required>
+                            id="{{ $name }}" name="{{ $name }}" accept=".pdf" @required($document['required'])>
                         @error($name)
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
