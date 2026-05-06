@@ -310,6 +310,7 @@ it('renders the submission view page for authenticated admin users', function ()
         'website' => 'https://example.com.br',
         'net_worth' => 100000,
         'annual_revenue' => 250000,
+        'is_anbima_affiliated' => true,
         'registrant_name' => 'Cliente Visualizacao',
         'registrant_position' => 'Diretor',
         'registrant_cpf' => '12345678901',
@@ -338,6 +339,7 @@ it('renders the submission view page for authenticated admin users', function ()
         ])
         ->assertSee('Dados da Empresa')
         ->assertSee('Indicadores Financeiros')
+        ->assertSee('Filiado à Anbima')
         ->assertSee('Dados do Cadastrante')
         ->assertSee('Trilha de Auditoria')
         ->assertSee('Documentos de Retorno')

@@ -149,6 +149,9 @@ class SubmissionResource extends Resource
                                 IconEntry::make('is_pep')
                                     ->label('Pessoa exposta politicamente (PEP)')
                                     ->boolean(),
+                                IconEntry::make('is_anbima_affiliated')
+                                    ->label('Filiado à Anbima')
+                                    ->boolean(),
                             ]),
 
                         Section::make('Dados do Cadastrante')
