@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Constructions\Tables;
 
+use App\Models\Construction;
 use App\Models\ExpenseServiceProvider;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -9,6 +10,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ConstructionsTable
 {
@@ -76,9 +78,29 @@ class ConstructionsTable
                     ->searchable()
                     ->preload(),
 
+                SelectFilter::make('development_name')
+                    ->label('Nome do empreendimento')
+                    ->options(fn (): array => Construction::query()
+                        ->orderBy('development_name')
+                        ->pluck('development_name', 'development_name')
+                        ->all())
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('measurement_company_id')
+                    ->label('Empresa de medição')
+                    ->relationship(
+                        'measurementCompany',
+                        'name',
+                        fn (Builder $query): Builder => $query
+                            ->whereHas('type', fn (Builder $query): Builder => $query->where('name', Construction::MEASUREMENT_COMPANY_TYPE_NAME)),
+                    )
+                    ->searchable()
+                    ->preload(),
+
                 SelectFilter::make('state')
                     ->label('Estado')
-                    ->options(\App\Models\Construction::STATE_OPTIONS),
+                    ->options(Construction::STATE_OPTIONS),
             ])
             ->defaultSort('created_at', 'desc')
             ->recordActions([

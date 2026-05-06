@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class ConstructionForm
 {
@@ -46,12 +47,19 @@ class ConstructionForm
                         ->mask('99.999.999/9999-99')
                         ->formatStateUsing(fn (?string $state): string => ExpenseServiceProvider::formatCnpj($state))
                         ->stripCharacters(['.', '/', '-'])
-                        ->required()
-                        ->rule('digits:14')
-                        ->validationMessages([
-                            'required' => 'Informe o CNPJ do empreendimento.',
-                            'digits' => 'Informe um CNPJ válido com 14 dígitos.',
-                        ]),
+                        ->dehydrateStateUsing(fn (?string $state): ?string => self::normalizeCnpj($state))
+                        ->mutateStateForValidationUsing(fn (?string $state): ?string => self::normalizeCnpj($state))
+                        ->rule(static function (): Closure {
+                            return static function (string $attribute, mixed $value, Closure $fail): void {
+                                if (blank($value)) {
+                                    return;
+                                }
+
+                                if (strlen((string) $value) !== 14) {
+                                    $fail('Informe um CNPJ válido com 14 dígitos.');
+                                }
+                            };
+                        }),
 
                     TextInput::make('city')
                         ->label('Cidade')
@@ -74,19 +82,14 @@ class ConstructionForm
                         ->label('Início da obra')
                         ->placeholder('mm/aaaa')
                         ->mask('99/9999')
-                        ->required()
                         ->formatStateUsing(fn (mixed $state): string => Construction::formatMonthForDisplay($state))
                         ->dehydrateStateUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state))
-                        ->mutateStateForValidationUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state))
-                        ->validationMessages([
-                            'required' => 'Informe o mês de início da obra no formato mm/aaaa.',
-                        ]),
+                        ->mutateStateForValidationUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state)),
 
                     TextInput::make('construction_end_date')
                         ->label('Conclusão da obra')
                         ->placeholder('mm/aaaa')
                         ->mask('99/9999')
-                        ->required()
                         ->formatStateUsing(fn (mixed $state): string => Construction::formatMonthForDisplay($state))
                         ->dehydrateStateUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state))
                         ->mutateStateForValidationUsing(fn (mixed $state): ?string => Construction::normalizeMonthDate($state))
@@ -103,14 +106,10 @@ class ConstructionForm
                                     $fail('A conclusão da obra deve ser igual ou posterior ao início da obra.');
                                 }
                             };
-                        })
-                        ->validationMessages([
-                            'required' => 'Informe o mês de conclusão da obra no formato mm/aaaa.',
-                        ]),
+                        }),
 
                     TextInput::make('estimated_value')
                         ->label('Valor previsto')
-                        ->required()
                         ->prefix('R$')
                         ->inputMode('decimal')
                         ->mask(RawJs::make(<<<'JS'
@@ -119,9 +118,6 @@ class ConstructionForm
                         ->formatStateUsing(fn (mixed $state): ?string => self::formatCurrencyForDisplay($state))
                         ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
                         ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
-                        ->validationMessages([
-                            'required' => 'Informe o valor previsto.',
-                        ])
                         ->placeholder('1.000,00'),
 
                     Select::make('measurement_company_id')
@@ -204,5 +200,16 @@ class ConstructionForm
         }
 
         return MoneyFormatter::formatCurrencyForDisplay($value);
+    }
+
+    protected static function normalizeCnpj(?string $value): ?string
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        $digits = Str::digitsOnly($value);
+
+        return $digits === '' ? null : $digits;
     }
 }

@@ -9,6 +9,7 @@ use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -20,12 +21,16 @@ beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
 });
 
-it('shows the create construction action on the constructions list page', function () {
+it('shows the create construction action and filters on the constructions list page', function () {
     $this->actingAs(makeConstructionAdminUser());
 
     Livewire::test(ListConstructions::class)
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Cadastrar obra');
+        ->assertActionHasLabel('create', 'Cadastrar obra')
+        ->assertTableFilterExists('emission_id')
+        ->assertTableFilterExists('development_name')
+        ->assertTableFilterExists('measurement_company_id')
+        ->assertTableFilterExists('state');
 });
 
 it('creates multiple constructions for the same emission', function () {
@@ -120,6 +125,40 @@ it('keeps the selected emission when saving and creating another construction', 
     expect(Construction::query()->count())->toBe(1);
 });
 
+it('allows saving a construction without optional fields', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    $emission = Emission::factory()->create();
+    $measurementCompany = makeEngineeringMeasurementCompany([
+        'cnpj' => '11222333000144',
+    ]);
+
+    Livewire::test(CreateConstruction::class)
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'development_name' => 'Residencial Gamma',
+            'development_cnpj' => null,
+            'city' => 'Curitiba',
+            'state' => 'PR',
+            'construction_start_date' => null,
+            'construction_end_date' => null,
+            'estimated_value' => null,
+            'measurement_company_id' => $measurementCompany->id,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $construction = Construction::query()->sole();
+
+    expect($construction->emission_id)->toBe($emission->id)
+        ->and($construction->development_name)->toBe('Residencial Gamma')
+        ->and($construction->development_cnpj)->toBeNull()
+        ->and($construction->construction_start_date)->toBeNull()
+        ->and($construction->construction_end_date)->toBeNull()
+        ->and($construction->estimated_value)->toBeNull()
+        ->and($construction->measurement_company_id)->toBe($measurementCompany->id);
+});
+
 it('requires a measurement company with Engenharia type', function () {
     $this->actingAs(makeConstructionAdminUser());
 
@@ -171,6 +210,71 @@ it('requires the construction conclusion month to be after or equal to the start
         ->assertHasFormErrors(['construction_end_date']);
 });
 
+it('filters constructions by development name', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    $selectedConstruction = Construction::factory()->create([
+        'development_name' => 'Residencial Alpha',
+    ]);
+    $otherConstruction = Construction::factory()->create([
+        'development_name' => 'Residencial Beta',
+    ]);
+
+    Livewire::test(ListConstructions::class)
+        ->assertCanSeeTableRecords([$selectedConstruction, $otherConstruction])
+        ->filterTable('development_name', 'Residencial Alpha')
+        ->assertCanSeeTableRecords([$selectedConstruction])
+        ->assertCanNotSeeTableRecords([$otherConstruction]);
+});
+
+it('filters constructions by engineering measurement company', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    $selectedMeasurementCompany = makeEngineeringMeasurementCompany([
+        'name' => 'Engenharia Alpha',
+    ]);
+    $otherMeasurementCompany = makeEngineeringMeasurementCompany([
+        'name' => 'Engenharia Beta',
+    ]);
+
+    $selectedConstruction = Construction::factory()->create([
+        'measurement_company_id' => $selectedMeasurementCompany->id,
+    ]);
+    $otherConstruction = Construction::factory()->create([
+        'measurement_company_id' => $otherMeasurementCompany->id,
+    ]);
+
+    Livewire::test(ListConstructions::class)
+        ->assertCanSeeTableRecords([$selectedConstruction, $otherConstruction])
+        ->filterTable('measurement_company_id', $selectedMeasurementCompany->id)
+        ->assertCanSeeTableRecords([$selectedConstruction])
+        ->assertCanNotSeeTableRecords([$otherConstruction]);
+});
+
+it('limits the measurement company filter options to engineering service providers', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    $engineeringCompany = makeEngineeringMeasurementCompany([
+        'name' => 'Engenharia Permitida',
+    ]);
+    $serviceProviderType = ExpenseServiceProviderType::factory()->create([
+        'name' => 'Servicer',
+    ]);
+    $nonEngineeringCompany = ExpenseServiceProvider::factory()->create([
+        'name' => 'Prestador Bloqueado',
+        'expense_service_provider_type_id' => $serviceProviderType->id,
+    ]);
+
+    Livewire::test(ListConstructions::class)
+        ->assertTableFilterExists('measurement_company_id', function (SelectFilter $filter) use ($engineeringCompany, $nonEngineeringCompany): bool {
+            $optionIds = $filter->getRelationshipQuery()->pluck('id')->all();
+
+            return $filter->getRelationshipName() === 'measurementCompany'
+                && in_array($engineeringCompany->id, $optionIds, true)
+                && ! in_array($nonEngineeringCompany->id, $optionIds, true);
+        });
+});
+
 it('requires the construction mandatory fields', function () {
     $this->actingAs(makeConstructionAdminUser());
 
@@ -179,12 +283,8 @@ it('requires the construction mandatory fields', function () {
         ->assertHasFormErrors([
             'emission_id' => 'required',
             'development_name' => 'required',
-            'development_cnpj' => 'required',
             'city' => 'required',
             'state' => 'required',
-            'construction_start_date' => 'required',
-            'construction_end_date' => 'required',
-            'estimated_value' => 'required',
             'measurement_company_id' => 'required',
         ]);
 });

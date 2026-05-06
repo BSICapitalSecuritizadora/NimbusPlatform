@@ -81,7 +81,7 @@ class Construction extends Model
     protected function developmentCnpj(): Attribute
     {
         return Attribute::make(
-            set: fn (?string $value): string => Str::digitsOnly((string) $value),
+            set: fn (?string $value): ?string => blank($value) ? null : Str::digitsOnly((string) $value),
         );
     }
 
