@@ -67,6 +67,9 @@ class AppServiceProvider extends ServiceProvider
 
         if (app()->isProduction()) {
             URL::forceScheme('https');
+
+            // Abort early to prevent stack-trace/query disclosure in production.
+            abort_if(config('app.debug'), 500, 'APP_DEBUG must be false in production.');
         }
 
         DB::prohibitDestructiveCommands(

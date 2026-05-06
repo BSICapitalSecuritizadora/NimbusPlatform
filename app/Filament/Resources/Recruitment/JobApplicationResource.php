@@ -19,7 +19,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 
 class JobApplicationResource extends Resource
@@ -83,7 +82,7 @@ class JobApplicationResource extends Resource
                         ->label('Currículo')
                         ->content(fn (?JobApplication $record): HtmlString|string => $record?->resume_path
                             ? new HtmlString(
-                                '<a href="'.e(Storage::url($record->resume_path)).'" target="_blank" class="text-primary-600 hover:underline">Abrir currículo ↗</a>'
+                                '<a href="'.e(route('admin.job-applications.resume', $record)).'" class="text-primary-600 hover:underline">Baixar currículo ↓</a>'
                             )
                             : '—'),
                     Textarea::make('internal_notes')

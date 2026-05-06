@@ -92,10 +92,11 @@ it('authenticates an active authorized user through Microsoft 365 only', functio
         ->andReturn(new class implements SocialiteUser
         {
             /**
-             * @var array<string, string>
+             * @var array<string, mixed>
              */
             public array $user = [
                 'mail' => 'maria@bsicapital.com.br',
+                'amr' => ['pwd', 'mfa'],
             ];
 
             public function getId(): string

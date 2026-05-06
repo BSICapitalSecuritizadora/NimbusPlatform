@@ -1,0 +1,147 @@
+@theme {
+    /* Colors */
+    --color-navy-900: #0B1B36;
+    --color-navy-800: #102348;
+    --color-navy-700: #16305C;
+    --color-navy-600: #1F3F75;
+    --color-navy-100: #E6ECF5;
+    --color-navy-50: #F2F5FA;
+
+    --color-gold-700: #8E6F22;
+    --color-gold-600: #A58432;
+    --color-gold-500: #B8964A;
+    --color-gold-400: #C9A66A;
+    --color-gold-200: #E7D5A6;
+    --color-gold-100: #F4ECD3;
+    --color-gold-50: #FBF7EA;
+
+    --color-ink-900: #0E1726;
+    --color-ink-700: #2A3548;
+    --color-ink-500: #5A6478;
+    --color-ink-400: #7B8499;
+    --color-ink-300: #A8B0C0;
+    --color-ink-200: #D4D9E2;
+    --color-ink-100: #E8EBF1;
+    --color-ink-50: #F5F7FB;
+
+    --color-emerald-600: #1E7A56;
+    --color-emerald-50: #E6F1EC;
+
+    --color-amber-600: #946420;
+    --color-amber-50: #FBF1DD;
+
+    --color-rose-600: #9B2D3E;
+    --color-rose-50: #F7E5E8;
+
+    --color-portal-bg: #F5F7FB;
+
+    /* Typography */
+    --font-fraunces: 'Fraunces', serif;
+    --font-inter: 'Inter', sans-serif;
+    --font-jetbrains: 'JetBrains Mono', monospace;
+
+    /* Geometry */
+    --radius-portal-card: 8px;
+    --radius-portal-btn: 4px;
+    --radius-portal-banner: 10px;
+
+    /* Shadows */
+    --shadow-portal-subtle: 0 1px 2px rgba(11, 27, 54, 0.04);
+}
+
+@layer components {
+    /* RESET DE LINKS */
+    .p-header a, .p-nav a, .filterbar a, .tabs a, table.bsi a,
+    .p-btn-primary, .chip, .t-link {
+        text-decoration: none !important;
+    }
+
+    /* Link Action Hover Style */
+    .t-link-action:hover {
+        text-decoration: underline !important;
+        text-decoration-color: var(--color-gold-500) !important;
+    }
+
+    .p-header {
+        position: relative;
+    }
+    
+    .p-header::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--color-gold-500) 30%, var(--color-gold-500) 70%, transparent);
+        opacity: 0.55;
+        z-index: 10;
+    }
+
+    /* Badge Pulse Dot */
+    .badge-pulse {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: currentColor;
+    }
+
+    .welcome {
+        position: relative;
+    }
+    
+    .welcome::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 24px;
+        bottom: 24px;
+        width: 3px;
+        background: var(--color-gold-500);
+    }
+
+    .kpi {
+        background: #FFF;
+        border: 1px solid var(--color-ink-200);
+        border-radius: 8px;
+        padding: 24px 26px;
+    }
+    
+    .kpi.gold {
+        border-top: 2px solid var(--color-gold-500);
+    }
+
+    .kpi-meta {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--color-ink-100);
+    }
+
+    .row-cta {
+        color: var(--color-navy-700);
+        font-weight: 500;
+        text-decoration: none !important;
+        border-bottom: 1px solid transparent;
+        transition: all 0.2s ease;
+    }
+    
+    .row-cta:hover {
+        border-bottom-color: var(--color-gold-500);
+        color: var(--color-navy-900);
+    }
+
+    .p-btn-primary {
+        color: #fff !important;
+    }
+
+    .p-btn-primary:hover,
+    .p-btn-primary:focus,
+    .p-btn-primary:visited {
+        color: #fff !important;
+    }
+
+    .p-btn-primary i,
+    .p-btn-primary span {
+        color: inherit !important;
+    }
+}

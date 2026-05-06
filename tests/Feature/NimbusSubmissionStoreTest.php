@@ -2,11 +2,19 @@
 
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
+use App\Services\DocumentStorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    Storage::set(DocumentStorageService::PRIVATE_DISK, Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
+        'throw' => false,
+    ]));
+});
 
 it('stores a nimbus submission using the current database schema', function () {
     $portalUser = PortalUser::query()->create([

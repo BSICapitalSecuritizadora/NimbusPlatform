@@ -23,6 +23,7 @@ use App\Models\Nimbus\PortalDocument;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
 use App\Models\User;
+use App\Services\DocumentStorageService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -33,6 +34,11 @@ use Spatie\Permission\PermissionRegistrar;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    Storage::set(DocumentStorageService::PRIVATE_DISK, Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
+        'throw' => false,
+    ]));
+
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 });
 

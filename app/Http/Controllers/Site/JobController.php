@@ -46,11 +46,11 @@ class JobController extends Controller
             'email' => 'required|email|max:255',
             'phone' => 'required|string|max:20',
             'linkedin_url' => 'nullable|url|max:255',
-            'resume' => 'required|file|mimes:pdf,doc,docx|max:10240', // 10MB max
+            'resume' => 'required|file|mimes:pdf,doc,docx|extensions:pdf,doc,docx|max:10240',
             'message' => 'nullable|string|max:2000',
         ]);
 
-        $resumePath = $request->file('resume')->store('resumes');
+        $resumePath = $request->file('resume')->store('', 'resumes');
 
         JobApplication::create([
             'vacancy_id' => $vacancy->id,

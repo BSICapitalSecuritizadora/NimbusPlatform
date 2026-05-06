@@ -23,7 +23,14 @@ class DocumentController extends Controller
         $q = $request->query('q');
         $categoryId = $request->query('category_id');
 
-        $categories = DocumentCategory::query()->orderBy('name')->get();
+        $categories = DocumentCategory::query()
+            ->withCount([
+                'generalDocuments as active_documents_count' => function (Builder $query) {
+                    $query->where('is_active', true);
+                },
+            ])
+            ->orderBy('name')
+            ->get();
 
         $generalDocuments = GeneralDocument::query()
             ->where('is_active', true)

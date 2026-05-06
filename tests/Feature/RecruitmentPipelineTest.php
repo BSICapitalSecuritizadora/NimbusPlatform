@@ -11,8 +11,7 @@ use Illuminate\Support\Facades\Storage;
 uses(RefreshDatabase::class);
 
 it('stores new applications with the default recruitment pipeline status', function () {
-    config(['filesystems.default' => 'public']);
-    Storage::fake('public');
+    Storage::fake('resumes');
 
     $vacancy = Vacancy::factory()->create([
         'is_active' => true,
@@ -38,7 +37,7 @@ it('stores new applications with the default recruitment pipeline status', funct
         ->and($application->reviewed_at)->toBeNull()
         ->and($application->reviewed_by_user_id)->toBeNull();
 
-    Storage::disk('public')->assertExists($application->resume_path);
+    Storage::disk('resumes')->assertExists($application->resume_path);
 });
 
 it('exposes consistent labels and colors for the recruitment pipeline', function () {

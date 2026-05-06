@@ -144,11 +144,13 @@ return [
     */
 
     'features' => [
+        // Note: Features::registration() and Features::resetPasswords() are intentionally
+        // omitted. Local login is permanently disabled in FortifyServiceProvider, so those
+        // routes would create unnecessary attack surface (email enumeration via forgot-password).
         Features::emailVerification(),
         Features::twoFactorAuthentication([
             'confirm' => true,
             'confirmPassword' => false,
-            // 'window' => 0
         ]),
     ],
 

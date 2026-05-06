@@ -11,7 +11,6 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Storage;
 
 class JobApplicationsTable
 {
@@ -84,8 +83,8 @@ class JobApplicationsTable
                 Action::make('download_resume')
                     ->label('Currículo')
                     ->icon('heroicon-o-arrow-down-tray')
-                    ->url(fn (JobApplication $record): string => Storage::url($record->resume_path))
-                    ->openUrlInNewTab(),
+                    ->url(fn (JobApplication $record): string => route('admin.job-applications.resume', $record))
+                    ->visible(fn (JobApplication $record): bool => (bool) $record->resume_path),
             ])
             ->defaultSort('created_at', 'desc');
     }

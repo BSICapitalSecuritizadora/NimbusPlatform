@@ -27,7 +27,10 @@
       "Bash(vendor/bin/pint *)",
       "Bash(./vendor/bin/sail php *)",
       "Bash(./vendor/bin/sail artisan *)",
-      "Bash(claude plugin *)"
+      "Bash(claude plugin *)",
+      "Bash(git rm *)",
+      "Bash(chmod -R 755 storage/framework/testing/disks/local/)",
+      "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $r = new ReflectionMethod\\(Illuminate\\\\Foundation\\\\Testing\\\\WithFaker::class ?? '\\\\''stdClass'\\\\'', '\\\\''fake'\\\\''\\); echo $r->getFileName\\(\\).'\\\\'':'\\\\''.$r->getStartLine\\(\\);')"
     ]
   }
 }

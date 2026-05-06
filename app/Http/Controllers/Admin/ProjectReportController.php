@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\ProposalProject;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 
 class ProjectReportController extends Controller
 {
     public function generateReport(ProposalProject $project): Response
     {
+        Gate::authorize('proposals.view');
+
         $project->load(['characteristics.unitTypes']);
 
         $pdf = Pdf::loadView('pdf.project-report', compact('project'));
@@ -20,6 +23,8 @@ class ProjectReportController extends Controller
 
     public function analyticalReport(ProposalProject $project): Response
     {
+        Gate::authorize('proposals.view');
+
         $project->load(['characteristics.unitTypes', 'indicators']);
 
         // Calculations based on NimbusForms logic

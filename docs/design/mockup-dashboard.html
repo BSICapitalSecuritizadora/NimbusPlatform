@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gestão Documental Externa — Redesign Conceitual · BSI Capital</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+          mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          navy: {
+            900: '#0B1E3A',
+            800: '#13294B',
+            700: '#1F2A44',
+            600: '#2C3A5A',
+          },
+          gold: {
+            500: '#B8860B',
+            400: '#C99E2C',
+            300: '#E5C36A',
+            100: '#F6EAC7',
+          },
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    background: #F4F6FA;
+    color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+  }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .uppercase-label {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .kpi-bar {
+    width: 4px;
+    border-radius: 2px;
+  }
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border-width: 1px;
+    border-style: solid;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .table-row:hover { background: #F9FAFB; }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border: 1px solid #D1D5DB;
+    border-radius: 4px;
+    font-size: 12.5px;
+    color: #334155;
+    background: #FFFFFF;
+    cursor: pointer;
+  }
+  .filter-chip:hover { background: #F8FAFC; }
+  .saved-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #475569;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .saved-tab:hover { color: #0B1E3A; }
+  .saved-tab.active {
+    color: #0B1E3A;
+    border-bottom-color: #B8860B;
+    font-weight: 500;
+  }
+  .saved-tab .count {
+    color: #94A3B8;
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .saved-tab.active .count { color: #1F2A44; }
+  .topbar-link {
+    color: rgba(255,255,255,0.8);
+    font-size: 13.5px;
+    padding: 6px 4px;
+    border-bottom: 2px solid transparent;
+  }
+  .topbar-link:hover { color: #FFFFFF; }
+  .topbar-link.active {
+    color: #FFFFFF;
+    border-bottom-color: #B8860B;
+  }
+  /* Compare strip */
+  .compare-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #1F2A44;
+    color: #F6EAC7;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Compare label strip -->
+<div class="bg-navy-900 text-gold-100 text-center py-2 text-[12px] tracking-wider uppercase">
+  Redesign Conceitual · Gestão Documental Externa · BSI Capital Securitizadora
+</div>
+
+<!-- ====================== TOP BAR ====================== -->
+<header class="bg-navy-900 border-b-2 border-gold-500">
+  <div class="max-w-[1440px] mx-auto px-8 h-[60px] flex items-center justify-between">
+    <!-- Logo + nav -->
+    <div class="flex items-center gap-10">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-sm border border-gold-400 flex items-center justify-center">
+          <span class="text-gold-400 text-base font-semibold">$</span>
+        </div>
+        <div class="leading-tight">
+          <div class="text-white text-[14px] font-semibold tracking-wide">BSI CAPITAL</div>
+          <div class="text-gold-300 text-[10px] tracking-[0.18em] uppercase">Securitizadora</div>
+        </div>
+      </div>
+      <nav class="flex items-center gap-7">
+        <a class="topbar-link">Painel</a>
+        <a class="topbar-link">Operações</a>
+        <a class="topbar-link active">Documental</a>
+        <a class="topbar-link">Cadastros</a>
+        <a class="topbar-link">Relatórios</a>
+      </nav>
+    </div>
+    <!-- Right side -->
+    <div class="flex items-center gap-5">
+      <!-- search shortcut -->
+      <button class="flex items-center gap-2 text-white/70 text-[12.5px] border border-white/15 rounded px-3 py-1.5 hover:bg-white/5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        Buscar protocolo, contraparte…
+        <span class="text-white/40 ml-1 text-[11px] font-mono">⌘K</span>
+      </button>
+      <button class="text-white/70 hover:text-white relative">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 17h5l-1.4-1.4A2 2 0 0118 14V11a6 6 0 10-12 0v3a2 2 0 01-.6 1.4L4 17h5"/><path d="M9 17a3 3 0 006 0"/></svg>
+        <span class="absolute -top-0.5 -right-0.5 bg-gold-500 text-navy-900 text-[9px] font-semibold rounded-full w-3.5 h-3.5 flex items-center justify-center">3</span>
+      </button>
+      <div class="flex items-center gap-2 text-white/90 text-[13px]">
+        <div class="w-7 h-7 rounded-full bg-navy-700 border border-gold-400/40 flex items-center justify-center text-gold-300 text-[12px] font-semibold">A</div>
+        <span>Anderson C.</span>
+        <svg class="w-3 h-3 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Sub-bar / breadcrumb + env -->
+<div class="bg-white border-b border-slate-200">
+  <div class="max-w-[1440px] mx-auto px-8 h-[36px] flex items-center justify-between">
+    <nav class="flex items-center gap-1.5 text-[12.5px] text-slate-500">
+      <span>Painel</span>
+      <span class="text-slate-300">›</span>
+      <span class="text-slate-900 font-medium">Gestão Documental Externa</span>
+    </nav>
+    <div class="flex items-center gap-3 text-[11px] text-slate-500">
+      <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Ambiente Produção · BR-SP-01</span>
+      <span class="text-slate-300">|</span>
+      <span>Sessão expira em 27 min</span>
+      <span class="text-slate-300">|</span>
+      <span class="font-mono">v.4.2.1</span>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== PAGE HEADER ====================== -->
+<main class="max-w-[1440px] mx-auto px-8 pt-7 pb-12">
+
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <div class="flex items-center gap-3 mb-1.5">
+        <h1 class="text-[24px] font-semibold text-navy-900 tracking-tight leading-none">Gestão Documental Externa</h1>
+        <span class="badge-pill text-slate-700 bg-slate-50 border-slate-200">
+          <span class="badge-dot bg-slate-500"></span> LGPD · Restrito
+        </span>
+      </div>
+      <p class="text-[13.5px] text-slate-500 max-w-[680px] leading-snug">
+        Acompanhamento, validação e arquivamento de documentação recebida de contrapartes, cedentes, prestadores e órgãos reguladores. Toda movimentação gera protocolo e trilha de auditoria automáticos.
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button class="text-[13px] text-slate-700 border border-slate-300 rounded px-3.5 py-2 hover:bg-slate-50 inline-flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+        Exportar lista
+      </button>
+      <button class="text-[13px] text-slate-700 border border-slate-300 rounded px-3.5 py-2 hover:bg-slate-50 inline-flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="16" rx="1"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+        Relatório consolidado
+      </button>
+      <button class="text-[13px] bg-navy-900 text-white rounded px-4 py-2 inline-flex items-center gap-2 hover:bg-navy-800 border border-navy-900">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Protocolar Documento
+      </button>
+    </div>
+  </div>
+
+  <!-- ====================== KPI ROW ====================== -->
+  <section class="grid grid-cols-6 gap-3 mb-7">
+    <!-- Recebidos -->
+    <div class="bg-white border border-slate-200 rounded-md px-4 py-4 flex gap-3 cursor-pointer hover:border-slate-300 transition">
+      <div class="kpi-bar bg-slate-500"></div>
+      <div class="flex-1 min-w-0">
+        <div class="uppercase-label text-slate-500 mb-1">Recebidos · maio</div>
+        <div class="text-[28px] font-semibold text-navy-900 tabular-nums leading-none">248</div>
+        <div class="text-[11.5px] text-slate-500 mt-2 flex items-center gap-1.5">
+          <span class="text-emerald-700">▲ 12</span>
+          <span>vs. abr/26</span>
+        </div>
+      </div>
+    </div>
+    <!-- Em análise -->
+    <div class="bg-white border border-slate-200 rounded-md px-4 py-4 flex gap-3 cursor-pointer hover:border-slate-300 transition">
+      <div class="kpi-bar bg-indigo-700"></div>
+      <div class="flex-1 min-w-0">
+        <div class="uppercase-label text-slate-500 mb-1">Em análise</div>
+        <div class="text-[28px] font-semibold text-navy-900 tabular-nums leading-none">47</div>
+        <div class="text-[11.5px] text-slate-500 mt-2 flex items-center gap-1.5">
+          <span class="text-emerald-700">▲ 4</span>
+          <span>vs. abr/26</span>
+        </div>
+      </div>
+    </div>
+    <!-- Com pendência -->
+    <div class="bg-white border border-slate-200 rounded-md px-4 py-4 flex gap-3 cursor-pointer hover:border-slate-300 transition">
+      <div class="kpi-bar bg-amber-700"></div>
+      <div class="flex-1 min-w-0">
+        <div class="uppercase-label text-slate-500 mb-1">Com pendência</div>
+        <div class="text-[28px] font-semibold text-navy-900 tabular-nums leading-none">19</div>
+        <div class="text-[11.5px] text-slate-500 mt-2 flex items-center gap-1.5">
+          <span class="text-rose-700">▼ 2</span>
+          <span>vs. abr/26</span>
+        </div>
+      </div>
+    </div>
+    <!-- Validados -->
+    <div class="bg-white border border-slate-200 rounded-md px-4 py-4 flex gap-3 cursor-pointer hover:border-slate-300 transition">
+      <div class="kpi-bar bg-emerald-700"></div>
+      <div class="flex-1 min-w-0">
+        <div class="uppercase-label text-slate-500 mb-1">Validados · ano</div>
+        <div class="text-[28px] font-semibold text-navy-900 tabular-nums leading-none">1.182</div>
+        <div class="text-[11.5px] text-slate-500 mt-2 flex items-center gap-1.5">
+          <span class="text-emerald-700">▲ 38</span>
+          <span>vs. abr/26</span>
+        </div>
+      </div>
+    </div>
+    <!-- Rejeitados -->
+    <div class="bg-white border border-slate-200 rounded-md px-4 py-4 flex gap-3 cursor-pointer hover:border-slate-300 transition">
+      <div class="kpi-bar bg-rose-800"></div>
+      <div class="flex-1 min-w-0">
+        <div class="uppercase-label text-slate-500 mb-1">Rejeitados · maio</div>
+        <div class="text-[28px] font-semibold text-navy-900 tabular-nums leading-none">12</div>
+        <div class="text-[11.5px] text-slate-500 mt-2 flex items-center gap-1.5">
+          <span class="text-slate-500">▬ estável</span>
+        </div>
+      </div>
+    </div>
+    <!-- Vencendo -->
+    <div class="bg-white border border-slate-200 rounded-md px-4 py-4 flex gap-3 cursor-pointer hover:border-slate-300 transition">
+      <div class="kpi-bar bg-zinc-600"></div>
+      <div class="flex-1 min-w-0">
+        <div class="uppercase-label text-slate-500 mb-1">Vencendo · 30 dias</div>
+        <div class="text-[28px] font-semibold text-navy-900 tabular-nums leading-none">23</div>
+        <div class="text-[11.5px] text-slate-500 mt-2 flex items-center gap-1.5">
+          <span class="text-amber-700">⚑ atenção</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================== SAVED VIEWS (TABS) ====================== -->
+  <div class="bg-white border border-slate-200 rounded-md">
+    <div class="border-b border-slate-200 px-2 flex items-center justify-between overflow-x-auto">
+      <div class="flex items-center">
+        <div class="saved-tab active">Todos <span class="count tabular-nums">1.531</span></div>
+        <div class="saved-tab">Com pendência <span class="count tabular-nums">19</span></div>
+        <div class="saved-tab">Sem analista atribuído <span class="count tabular-nums">8</span></div>
+        <div class="saved-tab">Vencendo em 30 dias <span class="count tabular-nums">23</span></div>
+        <div class="saved-tab">Rejeitados (últ. 7d) <span class="count tabular-nums">3</span></div>
+        <div class="saved-tab">Aguardando triagem <span class="count tabular-nums">11</span></div>
+      </div>
+      <button class="text-[12.5px] text-slate-500 hover:text-navy-900 px-3 py-2.5 inline-flex items-center gap-1.5 whitespace-nowrap">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Salvar visualização
+      </button>
+    </div>
+
+    <!-- ====================== FILTER BAR ====================== -->
+    <div class="px-4 py-3 border-b border-slate-200 flex items-center gap-2 flex-wrap bg-slate-50/60">
+      <div class="filter-chip">
+        Operação <span class="text-slate-400">▾</span>
+      </div>
+      <div class="filter-chip">
+        Tipo de documento <span class="text-slate-400">▾</span>
+      </div>
+      <div class="filter-chip border-navy-900 bg-navy-900 text-white">
+        Status: 3 selecionados <span class="text-white/60">×</span>
+      </div>
+      <div class="filter-chip">
+        Responsável <span class="text-slate-400">▾</span>
+      </div>
+      <div class="filter-chip">
+        Origem / Contraparte <span class="text-slate-400">▾</span>
+      </div>
+      <div class="filter-chip">
+        Recebido entre <span class="text-slate-400 ml-1">__/__/____ → __/__/____</span>
+      </div>
+      <div class="filter-chip">
+        Vigência até <span class="text-slate-400">▾</span>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <button class="text-[12.5px] text-slate-500 hover:text-slate-900">Limpar filtros</button>
+        <div class="filter-chip">
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" placeholder="Protocolo, hash, nome…" class="bg-transparent outline-none text-[12.5px] w-44" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== TABLE ====================== -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-slate-500">
+            <th class="text-left px-4 py-2.5 w-8"><input type="checkbox" class="rounded border-slate-300" /></th>
+            <th class="text-left px-3 py-2.5 uppercase-label">Protocolo</th>
+            <th class="text-left px-3 py-2.5 uppercase-label">Operação / Emissão</th>
+            <th class="text-left px-3 py-2.5 uppercase-label">Tipo</th>
+            <th class="text-left px-3 py-2.5 uppercase-label">Origem · Contraparte</th>
+            <th class="text-left px-3 py-2.5 uppercase-label">Recebido em</th>
+            <th class="text-left px-3 py-2.5 uppercase-label">Vigência</th>
+            <th class="text-left px-3 py-2.5 uppercase-label">Status</th>
+            <th class="text-left px-3 py-2.5 uppercase-label">Responsável</th>
+            <th class="text-right px-3 py-2.5 w-10"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <!-- ROW 1 -->
+          <tr class="table-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-3 py-3 font-mono text-[12.5px] text-navy-900 tabular-nums">DOC-2026-000123</td>
+            <td class="px-3 py-3 text-slate-700">CRA · 18ª Série</td>
+            <td class="px-3 py-3 text-slate-700">Cert. Negativa de Débitos Federais</td>
+            <td class="px-3 py-3 text-slate-700">Cedente Alpha S/A</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">04/05/2026 20:05</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">30/06/2026</td>
+            <td class="px-3 py-3"><span class="badge-pill text-indigo-800 bg-indigo-50 border-indigo-200"><span class="badge-dot bg-indigo-700"></span>Em análise</span></td>
+            <td class="px-3 py-3 text-slate-700">
+              <span class="inline-flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-semibold flex items-center justify-center">MS</span>
+                M. Silva
+              </span>
+            </td>
+            <td class="px-3 py-3 text-right text-slate-400 hover:text-slate-700 cursor-pointer">⋯</td>
+          </tr>
+          <!-- ROW 2 -->
+          <tr class="table-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-3 py-3 font-mono text-[12.5px] text-navy-900 tabular-nums">DOC-2026-000122</td>
+            <td class="px-3 py-3 text-slate-700">CRI · 7ª Série</td>
+            <td class="px-3 py-3 text-slate-700">Estatuto Social Consolidado</td>
+            <td class="px-3 py-3 text-slate-700">Devedor Beta Ltda.</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">04/05/2026 18:31</td>
+            <td class="px-3 py-3 text-slate-400 tabular-nums">—</td>
+            <td class="px-3 py-3"><span class="badge-pill text-amber-800 bg-amber-50 border-amber-200"><span class="badge-dot bg-amber-700"></span>Com pendência</span></td>
+            <td class="px-3 py-3 text-slate-700">
+              <span class="inline-flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-semibold flex items-center justify-center">AC</span>
+                A. Costa
+              </span>
+            </td>
+            <td class="px-3 py-3 text-right text-slate-400 hover:text-slate-700 cursor-pointer">⋯</td>
+          </tr>
+          <!-- ROW 3 -->
+          <tr class="table-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-3 py-3 font-mono text-[12.5px] text-navy-900 tabular-nums">DOC-2026-000121</td>
+            <td class="px-3 py-3 text-slate-700">FIDC Gamma</td>
+            <td class="px-3 py-3 text-slate-700">Balanço Patrimonial · 12/2025</td>
+            <td class="px-3 py-3 text-slate-700">Auditoria Delta · KPMG</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">03/05/2026 09:14</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">31/12/2026</td>
+            <td class="px-3 py-3"><span class="badge-pill text-emerald-800 bg-emerald-50 border-emerald-200"><span class="badge-dot bg-emerald-700"></span>Validado</span></td>
+            <td class="px-3 py-3 text-slate-700">
+              <span class="inline-flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-semibold flex items-center justify-center">MS</span>
+                M. Silva
+              </span>
+            </td>
+            <td class="px-3 py-3 text-right text-slate-400 hover:text-slate-700 cursor-pointer">⋯</td>
+          </tr>
+          <!-- ROW 4 -->
+          <tr class="table-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-3 py-3 font-mono text-[12.5px] text-navy-900 tabular-nums">DOC-2026-000120</td>
+            <td class="px-3 py-3 text-slate-700">CRA · 18ª Série</td>
+            <td class="px-3 py-3 text-slate-700">Termo de Cessão de Crédito</td>
+            <td class="px-3 py-3 text-slate-700">Cedente Alpha S/A</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">02/05/2026 16:42</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">15/05/2026 <span class="text-amber-700 ml-1 text-[11px]">⚑ 10d</span></td>
+            <td class="px-3 py-3"><span class="badge-pill text-blue-800 bg-blue-50 border-blue-200"><span class="badge-dot bg-blue-700"></span>Em triagem</span></td>
+            <td class="px-3 py-3 text-slate-400 italic text-[12px]">não atribuído</td>
+            <td class="px-3 py-3 text-right text-slate-400 hover:text-slate-700 cursor-pointer">⋯</td>
+          </tr>
+          <!-- ROW 5 -->
+          <tr class="table-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-3 py-3 font-mono text-[12.5px] text-navy-900 tabular-nums">DOC-2026-000119</td>
+            <td class="px-3 py-3 text-slate-700">CRI · 7ª Série</td>
+            <td class="px-3 py-3 text-slate-700">Procuração Pública</td>
+            <td class="px-3 py-3 text-slate-700">Devedor Beta Ltda.</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">02/05/2026 11:08</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">02/05/2027</td>
+            <td class="px-3 py-3"><span class="badge-pill text-rose-800 bg-rose-50 border-rose-200"><span class="badge-dot bg-rose-800"></span>Rejeitado</span></td>
+            <td class="px-3 py-3 text-slate-700">
+              <span class="inline-flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-semibold flex items-center justify-center">JR</span>
+                J. Ribeiro
+              </span>
+            </td>
+            <td class="px-3 py-3 text-right text-slate-400 hover:text-slate-700 cursor-pointer">⋯</td>
+          </tr>
+          <!-- ROW 6 -->
+          <tr class="table-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-3 py-3 font-mono text-[12.5px] text-navy-900 tabular-nums">DOC-2026-000118</td>
+            <td class="px-3 py-3 text-slate-700">FIDC Gamma</td>
+            <td class="px-3 py-3 text-slate-700">Ata de Assembleia · 04/2026</td>
+            <td class="px-3 py-3 text-slate-700">Administradora Épsilon</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">01/05/2026 14:22</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">—</td>
+            <td class="px-3 py-3"><span class="badge-pill text-slate-700 bg-slate-50 border-slate-200"><span class="badge-dot bg-slate-500"></span>Recebido</span></td>
+            <td class="px-3 py-3 text-slate-400 italic text-[12px]">não atribuído</td>
+            <td class="px-3 py-3 text-right text-slate-400 hover:text-slate-700 cursor-pointer">⋯</td>
+          </tr>
+          <!-- ROW 7 -->
+          <tr class="table-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-3 py-3 font-mono text-[12.5px] text-navy-900 tabular-nums">DOC-2026-000117</td>
+            <td class="px-3 py-3 text-slate-700">CRA · 17ª Série</td>
+            <td class="px-3 py-3 text-slate-700">Apólice de Seguro</td>
+            <td class="px-3 py-3 text-slate-700">Seguradora Zeta S.A.</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">30/04/2026 17:55</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">10/05/2026 <span class="text-amber-700 ml-1 text-[11px]">⚑ 5d</span></td>
+            <td class="px-3 py-3"><span class="badge-pill text-emerald-800 bg-emerald-50 border-emerald-200"><span class="badge-dot bg-emerald-700"></span>Validado</span></td>
+            <td class="px-3 py-3 text-slate-700">
+              <span class="inline-flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-semibold flex items-center justify-center">AC</span>
+                A. Costa
+              </span>
+            </td>
+            <td class="px-3 py-3 text-right text-slate-400 hover:text-slate-700 cursor-pointer">⋯</td>
+          </tr>
+          <!-- ROW 8 -->
+          <tr class="table-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-3 py-3 font-mono text-[12.5px] text-navy-900 tabular-nums">DOC-2026-000116</td>
+            <td class="px-3 py-3 text-slate-700">CRI · 6ª Série</td>
+            <td class="px-3 py-3 text-slate-700">Demonstração Financeira</td>
+            <td class="px-3 py-3 text-slate-700">Devedor Eta Empreendimentos</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">29/04/2026 10:18</td>
+            <td class="px-3 py-3 text-slate-700 tabular-nums">31/03/2026 <span class="text-rose-700 ml-1 text-[11px]">vencido</span></td>
+            <td class="px-3 py-3"><span class="badge-pill text-zinc-700 bg-zinc-100 border-zinc-300"><span class="badge-dot bg-zinc-600"></span>Expirado</span></td>
+            <td class="px-3 py-3 text-slate-700">
+              <span class="inline-flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-semibold flex items-center justify-center">JR</span>
+                J. Ribeiro
+              </span>
+            </td>
+            <td class="px-3 py-3 text-right text-slate-400 hover:text-slate-700 cursor-pointer">⋯</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="px-4 py-3 border-t border-slate-200 flex items-center justify-between text-[12.5px] text-slate-600 bg-slate-50/40">
+      <div>
+        <span class="tabular-nums font-medium text-slate-700">1.531</span> documentos · página
+        <span class="tabular-nums">1</span> de <span class="tabular-nums">52</span> ·
+        <select class="bg-transparent border border-slate-300 rounded px-1.5 py-0.5 ml-1 tabular-nums">
+          <option>30</option><option>50</option><option>100</option>
+        </select>
+        por página
+      </div>
+      <div class="flex items-center gap-1">
+        <button class="px-2.5 py-1 border border-slate-300 rounded text-slate-400 cursor-not-allowed">‹</button>
+        <button class="px-2.5 py-1 border border-navy-900 bg-navy-900 text-white rounded tabular-nums">1</button>
+        <button class="px-2.5 py-1 border border-slate-300 rounded hover:bg-white tabular-nums">2</button>
+        <button class="px-2.5 py-1 border border-slate-300 rounded hover:bg-white tabular-nums">3</button>
+        <button class="px-2.5 py-1 border border-slate-300 rounded hover:bg-white tabular-nums">4</button>
+        <span class="px-1 text-slate-400">…</span>
+        <button class="px-2.5 py-1 border border-slate-300 rounded hover:bg-white tabular-nums">52</button>
+        <button class="px-2.5 py-1 border border-slate-300 rounded hover:bg-white">›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend / styleguide strip -->
+  <section class="mt-10">
+    <div class="text-slate-500 text-[11px] uppercase tracking-[0.08em] mb-3">Taxonomia de status · padrão institucional</div>
+    <div class="bg-white border border-slate-200 rounded-md p-5 grid grid-cols-7 gap-3">
+      <div class="flex flex-col items-start gap-1.5">
+        <span class="badge-pill text-slate-700 bg-slate-50 border-slate-200"><span class="badge-dot bg-slate-500"></span>Recebido</span>
+        <span class="text-[11px] text-slate-500 leading-snug">Documento ingressou no sistema, aguarda triagem.</span>
+      </div>
+      <div class="flex flex-col items-start gap-1.5">
+        <span class="badge-pill text-blue-800 bg-blue-50 border-blue-200"><span class="badge-dot bg-blue-700"></span>Em triagem</span>
+        <span class="text-[11px] text-slate-500 leading-snug">Sendo classificado e direcionado.</span>
+      </div>
+      <div class="flex flex-col items-start gap-1.5">
+        <span class="badge-pill text-indigo-800 bg-indigo-50 border-indigo-200"><span class="badge-dot bg-indigo-700"></span>Em análise</span>
+        <span class="text-[11px] text-slate-500 leading-snug">Analista atribuído, sob revisão técnica.</span>
+      </div>
+      <div class="flex flex-col items-start gap-1.5">
+        <span class="badge-pill text-amber-800 bg-amber-50 border-amber-200"><span class="badge-dot bg-amber-700"></span>Com pendência</span>
+        <span class="text-[11px] text-slate-500 leading-snug">Devolvido formalmente ao remetente.</span>
+      </div>
+      <div class="flex flex-col items-start gap-1.5">
+        <span class="badge-pill text-emerald-800 bg-emerald-50 border-emerald-200"><span class="badge-dot bg-emerald-700"></span>Validado</span>
+        <span class="text-[11px] text-slate-500 leading-snug">Aprovado e arquivado em definitivo.</span>
+      </div>
+      <div class="flex flex-col items-start gap-1.5">
+        <span class="badge-pill text-rose-800 bg-rose-50 border-rose-200"><span class="badge-dot bg-rose-800"></span>Rejeitado</span>
+        <span class="text-[11px] text-slate-500 leading-snug">Recusa formal com motivo registrado.</span>
+      </div>
+      <div class="flex flex-col items-start gap-1.5">
+        <span class="badge-pill text-zinc-700 bg-zinc-100 border-zinc-300"><span class="badge-dot bg-zinc-600"></span>Expirado</span>
+        <span class="text-[11px] text-slate-500 leading-snug">Vigência expirou, requer renovação.</span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mt-10 pt-5 border-t border-slate-200 flex items-center justify-between text-[11.5px] text-slate-500">
+    <div>© 2026 BSI Capital Securitizadora S/A · CNPJ XX.XXX.XXX/0001-XX · Todos os direitos reservados.</div>
+    <div class="flex items-center gap-4">
+      <span>Política de Privacidade</span>
+      <span>LGPD</span>
+      <span>Suporte</span>
+      <span class="font-mono tabular-nums">v.4.2.1 · BR-SP-01</span>
+    </div>
+  </footer>
+
+</main>
+</body>
+</html>

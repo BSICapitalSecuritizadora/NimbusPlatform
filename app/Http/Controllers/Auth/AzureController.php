@@ -75,7 +75,11 @@ class AzureController extends Controller
         Auth::login($user);
 
         request()->session()->regenerate();
-        request()->session()->put('auth.microsoft_sso', true);
+
+        // Only bypass native 2FA enforcement when Azure itself confirmed MFA (amr claim contains 'mfa' or 'ngcmfa').
+        $amr = (array) data_get($azureUser->user, 'amr', []);
+        $azureMfaPerformed = ! empty(array_intersect($amr, ['mfa', 'ngcmfa', 'hwk', 'swk']));
+        request()->session()->put('auth.microsoft_sso', $azureMfaPerformed);
 
         return redirect()->intended('/admin');
     }
