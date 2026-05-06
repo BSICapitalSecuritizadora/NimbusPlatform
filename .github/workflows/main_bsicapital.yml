@@ -82,7 +82,7 @@ jobs:
           name: php-app
 
       - name: Login to Azure
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_7B3E4B28FD774ABDA86E1932A034E8A5 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_72A9DC509B6B49A19A7694F9B598AD7E }}
