@@ -152,7 +152,7 @@ Route::post('/proposta/continuar/{access}', function (VerifyProposalContinuation
         ->route('site.proposal.continuation.form', $access)
         ->with('success', 'Acesso validado. Você já pode continuar o preenchimento.');
 })
-    ->middleware('throttle:proposal-verification')
+    ->middleware(['throttle:proposal-verification', 'throttle:proposal-verification-global'])
     ->name('site.proposal.continuation.verify');
 Route::get('/proposta/continuar/{access}/formulario', ContinuationForm::class)
     ->name('site.proposal.continuation.form');
@@ -190,12 +190,15 @@ Route::get('/proposta/continuar/{access}/arquivos/{file}', function (
         $file->original_name,
     );
 })
+    ->middleware('throttle:proposal-continuation-download')
     ->name('site.proposal.continuation.files.download');
 
 // Recruitment (Trabalhe Conosco)
 Route::get('/trabalhe-conosco', [JobController::class, 'index'])->name('site.vacancies.index');
 Route::get('/trabalhe-conosco/{slug}', [JobController::class, 'show'])->name('site.vacancies.show');
-Route::post('/trabalhe-conosco/{id}/candidatar', [JobController::class, 'apply'])->name('site.vacancies.apply');
+Route::post('/trabalhe-conosco/{id}/candidatar', [JobController::class, 'apply'])
+    ->middleware('throttle:site-job-apply')
+    ->name('site.vacancies.apply');
 
 // Healthcheck para staging / monitoramento
 Route::get('/healthcheck', function () {

@@ -145,5 +145,30 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(10)->by("proposal-continuation-store|{$request->ip()}|{$token}");
         });
+
+        // C-1: throttle for file downloads in the proposal continuation flow
+        RateLimiter::for('proposal-continuation-download', function (Request $request): Limit {
+            $access = $request->route('access');
+            $token = is_object($access) && method_exists($access, 'getRouteKey')
+                ? (string) $access->getRouteKey()
+                : (string) $access;
+
+            return Limit::perMinute(20)->by("proposal-continuation-download|{$request->ip()}|{$token}");
+        });
+
+        // C-2: global per-token rate limit regardless of IP to block distributed brute force on the 6-digit code
+        RateLimiter::for('proposal-verification-global', function (Request $request): Limit {
+            $access = $request->route('access');
+            $token = is_object($access) && method_exists($access, 'getRouteKey')
+                ? (string) $access->getRouteKey()
+                : (string) $access;
+
+            return Limit::perDay(15)->by("proposal-verification-global|{$token}");
+        });
+
+        // C-3: rate limit for public job applications to prevent resume spam
+        RateLimiter::for('site-job-apply', function (Request $request): Limit {
+            return Limit::perMinutes(30, 5)->by("site-job-apply|{$request->ip()}");
+        });
     }
 }

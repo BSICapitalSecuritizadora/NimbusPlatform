@@ -21,6 +21,14 @@ class EnsureUserIsApproved
             return $next($request);
         }
 
+        if (! $user->isActive()) {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->to('/admin/login');
+        }
+
         if ($request->routeIs('pending-approval')) {
             return $next($request);
         }

@@ -66,6 +66,29 @@ it('restricts user and role management to super admins', function () {
         ->and(RoleResource::canViewAny())->toBeFalse();
 });
 
+it('logs out an inactive user and redirects to admin login when accessing a protected route', function () {
+    $user = User::factory()->create([
+        'is_active' => false,
+        'approved_at' => now(),
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertRedirect('/admin/login');
+
+    $this->assertGuest();
+});
+
+it('redirects an unapproved but active user to pending-approval', function () {
+    $user = User::factory()->unapproved()->create([
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertRedirect(route('pending-approval'));
+});
+
 it('blocks inactive users and users without panel permissions', function () {
     $inactive = User::factory()->create([
         'is_active' => false,

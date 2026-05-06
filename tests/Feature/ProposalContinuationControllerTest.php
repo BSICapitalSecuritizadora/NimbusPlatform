@@ -6,6 +6,7 @@ use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalRepresentative;
 use App\Models\ProposalSector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 
 uses(RefreshDatabase::class);
@@ -45,6 +46,55 @@ it('stores continuation submissions through the legacy public endpoint without a
             'Torre Madrid',
             'Torre Manchester',
         ]);
+});
+
+it('rejects file uploads with disallowed MIME types in the continuation store', function () {
+    Mail::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+
+    ProposalRepresentative::factory()->create([
+        'name' => 'Representante Comercial',
+        'queue_position' => 1,
+    ]);
+
+    submitInitialProposalThroughComponent($sector);
+
+    $proposal = Proposal::query()->with('latestContinuationAccess')->firstOrFail();
+    $access = $proposal->latestContinuationAccess;
+
+    expect($access)->not->toBeNull();
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->post(route('site.proposal.continuation.store', $access), array_merge(
+            controllerContinuationPayload(),
+            ['arquivos' => [UploadedFile::fake()->create('exploit.exe', 100, 'application/x-msdownload')]],
+        ))
+        ->assertSessionHasErrors('arquivos');
+});
+
+it('rejects file uploads that exceed the maximum allowed size', function () {
+    Mail::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+
+    ProposalRepresentative::factory()->create([
+        'name' => 'Representante Comercial',
+        'queue_position' => 1,
+    ]);
+
+    submitInitialProposalThroughComponent($sector);
+
+    $proposal = Proposal::query()->with('latestContinuationAccess')->firstOrFail();
+    $access = $proposal->latestContinuationAccess;
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->post(route('site.proposal.continuation.store', $access), array_merge(
+            controllerContinuationPayload(),
+            // 21 MB PDF — over the 20 MB limit
+            ['arquivos' => [UploadedFile::fake()->create('big.pdf', 21 * 1024, 'application/pdf')]],
+        ))
+        ->assertSessionHasErrors('arquivos');
 });
 
 /**
