@@ -24,6 +24,10 @@ Artisan::command('inspire', function () {
     ->monthlyOn(1, '00:05')
     ->name('fund-balances-monthly-snapshot');
 
+\Illuminate\Support\Facades\Schedule::command('app:send-fund-minimum-balance-alerts')
+    ->hourly()
+    ->name('fund-minimum-balance-alerts');
+
 \Illuminate\Support\Facades\Schedule::command('invitations:prune')
     ->weekly()
     ->name('prune-expired-invitations');

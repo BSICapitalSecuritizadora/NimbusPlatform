@@ -39,7 +39,25 @@ it('shows filters for operation, type, application and bank on the funds list pa
         ->assertTableFilterExists('emission_id')
         ->assertTableFilterExists('fund_type_id')
         ->assertTableFilterExists('fund_application_id')
-        ->assertTableFilterExists('bank_id');
+        ->assertTableFilterExists('bank_id')
+        ->assertTableFilterExists('account');
+});
+
+it('filters funds by current account', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $selectedFund = Fund::factory()->create([
+        'account' => '12345-6',
+    ]);
+    $otherFund = Fund::factory()->create([
+        'account' => '65432-1',
+    ]);
+
+    Livewire::test(ListFunds::class)
+        ->assertCanSeeTableRecords([$selectedFund, $otherFund])
+        ->filterTable('account', '12345-6')
+        ->assertCanSeeTableRecords([$selectedFund])
+        ->assertCanNotSeeTableRecords([$otherFund]);
 });
 
 it('creates a fund linked to the selected auxiliary records', function () {

@@ -94,6 +94,14 @@ class FundsTable
                     ->relationship('bank', 'name')
                     ->searchable()
                     ->preload(),
+                SelectFilter::make('account')
+                    ->label('Conta corrente')
+                    ->options(fn (): array => Fund::query()
+                        ->orderBy('account')
+                        ->pluck('account', 'account')
+                        ->all())
+                    ->searchable()
+                    ->preload(),
             ])
             ->defaultSort('created_at', 'desc')
             ->recordActions([

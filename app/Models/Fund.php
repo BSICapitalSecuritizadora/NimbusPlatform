@@ -24,6 +24,10 @@ class Fund extends Model
         'balance',
         'minimum_balance',
         'balance_updated_at',
+        'minimum_balance_alert_sent_at',
+        'minimum_balance_alert_balance',
+        'minimum_balance_alert_minimum_balance',
+        'minimum_balance_alert_recipients_hash',
     ];
 
     protected function casts(): array
@@ -32,6 +36,9 @@ class Fund extends Model
             'balance' => 'decimal:2',
             'minimum_balance' => 'decimal:2',
             'balance_updated_at' => 'datetime',
+            'minimum_balance_alert_sent_at' => 'datetime',
+            'minimum_balance_alert_balance' => 'decimal:2',
+            'minimum_balance_alert_minimum_balance' => 'decimal:2',
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Funds\Pages;
 
+use App\Actions\FundAlerts\SendFundMinimumBalanceAlertAction;
 use App\Filament\Resources\Funds\FundResource;
 use App\Models\Fund;
 use Filament\Actions\DeleteAction;
@@ -52,6 +53,8 @@ class EditFund extends EditRecord
         if (! ($this->getRecord() instanceof Fund)) {
             return;
         }
+
+        app(SendFundMinimumBalanceAlertAction::class)->handle($this->getRecord());
 
         if (! $this->getRecord()->isBalanceBelowMinimum()) {
             return;

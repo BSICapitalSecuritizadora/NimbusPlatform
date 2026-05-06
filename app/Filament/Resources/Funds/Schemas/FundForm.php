@@ -224,7 +224,7 @@ class FundForm
                             'required' => 'Informe o saldo do fundo.',
                         ])
                         ->placeholder('1.000,00')
-                        ->helperText('Atualize o saldo no primeiro dia de cada mes. O valor do mes anterior sera salvo automaticamente no historico de saldo. Se o saldo ficar abaixo do valor minimo, um aviso informativo sera exibido apos o salvamento.')
+                        ->helperText('Atualize o saldo no primeiro dia de cada mes. O valor do mes anterior sera salvo automaticamente no historico de saldo. Se o saldo ficar abaixo do valor minimo, um aviso sera exibido apos o salvamento e o alerta por e-mail sera enviado aos investidores vinculados a emissao.')
                         ->columnSpanFull(),
 
                     TextInput::make('minimum_balance')

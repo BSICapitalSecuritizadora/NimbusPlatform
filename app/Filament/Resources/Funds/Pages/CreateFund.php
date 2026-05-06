@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Funds\Pages;
 
+use App\Actions\FundAlerts\SendFundMinimumBalanceAlertAction;
 use App\Filament\Resources\Funds\FundResource;
 use App\Models\Fund;
 use Filament\Notifications\Notification;
@@ -31,6 +32,8 @@ class CreateFund extends CreateRecord
         if (! ($this->record instanceof Fund)) {
             return;
         }
+
+        app(SendFundMinimumBalanceAlertAction::class)->handle($this->record);
 
         if (! $this->record->isBalanceBelowMinimum()) {
             return;
