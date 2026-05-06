@@ -3,7 +3,9 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Foundation\Vite;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class SetSecurityHeaders
@@ -15,6 +17,9 @@ class SetSecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $nonce = Str::random(16);
+        app(Vite::class)->useCspNonce($nonce);
+
         $response = $next($request);
 
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
@@ -22,7 +27,7 @@ class SetSecurityHeaders
         $response->headers->set('X-XSS-Protection', '0');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-        $response->headers->set('Content-Security-Policy', $this->buildCsp());
+        $response->headers->set('Content-Security-Policy', $this->buildCsp($nonce));
 
         if (app()->isProduction()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -31,11 +36,11 @@ class SetSecurityHeaders
         return $response;
     }
 
-    private function buildCsp(): string
+    private function buildCsp(string $nonce): string
     {
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "script-src 'self' 'unsafe-inline' 'nonce-{$nonce}'",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob: https:",
             "font-src 'self' data:",

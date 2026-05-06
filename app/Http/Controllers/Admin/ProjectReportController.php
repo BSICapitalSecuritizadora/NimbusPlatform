@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Filament\Resources\Proposals\ProposalResource;
 use App\Http\Controllers\Controller;
 use App\Models\ProposalProject;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -14,6 +15,9 @@ class ProjectReportController extends Controller
     {
         Gate::authorize('proposals.view');
 
+        $proposal = $project->proposal()->firstOrFail();
+        abort_unless(ProposalResource::canView($proposal), Response::HTTP_FORBIDDEN);
+
         $project->load(['characteristics.unitTypes']);
 
         $pdf = Pdf::loadView('pdf.project-report', compact('project'));
@@ -24,6 +28,9 @@ class ProjectReportController extends Controller
     public function analyticalReport(ProposalProject $project): Response
     {
         Gate::authorize('proposals.view');
+
+        $proposal = $project->proposal()->firstOrFail();
+        abort_unless(ProposalResource::canView($proposal), Response::HTTP_FORBIDDEN);
 
         $project->load(['characteristics.unitTypes', 'indicators']);
 
@@ -58,7 +65,6 @@ class ProjectReportController extends Controller
             'custo_construcao_m2' => $project->land_area > 0 ? $project->total_cost / $project->land_area : 0,
 
             'financiamento_custo_obra' => $project->total_cost > 0 ? ($project->requested_amount / $project->total_cost) * 100 : 0,
-            // (More calculations can be added as needed following the analytical.php logic)
         ];
 
         $pdf = Pdf::loadView('pdf.project-analytical', $data);

@@ -13,7 +13,6 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -107,7 +106,8 @@ class DocumentsTable
                         FileUpload::make('file_path')
                             ->label('Novo Arquivo')
                             ->required()
-                            ->disk(Document::defaultStorageDisk())
+                            ->disk('local')
+                            ->visibility('private')
                             ->directory('documents')
                             ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file): string {
                                 $safe = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $file->getClientOriginalName());
@@ -119,7 +119,7 @@ class DocumentsTable
                                     $set('file_name', $state->getClientOriginalName());
                                     $set('mime_type', $state->getMimeType());
                                     $set('file_size', $state->getSize());
-                                    $set('storage_disk', Document::defaultStorageDisk());
+                                    $set('storage_disk', 'local');
                                 }
                             }),
                         Hidden::make('file_name'),
@@ -216,7 +216,7 @@ class DocumentsTable
                     ->label('Baixar')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn (Document $record): ?string => $record->file_path
-                        ? Storage::disk($record->resolved_storage_disk)->url($record->file_path)
+                        ? route('admin.documents.download', $record)
                         : null)
                     ->openUrlInNewTab()
                     ->visible(fn (Document $record): bool => (bool) $record->file_path),

@@ -7,6 +7,7 @@ use App\Concerns\ProfileValidationRules;
 use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
@@ -34,6 +35,12 @@ class CreateNewUser implements CreatesNewUsers
         if (! $invitation) {
             throw ValidationException::withMessages([
                 'invitation_token' => ['O convite é inválido, expirou ou já foi utilizado.'],
+            ]);
+        }
+
+        if (Str::lower($input['email']) !== Str::lower($invitation->email)) {
+            throw ValidationException::withMessages([
+                'email' => ['O e-mail informado não corresponde ao convite recebido.'],
             ]);
         }
 

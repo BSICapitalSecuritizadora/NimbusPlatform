@@ -171,11 +171,9 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinutes(30, 5)->by("site-job-apply|{$request->ip()}");
         });
 
-        // H-3: global per-access-code rate limit for Nimbus portal login (prevents distributed brute force)
+        // Nimbus portal login: daily IP budget so code-rotating attackers are still blocked
         RateLimiter::for('nimbus-access-code', function (Request $request): Limit {
-            $code = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('access_code', '')) ?? '');
-
-            return Limit::perDay(20)->by("nimbus-access-code|{$code}");
+            return Limit::perDay(50)->by("nimbus-access-code|{$request->ip()}");
         });
     }
 }

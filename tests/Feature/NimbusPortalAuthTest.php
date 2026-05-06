@@ -23,15 +23,17 @@ it('authenticates a portal user with a hyphenated access code', function () {
         'status' => 'ACTIVE',
     ]);
 
+    $plainCode = '6AB4-371C-DA8A';
+
     $accessToken = AccessToken::query()->create([
         'nimbus_portal_user_id' => $portalUser->id,
-        'code' => '6AB4-371C-DA8A',
+        'code_hash' => AccessToken::computeHash($plainCode),
         'status' => 'PENDING',
         'expires_at' => now()->addDays(7),
     ]);
 
     $this->post(route('nimbus.auth.verify.post'), [
-        'access_code' => '6ab4-371c-da8a',
+        'access_code' => strtolower($plainCode),
     ])
         ->assertRedirect(route('nimbus.dashboard'));
 
@@ -50,9 +52,11 @@ it('regenerates the session after successful login to prevent session fixation',
         'status' => 'ACTIVE',
     ]);
 
+    $plainCode = 'AAAA-BBBB-CCCC';
+
     AccessToken::query()->create([
         'nimbus_portal_user_id' => $portalUser->id,
-        'code' => 'AAAA-BBBB-CCCC',
+        'code_hash' => AccessToken::computeHash($plainCode),
         'status' => 'PENDING',
         'expires_at' => now()->addDays(7),
     ]);
@@ -60,7 +64,7 @@ it('regenerates the session after successful login to prevent session fixation',
     $beforeSessionId = session()->getId();
 
     $this->post(route('nimbus.auth.verify.post'), [
-        'access_code' => 'AAAA-BBBB-CCCC',
+        'access_code' => $plainCode,
     ])->assertRedirect(route('nimbus.dashboard'));
 
     expect(session()->getId())->not->toBe($beforeSessionId);
@@ -75,16 +79,43 @@ it('does not authenticate with an already used access code', function () {
         'status' => 'ACTIVE',
     ]);
 
+    $plainCode = '6AB4-371C-DA8B';
+
     AccessToken::query()->create([
         'nimbus_portal_user_id' => $portalUser->id,
-        'code' => '6AB4-371C-DA8B',
+        'code_hash' => AccessToken::computeHash($plainCode),
         'status' => 'USED',
         'expires_at' => now()->addDays(7),
         'used_at' => now()->subMinute(),
     ]);
 
     $this->post(route('nimbus.auth.verify.post'), [
-        'access_code' => '6AB4-371C-DA8B',
+        'access_code' => $plainCode,
+    ])
+        ->assertSessionHasErrors('access_code');
+
+    expect(auth('nimbus')->check())->toBeFalse();
+});
+
+it('does not authenticate with a code that has no matching hash in the database (plaintext lookup gone)', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Hacker',
+        'email' => 'hacker@example.com',
+        'document_number' => '99999999999',
+        'phone_number' => '11000000000',
+        'status' => 'ACTIVE',
+    ]);
+
+    // Simulates a legacy row with only the plaintext code but no code_hash
+    AccessToken::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'code' => 'LEAK-LEAK-LEAK',
+        'status' => 'PENDING',
+        'expires_at' => now()->addDays(7),
+    ]);
+
+    $this->post(route('nimbus.auth.verify.post'), [
+        'access_code' => 'LEAK-LEAK-LEAK',
     ])
         ->assertSessionHasErrors('access_code');
 

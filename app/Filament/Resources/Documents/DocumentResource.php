@@ -54,6 +54,11 @@ class DocumentResource extends Resource
         return auth()->user()->can('documents.create');
     }
 
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()->can('documents.update');
+    }
+
     public static function canDelete(Model $record): bool
     {
         return auth()->user()->can('documents.delete');

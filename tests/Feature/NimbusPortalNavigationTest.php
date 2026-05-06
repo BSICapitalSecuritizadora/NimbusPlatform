@@ -141,7 +141,7 @@ it('serves Nimbus documents from the private disk even when the default filesyst
     $this->actingAs($portalUser, 'nimbus')
         ->get(route('nimbus.documents.preview', $portalDocument))
         ->assertSuccessful()
-        ->assertHeader('content-disposition', 'inline; filename="contrato-social.pdf"');
+        ->assertHeader('content-disposition', 'inline; filename=contrato-social.pdf');
 
     $this->actingAs($portalUser, 'nimbus')
         ->get(route('nimbus.documents.download', $portalDocument))
@@ -150,7 +150,7 @@ it('serves Nimbus documents from the private disk even when the default filesyst
     $this->actingAs($portalUser, 'nimbus')
         ->get(route('nimbus.documents.general.preview', $generalDocument))
         ->assertSuccessful()
-        ->assertHeader('content-disposition', 'inline; filename="politica-kyc.pdf"');
+        ->assertHeader('content-disposition', 'inline; filename=politica-kyc.pdf');
 
     $this->actingAs($portalUser, 'nimbus')
         ->get(route('nimbus.documents.general.download', $generalDocument))
@@ -221,7 +221,7 @@ it('serves document previews and downloads through the renamed admin URLs', func
     $this->actingAs($adminUser)
         ->get(route('admin.nimbus.documents.general.preview', $generalDocument))
         ->assertSuccessful()
-        ->assertHeader('content-disposition', 'inline; filename="admin-politica.pdf"');
+        ->assertHeader('content-disposition', 'inline; filename=admin-politica.pdf');
 
     $this->actingAs($adminUser)
         ->get(route('admin.nimbus.documents.general.download', $generalDocument))
@@ -230,7 +230,7 @@ it('serves document previews and downloads through the renamed admin URLs', func
     $this->actingAs($adminUser)
         ->get(route('admin.nimbus.documents.portal.preview', $portalDocument))
         ->assertSuccessful()
-        ->assertHeader('content-disposition', 'inline; filename="admin-contrato.pdf"');
+        ->assertHeader('content-disposition', 'inline; filename=admin-contrato.pdf');
 
     $this->actingAs($adminUser)
         ->get(route('admin.nimbus.documents.portal.download', $portalDocument))

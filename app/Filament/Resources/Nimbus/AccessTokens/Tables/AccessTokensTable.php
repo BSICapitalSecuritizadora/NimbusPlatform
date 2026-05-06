@@ -22,10 +22,6 @@ class AccessTokensTable
                     ->label('E-mail')
                     ->searchable()
                     ->toggleable(),
-                TextColumn::make('code')
-                    ->label('Código')
-                    ->copyable()
-                    ->searchable(),
                 TextColumn::make('status_label')
                     ->label('Situação')
                     ->state(fn (AccessToken $record): string => $record->status_label)

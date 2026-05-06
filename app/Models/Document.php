@@ -54,9 +54,7 @@ class Document extends Model
 
     public static function defaultStorageDisk(): string
     {
-        $defaultDisk = (string) config('filesystems.default', 'public');
-
-        return $defaultDisk === 'local' ? 'public' : $defaultDisk;
+        return 'local';
     }
 
     public function getResolvedStorageDiskAttribute(): string

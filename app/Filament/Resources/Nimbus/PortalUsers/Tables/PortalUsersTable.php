@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Nimbus\PortalUsers\Tables;
 
 use App\Mail\Nimbus\SendPortalAccessCode;
+use App\Models\Nimbus\AccessToken;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -102,7 +103,7 @@ class PortalUsersTable
                                 $expiresAt = now()->addDays((int) config('nimbus.access_tokens.expires_in_days', 7));
 
                                 $record->accessTokens()->create([
-                                    'code' => $code,
+                                    'code_hash' => AccessToken::computeHash($code),
                                     'status' => 'PENDING',
                                     'expires_at' => $expiresAt,
                                 ]);

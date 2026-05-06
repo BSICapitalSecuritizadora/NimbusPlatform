@@ -54,9 +54,6 @@ class AccessTokenResource extends Resource
                         \Filament\Infolists\Components\TextEntry::make('portalUser.email')
                             ->label('E-mail')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('code')
-                            ->label('Código')
-                            ->copyable(),
                         \Filament\Infolists\Components\TextEntry::make('status_label')
                             ->label('Situação')
                             ->badge()

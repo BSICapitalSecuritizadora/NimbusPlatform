@@ -5,8 +5,10 @@ namespace App\Services;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentStorageService
@@ -135,7 +137,11 @@ class DocumentStorageService
 
         return response()->file($this->absolutePath($path, $disk), [
             'Content-Type' => $mimeType ?: 'application/octet-stream',
-            'Content-Disposition' => 'inline; filename="'.$resolvedDownloadName.'"',
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                'inline',
+                $resolvedDownloadName,
+                Str::ascii($resolvedDownloadName),
+            ),
         ]);
     }
 

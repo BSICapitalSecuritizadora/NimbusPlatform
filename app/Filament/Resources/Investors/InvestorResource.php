@@ -212,6 +212,11 @@ class InvestorResource extends Resource
         return auth()->user()->can('investors.create');
     }
 
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()->can('investors.update');
+    }
+
     public static function canDelete(Model $record): bool
     {
         return auth()->user()->can('investors.delete');

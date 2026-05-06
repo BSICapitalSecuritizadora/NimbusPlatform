@@ -12,8 +12,7 @@ class ShowPortalSubmission
     {
         abort_unless(
             $submission->nimbus_portal_user_id === $portalUser->id,
-            Response::HTTP_FORBIDDEN,
-            'Acesso negado.',
+            Response::HTTP_NOT_FOUND,
         );
 
         $submission->loadMissing([

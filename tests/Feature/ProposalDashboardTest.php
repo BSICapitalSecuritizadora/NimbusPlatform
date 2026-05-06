@@ -95,7 +95,7 @@ it('builds proposal dashboard metrics according to the authenticated user scope'
 });
 
 it('renders the proposal dashboard only for users with proposal access', function () {
-    $representativeUser = User::factory()->create([
+    $representativeUser = User::factory()->withTwoFactor()->create([
         'email' => 'painel-propostas@example.com',
     ]);
     $representativeUser->assignRole('commercial-representative');

@@ -243,6 +243,9 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/admin/projetos/{project}/relatorio', [App\Http\Controllers\Admin\ProjectReportController::class, 'generateReport'])->name('admin.projects.report');
     Route::get('/admin/projetos/{project}/analitico', [App\Http\Controllers\Admin\ProjectReportController::class, 'analyticalReport'])->name('admin.projects.analytical');
     Route::get('/admin/candidaturas/{jobApplication}/curriculo', [App\Http\Controllers\Admin\JobApplicationResumeController::class, 'download'])->name('admin.job-applications.resume');
+    Route::get('/admin/documents/{document}/download', App\Http\Controllers\Admin\AdminDocumentDownloadController::class)
+        ->name('admin.documents.download')
+        ->middleware('throttle:60,1');
 });
 
 Route::redirect('/admin/nimbus-dashboard', '/admin/gestao-documental-externa-dashboard');

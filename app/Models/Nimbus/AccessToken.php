@@ -18,6 +18,16 @@ class AccessToken extends Model
         'used_at' => 'datetime',
     ];
 
+    /**
+     * Compute a deterministic HMAC-SHA256 digest of a normalized access code.
+     * The APP_KEY acts as the HMAC secret, so the digest is not reversible
+     * without knowledge of the application key.
+     */
+    public static function computeHash(string $normalizedCode): string
+    {
+        return hash_hmac('sha256', strtoupper($normalizedCode), (string) config('app.key'));
+    }
+
     public function portalUser(): BelongsTo
     {
         return $this->belongsTo(PortalUser::class, 'nimbus_portal_user_id');

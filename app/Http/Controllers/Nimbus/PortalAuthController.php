@@ -23,10 +23,9 @@ class PortalAuthController extends Controller
         ]);
 
         $normalizedCode = $this->normalizeAccessCode((string) $request->input('access_code'));
-        $rawCode = str_replace('-', '', $normalizedCode);
 
         $token = AccessToken::query()
-            ->whereIn('code', [$normalizedCode, $rawCode])
+            ->where('code_hash', AccessToken::computeHash($normalizedCode))
             ->where('status', 'PENDING')
             ->first();
 

@@ -11,7 +11,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -42,10 +41,9 @@ class DocumentForm
                     FileUpload::make('file_path')
                         ->label('Arquivo')
                         ->required()
-                        ->disk(Document::defaultStorageDisk())
-                        ->visibility('public')
+                        ->disk('local')
+                        ->visibility('private')
                         ->directory('documents')
-                        ->preserveFilenames()
                         ->acceptedFileTypes([
                             'application/pdf',
                             'image/jpeg',
@@ -61,7 +59,7 @@ class DocumentForm
                                 $set('file_name', $state->getClientOriginalName());
                                 $set('mime_type', $state->getMimeType());
                                 $set('file_size', $state->getSize());
-                                $set('storage_disk', config('filesystems.default'));
+                                $set('storage_disk', 'local');
                             }
                         })
                         ->columnSpanFull(),
@@ -136,7 +134,7 @@ class DocumentForm
                         ->label('Link')
                         ->content(fn ($record) => $record?->file_path
                             ? new HtmlString(
-                                '<a href="'.Storage::disk($record->resolved_storage_disk)->url($record->file_path).'" target="_blank" class="text-primary-600 hover:underline">Abrir arquivo ↗</a>'
+                                '<a href="'.route('admin.documents.download', $record).'" target="_blank" class="text-primary-600 hover:underline">Baixar arquivo ↗</a>'
                             )
                             : '—'),
                 ])

@@ -22,8 +22,7 @@ class ReplyToSubmission
     ): Submission {
         abort_unless(
             $submission->nimbus_portal_user_id === $portalUser->id,
-            Response::HTTP_FORBIDDEN,
-            'Acesso negado.',
+            Response::HTTP_NOT_FOUND,
         );
 
         abort_unless($submission->status === Submission::STATUS_NEEDS_CORRECTION, Response::HTTP_FORBIDDEN);

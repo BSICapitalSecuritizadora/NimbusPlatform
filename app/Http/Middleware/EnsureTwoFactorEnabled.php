@@ -26,8 +26,7 @@ class EnsureTwoFactorEnabled
             return $next($request);
         }
 
-        if (($user->hasRole('super-admin') || $user->hasRole('admin')) && ! $user->hasEnabledTwoFactorAuthentication()) {
-
+        if (! $user->hasEnabledTwoFactorAuthentication()) {
             return redirect()->route('profile.edit')->with('warning', 'Você precisa habilitar a Autenticação de Dois Fatores (2FA) para acessar o painel.');
         }
 

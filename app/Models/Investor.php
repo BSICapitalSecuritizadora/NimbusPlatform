@@ -31,6 +31,7 @@ class Investor extends Authenticatable
     protected function casts(): array
     {
         return [
+            'password' => 'hashed',
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
             'last_portal_seen_at' => 'datetime',

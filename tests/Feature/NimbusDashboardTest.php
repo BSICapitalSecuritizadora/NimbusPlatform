@@ -762,7 +762,7 @@ it('renders the access keys list under Administração', function () {
 
     AccessToken::query()->create([
         'nimbus_portal_user_id' => $portalUser->id,
-        'code' => 'ABCD-EF12-3456',
+        'code_hash' => AccessToken::computeHash('ABCD-EF12-3456'),
         'status' => 'PENDING',
         'expires_at' => now()->addDays(3),
     ]);
@@ -775,8 +775,6 @@ it('renders the access keys list under Administração', function () {
         ->assertSuccessful()
         ->assertSee('Chaves de Acesso')
         ->assertSee('Usuário do portal')
-        ->assertSee('Código')
-        ->assertSee('ABCD-EF12-3456')
         ->assertSee('Válida')
         ->assertSee('Revogar');
 });

@@ -66,7 +66,6 @@ class SubmissionController extends Controller
         } catch (Throwable $e) {
             Log::error('Erro ao processar submissão do portal externo.', [
                 'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return back()->withInput()->with('error', 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.');
