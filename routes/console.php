@@ -23,3 +23,7 @@ Artisan::command('inspire', function () {
 \Illuminate\Support\Facades\Schedule::command('app:snapshot-monthly-fund-balances')
     ->monthlyOn(1, '00:05')
     ->name('fund-balances-monthly-snapshot');
+
+\Illuminate\Support\Facades\Schedule::command('invitations:prune')
+    ->weekly()
+    ->name('prune-expired-invitations');

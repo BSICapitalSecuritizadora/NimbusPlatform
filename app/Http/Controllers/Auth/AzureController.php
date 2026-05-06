@@ -81,7 +81,13 @@ class AzureController extends Controller
         $azureMfaPerformed = ! empty(array_intersect($amr, ['mfa', 'ngcmfa', 'hwk', 'swk']));
         request()->session()->put('auth.microsoft_sso', $azureMfaPerformed);
 
-        return redirect()->intended('/admin');
+        // M-12: validate intended URL is on the same host to prevent open redirect
+        $intended = request()->session()->pull('url.intended', '/admin');
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+        $intendedHost = parse_url((string) $intended, PHP_URL_HOST);
+        $safeIntended = (! $intendedHost || $intendedHost === $appHost) ? $intended : '/admin';
+
+        return redirect()->to($safeIntended);
     }
 
     private function resolveMicrosoftEmail(\Laravel\Socialite\Contracts\User $azureUser): ?string

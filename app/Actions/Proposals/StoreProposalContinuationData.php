@@ -8,6 +8,7 @@ use App\DTOs\Proposals\ProposalContinuationUnitTypeDTO;
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\DTOs\Proposals\UpdateProposalStatusDTO;
 use App\Enums\ProposalStatus;
+use App\Jobs\ScanFileForMalware;
 use App\Models\ProjectCharacteristic;
 use App\Models\Proposal;
 use App\Models\ProposalProject;
@@ -173,33 +174,44 @@ class StoreProposalContinuationData
         }
     }
 
-    private const ALLOWED_MIME_TYPES = [
-        'application/pdf',
-        'image/jpeg',
-        'image/png',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    ];
+    /** @return array<int, string> */
+    private function allowedMimeTypes(): array
+    {
+        return (array) config('uploads.proposal_continuation.allowed_mimes', [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
 
-    private const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+    private function maxFileSizeBytes(): int
+    {
+        return (int) config('uploads.proposal_continuation.max_bytes', 20 * 1024 * 1024);
+    }
 
     /**
      * @param  array<int, UploadedFile>  $files
      */
     protected function storeUploadedFiles(Proposal $proposal, array $files): void
     {
+        $allowedMimes = $this->allowedMimeTypes();
+        $maxBytes = $this->maxFileSizeBytes();
+        $maxMb = round($maxBytes / 1024 / 1024);
+
         foreach ($files as $file) {
-            if (! in_array($file->getMimeType(), self::ALLOWED_MIME_TYPES, true)) {
+            if (! in_array($file->getMimeType(), $allowedMimes, true)) {
                 throw ValidationException::withMessages([
                     'arquivos' => 'Tipo de arquivo não permitido. Envie PDF, imagens, planilhas ou documentos Word.',
                 ]);
             }
 
-            if ($file->getSize() > self::MAX_FILE_SIZE_BYTES) {
+            if ($file->getSize() > $maxBytes) {
                 throw ValidationException::withMessages([
-                    'arquivos' => 'O arquivo ultrapassa o tamanho máximo de 20 MB.',
+                    'arquivos' => "O arquivo ultrapassa o tamanho máximo de {$maxMb} MB.",
                 ]);
             }
         }
@@ -217,7 +229,10 @@ class StoreProposalContinuationData
                 'original_name' => $storedFile['original_name'],
                 'mime_type' => $storedFile['mime_type'],
                 'file_size' => $storedFile['size_bytes'],
+                'checksum' => $storedFile['checksum'],
             ]);
+
+            ScanFileForMalware::dispatch($storedFile['disk'], $storedFile['path'], "proposal:{$proposal->id}");
         }
     }
 }

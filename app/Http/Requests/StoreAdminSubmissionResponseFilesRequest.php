@@ -16,7 +16,7 @@ class StoreAdminSubmissionResponseFilesRequest extends FormRequest
     {
         return [
             'response_files' => ['required', 'array', 'min:1'],
-            'response_files.*' => ['required', 'file', 'mimes:pdf,doc,docx,xls,xlsx,zip,jpg,jpeg,png,webp,gif', 'max:51200'],
+            'response_files.*' => ['required', 'file', 'mimes:pdf,doc,docx,xls,xlsx,zip,jpg,jpeg,png,webp,gif', 'extensions:pdf,doc,docx,xls,xlsx,zip,jpg,jpeg,png,webp,gif', 'max:'.config('uploads.admin_response.max_kb', 51200)],
             'visible_to_user' => ['nullable', 'boolean'],
         ];
     }

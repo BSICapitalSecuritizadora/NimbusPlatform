@@ -30,6 +30,14 @@ class InvestorAuthController extends Controller
             ]);
         }
 
+        if (! auth('investor')->user()->is_active) {
+            auth('investor')->logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Sua conta de investidor está inativa. Entre em contato com a administração.',
+            ]);
+        }
+
         $request->session()->regenerate();
 
         // Atualiza último login

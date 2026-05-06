@@ -21,7 +21,7 @@ Route::prefix('investidor')->name('investor.')->group(function () {
         ->name('logout');
 
     // Portal (protegido)
-    Route::middleware('auth:investor')->group(function () {
+    Route::middleware(['auth:investor', \App\Http\Middleware\EnsureInvestorIsActive::class])->group(function () {
         Route::get('/', InvestorDashboard::class)->name('dashboard');
 
         Route::get('/emissoes', InvestorEmissions::class)->name('emissions');

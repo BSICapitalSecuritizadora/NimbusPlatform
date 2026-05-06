@@ -12,8 +12,10 @@ use App\Models\Nimbus\SubmissionFile;
 use Filament\Notifications\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class AdminSubmissionFileController extends Controller
 {
@@ -22,7 +24,12 @@ class AdminSubmissionFileController extends Controller
         SubmissionFile $file,
         PreviewAdminSubmissionFile $previewAdminSubmissionFile,
     ): BinaryFileResponse {
-        return $previewAdminSubmissionFile->handle($request->user(), $file);
+        try {
+            return $previewAdminSubmissionFile->handle($request->user(), $file);
+        } catch (Throwable $e) {
+            Log::error('Erro ao visualizar arquivo de submissão.', ['file_id' => $file->id, 'exception' => $e->getMessage()]);
+            abort(404);
+        }
     }
 
     public function download(
@@ -30,7 +37,12 @@ class AdminSubmissionFileController extends Controller
         SubmissionFile $file,
         DownloadAdminSubmissionFile $downloadAdminSubmissionFile,
     ): StreamedResponse {
-        return $downloadAdminSubmissionFile->handle($request->user(), $file);
+        try {
+            return $downloadAdminSubmissionFile->handle($request->user(), $file);
+        } catch (Throwable $e) {
+            Log::error('Erro ao baixar arquivo de submissão.', ['file_id' => $file->id, 'exception' => $e->getMessage()]);
+            abort(404);
+        }
     }
 
     public function storeResponseFiles(

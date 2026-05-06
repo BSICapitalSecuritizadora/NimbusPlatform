@@ -132,15 +132,13 @@ Route::post('/proposta/continuar/{access}', function (VerifyProposalContinuation
 
     $proposal = $loadProposalContinuation($access);
 
-    if (Str::digitsOnly($request->validated('cnpj')) !== Str::digitsOnly((string) $proposal->company?->cnpj)) {
-        throw ValidationException::withMessages([
-            'cnpj' => 'O CNPJ informado não corresponde à proposta enviada.',
-        ]);
-    }
+    // H-3: validate both fields together to prevent enumeration of which one is wrong
+    $cnpjMatches = Str::digitsOnly($request->validated('cnpj')) === Str::digitsOnly((string) $proposal->company?->cnpj);
+    $codeMatches = $access->matchesCode($request->validated('code'));
 
-    if (! $access->matchesCode($request->validated('code'))) {
+    if (! $cnpjMatches || ! $codeMatches) {
         throw ValidationException::withMessages([
-            'code' => 'O código informado é inválido.',
+            'code' => 'CNPJ ou código inválido.',
         ]);
     }
 
@@ -288,7 +286,7 @@ Route::prefix('gestao-documental-externa')->name('nimbus.')->group(function () {
     // Auth Routes...
     Route::get('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'showRequestForm'])->name('auth.request');
     Route::post('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'verifyPin'])
-        ->middleware('throttle:5,1')
+        ->middleware(['throttle:5,1', 'throttle:nimbus-access-code'])
         ->name('auth.verify.post');
     Route::post('/sair', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'logout'])->name('auth.logout');
 

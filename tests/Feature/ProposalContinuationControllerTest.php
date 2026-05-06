@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ProposalStatus;
+use App\Jobs\ScanFileForMalware;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalRepresentative;
@@ -8,6 +9,7 @@ use App\Models\ProposalSector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -71,6 +73,51 @@ it('rejects file uploads with disallowed MIME types in the continuation store', 
             ['arquivos' => [UploadedFile::fake()->create('exploit.exe', 100, 'application/x-msdownload')]],
         ))
         ->assertSessionHasErrors('arquivos');
+});
+
+it('stores a checksum on uploaded proposal files (M-3)', function () {
+    Mail::fake();
+    Queue::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create(['name' => 'Representante Comercial', 'queue_position' => 1]);
+    submitInitialProposalThroughComponent($sector);
+
+    $proposal = Proposal::query()->with('latestContinuationAccess')->firstOrFail();
+    $access = $proposal->latestContinuationAccess;
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->post(route('site.proposal.continuation.store', $access), array_merge(
+            controllerContinuationPayload(),
+            ['arquivos' => [UploadedFile::fake()->create('planta.pdf', 100, 'application/pdf')]],
+        ))
+        ->assertSessionHas('success');
+
+    $file = $proposal->fresh()->files->first();
+    expect($file)->not->toBeNull()
+        ->and($file->checksum)->not->toBeNull()
+        ->and(strlen($file->checksum))->toBe(64);
+});
+
+it('dispatches ScanFileForMalware job after storing proposal files (M-8)', function () {
+    Mail::fake();
+    Queue::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create(['name' => 'Representante Comercial', 'queue_position' => 1]);
+    submitInitialProposalThroughComponent($sector);
+
+    $proposal = Proposal::query()->with('latestContinuationAccess')->firstOrFail();
+    $access = $proposal->latestContinuationAccess;
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->post(route('site.proposal.continuation.store', $access), array_merge(
+            controllerContinuationPayload(),
+            ['arquivos' => [UploadedFile::fake()->create('planta.pdf', 100, 'application/pdf')]],
+        ))
+        ->assertSessionHas('success');
+
+    Queue::assertPushed(ScanFileForMalware::class, 1);
 });
 
 it('rejects file uploads that exceed the maximum allowed size', function () {

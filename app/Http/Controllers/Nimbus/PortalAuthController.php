@@ -53,6 +53,8 @@ class PortalAuthController extends Controller
 
         Auth::guard('nimbus')->login($user);
 
+        $request->session()->regenerate();
+
         return redirect()->route('nimbus.dashboard');
     }
 

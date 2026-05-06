@@ -30,7 +30,8 @@
       "Bash(claude plugin *)",
       "Bash(git rm *)",
       "Bash(chmod -R 755 storage/framework/testing/disks/local/)",
-      "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $r = new ReflectionMethod\\(Illuminate\\\\Foundation\\\\Testing\\\\WithFaker::class ?? '\\\\''stdClass'\\\\'', '\\\\''fake'\\\\''\\); echo $r->getFileName\\(\\).'\\\\'':'\\\\''.$r->getStartLine\\(\\);')"
+      "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $r = new ReflectionMethod\\(Illuminate\\\\Foundation\\\\Testing\\\\WithFaker::class ?? '\\\\''stdClass'\\\\'', '\\\\''fake'\\\\''\\); echo $r->getFileName\\(\\).'\\\\'':'\\\\''.$r->getStartLine\\(\\);')",
+      "Bash(./vendor/bin/pint *)"
     ]
   }
 }

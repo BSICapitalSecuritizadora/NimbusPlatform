@@ -66,6 +66,23 @@ it('restricts user and role management to super admins', function () {
         ->and(RoleResource::canViewAny())->toBeFalse();
 });
 
+it('logs user status changes to the activity log when is_active is updated', function () {
+    $target = User::factory()->create(['is_active' => true]);
+
+    $target->update(['is_active' => false]);
+
+    $log = \Spatie\Activitylog\Models\Activity::query()
+        ->where('subject_type', User::class)
+        ->where('subject_id', $target->id)
+        ->where('event', 'updated')
+        ->latest()
+        ->first();
+
+    expect($log)->not->toBeNull()
+        ->and(array_key_exists('is_active', $log->properties['attributes'] ?? []))->toBeTrue()
+        ->and(array_key_exists('is_active', $log->properties['old'] ?? []))->toBeTrue();
+});
+
 it('logs out an inactive user and redirects to admin login when accessing a protected route', function () {
     $user = User::factory()->create([
         'is_active' => false,

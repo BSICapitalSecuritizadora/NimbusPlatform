@@ -18,6 +18,7 @@ class ProposalFile extends Model
         'original_name',
         'mime_type',
         'file_size',
+        'checksum',
     ];
 
     public function proposal(): BelongsTo

@@ -152,10 +152,12 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->and($access->last_accessed_at)->not->toBeNull()
         ->and($access->status_label)->toBe('Acessado');
 
+    // Both wrong CNPJ and wrong code now return a single generic error on 'code'
+    // to prevent enumeration of which field is incorrect (H-3 security fix)
     $this->post(route('site.proposal.continuation.verify', $access), [
         'cnpj' => '00.000.000/0000-00',
         'code' => $mailData['code'],
-    ])->assertSessionHasErrors('cnpj');
+    ])->assertSessionHasErrors('code');
 
     $this->post(route('site.proposal.continuation.verify', $access), [
         'cnpj' => $proposal->company->cnpj,

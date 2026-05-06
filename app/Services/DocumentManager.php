@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\Nimbus\StoreSubmissionFileDTO;
+use App\Jobs\ScanFileForMalware;
 use App\Models\Nimbus\Submission;
 use App\Models\Nimbus\SubmissionFile;
 use Illuminate\Support\Facades\DB;
@@ -61,6 +62,12 @@ class DocumentManager
                     'uploaded_by_id' => $dto->uploadedById,
                     'notes' => $dto->notes,
                 ]);
+
+                ScanFileForMalware::dispatch(
+                    DocumentStorageService::PRIVATE_DISK,
+                    $finalPath,
+                    "submission:{$submission->id}",
+                );
 
                 return $submissionFile;
             });

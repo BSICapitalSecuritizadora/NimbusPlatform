@@ -11,7 +11,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: '*');
+        // H-7: scope to explicit proxy IPs via env; set TRUSTED_PROXIES=* on Azure App Service
+        $middleware->trustProxies(at: (string) env('TRUSTED_PROXIES', '127.0.0.1,::1'));
+
+        // H-1: security headers on every web response
+        $middleware->web(prepend: [
+            \App\Http\Middleware\SetSecurityHeaders::class,
+        ]);
 
         $middleware->alias([
             'approved' => \App\Http\Middleware\EnsureUserIsApproved::class,

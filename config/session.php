@@ -169,7 +169,8 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // M-2: default to true in production so cookies are HTTPS-only even if SESSION_SECURE_COOKIE is not set
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV', 'local') === 'production'),
 
     /*
     |--------------------------------------------------------------------------
@@ -199,6 +200,8 @@ return [
     |
     */
 
+    // M-1: 'lax' is required for the Azure SSO OAuth callback (cross-site GET redirect);
+    // 'strict' would silently drop the session cookie on that redirect and break auth.
     'same_site' => env('SESSION_SAME_SITE', 'lax'),
 
     /*

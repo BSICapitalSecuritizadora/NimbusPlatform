@@ -41,6 +41,31 @@ it('authenticates a portal user with a hyphenated access code', function () {
         ->and($portalUser->fresh()->last_login_method)->toBe('ACCESS_CODE');
 });
 
+it('regenerates the session after successful login to prevent session fixation', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Fixação',
+        'email' => 'fixacao@example.com',
+        'document_number' => '12345678903',
+        'phone_number' => '11999999998',
+        'status' => 'ACTIVE',
+    ]);
+
+    AccessToken::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'code' => 'AAAA-BBBB-CCCC',
+        'status' => 'PENDING',
+        'expires_at' => now()->addDays(7),
+    ]);
+
+    $beforeSessionId = session()->getId();
+
+    $this->post(route('nimbus.auth.verify.post'), [
+        'access_code' => 'AAAA-BBBB-CCCC',
+    ])->assertRedirect(route('nimbus.dashboard'));
+
+    expect(session()->getId())->not->toBe($beforeSessionId);
+});
+
 it('does not authenticate with an already used access code', function () {
     $portalUser = PortalUser::query()->create([
         'full_name' => 'Cliente do Portal',

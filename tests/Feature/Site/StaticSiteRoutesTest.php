@@ -3,6 +3,16 @@
 use Illuminate\Routing\ViewController;
 use Illuminate\Support\Facades\Route;
 
+it('includes required security headers on every web response', function () {
+    $response = $this->get(route('site.home'));
+
+    $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+    $response->assertHeader('X-Content-Type-Options', 'nosniff');
+    $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    $response->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+    $response->assertHeader('Content-Security-Policy');
+});
+
 it('renders static public site pages through route views', function (string $routeName, string $view) {
     $this->get(route($routeName))
         ->assertSuccessful()
