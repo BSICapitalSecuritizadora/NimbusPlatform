@@ -17,7 +17,8 @@ it('includes required security headers on every web response', function () {
         ->not->toBeNull()
         ->and($contentSecurityPolicy)->toContain('https://cdn.jsdelivr.net')
         ->and($contentSecurityPolicy)->toContain('https://fonts.googleapis.com')
-        ->and($contentSecurityPolicy)->toContain('https://fonts.gstatic.com');
+        ->and($contentSecurityPolicy)->toContain('https://fonts.gstatic.com')
+        ->and($contentSecurityPolicy)->not->toContain("'unsafe-eval'");
 });
 
 it('renders static public site pages through route views', function (string $routeName, string $view) {

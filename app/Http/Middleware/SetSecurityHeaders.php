@@ -21,13 +21,14 @@ class SetSecurityHeaders
         app(Vite::class)->useCspNonce($nonce);
 
         $response = $next($request);
+        $allowUnsafeEval = $this->shouldAllowUnsafeEval($response);
 
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-XSS-Protection', '0');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-        $response->headers->set('Content-Security-Policy', $this->buildCsp($nonce));
+        $response->headers->set('Content-Security-Policy', $this->buildCsp($nonce, $allowUnsafeEval));
 
         if (app()->isProduction()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -36,14 +37,35 @@ class SetSecurityHeaders
         return $response;
     }
 
-    private function buildCsp(string $nonce): string
+    private function shouldAllowUnsafeEval(Response $response): bool
     {
-        $scriptSources = implode(' ', [
+        $contentType = (string) $response->headers->get('Content-Type', '');
+
+        if (! str_contains($contentType, 'text/html')) {
+            return false;
+        }
+
+        $content = $response->getContent();
+
+        if (! is_string($content) || $content === '') {
+            return false;
+        }
+
+        return str_contains($content, '/flux/flux');
+    }
+
+    private function buildCsp(string $nonce, bool $allowUnsafeEval = false): string
+    {
+        $scriptSources = [
             "'self'",
             "'unsafe-inline'",
             "'nonce-{$nonce}'",
             'https://cdn.jsdelivr.net',
-        ]);
+        ];
+
+        if ($allowUnsafeEval) {
+            $scriptSources[] = "'unsafe-eval'";
+        }
 
         $styleSources = implode(' ', [
             "'self'",
@@ -70,7 +92,7 @@ class SetSecurityHeaders
 
         return implode('; ', [
             "default-src 'self'",
-            "script-src {$scriptSources}",
+            'script-src '.implode(' ', $scriptSources),
             "style-src {$styleSources}",
             "img-src 'self' data: blob: https:",
             "font-src {$fontSources}",

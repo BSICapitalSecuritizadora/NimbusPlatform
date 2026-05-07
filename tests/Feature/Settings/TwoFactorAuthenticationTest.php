@@ -47,10 +47,13 @@ class TwoFactorAuthenticationTest extends TestCase
         $response->assertOk();
 
         $content = $response->getContent();
+        $contentSecurityPolicy = $response->headers->get('Content-Security-Policy');
 
         $this->assertTrue((bool) config('livewire.csp_safe'));
         $this->assertMatchesRegularExpression('/<script nonce="[^"]*">\\s*window\\.Flux =/s', $content);
         $this->assertMatchesRegularExpression('/<script[^>]*src="[^"]*\\/flux\\/flux(?:\\.min)?\\.js[^"]*"[^>]*nonce="[^"]*"/', $content);
+        $this->assertNotNull($contentSecurityPolicy);
+        $this->assertStringContainsString("'unsafe-eval'", $contentSecurityPolicy);
     }
 
     public function test_two_factor_settings_page_does_not_require_local_password_confirmation(): void
