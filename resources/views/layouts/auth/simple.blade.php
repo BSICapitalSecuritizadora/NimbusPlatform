@@ -17,6 +17,6 @@
                 </div>
             </div>
         </div>
-        @fluxScripts
+        @fluxScripts(['nonce' => \Illuminate\Support\Facades\Vite::cspNonce()])
     </body>
 </html>
