@@ -45,9 +45,25 @@ it('shows the new expense categories on the create form', function () {
 
     Livewire::test(CreateExpense::class)
         ->assertFormFieldExists('category', function (Select $field): bool {
-            $options = $field->getOptions();
-
-            return isset($options['Horas complementares'], $options['Auditoria'], $options['IPTU']);
+            return array_keys($field->getOptions()) === [
+                'Agente Fiduciário',
+                'AGT',
+                'Assessor Jurídico',
+                'Auditoria',
+                'Cartório',
+                'Cetip',
+                'Contabilidade',
+                'Coordenador Líder',
+                'Custódia da CCI',
+                'Custodiante',
+                'Engenharia',
+                'Escriturador',
+                'Fee - Securitizadora',
+                'Horas complementares',
+                'IPTU',
+                'Patrimônio Separado',
+                'Servicer',
+            ];
         });
 });
 
