@@ -11,6 +11,7 @@ use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -37,6 +38,17 @@ it('shows filters for operation and category on the expenses list page', functio
     Livewire::test(ListExpenses::class)
         ->assertTableFilterExists('emission_id')
         ->assertTableFilterExists('category');
+});
+
+it('shows the new expense categories on the create form', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    Livewire::test(CreateExpense::class)
+        ->assertFormFieldExists('category', function (Select $field): bool {
+            $options = $field->getOptions();
+
+            return isset($options['Horas complementares'], $options['Auditoria'], $options['IPTU']);
+        });
 });
 
 it('creates an expense linked to the selected operation and service provider', function () {

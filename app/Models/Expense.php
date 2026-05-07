@@ -26,6 +26,9 @@ class Expense extends Model
         'Custódia da CCI' => 'Custódia da CCI',
         'AGT' => 'AGT',
         'Cartório' => 'Cartório',
+        'Horas complementares' => 'Horas complementares',
+        'Auditoria' => 'Auditoria',
+        'IPTU' => 'IPTU',
     ];
 
     public const PERIOD_SINGLE = 'single';
