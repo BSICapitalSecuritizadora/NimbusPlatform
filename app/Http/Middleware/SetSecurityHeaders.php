@@ -21,7 +21,7 @@ class SetSecurityHeaders
         app(Vite::class)->useCspNonce($nonce);
 
         $response = $next($request);
-        $allowUnsafeEval = $this->shouldAllowUnsafeEval($response);
+        $allowUnsafeEval = $this->shouldAllowUnsafeEval($request, $response);
 
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
@@ -37,8 +37,12 @@ class SetSecurityHeaders
         return $response;
     }
 
-    private function shouldAllowUnsafeEval(Response $response): bool
+    private function shouldAllowUnsafeEval(Request $request, Response $response): bool
     {
+        if ($request->is('admin') || $request->is('admin/*')) {
+            return true;
+        }
+
         $contentType = (string) $response->headers->get('Content-Type', '');
 
         if (! str_contains($contentType, 'text/html')) {
@@ -51,7 +55,9 @@ class SetSecurityHeaders
             return false;
         }
 
-        return str_contains($content, '/flux/flux');
+        return str_contains($content, '/flux/flux')
+            || str_contains($content, '/livewire/livewire')
+            || str_contains($content, 'window.livewireScriptConfig');
     }
 
     private function buildCsp(string $nonce, bool $allowUnsafeEval = false): string

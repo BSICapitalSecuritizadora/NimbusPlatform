@@ -73,6 +73,36 @@ it('creates an expense linked to the selected operation and service provider', f
         ->and($expense?->end_date)->toBeNull();
 });
 
+it('creates an expense without a service provider', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $emission = Emission::factory()->create([
+        'name' => 'Operação Sem Prestador',
+    ]);
+
+    Livewire::test(CreateExpense::class)
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'category' => 'Servicer',
+            'amount' => '980,00',
+            'period' => Expense::PERIOD_SINGLE,
+            'start_date' => '2026-04-18',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $expense = Expense::query()->first();
+
+    expect($expense)->not->toBeNull()
+        ->and($expense?->emission_id)->toBe($emission->id)
+        ->and($expense?->expense_service_provider_id)->toBeNull()
+        ->and($expense?->category)->toBe('Servicer')
+        ->and($expense?->amount)->toBe('980.00')
+        ->and($expense?->period)->toBe(Expense::PERIOD_SINGLE)
+        ->and($expense?->start_date?->toDateString())->toBe('2026-04-18')
+        ->and($expense?->end_date)->toBeNull();
+});
+
 it('requires an end date for recurring expense periods and hides it for single expenses', function () {
     $this->actingAs(makeExpenseAdminUser());
 
@@ -220,6 +250,48 @@ it('creates a service provider inline from the expense form', function () {
         ->not->toBeNull()
         ->name->toBe('Prestador Inline')
         ->expense_service_provider_type_id->toBe($serviceProviderType->id);
+});
+
+it('fills the service provider name automatically from cnpj on the direct create page', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    Http::fake([
+        'https://publica.cnpj.ws/cnpj/*' => Http::response([
+            'razao_social' => 'Razão Social Direta Ltda',
+            'estabelecimento' => [
+                'nome_fantasia' => 'Prestador Direto',
+            ],
+        ]),
+    ]);
+
+    Livewire::test(CreateExpenseServiceProvider::class)
+        ->fillForm([
+            'cnpj' => '12.345.678/0001-90',
+        ])
+        ->assertFormSet([
+            'name' => 'Prestador Direto',
+        ]);
+});
+
+it('creates a service provider type inline from the direct create page', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    Livewire::test(CreateExpenseServiceProvider::class)
+        ->assertFormComponentActionExists('expense_service_provider_type_id', 'createOption')
+        ->mountFormComponentAction('expense_service_provider_type_id', 'createOption')
+        ->fillForm([
+            'name' => 'Tipo criado inline',
+        ])
+        ->callMountedAction()
+        ->assertHasNoFormErrors()
+        ->assertFormSet([
+            'expense_service_provider_type_id' => (string) ExpenseServiceProviderType::query()
+                ->where('name', 'Tipo criado inline')
+                ->value('id'),
+        ]);
+
+    expect(ExpenseServiceProviderType::query()->where('name', 'Tipo criado inline')->exists())
+        ->toBeTrue();
 });
 
 it('prevents duplicate service provider cnpj registrations', function () {

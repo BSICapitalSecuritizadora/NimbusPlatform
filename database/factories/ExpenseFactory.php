@@ -31,4 +31,11 @@ class ExpenseFactory extends Factory
             'end_date' => null,
         ];
     }
+
+    public function withoutServiceProvider(): static
+    {
+        return $this->state(fn (): array => [
+            'expense_service_provider_id' => null,
+        ]);
+    }
 }

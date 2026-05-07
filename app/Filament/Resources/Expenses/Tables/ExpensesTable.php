@@ -28,6 +28,7 @@ class ExpensesTable
 
                 TextColumn::make('serviceProvider.name')
                     ->label('Prestador de serviço')
+                    ->placeholder('Não informado')
                     ->searchable()
                     ->sortable(),
 

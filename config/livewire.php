@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'csp_safe' => true,
+    'csp_safe' => false,
 ];

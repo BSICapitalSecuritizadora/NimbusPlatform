@@ -63,22 +63,17 @@ it('registers the Despesas subsection inside Gestão', function () {
     $serviceProviderItem = collect($expenseItem?->getChildItems() ?? [])
         ->first(fn ($item) => $item->getLabel() === 'Prestadores de serviço');
 
-    expect(ExpenseResource::getNavigationGroup())->toBe(ExpenseServiceProviderTypeResource::getNavigationGroup())
-        ->and(ExpenseResource::getNavigationGroup())->toBe(ExpenseServiceProviderResource::getNavigationGroup())
+    expect(ExpenseResource::getNavigationGroup())->toBe('Gestão')
         ->and(ExpenseResource::shouldRegisterNavigation())->toBeFalse()
         ->and(SalesBoardResource::getNavigationGroup())->toBe('Gestão')
         ->and(SalesBoardResource::getNavigationLabel())->toBe('Quadro de Vendas')
-        ->and(ExpenseServiceProviderTypeResource::getNavigationParentItem())->toBe('Despesas')
-        ->and(ExpenseServiceProviderTypeResource::getNavigationLabel())->toBe('Tipos de prestador de serviço')
-        ->and(ExpenseServiceProviderResource::getNavigationParentItem())->toBe('Despesas')
-        ->and(ExpenseServiceProviderResource::getNavigationLabel())->toBe('Prestadores de serviço')
         ->and($expensesGroup)->not->toBeNull()
         ->and($expenseItem)->not->toBeNull()
         ->and($expenseItem->getUrl())->toBe(ExpenseResource::getUrl(panel: 'admin'))
         ->and($salesBoardItem)->not->toBeNull()
         ->and($salesBoardItem->getUrl())->toBe(SalesBoardResource::getUrl(panel: 'admin'))
-        ->and($serviceProviderTypeItem)->not->toBeNull()
-        ->and($serviceProviderItem)->not->toBeNull();
+        ->and($serviceProviderTypeItem)->toBeNull()
+        ->and($serviceProviderItem)->toBeNull();
 });
 
 it('registers the Fundos subsection inside Cadastro', function () {
@@ -104,6 +99,29 @@ it('registers the Fundos subsection inside Cadastro', function () {
         ->and($fundItem->getUrl())->toBe(FundResource::getUrl(panel: 'admin'))
         ->and($constructionItem)->not->toBeNull()
         ->and($constructionItem->getUrl())->toBe(ConstructionResource::getUrl(panel: 'admin'));
+});
+
+it('registers the service provider resources inside Cadastro', function () {
+    $this->actingAs(makeNavigationAdminUser());
+
+    $registrationGroup = collect(Filament::getPanel('admin')->getNavigation())
+        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Cadastro');
+    $serviceProviderTypeItem = collect($registrationGroup?->getItems() ?? [])
+        ->first(fn ($item) => $item->getLabel() === 'Tipos de prestador de serviço');
+    $serviceProviderItem = collect($registrationGroup?->getItems() ?? [])
+        ->first(fn ($item) => $item->getLabel() === 'Prestadores de serviço');
+
+    expect(ExpenseServiceProviderTypeResource::getNavigationGroup())->toBe('Cadastro')
+        ->and(ExpenseServiceProviderTypeResource::getNavigationParentItem())->toBeNull()
+        ->and(ExpenseServiceProviderTypeResource::getNavigationLabel())->toBe('Tipos de prestador de serviço')
+        ->and(ExpenseServiceProviderResource::getNavigationGroup())->toBe('Cadastro')
+        ->and(ExpenseServiceProviderResource::getNavigationParentItem())->toBeNull()
+        ->and(ExpenseServiceProviderResource::getNavigationLabel())->toBe('Prestadores de serviço')
+        ->and($registrationGroup)->not->toBeNull()
+        ->and($serviceProviderTypeItem)->not->toBeNull()
+        ->and($serviceProviderTypeItem->getUrl())->toBe(ExpenseServiceProviderTypeResource::getUrl(panel: 'admin'))
+        ->and($serviceProviderItem)->not->toBeNull()
+        ->and($serviceProviderItem->getUrl())->toBe(ExpenseServiceProviderResource::getUrl(panel: 'admin'));
 });
 
 it('uses pt-BR labels and translations for admin resources', function () {

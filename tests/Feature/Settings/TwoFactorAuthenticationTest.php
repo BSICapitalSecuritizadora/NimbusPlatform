@@ -37,7 +37,7 @@ class TwoFactorAuthenticationTest extends TestCase
             ->assertSee('Desabilitada');
     }
 
-    public function test_two_factor_settings_page_renders_csp_safe_assets(): void
+    public function test_two_factor_settings_page_renders_livewire_assets_compatible_with_the_project_csp(): void
     {
         $user = User::factory()->create();
 
@@ -49,7 +49,7 @@ class TwoFactorAuthenticationTest extends TestCase
         $content = $response->getContent();
         $contentSecurityPolicy = $response->headers->get('Content-Security-Policy');
 
-        $this->assertTrue((bool) config('livewire.csp_safe'));
+        $this->assertFalse((bool) config('livewire.csp_safe'));
         $this->assertMatchesRegularExpression('/<script nonce="[^"]*">\\s*window\\.Flux =/s', $content);
         $this->assertMatchesRegularExpression('/<script[^>]*src="[^"]*\\/flux\\/flux(?:\\.min)?\\.js[^"]*"[^>]*nonce="[^"]*"/', $content);
         $this->assertNotNull($contentSecurityPolicy);

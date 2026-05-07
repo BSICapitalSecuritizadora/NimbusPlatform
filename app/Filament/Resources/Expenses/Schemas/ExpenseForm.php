@@ -38,8 +38,7 @@ class ExpenseForm
                         ->relationship('serviceProvider', 'name')
                         ->searchable(['name', 'cnpj'])
                         ->preload()
-                        ->required()
-                        ->helperText('Se o prestador ainda não estiver cadastrado, use a ação "Cadastrar prestador".')
+                        ->helperText('Opcional. Se o prestador ainda não estiver cadastrado, use a ação "Cadastrar prestador".')
                         ->createOptionForm(ExpenseServiceProviderForm::fields())
                         ->editOptionForm(ExpenseServiceProviderForm::fields())
                         ->createOptionAction(

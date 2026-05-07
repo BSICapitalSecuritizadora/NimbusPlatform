@@ -31,11 +31,9 @@ class ExpenseServiceProviderTypeResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|UnitEnum|null $navigationGroup = 'Cadastro';
 
-    protected static ?string $navigationParentItem = 'Despesas';
-
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 41;
 
     public static function form(Schema $schema): Schema
     {
