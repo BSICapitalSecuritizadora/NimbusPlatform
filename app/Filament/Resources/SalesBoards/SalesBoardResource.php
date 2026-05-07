@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesBoards;
 use App\Filament\Resources\SalesBoards\Pages\CreateSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\EditSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\ListSalesBoards;
+use App\Filament\Resources\SalesBoards\RelationManagers\SalesBoardHistoriesRelationManager;
 use App\Filament\Resources\SalesBoards\Schemas\SalesBoardForm;
 use App\Filament\Resources\SalesBoards\Tables\SalesBoardsTable;
 use App\Models\SalesBoard;
@@ -48,7 +49,7 @@ class SalesBoardResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            SalesBoardHistoriesRelationManager::class,
         ];
     }
 

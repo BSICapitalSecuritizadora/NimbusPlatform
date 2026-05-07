@@ -217,6 +217,45 @@ it('formats the saved amount correctly when reopening an expense for editing', f
         ]);
 });
 
+it('updates an existing expense without a service provider', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $emission = Emission::factory()->create([
+        'name' => 'OperaÃ§Ã£o Editada',
+    ]);
+    $serviceProvider = ExpenseServiceProvider::factory()->create([
+        'name' => 'Prestador Inicial',
+    ]);
+    $expense = Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Servicer',
+        'amount' => 570.50,
+        'period' => Expense::PERIOD_SINGLE,
+        'start_date' => '2026-04-07',
+        'end_date' => null,
+    ]);
+
+    Livewire::test(EditExpense::class, [
+        'record' => $expense->getRouteKey(),
+    ])
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'category' => 'Servicer',
+            'expense_service_provider_id' => null,
+            'amount' => '570,50',
+            'period' => Expense::PERIOD_SINGLE,
+            'start_date' => '2026-04-07',
+            'end_date' => null,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($expense->fresh())
+        ->expense_service_provider_id->toBeNull()
+        ->amount->toBe('570.50');
+});
+
 it('creates a service provider inline from the expense form', function () {
     $this->actingAs(makeExpenseAdminUser());
     $serviceProviderType = ExpenseServiceProviderType::factory()->create([

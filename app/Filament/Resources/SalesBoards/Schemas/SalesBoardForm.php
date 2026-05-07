@@ -138,6 +138,7 @@ class SalesBoardForm
         return TextInput::make($name)
             ->label($label)
             ->required()
+            ->default(0)
             ->numeric()
             ->integer()
             ->minValue(0)
@@ -155,6 +156,7 @@ class SalesBoardForm
         return TextInput::make($name)
             ->label($label)
             ->required()
+            ->default(0)
             ->prefix('R$')
             ->inputMode('decimal')
             ->mask(RawJs::make(<<<'JS'

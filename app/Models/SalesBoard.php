@@ -8,11 +8,24 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesBoard extends Model
 {
     /** @use HasFactory<\Database\Factories\SalesBoardFactory> */
     use HasFactory;
+
+    protected const TRACKED_VALUE_FIELDS = [
+        'stock_units',
+        'financed_units',
+        'paid_units',
+        'exchanged_units',
+        'total_units',
+        'stock_value',
+        'financed_value',
+        'paid_value',
+        'exchanged_value',
+    ];
 
     protected $fillable = [
         'emission_id',
@@ -63,12 +76,39 @@ class SalesBoard extends Model
         return $this->belongsTo(Construction::class);
     }
 
+    public function valueHistories(): HasMany
+    {
+        return $this->hasMany(SalesBoardHistory::class);
+    }
+
     public function calculateTotalUnits(): int
     {
         return (int) $this->stock_units
             + (int) $this->financed_units
             + (int) $this->paid_units
             + (int) $this->exchanged_units;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function hasTrackedValueChanges(array $data): bool
+    {
+        $currentValues = $this->trackedValueSnapshotData();
+        $incomingValues = $this->trackedValueSnapshotData($data);
+
+        foreach (self::TRACKED_VALUE_FIELDS as $field) {
+            if ($currentValues[$field] !== $incomingValues[$field]) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function snapshotTrackedValues(): SalesBoardHistory
+    {
+        return $this->valueHistories()->create($this->trackedValueSnapshotData());
     }
 
     public function getFormattedReferenceMonthAttribute(): string
@@ -142,5 +182,35 @@ class SalesBoard extends Model
         }
 
         return Carbon::parse($referenceMonth)->format('m/Y');
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, int|float|string|null>
+     */
+    protected function trackedValueSnapshotData(array $overrides = []): array
+    {
+        $stockUnits = self::normalizeIntegerValue($overrides['stock_units'] ?? $this->stock_units);
+        $financedUnits = self::normalizeIntegerValue($overrides['financed_units'] ?? $this->financed_units);
+        $paidUnits = self::normalizeIntegerValue($overrides['paid_units'] ?? $this->paid_units);
+        $exchangedUnits = self::normalizeIntegerValue($overrides['exchanged_units'] ?? $this->exchanged_units);
+
+        return [
+            'reference_month' => self::normalizeReferenceMonth($overrides['reference_month'] ?? $this->reference_month),
+            'stock_units' => $stockUnits,
+            'financed_units' => $financedUnits,
+            'paid_units' => $paidUnits,
+            'exchanged_units' => $exchangedUnits,
+            'total_units' => $stockUnits + $financedUnits + $paidUnits + $exchangedUnits,
+            'stock_value' => MoneyFormatter::normalizeDecimalValue($overrides['stock_value'] ?? $this->stock_value),
+            'financed_value' => MoneyFormatter::normalizeDecimalValue($overrides['financed_value'] ?? $this->financed_value),
+            'paid_value' => MoneyFormatter::normalizeDecimalValue($overrides['paid_value'] ?? $this->paid_value),
+            'exchanged_value' => MoneyFormatter::normalizeDecimalValue($overrides['exchanged_value'] ?? $this->exchanged_value),
+        ];
+    }
+
+    protected static function normalizeIntegerValue(mixed $value): int
+    {
+        return MoneyFormatter::normalizeIntegerValue($value);
     }
 }
