@@ -38,13 +38,43 @@ class SetSecurityHeaders
 
     private function buildCsp(string $nonce): string
     {
+        $scriptSources = implode(' ', [
+            "'self'",
+            "'unsafe-inline'",
+            "'nonce-{$nonce}'",
+            'https://cdn.jsdelivr.net',
+        ]);
+
+        $styleSources = implode(' ', [
+            "'self'",
+            "'unsafe-inline'",
+            'https://cdn.jsdelivr.net',
+            'https://fonts.googleapis.com',
+        ]);
+
+        $fontSources = implode(' ', [
+            "'self'",
+            'data:',
+            'https://cdn.jsdelivr.net',
+            'https://fonts.gstatic.com',
+        ]);
+
+        $connectSources = implode(' ', [
+            "'self'",
+            'https://cdn.jsdelivr.net',
+            'https://fonts.googleapis.com',
+            'https://fonts.gstatic.com',
+            'wss:',
+            'ws:',
+        ]);
+
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'nonce-{$nonce}'",
-            "style-src 'self' 'unsafe-inline'",
+            "script-src {$scriptSources}",
+            "style-src {$styleSources}",
             "img-src 'self' data: blob: https:",
-            "font-src 'self' data:",
-            "connect-src 'self' wss: ws:",
+            "font-src {$fontSources}",
+            "connect-src {$connectSources}",
             "frame-ancestors 'self'",
             "form-action 'self'",
             "base-uri 'self'",

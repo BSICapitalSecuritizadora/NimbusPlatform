@@ -5,12 +5,19 @@ use Illuminate\Support\Facades\Route;
 
 it('includes required security headers on every web response', function () {
     $response = $this->get(route('site.home'));
+    $contentSecurityPolicy = $response->headers->get('Content-Security-Policy');
 
     $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
     $response->assertHeader('X-Content-Type-Options', 'nosniff');
     $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     $response->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
     $response->assertHeader('Content-Security-Policy');
+
+    expect($contentSecurityPolicy)
+        ->not->toBeNull()
+        ->and($contentSecurityPolicy)->toContain('https://cdn.jsdelivr.net')
+        ->and($contentSecurityPolicy)->toContain('https://fonts.googleapis.com')
+        ->and($contentSecurityPolicy)->toContain('https://fonts.gstatic.com');
 });
 
 it('renders static public site pages through route views', function (string $routeName, string $view) {
