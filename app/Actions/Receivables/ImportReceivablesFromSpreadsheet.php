@@ -13,6 +13,12 @@ use Spatie\SimpleExcel\SimpleExcelReader;
 
 class ImportReceivablesFromSpreadsheet
 {
+    protected const SUMMARY_SHEET_NAMES = [
+        'Resumo',
+        'Planilha1',
+        'Plan1',
+    ];
+
     protected const FIELD_MAP = [
         'mes_ano_referencia' => 'reference_month',
         'id_da_carteira' => 'portfolio_id',
@@ -153,9 +159,9 @@ class ImportReceivablesFromSpreadsheet
      */
     public function handle(string $path, Emission $emission): array
     {
-        $this->ensureRequiredSheet($path);
+        $summarySheetName = $this->resolveSummarySheetName($path);
 
-        [$mappedData, $payload] = $this->extractSummaryData($path);
+        [$mappedData, $payload] = $this->extractSummaryData($path, $summarySheetName);
         $mappedData['emission_id'] = $emission->id;
         $mappedData['summary_payload'] = $payload;
 
@@ -194,24 +200,31 @@ class ImportReceivablesFromSpreadsheet
         ];
     }
 
-    protected function ensureRequiredSheet(string $path): void
+    protected function resolveSummarySheetName(string $path): string
     {
         $sheetNames = SimpleExcelReader::create($path)->getSheetNames();
 
-        if (! in_array('Resumo', $sheetNames, true)) {
-            throw ValidationException::withMessages([
-                'file' => ['A planilha precisa conter a aba "Resumo".'],
-            ]);
+        foreach (self::SUMMARY_SHEET_NAMES as $sheetName) {
+            if (in_array($sheetName, $sheetNames, true)) {
+                return $sheetName;
+            }
         }
+
+        throw ValidationException::withMessages([
+            'file' => [
+                'Nao foi encontrada nenhuma aba valida para importacao.',
+                'Ajuste o arquivo para que ele contenha a aba com o nome "Resumo".',
+            ],
+        ]);
     }
 
     /**
      * @return array{0: array<string, mixed>, 1: array<int, array<string, mixed>>}
      */
-    protected function extractSummaryData(string $path): array
+    protected function extractSummaryData(string $path, string $summarySheetName): array
     {
         $rows = SimpleExcelReader::create($path)
-            ->fromSheetName('Resumo')
+            ->fromSheetName($summarySheetName)
             ->noHeaderRow()
             ->getRows();
 
@@ -272,7 +285,7 @@ class ImportReceivablesFromSpreadsheet
 
             throw ValidationException::withMessages([
                 'file' => [
-                    'A aba "Resumo" nao segue a estrutura esperada para importacao.',
+                    'A aba usada para importacao nao segue a estrutura esperada.',
                     'Linhas ausentes: '.implode(', ', $missingRows).'.',
                 ],
             ]);

@@ -248,6 +248,48 @@ it('imports a receivable summary from the resumo sheet only and binds it to the 
         ->and($receivable?->summary_payload)->toHaveCount(56);
 });
 
+it('imports a receivable summary from the Planilha1 sheet when Resumo is missing', function () {
+    $emission = Emission::factory()->create([
+        'name' => 'CRI Importacao Planilha1',
+    ]);
+
+    $spreadsheetPath = storeReceivableSummarySpreadsheet(makeSummaryRows(), summarySheetName: 'Planilha1');
+
+    $result = app(ImportReceivablesFromSpreadsheet::class)->handle(
+        Storage::disk('local')->path($spreadsheetPath),
+        $emission,
+    );
+
+    $receivable = Receivable::query()->where('emission_id', $emission->id)->sole();
+
+    expect($result['created'])->toBe(1)
+        ->and($result['updated'])->toBe(0)
+        ->and($receivable->reference_month?->toDateString())->toBe('2026-03-01')
+        ->and($receivable->portfolio_id)->toBe('98')
+        ->and($receivable->average_rate_details)->toBe("INCC-DI - 11.33% a.a\nIPCA - 10.28% a.a");
+});
+
+it('imports a receivable summary from the Plan1 sheet when Resumo is missing', function () {
+    $emission = Emission::factory()->create([
+        'name' => 'CRI Importacao Plan1',
+    ]);
+
+    $spreadsheetPath = storeReceivableSummarySpreadsheet(makeAlternativeSummaryRows(), summarySheetName: 'Plan1');
+
+    $result = app(ImportReceivablesFromSpreadsheet::class)->handle(
+        Storage::disk('local')->path($spreadsheetPath),
+        $emission,
+    );
+
+    $receivable = Receivable::query()->where('emission_id', $emission->id)->sole();
+
+    expect($result['created'])->toBe(1)
+        ->and($result['updated'])->toBe(0)
+        ->and($receivable->reference_month?->toDateString())->toBe('2026-04-01')
+        ->and($receivable->portfolio_id)->toContain('RESIDENCIAL RIO BRANCO')
+        ->and($receivable->linked_credits_current_amount)->toBe('258196.41');
+});
+
 it('imports alternative resumo layouts with a textual carteira and derived linked credits current amount', function () {
     $emission = Emission::factory()->create([
         'name' => 'CRI Importacao Alternativa',
@@ -304,7 +346,7 @@ it('updates the existing receivable summary when importing the same emission and
         ->and($receivable->total_outstanding_balance_amount)->toBe('30000000.55');
 });
 
-it('rejects spreadsheets without the resumo sheet', function () {
+it('rejects spreadsheets without Resumo, Planilha1 or Plan1', function () {
     $emission = Emission::factory()->create();
     $spreadsheetPath = storeWorkbookWithoutResumoSheet();
 
@@ -314,10 +356,11 @@ it('rejects spreadsheets without the resumo sheet', function () {
             $emission,
         );
 
-        $this->fail('A importacao deveria rejeitar planilhas sem a aba Resumo.');
+        $this->fail('A importacao deveria rejeitar planilhas sem uma aba valida de resumo.');
     } catch (ValidationException $exception) {
         expect($exception->errors())->toHaveKey('file')
-            ->and($exception->errors()['file'][0])->toContain('aba "Resumo"');
+            ->and($exception->errors()['file'][0])->toContain('nenhuma aba valida')
+            ->and($exception->errors()['file'][1])->toContain('aba com o nome "Resumo"');
     }
 });
 
@@ -476,7 +519,7 @@ function makeAlternativeSummaryRows(): array
 /**
  * @param  array<int, array<int, mixed>>  $summaryRows
  */
-function storeReceivableSummarySpreadsheet(array $summaryRows, bool $withExtraRecebimentoSheet = false): string
+function storeReceivableSummarySpreadsheet(array $summaryRows, bool $withExtraRecebimentoSheet = false, string $summarySheetName = 'Resumo'): string
 {
     Storage::disk('local')->makeDirectory('imports/testing');
 
@@ -486,7 +529,7 @@ function storeReceivableSummarySpreadsheet(array $summaryRows, bool $withExtraRe
     $writer = SimpleExcelWriter::create($absolutePath);
     $writer
         ->noHeaderRow()
-        ->nameCurrentSheet('Resumo')
+        ->nameCurrentSheet($summarySheetName)
         ->addRows($summaryRows);
 
     if ($withExtraRecebimentoSheet) {

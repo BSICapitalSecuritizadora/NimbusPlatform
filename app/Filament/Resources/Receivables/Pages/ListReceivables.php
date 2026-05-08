@@ -51,7 +51,7 @@ class ListReceivables extends ListRecords
                         ->disk('local')
                         ->directory('imports/receivables')
                         ->rules([new ReceivablesSpreadsheetFile])
-                        ->helperText('A competencia e os indicadores serao lidos somente da aba Resumo.')
+                        ->helperText('A competencia e os indicadores serao lidos da aba Resumo. Se ela nao existir, o sistema tentara Planilha1 e Plan1.')
                         ->required(),
                 ])
                 ->action(function (array $data): void {
