@@ -54,22 +54,24 @@ class ListReceivables extends ListRecords
                         ->helperText('A competencia e os indicadores serao lidos da aba Resumo. Se ela nao existir, o sistema tentara Planilha1 e Plan1.')
                         ->required(),
                 ])
-                ->action(function (array $data): void {
+                ->action(function (array $data, Action $action): void {
                     $emission = Emission::query()->findOrFail($data['emission_id']);
                     $path = $this->resolveUploadedSpreadsheetPath($data['file'] ?? null);
 
                     try {
                         $result = app(ImportReceivablesFromSpreadsheet::class)->handle($path, $emission);
                     } catch (ValidationException $exception) {
-                        throw $exception;
+                        $this->notifyImportValidationFailure($exception);
+
+                        $action->halt();
+
+                        return;
                     } catch (\Throwable $exception) {
                         report($exception);
 
-                        Notification::make()
-                            ->title('Erro ao ler a planilha')
-                            ->body('Nao foi possivel processar o arquivo informado.')
-                            ->danger()
-                            ->send();
+                        $this->notifyImportReadFailure();
+
+                        $action->halt();
 
                         return;
                     }
@@ -110,5 +112,40 @@ class ListReceivables extends ListRecords
         throw ValidationException::withMessages([
             'file' => ['Nao foi possivel localizar o arquivo enviado. Envie a planilha novamente.'],
         ]);
+    }
+
+    protected function formatImportValidationErrors(ValidationException $exception): string
+    {
+        $messages = collect($exception->errors())
+            ->flatten()
+            ->filter(fn (mixed $message): bool => filled($message))
+            ->map(fn (mixed $message): string => trim((string) $message))
+            ->values();
+
+        if ($messages->isEmpty()) {
+            return 'Nao foi possivel validar a planilha enviada.';
+        }
+
+        return $messages->implode(PHP_EOL);
+    }
+
+    protected function notifyImportValidationFailure(ValidationException $exception): void
+    {
+        Notification::make()
+            ->title('Importacao nao realizada')
+            ->body($this->formatImportValidationErrors($exception))
+            ->danger()
+            ->persistent()
+            ->send();
+    }
+
+    protected function notifyImportReadFailure(): void
+    {
+        Notification::make()
+            ->title('Erro ao ler a planilha')
+            ->body('Nao foi possivel processar o arquivo informado.')
+            ->danger()
+            ->persistent()
+            ->send();
     }
 }

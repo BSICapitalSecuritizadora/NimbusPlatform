@@ -10,6 +10,7 @@ use App\Rules\ReceivablesSpreadsheetFile;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Action as FilamentAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -133,6 +134,30 @@ it('resolves uploaded spreadsheets from stored paths and uploaded files', functi
         ->toBe(Storage::disk('local')->path($spreadsheetPath))
         ->and($method->invoke($component, $uploadedFile))
         ->toBe($uploadedFile->getRealPath());
+});
+
+it('shows a persistent notification with the import validation message', function () {
+    $this->actingAs(makeReceivableAdminUser());
+
+    $component = Livewire::test(ListReceivables::class)->instance();
+    $method = new ReflectionMethod($component, 'notifyImportValidationFailure');
+    $method->setAccessible(true);
+    $exception = ValidationException::withMessages([
+        'file' => [
+            'Nao foi encontrada nenhuma aba valida para importacao.',
+            'Ajuste o arquivo para que ele contenha a aba com o nome "Resumo".',
+        ],
+    ]);
+
+    $method->invoke($component, $exception);
+
+    Notification::assertNotified(
+        Notification::make()
+            ->title('Importacao nao realizada')
+            ->body("Nao foi encontrada nenhuma aba valida para importacao.\nAjuste o arquivo para que ele contenha a aba com o nome \"Resumo\".")
+            ->danger()
+            ->persistent(),
+    );
 });
 
 it('creates a receivable summary linked to the selected emission', function () {
