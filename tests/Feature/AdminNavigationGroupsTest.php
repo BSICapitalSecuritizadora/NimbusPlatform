@@ -14,6 +14,7 @@ use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
 use App\Filament\Resources\FundTypes\FundTypeResource;
 use App\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource;
+use App\Filament\Resources\Receivables\ReceivableResource;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -74,6 +75,21 @@ it('registers the Despesas subsection inside Gestão', function () {
         ->and($salesBoardItem->getUrl())->toBe(SalesBoardResource::getUrl(panel: 'admin'))
         ->and($serviceProviderTypeItem)->toBeNull()
         ->and($serviceProviderItem)->toBeNull();
+});
+
+it('registers the Recebíveis resource inside Gestão', function () {
+    $this->actingAs(makeNavigationAdminUser());
+
+    $managementGroup = collect(Filament::getPanel('admin')->getNavigation())
+        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Gestão');
+    $receivableItem = collect($managementGroup?->getItems() ?? [])
+        ->first(fn ($item) => $item->getLabel() === 'Recebíveis');
+
+    expect(ReceivableResource::getNavigationGroup())->toBe('Gestão')
+        ->and(ReceivableResource::shouldRegisterNavigation())->toBeTrue()
+        ->and($managementGroup)->not->toBeNull()
+        ->and($receivableItem)->not->toBeNull()
+        ->and($receivableItem->getUrl())->toBe(ReceivableResource::getUrl(panel: 'admin'));
 });
 
 it('registers the Fundos subsection inside Cadastro', function () {

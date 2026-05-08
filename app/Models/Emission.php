@@ -129,6 +129,11 @@ class Emission extends Model
         return $this->hasMany(SalesBoard::class);
     }
 
+    public function receivables(): HasMany
+    {
+        return $this->hasMany(Receivable::class);
+    }
+
     public function funds(): HasMany
     {
         return $this->hasMany(Fund::class);

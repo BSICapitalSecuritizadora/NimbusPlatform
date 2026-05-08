@@ -50,6 +50,10 @@ enum AccessPermission: string
     case SalesBoardsCreate = 'sales-boards.create';
     case SalesBoardsUpdate = 'sales-boards.update';
     case SalesBoardsDelete = 'sales-boards.delete';
+    case ReceivablesView = 'receivables.view';
+    case ReceivablesCreate = 'receivables.create';
+    case ReceivablesUpdate = 'receivables.update';
+    case ReceivablesDelete = 'receivables.delete';
     case RecruitmentVacanciesView = 'recruitment.vacancies.view';
     case RecruitmentVacanciesCreate = 'recruitment.vacancies.create';
     case RecruitmentVacanciesUpdate = 'recruitment.vacancies.update';
@@ -179,6 +183,10 @@ enum AccessPermission: string
             self::SalesBoardsCreate => 'Quadro de vendas: criar',
             self::SalesBoardsUpdate => 'Quadro de vendas: editar',
             self::SalesBoardsDelete => 'Quadro de vendas: excluir',
+            self::ReceivablesView => 'Recebíveis: visualizar',
+            self::ReceivablesCreate => 'Recebíveis: criar',
+            self::ReceivablesUpdate => 'Recebíveis: editar',
+            self::ReceivablesDelete => 'Recebíveis: excluir',
             self::RecruitmentVacanciesView => 'Vagas: visualizar',
             self::RecruitmentVacanciesCreate => 'Vagas: criar',
             self::RecruitmentVacanciesUpdate => 'Vagas: editar',
@@ -264,6 +272,10 @@ enum AccessPermission: string
                 self::SalesBoardsCreate,
                 self::SalesBoardsUpdate,
                 self::SalesBoardsDelete,
+                self::ReceivablesView,
+                self::ReceivablesCreate,
+                self::ReceivablesUpdate,
+                self::ReceivablesDelete,
             ], true) => 'Gestão',
             default => 'Outros',
         };
