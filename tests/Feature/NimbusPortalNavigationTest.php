@@ -84,6 +84,42 @@ it('renders the updated optional document labels in the registration form', func
         ->assertSee('Ata de eleição de diretoria');
 });
 
+it('renders the Nimbus submission and document pages with CSP-compatible scripts', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Teste CSP Portal',
+        'email' => 'teste.csp.portal@example.com',
+        'document_number' => '12345678905',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $submissionCreateResponse = $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.create'));
+
+    $submissionCreateResponse->assertSuccessful()
+        ->assertDontSee('https://code.jquery.com/jquery-3.7.1.min.js', false)
+        ->assertDontSee('https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js', false);
+
+    $submissionCreateContent = $submissionCreateResponse->getContent();
+    $submissionCreatePolicy = $submissionCreateResponse->headers->get('Content-Security-Policy');
+
+    expect($submissionCreateContent)
+        ->toMatch('/<script nonce="[^"]*">\\s*window\\.SubmissionConfig =/s')
+        ->not->toContain('onchange="updateShareholder(')
+        ->not->toContain('oninput="maskCnpj(')
+        ->not->toContain('onclick="removeShareholder(')
+        ->and($submissionCreatePolicy)->toContain('http://localhost:5173');
+
+    $documentsResponse = $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.documents.index'));
+
+    $documentsResponse->assertSuccessful();
+
+    expect($documentsResponse->getContent())
+        ->toMatch('/<script nonce="[^"]*">\\s*function openPreview/s')
+        ->not->toContain('onload="document.getElementById(\'loader\').style.display=\'none\'"');
+});
+
 it('serves Nimbus documents from the private disk even when the default filesystem is public', function () {
     config()->set('filesystems.default', 'public');
 

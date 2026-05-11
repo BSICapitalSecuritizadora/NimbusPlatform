@@ -69,16 +69,34 @@ class SetSecurityHeaders
             'https://cdn.jsdelivr.net',
         ];
 
+        if ($this->shouldAllowViteDevServerSources()) {
+            array_push(
+                $scriptSources,
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+                'http://[::1]:5173',
+            );
+        }
+
         if ($allowUnsafeEval) {
             $scriptSources[] = "'unsafe-eval'";
         }
 
-        $styleSources = implode(' ', [
+        $styleSources = [
             "'self'",
             "'unsafe-inline'",
             'https://cdn.jsdelivr.net',
             'https://fonts.googleapis.com',
-        ]);
+        ];
+
+        if ($this->shouldAllowViteDevServerSources()) {
+            array_push(
+                $styleSources,
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+                'http://[::1]:5173',
+            );
+        }
 
         $fontSources = implode(' ', [
             "'self'",
@@ -87,26 +105,43 @@ class SetSecurityHeaders
             'https://fonts.gstatic.com',
         ]);
 
-        $connectSources = implode(' ', [
+        $connectSources = [
             "'self'",
             'https://cdn.jsdelivr.net',
             'https://fonts.googleapis.com',
             'https://fonts.gstatic.com',
             'wss:',
             'ws:',
-        ]);
+        ];
+
+        if ($this->shouldAllowViteDevServerSources()) {
+            array_push(
+                $connectSources,
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+                'http://[::1]:5173',
+                'ws://localhost:5173',
+                'ws://127.0.0.1:5173',
+                'ws://[::1]:5173',
+            );
+        }
 
         return implode('; ', [
             "default-src 'self'",
-            'script-src '.implode(' ', $scriptSources),
-            "style-src {$styleSources}",
+            'script-src '.implode(' ', array_unique($scriptSources)),
+            'style-src '.implode(' ', array_unique($styleSources)),
             "img-src 'self' data: blob: https:",
             "font-src {$fontSources}",
-            "connect-src {$connectSources}",
+            'connect-src '.implode(' ', array_unique($connectSources)),
             "frame-ancestors 'self'",
             "form-action 'self'",
             "base-uri 'self'",
             "object-src 'none'",
         ]);
+    }
+
+    private function shouldAllowViteDevServerSources(): bool
+    {
+        return app()->runningUnitTests() || app(Vite::class)->isRunningHot();
     }
 }

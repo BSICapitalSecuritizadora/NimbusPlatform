@@ -275,7 +275,10 @@
                                                     <button
                                                         type="button"
                                                         class="doc-action-link"
-                                                        onclick="openPreview('{{ route('nimbus.documents.general.preview', $document) }}', '{{ route('nimbus.documents.general.download', $document) }}', '{{ addslashes($document->title) }}')"
+                                                        data-open-preview
+                                                        data-preview-url="{{ route('nimbus.documents.general.preview', $document) }}"
+                                                        data-download-url="{{ route('nimbus.documents.general.download', $document) }}"
+                                                        data-title="{{ $document->title }}"
                                                     >
                                                         <span>Visualizar</span>
                                                         <i class="bi bi-arrow-up-right text-[11px]"></i>
@@ -361,7 +364,10 @@
                                                     <button
                                                         type="button"
                                                         class="doc-action-link"
-                                                        onclick="openPreview('{{ route('nimbus.documents.preview', $document) }}', '{{ route('nimbus.documents.download', $document) }}', '{{ addslashes($document->title) }}')"
+                                                        data-open-preview
+                                                        data-preview-url="{{ route('nimbus.documents.preview', $document) }}"
+                                                        data-download-url="{{ route('nimbus.documents.download', $document) }}"
+                                                        data-title="{{ $document->title }}"
                                                     >
                                                         <span>Visualizar</span>
                                                         <i class="bi bi-arrow-up-right text-[11px]"></i>
@@ -412,13 +418,13 @@
                     <div class="spinner-border mb-3 text-navy-700" role="status"></div>
                     <div class="font-inter text-[13px] text-ink-400">Carregando visualização...</div>
                 </div>
-                <iframe src="" id="previewFrame" class="h-full w-full border-0" onload="document.getElementById('loader').style.display='none'"></iframe>
+                <iframe src="" id="previewFrame" class="h-full w-full border-0"></iframe>
             </div>
         </div>
     </div>
 </div>
 
-<script>
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
 function openPreview(previewUrl, downloadUrl, title) {
     const modal = new bootstrap.Modal(document.getElementById('previewModal'));
     const frame = document.getElementById('previewFrame');
@@ -433,6 +439,20 @@ function openPreview(previewUrl, downloadUrl, title) {
     download.href = downloadUrl;
     modal.show();
 }
+
+document.getElementById('previewFrame')?.addEventListener('load', () => {
+    const loader = document.getElementById('loader');
+
+    if (loader) {
+        loader.style.display = 'none';
+    }
+});
+
+document.querySelectorAll('[data-open-preview]').forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+        openPreview(trigger.dataset.previewUrl, trigger.dataset.downloadUrl, trigger.dataset.title);
+    });
+});
 
 const documentTabs = document.querySelectorAll('[data-doc-tab]');
 const documentPanes = document.querySelectorAll('.tab-pane-custom');

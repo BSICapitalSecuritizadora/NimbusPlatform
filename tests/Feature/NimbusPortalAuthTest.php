@@ -14,6 +14,15 @@ it('uses the external document management login URL and redirects the legacy URL
         ->assertRedirect('/gestao-documental-externa/login');
 });
 
+it('renders the Nimbus login page with a nonce-protected inline script', function () {
+    $response = $this->get(route('nimbus.auth.request'));
+
+    $response->assertSuccessful();
+
+    expect($response->getContent())
+        ->toMatch('/<script nonce="[^"]*">\\s*\\/\\/ Access Code Formatter/s');
+});
+
 it('authenticates a portal user with a hyphenated access code', function () {
     $portalUser = PortalUser::query()->create([
         'full_name' => 'Cliente do Portal',

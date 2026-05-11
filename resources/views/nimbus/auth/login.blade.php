@@ -335,7 +335,7 @@
     </div>
 
     <!-- Scripts -->
-    <script>
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
         // Access Code Formatter - Real-time formatting
         const codeInput = document.getElementById('access_code');
         

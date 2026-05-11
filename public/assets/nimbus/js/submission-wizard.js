@@ -1,6 +1,6 @@
 /**
- * Gestão Documental Externa - Submission Create Script
- * Responsável pela lógica de máscaras, validação e manipulação de sócios no formulário de criação.
+ * Gestao Documental Externa - Submission Create Script
+ * Responsavel pela logica de mascaras, validacao e manipulacao de socios no formulario de criacao.
  */
 
 (function () {
@@ -9,8 +9,7 @@
     const csrfToken = config.csrfToken || '';
     const cnpjLookupUrl = config.cnpjLookupUrl || '/gestao-documental-externa/submissions/cnpj-lookup';
 
-    // Funções auxiliares globais (necessárias para o HTML gerado dinamicamente)
-    window.maskCnpj = function (input) {
+    const maskCnpj = function (input) {
         let value = input.value.replace(/\D/g, '');
         if (value.length > 14) value = value.slice(0, 14);
         value = value.replace(/^(\d{2})(\d)/, '$1.$2');
@@ -20,7 +19,7 @@
         input.value = value;
     };
 
-    window.maskRg = function (input) {
+    const maskRg = function (input) {
         let value = input.value.replace(/\D/g, '');
         if (value.length > 9) value = value.slice(0, 9);
         value = value.replace(/(\d{2})(\d)/, '$1.$2');
@@ -29,7 +28,7 @@
         input.value = value;
     };
 
-    window.maskCpf = function (input) {
+    const maskCpf = function (input) {
         let value = input.value.replace(/\D/g, '');
         if (value.length > 11) value = value.slice(0, 11);
         value = value.replace(/(\d{3})(\d)/, '$1.$2');
@@ -48,34 +47,63 @@
         return response.json();
     };
 
-    window.updateShareholder = function (index, field, value) {
-        if (shareholders[index]) {
-            shareholders[index][field] = value;
-            document.getElementById('shareholdersData').value = JSON.stringify(shareholders);
+    const syncShareholdersData = function () {
+        const dataInput = document.getElementById('shareholdersData');
+
+        if (dataInput) {
+            dataInput.value = JSON.stringify(shareholders);
         }
     };
 
-    window.removeShareholder = function (index) {
+    const updateShareholderTotals = function () {
+        const total = shareholders.reduce((sum, shareholder) => {
+            return sum + parseFloat(shareholder.percentage || 0);
+        }, 0);
+        const totalEl = document.getElementById('totalPercentage');
+        const warning = document.getElementById('percentageWarning');
+
+        if (!totalEl) {
+            return;
+        }
+
+        totalEl.textContent = total.toFixed(2);
+
+        if (Math.abs(total - 100) > 0.01) {
+            if (warning) warning.style.display = 'block';
+            totalEl.parentElement.classList.add('text-danger');
+            totalEl.parentElement.classList.remove('text-success');
+        } else {
+            if (warning) warning.style.display = 'none';
+            totalEl.parentElement.classList.remove('text-danger');
+            totalEl.parentElement.classList.add('text-success');
+        }
+    };
+
+    const updateShareholder = function (index, field, value) {
+        if (shareholders[index]) {
+            shareholders[index][field] = value;
+            syncShareholdersData();
+            updateShareholderTotals();
+        }
+    };
+
+    const removeShareholder = function (index) {
         shareholders.splice(index, 1);
         renderShareholders();
     };
 
-    window.addShareholder = function () {
+    const addShareholder = function () {
         shareholders.push({ name: '', rg: '', cnpj: '', percentage: 0 });
         renderShareholders();
     };
 
-    // Função principal de renderização
-    window.renderShareholders = function () {
+    const renderShareholders = function () {
         const container = document.getElementById('shareholdersList');
         if (!container) return;
 
         container.innerHTML = '';
-        let total = 0;
 
         shareholders.forEach((shareholder, index) => {
-            total += parseFloat(shareholder.percentage || 0);
-
             const div = document.createElement('div');
             div.className = 'nd-card border-0 shadow-sm rounded-4 bg-white mb-3';
             div.innerHTML = `
@@ -84,32 +112,30 @@
                         <div class="col-md-4">
                             <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">Nome</label>
                             <input type="text" class="form-control bg-light border-0 py-3 px-3 rounded-3" value="${shareholder.name || ''}"
-                                onchange="updateShareholder(${index}, 'name', this.value)" placeholder="Nome do Sócio" aria-label="Nome do sócio">
+                                data-shareholder-field="name" data-shareholder-index="${index}" placeholder="Nome do Socio" aria-label="Nome do socio">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">RG</label>
                             <input type="text" class="form-control bg-light border-0 py-3 px-3 rounded-3" value="${shareholder.rg || ''}"
-                                oninput="maskRg(this)"
-                                onchange="updateShareholder(${index}, 'rg', this.value)" placeholder="00.000.000-0" aria-label="RG do sócio">
+                                data-mask="rg" data-shareholder-field="rg" data-shareholder-index="${index}" placeholder="00.000.000-0" aria-label="RG do socio">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">CNPJ</label>
                             <input type="text" class="form-control bg-light border-0 py-3 px-3 rounded-3" value="${shareholder.cnpj || ''}"
-                                oninput="maskCnpj(this)"
-                                onchange="updateShareholder(${index}, 'cnpj', this.value)" placeholder="00.000.000/0000-00" aria-label="CNPJ do sócio">
+                                data-mask="cnpj" data-shareholder-field="cnpj" data-shareholder-index="${index}" placeholder="00.000.000/0000-00" aria-label="CNPJ do socio">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold text-secondary text-uppercase ls-1 mb-2">Porcentagem (%)</label>
                             <div class="input-group">
                                 <input type="number" step="0.01" class="form-control bg-light border-0 py-3 px-3 rounded-3 rounded-end-0" value="${shareholder.percentage || ''}"
-                                    onchange="updateShareholder(${index}, 'percentage', this.value); renderShareholders();" aria-label="Porcentagem de participação">
+                                    data-shareholder-field="percentage" data-shareholder-index="${index}" aria-label="Porcentagem de participacao">
                                 <span class="input-group-text bg-light border-0 text-muted rounded-3 rounded-start-0">%</span>
                             </div>
                         </div>
                         <div class="col-md-1">
                             <label class="form-label small d-block mb-2">&nbsp;</label>
                             <div class="d-grid">
-                                <button type="button" class="btn btn-outline-danger border-0 bg-danger-subtle text-danger rounded-3 d-flex align-items-center justify-content-center hover-scale" onclick="removeShareholder(${index})" title="Remover Sócio" aria-label="Remover sócio" style="height: 52px;">
+                                <button type="button" class="btn btn-outline-danger border-0 bg-danger-subtle text-danger rounded-3 d-flex align-items-center justify-content-center hover-scale" data-remove-shareholder="${index}" title="Remover Socio" aria-label="Remover socio" style="height: 52px;">
                                     <i class="bi bi-trash fs-5" aria-hidden="true"></i>
                                 </button>
                             </div>
@@ -120,42 +146,20 @@
             container.appendChild(div);
         });
 
-        const totalEl = document.getElementById('totalPercentage');
-        const warning = document.getElementById('percentageWarning');
-
-        if (totalEl) {
-            totalEl.textContent = total.toFixed(2);
-
-            if (Math.abs(total - 100) > 0.01) {
-                if (warning) warning.style.display = 'block';
-                totalEl.parentElement.classList.add('text-danger');
-                totalEl.parentElement.classList.remove('text-success');
-            } else {
-                if (warning) warning.style.display = 'none';
-                totalEl.parentElement.classList.remove('text-danger');
-                totalEl.parentElement.classList.add('text-success');
-            }
-        }
-
-        const dataInput = document.getElementById('shareholdersData');
-        if (dataInput) {
-            dataInput.value = JSON.stringify(shareholders);
-        }
+        syncShareholdersData();
+        updateShareholderTotals();
     };
 
-    // Inicialização ao carregar o DOM
     document.addEventListener('DOMContentLoaded', function () {
-        // Máscara para valores monetários
-        document.querySelectorAll('.money').forEach(input => {
+        document.querySelectorAll('.money').forEach((input) => {
             input.addEventListener('input', function (e) {
                 let value = e.target.value.replace(/\D/g, '');
-                value = (parseInt(value) / 100).toFixed(2);
-                if (isNaN(value)) value = "0.00";
+                value = (parseInt(value, 10) / 100).toFixed(2);
+                if (isNaN(value)) value = '0.00';
                 e.target.value = 'R$ ' + value.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             });
         });
 
-        // Attach masks to static inputs
         const cnpjInput = document.getElementById('company_cnpj');
         if (cnpjInput) cnpjInput.addEventListener('input', function (e) { maskCnpj(e.target); });
 
@@ -165,7 +169,6 @@
         const rgInput = document.getElementById('registrant_rg');
         if (rgInput) rgInput.addEventListener('input', function (e) { maskRg(e.target); });
 
-        // Buscar CNPJ
         const btnSearch = document.getElementById('btnSearchCnpj');
         if (btnSearch) {
             btnSearch.addEventListener('click', async function () {
@@ -221,7 +224,6 @@
             });
         }
 
-        // Compliance
         const usPerson = document.getElementById('is_us_person');
         const pep = document.getElementById('is_pep');
         const noneCompliant = document.getElementById('is_none_compliant');
@@ -238,14 +240,11 @@
                     noneCompliant.checked = false;
                 }
 
-                // Hide error if any is checked
                 if (usPerson.checked || pep.checked || noneCompliant.checked) {
                     if (complianceError) complianceError.style.display = 'none';
                     usPerson.classList.remove('is-invalid');
                     pep.classList.remove('is-invalid');
                     noneCompliant.classList.remove('is-invalid');
-
-                    // A11y update
                     usPerson.removeAttribute('aria-invalid');
                     pep.removeAttribute('aria-invalid');
                     noneCompliant.removeAttribute('aria-invalid');
@@ -258,9 +257,9 @@
         }
 
         if (anbimaAffiliationRadios.length > 0) {
-            anbimaAffiliationRadios.forEach(radio => {
+            anbimaAffiliationRadios.forEach((radio) => {
                 radio.addEventListener('change', function () {
-                    anbimaAffiliationRadios.forEach(input => {
+                    anbimaAffiliationRadios.forEach((input) => {
                         input.classList.remove('is-invalid');
                         input.removeAttribute('aria-invalid');
                     });
@@ -272,16 +271,59 @@
             });
         }
 
-        // Add Shareholder Button
         const btnAddShareholder = document.getElementById('btnAddShareholder');
         if (btnAddShareholder) {
             btnAddShareholder.addEventListener('click', addShareholder);
         }
 
-        // Initial Render
+        const shareholdersList = document.getElementById('shareholdersList');
+        if (shareholdersList) {
+            shareholdersList.addEventListener('input', function (event) {
+                const target = event.target;
+
+                if (!(target instanceof HTMLInputElement)) {
+                    return;
+                }
+
+                if (target.dataset.mask === 'rg') {
+                    maskRg(target);
+                }
+
+                if (target.dataset.mask === 'cnpj') {
+                    maskCnpj(target);
+                }
+
+                const field = target.dataset.shareholderField;
+                const index = Number(target.dataset.shareholderIndex);
+
+                if (!field || Number.isNaN(index)) {
+                    return;
+                }
+
+                updateShareholder(index, field, target.value);
+            });
+
+            shareholdersList.addEventListener('click', function (event) {
+                if (!(event.target instanceof Element)) {
+                    return;
+                }
+
+                const removeTrigger = event.target.closest('[data-remove-shareholder]');
+
+                if (!removeTrigger) {
+                    return;
+                }
+
+                const index = Number(removeTrigger.getAttribute('data-remove-shareholder'));
+
+                if (!Number.isNaN(index)) {
+                    removeShareholder(index);
+                }
+            });
+        }
+
         renderShareholders();
 
-        // Validation on Submit
         const form = document.getElementById('submissionForm');
         if (form) {
             form.addEventListener('submit', function (e) {
@@ -292,60 +334,48 @@
             });
         }
 
-        // ==========================================
-        // Wizard Logic
-        // ==========================================
         let currentStep = 1;
-        const totalSteps = 3;
 
         function showStep(step) {
-            // Hide all steps
-            document.querySelectorAll('.wizard-step').forEach(el => {
+            document.querySelectorAll('.wizard-step').forEach((el) => {
                 el.classList.remove('active');
             });
 
-            // Show target step
             const targetStepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
             if (targetStepEl) {
                 targetStepEl.classList.add('active');
             }
 
-            // Update Stepper UI (Premium Design)
             const steps = document.querySelectorAll('.nd-step-item');
             const progress = document.getElementById('stepperProgress');
 
-            steps.forEach(el => {
-                const s = parseInt(el.getAttribute('data-target'));
+            steps.forEach((el) => {
+                const target = parseInt(el.getAttribute('data-target'), 10);
                 const box = el.querySelector('.nd-step-box');
 
                 el.classList.remove('active');
 
-                // Reset standard classes
                 box.className = 'nd-step-box border border-2 d-flex align-items-center justify-content-center mb-2 mx-auto transition-fast';
                 box.style.width = '48px';
                 box.style.height = '48px';
                 box.style.fontSize = '1.25rem';
 
-                if (s === step) {
-                    // Active Step (Warning Border, White BG)
+                if (target === step) {
                     el.classList.add('active');
                     box.classList.add('bg-white', 'text-warning', 'border-warning', 'shadow-sm');
                     box.classList.remove('text-muted', 'border-light-subtle', 'bg-success', 'border-success', 'text-white');
-                    box.innerHTML = s;
-                } else if (s < step) {
-                    // Completed Step (Success Border, White BG)
+                    box.innerHTML = target;
+                } else if (target < step) {
                     box.classList.add('bg-white', 'text-success', 'border-success', 'shadow-sm');
                     box.classList.remove('text-muted', 'border-light-subtle', 'bg-warning', 'border-warning', 'text-warning');
                     box.innerHTML = '<i class="bi bi-check-lg"></i>';
                 } else {
-                    // Future Step (Muted Border, White BG)
                     box.classList.add('bg-white', 'text-muted', 'border-light-subtle');
                     box.classList.remove('bg-warning', 'text-warning', 'border-warning', 'bg-success', 'border-success', 'shadow-sm');
-                    box.innerHTML = s;
+                    box.innerHTML = target;
                 }
             });
 
-            // Update Progress Bar
             if (progress && steps.length > 1) {
                 const percentage = ((step - 1) / (steps.length - 1)) * 100;
                 progress.style.width = percentage + '%';
@@ -359,25 +389,22 @@
             let isValid = true;
             const stepEl = document.querySelector(`.wizard-step[data-step="${step}"]`);
 
-            // 1. HTML5 Validation for inputs in this step
             const inputs = stepEl.querySelectorAll('input, select, textarea');
-            inputs.forEach(input => {
-                if ((input instanceof HTMLInputElement) && (input.type === 'radio') && (input.name === 'is_anbima_affiliated')) {
+            inputs.forEach((input) => {
+                if ((input instanceof HTMLInputElement) && input.type === 'radio' && input.name === 'is_anbima_affiliated') {
                     return;
                 }
 
                 if (!input.checkValidity()) {
                     isValid = false;
                     input.classList.add('is-invalid');
-                    input.reportValidity(); // Optional: shows browser tooltip
+                    input.reportValidity();
                 } else {
                     input.classList.remove('is-invalid');
                 }
             });
 
-            // 2. Custom Validation
             if (step === 1) {
-                // Compliance Check
                 if (usPerson && pep && noneCompliant && !usPerson.checked && !pep.checked && !noneCompliant.checked) {
                     isValid = false;
                     if (complianceError) complianceError.style.display = 'block';
@@ -387,12 +414,12 @@
                     if (complianceError) complianceError.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
 
-                const hasAnbimaAffiliation = Array.from(anbimaAffiliationRadios).some(radio => radio.checked);
+                const hasAnbimaAffiliation = Array.from(anbimaAffiliationRadios).some((radio) => radio.checked);
 
                 if (anbimaAffiliationRadios.length > 0 && !hasAnbimaAffiliation) {
                     isValid = false;
 
-                    anbimaAffiliationRadios.forEach(radio => {
+                    anbimaAffiliationRadios.forEach((radio) => {
                         radio.classList.add('is-invalid');
                         radio.setAttribute('aria-invalid', 'true');
                     });
@@ -405,19 +432,9 @@
             }
 
             if (step === 2) {
-                // Shareholder Percentage Check
                 const totalEl = document.getElementById('totalPercentage');
                 if (totalEl) {
                     const total = parseFloat(totalEl.textContent);
-                    // Ensure at least one shareholder if strictly required (optional, but logical)
-                    // And check 100%
-                    if (shareholders.length === 0) {
-                        // Optional: Require at least one? The Controller validates it?
-                        // Let's assume yes.
-                        // alert('Adicione pelo menos um sócio.');
-                        // isValid = false; 
-                        // (Keeping loose to avoid blocking if optional, but 100% check implies data)
-                    }
 
                     if (shareholders.length > 0 && Math.abs(total - 100) > 0.01) {
                         isValid = false;
@@ -426,7 +443,7 @@
                             warning.style.display = 'block';
                             warning.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
-                        alert('A soma das participações deve ser 100%');
+                        alert('A soma das participacoes deve ser 100%');
                     }
                 }
             }
@@ -434,24 +451,20 @@
             return isValid;
         }
 
-        // Next Buttons
-        document.querySelectorAll('.btn-next').forEach(btn => {
+        document.querySelectorAll('.btn-next').forEach((btn) => {
             btn.addEventListener('click', function () {
-                const nextStep = parseInt(this.getAttribute('data-next'));
+                const nextStep = parseInt(this.getAttribute('data-next'), 10);
                 if (validateStep(currentStep)) {
                     showStep(nextStep);
                 }
             });
         });
 
-        // Prev Buttons
-        document.querySelectorAll('.btn-prev').forEach(btn => {
+        document.querySelectorAll('.btn-prev').forEach((btn) => {
             btn.addEventListener('click', function () {
-                const prevStep = parseInt(this.getAttribute('data-prev'));
+                const prevStep = parseInt(this.getAttribute('data-prev'), 10);
                 showStep(prevStep);
             });
         });
-
     });
-
 })();
