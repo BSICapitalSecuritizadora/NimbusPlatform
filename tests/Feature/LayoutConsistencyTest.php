@@ -9,9 +9,9 @@ dataset('public-layout-routes', [
     'home' => [
         'site.home',
         [
-            'Securitização e crédito estruturado com excelência técnica, governança rigorosa e presença ativa em todo o ciclo de vida da operação.',
+            'Securitização e crédito estruturado com rigor técnico, governança e acompanhamento ponta a ponta.',
             'Atuação por setor, com aderência ao ativo e à operação',
-            'Da estruturação à gestão: cobertura em todas as fases',
+            'Da estruturação à gestão: cobertura integral da operação',
         ],
     ],
     'services' => [

@@ -4,7 +4,7 @@
 @section('content')
 <section class="hero position-relative overflow-hidden">
     <video autoplay loop muted playsinline class="position-absolute w-100 h-100 object-fit-cover" style="top: 0; left: 0; z-index: 0; opacity: 0.18; pointer-events: none;">
-        <source src="https://opea.com.br/wp-content/themes/opeacapital/assets/video/nova_intro.mp4" type="video/mp4">
+        <source src="{{ asset('videos/logo-animacao-bsi.mp4') }}" type="video/mp4">
     </video>
 
     <div class="container py-4 position-relative">
@@ -12,15 +12,15 @@
             <div class="col-xl-7">
                 <div class="kicker mb-3">Securitização • Mercado de Capitais • Crédito Estruturado</div>
                 <h1 class="display-3 fw-bold mb-4">
-                    Securitização e crédito estruturado com excelência técnica, governança rigorosa e presença ativa em todo o ciclo de vida da operação.
+                    Securitização e crédito estruturado com rigor técnico, governança e acompanhamento ponta a ponta.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    A BSI Capital viabiliza o acesso ao mercado de capitais por meio de modelagens financeiras precisas e gestão de alta proximidade, conectando emissores e investidores com transparência operacional e consistência regulatória.
+                    A BSI Capital conecta emissores e investidores ao mercado de capitais por meio de estruturas financeiras precisas, governança sólida e acompanhamento especializado em todas as etapas da operação.
                 </p>
 
                 <div class="d-flex flex-wrap gap-3 mb-4">
-                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Consultar Viabilidade</a>
-                    <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Pipeline de Emissões</a>
+                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Solicitar Análise</a>
+                    <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Ver Emissões</a>
                 </div>
 
                 <div class="row g-3">
@@ -50,32 +50,32 @@
 
             <div class="col-xl-5">
                 <div class="surface-card-dark p-4 p-lg-5">
-                    <div class="kicker mb-3">Leitura rápida</div>
-                    <h2 class="h3 fw-bold mb-3 text-white">Da estruturação à gestão: cobertura em todas as fases</h2>
+                    <div class="kicker mb-3">ATUAÇÃO PONTA A PONTA</div>
+                    <h2 class="h3 fw-bold mb-3 text-white">Da estruturação à gestão: cobertura integral da operação</h2>
                     <p class="text-white-50 mb-4">
-                        Atuamos desde a concepção jurídico-financeira até o acompanhamento pós-emissão, com processos definidos, documentação controlada e fluxo de informação entre as partes.
+                        Atuamos desde a concepção jurídico-financeira até o acompanhamento pós-emissão, com processos definidos, documentação controlada e fluxo de informações estruturado entre emissores, investidores e partes envolvidas.
                     </p>
 
                     <div class="d-flex flex-column gap-3">
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">1</div>
                             <div>
-                                <div class="fw-semibold text-white mb-1">Arquitetura e Modelagem</div>
-                                <div class="small text-white-50">Desenho estratégico da tese, estruturação jurídico-financeira e coordenação integral da oferta.</div>
+                                <div class="fw-semibold text-white mb-1">Estruturação e Modelagem</div>
+                                <div class="small text-white-50">Desenho da tese, modelagem financeira, estruturação jurídico-regulatória e coordenação da oferta.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">2</div>
                             <div>
-                                <div class="fw-semibold text-white mb-1">Monitoramento de Riscos</div>
-                                <div class="small text-white-50">Gestão ativa de colaterais, acompanhamento de covenants e reporte de eventos de crédito.</div>
+                                <div class="fw-semibold text-white mb-1">Monitoramento e Governança</div>
+                                <div class="small text-white-50">Acompanhamento de covenants, garantias, indicadores da operação e eventos de crédito.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">3</div>
                             <div>
-                                <div class="fw-semibold text-white mb-1">Infraestrutura e Transparência</div>
-                                <div class="small text-white-50">Plataforma própria para controle de dados, trilha de auditoria e visibilidade para investidores.</div>
+                                <div class="fw-semibold text-white mb-1">Transparência e Controle</div>
+                                <div class="small text-white-50">Gestão de documentos, trilha de auditoria, relatórios e visibilidade para investidores.</div>
                             </div>
                         </div>
                     </div>
