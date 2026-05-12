@@ -12,17 +12,32 @@ if [ ! -f "$NGINX_DEFAULT_CONF" ] && [ -f "$NGINX_FALLBACK_CONF" ]; then
 fi
 
 if [ -f "$NGINX_DEFAULT_CONF" ]; then
-    if grep -q "client_max_body_size" "$NGINX_DEFAULT_CONF"; then
-        sed -i "s/client_max_body_size [^;]*;/client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};/" "$NGINX_DEFAULT_CONF"
-    elif grep -q "server_name _;" "$NGINX_DEFAULT_CONF"; then
-        sed -i "/server_name _;/a\\    client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};" "$NGINX_DEFAULT_CONF"
-    else
-        sed -i "/listen \\[::\\]:8080;/a\\    client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};" "$NGINX_DEFAULT_CONF"
-    fi
+    cat > "$NGINX_DEFAULT_CONF" << EOF
+server {
+    listen 8080;
+    listen [::]:8080;
+    root ${LARAVEL_PUBLIC_ROOT};
+    index index.php index.html;
+    server_name _;
+    client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};
 
-    sed -i "s#root /home/site/wwwroot;#root ${LARAVEL_PUBLIC_ROOT};#" "$NGINX_DEFAULT_CONF"
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
 
-    sed -i 's|try_files $uri $uri/ =404;|try_files $uri $uri/ /index.php?$query_string;|' "$NGINX_DEFAULT_CONF"
+    location ~ \\.php\$ {
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_param PATH_INFO \$fastcgi_path_info;
+    }
+
+    location ~ /\\.(?!well-known).* {
+        deny all;
+    }
+}
+EOF
 fi
 
 cd /home/site/wwwroot
