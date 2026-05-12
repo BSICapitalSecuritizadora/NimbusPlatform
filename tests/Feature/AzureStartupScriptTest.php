@@ -15,5 +15,19 @@ it('configures the Azure startup script to raise the nginx body size limit', fun
         ->and($startupScript)->toContain('/etc/nginx/sites-available/default')
         ->and($startupScript)->toContain('/home/site/wwwroot/public')
         ->and($startupScript)->toContain('try_files $uri $uri/ /index.php?$query_string;')
+        ->and($startupScript)->toContain('php artisan migrate --force --no-interaction')
+        ->and($startupScript)->toContain('php artisan optimize')
         ->and($startupScript)->toContain('service nginx reload || service nginx restart || true');
+});
+
+it('ships a .user.ini in public/ to configure PHP upload limits for Azure', function () {
+    $userIniPath = public_path('.user.ini');
+
+    expect(File::exists($userIniPath))->toBeTrue();
+
+    $userIni = File::get($userIniPath);
+
+    expect($userIni)->toContain('upload_max_filesize')
+        ->and($userIni)->toContain('post_max_size')
+        ->and($userIni)->toContain('memory_limit');
 });

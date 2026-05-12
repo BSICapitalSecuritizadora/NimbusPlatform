@@ -4,7 +4,7 @@ set -eu
 
 NGINX_DEFAULT_CONF="/etc/nginx/sites-enabled/default"
 NGINX_FALLBACK_CONF="/etc/nginx/sites-available/default"
-NGINX_CLIENT_MAX_BODY_SIZE="${NGINX_CLIENT_MAX_BODY_SIZE:-64M}"
+NGINX_CLIENT_MAX_BODY_SIZE="${NGINX_CLIENT_MAX_BODY_SIZE:-110M}"
 LARAVEL_PUBLIC_ROOT="/home/site/wwwroot/public"
 
 if [ ! -f "$NGINX_DEFAULT_CONF" ] && [ -f "$NGINX_FALLBACK_CONF" ]; then
@@ -24,5 +24,9 @@ if [ -f "$NGINX_DEFAULT_CONF" ]; then
 
     sed -i 's|try_files $uri $uri/ =404;|try_files $uri $uri/ /index.php?$query_string;|' "$NGINX_DEFAULT_CONF"
 fi
+
+cd /home/site/wwwroot
+php artisan migrate --force --no-interaction
+php artisan optimize
 
 service nginx reload || service nginx restart || true
