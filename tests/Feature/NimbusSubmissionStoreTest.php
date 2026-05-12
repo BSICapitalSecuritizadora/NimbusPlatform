@@ -202,7 +202,7 @@ it('requires the Anbima affiliation answer on submission', function () {
     $this->assertDatabaseCount('nimbus_submissions', 0);
 });
 
-it('rejects submissions when the total size of uploaded documents exceeds 100 MB', function () {
+it('rejects submissions when the total size of uploaded documents exceeds 50 MB', function () {
     $portalUser = PortalUser::query()->create([
         'full_name' => 'Cliente Nimbus',
         'email' => 'cliente.documentos@example.com',
@@ -236,8 +236,8 @@ it('rejects submissions when the total size of uploaded documents exceeds 100 MB
                     'percentage' => 100,
                 ],
             ], JSON_THROW_ON_ERROR),
-            'ultimo_balanco' => UploadedFile::fake()->create('ultimo-balanco.pdf', 52000, 'application/pdf'),
-            'dre' => UploadedFile::fake()->create('dre.pdf', 52000, 'application/pdf'),
+            'ultimo_balanco' => UploadedFile::fake()->create('ultimo-balanco.pdf', 26000, 'application/pdf'),
+            'dre' => UploadedFile::fake()->create('dre.pdf', 26000, 'application/pdf'),
             'politicas' => UploadedFile::fake()->create('politicas.pdf', 100, 'application/pdf'),
             'cartao_cnpj' => UploadedFile::fake()->create('cartao-cnpj.pdf', 100, 'application/pdf'),
             'contrato_social' => UploadedFile::fake()->create('contrato-social.pdf', 100, 'application/pdf'),

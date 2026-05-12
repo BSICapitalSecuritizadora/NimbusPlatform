@@ -78,19 +78,19 @@ class StoreSubmissionRequest extends FormRequest
             'is_anbima_affiliated.required' => 'Informe se você é filiado à Anbima.',
             'is_anbima_affiliated.boolean' => 'Selecione uma opção válida para a filiação à Anbima.',
             'ultimo_balanco.required' => 'Anexe o último balanço patrimonial.',
-            'ultimo_balanco.max' => 'Cada documento pode ter no máximo 100 MB.',
+            'ultimo_balanco.max' => 'Cada documento pode ter no máximo 50 MB.',
             'dre.required' => 'Anexe a DRE.',
-            'dre.max' => 'Cada documento pode ter no máximo 100 MB.',
+            'dre.max' => 'Cada documento pode ter no máximo 50 MB.',
             'politicas.required' => 'Anexe as políticas da empresa.',
-            'politicas.max' => 'Cada documento pode ter no máximo 100 MB.',
+            'politicas.max' => 'Cada documento pode ter no máximo 50 MB.',
             'cartao_cnpj.required' => 'Anexe o cartão CNPJ.',
-            'cartao_cnpj.max' => 'Cada documento pode ter no máximo 100 MB.',
+            'cartao_cnpj.max' => 'Cada documento pode ter no máximo 50 MB.',
             'contrato_social.required' => 'Anexe o contrato social.',
-            'contrato_social.max' => 'Cada documento pode ter no máximo 100 MB.',
+            'contrato_social.max' => 'Cada documento pode ter no máximo 50 MB.',
             'estatuto.required' => 'Anexe o estatuto social.',
-            'estatuto.max' => 'Cada documento pode ter no máximo 100 MB.',
-            'procuracao.max' => 'Cada documento pode ter no máximo 100 MB.',
-            'ata.max' => 'Cada documento pode ter no máximo 100 MB.',
+            'estatuto.max' => 'Cada documento pode ter no máximo 50 MB.',
+            'procuracao.max' => 'Cada documento pode ter no máximo 50 MB.',
+            'ata.max' => 'Cada documento pode ter no máximo 50 MB.',
         ];
     }
 
@@ -120,7 +120,7 @@ class StoreSubmissionRequest extends FormRequest
             if ($totalDocumentBytes > $this->submissionTotalMaxBytes()) {
                 $validator->errors()->add(
                     'documents_total_size',
-                    'O tamanho total de todos os arquivos não pode ultrapassar 100 MB.',
+                    'O tamanho total de todos os arquivos não pode ultrapassar 50 MB.',
                 );
             }
         });
@@ -151,11 +151,11 @@ class StoreSubmissionRequest extends FormRequest
 
     private function submissionFileMaxKb(): int
     {
-        return (int) config('uploads.submission.max_kb', 102400);
+        return (int) config('uploads.submission.max_kb', 51200);
     }
 
     private function submissionTotalMaxBytes(): int
     {
-        return (int) config('uploads.submission.total_max_bytes', 100 * 1024 * 1024);
+        return (int) config('uploads.submission.total_max_bytes', 50 * 1024 * 1024);
     }
 }

@@ -66,9 +66,9 @@ it('maps the nimbus submission request into a typed dto', function () {
 it('uses the configured nimbus submission upload limits', function () {
     $request = new StoreSubmissionRequest;
 
-    expect($request->rules()['ultimo_balanco'])->toContain('max:102400')
-        ->and($request->messages()['ultimo_balanco.max'])->toBe('Cada documento pode ter no máximo 100 MB.')
-        ->and(config('uploads.submission.total_max_bytes'))->toBe(100 * 1024 * 1024);
+    expect($request->rules()['ultimo_balanco'])->toContain('max:51200')
+        ->and($request->messages()['ultimo_balanco.max'])->toBe('Cada documento pode ter no máximo 50 MB.')
+        ->and(config('uploads.submission.total_max_bytes'))->toBe(50 * 1024 * 1024);
 });
 
 it('maps the submission reply request into a typed dto', function () {

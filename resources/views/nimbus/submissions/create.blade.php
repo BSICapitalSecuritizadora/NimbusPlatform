@@ -4,7 +4,7 @@
 @section('content')
 
 @php
-    $submissionDocumentsTotalMaxBytes = (int) config('uploads.submission.total_max_bytes', 100 * 1024 * 1024);
+    $submissionDocumentsTotalMaxBytes = (int) config('uploads.submission.total_max_bytes', 50 * 1024 * 1024);
     $submissionDocumentsTotalMaxMb = (int) ceil($submissionDocumentsTotalMaxBytes / 1024 / 1024);
     $submissionDocumentsTotalErrorMessage = "O tamanho total de todos os arquivos nao pode ultrapassar {$submissionDocumentsTotalMaxMb} MB.";
 @endphp

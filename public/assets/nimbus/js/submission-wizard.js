@@ -8,8 +8,8 @@
     let shareholders = config.shareholders || [];
     const csrfToken = config.csrfToken || '';
     const cnpjLookupUrl = config.cnpjLookupUrl || '/gestao-documental-externa/submissions/cnpj-lookup';
-    const submissionDocumentTotalMaxBytes = Number(config.submissionDocumentTotalMaxBytes || (100 * 1024 * 1024));
-    const submissionDocumentTotalErrorMessage = config.submissionDocumentTotalErrorMessage || 'O tamanho total de todos os arquivos nao pode ultrapassar 100 MB.';
+    const submissionDocumentTotalMaxBytes = Number(config.submissionDocumentTotalMaxBytes || (50 * 1024 * 1024));
+    const submissionDocumentTotalErrorMessage = config.submissionDocumentTotalErrorMessage || 'O tamanho total de todos os arquivos nao pode ultrapassar 50 MB.';
     const documentSizeFormatter = new Intl.NumberFormat('pt-BR', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2

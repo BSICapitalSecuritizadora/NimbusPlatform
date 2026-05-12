@@ -81,7 +81,7 @@ it('renders the updated optional document labels in the registration form', func
         ->assertSuccessful()
         ->assertSee('Documentos (PDF)')
         ->assertSee('Tamanho maximo total dos arquivos')
-        ->assertSee('100 MB')
+        ->assertSee('50 MB')
         ->assertSee('Procuração (Caso houver)')
         ->assertSee('Ata de eleição de diretoria');
 });

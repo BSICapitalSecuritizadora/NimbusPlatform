@@ -34,8 +34,8 @@ return [
     ],
 
     'submission' => [
-        'max_kb' => (int) env('UPLOAD_SUBMISSION_MAX_KB', 102400),
-        'total_max_bytes' => (int) env('UPLOAD_SUBMISSION_TOTAL_MAX_BYTES', 100 * 1024 * 1024),
+        'max_kb' => (int) env('UPLOAD_SUBMISSION_MAX_KB', 51200),
+        'total_max_bytes' => (int) env('UPLOAD_SUBMISSION_TOTAL_MAX_BYTES', 50 * 1024 * 1024),
     ],
 
     'resume' => [
