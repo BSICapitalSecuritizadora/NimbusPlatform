@@ -2,8 +2,13 @@
 
 set -eu
 
-NGINX_DEFAULT_CONF="/etc/nginx/sites-available/default"
+NGINX_DEFAULT_CONF="/etc/nginx/sites-enabled/default"
+NGINX_FALLBACK_CONF="/etc/nginx/sites-available/default"
 NGINX_CLIENT_MAX_BODY_SIZE="${NGINX_CLIENT_MAX_BODY_SIZE:-64M}"
+
+if [ ! -f "$NGINX_DEFAULT_CONF" ] && [ -f "$NGINX_FALLBACK_CONF" ]; then
+    NGINX_DEFAULT_CONF="$NGINX_FALLBACK_CONF"
+fi
 
 if [ -f "$NGINX_DEFAULT_CONF" ]; then
     if grep -q "client_max_body_size" "$NGINX_DEFAULT_CONF"; then

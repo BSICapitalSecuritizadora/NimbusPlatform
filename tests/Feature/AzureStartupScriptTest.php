@@ -11,6 +11,7 @@ it('configures the Azure startup script to raise the nginx body size limit', fun
 
     expect($startupScript)->toContain('NGINX_CLIENT_MAX_BODY_SIZE')
         ->and($startupScript)->toContain('client_max_body_size')
+        ->and($startupScript)->toContain('/etc/nginx/sites-enabled/default')
         ->and($startupScript)->toContain('/etc/nginx/sites-available/default')
         ->and($startupScript)->toContain('service nginx reload || service nginx restart || true');
 });
