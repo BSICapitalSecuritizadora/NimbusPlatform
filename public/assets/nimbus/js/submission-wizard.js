@@ -8,6 +8,12 @@
     let shareholders = config.shareholders || [];
     const csrfToken = config.csrfToken || '';
     const cnpjLookupUrl = config.cnpjLookupUrl || '/gestao-documental-externa/submissions/cnpj-lookup';
+    const submissionDocumentTotalMaxBytes = Number(config.submissionDocumentTotalMaxBytes || (100 * 1024 * 1024));
+    const submissionDocumentTotalErrorMessage = config.submissionDocumentTotalErrorMessage || 'O tamanho total de todos os arquivos nao pode ultrapassar 100 MB.';
+    const documentSizeFormatter = new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+    });
 
     const maskCnpj = function (input) {
         let value = input.value.replace(/\D/g, '');
@@ -45,6 +51,54 @@
         }
 
         return response.json();
+    };
+
+    const formatMegabytes = function (bytes) {
+        return documentSizeFormatter.format(bytes / (1024 * 1024)) + ' MB';
+    };
+
+    const getSubmissionDocumentInputs = function () {
+        return Array.from(document.querySelectorAll('[data-submission-document="true"]'));
+    };
+
+    const getSubmissionDocumentsTotalBytes = function () {
+        return getSubmissionDocumentInputs().reduce((total, input) => {
+            if (!(input instanceof HTMLInputElement) || !input.files || input.files.length === 0) {
+                return total;
+            }
+
+            return total + Array.from(input.files).reduce((fileTotal, file) => fileTotal + file.size, 0);
+        }, 0);
+    };
+
+    const updateSubmissionDocumentState = function () {
+        const totalBytes = getSubmissionDocumentsTotalBytes();
+        const totalSizeValue = document.getElementById('documentsTotalSizeValue');
+        const totalSizeError = document.getElementById('documentsTotalSizeError');
+        const form = document.getElementById('submissionForm');
+        const submitButton = form ? form.querySelector('button[type="submit"]') : null;
+        const hasExceededLimit = totalBytes > submissionDocumentTotalMaxBytes;
+        const hasServerError = totalSizeError && totalSizeError.dataset.hasServerError === 'true';
+
+        if (totalSizeValue) {
+            totalSizeValue.textContent = formatMegabytes(totalBytes);
+            totalSizeValue.classList.toggle('text-danger', hasExceededLimit);
+        }
+
+        if (totalSizeError) {
+            if (totalBytes > 0) {
+                totalSizeError.dataset.hasServerError = 'false';
+            }
+
+            totalSizeError.style.display = (hasExceededLimit || (hasServerError && totalBytes === 0)) ? 'block' : 'none';
+        }
+
+        if (submitButton instanceof HTMLButtonElement) {
+            submitButton.disabled = hasExceededLimit;
+            submitButton.setAttribute('aria-disabled', hasExceededLimit ? 'true' : 'false');
+        }
+
+        return !hasExceededLimit;
     };
 
     const syncShareholdersData = function () {
@@ -326,6 +380,12 @@
 
         const form = document.getElementById('submissionForm');
         if (form) {
+            getSubmissionDocumentInputs().forEach((input) => {
+                input.addEventListener('change', updateSubmissionDocumentState);
+            });
+
+            updateSubmissionDocumentState();
+
             form.addEventListener('submit', function (e) {
                 if (!validateStep(3)) {
                     e.preventDefault();
@@ -445,6 +505,18 @@
                         }
                         alert('A soma das participacoes deve ser 100%');
                     }
+                }
+            }
+
+            if (step === 3 && !updateSubmissionDocumentState()) {
+                isValid = false;
+
+                const totalSizeError = document.getElementById('documentsTotalSizeError');
+
+                if (totalSizeError) {
+                    totalSizeError.textContent = submissionDocumentTotalErrorMessage;
+                    totalSizeError.style.display = 'block';
+                    totalSizeError.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
 

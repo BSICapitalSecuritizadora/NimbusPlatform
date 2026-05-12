@@ -10,7 +10,7 @@ dataset('public-layout-routes', [
         'site.home',
         [
             'Securitização e crédito estruturado com rigor técnico, governança e acompanhamento ponta a ponta.',
-            'Atuação por setor, com aderência ao ativo e à operação',
+            'Estruturas alinhadas ao ativo, ao setor e ao fluxo da operação',
             'Da estruturação à gestão: cobertura integral da operação',
         ],
     ],

@@ -53,7 +53,8 @@ class DocumentForm
                             'application/vnd.ms-excel',
                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         ])
-                        ->maxSize((int) config('uploads.document.max_kb', 51200))
+                        ->maxSize((int) config('uploads.document.max_kb', 102400))
+                        ->helperText('Tamanho máximo por arquivo: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
                         ->afterStateUpdated(function ($state, callable $set) {
                             if ($state instanceof TemporaryUploadedFile) {
                                 $set('file_name', $state->getClientOriginalName());

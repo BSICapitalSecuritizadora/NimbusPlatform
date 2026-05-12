@@ -95,7 +95,7 @@
                     class="block w-full rounded-xl border border-gray-700 bg-gray-950 px-4 py-3 text-sm text-gray-200 file:mr-4 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/15"
                 >
                 <p class="text-sm text-gray-400">
-                    Formatos aceitos: PDF, DOCX, XLSX, ZIP e imagens.
+                    Formatos aceitos: PDF, DOCX, XLSX, ZIP e imagens. Tamanho máximo por arquivo: 100 MB.
                 </p>
             </div>
 

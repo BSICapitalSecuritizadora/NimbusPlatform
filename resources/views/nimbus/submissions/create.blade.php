@@ -3,11 +3,23 @@
 
 @section('content')
 
+@php
+    $submissionDocumentsTotalMaxBytes = (int) config('uploads.submission.total_max_bytes', 100 * 1024 * 1024);
+    $submissionDocumentsTotalMaxMb = (int) ceil($submissionDocumentsTotalMaxBytes / 1024 / 1024);
+    $submissionDocumentsTotalErrorMessage = "O tamanho total de todos os arquivos nao pode ultrapassar {$submissionDocumentsTotalMaxMb} MB.";
+@endphp
+
 <!-- Header -->
 <div class="d-flex align-items-center justify-content-between mb-5">
     <h1 class="h3 fw-bold text-dark mb-0">Nova Solicitação</h1>
     <a href="{{ route('nimbus.dashboard') }}" class="btn btn-light bg-white border shadow-sm text-secondary hover-dark rounded-pill px-4">Cancelar</a>
 </div>
+
+@if (request('upload_error') === 'too-large')
+    <div class="alert alert-danger shadow-sm rounded-4 border-0 mb-4">
+        <i class="bi bi-x-circle-fill me-2"></i>{{ $submissionDocumentsTotalErrorMessage }}
+    </div>
+@endif
 
 <form method="post" action="{{ route('nimbus.submissions.store') }}" enctype="multipart/form-data" id="submissionForm">
     @csrf
@@ -297,6 +309,34 @@
                 <h5 class="nd-card-title fw-bold text-dark mb-0">Documentos (PDF)</h5>
             </div>
             <div class="nd-card-body p-4">
+                <div class="alert alert-warning border-0 rounded-4 mb-4">
+                    <div class="fw-bold mb-1">Tamanho maximo total dos arquivos</div>
+                    <div>{{ $submissionDocumentsTotalErrorMessage }}</div>
+                </div>
+
+                <div class="d-flex flex-column gap-2 mb-4">
+                    <div class="small text-secondary fw-medium">
+                        Total selecionado:
+                        <span class="fw-bold text-dark" id="documentsTotalSizeValue">0 MB</span>
+                        de {{ $submissionDocumentsTotalMaxMb }} MB.
+                    </div>
+
+                    <div
+                        id="documentsTotalSizeError"
+                        data-has-server-error="{{ $errors->has('documents_total_size') || request('upload_error') === 'too-large' ? 'true' : 'false' }}"
+                        class="small fw-bold text-danger"
+                        role="alert"
+                        style="{{ $errors->has('documents_total_size') || request('upload_error') === 'too-large' ? 'display: block;' : 'display: none;' }}"
+                    >
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        @error('documents_total_size')
+                            {{ $message }}
+                        @else
+                            {{ $submissionDocumentsTotalErrorMessage }}
+                        @enderror
+                    </div>
+                </div>
+
                 <div class="row g-4">
                     @php
                     $docs = [
@@ -319,7 +359,7 @@
                             @endif
                         </label>
                         <input type="file" class="form-control bg-light border-0 py-3 px-3 rounded-3 @error($name) is-invalid @enderror"
-                            id="{{ $name }}" name="{{ $name }}" accept=".pdf" @required($document['required'])>
+                            id="{{ $name }}" name="{{ $name }}" accept=".pdf" data-submission-document="true" @required($document['required'])>
                         @error($name)
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -353,7 +393,9 @@
     window.SubmissionConfig = {
         shareholders: {!! json_encode(session('old_shareholders', [])) !!},
         csrfToken: "{{ csrf_token() }}",
-        cnpjLookupUrl: "{{ route('nimbus.submissions.cnpj-lookup') }}"
+        cnpjLookupUrl: "{{ route('nimbus.submissions.cnpj-lookup') }}",
+        submissionDocumentTotalMaxBytes: {{ $submissionDocumentsTotalMaxBytes }},
+        submissionDocumentTotalErrorMessage: @json($submissionDocumentsTotalErrorMessage)
     };
 </script>
 <script src="{{ asset('assets/nimbus/js/submission-wizard.js') }}"></script>

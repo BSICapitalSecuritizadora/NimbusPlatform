@@ -63,6 +63,14 @@ it('maps the nimbus submission request into a typed dto', function () {
         ->and($dto->documentFiles['dre']->getClientOriginalName())->toBe('dre.pdf');
 });
 
+it('uses the configured nimbus submission upload limits', function () {
+    $request = new StoreSubmissionRequest;
+
+    expect($request->rules()['ultimo_balanco'])->toContain('max:102400')
+        ->and($request->messages()['ultimo_balanco.max'])->toBe('Cada documento pode ter no máximo 100 MB.')
+        ->and(config('uploads.submission.total_max_bytes'))->toBe(100 * 1024 * 1024);
+});
+
 it('maps the submission reply request into a typed dto', function () {
     $request = buildValidatedRequest(StoreSubmissionReplyRequest::class, [
         'comment' => '  Documento corrigido enviado.  ',
@@ -92,6 +100,22 @@ it('maps the admin response files request into a typed dto', function () {
     expect($dto->visibleToUser)->toBeFalse()
         ->and($dto->responseFiles)->toHaveCount(2)
         ->and($dto->responseFiles[0]->getClientOriginalName())->toBe('parecer.pdf');
+});
+
+it('uses the configured admin response file size limit', function () {
+    $request = new StoreAdminSubmissionResponseFilesRequest;
+
+    expect($request->rules()['response_files.*'])->toContain('max:102400')
+        ->and($request->messages()['response_files.*.max'])->toBe('Cada arquivo de resposta pode ter no máximo 100 MB.');
+});
+
+it('raises the global Livewire temporary upload ceiling to 100 MB', function () {
+    expect(config('livewire.temporary_file_upload.rules'))->toBe([
+        'required',
+        'file',
+        'max:102400',
+    ])
+        ->and(config('livewire.temporary_file_upload.max_upload_time'))->toBe(15);
 });
 
 it('maps the cnpj lookup request into a typed dto', function () {

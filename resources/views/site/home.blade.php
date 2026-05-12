@@ -90,9 +90,9 @@
         <div class="row align-items-end g-4 mb-5">
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Atuação setorial</div>
-                <h2 class="display-6 fw-bold mb-3 text-brand">Atuação por setor, com aderência ao ativo e à operação</h2>
+                <h2 class="display-6 fw-bold mb-3 text-brand">Estruturas alinhadas ao ativo, ao setor e ao fluxo da operação</h2>
                 <p class="section-copy mb-0">
-                    Cada setor exige uma lógica própria de ativo e fluxo de caixa. Estruturamos operações com inteligência setorial sob medida, respeitando as particularidades de cada negócio.
+                    Cada setor possui dinâmica própria de geração de caixa, risco e lastro. A BSI Capital estrutura operações sob medida, considerando as características do ativo, a natureza do negócio e os requisitos de cada emissão.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -102,9 +102,9 @@
 
         @php
             $industries = [
-                ['Imobiliário', 'Estruturas de CRI moldadas ao perfil do ativo, abrangendo incorporação, loteamento, built-to-suit e portfólio, com gestão documental e monitoramento ativo da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
-                ['Agronegócio', 'Operações de CRA e crédito estruturado para produtores e cooperativas, respeitando a sazonalidade e as garantias específicas do agronegócio com agilidade e rigor técnico.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
-                ['Infra & Empresas', 'Estruturas de capital inteligentes para Capex, expansão ou recomposição de passivo, utilizando fluxos futuros ou recebíveis performados como lastro estratégico.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
+                ['Imobiliário', 'Operações de CRI e crédito imobiliário estruturado, desenvolvidas a partir de ativos, recebíveis e portfólios imobiliários, com controle documental, governança e monitoramento da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
+                ['Agronegócio', 'Operações de CRA e crédito estruturado para o agronegócio, alinhadas ao ciclo produtivo, às garantias e à dinâmica de geração de caixa do setor.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
+                ['Infra & Empresas', 'Operações de crédito corporativo estruturado, incluindo debêntures, notas comerciais e recebíveis empresariais, para apoiar expansão, capex e reorganização de passivos.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
             ];
         @endphp
 
@@ -132,10 +132,10 @@
     <div class="container py-5">
         <div class="row align-items-end g-4 mb-5">
             <div class="col-lg-8">
-                <div class="section-kicker mb-2">Experiência Aplicada</div>
-                <h2 class="display-6 fw-bold mb-3">Execução com padrão institucional, da estruturação ao monitoramento</h2>
+                <div class="section-kicker mb-2">Governança em Execução</div>
+                <h2 class="display-6 fw-bold mb-3">Controle, governança e precisão em cada etapa da operação</h2>
                 <p class="text-muted mb-0">
-                    Governança, tecnologia e processos rigorosos para que cada etapa da operação seja rastreável, auditável e reportada com precisão aos stakeholders.
+                    Da estruturação ao monitoramento pós-emissão, atuamos com processos rigorosos, tecnologia proprietária e visão integrada para garantir transparência, rastreabilidade e segurança operacional.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">

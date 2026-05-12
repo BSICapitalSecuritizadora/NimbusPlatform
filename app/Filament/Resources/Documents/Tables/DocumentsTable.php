@@ -109,6 +109,8 @@ class DocumentsTable
                             ->disk('local')
                             ->visibility('private')
                             ->directory('documents')
+                            ->maxSize((int) config('uploads.document.max_kb', 102400))
+                            ->helperText('Tamanho máximo por arquivo: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
                             ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file): string {
                                 $safe = preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $file->getClientOriginalName());
 

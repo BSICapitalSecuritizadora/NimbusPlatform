@@ -67,7 +67,8 @@ class GeneralDocumentForm
                                     ->disk(DocumentStorageService::PRIVATE_DISK)
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/general-documents')
                                     ->preserveFilenames()
-                                    ->maxSize(51200)
+                                    ->maxSize((int) config('uploads.document.max_kb', 102400))
+                                    ->helperText('Tamanho máximo por arquivo: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
                                     ->acceptedFileTypes([
                                         'application/pdf',
                                         'application/msword',

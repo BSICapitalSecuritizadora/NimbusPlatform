@@ -16,7 +16,7 @@ class StoreAdminSubmissionResponseFilesRequest extends FormRequest
     {
         return [
             'response_files' => ['required', 'array', 'min:1'],
-            'response_files.*' => ['required', 'file', 'mimes:pdf,doc,docx,xls,xlsx,zip,jpg,jpeg,png,webp,gif', 'extensions:pdf,doc,docx,xls,xlsx,zip,jpg,jpeg,png,webp,gif', 'max:'.config('uploads.admin_response.max_kb', 51200)],
+            'response_files.*' => ['required', 'file', 'mimes:pdf,doc,docx,xls,xlsx,zip,jpg,jpeg,png,webp,gif', 'extensions:pdf,doc,docx,xls,xlsx,zip,jpg,jpeg,png,webp,gif', 'max:'.config('uploads.admin_response.max_kb', 102400)],
             'visible_to_user' => ['nullable', 'boolean'],
         ];
     }
@@ -30,7 +30,7 @@ class StoreAdminSubmissionResponseFilesRequest extends FormRequest
             'response_files.*.required' => 'Um dos arquivos enviados está inválido.',
             'response_files.*.file' => 'Um dos itens enviados não é um arquivo válido.',
             'response_files.*.mimes' => 'Os arquivos de resposta devem estar nos formatos PDF, DOC, DOCX, XLS, XLSX, ZIP ou imagem.',
-            'response_files.*.max' => 'Cada arquivo de resposta pode ter no máximo 50 MB.',
+            'response_files.*.max' => 'Cada arquivo de resposta pode ter no máximo 100 MB.',
             'visible_to_user.boolean' => 'A visibilidade do arquivo precisa ser válida.',
         ];
     }

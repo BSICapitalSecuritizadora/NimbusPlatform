@@ -80,6 +80,8 @@ it('renders the updated optional document labels in the registration form', func
         ->get(route('nimbus.submissions.create'))
         ->assertSuccessful()
         ->assertSee('Documentos (PDF)')
+        ->assertSee('Tamanho maximo total dos arquivos')
+        ->assertSee('100 MB')
         ->assertSee('Procuração (Caso houver)')
         ->assertSee('Ata de eleição de diretoria');
 });
@@ -288,9 +290,11 @@ it('pins Nimbus backoffice uploads to the private local disk', function () {
     expect($portalUpload)->toBeInstanceOf(FileUpload::class)
         ->and($portalUpload?->getDiskName())->toBe(DocumentStorageService::PRIVATE_DISK)
         ->and($portalUpload?->getDirectory())->toBe(DocumentStorageService::PRIVATE_PREFIX.'/portal-documents')
+        ->and($portalUpload?->getMaxSize())->toBe(102400)
         ->and($generalUpload)->toBeInstanceOf(FileUpload::class)
         ->and($generalUpload?->getDiskName())->toBe(DocumentStorageService::PRIVATE_DISK)
-        ->and($generalUpload?->getDirectory())->toBe(DocumentStorageService::PRIVATE_PREFIX.'/general-documents');
+        ->and($generalUpload?->getDirectory())->toBe(DocumentStorageService::PRIVATE_PREFIX.'/general-documents')
+        ->and($generalUpload?->getMaxSize())->toBe(102400);
 });
 
 it('renders the correction status label in the portal pages', function () {
