@@ -4,6 +4,8 @@
 
 @section('content')
 @php
+    $cspNonce = \Illuminate\Support\Facades\Vite::cspNonce();
+
     $statusPalette = match ($emission->status) {
         'active' => ['bg' => 'rgba(34,197,94,0.12)', 'border' => 'rgba(34,197,94,0.22)', 'text' => '#15803d', 'label' => $emission->status_label],
         'closed' => ['bg' => 'rgba(239,68,68,0.12)', 'border' => 'rgba(239,68,68,0.22)', 'text' => '#b91c1c', 'label' => $emission->status_label],
@@ -358,7 +360,7 @@
 </section>
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const tabLinks = document.querySelectorAll('#emissionTabs .nav-link');
 
@@ -399,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @if(isset($emission->payments) && $emission->payments->count() > 0)
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
+<script nonce="{{ $cspNonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const chartElement = document.getElementById('paymentsChart');
 

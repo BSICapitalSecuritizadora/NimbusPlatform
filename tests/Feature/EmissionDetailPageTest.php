@@ -103,9 +103,18 @@ it('renders the payment flow with the legacy chart model', function () {
         'extra_amortization_value' => 500,
     ]);
 
-    $this->get(route('site.emissions.show', $emission->if_code))
+    $response = $this->get(route('site.emissions.show', $emission->if_code));
+
+    $response
         ->assertOk()
         ->assertSee('paymentsChart')
         ->assertSee('cdn.jsdelivr.net/npm/chart.js')
         ->assertSee('ticks: { display: false }', false);
+
+    preg_match("/'nonce-([^']+)'/", (string) $response->headers->get('Content-Security-Policy'), $matches);
+
+    $nonce = $matches[1] ?? null;
+
+    expect($nonce)->not->toBeNull();
+    expect(substr_count($response->getContent(), 'nonce="'.$nonce.'"'))->toBeGreaterThanOrEqual(2);
 });
