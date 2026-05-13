@@ -30,6 +30,8 @@ it('renders the branded public emission detail experience', function () {
         ->assertSee('Resumo operacional')
         ->assertSee('Fluxo de pagamentos e acompanhamento')
         ->assertSee('Repositório de Documentos e Atos da Operação')
+        ->assertSee('.emission-detail-tabs.nav-pills .nav-link.active', false)
+        ->assertSee('border-color: color-mix(in srgb, var(--brand) 12%, var(--border));', false)
         ->assertSee('Termo de Securitizacao');
 });
 

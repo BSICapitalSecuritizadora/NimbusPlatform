@@ -564,9 +564,17 @@
         }
 
         .emission-detail-tabs {
+            display: inline-flex;
             flex-wrap: nowrap;
+            gap: 0.35rem;
+            width: fit-content;
+            max-width: 100%;
             overflow-x: auto;
+            padding: 0.35rem;
             padding-bottom: 0.35rem;
+            border: 1px solid color-mix(in srgb, var(--brand) 8%, var(--border));
+            border-radius: 14px;
+            background: color-mix(in srgb, #fff 38%, var(--surface-alt));
             scrollbar-width: none;
         }
 
@@ -580,6 +588,31 @@
 
         .emission-detail-tabs .nav-link {
             white-space: nowrap;
+            border: 1px solid transparent;
+            background: transparent;
+            color: color-mix(in srgb, var(--text) 76%, transparent) !important;
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+        }
+
+        .emission-detail-tabs .nav-link:hover {
+            color: var(--brand) !important;
+            background: color-mix(in srgb, var(--brand) 4%, #fff);
+        }
+
+        .emission-detail-tabs.nav-pills .nav-link.active,
+        .emission-detail-tabs.nav-pills .show > .nav-link {
+            color: var(--brand) !important;
+            background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--surface) 88%, #fff 12%));
+            border-color: color-mix(in srgb, var(--brand) 12%, var(--border));
+            box-shadow: 0 10px 22px rgba(9, 27, 35, 0.08);
+        }
+
+        .emission-detail-tabs .nav-link.active::after,
+        .emission-detail-tabs .show > .nav-link::after {
+            left: 0.9rem;
+            right: 0.9rem;
+            bottom: 0.38rem;
+            background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 82%, #fff), var(--brand-soft));
         }
 
         .emission-doc-card {
