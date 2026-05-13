@@ -19,7 +19,7 @@
         body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
         table, td { mso-table-rspace: 0pt; mso-table-lspace: 0pt; }
         img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
-        body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #f0f2f5; }
+        body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #ece9e8; }
 
         /* Dark mode support */
         @media (prefers-color-scheme: dark) {
@@ -28,23 +28,23 @@
         }
     </style>
 </head>
-<body style="margin:0; padding:0; background-color:#f0f2f5; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased;">
+<body style="margin:0; padding:0; background-color:#ece9e8; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased;">
 
     <!-- Wrapper -->
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f2f5;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ece9e8;">
         <tr>
             <td align="center" style="padding:40px 16px;">
 
                 <!-- Main Card -->
-                <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(0,18,51,0.12), 0 4px 16px rgba(0,18,51,0.06);">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(9,27,35,0.12), 0 4px 16px rgba(9,27,35,0.06);">
 
                     <!-- ═══════════════ HEADER ═══════════════ -->
                     <tr>
-                        <td bgcolor="#001845" style="background-color: #001845; background: linear-gradient(135deg, #001233 0%, #001845 50%, #002855 100%); padding:0;">
+                        <td bgcolor="#091b23" style="background-color: #091b23; background: linear-gradient(135deg, #06151c 0%, #091b23 50%, #22424c 100%); padding:0;">
                             <!-- Gold top accent line -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <td style="height:4px; background: linear-gradient(90deg, #c8982c, #e8c468, #c8982c);"></td>
+                                    <td style="height:4px; background: linear-gradient(90deg, #7b541e, #b4864a, #7b541e);"></td>
                                 </tr>
                             </table>
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -67,12 +67,12 @@
                             <!-- Security banner -->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <td style="padding:24px 40px; background-color:#fdfaf3; border-bottom:1px solid #f0e6cc;">
+                                    <td style="padding:24px 40px; background-color:#f4eee6; border-bottom:1px solid #d7c09c;">
                                         <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                             <tr>
                                                 <td style="vertical-align:middle; padding-right:14px;">
                                                     <!-- Shield icon (SVG-safe for email) -->
-                                                    <div style="width:40px; height:40px; background: linear-gradient(135deg, #d4a84b 0%, #c8982c 100%); border-radius:10px; text-align:center; line-height:40px; font-size:20px;">
+                                                    <div style="width:40px; height:40px; background: linear-gradient(135deg, #b4864a 0%, #a06e28 100%); border-radius:10px; text-align:center; line-height:40px; font-size:20px;">
                                                         &#128274;
                                                     </div>
                                                 </td>
@@ -94,7 +94,7 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td style="padding:36px 40px 0 40px;">
-                                        <p style="margin:0 0 20px 0; font-size:20px; font-weight:700; color:#0c1b2e; line-height:1.3;">
+                                        <p style="margin:0 0 20px 0; font-size:20px; font-weight:700; color:#091b23; line-height:1.3;">
                                             Olá, {{ explode(' ', $user->full_name ?? 'Parceiro')[0] }}!
                                         </p>
                                         <p style="margin:0 0 32px 0; font-size:15px; line-height:1.7; color:#4b5563;">
@@ -122,7 +122,7 @@
                                             <!-- Code value -->
                                             <tr>
                                                 <td style="background-color:#ffffff; padding:28px 24px; text-align:center;">
-                                                    <div style="font-family:'Courier New',Courier,monospace; font-size:32px; font-weight:700; color:#001233; letter-spacing:4px; line-height:1;">
+                                                    <div style="font-family:'Courier New',Courier,monospace; font-size:32px; font-weight:700; color:#091b23; letter-spacing:4px; line-height:1;">
                                                         {{ $code }}
                                                     </div>
                                                 </td>
@@ -168,7 +168,7 @@
                                 <tr>
                                     <td style="padding:0 40px; text-align:center;">
                                         <!--[if mso]>
-                                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $accessUrl }}" style="height:52px;v-text-anchor:middle;width:280px;" arcsize="50%" fillcolor="#001233">
+                                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ $accessUrl }}" style="height:52px;v-text-anchor:middle;width:280px;" arcsize="50%" fillcolor="#091b23">
                                             <w:anchorlock/>
                                             <center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;">Acessar o Portal &rarr;</center>
                                         </v:roundrect>
@@ -176,7 +176,7 @@
                                         <!--[if !mso]><!-->
                                         <a href="{{ $accessUrl }}"
                                            target="_blank"
-                                           style="display:inline-block; background-color: #001845; background:linear-gradient(135deg, #001233 0%, #001845 100%); color:#ffffff; text-decoration:none; font-weight:700; font-size:15px; padding:16px 48px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(0,18,51,0.25); mso-hide:all;">
+                                           style="display:inline-block; background-color: #091b23; background:linear-gradient(135deg, #06151c 0%, #091b23 100%); color:#e6e4e4; text-decoration:none; font-weight:700; font-size:15px; padding:16px 48px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(9,27,35,0.25); mso-hide:all;">
                                             Acessar o Portal &rarr;
                                         </a>
                                         <!--<![endif]-->
@@ -191,7 +191,7 @@
                                         <p style="margin:0 0 8px 0; font-size:12px; color:#9ca3af; text-align:center;">
                                             Se o botão não funcionar, copie e cole este link no navegador:
                                         </p>
-                                        <p style="margin:0; font-size:12px; color:#001233; word-break:break-all; text-align:center; line-height:1.5;">
+                                        <p style="margin:0; font-size:12px; color:#091b23; word-break:break-all; text-align:center; line-height:1.5;">
                                             <a href="{{ $accessUrl }}" style="color:#2563eb; text-decoration:underline;">{{ $accessUrl }}</a>
                                         </p>
                                     </td>
@@ -211,19 +211,19 @@
                                                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                                         <tr>
                                                             <td style="padding:4px 0; font-size:13px; color:#4b5563; line-height:1.5;">
-                                                                <span style="color:#d4a84b; font-weight:bold; margin-right:6px;">&#10003;</span>
+                                                                <span style="color:#a06e28; font-weight:bold; margin-right:6px;">&#10003;</span>
                                                                 Nunca compartilhe este código com terceiros
                                                             </td>
                                                         </tr>
                                                         <tr>
                                                             <td style="padding:4px 0; font-size:13px; color:#4b5563; line-height:1.5;">
-                                                                <span style="color:#d4a84b; font-weight:bold; margin-right:6px;">&#10003;</span>
+                                                                <span style="color:#a06e28; font-weight:bold; margin-right:6px;">&#10003;</span>
                                                                 A BSI Capital jamais solicitará seu código por telefone
                                                             </td>
                                                         </tr>
                                                         <tr>
                                                             <td style="padding:4px 0; font-size:13px; color:#4b5563; line-height:1.5;">
-                                                                <span style="color:#d4a84b; font-weight:bold; margin-right:6px;">&#10003;</span>
+                                                                <span style="color:#a06e28; font-weight:bold; margin-right:6px;">&#10003;</span>
                                                                 Acesse somente pelo link oficial fornecido neste e-mail
                                                             </td>
                                                         </tr>

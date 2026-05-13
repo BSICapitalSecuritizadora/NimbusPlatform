@@ -12,10 +12,11 @@
     
     <style>
         :root {
-            --nd-navy-900: #06101c;
-            --nd-navy-800: #0c1b2e;
-            --nd-gold-500: #d4a84b;
-            --nd-gold-600: #a67f3d;
+            --nd-navy-900: #06151c;
+            --nd-navy-800: #091b23;
+            --nd-gold-500: #a06e28;
+            --nd-gold-600: #7b541e;
+            --nd-white: #e6e4e4;
         }
         
         * {
@@ -30,7 +31,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, var(--nd-navy-900) 0%, var(--nd-navy-800) 40%, #1a2f4e 100%);
+            background: linear-gradient(135deg, var(--nd-navy-900) 0%, var(--nd-navy-800) 40%, #22424c 100%);
             position: relative;
             overflow: hidden;
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -47,7 +48,7 @@
         .nd-orb-1 {
             width: 500px;
             height: 500px;
-            background: radial-gradient(circle, rgba(212, 168, 75, 0.12) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(160, 110, 40, 0.16) 0%, transparent 70%);
             top: -150px;
             right: -100px;
         }
@@ -55,7 +56,7 @@
         .nd-orb-2 {
             width: 400px;
             height: 400px;
-            background: radial-gradient(circle, rgba(45, 74, 115, 0.25) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(34, 66, 76, 0.28) 0%, transparent 70%);
             bottom: -100px;
             left: -100px;
             animation-delay: 5s;
@@ -64,7 +65,7 @@
         .nd-orb-3 {
             width: 300px;
             height: 300px;
-            background: radial-gradient(circle, rgba(212, 168, 75, 0.08) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(160, 110, 40, 0.1) 0%, transparent 70%);
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -82,7 +83,7 @@
         .nd-portal-card {
             width: calc(100% - 2rem);
             max-width: 480px;
-            background: rgba(12, 27, 46, 0.7);
+            background: rgba(9, 27, 35, 0.74);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -127,7 +128,7 @@
         .nd-portal-title {
             font-size: 1.75rem;
             font-weight: 700;
-            color: #ffffff;
+            color: var(--nd-white);
             text-align: center;
             margin-bottom: 2.5rem;
             letter-spacing: -0.02em;
@@ -151,7 +152,7 @@
             background: rgba(0, 0, 0, 0.4);
             border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;
-            color: #ffffff;
+            color: var(--nd-white);
             font-family: 'JetBrains Mono', monospace;
             font-size: 1.5rem;
             font-weight: 600;
@@ -174,7 +175,7 @@
             outline: none;
             background: rgba(0, 0, 0, 0.6);
             border-color: var(--nd-gold-500);
-            box-shadow: 0 0 0 4px rgba(212, 168, 75, 0.15);
+            box-shadow: 0 0 0 4px rgba(160, 110, 40, 0.18);
             transform: scale(1.01);
         }
         
@@ -186,7 +187,7 @@
             background: linear-gradient(135deg, var(--nd-gold-500) 0%, var(--nd-gold-600) 100%);
             border: none;
             border-radius: 14px;
-            color: #0c1b2e;
+            color: #091b23;
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 0.9375rem;
             font-weight: 800;
@@ -198,13 +199,13 @@
             align-items: center;
             justify-content: center;
             gap: 0.75rem;
-            box-shadow: 0 4px 20px rgba(212, 168, 75, 0.3);
+            box-shadow: 0 4px 20px rgba(160, 110, 40, 0.3);
         }
-        
+
         .nd-portal-submit:hover {
-            background: linear-gradient(135deg, #e4c47a 0%, var(--nd-gold-500) 100%);
+            background: linear-gradient(135deg, #be935d 0%, var(--nd-gold-500) 100%);
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(212, 168, 75, 0.4);
+            box-shadow: 0 8px 30px rgba(160, 110, 40, 0.4);
         }
         
         /* Security footer */

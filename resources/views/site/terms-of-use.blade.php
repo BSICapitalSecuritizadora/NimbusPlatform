@@ -3,7 +3,7 @@
 
 @section('content')
 <!-- Hero Section -->
-<section class="hero position-relative d-flex align-items-center" style="min-height: 40vh; overflow: hidden; background: #001233;">
+<section class="hero position-relative d-flex align-items-center" style="min-height: 40vh; overflow: hidden; background: var(--brand-strong);">
     <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.05; background: radial-gradient(circle at 50% 50%, var(--gold), transparent 70%);"></div>
 
     <div class="container position-relative z-1">

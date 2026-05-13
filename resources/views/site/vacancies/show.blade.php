@@ -4,7 +4,7 @@
 
 @section('content')
 <!-- Hero Section -->
-<section class="hero position-relative d-flex align-items-center mb-5" style="min-height: 35vh; overflow: hidden; background: #001233;">
+<section class="hero position-relative d-flex align-items-center mb-5" style="min-height: 35vh; overflow: hidden; background: var(--brand-strong);">
     <div class="container position-relative z-1">
         <div class="row align-items-center">
             <div class="col-lg-12">

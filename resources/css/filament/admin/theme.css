@@ -3,6 +3,21 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
+:root {
+    --color-white: #e6e4e4;
+    --gray-50: #f6f3f2;
+    --gray-100: #ece8e7;
+    --gray-200: #dbd5d3;
+    --gray-300: #c4bbb8;
+    --gray-400: #9d918d;
+    --gray-500: #766c68;
+    --gray-600: #5d5653;
+    --gray-700: #494340;
+    --gray-800: #34302e;
+    --gray-900: #221f1e;
+    --gray-950: #151313;
+}
+
 /*
  * Custom BSI Capital theme overrides.
  * Using plain CSS instead of @apply inside @layer components to avoid
@@ -35,27 +50,27 @@
 /* ── Simple layout (login page) background ── */
 .fi-simple-layout {
     background:
-        radial-gradient(circle at top left, rgba(0, 32, 91, 0.08), transparent 28%),
-        radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 22%),
-        #f6f8fc !important;
+        radial-gradient(circle at top left, rgb(9 27 35 / 0.12), transparent 28%),
+        radial-gradient(circle at top right, rgb(160 110 40 / 0.14), transparent 22%),
+        #ece9e8 !important;
 }
 
 :is(.dark, .dark *) .fi-simple-layout,
 .dark .fi-simple-layout {
     background:
-        radial-gradient(circle at top left, rgba(53, 94, 216, 0.12), transparent 26%),
-        radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 20%),
-        #08111d !important;
+        radial-gradient(circle at top left, rgb(75 104 113 / 0.16), transparent 26%),
+        radial-gradient(circle at top right, rgb(160 110 40 / 0.12), transparent 20%),
+        #040c11 !important;
 }
 
 /* ── Simple layout main card (glassmorphism) ── */
 .fi-simple-main-ctn > main,
 .fi-simple-main-ctn > section {
-    box-shadow: 0 20px 45px rgba(0, 32, 91, 0.08) !important;
-    background: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 20px 45px rgba(9, 27, 35, 0.08) !important;
+    background: rgb(230 228 228 / 0.9) !important;
     -webkit-backdrop-filter: blur(12px) !important;
     backdrop-filter: blur(12px) !important;
-    border: 1px solid rgba(228, 228, 231, 0.8) !important;
+    border: 1px solid rgb(205 209 210 / 0.8) !important;
     border-radius: 26px !important;
 }
 

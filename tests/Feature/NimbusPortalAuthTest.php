@@ -23,6 +23,14 @@ it('renders the Nimbus login page with a nonce-protected inline script', functio
         ->toMatch('/<script nonce="[^"]*">\\s*\\/\\/ Access Code Formatter/s');
 });
 
+it('renders the Nimbus login page with the refreshed portal palette', function () {
+    $this->get(route('nimbus.auth.request'))
+        ->assertSuccessful()
+        ->assertSee('--nd-navy-900: #06151c;', false)
+        ->assertSee('--nd-gold-500: #a06e28;', false)
+        ->assertSee('--nd-white: #e6e4e4;', false);
+});
+
 it('authenticates a portal user with a hyphenated access code', function () {
     $portalUser = PortalUser::query()->create([
         'full_name' => 'Cliente do Portal',

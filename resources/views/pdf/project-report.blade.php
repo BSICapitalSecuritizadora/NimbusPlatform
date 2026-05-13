@@ -12,8 +12,8 @@
             padding: 0;
         }
         .header {
-            background-color: #001233;
-            color: white;
+            background-color: #091b23;
+            color: #e6e4e4;
             padding: 20px;
             text-align: center;
         }
@@ -25,15 +25,15 @@
         }
         .gold-bar {
             height: 5px;
-            background-color: #d4af37;
+            background-color: #a06e28;
             width: 100%;
         }
         .content {
             padding: 30px;
         }
         .section-title {
-            color: #001233;
-            border-bottom: 2px solid #d4af37;
+            color: #091b23;
+            border-bottom: 2px solid #a06e28;
             padding-bottom: 5px;
             margin-top: 25px;
             margin-bottom: 15px;
@@ -49,7 +49,7 @@
             vertical-align: top;
         }
         .info-grid .label {
-            color: #d4af37;
+            color: #a06e28;
             font-weight: bold;
             width: 180px;
         }
@@ -59,8 +59,8 @@
             margin-top: 10px;
         }
         .table th {
-            background-color: #001233;
-            color: white;
+            background-color: #091b23;
+            color: #e6e4e4;
             text-align: left;
             padding: 10px;
             font-size: 12px;
@@ -79,7 +79,7 @@
             color: #777;
         }
         .summary-box {
-            background-color: #f6f8fa;
+            background-color: #f2efee;
             border: 1px solid #ddd;
             padding: 15px;
             margin-bottom: 20px;

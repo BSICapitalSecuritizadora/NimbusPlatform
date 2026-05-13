@@ -88,3 +88,11 @@ it('renders the public layout without dark mode assets or theme scripts', functi
         ->assertDontSee('anbima-dark')
         ->assertSee('Selo ANBIMA Securitizadora');
 });
+
+it('exposes the refreshed public palette tokens in the site layout', function () {
+    $this->get(route('site.home'))
+        ->assertSuccessful()
+        ->assertSee('--brand: #091b23;', false)
+        ->assertSee('--gold: #a06e28;', false)
+        ->assertSee('--surface: #e6e4e4;', false);
+});

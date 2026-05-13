@@ -16,8 +16,8 @@
 
     <style>
         body {
-            background-color: #F5F7FB;
-            background-image: radial-gradient(1200px 400px at 50% -100px, rgba(11,27,54,.04), transparent 60%);
+            background-color: #e6e4e4;
+            background-image: radial-gradient(1200px 400px at 50% -100px, rgba(9, 27, 35, .06), transparent 60%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -95,7 +95,7 @@
                         <div class="p-user dropdown h-full">
                             <button type="button" class="flex items-center h-full gap-3 text-white no-underline border-0 p-0 shadow-none bg-transparent"
                                data-bs-toggle="dropdown" aria-expanded="false">
-                                <div class="avatar w-8 h-8 rounded-full bg-gradient-to-b from-[#1F3F75] to-[#0B1B36] border border-[rgba(184,150,74,0.6)] flex items-center justify-center text-[#C9A66A] text-xs font-semibold">
+                                <div class="avatar w-8 h-8 rounded-full bg-gradient-to-b from-[#22424c] to-[#091b23] border border-[rgba(160,110,40,0.6)] flex items-center justify-center text-[#b4864a] text-xs font-semibold">
                                     {{ strtoupper(substr($user->full_name ?? 'U', 0, 1)) }}{{ strtoupper(substr(explode(' ', $user->full_name ?? 'U')[1] ?? '', 0, 1)) }}
                                 </div>
                                 <div class="flex flex-col items-start leading-tight d-none d-lg-flex">

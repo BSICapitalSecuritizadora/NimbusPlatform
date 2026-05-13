@@ -52,7 +52,10 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn () => view('filament.logo'))
             ->brandLogoHeight('2.5rem')
             ->colors([
-                'primary' => Color::hex('#d4af37'),
+                'gray' => Color::hex('#e6e4e4'),
+                'info' => Color::hex('#091b23'),
+                'primary' => Color::hex('#a06e28'),
+                'warning' => Color::hex('#a06e28'),
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->navigationGroups([

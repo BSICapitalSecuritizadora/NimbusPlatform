@@ -25,6 +25,7 @@ use App\Models\Nimbus\Submission;
 use App\Models\User;
 use App\Services\DocumentStorageService;
 use Filament\Facades\Filament;
+use Filament\Support\Colors\Color;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -163,6 +164,16 @@ it('renders the Nimbus dashboard widgets when recent submissions exist', functio
 it('loads the application vite theme for the admin panel', function () {
     expect(Filament::getPanel('admin')->getViteTheme())
         ->toBe('resources/css/filament/admin/theme.css');
+});
+
+it('registers the refreshed admin palette on the Filament panel', function () {
+    expect(Filament::getPanel('admin')->getColors())
+        ->toMatchArray([
+            'gray' => Color::hex('#e6e4e4'),
+            'info' => Color::hex('#091b23'),
+            'primary' => Color::hex('#a06e28'),
+            'warning' => Color::hex('#a06e28'),
+        ]);
 });
 
 it('organizes Gestão Documental Externa navigation under the Visão Geral subsection', function () {

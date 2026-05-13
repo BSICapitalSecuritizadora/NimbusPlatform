@@ -14,7 +14,7 @@
         font-weight: 700;
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: #00205b;
+        color: #091b23;
     }
 
     .bsi-investor-login-form .bsi-investor-credential-field {
@@ -22,25 +22,25 @@
         padding: 0.95rem 1rem;
         border: 2px solid var(--color-brand-700);
         border-radius: 1rem;
-        background: #fff;
+        background: var(--color-white);
     }
 
     .bsi-investor-login-form .bsi-investor-credential-field:focus-within {
         border-color: var(--color-brand-700);
-        box-shadow: 0 0 0 3px rgba(0, 32, 91, 0.12);
+        box-shadow: 0 0 0 3px rgba(9, 27, 35, 0.12);
     }
 
     .bsi-investor-login-form .bsi-investor-credential-field input[data-flux-control]:not([type='checkbox']) {
         min-height: auto;
         border: 0 !important;
         background: transparent !important;
-        color: #0a1734 !important;
+        color: #091b23 !important;
         padding-inline: 0;
         box-shadow: none !important;
     }
 
     .bsi-investor-login-form .bsi-investor-credential-field input[data-flux-control]::placeholder {
-        color: #94a3b8;
+        color: #8b9398;
         opacity: 1;
     }
 </style>
@@ -115,7 +115,7 @@
             </button>
         </form>
 
-        <div class="mt-8 rounded-[24px] border border-brand-100 bg-[linear-gradient(180deg,rgba(238,244,255,0.95),rgba(255,255,255,0.92))] p-5">
+        <div class="mt-8 rounded-[24px] border border-brand-100 bg-[linear-gradient(180deg,rgba(239,242,243,0.95),rgba(230,228,228,0.92))] p-5">
             <div class="text-xs font-semibold uppercase tracking-[0.18em] text-gold-500">Canal institucional</div>
             <p class="mt-3 text-sm leading-7 text-zinc-600">
                 Se precisar de ajuda com acesso, atualização cadastral ou validação do seu escopo, fale com a equipe da BSI Capital.

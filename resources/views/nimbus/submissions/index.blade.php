@@ -260,11 +260,11 @@
         border-radius: 4px;
         border: 1px solid transparent;
     }
-    .badge.pending { background: #FBF1DD; color: #946420; border-color: rgba(148,100,32,.18); }
-    .badge.review { background: #F2F5FA; color: #16305C; border-color: rgba(31,63,117,.16); }
+    .badge.pending { background: var(--color-gold-50); color: var(--color-gold-700); border-color: rgba(160,110,40,.18); }
+    .badge.review { background: var(--color-navy-50); color: var(--color-navy-700); border-color: rgba(34,66,76,.16); }
     .badge.approved { background: #E6F1EC; color: #1E7A56; border-color: rgba(30,122,86,.18); }
     .badge.rejected { background: #F7E5E8; color: #9B2D3E; border-color: rgba(155,45,62,.18); }
-    .badge.draft { background: #F5F7FB; color: #5A6478; border-color: #D4D9E2; }
+    .badge.draft { background: var(--color-ink-50); color: var(--color-ink-500); border-color: var(--color-ink-200); }
     
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

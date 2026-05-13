@@ -417,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 {
                     label: 'Prêmio',
                     data: {!! json_encode($emission->payments->pluck('premium_value')) !!},
-                    backgroundColor: '#d4af37',
+                    backgroundColor: '#a06e28',
                     borderRadius: 6,
                     barPercentage: 0.52,
                 },
@@ -438,7 +438,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 {
                     label: 'Amortização',
                     data: {!! json_encode($emission->payments->pluck('amortization_value')) !!},
-                    backgroundColor: '#00205b',
+                    backgroundColor: '#091b23',
                     borderRadius: 6,
                     barPercentage: 0.52,
                 }
@@ -480,7 +480,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         usePointStyle: true,
                         boxWidth: 10,
                         padding: 18,
-                        color: '#00205b',
+                        color: '#091b23',
                     }
                 },
                 tooltip: {

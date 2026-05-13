@@ -5,9 +5,9 @@
     <title>Relatório Analítico - {{ $project->name }}</title>
     <style>
         body { font-family: 'Helvetica', sans-serif; font-size: 11px; color: #333; }
-        .header { background: #001233; color: white; padding: 15px; text-align: center; }
-        .gold-bar { height: 4px; background: #d4af37; }
-        .section-title { color: #001233; border-left: 4px solid #d4af37; padding-left: 10px; margin: 15px 0 10px; font-weight: bold; font-size: 14px; background: #f6f8fa; }
+        .header { background: #091b23; color: #e6e4e4; padding: 15px; text-align: center; }
+        .gold-bar { height: 4px; background: #a06e28; }
+        .section-title { color: #091b23; border-left: 4px solid #a06e28; padding-left: 10px; margin: 15px 0 10px; font-weight: bold; font-size: 14px; background: #f2efee; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background: #f0f2f5; font-weight: bold; }

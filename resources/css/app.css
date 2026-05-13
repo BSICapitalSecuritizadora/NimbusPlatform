@@ -11,32 +11,33 @@
 
 @theme {
     --font-sans: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-white: #e6e4e4;
 
-    --color-brand-50: #eef4ff;
-    --color-brand-100: #d9e5ff;
-    --color-brand-200: #b8ccff;
-    --color-brand-300: #8eabff;
-    --color-brand-400: #5f81f8;
-    --color-brand-500: #355ed8;
-    --color-brand-600: #1d3fb8;
-    --color-brand-700: #00205b;
-    --color-brand-800: #001233;
-    --color-brand-900: #0a1734;
-    --color-gold-400: #e3c96f;
-    --color-gold-500: #d4af37;
-    --color-gold-600: #b48f1c;
+    --color-brand-50: #eef2f3;
+    --color-brand-100: #dbe4e7;
+    --color-brand-200: #bccbd0;
+    --color-brand-300: #9caeb5;
+    --color-brand-400: #758d95;
+    --color-brand-500: #4b6871;
+    --color-brand-600: #284650;
+    --color-brand-700: #091b23;
+    --color-brand-800: #06151c;
+    --color-brand-900: #040e13;
+    --color-gold-400: #b4864a;
+    --color-gold-500: #a06e28;
+    --color-gold-600: #7f581f;
 
-    --color-zinc-50: #fafafa;
-    --color-zinc-100: #f5f5f5;
-    --color-zinc-200: #e5e5e5;
-    --color-zinc-300: #d4d4d4;
-    --color-zinc-400: #a3a3a3;
-    --color-zinc-500: #737373;
-    --color-zinc-600: #525252;
-    --color-zinc-700: #404040;
-    --color-zinc-800: #262626;
-    --color-zinc-900: #171717;
-    --color-zinc-950: #0a0a0a;
+    --color-zinc-50: #f7f5f4;
+    --color-zinc-100: #eeeceb;
+    --color-zinc-200: #ddd8d6;
+    --color-zinc-300: #c7bfbc;
+    --color-zinc-400: #998f8b;
+    --color-zinc-500: #726966;
+    --color-zinc-600: #5a524f;
+    --color-zinc-700: #463f3d;
+    --color-zinc-800: #312d2c;
+    --color-zinc-900: #201d1c;
+    --color-zinc-950: #141212;
 
     --color-accent: var(--color-brand-700);
     --color-accent-content: var(--color-brand-700);
@@ -62,10 +63,10 @@
 
     body {
         background:
-            radial-gradient(circle at top left, rgba(0, 32, 91, 0.08), transparent 28%),
-            radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 22%),
-            #f6f8fc;
-        color: #0f172a;
+            radial-gradient(circle at top left, rgb(9 27 35 / 0.12), transparent 28%),
+            radial-gradient(circle at top right, rgb(160 110 40 / 0.14), transparent 22%),
+            #ece9e8;
+        color: #091b23;
     }
 
     a:focus-visible,
@@ -79,10 +80,10 @@
 
     .dark body {
         background:
-            radial-gradient(circle at top left, rgba(53, 94, 216, 0.12), transparent 26%),
-            radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 20%),
-            #08111d;
-        color: #f3f6fb;
+            radial-gradient(circle at top left, rgb(75 104 113 / 0.16), transparent 26%),
+            radial-gradient(circle at top right, rgb(160 110 40 / 0.12), transparent 20%),
+            #040c11;
+        color: #e6e4e4;
     }
 }
 
@@ -102,7 +103,7 @@ select:focus[data-flux-control] {
 
 @layer components {
     .bsi-shell-card {
-        @apply rounded-[26px] border border-zinc-200/80 bg-white/90 shadow-[0_20px_45px_rgba(0,32,91,0.08)] backdrop-blur dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_24px_52px_rgba(0,0,0,0.35)];
+        @apply rounded-[26px] border border-zinc-200/80 bg-white/90 shadow-[0_20px_45px_rgba(9,27,35,0.08)] backdrop-blur dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_24px_52px_rgba(0,0,0,0.35)];
     }
 
     .bsi-shell-card-soft {
@@ -122,7 +123,7 @@ select:focus[data-flux-control] {
     }
 
     .bsi-action-primary {
-        @apply inline-flex items-center justify-center rounded-full bg-brand-700 px-5 py-3 font-semibold text-white shadow-[0_14px_30px_rgba(0,32,91,0.18)] transition hover:-translate-y-0.5 hover:bg-brand-800;
+        @apply inline-flex items-center justify-center rounded-full bg-brand-700 px-5 py-3 font-semibold text-white shadow-[0_14px_30px_rgba(9,27,35,0.18)] transition hover:-translate-y-0.5 hover:bg-brand-800;
     }
 
     .bsi-action-secondary {
@@ -130,7 +131,7 @@ select:focus[data-flux-control] {
     }
 
     .bsi-portal-panel {
-        @apply relative overflow-hidden rounded-[32px] border border-brand-200/50 bg-[linear-gradient(145deg,#001233_0%,#00205b_56%,#0a1734_100%)] text-white shadow-[0_28px_72px_rgba(0,32,91,0.24)];
+        @apply relative overflow-hidden rounded-[32px] border border-brand-200/50 bg-[linear-gradient(145deg,#06151c_0%,#091b23_56%,#284650_100%)] text-white shadow-[0_28px_72px_rgba(9,27,35,0.24)];
     }
 
     .bsi-portal-panel-soft {
@@ -138,24 +139,24 @@ select:focus[data-flux-control] {
     }
 
     .bsi-portal-surface {
-        @apply rounded-[28px] border border-zinc-200/80 bg-white/95 shadow-[0_20px_45px_rgba(0,32,91,0.08)] backdrop-blur;
+        @apply rounded-[28px] border border-zinc-200/80 bg-white/95 shadow-[0_20px_45px_rgba(9,27,35,0.08)] backdrop-blur;
     }
 
     .bsi-investor-body {
         background:
-            radial-gradient(circle at top left, rgba(0, 32, 91, 0.14), transparent 30%),
-            radial-gradient(circle at top right, rgba(212, 175, 55, 0.16), transparent 18%),
-            linear-gradient(180deg, #f8fafd 0%, #eef3fa 100%);
-        color: #0f172a;
+            radial-gradient(circle at top left, rgb(9 27 35 / 0.16), transparent 30%),
+            radial-gradient(circle at top right, rgb(160 110 40 / 0.18), transparent 18%),
+            linear-gradient(180deg, #f2efee 0%, #e6e4e4 100%);
+        color: #091b23;
         color-scheme: light;
     }
 
     .bsi-investor-header-surface {
-        @apply rounded-[28px] border border-white/80 bg-white/88 shadow-[0_20px_45px_rgba(0,32,91,0.08)] backdrop-blur;
+        @apply rounded-[28px] border border-white/80 bg-white/88 shadow-[0_20px_45px_rgba(9,27,35,0.08)] backdrop-blur;
     }
 
     .bsi-investor-form-card {
-        @apply rounded-[30px] border border-brand-100/80 bg-white/96 shadow-[0_28px_60px_rgba(0,32,91,0.12)] backdrop-blur;
+        @apply rounded-[30px] border border-brand-100/80 bg-white/96 shadow-[0_28px_60px_rgba(9,27,35,0.12)] backdrop-blur;
     }
 
     .bsi-investor-chip {
@@ -167,7 +168,7 @@ select:focus[data-flux-control] {
     }
 
     .bsi-portal-nav-link-active {
-        @apply bg-brand-700 text-white shadow-[0_12px_30px_rgba(0,32,91,0.18)] hover:bg-brand-700 hover:text-white;
+        @apply bg-brand-700 text-white shadow-[0_12px_30px_rgba(9,27,35,0.18)] hover:bg-brand-700 hover:text-white;
     }
 
     .bsi-portal-stat {
@@ -191,7 +192,7 @@ select:focus[data-flux-control] {
     }
 
     .page-item.active .page-link {
-        @apply border-brand-700 bg-brand-700 text-white shadow-[0_14px_30px_rgba(0,32,91,0.18)] hover:border-brand-700 hover:bg-brand-700 hover:text-white;
+        @apply border-brand-700 bg-brand-700 text-white shadow-[0_14px_30px_rgba(9,27,35,0.18)] hover:border-brand-700 hover:bg-brand-700 hover:text-white;
     }
 
     .page-item.disabled .page-link {

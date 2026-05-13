@@ -3,7 +3,7 @@
 
 @section('content')
 <!-- Hero Section -->
-<section class="hero position-relative d-flex align-items-center" style="min-height: 55vh; overflow: hidden; background: #001233;">
+<section class="hero position-relative d-flex align-items-center" style="min-height: 55vh; overflow: hidden; background: var(--brand-strong);">
     <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.08; background: url('{{ asset('images/estrutura_juridica.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
@@ -219,7 +219,7 @@
 </section>
 
 <!-- CTA -->
-<section class="py-5" style="background: linear-gradient(135deg, #001233 0%, #0b1220 100%);">
+<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong) 0%, var(--brand) 100%);">
     <div class="container py-5 text-center">
         <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Estamos à Sua Disposição</h2>
         <p class="mx-auto mb-5" style="max-width: 550px; color: #a5b4fc;">Se precisar de esclarecimentos sobre nossas práticas de governança ou canais institucionais de contato, fale com nossa equipe.</p>

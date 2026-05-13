@@ -334,7 +334,7 @@
         padding: 6px 10px;
         border-radius: 999px;
         background: rgba(212, 175, 55, 0.16);
-        color: #F4ECD3;
+        color: #e8dcc7;
         font: 600 10px/1 'JetBrains Mono', monospace;
         letter-spacing: .08em;
         text-transform: uppercase;
@@ -370,7 +370,7 @@
 
     .kpi:hover {
         transform: translateY(-2px);
-        border-color: rgba(184, 150, 74, 0.34);
+        border-color: rgba(160, 110, 40, 0.34);
         box-shadow: 0 24px 52px rgba(11, 27, 54, 0.10);
     }
 
@@ -390,10 +390,10 @@
         border-radius: 4px;
         border: 1px solid transparent;
     }
-    .badge.pending { background: #FBF1DD; color: #946420; border-color: rgba(148,100,32,.18); }
-    .badge.review { background: #F2F5FA; color: #16305C; border-color: rgba(31,63,117,.16); }
+    .badge.pending { background: var(--color-gold-50); color: var(--color-gold-700); border-color: rgba(160,100,40,.18); }
+    .badge.review { background: var(--color-navy-50); color: var(--color-navy-700); border-color: rgba(34,66,76,.16); }
     .badge.approved { background: #E6F1EC; color: #1E7A56; border-color: rgba(30,122,86,.18); }
     .badge.rejected { background: #F7E5E8; color: #9B2D3E; border-color: rgba(155,45,62,.18); }
-    .badge.draft { background: #F5F7FB; color: #5A6478; border-color: #D4D9E2; }
+    .badge.draft { background: var(--color-ink-50); color: var(--color-ink-500); border-color: var(--color-ink-200); }
 </style>
 @endpush
