@@ -14,7 +14,7 @@
 
     $summaryCards = [
         ['label' => 'Tipo', 'value' => $emission->type ?? '—'],
-        ['label' => 'Remuneração', 'value' => $emission->remuneration ?? '—'],
+        ['label' => 'Remuneração', 'value' => $emission->formatted_remuneration ?? '—'],
         ['label' => 'Vencimento', 'value' => $emission->maturity_date?->format('d/m/Y') ?? '—'],
         ['label' => 'Volume emitido', 'value' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 2, ',', '.') : '—'],
     ];
@@ -123,7 +123,7 @@
                     'Agente fiduciário' => $emission->trustee_agent,
                     'Data de emissão' => $emission->issue_date?->format('d/m/Y'),
                     'Data de vencimento' => $emission->maturity_date?->format('d/m/Y'),
-                    'Remuneração' => $emission->remuneration,
+                    'Remuneração' => $emission->formatted_remuneration,
                     'Tipo de oferta' => $emission->offer_type,
                     'Segmento' => $emission->segment,
                     'Concentração' => $emission->concentration,

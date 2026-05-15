@@ -63,6 +63,8 @@ it('renders the investor emissions page through a full-page livewire component',
     $emission = Emission::factory()->active()->create([
         'name' => 'CRI Atlantico',
         'type' => 'CRI',
+        'remuneration_indexer' => 'CDI',
+        'remuneration_rate' => 6.50,
     ]);
 
     $investor->emissions()->attach($emission->id);
@@ -73,7 +75,8 @@ it('renders the investor emissions page through a full-page livewire component',
         ->assertSeeLivewire(InvestorEmissions::class)
         ->assertSee('Minhas emissões')
         ->assertSee('CRI Atlantico')
-        ->assertSee('Em Operação');
+        ->assertSee('Ativa')
+        ->assertSee('CDI + 6,50% a.a.');
 });
 
 it('renders the investor documents page through a full-page livewire component', function () {

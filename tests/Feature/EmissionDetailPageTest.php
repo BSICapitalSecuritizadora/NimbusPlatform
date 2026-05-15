@@ -14,6 +14,8 @@ it('renders the branded public emission detail experience', function () {
         'type' => 'CRI',
         'if_code' => 'IF-HORIZONTE-01',
         'issuer' => 'BSI Capital',
+        'remuneration_indexer' => 'IPCA',
+        'remuneration_rate' => 7.50,
         'is_public' => true,
     ]);
 
@@ -30,6 +32,7 @@ it('renders the branded public emission detail experience', function () {
         ->assertSee('Resumo operacional')
         ->assertSee('Fluxo de pagamentos e acompanhamento')
         ->assertSee('Repositório de Documentos e Atos da Operação')
+        ->assertSee('IPCA + 7,50% a.a.')
         ->assertSee('.emission-detail-tabs.nav-pills .nav-link.active', false)
         ->assertSee('border-color: color-mix(in srgb, var(--brand) 12%, var(--border));', false)
         ->assertSee('Termo de Securitizacao');

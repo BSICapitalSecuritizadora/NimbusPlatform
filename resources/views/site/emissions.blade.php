@@ -213,7 +213,7 @@
                                 </div>
                                 <div class="col-12">
                                     <div class="text-uppercase text-muted fw-semibold mb-1">Remuneração</div>
-                                    <div class="fw-semibold">{{ $e->remuneration ?? '—' }}</div>
+                                    <div class="fw-semibold">{{ $e->formatted_remuneration ?? '—' }}</div>
                                 </div>
                                 <div class="col-12">
                                     <div class="text-uppercase text-muted fw-semibold mb-1">Emissor</div>

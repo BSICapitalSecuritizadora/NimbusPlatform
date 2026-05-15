@@ -65,6 +65,7 @@ class EmissionResource extends Resource
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager::class,
+            \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteesRelationManager::class,
         ];
     }
 

@@ -361,12 +361,13 @@ it('creates a service provider type inline from the direct create page', functio
         ->toBeTrue();
 });
 
-it('prevents duplicate service provider cnpj registrations', function () {
+it('prevents duplicate service provider registrations with the same cnpj and type', function () {
     $this->actingAs(makeExpenseAdminUser());
     $serviceProviderType = ExpenseServiceProviderType::factory()->create();
 
     ExpenseServiceProvider::factory()->create([
         'cnpj' => '12345678000190',
+        'expense_service_provider_type_id' => $serviceProviderType->id,
     ]);
 
     Livewire::test(CreateExpenseServiceProvider::class)
@@ -377,6 +378,37 @@ it('prevents duplicate service provider cnpj registrations', function () {
         ])
         ->call('create')
         ->assertHasFormErrors(['cnpj']);
+});
+
+it('allows the same cnpj for service providers with different types', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $issuerType = ExpenseServiceProviderType::factory()->create([
+        'name' => 'Emissor',
+    ]);
+    $servicerType = ExpenseServiceProviderType::factory()->create([
+        'name' => 'Servicer',
+    ]);
+
+    ExpenseServiceProvider::factory()->create([
+        'cnpj' => '12345678000190',
+        'expense_service_provider_type_id' => $issuerType->id,
+    ]);
+
+    Livewire::test(CreateExpenseServiceProvider::class)
+        ->fillForm([
+            'cnpj' => '12.345.678/0001-90',
+            'name' => 'Prestador com Outro Tipo',
+            'expense_service_provider_type_id' => $servicerType->id,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(
+        ExpenseServiceProvider::query()
+            ->where('cnpj', '12345678000190')
+            ->count()
+    )->toBe(2);
 });
 
 it('requires the service provider type when creating a service provider', function () {

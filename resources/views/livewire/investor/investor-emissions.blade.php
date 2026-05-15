@@ -124,7 +124,7 @@
                             </div>
                             <div class="rounded-[22px] border border-zinc-200/80 bg-zinc-50/70 p-4">
                                 <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Remuneração</div>
-                                <div class="mt-2 text-sm font-semibold text-zinc-800">{{ $emission->remuneration ?? 'Não informada' }}</div>
+                                <div class="mt-2 text-sm font-semibold text-zinc-800">{{ $emission->formatted_remuneration ?? 'Não informada' }}</div>
                             </div>
                             <div class="rounded-[22px] border border-zinc-200/80 bg-zinc-50/70 p-4">
                                 <div class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Emissão</div>

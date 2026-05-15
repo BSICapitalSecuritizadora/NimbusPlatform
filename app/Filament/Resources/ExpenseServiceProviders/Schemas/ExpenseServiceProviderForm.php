@@ -7,6 +7,7 @@ use App\Filament\Resources\ExpenseServiceProviderTypes\Schemas\ExpenseServicePro
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -15,41 +16,28 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Unique;
 
 class ExpenseServiceProviderForm
 {
     protected const LOOKUP_ALREADY_RESOLVED_FLAG = '__expense_service_provider_lookup_resolved';
 
     /**
-     * @return array<int, Select|TextInput>
+     * @return array<int, Hidden|Select|TextInput>
      */
-    public static function fields(): array
+    public static function fields(?int $serviceProviderTypeId = null, bool $lockServiceProviderType = false): array
     {
-        return [
-            TextInput::make('cnpj')
-                ->label('CNPJ')
-                ->placeholder('00.000.000/0000-00')
-                ->mask('99.999.999/9999-99')
-                ->formatStateUsing(fn (?string $state): string => ExpenseServiceProvider::formatCnpj($state))
-                ->stripCharacters(['.', '/', '-'])
+        $typeField = ($lockServiceProviderType && filled($serviceProviderTypeId))
+            ? Hidden::make('expense_service_provider_type_id')
+                ->default($serviceProviderTypeId)
                 ->required()
-                ->rule('digits:14')
-                ->unique(ignoreRecord: true)
-                ->validationMessages([
-                    'digits' => 'Informe um CNPJ válido com 14 dígitos.',
-                    'unique' => 'Já existe um prestador cadastrado com este CNPJ.',
-                ])
-                ->live()
-                ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
-                    self::resolveServiceProviderNameFromCnpj($get, $set, $state);
-                }),
-
-            Select::make('expense_service_provider_type_id')
+            : Select::make('expense_service_provider_type_id')
                 ->label('Tipo')
                 ->options(fn (): array => self::getServiceProviderTypeOptions())
                 ->searchable()
                 ->preload()
                 ->required()
+                ->live()
                 ->getSearchResultsUsing(
                     fn (string $search): array => self::getServiceProviderTypeOptions($search),
                 )
@@ -81,7 +69,37 @@ class ExpenseServiceProviderForm
                 )
                 ->validationMessages([
                     'required' => 'Selecione o tipo do prestador de serviço.',
-                ]),
+                ]);
+
+        return [
+            $typeField,
+
+            TextInput::make('cnpj')
+                ->label('CNPJ')
+                ->placeholder('00.000.000/0000-00')
+                ->mask('99.999.999/9999-99')
+                ->formatStateUsing(fn (?string $state): string => ExpenseServiceProvider::formatCnpj($state))
+                ->stripCharacters(['.', '/', '-'])
+                ->required()
+                ->rule('digits:14')
+                ->unique(
+                    table: ExpenseServiceProvider::class,
+                    column: 'cnpj',
+                    ignorable: fn (TextInput $component): ?ExpenseServiceProvider => $component->getRecord() instanceof ExpenseServiceProvider
+                        ? $component->getRecord()
+                        : null,
+                    ignoreRecord: false,
+                    modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule
+                        ->where('expense_service_provider_type_id', $get('expense_service_provider_type_id')),
+                )
+                ->validationMessages([
+                    'digits' => 'Informe um CNPJ válido com 14 dígitos.',
+                    'unique' => 'Já existe um prestador cadastrado com este CNPJ para o tipo selecionado.',
+                ])
+                ->live()
+                ->afterStateUpdated(function (Get $get, Set $set, ?string $state): void {
+                    self::resolveServiceProviderNameFromCnpj($get, $set, $state);
+                }),
 
             TextInput::make('name')
                 ->label('Nome')
