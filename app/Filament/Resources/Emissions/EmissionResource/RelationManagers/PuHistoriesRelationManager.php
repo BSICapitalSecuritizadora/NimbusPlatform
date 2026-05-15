@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
-use App\Models\PuHistory;
+use App\Actions\Emissions\ImportPuHistoriesFromSpreadsheet;
+use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
+use App\Filament\Pages\Settings as SettingsPage;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
@@ -12,7 +14,6 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
-use Spatie\SimpleExcel\SimpleExcelReader;
 
 class PuHistoriesRelationManager extends RelationManager
 {
@@ -20,11 +21,11 @@ class PuHistoriesRelationManager extends RelationManager
 
     protected static ?string $recordTitleAttribute = 'date';
 
-    protected static ?string $title = 'Histórico de PU';
+    protected static ?string $title = "Hist\u{00F3}rico de PU";
 
-    protected static ?string $modelLabel = 'Histórico de PU';
+    protected static ?string $modelLabel = "Hist\u{00F3}rico de PU";
 
-    protected static ?string $pluralModelLabel = 'Histórico de PUs';
+    protected static ?string $pluralModelLabel = "Hist\u{00F3}rico de PUs";
 
     public function form(Schema $schema): Schema
     {
@@ -56,6 +57,18 @@ class PuHistoriesRelationManager extends RelationManager
             ])
             ->defaultSort('date', 'desc')
             ->headerActions([
+                \Filament\Actions\Action::make('download_template')
+                    ->label('Baixar Template')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->url(fn (): string => route('admin.pu-histories.template.download'))
+                    ->visible(fn (): bool => app(PuHistorySpreadsheetTemplate::class)->exists()),
+                \Filament\Actions\Action::make('manage_template')
+                    ->label('Configurar Template')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->color('gray')
+                    ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
+                    ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
                 \Filament\Actions\Action::make('import')
                     ->label('Importar Planilha')
                     ->icon('heroicon-o-arrow-up-tray')
@@ -67,67 +80,22 @@ class PuHistoriesRelationManager extends RelationManager
                             ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
                             ->required(),
                     ])
-                    ->action(function (array $data, RelationManager $livewire) {
+                    ->action(function (array $data, RelationManager $livewire): void {
                         $path = Storage::disk('local')->path($data['file']);
 
                         try {
-                            // Using noHeaderRow allows us to skip metadata at the top and read by index
-                            $rows = SimpleExcelReader::create($path)->noHeaderRow()->getRows();
-                        } catch (\Exception $e) {
-                            Notification::make()->title('Erro ao ler o arquivo')->danger()->send();
+                            $count = app(ImportPuHistoriesFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
+                        } catch (\Throwable) {
+                            Notification::make()
+                                ->title('Erro ao ler o arquivo')
+                                ->danger()
+                                ->send();
 
                             return;
                         }
 
-                        $emissionId = $livewire->ownerRecord->id;
-                        $count = 0;
-
-                        $rows->each(function (array $row) use ($emissionId, &$count) {
-                            $dataDate = $row[0] ?? null;
-                            $puValue = $row[11] ?? null;
-
-                            if ($dataDate && $puValue && $dataDate !== 'Data') {
-                                // Parse Date
-                                if ($dataDate instanceof \DateTimeInterface) {
-                                    $dateStr = $dataDate->format('Y-m-d');
-                                } else {
-                                    try {
-                                        if (str_contains($dataDate, '/')) {
-                                            $dateStr = \Carbon\Carbon::createFromFormat('d/m/Y', $dataDate)->format('Y-m-d');
-                                        } else {
-                                            $dateStr = \Carbon\Carbon::parse($dataDate)->format('Y-m-d');
-                                        }
-                                    } catch (\Exception $e) {
-                                        return; // not a date, maybe header
-                                    }
-                                }
-
-                                // Parse Value
-                                if (is_string($puValue)) {
-                                    $puValue = str_replace(['R$', ' '], '', $puValue);
-                                    if (str_contains($puValue, ',')) {
-                                        $puValue = str_replace('.', '', $puValue);
-                                        $puValue = str_replace(',', '.', $puValue);
-                                    }
-                                }
-
-                                if (is_numeric($puValue) && floatval($puValue) > 0) {
-                                    PuHistory::updateOrCreate(
-                                        ['emission_id' => $emissionId, 'date' => $dateStr],
-                                        ['unit_value' => (float) $puValue]
-                                    );
-                                    $count++;
-                                }
-                            }
-                        });
-
-                        $latest = PuHistory::where('emission_id', $emissionId)->orderByDesc('date')->first();
-                        if ($latest) {
-                            $livewire->ownerRecord->update(['current_pu' => $latest->unit_value]);
-                        }
-
                         Notification::make()
-                            ->title('Importação concluída!')
+                            ->title("Importa\u{00E7}\u{00E3}o conclu\u{00ED}da!")
                             ->body("{$count} registros foram importados ou atualizados.")
                             ->success()
                             ->send();

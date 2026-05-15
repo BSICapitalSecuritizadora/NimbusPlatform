@@ -11,12 +11,20 @@ class IntegralizationHistory extends Model
         'emission_id',
         'date',
         'quantity',
+        'unit_value',
+        'financial_value',
+        'investor_fund',
     ];
 
-    protected $casts = [
-        'date' => 'date',
-        'quantity' => 'decimal:4',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'date' => 'date',
+            'quantity' => 'decimal:4',
+            'unit_value' => 'decimal:6',
+            'financial_value' => 'decimal:2',
+        ];
+    }
 
     public function emission(): BelongsTo
     {

@@ -252,6 +252,12 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(fu
     Route::get('/admin/payments/template/download', App\Http\Controllers\Admin\PaymentTemplateDownloadController::class)
         ->name('admin.payments.template.download')
         ->middleware('throttle:60,1');
+    Route::get('/admin/pu-histories/template/download', App\Http\Controllers\Admin\PuHistoryTemplateDownloadController::class)
+        ->name('admin.pu-histories.template.download')
+        ->middleware('throttle:60,1');
+    Route::get('/admin/integralization-histories/template/download', App\Http\Controllers\Admin\IntegralizationHistoryTemplateDownloadController::class)
+        ->name('admin.integralization-histories.template.download')
+        ->middleware('throttle:60,1');
 });
 
 Route::redirect('/admin/nimbus-dashboard', '/admin/gestao-documental-externa-dashboard');
