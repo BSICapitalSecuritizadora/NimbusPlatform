@@ -248,6 +248,12 @@ Route::middleware(['auth', 'approved'])->group(function () {
         ->middleware('throttle:60,1');
 });
 
+Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(function () {
+    Route::get('/admin/payments/template/download', App\Http\Controllers\Admin\PaymentTemplateDownloadController::class)
+        ->name('admin.payments.template.download')
+        ->middleware('throttle:60,1');
+});
+
 Route::redirect('/admin/nimbus-dashboard', '/admin/gestao-documental-externa-dashboard');
 Route::redirect('/admin/nimbus/submissions', '/admin/gestao-documental-externa/submissions');
 

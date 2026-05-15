@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Actions\Emissions\ImportPaymentsFromSpreadsheet;
+use App\Actions\Emissions\PaymentSpreadsheetTemplate;
+use App\Filament\Pages\Settings as SettingsPage;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
@@ -87,6 +89,18 @@ class PaymentsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
+                \Filament\Actions\Action::make('download_template')
+                    ->label('Baixar Template')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->url(fn (): string => route('admin.payments.template.download'))
+                    ->visible(fn (): bool => app(PaymentSpreadsheetTemplate::class)->exists()),
+                \Filament\Actions\Action::make('manage_template')
+                    ->label('Configurar Template')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->color('gray')
+                    ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
+                    ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
                 \Filament\Actions\Action::make('import')
                     ->label('Importar Planilha')
                     ->icon('heroicon-o-arrow-up-tray')
