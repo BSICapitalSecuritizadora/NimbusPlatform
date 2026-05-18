@@ -301,10 +301,17 @@ class EmissionForm
                                         ->send();
 
                                     $action->halt();
-                                } catch (\Throwable) {
+                                } catch (\Throwable $e) {
+                                    \Illuminate\Support\Facades\Log::error('GeminiService: erro inesperado ao extrair cláusulas', [
+                                        'emission_id' => $record->id,
+                                        'document_id' => $document->id,
+                                        'error' => $e->getMessage(),
+                                        'file' => $e->getFile().':'.$e->getLine(),
+                                    ]);
+
                                     Notification::make()
                                         ->title('Erro inesperado')
-                                        ->body('Não foi possível processar o documento. Tente novamente.')
+                                        ->body($e->getMessage())
                                         ->danger()
                                         ->send();
 
