@@ -44,4 +44,6 @@ cd /home/site/wwwroot
 php artisan migrate --force --no-interaction
 php artisan optimize
 
+php artisan queue:work --sleep=3 --tries=1 --timeout=420 --max-time=3600 &
+
 service nginx reload || service nginx restart || true
