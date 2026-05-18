@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\Emissions\Schemas;
 
 use App\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm;
+use App\Jobs\ExtractSecuritizationClausesJob;
 use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
-use App\Services\GeminiService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -19,6 +19,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\HtmlString;
 
 class EmissionForm
@@ -260,11 +261,16 @@ class EmissionForm
                     ])
                     ->headerActions([
                         Action::make('extract_from_term')
-                            ->label('Extrair do Termo')
+                            ->label(fn (mixed $livewire): string => ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses) ? 'Extraindo...' : 'Extrair do Termo')
                             ->icon('heroicon-o-sparkles')
                             ->color('warning')
+                            ->disabled(fn (mixed $livewire): bool => $livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses)
                             ->visible(fn (string $operation): bool => $operation === 'edit')
-                            ->mountUsing(function (Action $action, Emission $record, \Filament\Schemas\Schema $schema): void {
+                            ->requiresConfirmation()
+                            ->modalHeading('Extrair Cláusulas do Termo de Securitização')
+                            ->modalDescription('O processo de extração via IA leva entre 3 e 5 minutos. A página será atualizada automaticamente ao concluir. Os campos preenchidos serão sobrescritos.')
+                            ->modalSubmitActionLabel('Iniciar Extração')
+                            ->mountUsing(function (Action $action, Emission $record): void {
                                 $document = $record->documents()
                                     ->where('category', 'documentos_operacao')
                                     ->whereRaw('TRIM(title) = ?', ['Termo de Securitização'])
@@ -278,112 +284,33 @@ class EmissionForm
                                         ->send();
 
                                     $action->halt();
+                                }
+                            })
+                            ->action(function (Emission $record, mixed $livewire): void {
+                                $document = $record->documents()
+                                    ->where('category', 'documentos_operacao')
+                                    ->whereRaw('TRIM(title) = ?', ['Termo de Securitização'])
+                                    ->first();
+
+                                if (! $document) {
+                                    Notification::make()
+                                        ->title('Termo de Securitização não encontrado')
+                                        ->warning()
+                                        ->send();
 
                                     return;
                                 }
 
-                                try {
-                                    $schema->fill(app(GeminiService::class)->extractSecuritizationClauses($document));
-                                } catch (\Illuminate\Http\Client\RequestException $e) {
-                                    $status = $e->response->status();
-                                    $body = $e->response->json('error.message', '');
+                                Cache::put("gemini_extraction_{$record->id}_status", 'processing', 1800);
+                                $livewire->isExtractingClauses = true;
 
-                                    $message = match (true) {
-                                        $status === 429 => 'Quota da API atingida. Aguarde o reset diário ou ative o faturamento no Google AI Studio.',
-                                        $status === 401, $status === 403 => 'Chave de API inválida ou sem permissão. Verifique GEMINI_API_KEY no .env.',
-                                        default => "Erro na API Gemini (HTTP {$status}): {$body}",
-                                    };
-
-                                    Notification::make()
-                                        ->title('Não foi possível extrair as cláusulas')
-                                        ->body($message)
-                                        ->danger()
-                                        ->send();
-
-                                    $action->halt();
-                                } catch (\Throwable $e) {
-                                    \Illuminate\Support\Facades\Log::error('GeminiService: erro inesperado ao extrair cláusulas', [
-                                        'emission_id' => $record->id,
-                                        'document_id' => $document->id,
-                                        'error' => $e->getMessage(),
-                                        'file' => $e->getFile().':'.$e->getLine(),
-                                    ]);
-
-                                    Notification::make()
-                                        ->title('Erro inesperado')
-                                        ->body($e->getMessage())
-                                        ->danger()
-                                        ->send();
-
-                                    $action->halt();
-                                }
-                            })
-                            ->form([
-                                Textarea::make('corporate_purpose')
-                                    ->label('Objeto Social')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('use_of_proceeds')
-                                    ->label('Destinação dos Recursos')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('subscription_and_integralization_terms')
-                                    ->label('Forma de Subscrição e de Integralização e Preço de Integralização')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('repactuation')
-                                    ->label('Repactuação')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('amortization_payment_schedule')
-                                    ->label('Calendário de Pagamento da Amortização')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('remuneration_payment_schedule')
-                                    ->label('Calendário de Pagamento da Remuneração')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('optional_early_redemption')
-                                    ->label('Resgate Antecipado Facultativo')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('early_amortization')
-                                    ->label('Amortização Antecipada')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('remuneration_calculation')
-                                    ->label('Cálculo da Remuneração')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('segregated_estate')
-                                    ->label('Patrimônio Separado')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('property_description')
-                                    ->label('Descrição do Imóvel')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                                Textarea::make('guarantees_description')
-                                    ->label('Garantias')
-                                    ->rows(4)
-                                    ->columnSpanFull(),
-                            ])
-                            ->modalHeading('Cláusulas extraídas do Termo de Securitização')
-                            ->modalDescription('Revise os campos abaixo antes de aplicar. Campos com conteúdo sobrescreverão os valores existentes.')
-                            ->modalSubmitActionLabel('Aplicar Cláusulas')
-                            ->modalWidth('4xl')
-                            ->action(function (array $data, Emission $record, mixed $livewire): void {
-                                $record->update(array_filter($data, fn ($v): bool => filled($v)));
+                                ExtractSecuritizationClausesJob::dispatch($record->id, $document->id);
 
                                 Notification::make()
-                                    ->title('Cláusulas aplicadas com sucesso!')
-                                    ->success()
+                                    ->title('Extração iniciada')
+                                    ->body('O processo leva de 3 a 5 minutos. A página será atualizada automaticamente quando concluída.')
+                                    ->info()
                                     ->send();
-
-                                $livewire->redirect(
-                                    \App\Filament\Resources\Emissions\EmissionResource::getUrl('edit', ['record' => $record]),
-                                    navigate: true,
-                                );
                             }),
                     ])
                     ->schema([
@@ -413,6 +340,22 @@ class EmissionForm
                             })
                             ->columnSpanFull()
                             ->visibleOn('edit'),
+
+                        Placeholder::make('gemini_extraction_progress')
+                            ->label('')
+                            ->content(new HtmlString(
+                                '<div class="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                                    <svg class="animate-spin size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                    Extração em andamento via IA... Isso pode levar de 3 a 5 minutos. A página será atualizada automaticamente.
+                                </div>'
+                            ))
+                            ->columnSpanFull()
+                            ->visibleOn('edit')
+                            ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses))
+                            ->extraAttributes(['wire:poll.5000ms' => 'checkGeminiExtractionStatus']),
 
                         Select::make('guarantee_fund')
                             ->label('Fundo de Fiança')

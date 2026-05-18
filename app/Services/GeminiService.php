@@ -100,7 +100,7 @@ PROMPT;
             throw new \RuntimeException("Arquivo vazio no disco '{$disk}': {$path}");
         }
 
-        $response = Http::timeout(180)
+        $response = Http::timeout(360)->connectTimeout(15)
             ->post(self::API_URL.self::MODEL.':generateContent?key='.config('services.gemini.key'), [
                 'contents' => [[
                     'parts' => [
