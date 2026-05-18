@@ -3,11 +3,15 @@
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Pages\CreateEmission;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
+use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -18,6 +22,66 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->seed(RolesAndPermissionsSeeder::class);
+});
+
+it('organizes the emission form into dedicated layout sections', function () {
+    $schema = EmissionForm::configure(Schema::make(new CreateEmission));
+    $sections = collect($schema->getComponents())
+        ->filter(fn (mixed $component): bool => $component instanceof Section)
+        ->mapWithKeys(fn (Section $section): array => [$section->getHeading() => $section]);
+
+    expect($sections->keys()->all())->toBe([
+        'Dados da Operação',
+        'Partes Envolvidas',
+        'Estrutura da Emissão',
+        'Valores e Remuneração',
+        'Cláusulas e Garantias',
+        'Divulgação Institucional',
+    ]);
+
+    expect($sections['Dados da Operação']->getColumns())->toMatchArray([
+        'default' => 1,
+        'xl' => 3,
+    ]);
+
+    expect($sections['Partes Envolvidas']->getColumns())->toMatchArray([
+        'default' => 1,
+        'xl' => 1,
+    ]);
+
+    expect($sections['Estrutura da Emissão']->getColumns())->toMatchArray([
+        'default' => 1,
+        'xl' => 3,
+    ]);
+
+    expect($sections['Valores e Remuneração']->getColumns())->toMatchArray([
+        'default' => 1,
+        'xl' => 2,
+    ]);
+
+    expect($sections['Cláusulas e Garantias']->getColumns())->toMatchArray([
+        'default' => 1,
+        'xl' => 2,
+    ]);
+
+    expect($sections['Partes Envolvidas']->getChildSchema()->getComponentByStatePath('issuer'))->not->toBeNull()
+        ->and($sections['Partes Envolvidas']->getChildSchema()->getComponentByStatePath('law_firm'))->not->toBeNull()
+        ->and($sections['Dados da Operação']->getChildSchema()->getComponentByStatePath('registered_with_cvm'))->not->toBeNull()
+        ->and($sections['Estrutura da Emissão']->getChildSchema()->getComponentByStatePath('prepayment_possibility'))->not->toBeNull()
+        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('offer_type')?->getLabel())->toBe('Tipo de Oferta')
+        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('offer_type')?->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('remuneration_indexer'))->not->toBeNull()
+        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('remuneration_rate'))->not->toBeNull()
+        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('issued_volume'))->not->toBeNull()
+        ->and($sections['Cláusulas e Garantias']->getChildSchema()->getComponentByStatePath('use_of_proceeds'))->not->toBeNull()
+        ->and($sections['Divulgação Institucional']->getChildSchema()->getComponentByStatePath('description'))->not->toBeNull();
+});
+
+it('uses the full content width on emission create and edit pages', function () {
+    expect((new CreateEmission)->getMaxContentWidth())->toBe(Width::Full)
+        ->and((new EditEmission)->getMaxContentWidth())->toBe(Width::Full);
 });
 
 it('filters emission service provider fields by the expected provider types', function () {

@@ -49,17 +49,32 @@ class EmissionForm
     {
         return $schema
             ->components([
-                Section::make('Dados Identificadores')
+                Section::make('Dados da Operação')
+                    ->columns([
+                        'default' => 1,
+                        'xl' => 3,
+                    ])
                     ->schema([
                         TextInput::make('name')
                             ->label('Denominação da Operação')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->columnSpanFull(),
 
                         Select::make('type')
                             ->label('Tipo')
                             ->options(Emission::TYPE_OPTIONS)
                             ->required(),
+
+                        Select::make('status')
+                            ->label('Status da Operação')
+                            ->options(Emission::STATUS_OPTIONS)
+                            ->default('draft')
+                            ->required(),
+
+                        Select::make('registered_with_cvm')
+                            ->label('Registrada na CVM')
+                            ->options(self::YES_NO_OPTIONS),
 
                         TextInput::make('if_code')
                             ->label('Código IF')
@@ -69,12 +84,6 @@ class EmissionForm
                             ->label('Código ISIN')
                             ->maxLength(255),
 
-                        Select::make('status')
-                            ->label('Status da Operação')
-                            ->options(Emission::STATUS_OPTIONS)
-                            ->default('draft')
-                            ->required(),
-
                         Select::make('issuer_situation')
                             ->label('Situação da Emissora')
                             ->options(Emission::ISSUER_SITUATION_OPTIONS),
@@ -83,16 +92,16 @@ class EmissionForm
                             ->label('Código BSI')
                             ->readOnly()
                             ->dehydrated(false)
-                            ->placeholder('Gerado automaticamente ao salvar')
-                            ->helperText('Gerado automaticamente após o primeiro salvamento.'),
+                            ->placeholder('Gerado automaticamente.')
+                            ->helperText('Gerado automaticamente.'),
+                    ]),
 
-                        Select::make('registered_with_cvm')
-                            ->label('Registrada na CVM')
-                            ->options(self::YES_NO_OPTIONS),
+                Section::make('Partes Envolvidas')
+                    ->compact()
+                    ->columns([
+                        'default' => 1,
+                        'xl' => 1,
                     ])
-                    ->columns(2),
-
-                Section::make('Atributos da Emissão')
                     ->schema([
                         self::serviceProviderField('issuer', 'Emissor', 'Emissor'),
 
@@ -102,19 +111,29 @@ class EmissionForm
 
                         self::serviceProviderField('registrar', 'Escriturador', 'Escriturador'),
 
-                        Select::make('fiduciary_regime')
-                            ->label('Regime Fiduciário')
-                            ->options(self::YES_NO_OPTIONS),
+                        self::serviceProviderField('trustee_agent', 'Agente Fiduciário', 'Agente Fiduciário'),
 
+                        self::serviceProviderField('debtor', 'Devedor', 'Devedor'),
+
+                        self::serviceProviderField('law_firm', 'Escritório de Advocacia', 'Escritório de Advocacia')
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Estrutura da Emissão')
+                    ->columns([
+                        'default' => 1,
+                        'xl' => 3,
+                    ])
+                    ->schema([
                         DatePicker::make('issue_date')
                             ->label('Data de Emissão'),
 
                         DatePicker::make('maturity_date')
                             ->label('Data de Vencimento'),
 
-                        Select::make('monetary_update_period')
-                            ->label('Periodicidade de Atualização Monetária')
-                            ->options(self::MONTHLY_ANNUAL_OPTIONS),
+                        Select::make('fiduciary_regime')
+                            ->label('Regime Fiduciário')
+                            ->options(self::YES_NO_OPTIONS),
 
                         TextInput::make('series')
                             ->label('Série')
@@ -124,60 +143,53 @@ class EmissionForm
                             ->label('Número da Emissão')
                             ->maxLength(255),
 
-                        TextInput::make('issued_quantity')
-                            ->label('Quantidade Emitida')
-                            ->mask(RawJs::make(<<<'JS'
-                                $money($input, ',', '.', 0)
-                            JS))
-                            ->stripCharacters(['.', ','])
-                            ->minValue(0)
-                            ->placeholder('32.600'),
+                        Select::make('form_type')
+                            ->label('Forma')
+                            ->options(Emission::FORM_OPTIONS),
+
+                        Select::make('monetary_update_period')
+                            ->label('Periodicidade de Atualização Monetária')
+                            ->options(self::MONTHLY_ANNUAL_OPTIONS),
 
                         Select::make('interest_payment_frequency')
                             ->label('Fluxo de Pagamento de Juros')
                             ->options(self::MONTHLY_ANNUAL_OPTIONS),
 
-                        TextInput::make('offer_type')
-                            ->label('Modalidade de Oferta')
-                            ->readOnly()
-                            ->default('CVM 160')
-                            ->afterStateHydrated(function (TextInput $component): void {
-                                $component->state('CVM 160');
-                            })
-                            ->dehydrateStateUsing(fn (): string => 'CVM 160'),
+                        Select::make('amortization_frequency')
+                            ->label('Fluxo de Amortização')
+                            ->options(self::AMORTIZATION_OPTIONS),
 
                         Select::make('concentration')
                             ->label('Nível de Concentração')
                             ->options(self::CONCENTRATION_OPTIONS),
 
-                        TextInput::make('issued_price')
-                            ->label('Preço de Emissão')
-                            ->mask(RawJs::make(<<<'JS'
-                                $money($input, ',', '.', 2)
-                            JS))
-                            ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2, ',', '.') : null)
-                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (float) str_replace(['.', ','], ['', '.'], (string) $state) : null)
-                            ->prefix('R$')
-                            ->placeholder('1.000,00'),
+                        Select::make('prepayment_possibility')
+                            ->label('Opção de Resgate Antecipado')
+                            ->options(self::BOOLEAN_SELECT_OPTIONS)
+                            ->default('0')
+                            ->formatStateUsing(fn ($state): string => (bool) $state ? '1' : '0')
+                            ->dehydrateStateUsing(fn ($state): bool => (bool) $state),
 
-                        Select::make('amortization_frequency')
-                            ->label('Fluxo de Amortização')
-                            ->options(self::AMORTIZATION_OPTIONS),
+                        TextInput::make('segment')
+                            ->label('Segmento de Atuação')
+                            ->maxLength(255),
+                    ]),
 
-                        TextInput::make('integralized_quantity')
-                            ->label('Quantidade Integralizada')
-                            ->mask(RawJs::make(<<<'JS'
-                                $money($input, ',', '.', 0)
-                            JS))
-                            ->stripCharacters(['.', ','])
-                            ->minValue(0)
-                            ->placeholder('13.200'),
-
-                        self::serviceProviderField('trustee_agent', 'Agente Fiduciário', 'Agente Fiduciário'),
-
-                        self::serviceProviderField('debtor', 'Devedor', 'Devedor'),
-
-                        self::serviceProviderField('law_firm', 'Escritório de Advocacia', 'Escritório de Advocacia'),
+                Section::make('Valores e Remuneração')
+                    ->columns([
+                        'default' => 1,
+                        'xl' => 2,
+                    ])
+                    ->schema([
+                        TextInput::make('offer_type')
+                            ->label('Tipo de Oferta')
+                            ->readOnly()
+                            ->default('CVM 160')
+                            ->afterStateHydrated(function (TextInput $component): void {
+                                $component->state('CVM 160');
+                            })
+                            ->dehydrateStateUsing(fn (): string => 'CVM 160')
+                            ->columnSpanFull(),
 
                         Select::make('remuneration_indexer')
                             ->label('Indexador')
@@ -193,20 +205,33 @@ class EmissionForm
                             ->suffix('%')
                             ->placeholder('6,50'),
 
-                        Select::make('prepayment_possibility')
-                            ->label('Opção de Resgate Antecipado')
-                            ->options(self::BOOLEAN_SELECT_OPTIONS)
-                            ->default('0')
-                            ->formatStateUsing(fn ($state): string => (bool) $state ? '1' : '0')
-                            ->dehydrateStateUsing(fn ($state): bool => (bool) $state),
+                        TextInput::make('issued_quantity')
+                            ->label('Quantidade Emitida')
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.', 0)
+                            JS))
+                            ->stripCharacters(['.', ','])
+                            ->minValue(0)
+                            ->placeholder('32.600'),
 
-                        Select::make('form_type')
-                            ->label('Forma')
-                            ->options(Emission::FORM_OPTIONS),
+                        TextInput::make('integralized_quantity')
+                            ->label('Quantidade Integralizada')
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.', 0)
+                            JS))
+                            ->stripCharacters(['.', ','])
+                            ->minValue(0)
+                            ->placeholder('13.200'),
 
-                        TextInput::make('segment')
-                            ->label('Segmento de Atuação')
-                            ->maxLength(255),
+                        TextInput::make('issued_price')
+                            ->label('Preço de Emissão')
+                            ->mask(RawJs::make(<<<'JS'
+                                $money($input, ',', '.', 2)
+                            JS))
+                            ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2, ',', '.') : null)
+                            ->dehydrateStateUsing(fn ($state) => filled($state) ? (float) str_replace(['.', ','], ['', '.'], (string) $state) : null)
+                            ->prefix('R$')
+                            ->placeholder('1.000,00'),
 
                         TextInput::make('issued_volume')
                             ->label('Volume Emitido')
@@ -217,10 +242,13 @@ class EmissionForm
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? (float) str_replace(['.', ','], ['', '.'], (string) $state) : null)
                             ->prefix('R$')
                             ->placeholder('32.000.000,00'),
-                    ])
-                    ->columns(2),
+                    ]),
 
                 Section::make('Cláusulas e Garantias')
+                    ->columns([
+                        'default' => 1,
+                        'xl' => 2,
+                    ])
                     ->schema([
                         Select::make('guarantee_fund')
                             ->label('Fundo de Fiança')
@@ -240,56 +268,46 @@ class EmissionForm
 
                         Textarea::make('corporate_purpose')
                             ->label('Objeto Social')
-                            ->rows(4)
-                            ->columnSpanFull(),
-
-                        Textarea::make('subscription_and_integralization_terms')
-                            ->label('Forma de Subscrição e de Integralização e Preço de Integralização')
-                            ->rows(4)
-                            ->columnSpanFull(),
-
-                        Textarea::make('amortization_payment_schedule')
-                            ->label('Calendário de Pagamento da Amortização')
-                            ->rows(4)
-                            ->columnSpanFull(),
-
-                        Textarea::make('remuneration_payment_schedule')
-                            ->label('Calendário de Pagamento da Remuneração')
-                            ->rows(4)
-                            ->columnSpanFull(),
+                            ->rows(4),
 
                         Textarea::make('use_of_proceeds')
                             ->label('Destinação dos Recursos')
-                            ->rows(4)
-                            ->columnSpanFull(),
+                            ->rows(4),
+
+                        Textarea::make('subscription_and_integralization_terms')
+                            ->label('Forma de Subscrição e de Integralização e Preço de Integralização')
+                            ->rows(4),
 
                         Textarea::make('repactuation')
                             ->label('Repactuação')
-                            ->rows(4)
-                            ->columnSpanFull(),
+                            ->rows(4),
+
+                        Textarea::make('amortization_payment_schedule')
+                            ->label('Calendário de Pagamento da Amortização')
+                            ->rows(4),
+
+                        Textarea::make('remuneration_payment_schedule')
+                            ->label('Calendário de Pagamento da Remuneração')
+                            ->rows(4),
 
                         Textarea::make('optional_early_redemption')
                             ->label('Resgate Antecipado Facultativo')
-                            ->rows(4)
-                            ->columnSpanFull(),
+                            ->rows(4),
 
                         Textarea::make('early_amortization')
                             ->label('Amortização Antecipada')
-                            ->rows(4)
-                            ->columnSpanFull(),
+                            ->rows(4),
 
                         Textarea::make('remuneration_calculation')
                             ->label('Cálculo da Remuneração')
-                            ->rows(4)
-                            ->columnSpanFull(),
-
-                        Textarea::make('property_description')
-                            ->label('Descrição do Imóvel')
-                            ->rows(4)
-                            ->columnSpanFull(),
+                            ->rows(4),
 
                         Textarea::make('segregated_estate')
                             ->label('Patrimônio Separado')
+                            ->rows(4),
+
+                        Textarea::make('property_description')
+                            ->label('Descrição do Imóvel')
                             ->rows(4)
                             ->columnSpanFull(),
 
@@ -297,14 +315,18 @@ class EmissionForm
                             ->label('Garantias')
                             ->rows(4)
                             ->columnSpanFull(),
-                    ])
-                    ->columns(2),
+                    ]),
 
                 Section::make('Divulgação Institucional')
+                    ->columns([
+                        'default' => 1,
+                        'xl' => 2,
+                    ])
                     ->schema([
                         Toggle::make('is_public')
                             ->label('Divulgação em Ambiente Público')
-                            ->default(false),
+                            ->default(false)
+                            ->columnSpanFull(),
 
                         FileUpload::make('logo_path')
                             ->label('Identidade Visual da Operação')
@@ -318,8 +340,7 @@ class EmissionForm
                             ->label('Notas Institucionais / Sumário')
                             ->rows(6)
                             ->columnSpanFull(),
-                    ])
-                    ->columns(2),
+                    ]),
             ]);
     }
 
