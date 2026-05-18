@@ -81,7 +81,18 @@ PROMPT;
     /** @return array<string, string|null> */
     public function extractSecuritizationClauses(Document $document): array
     {
-        $contents = Storage::disk($document->resolved_storage_disk)->get($document->file_path);
+        $disk = $document->resolved_storage_disk;
+        $path = $document->file_path;
+
+        if (! Storage::disk($disk)->exists($path)) {
+            throw new \RuntimeException("Arquivo não encontrado no disco '{$disk}': {$path}");
+        }
+
+        $contents = Storage::disk($disk)->get($path);
+
+        if (empty($contents)) {
+            throw new \RuntimeException("Arquivo vazio no disco '{$disk}': {$path}");
+        }
 
         $response = Http::timeout(180)
             ->post(self::API_URL.self::MODEL.':generateContent?key='.config('services.gemini.key'), [
