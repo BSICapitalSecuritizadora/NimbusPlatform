@@ -32,7 +32,11 @@
       "Bash(chmod -R 755 storage/framework/testing/disks/local/)",
       "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $r = new ReflectionMethod\\(Illuminate\\\\Foundation\\\\Testing\\\\WithFaker::class ?? '\\\\''stdClass'\\\\'', '\\\\''fake'\\\\''\\); echo $r->getFileName\\(\\).'\\\\'':'\\\\''.$r->getStartLine\\(\\);')",
       "Bash(./vendor/bin/pint *)",
-      "Bash(./vendor/bin/sail exec *)"
+      "Bash(./vendor/bin/sail exec *)",
+      "Bash(docker compose *)",
+      "Skill(fluxui-development)",
+      "Bash(grep -rn 'getLivewire\\\\|getRecord\\\\|$livewire\\\\|dispatch\\\\b' /home/desktop/projects/bsi-capital/vendor/filament/actions/src/Action.php)",
+      "Bash(grep -rn 'getRecord\\\\|->record\\\\b\\\\|Model $record\\\\|Emission $record' /home/desktop/projects/bsi-capital/vendor/filament/actions/src/Action.php)"
     ]
   }
 }

@@ -50,4 +50,8 @@ return [
         'tenant' => env('AZURE_TENANT_ID', 'common'),
     ],
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
+
 ];

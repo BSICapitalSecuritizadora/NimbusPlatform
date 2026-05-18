@@ -6,16 +6,20 @@ use App\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProvide
 use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
+use App\Services\GeminiService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
+use Illuminate\Support\HtmlString;
 
 class EmissionForm
 {
@@ -254,7 +258,155 @@ class EmissionForm
                         'default' => 1,
                         'xl' => 2,
                     ])
+                    ->headerActions([
+                        Action::make('extract_from_term')
+                            ->label('Extrair do Termo')
+                            ->icon('heroicon-o-sparkles')
+                            ->color('warning')
+                            ->visible(fn (string $operation): bool => $operation === 'edit')
+                            ->mountUsing(function (Action $action, Emission $record, \Filament\Schemas\Schema $schema): void {
+                                $document = $record->documents()
+                                    ->where('category', 'documentos_operacao')
+                                    ->whereRaw('TRIM(title) = ?', ['Termo de Securitização'])
+                                    ->first();
+
+                                if (! $document) {
+                                    Notification::make()
+                                        ->title('Termo de Securitização não encontrado')
+                                        ->body('Adicione o documento em "Documentos da Operação" com o título "Termo de Securitização".')
+                                        ->warning()
+                                        ->send();
+
+                                    $action->halt();
+
+                                    return;
+                                }
+
+                                try {
+                                    $schema->fill(app(GeminiService::class)->extractSecuritizationClauses($document));
+                                } catch (\Illuminate\Http\Client\RequestException $e) {
+                                    $status = $e->response->status();
+                                    $body = $e->response->json('error.message', '');
+
+                                    $message = match (true) {
+                                        $status === 429 => 'Quota da API atingida. Aguarde o reset diário ou ative o faturamento no Google AI Studio.',
+                                        $status === 401, $status === 403 => 'Chave de API inválida ou sem permissão. Verifique GEMINI_API_KEY no .env.',
+                                        default => "Erro na API Gemini (HTTP {$status}): {$body}",
+                                    };
+
+                                    Notification::make()
+                                        ->title('Não foi possível extrair as cláusulas')
+                                        ->body($message)
+                                        ->danger()
+                                        ->send();
+
+                                    $action->halt();
+                                } catch (\Throwable) {
+                                    Notification::make()
+                                        ->title('Erro inesperado')
+                                        ->body('Não foi possível processar o documento. Tente novamente.')
+                                        ->danger()
+                                        ->send();
+
+                                    $action->halt();
+                                }
+                            })
+                            ->form([
+                                Textarea::make('corporate_purpose')
+                                    ->label('Objeto Social')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('use_of_proceeds')
+                                    ->label('Destinação dos Recursos')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('subscription_and_integralization_terms')
+                                    ->label('Forma de Subscrição e de Integralização e Preço de Integralização')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('repactuation')
+                                    ->label('Repactuação')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('amortization_payment_schedule')
+                                    ->label('Calendário de Pagamento da Amortização')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('remuneration_payment_schedule')
+                                    ->label('Calendário de Pagamento da Remuneração')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('optional_early_redemption')
+                                    ->label('Resgate Antecipado Facultativo')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('early_amortization')
+                                    ->label('Amortização Antecipada')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('remuneration_calculation')
+                                    ->label('Cálculo da Remuneração')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('segregated_estate')
+                                    ->label('Patrimônio Separado')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('property_description')
+                                    ->label('Descrição do Imóvel')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                                Textarea::make('guarantees_description')
+                                    ->label('Garantias')
+                                    ->rows(4)
+                                    ->columnSpanFull(),
+                            ])
+                            ->modalHeading('Cláusulas extraídas do Termo de Securitização')
+                            ->modalDescription('Revise os campos abaixo antes de aplicar. Campos com conteúdo sobrescreverão os valores existentes.')
+                            ->modalSubmitActionLabel('Aplicar Cláusulas')
+                            ->modalWidth('4xl')
+                            ->action(function (array $data, Emission $record, mixed $livewire): void {
+                                $record->update(array_filter($data, fn ($v): bool => filled($v)));
+
+                                Notification::make()
+                                    ->title('Cláusulas aplicadas com sucesso!')
+                                    ->success()
+                                    ->send();
+
+                                $livewire->redirect(
+                                    \App\Filament\Resources\Emissions\EmissionResource::getUrl('edit', ['record' => $record]),
+                                    navigate: true,
+                                );
+                            }),
+                    ])
                     ->schema([
+                        Placeholder::make('securitization_term_status')
+                            ->label('Termo de Securitização')
+                            ->content(function (?Emission $record): HtmlString {
+                                $exists = $record?->documents()
+                                    ->where('category', 'documentos_operacao')
+                                    ->whereRaw('TRIM(title) = ?', ['Termo de Securitização'])
+                                    ->exists();
+
+                                if ($exists) {
+                                    return new HtmlString(
+                                        '<span class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                            <svg class="size-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"/></svg>
+                                            Cadastrado em Documentos da Operação
+                                        </span>'
+                                    );
+                                }
+
+                                return new HtmlString(
+                                    '<span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                                        <svg class="size-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg>
+                                        Não cadastrado — adicione em Documentos da Operação com o título "Termo de Securitização"
+                                    </span>'
+                                );
+                            })
+                            ->columnSpanFull()
+                            ->visibleOn('edit'),
+
                         Select::make('guarantee_fund')
                             ->label('Fundo de Fiança')
                             ->options(self::YES_NO_OPTIONS),
