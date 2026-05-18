@@ -28,6 +28,9 @@ jobs:
           php-version: '8.5'
           extensions: mbstring, bcmath, pdo_mysql, zip
 
+      - name: Add Flux Credentials
+        run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
+
       - name: Install Composer dependencies
         run: composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
 
