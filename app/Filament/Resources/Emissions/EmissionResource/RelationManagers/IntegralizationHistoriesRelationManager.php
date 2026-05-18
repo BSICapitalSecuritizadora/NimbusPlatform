@@ -5,15 +5,21 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 use App\Actions\Emissions\ImportIntegralizationHistoriesFromSpreadsheet;
 use App\Actions\Emissions\IntegralizationHistorySpreadsheetTemplate;
 use App\Filament\Pages\Settings as SettingsPage;
+use App\Models\IntegralizationHistory;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class IntegralizationHistoriesRelationManager extends RelationManager
 {
@@ -36,15 +42,45 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->required(),
                 TextInput::make('quantity')
                     ->label('Quantidade')
-                    ->numeric()
-                    ->required(),
+                    ->inputMode('numeric')
+                    ->mask(RawJs::make(<<<'JS'
+                        $money($input, ',', '.', 0)
+                    JS))
+                    ->required()
+                    ->live(onBlur: true)
+                    ->afterStateHydrated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
+                    ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
+                    ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 0))
+                    ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeDecimalValue($state))
+                    ->placeholder('1.000')
+                    ->validationMessages([
+                        'required' => 'Informe a quantidade a integralizar.',
+                        'numeric' => 'Informe uma quantidade válida.',
+                    ]),
                 TextInput::make('unit_value')
                     ->label('PU')
-                    ->numeric(),
+                    ->inputMode('decimal')
+                    ->mask(RawJs::make(<<<'JS'
+                        $money($input, ',', '.', 8)
+                    JS))
+                    ->live(onBlur: true)
+                    ->afterStateHydrated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
+                    ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
+                    ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 8))
+                    ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeDecimalValue($state))
+                    ->placeholder('1.000,50000000'),
                 TextInput::make('financial_value')
                     ->label('Financeiro')
-                    ->numeric()
-                    ->prefix('R$'),
+                    ->prefix('R$')
+                    ->readOnly()
+                    ->inputMode('decimal')
+                    ->mask(RawJs::make(<<<'JS'
+                        $money($input, ',', '.', 2)
+                    JS))
+                    ->helperText('Calculado automaticamente a partir de Quantidade x PU.')
+                    ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 2))
+                    ->dehydrateStateUsing(fn (Get $get): ?float => self::calculateFinancialValue($get))
+                    ->placeholder('1.000.000,00'),
                 TextInput::make('investor_fund')
                     ->label('Fundo (Investidor)')
                     ->maxLength(255),
@@ -66,7 +102,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('unit_value')
                     ->label('PU')
-                    ->numeric(6, ',', '.')
+                    ->numeric(8, ',', '.')
                     ->sortable(),
                 TextColumn::make('financial_value')
                     ->label('Financeiro')
@@ -107,6 +143,15 @@ class IntegralizationHistoriesRelationManager extends RelationManager
 
                         try {
                             $count = app(ImportIntegralizationHistoriesFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
+                        } catch (ValidationException $exception) {
+                            Notification::make()
+                                ->title('Importação não realizada')
+                                ->body(collect($exception->errors())->flatten()->implode(PHP_EOL))
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            return;
                         } catch (\Throwable) {
                             Notification::make()
                                 ->title('Erro ao ler o arquivo')
@@ -122,10 +167,16 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-                \Filament\Actions\CreateAction::make(),
+                \Filament\Actions\CreateAction::make()
+                    ->before(function (Action $action, array $data): void {
+                        $this->validateIntegralizationQuantityOrHalt($action, $data);
+                    }),
             ])
             ->actions([
-                \Filament\Actions\EditAction::make(),
+                \Filament\Actions\EditAction::make()
+                    ->before(function (Action $action, IntegralizationHistory $record, array $data): void {
+                        $this->validateIntegralizationQuantityOrHalt($action, $data, $record);
+                    }),
                 \Filament\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -134,5 +185,81 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                 ]),
             ])
             ->emptyStateHeading("Nenhuma integraliza\u{00E7}\u{00E3}o registrada");
+    }
+
+    protected function afterActionCalled(Action $action): void
+    {
+        parent::afterActionCalled($action);
+
+        $this->dispatch('integralization-histories-updated');
+    }
+
+    protected function validateIntegralizationQuantityOrHalt(
+        Action $action,
+        array $data,
+        ?IntegralizationHistory $record = null,
+    ): void {
+        try {
+            $this->ownerRecord->ensureIntegralizationQuantityWithinIssuedLimit(
+                quantity: $data['quantity'] ?? null,
+                ignoringIntegralizationHistory: $record,
+            );
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first();
+
+            if (filled($message)) {
+                Notification::make()
+                    ->title('Integralização não realizada')
+                    ->body((string) $message)
+                    ->danger()
+                    ->persistent()
+                    ->send();
+            }
+
+            $action->halt();
+        }
+    }
+
+    private static function formatDecimalForDisplay(mixed $state, int $decimals): ?string
+    {
+        if (blank($state) && $state !== 0 && $state !== '0') {
+            return null;
+        }
+
+        return number_format((float) $state, $decimals, ',', '.');
+    }
+
+    private static function normalizeDecimalValue(mixed $state): ?float
+    {
+        if (blank($state) && $state !== 0 && $state !== '0') {
+            return null;
+        }
+
+        if (is_int($state) || is_float($state)) {
+            return (float) $state;
+        }
+
+        return (float) str_replace(['.', ','], ['', '.'], (string) $state);
+    }
+
+    private static function syncFinancialValue(Get $get, Set $set): null
+    {
+        $financialValue = self::calculateFinancialValue($get);
+
+        $set('financial_value', self::formatDecimalForDisplay($financialValue, 2));
+
+        return null;
+    }
+
+    private static function calculateFinancialValue(Get $get): ?float
+    {
+        $quantity = self::normalizeDecimalValue($get('quantity'));
+        $unitValue = self::normalizeDecimalValue($get('unit_value'));
+
+        if ($quantity === null || $unitValue === null) {
+            return null;
+        }
+
+        return round($quantity * $unitValue, 2);
     }
 }

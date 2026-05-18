@@ -6,6 +6,7 @@ use App\Models\Emission;
 use App\Models\IntegralizationHistory;
 use Carbon\Carbon;
 use DateTimeInterface;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
 
@@ -46,46 +47,48 @@ class ImportIntegralizationHistoriesFromSpreadsheet
 
         $importedIntegralizationHistories = 0;
 
-        foreach ($rows as $row) {
-            $date = $this->parseDate($row[$columnMap['columns']['date']] ?? null);
-            $quantity = $this->parseAmount($row[$columnMap['columns']['quantity']] ?? null);
-            $unitValue = $this->parseAmount($row[$columnMap['columns']['unit_value']] ?? null);
-            $financialValue = $this->parseAmount($row[$columnMap['columns']['financial_value']] ?? null);
-            $investorFund = $this->parseText($row[$columnMap['columns']['investor_fund']] ?? null);
+        DB::transaction(function () use ($rows, $columnMap, $emission, &$importedIntegralizationHistories): void {
+            foreach ($rows as $row) {
+                $date = $this->parseDate($row[$columnMap['columns']['date']] ?? null);
+                $quantity = $this->parseAmount($row[$columnMap['columns']['quantity']] ?? null);
+                $unitValue = $this->parseAmount($row[$columnMap['columns']['unit_value']] ?? null);
+                $financialValue = $this->parseAmount($row[$columnMap['columns']['financial_value']] ?? null);
+                $investorFund = $this->parseText($row[$columnMap['columns']['investor_fund']] ?? null);
 
-            if (! $date || $quantity === null || $quantity <= 0) {
-                continue;
+                if (! $date || $quantity === null || $quantity <= 0) {
+                    continue;
+                }
+
+                if ($financialValue === null && $unitValue !== null) {
+                    $financialValue = $quantity * $unitValue;
+                }
+
+                $attributes = [
+                    'quantity' => $quantity,
+                    'unit_value' => $unitValue,
+                    'financial_value' => $financialValue,
+                    'investor_fund' => $investorFund,
+                ];
+
+                $integralizationHistory = IntegralizationHistory::query()
+                    ->where('emission_id', $emission->id)
+                    ->whereDate('date', $date)
+                    ->first();
+
+                if ($integralizationHistory) {
+                    $integralizationHistory->fill($attributes);
+                    $integralizationHistory->save();
+                } else {
+                    IntegralizationHistory::query()->create([
+                        'emission_id' => $emission->id,
+                        'date' => $date,
+                        ...$attributes,
+                    ]);
+                }
+
+                $importedIntegralizationHistories++;
             }
-
-            if ($financialValue === null && $unitValue !== null) {
-                $financialValue = $quantity * $unitValue;
-            }
-
-            $attributes = [
-                'quantity' => $quantity,
-                'unit_value' => $unitValue,
-                'financial_value' => $financialValue,
-                'investor_fund' => $investorFund,
-            ];
-
-            $integralizationHistory = IntegralizationHistory::query()
-                ->where('emission_id', $emission->id)
-                ->whereDate('date', $date)
-                ->first();
-
-            if ($integralizationHistory) {
-                $integralizationHistory->fill($attributes);
-                $integralizationHistory->save();
-            } else {
-                IntegralizationHistory::query()->create([
-                    'emission_id' => $emission->id,
-                    'date' => $date,
-                    ...$attributes,
-                ]);
-            }
-
-            $importedIntegralizationHistories++;
-        }
+        });
 
         return $importedIntegralizationHistories;
     }

@@ -9,6 +9,7 @@ use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
@@ -41,7 +42,7 @@ it('organizes the emission form into dedicated layout sections', function () {
 
     expect($sections['Dados da Operação']->getColumns())->toMatchArray([
         'default' => 1,
-        'xl' => 3,
+        'xl' => 2,
     ]);
 
     expect($sections['Partes Envolvidas']->getColumns())->toMatchArray([
@@ -51,7 +52,7 @@ it('organizes the emission form into dedicated layout sections', function () {
 
     expect($sections['Estrutura da Emissão']->getColumns())->toMatchArray([
         'default' => 1,
-        'xl' => 3,
+        'xl' => 2,
     ]);
 
     expect($sections['Valores e Remuneração']->getColumns())->toMatchArray([
@@ -62,6 +63,30 @@ it('organizes the emission form into dedicated layout sections', function () {
     expect($sections['Cláusulas e Garantias']->getColumns())->toMatchArray([
         'default' => 1,
         'xl' => 2,
+    ]);
+
+    expect($sections['Dados da Operação']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
+    ]);
+
+    expect($sections['Partes Envolvidas']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
+    ]);
+
+    expect($sections['Estrutura da Emissão']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
+    ]);
+
+    expect($sections['Valores e Remuneração']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
+    ]);
+
+    expect($sections['Cláusulas e Garantias']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
+    ]);
+
+    expect($sections['Divulgação Institucional']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
     ]);
 
     expect($sections['Partes Envolvidas']->getChildSchema()->getComponentByStatePath('issuer'))->not->toBeNull()
@@ -267,6 +292,9 @@ it('filters emission service provider fields by the expected provider types', fu
                 'Não' => 'Não',
             ];
         })
+        ->assertFormFieldExists('integralized_quantity', function (TextInput $field): bool {
+            return $field->isReadOnly() && ! $field->isDehydrated();
+        })
         ->assertFormFieldExists('bsi_code')
         ->assertFormFieldExists('corporate_purpose')
         ->assertFormFieldExists('subscription_and_integralization_terms')
@@ -462,6 +490,47 @@ it('forces the offer type to CVM 160 on the emission edit form', function () {
         ->assertHasNoFormErrors();
 
     expect($emission->refresh()->offer_type)->toBe('CVM 160');
+});
+
+it('shows the summed integralized quantity on the emission edit form', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'integralized_quantity' => 123,
+    ]);
+
+    $emission->integralizationHistories()->create([
+        'date' => '2025-06-04',
+        'quantity' => 1000,
+    ]);
+
+    $emission->integralizationHistories()->create([
+        'date' => '2025-06-05',
+        'quantity' => 6500,
+    ]);
+
+    Emission::query()
+        ->whereKey($emission->id)
+        ->update([
+            'integralized_quantity' => 123,
+        ]);
+
+    $page = Livewire::test(EditEmission::class, [
+        'record' => $emission->getRouteKey(),
+    ])
+        ->assertFormSet([
+            'integralized_quantity' => '7.500',
+        ]);
+
+    $emission->integralizationHistories()->create([
+        'date' => '2025-06-06',
+        'quantity' => 250,
+    ]);
+
+    $page->call('refreshIntegralizedQuantity')
+        ->assertFormSet([
+            'integralized_quantity' => '7.750',
+        ]);
 });
 
 it('stores emission provider selections and yes no options from the create form', function () {

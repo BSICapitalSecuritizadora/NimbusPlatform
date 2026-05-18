@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -238,6 +239,44 @@ class Emission extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function calculateIntegralizedQuantity(): int
+    {
+        return (int) round((float) $this->integralizationHistories()->sum('quantity'));
+    }
+
+    public function ensureIntegralizationQuantityWithinIssuedLimit(
+        float|int|string|null $quantity,
+        ?IntegralizationHistory $ignoringIntegralizationHistory = null,
+    ): void {
+        if (! filled($this->issued_quantity) && $this->issued_quantity !== 0 && $this->issued_quantity !== '0') {
+            throw ValidationException::withMessages([
+                'quantity' => 'Defina a Quantidade Emitida da emissão antes de registrar integralizações.',
+            ]);
+        }
+
+        $requestedQuantity = (float) ($quantity ?? 0);
+        $alreadyIntegralizedQuantity = $this->sumIntegralizationHistoriesQuantity($ignoringIntegralizationHistory);
+        $availableQuantity = max(0, (float) $this->issued_quantity - $alreadyIntegralizedQuantity);
+
+        if ($requestedQuantity <= ($availableQuantity + 0.0001)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'quantity' => sprintf(
+                'A quantidade informada excede a Quantidade Emitida. Restam %s disponíveis para integralização.',
+                self::formatQuantityForValidationMessage($availableQuantity),
+            ),
+        ]);
+    }
+
+    public function syncIntegralizedQuantityFromHistories(): void
+    {
+        $this->forceFill([
+            'integralized_quantity' => $this->calculateIntegralizedQuantity(),
+        ])->saveQuietly();
+    }
+
     public function constructions(): HasMany
     {
         return $this->hasMany(Construction::class);
@@ -271,5 +310,20 @@ class Emission extends Model
     public function integralizationHistories(): HasMany
     {
         return $this->hasMany(IntegralizationHistory::class);
+    }
+
+    private function sumIntegralizationHistoriesQuantity(?IntegralizationHistory $ignoringIntegralizationHistory = null): float
+    {
+        return (float) $this->integralizationHistories()
+            ->when(
+                $ignoringIntegralizationHistory?->exists,
+                fn ($query) => $query->whereKeyNot($ignoringIntegralizationHistory->getKey()),
+            )
+            ->sum('quantity');
+    }
+
+    private static function formatQuantityForValidationMessage(float $quantity): string
+    {
+        return rtrim(rtrim(number_format($quantity, 4, ',', '.'), '0'), ',');
     }
 }

@@ -50,13 +50,14 @@ class EmissionForm
         return $schema
             ->components([
                 Section::make('Dados da Operação')
+                    ->columnSpanFull()
                     ->columns([
                         'default' => 1,
-                        'xl' => 3,
+                        'xl' => 2,
                     ])
                     ->schema([
                         TextInput::make('name')
-                            ->label('Denominação da Operação')
+                            ->label('Nome da Operação')
                             ->required()
                             ->maxLength(255)
                             ->columnSpanFull(),
@@ -93,10 +94,12 @@ class EmissionForm
                             ->readOnly()
                             ->dehydrated(false)
                             ->placeholder('Gerado automaticamente.')
-                            ->helperText('Gerado automaticamente.'),
+                            ->helperText('Gerado automaticamente.')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Partes Envolvidas')
+                    ->columnSpanFull()
                     ->compact()
                     ->columns([
                         'default' => 1,
@@ -120,9 +123,10 @@ class EmissionForm
                     ]),
 
                 Section::make('Estrutura da Emissão')
+                    ->columnSpanFull()
                     ->columns([
                         'default' => 1,
-                        'xl' => 3,
+                        'xl' => 2,
                     ])
                     ->schema([
                         DatePicker::make('issue_date')
@@ -131,10 +135,6 @@ class EmissionForm
                         DatePicker::make('maturity_date')
                             ->label('Data de Vencimento'),
 
-                        Select::make('fiduciary_regime')
-                            ->label('Regime Fiduciário')
-                            ->options(self::YES_NO_OPTIONS),
-
                         TextInput::make('series')
                             ->label('Série')
                             ->maxLength(255),
@@ -142,6 +142,10 @@ class EmissionForm
                         TextInput::make('emission_number')
                             ->label('Número da Emissão')
                             ->maxLength(255),
+
+                        Select::make('fiduciary_regime')
+                            ->label('Regime Fiduciário')
+                            ->options(self::YES_NO_OPTIONS),
 
                         Select::make('form_type')
                             ->label('Forma')
@@ -176,6 +180,7 @@ class EmissionForm
                     ]),
 
                 Section::make('Valores e Remuneração')
+                    ->columnSpanFull()
                     ->columns([
                         'default' => 1,
                         'xl' => 2,
@@ -216,12 +221,11 @@ class EmissionForm
 
                         TextInput::make('integralized_quantity')
                             ->label('Quantidade Integralizada')
-                            ->mask(RawJs::make(<<<'JS'
-                                $money($input, ',', '.', 0)
-                            JS))
-                            ->stripCharacters(['.', ','])
-                            ->minValue(0)
-                            ->placeholder('13.200'),
+                            ->readOnly()
+                            ->dehydrated(false)
+                            ->default(0)
+                            ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 0, ',', '.'))
+                            ->placeholder('0'),
 
                         TextInput::make('issued_price')
                             ->label('Preço de Emissão')
@@ -245,6 +249,7 @@ class EmissionForm
                     ]),
 
                 Section::make('Cláusulas e Garantias')
+                    ->columnSpanFull()
                     ->columns([
                         'default' => 1,
                         'xl' => 2,
@@ -318,6 +323,7 @@ class EmissionForm
                     ]),
 
                 Section::make('Divulgação Institucional')
+                    ->columnSpanFull()
                     ->columns([
                         'default' => 1,
                         'xl' => 2,
