@@ -85,7 +85,13 @@ PROMPT;
         $path = $document->file_path;
 
         if (! Storage::disk($disk)->exists($path)) {
-            throw new \RuntimeException("Arquivo não encontrado no disco '{$disk}': {$path}");
+            $defaultDisk = config('filesystems.default', 'local');
+
+            if ($defaultDisk !== $disk && Storage::disk($defaultDisk)->exists($path)) {
+                $disk = $defaultDisk;
+            } else {
+                throw new \RuntimeException("Arquivo não encontrado: {$path} (discos verificados: {$disk}, {$defaultDisk})");
+            }
         }
 
         $contents = Storage::disk($disk)->get($path);
