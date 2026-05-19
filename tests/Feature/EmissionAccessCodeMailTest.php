@@ -41,6 +41,9 @@ it('renders the emission access mail with the secure link and validation code', 
     $mail->assertSeeInHtml('123456');
     $mail->assertSeeInHtml('26C0589381');
     $mail->assertSeeInHtml('Gestão Documental Externa');
+    $mail->assertSeeInHtml('Código de acesso para consulta da operação');
+    $mail->assertSeeInHtml('Resumo da operação');
+    $mail->assertSeeInHtml('Orientações de segurança');
     $mail->assertSeeInHtml('https://site.example.test/emissoes/acesso/token-teste');
     $mail->assertSeeInHtml('14:30');
 });
