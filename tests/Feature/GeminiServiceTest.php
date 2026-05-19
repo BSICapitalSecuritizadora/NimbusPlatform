@@ -37,10 +37,13 @@ it('sends the pdf as inline base64 to the generation endpoint', function (): voi
             return false;
         }
 
+        $prompt = $request->data()['contents'][0]['parts'][0]['text'] ?? null;
         $part = $request->data()['contents'][0]['parts'][1] ?? null;
 
         return isset($part['inline_data']['data'])
-            && $part['inline_data']['mime_type'] === 'application/pdf';
+            && $part['inline_data']['mime_type'] === 'application/pdf'
+            && str_contains($prompt ?? '', '"Covenants"')
+            && str_contains($prompt ?? '', '"Obrigações"');
     });
 
     expect($result['corporate_purpose'])->toBe("Cláusula 1ª\n\nObjeto social texto")

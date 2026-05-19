@@ -17,11 +17,11 @@ class ProposalContinuationAccessRelationManager extends RelationManager
 {
     protected static string $relationship = 'continuationAccesses';
 
-    protected static ?string $title = 'Links e códigos enviados';
+    protected static ?string $title = 'Controle de Links e Códigos';
 
-    protected static ?string $modelLabel = 'Envio';
+    protected static ?string $modelLabel = 'Envio de Acesso';
 
-    protected static ?string $pluralModelLabel = 'Envios';
+    protected static ?string $pluralModelLabel = 'Envios de Acesso';
 
     public function form(Schema $schema): Schema
     {
@@ -37,44 +37,44 @@ class ProposalContinuationAccessRelationManager extends RelationManager
             ->recordTitleAttribute('sent_to_email')
             ->columns([
                 TextColumn::make('proposal.contact.name')
-                    ->label('Usuário')
+                    ->label('Usuário Solicitante')
                     ->placeholder('—'),
                 TextColumn::make('sent_to_email')
-                    ->label('E-mail')
+                    ->label('E-mail de Destino')
                     ->searchable(),
                 TextColumn::make('display_code')
-                    ->label('Código enviado'),
+                    ->label('Código Gerado'),
                 TextColumn::make('generated_url')
-                    ->label('Link gerado')
+                    ->label('Link de Acesso')
                     ->wrap(),
                 TextColumn::make('status_label')
-                    ->label('Status')
+                    ->label('Situação')
                     ->badge()
                     ->color(fn (ProposalContinuationAccess $record): string => $record->status_color),
                 TextColumn::make('sent_at')
-                    ->label('Enviado em')
+                    ->label('Data de Envio')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('first_accessed_at')
-                    ->label('Primeiro acesso')
+                    ->label('Primeiro Acesso')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('last_accessed_at')
-                    ->label('Último acesso')
+                    ->label('Último Acesso')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('verified_at')
-                    ->label('Validado em')
+                    ->label('Data de Validação')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
             ])
             ->headerActions([
                 Action::make('resend_access')
-                    ->label('Reenviar acesso')
+                    ->label('Reenviar Link de Acesso')
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
                     ->visible(fn (RelationManager $livewire): bool => ProposalResource::canEdit($livewire->getOwnerRecord()))
@@ -84,14 +84,14 @@ class ProposalContinuationAccessRelationManager extends RelationManager
                         );
 
                         Notification::make()
-                            ->title('Novo link e código enviados ao cliente.')
+                            ->title('Novo link e código enviados com sucesso.')
                             ->success()
                             ->send();
                     }),
             ])
             ->actions([
                 Action::make('open_link')
-                    ->label('Abrir link')
+                    ->label('Abrir Link')
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->visible(fn (RelationManager $livewire): bool => ProposalResource::canEdit($livewire->getOwnerRecord()))
                     ->url(fn (ProposalContinuationAccess $record): string => $record->generated_url)

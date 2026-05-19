@@ -68,7 +68,7 @@ class ProposalResource extends Resource
                 Section::make('Fluxo de Distribuição')
                     ->schema([
                         TextEntry::make('distribution_sequence')
-                            ->label('Ordem na fila')
+                            ->label('Ordem na Fila')
                             ->numeric(decimalPlaces: 0)
                             ->placeholder('—'),
                         TextEntry::make('representative.name')
@@ -96,12 +96,12 @@ class ProposalResource extends Resource
                             ->label('IE')
                             ->placeholder('—'),
                         TextEntry::make('company.site')
-                            ->label('Site')
+                            ->label('Site Institucional')
                             ->placeholder('—')
                             ->url(fn (?string $state): ?string => filled($state) ? $state : null)
                             ->openUrlInNewTab(),
                         TextEntry::make('company.full_address')
-                            ->label('Endereço')
+                            ->label('Endereço Completo')
                             ->placeholder('—')
                             ->columnSpanFull(),
                         TextEntry::make('company.sectors.name')
@@ -121,23 +121,23 @@ class ProposalResource extends Resource
                             ->badge()
                             ->color(fn (Proposal $record): string => $record->latestContinuationAccess?->status_color ?? 'gray'),
                         TextEntry::make('latestContinuationAccess.sent_to_email')
-                            ->label('E-mail do link de acesso')
+                            ->label('E-mail do Link de Acesso')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.display_code')
-                            ->label('Código enviado')
+                            ->label('Código de Acesso')
                             ->placeholder('—')
                             ->copyable(),
                         TextEntry::make('latestContinuationAccess.sent_at')
-                            ->label('Enviado em')
+                            ->label('Data de Envio')
                             ->state(fn (Proposal $record) => $record->latestContinuationAccess?->sent_at ?? $record->latestContinuationAccess?->created_at)
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.expires_at')
-                            ->label('Expira em')
+                            ->label('Data de Expiração')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.first_accessed_at')
-                            ->label('Primeiro acesso')
+                            ->label('Primeiro Acesso')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.last_accessed_at')
@@ -145,15 +145,15 @@ class ProposalResource extends Resource
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.verified_at')
-                            ->label('Validado em')
+                            ->label('Data de Validação')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.last_used_at')
-                            ->label('Último uso autenticado')
+                            ->label('Último Uso Autenticado')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.generated_url')
-                            ->label('Link gerado')
+                            ->label('Link Gerado')
                             ->placeholder('—')
                             ->copyable()
                             ->url(fn (?string $state): ?string => filled($state) ? $state : null)
@@ -296,25 +296,25 @@ class ProposalResource extends Resource
             ->label('Alterar Situação')
             ->icon('heroicon-o-arrow-path')
             ->color('primary')
-            ->modalHeading('Alterar andamento da proposta')
+            ->modalHeading('Alterar Andamento da Proposta')
             ->visible(fn (Proposal $record): bool => static::userCanManageRecord(static::resolveCurrentUser(), $record)
                 && filled(app(UpdateProposalStatus::class)->availableStatusOptions($record->status)))
             ->form([
                 Placeholder::make('current_status')
-                    ->label('Situação atual')
+                    ->label('Situação Atual')
                     ->content(fn (Proposal $record): string => ProposalStatus::labelFor($record->status)),
                 Placeholder::make('current_representative')
-                    ->label('Representante responsável')
+                    ->label('Representante Responsável')
                     ->content(fn (Proposal $record): string => $record->representative?->name ?? 'Não atribuído'),
                 Select::make('status')
-                    ->label('Nova situação')
+                    ->label('Nova Situação')
                     ->options(fn (Proposal $record): array => app(UpdateProposalStatus::class)->availableStatusOptions($record->status))
                     ->required()
                     ->native(false),
                 Textarea::make('note')
-                    ->label('Observação da movimentação')
+                    ->label('Observação da Movimentação')
                     ->rows(4)
-                    ->helperText('Obrigatório ao rejeitar a proposta ou solicitar novas informações.'),
+                    ->helperText('Obrigatório ao rejeitar a proposta ou solicitar informações adicionais.'),
             ])
             ->action(function (Proposal $record, array $data): void {
                 app(UpdateProposalStatus::class)->handle(
@@ -329,7 +329,7 @@ class ProposalResource extends Resource
                 $record->refresh();
 
                 Notification::make()
-                    ->title('Situação da proposta atualizada com êxito.')
+                    ->title('Situação da proposta atualizada com sucesso.')
                     ->success()
                     ->send();
             });

@@ -18,7 +18,7 @@ class ViewProposal extends ViewRecord
         return [
             ProposalResource::getChangeStatusAction(),
             Action::make('resend_access')
-                ->label('Reenviar acesso')
+                ->label('Reenviar Link de Acesso')
                 ->icon('heroicon-o-paper-airplane')
                 ->requiresConfirmation()
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record))
@@ -27,7 +27,7 @@ class ViewProposal extends ViewRecord
 
                     if (RateLimiter::tooManyAttempts($key, 1)) {
                         Notification::make()
-                            ->title('Aguarde alguns minutos antes de reenviar o acesso.')
+                            ->title('Aguarde alguns minutos antes de reenviar o link de acesso.')
                             ->danger()
                             ->send();
 
@@ -43,7 +43,7 @@ class ViewProposal extends ViewRecord
                     $this->record->refresh();
 
                     Notification::make()
-                        ->title('Novo link e código gerados para esta proposta.')
+                        ->title('Novo link e código de acesso gerados com sucesso.')
                         ->success()
                         ->send();
                 }),

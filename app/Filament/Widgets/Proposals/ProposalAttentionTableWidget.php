@@ -16,7 +16,7 @@ class ProposalAttentionTableWidget extends TableWidget
 
     protected int|string|array $columnSpan = 1;
 
-    protected static ?string $heading = 'Propostas que precisam de atenção';
+    protected static ?string $heading = 'Propostas que Requerem Atenção';
 
     public function table(Table $table): Table
     {
@@ -33,20 +33,20 @@ class ProposalAttentionTableWidget extends TableWidget
             ->defaultSort('updated_at', 'desc')
             ->columns([
                 TextColumn::make('company.name')
-                    ->label('Empresa')
+                    ->label('Razão Social')
                     ->searchable()
                     ->wrap(),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                     ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('attention_reason')
-                    ->label('Motivo')
+                    ->label('Motivo da Atenção')
                     ->state(fn (Proposal $record): string => app(ProposalDashboardData::class)->attentionReason($record))
                     ->wrap(),
                 TextColumn::make('updated_at')
-                    ->label('Última atualização')
+                    ->label('Última Movimentação')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ]);

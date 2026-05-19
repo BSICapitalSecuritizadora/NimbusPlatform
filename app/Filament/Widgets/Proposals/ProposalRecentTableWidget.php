@@ -16,7 +16,7 @@ class ProposalRecentTableWidget extends TableWidget
 
     protected int|string|array $columnSpan = 1;
 
-    protected static ?string $heading = 'Propostas recentes';
+    protected static ?string $heading = 'Movimentações Recentes';
 
     public function table(Table $table): Table
     {
@@ -33,19 +33,19 @@ class ProposalRecentTableWidget extends TableWidget
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('company.name')
-                    ->label('Empresa')
+                    ->label('Razão Social')
                     ->searchable()
                     ->wrap(),
                 TextColumn::make('representative.name')
                     ->label('Representante')
                     ->placeholder('Não atribuído'),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                     ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('created_at')
-                    ->label('Entrada')
+                    ->label('Data de Entrada')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ]);

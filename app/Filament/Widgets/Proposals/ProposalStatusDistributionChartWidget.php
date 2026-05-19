@@ -10,9 +10,9 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
 {
     protected static bool $isDiscovered = false;
 
-    protected ?string $heading = 'Distribuição por status';
+    protected ?string $heading = 'Distribuição por Situação';
 
-    protected ?string $description = 'Mostra como a carteira está distribuída entre os principais status do processo.';
+    protected ?string $description = 'Proporção da carteira comercial por etapa do processo.';
 
     protected function getType(): string
     {

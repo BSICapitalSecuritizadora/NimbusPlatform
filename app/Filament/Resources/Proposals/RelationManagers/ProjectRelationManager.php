@@ -40,7 +40,7 @@ class ProjectRelationManager extends RelationManager
                             ->columnSpan(2)
                             ->maxLength(255),
                         TextInput::make('website_url')
-                            ->label('Site')
+                            ->label('Site Institucional')
                             ->url()
                             ->maxLength(255),
                         self::makeCurrencyField('requested_amount', 'Valor Solicitado')
@@ -48,10 +48,10 @@ class ProjectRelationManager extends RelationManager
                             ->columnSpan(1),
                     ])->columns(2),
 
-                Section::make('Detalhes do Terreno & Lançamento')
+                Section::make('Detalhes do Terreno e Lançamento')
                     ->icon('heroicon-o-map')
                     ->schema([
-                        self::makeCurrencyField('land_market_value', 'Valor atual de mercado do terreno')
+                        self::makeCurrencyField('land_market_value', 'Valor de Mercado do Terreno')
                             ->columnSpan(2),
                         TextInput::make('land_area')
                             ->label('Área do Terreno (m²)')
@@ -59,7 +59,7 @@ class ProjectRelationManager extends RelationManager
                             ->required()
                             ->default(0),
                         DatePicker::make('launch_date')
-                            ->label('Data de lançamento')
+                            ->label('Data de Lançamento')
                             ->required(),
                     ])->columns(2),
 
@@ -120,7 +120,7 @@ class ProjectRelationManager extends RelationManager
                                 }
                             }),
                         TextInput::make('street')
-                            ->label('Rua')
+                            ->label('Logradouro (Rua / Avenida)')
                             ->columnSpan(2)
                             ->maxLength(255),
                         TextInput::make('address_complement')
@@ -138,7 +138,7 @@ class ProjectRelationManager extends RelationManager
                             ->columnSpan(2)
                             ->maxLength(255),
                         TextInput::make('state')
-                            ->label('Estado')
+                            ->label('Estado (UF)')
                             ->maxLength(2),
                     ])->columns(3),
 
@@ -147,16 +147,16 @@ class ProjectRelationManager extends RelationManager
                     ->relationship('characteristics')
                     ->schema([
                         TextInput::make('blocks')
-                            ->label('Quantidade de Blocos')
+                            ->label('Quantidade de Torres / Blocos')
                             ->numeric(),
                         TextInput::make('typical_floors')
-                            ->label('Quantidade de Andares')
+                            ->label('Quantidade de Pavimentos')
                             ->numeric(),
                         TextInput::make('units_per_floor')
-                            ->label('Unidades por Andar')
+                            ->label('Unidades por Pavimento')
                             ->numeric(),
                         TextInput::make('total_units')
-                            ->label('Total de Unidades')
+                            ->label('Total Geral de Unidades')
                             ->numeric()
                             ->default(0)
                             ->readOnly()
@@ -166,20 +166,20 @@ class ProjectRelationManager extends RelationManager
 
                         Repeater::make('unitTypes')
                             ->relationship('unitTypes')
-                            ->label('Tipos de Unidades')
+                            ->label('Tipologia das Unidades')
                             ->schema([
                                 TextInput::make('order')
                                     ->label('Ordem')
                                     ->numeric()
                                     ->default(1),
                                 TextInput::make('bedrooms')
-                                    ->label('Dormitórios')
+                                    ->label('Dormitórios (Quartos)')
                                     ->maxLength(255),
                                 TextInput::make('parking_spaces')
-                                    ->label('Garagem')
+                                    ->label('Vagas de Garagem')
                                     ->maxLength(255),
                                 TextInput::make('total_units')
-                                    ->label('Unidades')
+                                    ->label('Quantidade de Unidades')
                                     ->numeric()
                                     ->live(),
                                 TextInput::make('usable_area')
@@ -190,7 +190,7 @@ class ProjectRelationManager extends RelationManager
                                     ->afterStateHydrated(fn (Get $get, Set $set) => self::updateUnitTypePricePerM2($get, $set))
                                     ->afterStateUpdated(fn (Get $get, Set $set) => self::updateUnitTypePricePerM2($get, $set)),
                                 TextInput::make('average_price')
-                                    ->label('Preço Médio')
+                                    ->label('Preço Médio por Unidade')
                                     ->columnSpan(3)
                                     ->prefix('R$')
                                     ->inputMode('decimal')
@@ -204,7 +204,7 @@ class ProjectRelationManager extends RelationManager
                                     ->afterStateHydrated(fn (Get $get, Set $set) => self::syncAveragePriceField($get, $set))
                                     ->afterStateUpdated(fn (Get $get, Set $set) => self::syncAveragePriceField($get, $set)),
                                 TextInput::make('price_per_square_meter')
-                                    ->label('Preço m²')
+                                    ->label('Valor do m²')
                                     ->columnSpan(3)
                                     ->prefix('R$')
                                     ->readOnly()
@@ -226,25 +226,25 @@ class ProjectRelationManager extends RelationManager
                     ->icon('heroicon-o-shopping-cart')
                     ->schema([
                         TextInput::make('unpaid_units')
-                            ->label('Vendidas')
+                            ->label('Unidades Vendidas')
                             ->numeric()
                             ->default(0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
                         TextInput::make('paid_units')
-                            ->label('Quitadas')
+                            ->label('Unidades Quitadas')
                             ->numeric()
                             ->default(0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
                         TextInput::make('exchanged_units')
-                            ->label('Permutadas')
+                            ->label('Unidades Permutadas')
                             ->numeric()
                             ->default(0)
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateSalesCalculations($get, $set)),
                         TextInput::make('stock_units')
-                            ->label('Estoque')
+                            ->label('Unidades em Estoque')
                             ->numeric()
                             ->default(0)
                             ->live(onBlur: true)
@@ -382,24 +382,24 @@ class ProjectRelationManager extends RelationManager
                     ->icon('heroicon-o-presentation-chart-line')
                     ->relationship('indicators')
                     ->schema([
-                        TextInput::make('financiamento_custo_obra_ideal')->label('Financ/Custo Obra Ideal (%)')->numeric()->default(0),
-                        TextInput::make('financiamento_custo_obra_limite')->label('Financ/Custo Obra Limite (%)')->numeric()->default(0),
-                        TextInput::make('financiamento_vgv_ideal')->label('Financ/VGV Ideal (%)')->numeric()->default(0),
-                        TextInput::make('financiamento_vgv_limite')->label('Financ/VGV Limite (%)')->numeric()->default(0),
-                        TextInput::make('custo_obra_vgv_ideal')->label('Custo Obra/VGV Ideal (%)')->numeric()->default(0),
-                        TextInput::make('custo_obra_vgv_limite')->label('Custo Obra/VGV Limite (%)')->numeric()->default(0),
-                        TextInput::make('recebiveis_vfcto_ideal')->label('Rec/V fcto Ideal (%)')->numeric()->default(0),
-                        TextInput::make('recebiveis_vfcto_limite')->label('Rec/V fcto Limite (%)')->numeric()->default(0),
-                        TextInput::make('recebiveis_terreno_vfcto_ideal')->label('Rec+Terr/V fcto Ideal (%)')->numeric()->default(0),
-                        TextInput::make('recebiveis_terreno_vfcto_limite')->label('Rec+Terr/V fcto Limite (%)')->numeric()->default(0),
-                        TextInput::make('vendas_liquido_permutas_ideal')->label('% Vendas Liq. Ideal (%)')->numeric()->default(0),
-                        TextInput::make('vendas_liquido_permutas_limite')->label('% Vendas Liq. Limite (%)')->numeric()->default(0),
-                        TextInput::make('terreno_vgv_ideal')->label('Terreno/VGV Ideal (%)')->numeric()->default(0),
-                        TextInput::make('terreno_vgv_limite')->label('Terreno/VGV Limite (%)')->numeric()->default(0),
-                        TextInput::make('terreno_custo_obra_ideal')->label('Terreno/Custo Ideal (%)')->numeric()->default(0),
-                        TextInput::make('terreno_custo_obra_limite')->label('Terreno/Custo Limite (%)')->numeric()->default(0),
-                        TextInput::make('ltv_ideal')->label('LTV Ideal (%)')->numeric()->default(0),
-                        TextInput::make('ltv_limite')->label('LTV Limite (%)')->numeric()->default(0),
+                        TextInput::make('financiamento_custo_obra_ideal')->label('Financiamento / Custo de Obra (Ideal %)')->numeric()->default(0),
+                        TextInput::make('financiamento_custo_obra_limite')->label('Financiamento / Custo de Obra (Limite %)')->numeric()->default(0),
+                        TextInput::make('financiamento_vgv_ideal')->label('Financiamento / VGV (Ideal %)')->numeric()->default(0),
+                        TextInput::make('financiamento_vgv_limite')->label('Financiamento / VGV (Limite %)')->numeric()->default(0),
+                        TextInput::make('custo_obra_vgv_ideal')->label('Custo de Obra / VGV (Ideal %)')->numeric()->default(0),
+                        TextInput::make('custo_obra_vgv_limite')->label('Custo de Obra / VGV (Limite %)')->numeric()->default(0),
+                        TextInput::make('recebiveis_vfcto_ideal')->label('Recebíveis / V. Faturamento (Ideal %)')->numeric()->default(0),
+                        TextInput::make('recebiveis_vfcto_limite')->label('Recebíveis / V. Faturamento (Limite %)')->numeric()->default(0),
+                        TextInput::make('recebiveis_terreno_vfcto_ideal')->label('Recebíveis + Terreno / V. Faturamento (Ideal %)')->numeric()->default(0),
+                        TextInput::make('recebiveis_terreno_vfcto_limite')->label('Recebíveis + Terreno / V. Faturamento (Limite %)')->numeric()->default(0),
+                        TextInput::make('vendas_liquido_permutas_ideal')->label('Vendas Líquidas (Ideal %)')->numeric()->default(0),
+                        TextInput::make('vendas_liquido_permutas_limite')->label('Vendas Líquidas (Limite %)')->numeric()->default(0),
+                        TextInput::make('terreno_vgv_ideal')->label('Terreno / VGV (Ideal %)')->numeric()->default(0),
+                        TextInput::make('terreno_vgv_limite')->label('Terreno / VGV (Limite %)')->numeric()->default(0),
+                        TextInput::make('terreno_custo_obra_ideal')->label('Terreno / Custo (Ideal %)')->numeric()->default(0),
+                        TextInput::make('terreno_custo_obra_limite')->label('Terreno / Custo (Limite %)')->numeric()->default(0),
+                        TextInput::make('ltv_ideal')->label('LTV (Ideal %)')->numeric()->default(0),
+                        TextInput::make('ltv_limite')->label('LTV (Limite %)')->numeric()->default(0),
                     ])->columns(2)->collapsed(),
             ]);
     }
@@ -414,28 +414,34 @@ class ProjectRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Empreendimento'),
+                    ->label('Empreendimento')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('requested_amount')
-                    ->label('Vlr. Solicitado')
-                    ->money('BRL'),
+                    ->label('Valor Solicitado')
+                    ->money('BRL')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('work_stage_percentage')
-                    ->label('Obra')
-                    ->suffix('%'),
+                    ->label('Estágio da Obra')
+                    ->suffix('%')
+                    ->sortable(),
             ])
             ->headerActions([
                 \Filament\Actions\CreateAction::make()
-                    ->label('Adicionar Empreendimento'),
+                    ->label('Novo Empreendimento')
+                    ->icon('heroicon-o-plus-circle')
+                    ->modalHeading('Cadastrar Novo Empreendimento'),
             ])
             ->actions([
                 \Filament\Actions\EditAction::make(),
                 \Filament\Actions\Action::make('generateReport')
-                    ->label('Relatório')
+                    ->label('Gerar Relatório')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
                     ->url(fn ($record) => route('admin.projects.report', $record))
                     ->openUrlInNewTab(),
                 \Filament\Actions\Action::make('analyticalReport')
-                    ->label('Analítico')
+                    ->label('Relatório Analítico')
                     ->icon('heroicon-o-chart-bar')
                     ->color('warning')
                     ->url(fn ($record) => route('admin.projects.analytical', $record))

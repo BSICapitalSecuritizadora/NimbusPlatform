@@ -20,11 +20,11 @@ class ProposalsTable
         return $table
             ->columns([
                 TextColumn::make('distribution_sequence')
-                    ->label('# Fila')
+                    ->label('Posição')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('company.name')
-                    ->label('Empresa')
+                    ->label('Razão Social')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('company.cnpj')
@@ -40,43 +40,43 @@ class ProposalsTable
                     ->sortable()
                     ->placeholder('Não atribuído'),
                 TextColumn::make('latestContinuationAccess.status_label')
-                    ->label('Link')
+                    ->label('Link de Acesso')
                     ->state(fn (Proposal $record): string => $record->latestContinuationAccess?->status_label ?? 'Sem envio')
                     ->badge()
                     ->color(fn (Proposal $record): string => $record->latestContinuationAccess?->status_color ?? 'gray'),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                     ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('distributed_at')
-                    ->label('Distribuída')
+                    ->label('Data de Distribuição')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('latestStatusHistory.changed_at')
-                    ->label('Última movimentação')
+                    ->label('Última Movimentação')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—'),
                 TextColumn::make('latestContinuationAccess.last_accessed_at')
-                    ->label('Último acesso link')
+                    ->label('Último Acesso ao Link')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('completed_at')
-                    ->label('Complementada')
+                    ->label('Data de Formalização')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
                 TextColumn::make('created_at')
-                    ->label('Entrada')
+                    ->label('Data de Entrada')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
             ->actions([
                 ProposalResource::getChangeStatusAction(),
                 Action::make('resend_access')
-                    ->label('Reenviar acesso')
+                    ->label('Reenviar Link de Acesso')
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
                     ->visible(fn (Proposal $record): bool => ProposalResource::canEdit($record)
@@ -87,7 +87,7 @@ class ProposalsTable
                         );
 
                         Notification::make()
-                            ->title('Novo link de acesso enviado ao cliente.')
+                            ->title('Novo link de acesso enviado ao cliente com sucesso.')
                             ->success()
                             ->send();
                     }),

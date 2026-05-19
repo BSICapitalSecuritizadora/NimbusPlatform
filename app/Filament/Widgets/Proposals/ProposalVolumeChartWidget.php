@@ -9,9 +9,9 @@ class ProposalVolumeChartWidget extends ChartWidget
 {
     protected static bool $isDiscovered = false;
 
-    protected ?string $heading = 'Propostas por período';
+    protected ?string $heading = 'Evolução de Envios por Período';
 
-    protected ?string $description = 'Entradas e complementações registradas nos últimos 6 meses.';
+    protected ?string $description = 'Volume de novos envios e formalizações nos últimos 6 meses.';
 
     protected function getType(): string
     {
@@ -26,7 +26,7 @@ class ProposalVolumeChartWidget extends ChartWidget
             'labels' => $series['labels'],
             'datasets' => [
                 [
-                    'label' => 'Recebidas',
+                    'label' => 'Novas Propostas',
                     'data' => $series['received'],
                     'borderColor' => '#1d4ed8',
                     'backgroundColor' => 'rgba(29, 78, 216, 0.16)',
@@ -34,7 +34,7 @@ class ProposalVolumeChartWidget extends ChartWidget
                     'fill' => true,
                 ],
                 [
-                    'label' => 'Complementadas',
+                    'label' => 'Formalizações',
                     'data' => $series['completed'],
                     'borderColor' => '#10b981',
                     'backgroundColor' => 'rgba(16, 185, 129, 0.12)',

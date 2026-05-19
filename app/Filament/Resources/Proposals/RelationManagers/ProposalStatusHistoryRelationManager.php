@@ -13,7 +13,7 @@ class ProposalStatusHistoryRelationManager extends RelationManager
 {
     protected static string $relationship = 'statusHistories';
 
-    protected static ?string $title = 'Histórico de Status';
+    protected static ?string $title = 'Histórico de Situações';
 
     protected static ?string $modelLabel = 'Movimentação';
 
@@ -33,12 +33,12 @@ class ProposalStatusHistoryRelationManager extends RelationManager
             ->recordTitleAttribute('new_status')
             ->columns([
                 TextColumn::make('previous_status')
-                    ->label('Status anterior')
+                    ->label('Situação Anterior')
                     ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                     ->badge()
                     ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
                 TextColumn::make('new_status')
-                    ->label('Novo status')
+                    ->label('Nova Situação')
                     ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
                     ->badge()
                     ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
@@ -47,7 +47,7 @@ class ProposalStatusHistoryRelationManager extends RelationManager
                     ->placeholder('Sistema')
                     ->searchable(),
                 TextColumn::make('changed_at')
-                    ->label('Alterado em')
+                    ->label('Data da Alteração')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('note')

@@ -67,8 +67,7 @@ class SetSecurityHeaders
             "'unsafe-inline'",
             "'nonce-{$nonce}'",
             'https://cdn.jsdelivr.net',
-            'https://www.clarity.ms',
-            'https://scripts.clarity.ms',
+            'https://*.clarity.ms',
         ];
 
         if ($this->shouldAllowViteDevServerSources()) {
@@ -112,8 +111,7 @@ class SetSecurityHeaders
             'https://cdn.jsdelivr.net',
             'https://fonts.googleapis.com',
             'https://fonts.gstatic.com',
-            'https://www.clarity.ms',
-            'https://c.clarity.ms',
+            'https://*.clarity.ms',
             'wss:',
             'ws:',
         ];

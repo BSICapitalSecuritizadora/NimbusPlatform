@@ -32,24 +32,24 @@ class ProposalAssignmentRelationManager extends RelationManager
             ->recordTitleAttribute('sequence')
             ->columns([
                 TextColumn::make('sequence')
-                    ->label('# Fila')
+                    ->label('Posição na Fila')
                     ->sortable(),
                 TextColumn::make('representative.name')
-                    ->label('Representante')
+                    ->label('Representante Comercial')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('representative.email')
-                    ->label('E-mail')
+                    ->label('E-mail do Representante')
                     ->searchable(),
                 TextColumn::make('strategy')
-                    ->label('Estratégia')
+                    ->label('Estratégia de Distribuição')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'round_robin' => 'Round-robin',
+                        'round_robin' => 'Rodízio (Round-robin)',
                         default => $state ?: '—',
                     }),
                 TextColumn::make('assigned_at')
-                    ->label('Atribuída em')
+                    ->label('Data de Atribuição')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])

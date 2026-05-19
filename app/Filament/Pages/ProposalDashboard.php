@@ -16,9 +16,9 @@ class ProposalDashboard extends Dashboard
 {
     protected static string $routePath = '/proposal-dashboard';
 
-    protected static ?string $title = 'Painel de propostas';
+    protected static ?string $title = 'Painel de Propostas';
 
-    protected static ?string $navigationLabel = 'Painel de propostas';
+    protected static ?string $navigationLabel = 'Painel de Propostas';
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
@@ -57,7 +57,7 @@ class ProposalDashboard extends Dashboard
     public function getSubheading(): ?string
     {
         return auth()->user()?->hasRole('commercial-representative')
-            ? 'Acompanhe a sua carteira de propostas, pendências e movimentações recentes.'
-            : 'Visão gerencial e operacional do funil de propostas, representantes e ritmo de entradas.';
+            ? 'Acompanhe sua carteira comercial, pendências de documentação e atividades recentes.'
+            : 'Visão gerencial e operacional das propostas comerciais, desempenho de representantes e fluxo de prospecção.';
     }
 }

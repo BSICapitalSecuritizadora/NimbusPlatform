@@ -11,9 +11,9 @@ class ProposalRepresentativeLoadChartWidget extends ChartWidget
 
     protected int|string|array $columnSpan = 'full';
 
-    protected ?string $heading = 'Propostas por representante';
+    protected ?string $heading = 'Carga de Trabalho por Representante';
 
-    protected ?string $description = 'Carteira ativa por representante comercial, excluindo propostas rejeitadas ou concluídas.';
+    protected ?string $description = 'Carteira comercial ativa por representante, considerando apenas processos em andamento.';
 
     public static function canView(): bool
     {
@@ -32,7 +32,7 @@ class ProposalRepresentativeLoadChartWidget extends ChartWidget
         return [
             'labels' => $representatives->pluck('name')->all(),
             'datasets' => [[
-                'label' => 'Carteira ativa',
+                'label' => 'Propostas em Aberto',
                 'data' => $representatives->pluck('active_proposals_count')->all(),
                 'backgroundColor' => '#1d4ed8',
                 'borderRadius' => 10,

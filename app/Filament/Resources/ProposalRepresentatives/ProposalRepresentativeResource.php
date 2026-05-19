@@ -25,29 +25,29 @@ class ProposalRepresentativeResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Comercial';
 
-    protected static ?string $navigationLabel = 'Representantes comerciais';
+    protected static ?string $navigationLabel = 'Representantes Comerciais';
 
-    protected static ?string $modelLabel = 'Representante comercial';
+    protected static ?string $modelLabel = 'Representante Comercial';
 
-    protected static ?string $pluralModelLabel = 'Representantes comerciais';
+    protected static ?string $pluralModelLabel = 'Representantes Comerciais';
 
     protected static ?int $navigationSort = 11;
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('name')->label('Nome')->required()->maxLength(255),
+            TextInput::make('name')->label('Nome Completo')->required()->maxLength(255),
             TextInput::make('email')->label('E-mail')->email()->required()->maxLength(255),
             Select::make('user_id')
-                ->label('Usuário interno')
+                ->label('Usuário Interno')
                 ->relationship('user', 'email')
                 ->getOptionLabelFromRecordUsing(fn (User $record): string => "{$record->name} ({$record->email})")
                 ->searchable()
                 ->preload()
-                ->helperText('Vincule o representante ao usuário que acessa o painel administrativo.')
+                ->helperText('Vínculo com o usuário de acesso ao painel administrativo.')
                 ->nullable(),
-            TextInput::make('queue_position')->label('Posição na fila')->numeric()->default(1)->required(),
-            Toggle::make('is_active')->label('Ativo na fila')->default(true),
+            TextInput::make('queue_position')->label('Posição na Fila')->numeric()->default(1)->required(),
+            Toggle::make('is_active')->label('Ativo na Fila')->default(true),
         ]);
     }
 
@@ -55,12 +55,12 @@ class ProposalRepresentativeResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('queue_position')->label('Fila')->sortable(),
-                TextColumn::make('name')->label('Nome')->searchable()->sortable(),
+                TextColumn::make('queue_position')->label('Posição')->sortable(),
+                TextColumn::make('name')->label('Nome Completo')->searchable()->sortable(),
                 TextColumn::make('email')->label('E-mail')->searchable(),
-                TextColumn::make('user.name')->label('Usuário interno')->placeholder('Não vinculado'),
-                TextColumn::make('is_active')->label('Status')->badge()->formatStateUsing(fn (bool $state) => $state ? 'Ativo' : 'Inativo')->color(fn (bool $state) => $state ? 'success' : 'gray'),
-                TextColumn::make('proposals_count')->counts('proposals')->label('Propostas'),
+                TextColumn::make('user.name')->label('Usuário Interno')->placeholder('Não vinculado'),
+                TextColumn::make('is_active')->label('Situação')->badge()->formatStateUsing(fn (bool $state) => $state ? 'Ativo' : 'Inativo')->color(fn (bool $state) => $state ? 'success' : 'gray'),
+                TextColumn::make('proposals_count')->counts('proposals')->label('Propostas Relacionadas'),
             ])
             ->defaultSort('queue_position')
             ->actions([
