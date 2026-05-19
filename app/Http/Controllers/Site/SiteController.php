@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Site;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\Emission;
-use App\Models\EmissionAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -67,23 +66,11 @@ class SiteController extends Controller
         return view('site.emissions', compact('emissions', 'q', 'type', 'issue_date_order', 'maturity_date_order'));
     }
 
-    public function emissionShow(Request $request, $if_code)
+    public function emissionShow(string $if_code)
     {
         $emission = Emission::where('if_code', $if_code)
             ->where('is_public', true)
             ->firstOrFail();
-
-        $investorCanView = $this->investorCanViewEmission($request, $emission);
-        $authorizedAccess = $this->resolveAuthorizedEmissionAccess($request, $emission);
-
-        if (! $investorCanView && ! $authorizedAccess) {
-            return view('site.emission-access', [
-                'emission' => $emission,
-                'access' => null,
-            ]);
-        }
-
-        $authorizedAccess?->markAuthorizedUsage();
 
         $emission->load([
             'documents' => function ($q) {
@@ -95,43 +82,6 @@ class SiteController extends Controller
         ]);
 
         return view('site.emission-detail', compact('emission'));
-    }
-
-    protected function investorCanViewEmission(Request $request, Emission $emission): bool
-    {
-        $investor = $request->user('investor');
-
-        if (! $investor) {
-            return false;
-        }
-
-        return $emission->investors()->whereKey($investor->id)->exists();
-    }
-
-    protected function resolveAuthorizedEmissionAccess(Request $request, Emission $emission): ?EmissionAccess
-    {
-        $authorizedAccessId = $request->session()->get(
-            EmissionAccess::authorizationSessionKeyForEmission($emission->id),
-        );
-
-        if (! $authorizedAccessId) {
-            return null;
-        }
-
-        $access = EmissionAccess::query()
-            ->whereKey($authorizedAccessId)
-            ->where('emission_id', $emission->id)
-            ->first();
-
-        if (! $access || ! $access->isVerified() || ! $access->isActive()) {
-            $request->session()->forget(
-                EmissionAccess::authorizationSessionKeyForEmission($emission->id),
-            );
-
-            return null;
-        }
-
-        return $access;
     }
 
     public function ri(Request $request)

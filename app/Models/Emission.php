@@ -239,11 +239,6 @@ class Emission extends Model
         return $this->hasMany(Expense::class);
     }
 
-    public function accesses(): HasMany
-    {
-        return $this->hasMany(EmissionAccess::class);
-    }
-
     public function calculateIntegralizedQuantity(): int
     {
         return (int) round((float) $this->integralizationHistories()->sum('quantity'));

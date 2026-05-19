@@ -4,7 +4,6 @@ use App\Actions\Proposals\StoreProposalContinuationData;
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\Http\Controllers\Auth\AzureController;
 use App\Http\Controllers\Nimbus\AdminSubmissionFileController;
-use App\Http\Controllers\Site\EmissionAccessController;
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
 use App\Http\Controllers\Site\PublicDocumentsController;
@@ -37,14 +36,6 @@ Route::get('/compliance', [SiteController::class, 'complianceBsi'])->name('site.
 Route::view('/contato', 'site.contact')->name('site.contact');
 
 Route::get('/emissoes', [SiteController::class, 'emissions'])->name('site.emissions');
-Route::post('/emissoes/{if_code}/solicitar-acesso', [EmissionAccessController::class, 'store'])
-    ->middleware('throttle:emission-access-request')
-    ->name('site.emissions.access.store');
-Route::get('/emissoes/acesso/{access}', [EmissionAccessController::class, 'show'])
-    ->name('site.emissions.access.show');
-Route::post('/emissoes/acesso/{access}', [EmissionAccessController::class, 'verify'])
-    ->middleware(['throttle:emission-access-verify', 'throttle:emission-access-verify-global'])
-    ->name('site.emissions.access.verify');
 Route::get('/emissoes/{if_code}', [SiteController::class, 'emissionShow'])->name('site.emissions.show');
 Route::get('/ri', [SiteController::class, 'ri'])->name('site.ri');
 

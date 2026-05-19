@@ -31,6 +31,8 @@ server {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
         fastcgi_param PATH_INFO \$fastcgi_path_info;
+        fastcgi_read_timeout 420s;
+        fastcgi_send_timeout 420s;
     }
 
     location ~ /\\.(?!well-known).* {
