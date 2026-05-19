@@ -21,6 +21,7 @@ class SalesBoardForm
     {
         return $schema->components([
             Section::make('Dados do quadro de vendas')
+                ->columnSpanFull()
                 ->schema([
                     Select::make('emission_id')
                         ->label('Emissão')
@@ -108,6 +109,7 @@ class SalesBoardForm
                 ->columns(3),
 
             Section::make('Quantidades por status')
+                ->columnSpanFull()
                 ->schema([
                     static::quantityField('stock_units', 'Estoque'),
                     static::quantityField('financed_units', 'Financiado'),
@@ -123,6 +125,7 @@ class SalesBoardForm
                 ->columns(5),
 
             Section::make('Valores monetários por status')
+                ->columnSpanFull()
                 ->schema([
                     static::moneyField('stock_value', 'Valor total em estoque'),
                     static::moneyField('financed_value', 'Valor total financiado'),

@@ -3,9 +3,10 @@
 namespace App\Filament\Resources\SalesBoards\Pages;
 
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
-use App\Models\SalesBoard;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
 class EditSalesBoard extends EditRecord
@@ -17,7 +18,18 @@ class EditSalesBoard extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ViewAction::make()
+                ->label('Visualizar'),
             DeleteAction::make(),
+        ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getSaveFormAction(),
+            $this->getAddToHistoryFormAction(),
+            $this->getCancelFormAction(),
         ];
     }
 
@@ -26,23 +38,34 @@ class EditSalesBoard extends EditRecord
         return parent::getSaveFormAction()
             ->requiresConfirmation()
             ->modalHeading('Salvar alteracoes do quadro de vendas')
-            ->modalDescription('Confirme para salvar as alteracoes. Quando houver mudanca nos valores, o historico anterior sera preservado automaticamente.')
+            ->modalDescription('Confirme para salvar as alteracoes.')
             ->modalSubmitActionLabel('Salvar alteracoes');
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    protected function mutateFormDataBeforeSave(array $data): array
+    protected function getAddToHistoryFormAction(): Action
     {
-        $record = $this->getRecord();
+        return Action::make('addToHistory')
+            ->label('Adicionar ao historico')
+            ->color('success')
+            ->requiresConfirmation()
+            ->modalHeading('Adicionar valores ao historico')
+            ->modalDescription('Confirme para salvar as alteracoes atuais e registrar estes valores no historico.')
+            ->modalSubmitActionLabel('Adicionar ao historico')
+            ->action('saveAndAddToHistory');
+    }
 
-        if (($record instanceof SalesBoard) && $record->hasTrackedValueChanges($data)) {
-            $record->snapshotTrackedValues();
-        }
+    public function saveAndAddToHistory(): void
+    {
+        $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
 
-        return $data;
+        $this->getRecord()
+            ->refresh()
+            ->snapshotTrackedValues();
+
+        Notification::make()
+            ->success()
+            ->title('Valores adicionados ao historico com sucesso.')
+            ->send();
     }
 
     protected function getSavedNotificationTitle(): ?string

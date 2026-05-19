@@ -3,13 +3,18 @@
 use App\Filament\Resources\SalesBoards\Pages\CreateSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\EditSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\ListSalesBoards;
+use App\Filament\Resources\SalesBoards\Pages\ViewSalesBoard;
 use App\Filament\Resources\SalesBoards\RelationManagers\SalesBoardHistoriesRelationManager;
+use App\Filament\Resources\SalesBoards\SalesBoardResource;
+use App\Filament\Resources\SalesBoards\Schemas\SalesBoardForm;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -26,15 +31,46 @@ afterEach(function () {
     Carbon::setTestNow();
 });
 
-it('shows the create sales board action and filters on the list page', function () {
+it('shows the create and view actions with the expected filters on the list page', function () {
     $this->actingAs(makeSalesBoardAdminUser());
+
+    [$emission, $construction] = makeSalesBoardEmissionAndConstruction();
+    $salesBoard = SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create();
 
     Livewire::test(ListSalesBoards::class)
         ->assertActionExists('create')
         ->assertActionHasLabel('create', 'Criar quadro de vendas')
+        ->assertTableActionExists('view', null, $salesBoard)
+        ->assertTableActionHasLabel('view', 'Visualizar')
+        ->assertTableActionHasUrl('view', SalesBoardResource::getUrl('view', ['record' => $salesBoard]), $salesBoard)
         ->assertTableFilterExists('emission_id')
         ->assertTableFilterExists('construction_id')
         ->assertTableFilterExists('reference_month');
+});
+
+it('renders each sales board form section on its own row', function () {
+    $schema = SalesBoardForm::configure(Schema::make(new CreateSalesBoard));
+    $sections = collect($schema->getComponents())
+        ->filter(fn (mixed $component): bool => $component instanceof Section)
+        ->mapWithKeys(fn (Section $section): array => [$section->getHeading() => $section]);
+
+    expect($sections->keys()->all())->toBe([
+        'Dados do quadro de vendas',
+        'Quantidades por status',
+        'Valores monetários por status',
+    ]);
+
+    expect($sections['Dados do quadro de vendas']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
+    ]);
+
+    expect($sections['Quantidades por status']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
+    ]);
+
+    expect($sections['Valores monetários por status']->getColumnSpan())->toMatchArray([
+        'default' => 'full',
+    ]);
 });
 
 it('prefills the sales board numeric fields with zero on create', function () {
@@ -100,7 +136,7 @@ it('creates a monthly sales board linked to emission and construction', function
         ->and($salesBoard?->exchanged_value)->toBe('400000.25');
 });
 
-it('stores the previous values in history when tracked sales board fields are updated', function () {
+it('saves tracked sales board changes without adding values to history', function () {
     $this->actingAs(makeSalesBoardAdminUser());
 
     Carbon::setTestNow('2026-05-07 12:00:00');
@@ -135,6 +171,54 @@ it('stores the previous values in history when tracked sales board fields are up
         ->assertHasNoFormErrors();
 
     $salesBoard->refresh();
+
+    expect($salesBoard->stock_units)->toBe(12)
+        ->and($salesBoard->financed_units)->toBe(18)
+        ->and($salesBoard->paid_units)->toBe(31)
+        ->and($salesBoard->exchanged_units)->toBe(4)
+        ->and($salesBoard->total_units)->toBe(65)
+        ->and($salesBoard->stock_value)->toBe('1050000.00')
+        ->and($salesBoard->financed_value)->toBe('2450000.50')
+        ->and($salesBoard->paid_value)->toBe('3100000.00')
+        ->and($salesBoard->exchanged_value)->toBe('380000.25')
+        ->and($salesBoard->valueHistories()->count())->toBe(0);
+});
+
+it('saves the current values and adds them to history when requested', function () {
+    $this->actingAs(makeSalesBoardAdminUser());
+
+    Carbon::setTestNow('2026-05-07 12:00:00');
+
+    [$emission, $construction] = makeSalesBoardEmissionAndConstruction();
+    $salesBoard = SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
+        'reference_month' => '2026-04-01',
+        'stock_units' => 10,
+        'financed_units' => 20,
+        'paid_units' => 30,
+        'exchanged_units' => 5,
+        'stock_value' => 1000000,
+        'financed_value' => 2500000.50,
+        'paid_value' => 3000000,
+        'exchanged_value' => 400000.25,
+    ]);
+
+    Livewire::test(EditSalesBoard::class, [
+        'record' => $salesBoard->getRouteKey(),
+    ])
+        ->fillForm([
+            'stock_units' => 12,
+            'financed_units' => 18,
+            'paid_units' => 31,
+            'exchanged_units' => 4,
+            'stock_value' => '1.050.000,00',
+            'financed_value' => '2.450.000,50',
+            'paid_value' => '3.100.000,00',
+            'exchanged_value' => '380.000,25',
+        ])
+        ->call('saveAndAddToHistory')
+        ->assertHasNoFormErrors();
+
+    $salesBoard->refresh();
     $history = $salesBoard->valueHistories()->first();
 
     expect($salesBoard->stock_units)->toBe(12)
@@ -148,15 +232,15 @@ it('stores the previous values in history when tracked sales board fields are up
         ->and($salesBoard->exchanged_value)->toBe('380000.25')
         ->and($history)->not->toBeNull()
         ->and($history?->reference_month?->toDateString())->toBe('2026-04-01')
-        ->and($history?->stock_units)->toBe(10)
-        ->and($history?->financed_units)->toBe(20)
-        ->and($history?->paid_units)->toBe(30)
-        ->and($history?->exchanged_units)->toBe(5)
+        ->and($history?->stock_units)->toBe(12)
+        ->and($history?->financed_units)->toBe(18)
+        ->and($history?->paid_units)->toBe(31)
+        ->and($history?->exchanged_units)->toBe(4)
         ->and($history?->total_units)->toBe(65)
-        ->and($history?->stock_value)->toBe('1000000.00')
-        ->and($history?->financed_value)->toBe('2500000.50')
-        ->and($history?->paid_value)->toBe('3000000.00')
-        ->and($history?->exchanged_value)->toBe('400000.25')
+        ->and($history?->stock_value)->toBe('1050000.00')
+        ->and($history?->financed_value)->toBe('2450000.50')
+        ->and($history?->paid_value)->toBe('3100000.00')
+        ->and($history?->exchanged_value)->toBe('380000.25')
         ->and($history?->created_at?->toDateTimeString())->toBe('2026-05-07 12:00:00');
 });
 
@@ -297,6 +381,35 @@ it('formats monthly competency and money fields when editing', function () {
         ]);
 });
 
+it('shows the saved values on the read-only view page', function () {
+    $this->actingAs(makeSalesBoardAdminUser());
+
+    [$emission, $construction] = makeSalesBoardEmissionAndConstruction();
+    $salesBoard = SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
+        'reference_month' => '2026-04-01',
+        'stock_units' => 10,
+        'financed_units' => 20,
+        'paid_units' => 30,
+        'exchanged_units' => 5,
+        'stock_value' => 1000000,
+        'financed_value' => 2500000.50,
+        'paid_value' => 3000000,
+        'exchanged_value' => 400000.25,
+    ]);
+
+    Livewire::test(ViewSalesBoard::class, [
+        'record' => $salesBoard->getRouteKey(),
+    ])
+        ->assertFormSet([
+            'reference_month' => '04/2026',
+            'total_units' => 65,
+            'stock_value' => '1.000.000,00',
+            'financed_value' => '2.500.000,50',
+            'paid_value' => '3.000.000,00',
+            'exchanged_value' => '400.000,25',
+        ]);
+});
+
 it('requires confirmation before saving changes to a sales board', function () {
     $this->actingAs(makeSalesBoardAdminUser());
 
@@ -316,8 +429,30 @@ it('requires confirmation before saving changes to a sales board', function () {
 
     expect($saveAction->isConfirmationRequired())->toBeTrue()
         ->and((string) $saveAction->getModalHeading())->toBe('Salvar alteracoes do quadro de vendas')
-        ->and((string) $saveAction->getModalDescription())->toBe('Confirme para salvar as alteracoes. Quando houver mudanca nos valores, o historico anterior sera preservado automaticamente.')
+        ->and((string) $saveAction->getModalDescription())->toBe('Confirme para salvar as alteracoes.')
         ->and($saveAction->getModalSubmitActionLabel())->toBe('Salvar alteracoes');
+});
+
+it('configures a dedicated action to add the current values to history', function () {
+    $this->actingAs(makeSalesBoardAdminUser());
+
+    $salesBoard = SalesBoard::factory()->create();
+
+    $component = Livewire::test(EditSalesBoard::class, [
+        'record' => $salesBoard->getRouteKey(),
+    ])->instance();
+
+    $method = new ReflectionMethod($component, 'getFormActions');
+    $method->setAccessible(true);
+    $actions = collect($method->invoke($component));
+    $addToHistoryAction = $actions->first(fn (mixed $action): bool => $action->getName() === 'addToHistory');
+
+    expect($addToHistoryAction)->not->toBeNull()
+        ->and($addToHistoryAction->getLabel())->toBe('Adicionar ao historico')
+        ->and($addToHistoryAction->isConfirmationRequired())->toBeTrue()
+        ->and((string) $addToHistoryAction->getModalHeading())->toBe('Adicionar valores ao historico')
+        ->and((string) $addToHistoryAction->getModalDescription())->toBe('Confirme para salvar as alteracoes atuais e registrar estes valores no historico.')
+        ->and($addToHistoryAction->getModalSubmitActionLabel())->toBe('Adicionar ao historico');
 });
 
 it('shows sales board history records on the relation manager', function () {

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesBoards;
 use App\Filament\Resources\SalesBoards\Pages\CreateSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\EditSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\ListSalesBoards;
+use App\Filament\Resources\SalesBoards\Pages\ViewSalesBoard;
 use App\Filament\Resources\SalesBoards\RelationManagers\SalesBoardHistoriesRelationManager;
 use App\Filament\Resources\SalesBoards\Schemas\SalesBoardForm;
 use App\Filament\Resources\SalesBoards\Tables\SalesBoardsTable;
@@ -76,6 +77,11 @@ class SalesBoardResource extends Resource
         return auth()->user()?->can('sales-boards.update') ?? false;
     }
 
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('sales-boards.view') ?? false;
+    }
+
     public static function canDelete(Model $record): bool
     {
         return auth()->user()?->can('sales-boards.delete') ?? false;
@@ -86,6 +92,7 @@ class SalesBoardResource extends Resource
         return [
             'index' => ListSalesBoards::route('/'),
             'create' => CreateSalesBoard::route('/create'),
+            'view' => ViewSalesBoard::route('/{record}'),
             'edit' => EditSalesBoard::route('/{record}/edit'),
         ];
     }
