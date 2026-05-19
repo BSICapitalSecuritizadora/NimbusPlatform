@@ -451,7 +451,7 @@ it('configures a dedicated action to add the current values to history', functio
         ->and($addToHistoryAction->getLabel())->toBe('Adicionar ao historico')
         ->and($addToHistoryAction->isConfirmationRequired())->toBeTrue()
         ->and((string) $addToHistoryAction->getModalHeading())->toBe('Adicionar valores ao historico')
-        ->and((string) $addToHistoryAction->getModalDescription())->toBe('Confirme para salvar as alteracoes atuais e registrar estes valores no historico.')
+        ->and((string) $addToHistoryAction->getModalDescription())->toBe('Tem certeza de que deseja adicionar os valores atuais ao historico? Apos a confirmacao, esse registro nao podera mais ser removido.')
         ->and($addToHistoryAction->getModalSubmitActionLabel())->toBe('Adicionar ao historico');
 });
 
