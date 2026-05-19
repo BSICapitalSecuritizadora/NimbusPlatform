@@ -37,7 +37,8 @@
       "Skill(fluxui-development)",
       "Bash(grep -rn 'getLivewire\\\\|getRecord\\\\|$livewire\\\\|dispatch\\\\b' /home/desktop/projects/bsi-capital/vendor/filament/actions/src/Action.php)",
       "Bash(grep -rn 'getRecord\\\\|->record\\\\b\\\\|Model $record\\\\|Emission $record' /home/desktop/projects/bsi-capital/vendor/filament/actions/src/Action.php)",
-      "Bash(chmod +x *)"
+      "Bash(chmod +x *)",
+      "WebFetch(domain:blog.google)"
     ]
   }
 }

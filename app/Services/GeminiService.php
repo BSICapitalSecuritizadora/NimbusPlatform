@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 
 class GeminiService
 {
-    private const MODEL = 'gemini-2.5-flash';
+    private const MODEL = 'gemini-3-flash';
 
     private const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
