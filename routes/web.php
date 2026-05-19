@@ -8,6 +8,7 @@ use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
 use App\Http\Controllers\Site\PublicDocumentsController;
 use App\Http\Controllers\Site\SiteController;
+use App\Http\Controllers\Site\SiteDocumentDownloadController;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Requests\VerifyProposalContinuationRequest;
 use App\Livewire\Proposals\ContinuationForm;
@@ -33,6 +34,7 @@ Route::view('/politica-de-privacidade', 'site.privacy-policy')->name('site.priva
 Route::view('/termos-de-uso', 'site.terms-of-use')->name('site.terms-of-use');
 Route::get('/governanca', [SiteController::class, 'governance'])->name('site.governance');
 Route::get('/compliance', [SiteController::class, 'complianceBsi'])->name('site.compliance');
+Route::get('/documentos/{document}/download', SiteDocumentDownloadController::class)->name('site.documents.download');
 Route::view('/contato', 'site.contact')->name('site.contact');
 
 Route::get('/emissoes', [SiteController::class, 'emissions'])->name('site.emissions');

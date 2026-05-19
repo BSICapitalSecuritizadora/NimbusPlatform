@@ -39,7 +39,10 @@
       "Bash(grep -rn 'getRecord\\\\|->record\\\\b\\\\|Model $record\\\\|Emission $record' /home/desktop/projects/bsi-capital/vendor/filament/actions/src/Action.php)",
       "Bash(chmod +x *)",
       "WebFetch(domain:blog.google)",
-      "Skill(pest-testing)"
+      "Skill(pest-testing)",
+      "Bash(xargs cat)",
+      "Bash(mv /home/desktop/projects/bsi-capital/app/app/Http/Controllers/Site/SiteDocumentDownloadController.php /home/desktop/projects/bsi-capital/app/Http/Controllers/Site/SiteDocumentDownloadController.php)",
+      "Bash(rm -rf /home/desktop/projects/bsi-capital/app/app)"
     ]
   }
 }

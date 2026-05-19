@@ -120,7 +120,7 @@
         <div class="row g-4">
             @forelse($documents as $document)
             <div class="col-md-6 col-lg-4">
-                <a href="{{ Storage::disk($document->resolved_storage_disk)->url($document->file_path) }}" target="_blank" class="text-decoration-none" download>
+                <a href="{{ route('site.documents.download', $document) }}" class="text-decoration-none" download>
                     <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.04); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06) !important; transition: .3s;">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
