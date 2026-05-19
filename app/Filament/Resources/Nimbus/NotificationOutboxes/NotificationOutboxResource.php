@@ -100,7 +100,7 @@ class NotificationOutboxResource extends Resource
                 ]);
 
                 Notification::make()
-                    ->title('Envio cancelado com sucesso.')
+                    ->title('Envio de notificação cancelado com sucesso.')
                     ->success()
                     ->send();
             });
@@ -123,7 +123,7 @@ class NotificationOutboxResource extends Resource
                 ]);
 
                 Notification::make()
-                    ->title('Envio marcado para reprocessamento.')
+                    ->title('Notificação marcada para reprocessamento.')
                     ->success()
                     ->send();
             });

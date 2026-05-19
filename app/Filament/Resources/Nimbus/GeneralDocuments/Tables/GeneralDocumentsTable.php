@@ -40,7 +40,7 @@ class GeneralDocumentsTable
                     ->badge()
                     ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
                 TextColumn::make('published_at')
-                    ->label('Publicado em')
+                    ->label('Data de Publicação')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('createdBy.name')
@@ -48,12 +48,12 @@ class GeneralDocumentsTable
                     ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label('Data de Criação')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('updated_at')
-                    ->label('Atualizado em')
+                    ->label('Última Atualização')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -80,7 +80,7 @@ class GeneralDocumentsTable
                     ->openUrlInNewTab()
                     ->visible(fn (GeneralDocument $record): bool => filled($record->file_path) && (auth()->user()?->can('nimbus.general-documents.view') ?? false)),
                 Action::make('download')
-                    ->label('Baixar')
+                    ->label('Baixar Arquivo')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn (GeneralDocument $record): string => route('admin.nimbus.documents.general.download', $record))
                     ->visible(fn (GeneralDocument $record): bool => filled($record->file_path) && (auth()->user()?->can('nimbus.general-documents.view') ?? false)),

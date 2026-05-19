@@ -14,7 +14,7 @@ class NotificationOutboxInfolist
     {
         return $schema
             ->components([
-                Section::make('Informações da mensagem')
+                Section::make('Informações da Mensagem')
                     ->schema([
                         TextEntry::make('status_label')
                             ->label('Status')
@@ -25,36 +25,36 @@ class NotificationOutboxInfolist
                         TextEntry::make('recipient_email')
                             ->label('Destinatário'),
                         TextEntry::make('recipient_name')
-                            ->label('Nome do destinatário')
+                            ->label('Nome do Destinatário')
                             ->placeholder('—'),
                         TextEntry::make('subject')
                             ->label('Assunto'),
                         TextEntry::make('template')
                             ->label('Template'),
                         TextEntry::make('correlation_id')
-                            ->label('Correlação')
+                            ->label('ID de Correlação')
                             ->placeholder('—'),
                         TextEntry::make('attempts')
                             ->label('Tentativas')
-                            ->state(fn (NotificationOutbox $record): string => "{$record->attempts}/{$record->max_attempts}"),
+                            ->state(fn (NotificationOutbox $record): string => "{$record->attempts} de {$record->max_attempts}"),
                         TextEntry::make('next_attempt_at')
-                            ->label('Próxima tentativa')
+                            ->label('Próxima Tentativa')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('sent_at')
-                            ->label('Enviado em')
+                            ->label('Data de Envio')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('last_error')
-                            ->label('Último erro')
+                            ->label('Último Erro')
                             ->placeholder('—')
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-                Section::make('Payload')
+                Section::make('Dados Técnicos (Payload)')
                     ->schema([
                         KeyValueEntry::make('payload_json')
-                            ->label('Dados enviados')
+                            ->label('Parâmetros Enviados')
                             ->columnSpanFull(),
                     ]),
             ]);

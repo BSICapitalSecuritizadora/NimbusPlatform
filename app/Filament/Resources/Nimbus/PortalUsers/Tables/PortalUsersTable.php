@@ -22,13 +22,13 @@ class PortalUsersTable
         return $table
             ->columns([
                 TextColumn::make('full_name')
-                    ->label('Nome completo')
+                    ->label('Nome Completo')
                     ->searchable(),
                 TextColumn::make('email')
                     ->label('E-mail')
                     ->searchable(),
                 TextColumn::make('document_number')
-                    ->label('Documento')
+                    ->label('CPF')
                     ->formatStateUsing(fn (?string $state): ?string => self::formatCpfForDisplay($state))
                     ->searchable(),
                 TextColumn::make('phone_number')
@@ -36,7 +36,7 @@ class PortalUsersTable
                     ->formatStateUsing(fn (?string $state): ?string => self::formatPhoneForDisplay($state))
                     ->searchable(),
                 TextColumn::make('external_id')
-                    ->label('ID externo')
+                    ->label('ID Externo')
                     ->searchable(),
                 TextColumn::make('status')
                     ->label('Status')
@@ -49,19 +49,19 @@ class PortalUsersTable
                     })
                     ->badge(),
                 TextColumn::make('last_login_at')
-                    ->label('Último acesso')
+                    ->label('Último Acesso')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('last_login_method')
-                    ->label('Método do último acesso')
+                    ->label('Método de Autenticação')
                     ->searchable(),
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label('Data de Criação')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
-                    ->label('Atualizado em')
+                    ->label('Última Atualização')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -79,7 +79,7 @@ class PortalUsersTable
             ->recordActions([
                 EditAction::make(),
                 Action::make('generate_token')
-                    ->label('Gerar chave')
+                    ->label('Gerar Chave de Acesso')
                     ->icon('heroicon-o-key')
                     ->color('warning')
                     ->visible(fn ($record): bool => filled($record->email) && (
@@ -87,8 +87,8 @@ class PortalUsersTable
                         || auth()->user()?->can('nimbus.portal-users.update')
                     ))
                     ->requiresConfirmation()
-                    ->modalHeading('Gerar chave de acesso')
-                    ->modalDescription('Isso irá revogar a chave atual do usuário, se existir, e gerar um novo código no formato XXXX-XXXX-XXXX.')
+                    ->modalHeading('Gerar Chave de Acesso')
+                    ->modalDescription('Uma nova chave de acesso será gerada (formato XXXX-XXXX-XXXX) e a chave anterior, se houver, será revogada.')
                     ->action(function ($record): void {
                         try {
                             [$code, $expiresAt] = DB::transaction(function () use ($record): array {
@@ -121,14 +121,14 @@ class PortalUsersTable
                                 ));
 
                             Notification::make()
-                                ->title('Chave enviada')
-                                ->body("A chave **{$code}** foi gerada e enviada para o e-mail do usuário.")
+                                ->title('Chave de Acesso Enviada')
+                                ->body("A chave **{$code}** foi gerada com sucesso e enviada ao e-mail do usuário.")
                                 ->success()
                                 ->duration(10000)
                                 ->send();
                         } catch (\Exception $e) {
                             Notification::make()
-                                ->title('Erro ao gerar chave')
+                                ->title('Erro ao Gerar Chave')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();

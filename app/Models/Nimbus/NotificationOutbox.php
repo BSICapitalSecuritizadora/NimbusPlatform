@@ -66,7 +66,7 @@ class NotificationOutbox extends Model
     public function getTypeLabelAttribute(): string
     {
         return match (strtolower((string) $this->type)) {
-            'token_created' => 'Criação de Token',
+            'token_created' => 'Geração de Chave de Acesso',
             'password_reset' => 'Redefinição de Senha',
             'welcome_email' => 'Boas-vindas',
             'submission_received' => 'Protocolo Recebido',

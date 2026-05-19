@@ -28,11 +28,11 @@ class SubmissionsTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('company_cnpj')
-                    ->label('CNPJ da Empresa')
+                    ->label('CNPJ')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('company_name')
-                    ->label('Empresa')
+                    ->label('Razão Social')
                     ->searchable()
                     ->sortable()
                     ->wrap(),
@@ -43,7 +43,7 @@ class SubmissionsTable
                     ->color(fn (?string $state): string => Submission::statusColorFor($state))
                     ->sortable(),
                 TextColumn::make('submitted_at')
-                    ->label('Enviado em')
+                    ->label('Data de Envio')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])

@@ -17,14 +17,14 @@ class ShareholdersRelationManager extends RelationManager
 {
     protected static string $relationship = 'shareholders';
 
-    protected static ?string $title = 'Sócios';
+    protected static ?string $title = 'Quadro Societário';
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
                 TextInput::make('name')
-                    ->label('Nome')
+                    ->label('Nome / Razão Social')
                     ->required()
                     ->maxLength(255),
                 TextInput::make('document_rg')
@@ -34,7 +34,7 @@ class ShareholdersRelationManager extends RelationManager
                     ->label('CNPJ')
                     ->maxLength(18),
                 TextInput::make('percentage')
-                    ->label('Participação')
+                    ->label('Percentual de Participação')
                     ->numeric()
                     ->required()
                     ->suffix('%'),
@@ -47,7 +47,7 @@ class ShareholdersRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 TextColumn::make('name')
-                    ->label('Nome')
+                    ->label('Nome / Razão Social')
                     ->searchable(),
                 TextColumn::make('document_rg')
                     ->label('RG')

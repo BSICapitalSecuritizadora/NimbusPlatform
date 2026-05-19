@@ -46,10 +46,10 @@ class AccessTokenResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('Detalhes da chave')
+                Section::make('Informações da Chave')
                     ->schema([
                         \Filament\Infolists\Components\TextEntry::make('portalUser.full_name')
-                            ->label('Usuário do portal')
+                            ->label('Usuário do Portal')
                             ->placeholder('—'),
                         \Filament\Infolists\Components\TextEntry::make('portalUser.email')
                             ->label('E-mail')
@@ -59,20 +59,20 @@ class AccessTokenResource extends Resource
                             ->badge()
                             ->color(fn (AccessToken $record): string => $record->status_color),
                         \Filament\Infolists\Components\TextEntry::make('created_at')
-                            ->label('Gerada em')
+                            ->label('Data de Geração')
                             ->dateTime('d/m/Y H:i'),
                         \Filament\Infolists\Components\TextEntry::make('expires_at')
-                            ->label('Expira em')
+                            ->label('Data de Expiração')
                             ->dateTime('d/m/Y H:i'),
                         \Filament\Infolists\Components\TextEntry::make('used_at')
-                            ->label('Utilizada em')
+                            ->label('Data de Utilização')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         \Filament\Infolists\Components\TextEntry::make('used_ip')
-                            ->label('IP de uso')
+                            ->label('Endereço IP')
                             ->placeholder('—'),
                         \Filament\Infolists\Components\TextEntry::make('used_user_agent')
-                            ->label('Navegador / dispositivo')
+                            ->label('Navegador / Dispositivo')
                             ->placeholder('—')
                             ->columnSpanFull(),
                     ])
@@ -118,14 +118,14 @@ class AccessTokenResource extends Resource
             ->icon('heroicon-o-x-circle')
             ->color('danger')
             ->requiresConfirmation()
-            ->modalHeading('Revogar chave de acesso')
-            ->modalDescription('A chave será invalidada imediatamente e não poderá mais ser usada no portal.')
+            ->modalHeading('Revogar Chave de Acesso')
+            ->modalDescription('Esta chave será invalidada imediatamente e não poderá mais ser utilizada no portal.')
             ->visible(fn (AccessToken $record): bool => $record->isValid() && (auth()->user()?->can('nimbus.access-tokens.update') ?? false))
             ->action(function (AccessToken $record): void {
                 $record->update(['status' => 'REVOKED']);
 
                 Notification::make()
-                    ->title('Chave revogada com sucesso.')
+                    ->title('Chave de acesso revogada com sucesso.')
                     ->success()
                     ->send();
             });

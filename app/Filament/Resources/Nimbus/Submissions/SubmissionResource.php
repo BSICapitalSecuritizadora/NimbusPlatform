@@ -65,7 +65,7 @@ class SubmissionResource extends Resource
                                 TextEntry::make('reference_code')
                                     ->label('Protocolo')
                                     ->copyable()
-                                    ->copyMessage('Protocolo copiado')
+                                    ->copyMessage('Protocolo copiado com sucesso')
                                     ->fontFamily('mono')
                                     ->size('xs')
                                     ->tooltip(fn (?string $state): ?string => $state)
@@ -80,7 +80,7 @@ class SubmissionResource extends Resource
                                     ->icon('heroicon-m-user-circle')
                                     ->iconColor('primary'),
                                 TextEntry::make('created_at')
-                                    ->label('Data do Envio')
+                                    ->label('Data de Envio')
                                     ->date('d/m/Y \à\s H:i'),
                                 TextEntry::make('title')
                                     ->label('Assunto')
@@ -93,7 +93,7 @@ class SubmissionResource extends Resource
                     ->columns(1)
                     ->schema([
                         Section::make('Dados da Empresa')
-                            ->description('Identificação e contatos informados pelo solicitante')
+                            ->description('Identificação e dados de contato informados pelo solicitante.')
                             ->compact()
                             ->secondary()
                             ->columns([
@@ -102,7 +102,7 @@ class SubmissionResource extends Resource
                             ])
                             ->schema([
                                 TextEntry::make('company_name')
-                                    ->label('Razão social')
+                                    ->label('Razão Social')
                                     ->placeholder('-')
                                     ->wrap()
                                     ->columnSpanFull(),
@@ -113,7 +113,7 @@ class SubmissionResource extends Resource
                                     ->label('Telefone')
                                     ->placeholder('-'),
                                 TextEntry::make('main_activity')
-                                    ->label('Atividade principal')
+                                    ->label('Atividade Principal')
                                     ->placeholder('-')
                                     ->wrap()
                                     ->columnSpanFull(),
@@ -127,7 +127,7 @@ class SubmissionResource extends Resource
                             ]),
 
                         Section::make('Indicadores Financeiros')
-                            ->description('Resumo patrimonial e classificações regulatórias')
+                            ->description('Resumo patrimonial e enquadramento regulatório.')
                             ->compact()
                             ->secondary()
                             ->columns([
@@ -136,26 +136,26 @@ class SubmissionResource extends Resource
                             ])
                             ->schema([
                                 TextEntry::make('net_worth')
-                                    ->label('Patrimônio líquido')
+                                    ->label('Patrimônio Líquido')
                                     ->money('BRL')
                                     ->placeholder('-'),
                                 TextEntry::make('annual_revenue')
-                                    ->label('Último faturamento anual')
+                                    ->label('Último Faturamento Anual')
                                     ->money('BRL')
                                     ->placeholder('-'),
                                 IconEntry::make('is_us_person')
                                     ->label('US Person')
                                     ->boolean(),
                                 IconEntry::make('is_pep')
-                                    ->label('Pessoa exposta politicamente (PEP)')
+                                    ->label('Pessoa Exposta Politicamente (PEP)')
                                     ->boolean(),
                                 IconEntry::make('is_anbima_affiliated')
-                                    ->label('Filiado à Anbima')
+                                    ->label('Filiado à ANBIMA')
                                     ->boolean(),
                             ]),
 
-                        Section::make('Dados do Cadastrante')
-                            ->description('Responsável pelo preenchimento da solicitação')
+                        Section::make('Dados do Responsável')
+                            ->description('Dados do responsável pelo preenchimento da solicitação.')
                             ->compact()
                             ->secondary()
                             ->columns([
@@ -164,12 +164,12 @@ class SubmissionResource extends Resource
                             ])
                             ->schema([
                                 TextEntry::make('registrant_name')
-                                    ->label('Nome completo')
+                                    ->label('Nome Completo')
                                     ->placeholder('-')
                                     ->wrap()
                                     ->columnSpanFull(),
                                 TextEntry::make('registrant_position')
-                                    ->label('Cargo / posição')
+                                    ->label('Cargo / Função')
                                     ->placeholder('-'),
                                 TextEntry::make('registrant_cpf')
                                     ->label('CPF')
@@ -182,25 +182,25 @@ class SubmissionResource extends Resource
 
                 Section::make('Documentos de Retorno')
                     ->icon('heroicon-o-paper-airplane')
-                    ->description('Arquivos enviados pela equipe interna para devolutiva e acompanhamento do solicitante.')
+                    ->description('Arquivos enviados pela equipe interna para acompanhamento do solicitante.')
                     ->schema([
                         View::make('filament.resources.nimbus.submissions.response-files-section'),
                     ]),
 
-                Section::make('Timeline da Submissão')
+                Section::make('Histórico de Observações')
                     ->icon('heroicon-o-chat-bubble-bottom-center-text')
-                    ->description('Observações inseridas neste envio')
+                    ->description('Registro de observações inseridas nesta solicitação.')
                     ->schema([
                         TextEntry::make('notes_empty_state')
                             ->hiddenLabel()
-                            ->state('Nenhuma observação interna foi registrada neste envio até o momento.')
+                            ->state('Nenhuma observação interna registrada até o momento.')
                             ->visible(fn (Submission $record): bool => $record->notes->isEmpty()),
                         RepeatableEntry::make('notes')
                             ->hiddenLabel()
                             ->visible(fn (Submission $record): bool => $record->notes->isNotEmpty())
                             ->schema([
                                 TextEntry::make('created_at')->label('Data/Hora')->dateTime('d/m/Y H:i'),
-                                TextEntry::make('author_label')->label('Usuário Autor'),
+                                TextEntry::make('author_label')->label('Autor'),
                                 TextEntry::make('visibility_label')->label('Visibilidade'),
                                 TextEntry::make('message')->label('Mensagem')->columnSpanFull()->wrap(),
                             ])
@@ -211,7 +211,7 @@ class SubmissionResource extends Resource
                     ->icon('heroicon-o-clock')
                     ->schema([
                         Section::make('Metadados do Registro')
-                            ->description('Datas do fluxo e origem técnica do envio')
+                            ->description('Datas do processamento e origem técnica da solicitação.')
                             ->compact()
                             ->secondary()
                             ->columns([
@@ -220,22 +220,22 @@ class SubmissionResource extends Resource
                             ])
                             ->schema([
                                 TextEntry::make('created_at')
-                                    ->label('Data de criação')
+                                    ->label('Data de Criação')
                                     ->dateTime('d/m/Y H:i:s'),
                                 TextEntry::make('status_updated_at')
-                                    ->label('Status atualizado em')
+                                    ->label('Última Atualização de Status')
                                     ->dateTime('d/m/Y H:i:s')
                                     ->placeholder('-'),
                                 TextEntry::make('created_ip')
-                                    ->label('IP de origem')
+                                    ->label('Endereço IP de Origem')
                                     ->placeholder('-')
                                     ->copyable()
-                                    ->copyMessage('IP copiado')
+                                    ->copyMessage('Endereço IP copiado')
                                     ->fontFamily('mono'),
                             ]),
 
                         Section::make('User Agent da Sessão')
-                            ->description('Cabeçalho completo enviado pelo navegador no momento do cadastro')
+                            ->description('Dados do navegador utilizados no momento da solicitação.')
                             ->compact()
                             ->secondary()
                             ->schema([

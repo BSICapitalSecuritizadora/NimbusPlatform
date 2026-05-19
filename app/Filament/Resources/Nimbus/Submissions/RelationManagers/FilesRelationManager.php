@@ -59,7 +59,7 @@ class FilesRelationManager extends RelationManager
                     ->wrap(),
                 TextColumn::make('origin')
                     ->label('Origem')
-                    ->formatStateUsing(fn (?string $state): string => $state === 'ADMIN' ? 'Equipe interna' : 'Portal')
+                    ->formatStateUsing(fn (?string $state): string => $state === 'ADMIN' ? 'Equipe Interna' : 'Portal')
                     ->badge(),
                 TextColumn::make('visible_to_user')
                     ->label('Visibilidade')
@@ -67,7 +67,7 @@ class FilesRelationManager extends RelationManager
                     ->badge()
                     ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
                 TextColumn::make('uploaded_at')
-                    ->label('Enviado em')
+                    ->label('Data de Envio')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
@@ -86,7 +86,7 @@ class FilesRelationManager extends RelationManager
                     ->url(fn (SubmissionFile $record): string => route('admin.nimbus.submissions.files.preview', $record))
                     ->openUrlInNewTab(),
                 Action::make('baixar')
-                    ->label('Baixar')
+                    ->label('Baixar Arquivo')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->visible(fn (SubmissionFile $record): bool => auth()->user()->can('downloadFile', [$record->submission, $record]))
                     ->url(fn (SubmissionFile $record): string => route('admin.nimbus.submissions.files.download', $record)),

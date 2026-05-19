@@ -19,16 +19,12 @@ class AnnouncementForm
             ->components([
                 Grid::make([
                     'default' => 1,
-                    'xl' => 12,
                 ])
                     ->schema([
-                        Section::make('Conteúdo do aviso')
-                            ->description('Comunicados exibidos para os usuários do portal.')
+                        Section::make('Conteúdo do Aviso')
+                            ->description('Comunicados exibidos aos usuários no portal.')
                             ->icon('heroicon-o-megaphone')
-                            ->columnSpan([
-                                'default' => 1,
-                                'xl' => 8,
-                            ])
+                            ->columnSpanFull()
                             ->schema([
                                 TextInput::make('title')
                                     ->label('Título')
@@ -41,10 +37,7 @@ class AnnouncementForm
                                     ->columnSpanFull(),
                             ]),
                         Section::make('Publicação')
-                            ->columnSpan([
-                                'default' => 1,
-                                'xl' => 4,
-                            ])
+                            ->columnSpanFull()
                             ->schema([
                                 Select::make('level')
                                     ->label('Nível')
@@ -57,15 +50,15 @@ class AnnouncementForm
                                     ->default('info')
                                     ->required(),
                                 DateTimePicker::make('starts_at')
-                                    ->label('Início de exibição')
+                                    ->label('Início da Exibição')
                                     ->seconds(false)
                                     ->native(false),
                                 DateTimePicker::make('ends_at')
-                                    ->label('Fim de exibição')
+                                    ->label('Fim da Exibição')
                                     ->seconds(false)
                                     ->native(false),
                                 Toggle::make('is_active')
-                                    ->label('Ativo no portal')
+                                    ->label('Publicado no Portal')
                                     ->default(true)
                                     ->required(),
                             ]),

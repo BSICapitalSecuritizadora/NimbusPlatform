@@ -15,7 +15,7 @@ class AccessTokensTable
         return $table
             ->columns([
                 TextColumn::make('portalUser.full_name')
-                    ->label('Usuário do portal')
+                    ->label('Usuário do Portal')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('portalUser.email')
@@ -28,21 +28,21 @@ class AccessTokensTable
                     ->badge()
                     ->color(fn (AccessToken $record): string => $record->status_color),
                 TextColumn::make('created_at')
-                    ->label('Gerada em')
+                    ->label('Data de Geração')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('expires_at')
-                    ->label('Expira em')
+                    ->label('Data de Expiração')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('used_at')
-                    ->label('Utilizada em')
+                    ->label('Data de Utilização')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('used_ip')
-                    ->label('IP de uso')
+                    ->label('Endereço IP')
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -61,7 +61,7 @@ class AccessTokensTable
                         ->where('expires_at', '<', now())),
             ])
             ->recordActions([
-                ViewAction::make()->label('Ver detalhes'),
+                ViewAction::make()->label('Visualizar Detalhes'),
                 AccessTokenResource::getRevokeAction(),
             ])
             ->toolbarActions([])

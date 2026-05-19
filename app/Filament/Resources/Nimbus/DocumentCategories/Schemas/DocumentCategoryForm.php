@@ -12,12 +12,12 @@ class DocumentCategoryForm
     {
         return $schema
             ->components([
-                Section::make('Informações da categoria')
-                    ->description('Classificação usada para organizar os documentos do módulo.')
+                Section::make('Informações da Categoria')
+                    ->description('Classificação utilizada para a organização dos documentos do módulo.')
                     ->icon('heroicon-o-bookmark-square')
                     ->schema([
                         TextInput::make('name')
-                            ->label('Nome da categoria')
+                            ->label('Nome da Categoria')
                             ->placeholder('Ex: Contratos, Regulamentos, Institucional')
                             ->required()
                             ->unique(ignoreRecord: true)

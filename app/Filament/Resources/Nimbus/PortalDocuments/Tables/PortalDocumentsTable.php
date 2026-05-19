@@ -20,7 +20,7 @@ class PortalDocumentsTable
         return $table
             ->columns([
                 TextColumn::make('portalUser.full_name')
-                    ->label('Usuário do portal')
+                    ->label('Usuário do Portal')
                     ->searchable(),
                 TextColumn::make('portalUser.email')
                     ->label('E-mail')
@@ -41,13 +41,13 @@ class PortalDocumentsTable
                     ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label('Data de Criação')
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('nimbus_portal_user_id')
-                    ->label('Usuário do portal')
+                    ->label('Usuário do Portal')
                     ->relationship('portalUser', 'full_name')
                     ->searchable()
                     ->preload(),

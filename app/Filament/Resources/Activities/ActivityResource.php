@@ -19,11 +19,11 @@ class ActivityResource extends Resource
 
     protected static \UnitEnum|string|null $navigationGroup = 'Auditoria';
 
-    protected static ?string $navigationLabel = 'Logs do Sistema';
+    protected static ?string $navigationLabel = 'Logs de Auditoria';
 
-    protected static ?string $modelLabel = 'Log';
+    protected static ?string $modelLabel = 'registro de auditoria';
 
-    protected static ?string $pluralModelLabel = 'Logs';
+    protected static ?string $pluralModelLabel = 'Registros de Auditoria';
 
     public static function canCreate(): bool
     {
@@ -50,14 +50,14 @@ class ActivityResource extends Resource
         return $schema
             ->components([
                 \Filament\Forms\Components\TextInput::make('log_name')
-                    ->label('Log Name'),
+                    ->label('Identificador do Log'),
                 \Filament\Forms\Components\TextInput::make('description')
-                    ->label('Descrição'),
+                    ->label('Ação Executada'),
                 \Filament\Forms\Components\TextInput::make('subject_type')
-                    ->label('Entidade Afetada'),
+                    ->label('Entidade Modificada'),
                 \Filament\Forms\Components\Textarea::make('properties')
-                    ->label('Valores Alterados')
-                    ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT))
+                    ->label('Dados da Alteração')
+                    ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
                     ->columnSpanFull(),
             ]);
     }
@@ -66,13 +66,13 @@ class ActivityResource extends Resource
     {
         return $schema
             ->components([
-                \Filament\Infolists\Components\TextEntry::make('log_name')->label('Log'),
-                \Filament\Infolists\Components\TextEntry::make('description')->label('Ação'),
-                \Filament\Infolists\Components\TextEntry::make('causer.name')->label('Autor (Causer)'),
-                \Filament\Infolists\Components\TextEntry::make('subject_type')->label('Modificou'),
-                \Filament\Infolists\Components\TextEntry::make('created_at')->label('Data')->dateTime(),
+                \Filament\Infolists\Components\TextEntry::make('log_name')->label('Identificador do Log'),
+                \Filament\Infolists\Components\TextEntry::make('description')->label('Ação Executada'),
+                \Filament\Infolists\Components\TextEntry::make('causer.name')->label('Autor da Ação'),
+                \Filament\Infolists\Components\TextEntry::make('subject_type')->label('Entidade Modificada'),
+                \Filament\Infolists\Components\TextEntry::make('created_at')->label('Data e Hora')->dateTime(),
                 \Filament\Infolists\Components\TextEntry::make('properties')
-                    ->label('Detalhes (JSON)')
+                    ->label('Dados da Alteração (JSON)')
                     ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
                     ->fontFamily('mono')
                     ->columnSpanFull(),
@@ -89,10 +89,10 @@ class ActivityResource extends Resource
                     ->sortable()
                     ->badge(),
                 \Filament\Tables\Columns\TextColumn::make('description')
-                    ->label('Ação')
+                    ->label('Ação Executada')
                     ->searchable(),
                 \Filament\Tables\Columns\TextColumn::make('subject_type')
-                    ->label('Modificou (Modelo)')
+                    ->label('Entidade Modificada')
                     ->searchable()
                     ->sortable(),
                 \Filament\Tables\Columns\TextColumn::make('causer.name')
@@ -107,8 +107,8 @@ class ActivityResource extends Resource
             ->filters([
                 \Filament\Tables\Filters\Filter::make('created_at')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('created_from')->label('De'),
-                        \Filament\Forms\Components\DatePicker::make('created_until')->label('Até'),
+                        \Filament\Forms\Components\DatePicker::make('created_from')->label('Data Inicial'),
+                        \Filament\Forms\Components\DatePicker::make('created_until')->label('Data Final'),
                     ])
                     ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data): \Illuminate\Database\Eloquent\Builder {
                         return $query

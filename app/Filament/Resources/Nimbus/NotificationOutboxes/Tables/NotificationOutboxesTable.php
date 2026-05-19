@@ -33,9 +33,9 @@ class NotificationOutboxesTable
                     ->limit(50),
                 TextColumn::make('attempts')
                     ->label('Tentativas')
-                    ->state(fn (NotificationOutbox $record): string => "{$record->attempts}/{$record->max_attempts}"),
+                    ->state(fn (NotificationOutbox $record): string => "{$record->attempts} de {$record->max_attempts}"),
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label('Data de Criação')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
@@ -52,7 +52,7 @@ class NotificationOutboxesTable
                 SelectFilter::make('type')
                     ->label('Classificação')
                     ->options([
-                        'token_created' => 'Criação de Token',
+                        'token_created' => 'Geração de Chave de Acesso',
                         'password_reset' => 'Redefinição de Senha',
                         'welcome_email' => 'Boas-vindas',
                         'submission_received' => 'Protocolo Recebido',

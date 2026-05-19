@@ -19,11 +19,11 @@ class DocumentDownloadResource extends Resource
 
     protected static \UnitEnum|string|null $navigationGroup = 'Auditoria';
 
-    protected static ?string $navigationLabel = 'Downloads do Portal';
+    protected static ?string $navigationLabel = 'Histórico de Downloads';
 
-    protected static ?string $modelLabel = 'Download';
+    protected static ?string $modelLabel = 'registro de download';
 
-    protected static ?string $pluralModelLabel = 'Downloads';
+    protected static ?string $pluralModelLabel = 'Registros de Downloads';
 
     public static function canCreate(): bool
     {
@@ -58,9 +58,9 @@ class DocumentDownloadResource extends Resource
                 \Filament\Forms\Components\TextInput::make('ip')
                     ->label('Endereço IP'),
                 \Filament\Forms\Components\TextInput::make('user_agent')
-                    ->label('User Agent'),
+                    ->label('Navegador / Dispositivo'),
                 \Filament\Forms\Components\TextInput::make('referer')
-                    ->label('Referer'),
+                    ->label('Origem do Acesso (Referer)'),
                 \Filament\Forms\Components\DateTimePicker::make('downloaded_at')
                     ->label('Data do Download'),
             ]);
@@ -73,8 +73,8 @@ class DocumentDownloadResource extends Resource
             ->components([
                 \Filament\Infolists\Components\TextEntry::make('document.title')->label('Documento'),
                 \Filament\Infolists\Components\TextEntry::make('investor.name')->label('Investidor'),
-                \Filament\Infolists\Components\TextEntry::make('ip')->label('IP'),
-                \Filament\Infolists\Components\TextEntry::make('user_agent')->label('User Agent'),
+                \Filament\Infolists\Components\TextEntry::make('ip')->label('Endereço IP'),
+                \Filament\Infolists\Components\TextEntry::make('user_agent')->label('Navegador / Dispositivo'),
                 \Filament\Infolists\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime(),
             ]);
     }
@@ -92,15 +92,15 @@ class DocumentDownloadResource extends Resource
                     ->searchable()
                     ->sortable(),
                 \Filament\Tables\Columns\TextColumn::make('downloaded_at')
-                    ->label('Data')
+                    ->label('Data e Hora')
                     ->dateTime('d/m/Y H:i:s')
                     ->sortable(),
                 \Filament\Tables\Columns\TextColumn::make('ip')
-                    ->label('IP')
+                    ->label('Endereço IP')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 \Filament\Tables\Columns\TextColumn::make('user_agent')
-                    ->label('User Agent')
+                    ->label('Navegador / Dispositivo')
                     ->searchable()
                     ->limit(30)
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -118,8 +118,8 @@ class DocumentDownloadResource extends Resource
                     ->preload(),
                 \Filament\Tables\Filters\Filter::make('downloaded_at')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('created_from')->label('De'),
-                        \Filament\Forms\Components\DatePicker::make('created_until')->label('Até'),
+                        \Filament\Forms\Components\DatePicker::make('created_from')->label('Data Inicial'),
+                        \Filament\Forms\Components\DatePicker::make('created_until')->label('Data Final'),
                     ])
                     ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data): \Illuminate\Database\Eloquent\Builder {
                         return $query

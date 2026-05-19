@@ -68,6 +68,7 @@ class SetSecurityHeaders
             "'nonce-{$nonce}'",
             'https://cdn.jsdelivr.net',
             'https://www.clarity.ms',
+            'https://scripts.clarity.ms',
         ];
 
         if ($this->shouldAllowViteDevServerSources()) {

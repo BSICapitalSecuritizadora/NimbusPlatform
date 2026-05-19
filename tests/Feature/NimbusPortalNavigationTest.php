@@ -1,7 +1,9 @@
 <?php
 
+use App\Filament\Resources\Nimbus\Announcements\Schemas\AnnouncementForm;
 use App\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm;
 use App\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm;
+use App\Filament\Resources\Nimbus\PortalUsers\Schemas\PortalUserForm;
 use App\Models\Nimbus\DocumentCategory;
 use App\Models\Nimbus\GeneralDocument;
 use App\Models\Nimbus\PortalDocument;
@@ -13,6 +15,8 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Support\Contracts\TranslatableContentDriver;
@@ -295,6 +299,95 @@ it('pins Nimbus backoffice uploads to the private local disk', function () {
         ->and($generalUpload?->getDiskName())->toBe(DocumentStorageService::PRIVATE_DISK)
         ->and($generalUpload?->getDirectory())->toBe(DocumentStorageService::PRIVATE_PREFIX.'/general-documents')
         ->and($generalUpload?->getMaxSize())->toBe(102400);
+});
+
+it('stacks the portal document form cards vertically', function () {
+    $schema = PortalDocumentForm::configure(Schema::make(makeNimbusSchemaTestLivewire()));
+
+    $layout = collect($schema->getComponents())
+        ->first(fn (mixed $component): bool => $component instanceof Grid);
+
+    $sections = collect($layout?->getChildSchema()?->getComponents() ?? [])
+        ->filter(fn (mixed $component): bool => $component instanceof Section)
+        ->values();
+
+    expect($layout)->toBeInstanceOf(Grid::class)
+        ->and($layout?->getColumns())->toMatchArray([
+            'default' => 1,
+        ])
+        ->and($sections)->toHaveCount(2)
+        ->and($sections[0]->getHeading())->toBe('Dados do Documento')
+        ->and($sections[1]->getHeading())->toBe('Informações do Arquivo')
+        ->and($sections[0]->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections[1]->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections[0]->getColumns())->toMatchArray([
+            'default' => 1,
+            '3xl' => 2,
+        ])
+        ->and($sections[0]->getChildSchema()->getComponentByStatePath('title'))->not->toBeNull();
+});
+
+it('stacks the announcement form cards vertically', function () {
+    $schema = AnnouncementForm::configure(Schema::make(makeNimbusSchemaTestLivewire()));
+
+    $layout = collect($schema->getComponents())
+        ->first(fn (mixed $component): bool => $component instanceof Grid);
+
+    $sections = collect($layout?->getChildSchema()?->getComponents() ?? [])
+        ->filter(fn (mixed $component): bool => $component instanceof Section)
+        ->values();
+
+    expect($layout)->toBeInstanceOf(Grid::class)
+        ->and($layout?->getColumns())->toMatchArray([
+            'default' => 1,
+        ])
+        ->and($sections)->toHaveCount(2)
+        ->and($sections[0]->getHeading())->toBe('Conteúdo do Aviso')
+        ->and($sections[1]->getHeading())->toBe('Publicação')
+        ->and($sections[0]->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections[1]->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections[0]->getChildSchema()->getComponentByStatePath('title'))->not->toBeNull()
+        ->and($sections[0]->getChildSchema()->getComponentByStatePath('body'))->not->toBeNull()
+        ->and($sections[1]->getChildSchema()->getComponentByStatePath('level'))->not->toBeNull();
+});
+
+it('stacks the general document form cards vertically', function () {
+    $schema = GeneralDocumentForm::configure(Schema::make(makeNimbusSchemaTestLivewire()));
+
+    $layout = collect($schema->getComponents())
+        ->first(fn (mixed $component): bool => $component instanceof Grid);
+
+    $sections = collect($layout?->getChildSchema()?->getComponents() ?? [])
+        ->filter(fn (mixed $component): bool => $component instanceof Section)
+        ->values();
+
+    expect($layout)->toBeInstanceOf(Grid::class)
+        ->and($layout?->getColumns())->toMatchArray([
+            'default' => 1,
+        ])
+        ->and($sections)->toHaveCount(2)
+        ->and($sections[0]->getHeading())->toBe('Dados da Publicação')
+        ->and($sections[1]->getHeading())->toBe('Disponibilidade')
+        ->and($sections[0]->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections[1]->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections[0]->getColumns())->toMatchArray([
+            'default' => 1,
+            '3xl' => 2,
+        ])
+        ->and($sections[0]->getChildSchema()->getComponentByStatePath('title'))->not->toBeNull()
+        ->and($sections[1]->getChildSchema()->getComponentByStatePath('is_active'))->not->toBeNull();
 });
 
 it('renders the correction status label in the portal pages', function () {
@@ -962,6 +1055,37 @@ it('allows the portal user to download only their own documents', function () {
         'nimbus/portal-documents/contrato-social.pdf',
         'nimbus/portal-documents/arquivo-restrito.pdf',
     ]);
+});
+
+it('stacks the portal user form cards vertically', function () {
+    $schema = PortalUserForm::configure(Schema::make(makeNimbusSchemaTestLivewire()));
+
+    $layout = collect($schema->getComponents())
+        ->first(fn (mixed $component): bool => $component instanceof Grid);
+
+    $sections = collect($layout?->getChildSchema()?->getComponents() ?? [])
+        ->filter(fn (mixed $component): bool => $component instanceof Section)
+        ->values();
+
+    expect($layout)->toBeInstanceOf(Grid::class)
+        ->and($layout?->getColumns())->toMatchArray([
+            'default' => 1,
+        ])
+        ->and($sections)->toHaveCount(2)
+        ->and($sections[0]->getHeading())->toBe('Dados Cadastrais')
+        ->and($sections[1]->getHeading())->toBe('Status da Conta')
+        ->and($sections[0]->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections[1]->getColumnSpan())->toMatchArray([
+            'default' => 'full',
+        ])
+        ->and($sections[0]->getColumns())->toMatchArray([
+            'default' => 1,
+            '2xl' => 2,
+        ])
+        ->and($sections[0]->getChildSchema()->getComponentByStatePath('full_name'))->not->toBeNull()
+        ->and($sections[1]->getChildSchema()->getComponentByStatePath('status'))->not->toBeNull();
 });
 
 /**

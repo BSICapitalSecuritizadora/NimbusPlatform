@@ -24,23 +24,19 @@ class PortalDocumentForm
             ->components([
                 Grid::make([
                     'default' => 1,
-                    '2xl' => 12,
                 ])
                     ->schema([
-                        Section::make('Dados do documento')
-                            ->description('Upload individualizado para um usuário do portal.')
+                        Section::make('Dados do Documento')
+                            ->description('Envio de documento específico para um usuário do portal.')
                             ->icon('heroicon-o-folder-open')
-                            ->columnSpan([
-                                'default' => 1,
-                                '2xl' => 8,
-                            ])
+                            ->columnSpanFull()
                             ->columns([
                                 'default' => 1,
                                 '3xl' => 2,
                             ])
                             ->schema([
                                 Select::make('nimbus_portal_user_id')
-                                    ->label('Usuário do portal')
+                                    ->label('Usuário do Portal')
                                     ->relationship('portalUser', 'full_name')
                                     ->getOptionLabelFromRecordUsing(fn (PortalUser $record): string => filled($record->email) ? "{$record->full_name} ({$record->email})" : $record->full_name)
                                     ->searchable(['full_name', 'email'])
@@ -55,7 +51,7 @@ class PortalDocumentForm
                                     ->columnSpanFull(),
                                 Textarea::make('description')
                                     ->label('Descrição')
-                                    ->placeholder('Informações adicionais para o usuário sobre este arquivo.')
+                                    ->placeholder('Informações adicionais sobre o documento destinadas ao usuário.')
                                     ->rows(4)
                                     ->columnSpanFull(),
                                 Hidden::make('file_original_name'),
@@ -68,7 +64,7 @@ class PortalDocumentForm
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/portal-documents')
                                     ->preserveFilenames()
                                     ->maxSize((int) config('uploads.document.max_kb', 102400))
-                                    ->helperText('Tamanho máximo por arquivo: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
+                                    ->helperText('Tamanho máximo permitido: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
                                     ->acceptedFileTypes([
                                         'application/pdf',
                                         'application/msword',
@@ -90,15 +86,12 @@ class PortalDocumentForm
                                     })
                                     ->columnSpanFull(),
                             ]),
-                        Section::make('Informações do arquivo')
+                        Section::make('Informações do Arquivo')
                             ->icon('heroicon-o-document-text')
-                            ->columnSpan([
-                                'default' => 1,
-                                '2xl' => 4,
-                            ])
+                            ->columnSpanFull()
                             ->schema([
                                 Placeholder::make('file_original_name_display')
-                                    ->label('Arquivo atual')
+                                    ->label('Arquivo Atual')
                                     ->content(fn ($record): string => $record?->file_original_name ?? '—')
                                     ->visibleOn('edit'),
                                 Placeholder::make('file_size_display')
@@ -106,7 +99,7 @@ class PortalDocumentForm
                                     ->content(fn ($record): string => $record?->file_size ? Number::fileSize($record->file_size) : '—')
                                     ->visibleOn('edit'),
                                 Placeholder::make('file_mime_display')
-                                    ->label('Tipo do arquivo')
+                                    ->label('Tipo de Arquivo')
                                     ->content(fn ($record): string => $record?->file_mime ?? '—')
                                     ->visibleOn('edit'),
                             ]),

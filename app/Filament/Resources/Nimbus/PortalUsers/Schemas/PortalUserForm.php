@@ -18,23 +18,19 @@ class PortalUserForm
             ->components([
                 Grid::make([
                     'default' => 1,
-                    'xl' => 12,
                 ])
                     ->schema([
                         Section::make('Dados Cadastrais')
-                            ->description('Registro de novo usuário externo')
+                            ->description('Cadastro de novo usuário externo.')
                             ->icon(Heroicon::OutlinedIdentification)
-                            ->columnSpan([
-                                'default' => 1,
-                                'xl' => 8,
-                            ])
+                            ->columnSpanFull()
                             ->columns([
                                 'default' => 1,
                                 '2xl' => 2,
                             ])
                             ->schema([
                                 TextInput::make('full_name')
-                                    ->label('Nome')
+                                    ->label('Nome Completo')
                                     ->placeholder('Ex: João da Silva')
                                     ->prefixIcon(Heroicon::OutlinedUser)
                                     ->required()
@@ -56,7 +52,7 @@ class PortalUserForm
                                     ->dehydrateStateUsing(fn (?string $state): ?string => self::normalizeDigits($state))
                                     ->rule('regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/')
                                     ->validationMessages([
-                                        'regex' => 'Use o formato xxx.xxx.xxx-xx.',
+                                        'regex' => 'O CPF deve seguir o formato 000.000.000-00.',
                                     ])
                                     ->maxLength(20),
                                 TextInput::make('phone_number')
@@ -69,17 +65,14 @@ class PortalUserForm
                                     ->dehydrateStateUsing(fn (?string $state): ?string => self::normalizeDigits($state))
                                     ->rule('regex:/^\(\d{2}\)\s\d{4,5}-\d{4}$/')
                                     ->validationMessages([
-                                        'regex' => 'Use o formato (xx) xxxx-xxxx ou (xx) xxxxx-xxxx.',
+                                        'regex' => 'O telefone deve seguir o formato (00) 0000-0000 ou (00) 90000-0000.',
                                     ])
                                     ->maxLength(20),
                             ]),
                         Section::make('Status da Conta')
                             ->icon(Heroicon::OutlinedShieldCheck)
                             ->compact()
-                            ->columnSpan([
-                                'default' => 1,
-                                'xl' => 4,
-                            ])
+                            ->columnSpanFull()
                             ->schema([
                                 Select::make('status')
                                     ->label('Situação')
@@ -96,7 +89,7 @@ class PortalUserForm
                                     })
                                     ->required()
                                     ->native(false)
-                                    ->helperText('Estado atual do acesso ao portal.'),
+                                    ->helperText('Define se o usuário possui acesso ativo ao portal.'),
                             ]),
                     ]),
             ]);

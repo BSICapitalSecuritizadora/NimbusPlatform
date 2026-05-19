@@ -45,12 +45,12 @@ class AnnouncementsTable
                     ->label('Criado por')
                     ->placeholder('—'),
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label('Data de Criação')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('updated_at')
-                    ->label('Atualizado em')
+                    ->label('Última Atualização')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

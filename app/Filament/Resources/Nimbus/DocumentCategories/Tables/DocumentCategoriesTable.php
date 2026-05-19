@@ -20,12 +20,12 @@ class DocumentCategoriesTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('general_documents_count')
-                    ->label('Documentos vinculados')
+                    ->label('Documentos Vinculados')
                     ->counts('generalDocuments')
                     ->badge()
                     ->sortable(),
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label('Data de Criação')
                     ->dateTime()
                     ->sortable(),
             ])
