@@ -42,7 +42,13 @@
       "Skill(pest-testing)",
       "Bash(xargs cat)",
       "Bash(mv /home/desktop/projects/bsi-capital/app/app/Http/Controllers/Site/SiteDocumentDownloadController.php /home/desktop/projects/bsi-capital/app/Http/Controllers/Site/SiteDocumentDownloadController.php)",
-      "Bash(rm -rf /home/desktop/projects/bsi-capital/app/app)"
+      "Bash(rm -rf /home/desktop/projects/bsi-capital/app/app)",
+      "Bash(./vendor/bin/pest --compact)",
+      "Bash(grep \"\\\\.php$\")",
+      "Bash(php *)",
+      "Bash(php8.4 --version)",
+      "Bash(./vendor/bin/pest *)",
+      "Bash(npm run *)"
     ]
   }
 }
