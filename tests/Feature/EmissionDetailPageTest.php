@@ -26,7 +26,8 @@ it('renders the branded public emission detail experience', function () {
 
     $emission->documents()->attach($document->id);
 
-    $this->get(route('site.emissions.show', $emission->if_code))
+    $this->withSession(emissionAccessSessionStateFor($emission))
+        ->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
         ->assertSee('Detalhe da emissão')
         ->assertSee('Resumo operacional')
@@ -61,7 +62,8 @@ it('sums all integralization history entries while showing only the latest five 
         ]);
     });
 
-    $this->get(route('site.emissions.show', $emission->if_code))
+    $this->withSession(emissionAccessSessionStateFor($emission))
+        ->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
         ->assertSee('13.994')
         ->assertSee('12/12/2024')
@@ -86,7 +88,8 @@ it('explains that only the latest five documents are highlighted by default', fu
             $emission->documents()->attach($document->id);
         });
 
-    $this->get(route('site.emissions.show', $emission->if_code))
+    $this->withSession(emissionAccessSessionStateFor($emission))
+        ->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
         ->assertSee('Exibindo os documentos mais recentes por padrão');
 });
@@ -108,7 +111,8 @@ it('renders the payment flow with the legacy chart model', function () {
         'extra_amortization_value' => 500,
     ]);
 
-    $response = $this->get(route('site.emissions.show', $emission->if_code));
+    $response = $this->withSession(emissionAccessSessionStateFor($emission))
+        ->get(route('site.emissions.show', $emission->if_code));
 
     $response
         ->assertOk()

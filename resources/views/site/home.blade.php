@@ -187,129 +187,6 @@
 </section>
 
 <section class="py-5">
-    <div class="container py-4">
-        <div class="row g-4 mb-4 align-items-end">
-            <div class="col-lg-6">
-                <div class="section-kicker mb-2">Transparência e Mercado</div>
-                <h2 class="h2 fw-bold text-brand mb-3">Emissões e informações regulatórias com acesso centralizado</h2>
-                <p class="section-copy mb-0">
-                    Disponibilizamos dados operacionais, documentos regulatórios e comunicados oficiais por meio de um portal de transparência robusto e intuitivo.
-                </p>
-            </div>
-            <div class="col-lg-6 text-lg-end">
-                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                    <a class="btn btn-outline-brand" href="{{ route('site.emissions') }}">Explorar Emissões</a>
-                    <a class="btn btn-outline-brand" href="{{ route('site.ri') }}">Portal de R.I.</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            <div class="col-xl-7">
-                <div class="row g-4">
-                    @forelse($emissions as $e)
-                        <div class="col-md-6">
-                            <a href="{{ route('site.emissions.show', $e->if_code ?? $e->id) }}" class="text-decoration-none d-block h-100">
-                                <div class="card h-100 overflow-hidden emission-card">
-                                    <div style="height: 4px; background: linear-gradient(90deg, var(--brand), var(--gold), var(--brand));"></div>
-                                    <div class="p-4">
-                                        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-                                            <div style="min-width: 0;">
-                                                @if($e->logo_path)
-                                                    <img src="{{ Storage::disk($e->logo_storage_disk)->url($e->logo_path) }}" alt="{{ $e->name }}" style="max-height: 40px; max-width: 170px; object-fit: contain;" loading="lazy">
-                                                @else
-                                                    <h3 class="h5 fw-bold mb-0 text-brand">{{ $e->name }}</h3>
-                                                @endif
-                                            </div>
-                                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                                                @if($e->status)
-                                                    @php
-                                                        $statusColors = [
-                                                            'active' => ['bg' => 'rgba(34,197,94,0.1)', 'border' => 'rgba(34,197,94,0.25)', 'text' => '#16a34a', 'label' => 'Ativa'],
-                                                            'closed' => ['bg' => 'rgba(239,68,68,0.1)', 'border' => 'rgba(239,68,68,0.25)', 'text' => '#dc2626', 'label' => 'Encerrada'],
-                                                        ];
-                                                        $sc = $statusColors[$e->status] ?? ['bg' => 'rgba(245,158,11,0.1)', 'border' => 'rgba(245,158,11,0.25)', 'text' => '#d97706', 'label' => ucfirst($e->status)];
-                                                    @endphp
-                                                    <span class="badge d-inline-flex align-items-center gap-1" style="background: {{ $sc['bg'] }}; border: 1px solid {{ $sc['border'] }}; color: {{ $sc['text'] }}; font-size: 0.72rem; padding: 0 12px; height: 28px;">
-                                                        <span style="width: 6px; height: 6px; border-radius: 50%; background: {{ $sc['text'] }}; display: inline-block;"></span>
-                                                        {{ $sc['label'] }}
-                                                    </span>
-                                                @endif
-                                                @if($e->type)
-                                                    <span class="badge badge-soft d-inline-flex align-items-center" style="font-size: 0.72rem; white-space: nowrap; padding: 0 12px; height: 28px;">{{ $e->type }}</span>
-                                                @endif
-                                            </div>
-                                        </div>
-
-                                        <div class="d-flex flex-column gap-3">
-                                            <div>
-                                                <div class="small text-uppercase text-muted fw-semibold mb-1">Emissor</div>
-                                                <div class="fw-semibold">{{ $e->issuer ?? '—' }}</div>
-                                            </div>
-                                            <div class="row g-3">
-                                                <div class="col-6">
-                                                    <div class="small text-uppercase text-muted fw-semibold mb-1">Vencimento</div>
-                                                    <div class="fw-semibold">{{ optional($e->maturity_date)->format('d/m/Y') ?? '—' }}</div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="small text-uppercase text-muted fw-semibold mb-1">Valor emitido</div>
-                                                    <div class="fw-semibold">{{ $e->issued_volume ? 'R$ ' . number_format($e->issued_volume, 2, ',', '.') : '—' }}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                    @empty
-                        <div class="col-12">
-                            <div class="card p-5 text-center" style="border-style: dashed;">
-                                <div class="text-muted">No momento, não há emissões públicas disponíveis.</div>
-                            </div>
-                        </div>
-                    @endforelse
-                </div>
-            </div>
-
-            <div class="col-xl-5">
-                <div class="card overflow-hidden">
-                    <div class="p-4 p-lg-5 border-bottom border-brand-subtle">
-                        <div class="section-kicker mb-2">Relações com investidores</div>
-                        <h3 class="h3 fw-bold text-brand mb-2">Divulgações ao mercado</h3>
-                        <p class="section-copy mb-0">Asseguramos a integridade da operação com a publicação rigorosa de fatos relevantes e relatórios periódicos, em total aderência às normas regulatórias e de autorregulação.</p>
-                    </div>
-                    <div class="list-group list-group-flush">
-                        @forelse($riDocuments as $d)
-                            <div class="list-group-item p-4 ri-item" style="background: transparent; border-color: var(--border);">
-                                <div class="d-flex gap-3 align-items-start">
-                                    <div class="d-flex align-items-center justify-content-center flex-shrink-0" style="width: 46px; height: 46px; border-radius: 14px; background: rgba(0, 32, 91, 0.06); color: var(--brand);">
-                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                    </div>
-                                    <div class="flex-grow-1">
-                                        <div class="fw-semibold mb-1">{{ $d->title }}</div>
-                                        <div class="d-flex flex-wrap gap-3 small text-muted">
-                                            <span>{{ $d->category_label ?? 'Documento' }}</span>
-                                            <span>{{ optional($d->published_at)->format('d/m/Y') ?? '—' }}</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-light btn-sm px-3">Abrir</a>
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="list-group-item p-5 text-center text-muted" style="background: transparent; border-color: var(--border);">
-                                No momento, não há documentos públicos disponíveis.
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="py-5">
     <div class="container">
         <div class="card border-0 overflow-hidden" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f);">
             <div class="row g-0 align-items-center">
@@ -325,6 +202,7 @@
                 <div class="col-lg-4">
                     <div class="p-4 p-lg-5 d-flex flex-column gap-3">
                         <a href="{{ route('site.contact') }}" class="btn btn-light btn-lg">Solicitar contato</a>
+                        <a href="{{ route('site.partnerships') }}" class="btn btn-light btn-lg">Parcerias</a>
                         <a href="{{ route('proposal.create') }}" class="btn btn-outline-brand btn-lg" style="background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.18);">Enviar proposta</a>
                     </div>
                 </div>

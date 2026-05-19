@@ -902,7 +902,7 @@
 
                 {{-- Institucional --}}
                 <li class="nav-item dropdown dropdown-mega">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.about', 'site.governance', 'site.compliance', 'site.ri', 'site.contact', 'site.vacancies.*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.about', 'site.partnerships', 'site.governance', 'site.compliance', 'site.ri', 'site.contact', 'site.vacancies.*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown">
                         Institucional
                     </a>
                     <div class="dropdown-menu mega-menu p-0 border-0">
@@ -927,6 +927,7 @@
                                 <div class="mega-title">Contato</div>
                                 <div class="mega-kicker">Fale com a BSI.</div>
                                 <a class="mega-link" href="{{ route('site.contact') }}">Fale conosco</a>
+                                <a class="mega-link" href="{{ route('site.partnerships') }}">Parcerias</a>
                                 <a class="mega-link" href="{{ route('site.vacancies.index') }}">Trabalhe conosco</a>
                             </div>
                         </div>

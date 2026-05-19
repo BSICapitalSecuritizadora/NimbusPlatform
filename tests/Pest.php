@@ -2,6 +2,8 @@
 
 use App\Livewire\Forms\CreateProposalFormObject;
 use App\Livewire\Proposals\CreateProposalForm;
+use App\Models\Emission;
+use App\Models\EmissionAccess;
 use App\Models\ProposalSector;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -104,4 +106,19 @@ function makeAdminUser(): \App\Models\User
     $user->assignRole('admin');
 
     return $user;
+}
+
+/**
+ * @return array<string, int>
+ */
+function emissionAccessSessionStateFor(Emission $emission): array
+{
+    $access = EmissionAccess::factory()
+        ->for($emission)
+        ->verified()
+        ->create();
+
+    return [
+        EmissionAccess::authorizationSessionKeyForEmission($emission->id) => $access->id,
+    ];
 }

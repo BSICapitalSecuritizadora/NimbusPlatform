@@ -28,6 +28,7 @@ it('renders static public site pages through route views', function (string $rou
 })->with([
     'services overview' => ['site.services', 'site.service'],
     'about page' => ['site.about', 'site.about'],
+    'partnerships page' => ['site.partnerships', 'site.partnerships'],
     'contact page' => ['site.contact', 'site.contact'],
     'cri real estate page' => ['site.imobiliario.cri', 'site.imobiliario.cri'],
     'loteamentos page' => ['site.imobiliario.loteamentos', 'site.imobiliario.loteamentos'],
@@ -57,6 +58,7 @@ it('maps static public site pages to the laravel view controller', function (str
 })->with([
     'site.services',
     'site.about',
+    'site.partnerships',
     'site.contact',
     'site.imobiliario.cri',
     'site.imobiliario.loteamentos',

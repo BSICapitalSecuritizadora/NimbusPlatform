@@ -29,6 +29,14 @@ dataset('public-layout-routes', [
             'São Paulo',
         ],
     ],
+    'partnerships' => [
+        'site.partnerships',
+        [
+            'Parcerias estruturadas para ampliar originação, distribuição e execução',
+            'Modelos de parceria',
+            'Vamos estruturar uma parceria com critério técnico e alinhamento comercial?',
+        ],
+    ],
     'emissions' => [
         'site.emissions',
         [
