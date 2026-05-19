@@ -51,7 +51,9 @@ class EditSalesBoard extends EditRecord
             ->modalHeading('Adicionar valores ao historico')
             ->modalDescription('Tem certeza de que deseja adicionar os valores atuais ao historico? Apos a confirmacao, esse registro nao podera mais ser removido.')
             ->modalSubmitActionLabel('Adicionar ao historico')
-            ->action('saveAndAddToHistory');
+            ->action(function (): void {
+                $this->saveAndAddToHistory();
+            });
     }
 
     public function saveAndAddToHistory(): void
