@@ -422,6 +422,11 @@ class EmissionForm
                             ->label('Garantias')
                             ->rows(4)
                             ->columnSpanFull(),
+
+                        Textarea::make('covenants')
+                            ->label('Covenants')
+                            ->rows(4)
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Divulgação Institucional')

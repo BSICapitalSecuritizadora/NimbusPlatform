@@ -811,7 +811,7 @@
     @stack('head')
 
     @if(config('services.clarity.id'))
-    <script type="text/javascript">
+    <script type="text/javascript" nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
         (function(c,l,a,r,i,t,y){
             c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
             t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;

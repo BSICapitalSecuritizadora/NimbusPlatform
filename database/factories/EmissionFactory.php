@@ -75,6 +75,7 @@ class EmissionFactory extends Factory
             'property_description' => fake()->paragraph(),
             'segregated_estate' => fake()->paragraph(),
             'guarantees_description' => fake()->paragraph(),
+            'covenants' => fake()->paragraph(),
             'is_public' => false,
             'description' => fake()->paragraph(),
         ];

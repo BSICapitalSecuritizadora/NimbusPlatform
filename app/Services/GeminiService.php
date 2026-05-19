@@ -67,6 +67,10 @@ Retorne o resultado em JSON com a seguinte estrutura:
   "garantias": {
     "clausula": "Cláusula Xª – [título]",
     "texto": "[texto integral]"
+  },
+  "covenants": {
+    "clausula": "Cláusula Xª – [título]",
+    "texto": "[texto integral]"
   }
 }
 
@@ -142,6 +146,7 @@ PROMPT;
             'patrimonio_separado' => 'segregated_estate',
             'descricao_imovel' => 'property_description',
             'garantias' => 'guarantees_description',
+            'covenants' => 'covenants',
         ];
 
         $result = [];

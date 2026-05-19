@@ -308,6 +308,7 @@ it('filters emission service provider fields by the expected provider types', fu
         ->assertFormFieldExists('property_description')
         ->assertFormFieldExists('segregated_estate')
         ->assertFormFieldExists('guarantees_description')
+        ->assertFormFieldExists('covenants')
         ->assertFormSet([
             'offer_type' => 'CVM 160',
         ])
@@ -624,6 +625,7 @@ it('stores emission provider selections and yes no options from the create form'
             'property_description' => 'Portfólio de imóveis residenciais.',
             'segregated_estate' => 'Constituído conforme termo de securitização.',
             'guarantees_description' => 'Alienação fiduciária e cessão de recebíveis.',
+            'covenants' => 'Manutenção de razão mínima de cobertura e obrigações de reporte.',
         ])
         ->call('create')
         ->assertHasNoFormErrors();
@@ -663,5 +665,6 @@ it('stores emission provider selections and yes no options from the create form'
         ->and($emission->property_description)->toBe('Portfólio de imóveis residenciais.')
         ->and($emission->segregated_estate)->toBe('Constituído conforme termo de securitização.')
         ->and($emission->guarantees_description)->toBe('Alienação fiduciária e cessão de recebíveis.')
+        ->and($emission->covenants)->toBe('Manutenção de razão mínima de cobertura e obrigações de reporte.')
         ->and($emission->prepayment_possibility)->toBeTrue();
 });

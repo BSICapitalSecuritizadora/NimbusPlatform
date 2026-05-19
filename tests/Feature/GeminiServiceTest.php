@@ -20,6 +20,7 @@ it('sends the pdf as inline base64 to the generation endpoint', function (): voi
             'candidates' => [[
                 'content' => ['parts' => [['text' => json_encode([
                     'objeto_social' => ['clausula' => 'Cláusula 1ª', 'texto' => 'Objeto social texto'],
+                    'covenants' => ['clausula' => 'Cláusula 9ª', 'texto' => 'Texto dos covenants'],
                 ])]]],
             ]],
         ]),
@@ -42,7 +43,8 @@ it('sends the pdf as inline base64 to the generation endpoint', function (): voi
             && $part['inline_data']['mime_type'] === 'application/pdf';
     });
 
-    expect($result['corporate_purpose'])->toBe("Cláusula 1ª\n\nObjeto social texto");
+    expect($result['corporate_purpose'])->toBe("Cláusula 1ª\n\nObjeto social texto")
+        ->and($result['covenants'])->toBe("Cláusula 9ª\n\nTexto dos covenants");
 });
 
 it('returns null for clauses not found in the document', function (): void {

@@ -138,6 +138,7 @@ class Emission extends Model
         'property_description',
         'segregated_estate',
         'guarantees_description',
+        'covenants',
         'is_public',
         'description',
         'current_pu',

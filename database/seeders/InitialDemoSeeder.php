@@ -83,6 +83,7 @@ class InitialDemoSeeder extends Seeder
                 'property_description' => 'Portifolio de imoveis vinculados a operacao.',
                 'segregated_estate' => 'Constituido em favor dos titulares.',
                 'guarantees_description' => 'Cessao fiduciaria de recebiveis e alienacao fiduciaria.',
+                'covenants' => 'Manutencao de indicadores financeiros minimos e obrigacoes de reporte periodico.',
                 'is_public' => false,
                 'description' => 'Emissao de exemplo para desenvolvimento.',
             ]

@@ -111,6 +111,7 @@ it('supports the finalized emission core fields and casts', function () {
         'property_description' => 'Imóveis de lastro da operação.',
         'segregated_estate' => 'Constituído.',
         'guarantees_description' => 'Cessão fiduciária.',
+        'covenants' => 'Manutenção de índice mínimo de cobertura.',
         'is_public' => true,
         'description' => 'Emissao de exemplo para validar o core v1.0.',
     ]);
@@ -172,6 +173,7 @@ it('supports the finalized emission core fields and casts', function () {
             'property_description',
             'segregated_estate',
             'guarantees_description',
+            'covenants',
             'description',
         ]))->toMatchArray([
             'name' => 'Operacao Exemplo CRI 001',
@@ -219,6 +221,7 @@ it('supports the finalized emission core fields and casts', function () {
             'property_description' => 'Imóveis de lastro da operação.',
             'segregated_estate' => 'Constituído.',
             'guarantees_description' => 'Cessão fiduciária.',
+            'covenants' => 'Manutenção de índice mínimo de cobertura.',
             'description' => 'Emissao de exemplo para validar o core v1.0.',
         ]);
 });
