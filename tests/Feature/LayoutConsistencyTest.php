@@ -9,7 +9,7 @@ dataset('public-layout-routes', [
     'home' => [
         'site.home',
         [
-            'Securitização e crédito estruturado com rigor técnico, governança e acompanhamento ponta a ponta.',
+            'Securitização e crédito estruturado com rigor técnico, governança sólida e acompanhamento especializado em todas as etapas',
             'Estruturas alinhadas ao ativo, ao setor e ao fluxo da operação',
             'Da estruturação à gestão: cobertura integral da operação',
         ],

@@ -12,14 +12,14 @@
             <div class="col-xl-7">
                 <div class="kicker mb-3">Securitização • Mercado de Capitais • Crédito Estruturado</div>
                 <h1 class="display-3 fw-bold mb-4">
-                    Securitização e crédito estruturado com rigor técnico, governança e acompanhamento ponta a ponta.
+                    A securitizadora que fica na operação do início ao fim.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    A BSI Capital conecta emissores e investidores ao mercado de capitais por meio de estruturas financeiras precisas, governança sólida e acompanhamento especializado em todas as etapas da operação.
+                    Securitização e crédito estruturado com rigor técnico, governança sólida e acompanhamento especializado em todas as etapas — da estruturação ao vencimento final.
                 </p>
 
                 <div class="d-flex flex-wrap gap-3 mb-4">
-                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Solicitar Análise</a>
+                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Enviar Proposta</a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Ver Emissões</a>
                 </div>
 
@@ -27,22 +27,22 @@
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
                             <div class="kicker mb-2">Desde</div>
-                            <div class="hero-metric-value fw-bold">2009</div>
-                            <div class="small text-white-50">Sólida atuação no mercado de capitais brasileiro.</div>
+                            <div class="hero-metric-value fw-bold" style="font-size: 1.5rem">2009</div>
+                            <div class="small text-white-50">Presença contínua nos segmentos imobiliário, agrícola e corporativo.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
                             <div class="kicker mb-2">Governança</div>
-                            <div class="hero-metric-value fw-bold">CVM</div>
+                            <div class="hero-metric-value fw-bold" style="font-size: 1.5rem">CVM</div>
                             <div class="small text-white-50">Companhia aberta registrada e aderente aos padrões de compliance.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
-                            <div class="kicker mb-2">Gestão de Ativos</div>
-                            <div class="hero-metric-value fw-bold">Controle</div>
-                            <div class="small text-white-50">Monitoramento de lastro, covenants e transparência contínua.</div>
+                            <div class="kicker mb-2">Instrumentos</div>
+                            <div class="hero-metric-value fw-bold" style="font-size: 1.5rem; letter-spacing: .04em;">CRI · CRA · CR</div>
+                            <div class="small text-white-50">Atuação nos três principais instrumentos de securitização do mercado de capitais.</div>
                         </div>
                     </div>
                 </div>
@@ -200,10 +200,11 @@
                     </div>
                 </div>
                 <div class="col-lg-4">
-                    <div class="p-4 p-lg-5 d-flex flex-column gap-3">
-                        <a href="{{ route('site.contact') }}" class="btn btn-light btn-lg">Solicitar contato</a>
-                        <a href="{{ route('site.partnerships') }}" class="btn btn-light btn-lg">Parcerias</a>
-                        <a href="{{ route('proposal.create') }}" class="btn btn-outline-brand btn-lg" style="background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.18);">Enviar proposta</a>
+                    <div class="p-4 p-lg-5 d-flex flex-column gap-3 align-items-start align-items-lg-stretch">
+                        <a href="{{ route('proposal.create') }}" class="btn btn-light btn-lg">Enviar Proposta</a>
+                        <a href="{{ route('site.contact') }}" class="text-white-50 text-decoration-none small" style="padding: 0.25rem 0;">
+                            ou fale com nossa equipe →
+                        </a>
                     </div>
                 </div>
             </div>

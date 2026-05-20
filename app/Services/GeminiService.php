@@ -77,7 +77,7 @@ Retorne o resultado em JSON com a seguinte estrutura:
 Regras importantes:
 - Copie o texto da cláusula fielmente, incluindo subcláusulas e alíneas quando fizerem parte do mesmo artigo
 - Se uma informação estiver distribuída em mais de uma cláusula, inclua todas, separadas por "\n\n"
-- Para o item "covenants", busque também cláusulas ou seções intituladas "Covenants" e/ou "Obrigações"
+- Para o item "covenants", busque também cláusulas ou seções intituladas "Covenants", "Obrigações", "Obrigações Garantidas" e/ou "Obrigações do Devedor"
 - Se uma cláusula não for encontrada no documento, retorne: { "clausula": null, "texto": "Não encontrado" }
 - Não adicione interpretações ou comentários fora do JSON
 - Retorne apenas o JSON, sem texto antes ou depois

@@ -27,26 +27,30 @@ class GuaranteesRelationManager extends RelationManager
         return $schema
             ->schema([
                 TextInput::make('guarantee_type')
-                    ->label('Tipo de garantia')
+                    ->label('Tipo de Garantia')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->placeholder('Ex: Alienação Fiduciária'),
                 TextInput::make('minimum_value')
                     ->label('Valor Mínimo')
                     ->prefix('R$')
                     ->numeric()
-                    ->required(),
+                    ->required()
+                    ->placeholder('0,00'),
                 DatePicker::make('validity_start_date')
-                    ->label('Início de Validade da Garantia')
+                    ->label('Início da Validade')
                     ->required(),
                 DatePicker::make('validity_end_date')
-                    ->label('Fim de Validade da Garantia')
+                    ->label('Término da Validade')
                     ->required(),
                 TextInput::make('evaluation_frequency')
                     ->label('Periodicidade de Avaliação')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->placeholder('Ex: Mensal'),
                 Textarea::make('description')
                     ->label('Descrição')
+                    ->placeholder('Descreva detalhadamente a garantia')
                     ->rows(4)
                     ->columnSpanFull(),
             ])
@@ -59,7 +63,7 @@ class GuaranteesRelationManager extends RelationManager
             ->recordTitleAttribute('guarantee_type')
             ->columns([
                 TextColumn::make('guarantee_type')
-                    ->label('Tipo de garantia')
+                    ->label('Tipo de Garantia')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('minimum_value')
@@ -67,11 +71,11 @@ class GuaranteesRelationManager extends RelationManager
                     ->money('BRL')
                     ->sortable(),
                 TextColumn::make('validity_start_date')
-                    ->label('Início de Validade da Garantia')
+                    ->label('Início da Validade')
                     ->date('d/m/Y')
                     ->sortable(),
                 TextColumn::make('validity_end_date')
-                    ->label('Fim de Validade da Garantia')
+                    ->label('Término da Validade')
                     ->date('d/m/Y')
                     ->sortable(),
                 TextColumn::make('evaluation_frequency')
@@ -84,7 +88,8 @@ class GuaranteesRelationManager extends RelationManager
             ])
             ->defaultSort('validity_start_date', 'desc')
             ->headerActions([
-                \Filament\Actions\CreateAction::make(),
+                \Filament\Actions\CreateAction::make()
+                    ->label('Cadastrar Garantia'),
             ])
             ->actions([
                 \Filament\Actions\EditAction::make(),
@@ -95,6 +100,6 @@ class GuaranteesRelationManager extends RelationManager
                     \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('Nenhuma garantia registrada');
+            ->emptyStateHeading('Nenhuma garantia cadastrada');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Receivables;
 use App\Filament\Resources\Receivables\Pages\CreateReceivable;
 use App\Filament\Resources\Receivables\Pages\EditReceivable;
 use App\Filament\Resources\Receivables\Pages\ListReceivables;
+use App\Filament\Resources\Receivables\Pages\ViewReceivable;
 use App\Filament\Resources\Receivables\Schemas\ReceivableForm;
 use App\Filament\Resources\Receivables\Tables\ReceivablesTable;
 use App\Models\Receivable;
@@ -25,9 +26,9 @@ class ReceivableResource extends Resource
 
     protected static ?string $navigationLabel = 'Recebíveis';
 
-    protected static ?string $modelLabel = 'Resumo de recebíveis';
+    protected static ?string $modelLabel = 'Resumo de Recebíveis';
 
-    protected static ?string $pluralModelLabel = 'Resumos de recebíveis';
+    protected static ?string $pluralModelLabel = 'Resumos de Recebíveis';
 
     protected static ?string $recordTitleAttribute = 'reference_month';
 
@@ -72,6 +73,11 @@ class ReceivableResource extends Resource
         return auth()->user()?->can('receivables.update') ?? false;
     }
 
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('receivables.view') ?? false;
+    }
+
     public static function canDelete(Model $record): bool
     {
         return auth()->user()?->can('receivables.delete') ?? false;
@@ -82,6 +88,7 @@ class ReceivableResource extends Resource
         return [
             'index' => ListReceivables::route('/'),
             'create' => CreateReceivable::route('/create'),
+            'view' => ViewReceivable::route('/{record}'),
             'edit' => EditReceivable::route('/{record}/edit'),
         ];
     }

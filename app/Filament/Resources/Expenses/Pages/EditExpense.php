@@ -10,7 +10,7 @@ class EditExpense extends EditRecord
 {
     protected static string $resource = ExpenseResource::class;
 
-    protected static ?string $title = 'Editar despesa';
+    protected static ?string $title = 'Editar Despesa';
 
     /**
      * @param  array<string, mixed>  $data
@@ -24,7 +24,9 @@ class EditExpense extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->label('Excluir Despesa')
+                ->modalHeading('Excluir Despesa'),
         ];
     }
 

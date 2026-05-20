@@ -206,8 +206,9 @@
         }
 
         .btn-brand {
-            background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 82%, black));
+            background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 88%, var(--gold) 12%));
             border-color: var(--brand);
+            border-bottom: 1.5px solid color-mix(in srgb, var(--gold) 40%, var(--brand));
             color: #e6e4e4;
             box-shadow: 0 10px 24px rgba(9, 27, 35, 0.16);
         }
@@ -395,12 +396,13 @@
             background: var(--nav-bg);
             backdrop-filter: blur(10px);
             border: 1px solid color-mix(in srgb, var(--border) 92%, white 8%);
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05);
+            border-bottom: 1.5px solid color-mix(in srgb, var(--gold) 28%, var(--border));
+            box-shadow: 0 14px 36px rgba(9, 27, 35, 0.08), 0 2px 8px rgba(9, 27, 35, 0.04);
             border-radius: var(--radius-shell);
             max-width: 1220px;
             margin: 1rem auto 0;
             top: 0.85rem;
-            padding: 0.15rem 0.35rem;
+            padding: 0.45rem 0.85rem;
         }
 
         .navbar .container {
@@ -437,12 +439,14 @@
             font-weight: 600;
             padding: 0.7rem 0.85rem !important;
             border-radius: 10px;
+            transition: color 0.2s ease, background 0.22s ease, transform 0.18s ease;
         }
 
         .nav-link:hover,
         .nav-link.active {
             color: var(--brand) !important;
             background: color-mix(in srgb, var(--brand) 7%, transparent);
+            transform: translateY(-1px);
         }
 
         .nav-link.active::after {
@@ -910,6 +914,10 @@
                     </div>
                 </li>
 
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('site.vacancies.*') ? 'active' : '' }}" href="{{ route('site.vacancies.index') }}">Trabalhe conosco</a>
+                </li>
+
                 {{-- Institucional --}}
                 <li class="nav-item dropdown dropdown-mega">
                     <a class="nav-link dropdown-toggle {{ request()->routeIs('site.about', 'site.partnerships', 'site.governance', 'site.compliance', 'site.ri', 'site.contact', 'site.vacancies.*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown">
@@ -945,7 +953,7 @@
                 </li>
             </ul>
 
-            <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0 ps-lg-3 border-lg-start border-brand-subtle">
+            <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0 ps-lg-3" style="border-left: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border));">
                 <a href="{{ $portalUrl }}" class="btn btn-outline-brand btn-sm">Portal do Investidor</a>
                 <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-sm">Envie sua proposta</a>
             </div>
@@ -971,6 +979,11 @@
                 <p class="section-copy small mb-3">
                     Securitizadora registrada na CVM. Estruturamos e gerimos operações de crédito (CRI, CRA e CR) com rigor técnico, controle documental e reporte contínuo aos investidores.
                 </p>
+                <p class="small mb-3" style="color: var(--muted); line-height: 1.65;">
+                    CNPJ 11.257.352/0001-43<br>
+                    Av. das Nações Unidas, 14.401 — Sala 712 e 713<br>
+                    Chácara Santo Antônio, São Paulo – SP
+                </p>
                 <div class="d-flex gap-3 justify-content-center justify-content-md-start mt-2">
                     <a href="https://br.linkedin.com/company/bsi-capital-securitizadora-s-a" target="_blank" class="text-muted text-decoration-none" title="LinkedIn">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
@@ -983,14 +996,27 @@
                     </a>
                 </div>
             </div>
-            
-            <div class="col-md-4 text-center">
-                <div class="footer-heading text-center">Atalhos</div>
-                <div class="d-flex flex-column gap-2 fw-medium">
-                    <a href="{{ route('site.emissions') }}" class="footer-link justify-content-center">Ver Emissões</a>
-                    <a href="{{ route('site.ri') }}" class="footer-link justify-content-center">Relações com Investidores</a>
-                    <a href="{{ route('proposal.create') }}" class="footer-link justify-content-center">Envie sua proposta</a>
-                    <a href="{{ route('site.vacancies.index') }}" class="footer-link justify-content-center">Trabalhe conosco</a>
+
+            <div class="col-md-4">
+                <div class="row g-4">
+                    <div class="col-6 col-sm-6">
+                        <div class="footer-heading">Atalhos</div>
+                        <div class="d-flex flex-column gap-2 fw-medium">
+                            <a href="{{ route('site.emissions') }}" class="footer-link">Ver Emissões</a>
+                            <a href="{{ route('site.ri') }}" class="footer-link">Rel. com Investidores</a>
+                            <a href="{{ route('proposal.create') }}" class="footer-link">Envie sua proposta</a>
+                            <a href="{{ route('site.vacancies.index') }}" class="footer-link">Trabalhe conosco</a>
+                        </div>
+                    </div>
+                    <div class="col-6 col-sm-6">
+                        <div class="footer-heading">Conformidade</div>
+                        <div class="d-flex flex-column gap-2 fw-medium">
+                            <a href="{{ route('site.compliance') }}" class="footer-link">Canal de Ética</a>
+                            <a href="{{ route('site.contact') }}" class="footer-link">Ouvidoria</a>
+                            <a href="{{ route('site.governance') }}" class="footer-link">Governança</a>
+                            <a href="{{ route('site.compliance') }}" class="footer-link">Compliance</a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1001,17 +1027,21 @@
                 </div>
             </div>
         </div>
-        
+
         <hr class="my-4 border-brand-subtle opacity-100">
 
         <div class="text-center small pb-2">
             <div class="text-muted mb-1">
                 © {{ date('Y') }} BSI Capital Securitizadora S.A. Todos os direitos reservados.
             </div>
-            <div class="d-flex justify-content-center gap-2 align-items-center">
+            <div class="d-flex flex-wrap justify-content-center gap-2 align-items-center">
                 <a href="{{ route('site.privacy-policy') }}" class="footer-legal-link">Política de Privacidade</a>
                 <span class="text-muted opacity-50">•</span>
                 <a href="{{ route('site.terms-of-use') }}" class="footer-legal-link">Termos de Uso</a>
+                <span class="text-muted opacity-50">•</span>
+                <a href="{{ route('site.compliance') }}" class="footer-legal-link" style="color: var(--gold);">Canal de Ética</a>
+                <span class="text-muted opacity-50">•</span>
+                <a href="{{ route('site.contact') }}" class="footer-legal-link" style="color: var(--gold);">Ouvidoria</a>
             </div>
         </div>
     </div>

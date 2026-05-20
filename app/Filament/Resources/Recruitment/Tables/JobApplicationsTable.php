@@ -19,7 +19,7 @@ class JobApplicationsTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Nome')
+                    ->label('Nome do Candidato')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('status')
@@ -36,34 +36,36 @@ class JobApplicationsTable
                     ->label('E-mail')
                     ->searchable(),
                 TextColumn::make('phone')
-                    ->label('Telefone'),
+                    ->label('Telefone')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('reviewedBy.name')
-                    ->label('Última movimentação por')
+                    ->label('Última Movimentação por')
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('reviewed_at')
-                    ->label('Última movimentação')
+                    ->label('Última Movimentação')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
-                    ->label('Data')
+                    ->label('Recebida em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label('Status da Candidatura')
                     ->options(JobApplication::statusOptions()),
                 SelectFilter::make('vacancy_id')
-                    ->label('Vaga')
+                    ->label('Vaga Pretendida')
                     ->relationship('vacancy', 'title')
                     ->searchable()
                     ->preload(),
                 Filter::make('created_at')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('created_from')->label('De'),
-                        \Filament\Forms\Components\DatePicker::make('created_until')->label('Até'),
+                        \Filament\Forms\Components\DatePicker::make('created_from')->label('Recebida de'),
+                        \Filament\Forms\Components\DatePicker::make('created_until')->label('Recebida até'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -78,10 +80,13 @@ class JobApplicationsTable
                     }),
             ])
             ->actions([
-                EditAction::make(),
-                ViewAction::make(),
+                EditAction::make()
+                    ->label('Avaliar')
+                    ->modalHeading('Avaliar Candidatura'),
+                ViewAction::make()
+                    ->label('Visualizar'),
                 Action::make('download_resume')
-                    ->label('Currículo')
+                    ->label('Baixar Currículo')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn (JobApplication $record): string => route('admin.job-applications.resume', $record))
                     ->visible(fn (JobApplication $record): bool => (bool) $record->resume_path),

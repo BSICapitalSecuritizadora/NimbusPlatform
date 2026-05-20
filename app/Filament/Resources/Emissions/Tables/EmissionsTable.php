@@ -21,7 +21,7 @@ class EmissionsTable
                     ->sortable(),
 
                 TextColumn::make('type')
-                    ->label('Tipo')
+                    ->label('Tipo de Título')
                     ->badge(),
 
                 TextColumn::make('if_code')
@@ -33,7 +33,7 @@ class EmissionsTable
                     ->toggleable(),
 
                 TextColumn::make('status')
-                    ->label('Situação')
+                    ->label('Status da Operação')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => Emission::STATUS_OPTIONS[$state] ?? (string) $state)
                     ->color(fn (?string $state): string => match ($state) {
@@ -54,13 +54,13 @@ class EmissionsTable
                     ->toggleable(),
 
                 TextColumn::make('maturity_date')
-                    ->label('Vencimento')
+                    ->label('Data de Vencimento')
                     ->date('d/m/Y')
                     ->sortable()
                     ->toggleable(),
 
                 IconColumn::make('is_public')
-                    ->label('Site')
+                    ->label('Divulgação Pública')
                     ->boolean(),
             ])
             ->filters([

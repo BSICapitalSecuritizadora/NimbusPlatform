@@ -11,11 +11,11 @@ class FundBalanceHistoriesRelationManager extends RelationManager
 {
     protected static string $relationship = 'balanceHistories';
 
-    protected static ?string $title = 'Historico de saldo';
+    protected static ?string $title = 'Histórico de saldo';
 
-    protected static ?string $modelLabel = 'Historico de saldo';
+    protected static ?string $modelLabel = 'Histórico de saldo';
 
-    protected static ?string $pluralModelLabel = 'Historico de saldo';
+    protected static ?string $pluralModelLabel = 'Histórico de saldo';
 
     public function form(Schema $schema): Schema
     {
@@ -40,6 +40,6 @@ class FundBalanceHistoriesRelationManager extends RelationManager
             ->headerActions([])
             ->actions([])
             ->bulkActions([])
-            ->emptyStateHeading('Nenhum historico de saldo registrado');
+            ->emptyStateHeading('Nenhum histórico de saldo registrado');
     }
 }

@@ -10,6 +10,10 @@ class ViewJobApplication extends ViewRecord
 {
     protected static string $resource = JobApplicationResource::class;
 
+    protected static ?string $title = 'Visualizar Candidatura';
+
+    protected static ?string $breadcrumb = 'Visualizar';
+
     protected function getHeaderActions(): array
     {
         return [

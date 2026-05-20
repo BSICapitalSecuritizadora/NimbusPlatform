@@ -16,7 +16,8 @@ class ListSalesBoards extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label('Criar quadro de vendas'),
+                ->label('Cadastrar Quadro de Vendas')
+                ->icon('heroicon-o-plus-circle'),
         ];
     }
 }

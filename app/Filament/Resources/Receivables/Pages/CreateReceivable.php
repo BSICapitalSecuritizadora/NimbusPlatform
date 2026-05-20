@@ -11,6 +11,10 @@ class CreateReceivable extends CreateRecord
 {
     protected static string $resource = ReceivableResource::class;
 
+    protected static ?string $title = 'Cadastrar Resumo de Recebíveis';
+
+    protected static ?string $breadcrumb = 'Cadastrar';
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $exists = Receivable::query()
@@ -20,10 +24,15 @@ class CreateReceivable extends CreateRecord
 
         if ($exists) {
             throw ValidationException::withMessages([
-                'reference_month' => 'Ja existe um resumo de recebiveis para esta emissao e competencia.',
+                'reference_month' => 'Já existe um resumo de recebíveis para esta operação e competência.',
             ]);
         }
 
         return $data;
+    }
+
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Resumo de recebíveis cadastrado com sucesso.';
     }
 }

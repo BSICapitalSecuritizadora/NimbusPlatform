@@ -12,10 +12,14 @@ class EditReceivable extends EditRecord
 {
     protected static string $resource = ReceivableResource::class;
 
+    protected static ?string $title = 'Editar Resumo de Recebíveis';
+
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->label('Excluir Resumo')
+                ->modalHeading('Excluir Resumo de Recebíveis'),
         ];
     }
 
@@ -29,10 +33,15 @@ class EditReceivable extends EditRecord
 
         if ($exists) {
             throw ValidationException::withMessages([
-                'reference_month' => 'Ja existe um resumo de recebiveis para esta emissao e competencia.',
+                'reference_month' => 'Já existe um resumo de recebíveis para esta operação e competência.',
             ]);
         }
 
         return $data;
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Resumo de recebíveis atualizado com sucesso.';
     }
 }

@@ -13,14 +13,16 @@ class EditSalesBoard extends EditRecord
 {
     protected static string $resource = SalesBoardResource::class;
 
-    protected static ?string $title = 'Editar quadro de vendas';
+    protected static ?string $title = 'Editar Quadro de Vendas';
 
     protected function getHeaderActions(): array
     {
         return [
             ViewAction::make()
                 ->label('Visualizar'),
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->label('Excluir Quadro')
+                ->modalHeading('Excluir Quadro de Vendas'),
         ];
     }
 
@@ -37,20 +39,20 @@ class EditSalesBoard extends EditRecord
     {
         return parent::getSaveFormAction()
             ->requiresConfirmation()
-            ->modalHeading('Salvar alteracoes do quadro de vendas')
-            ->modalDescription('Confirme para salvar as alteracoes.')
-            ->modalSubmitActionLabel('Salvar alteracoes');
+            ->modalHeading('Salvar alterações do quadro de vendas')
+            ->modalDescription('Confirme para salvar as alterações realizadas.')
+            ->modalSubmitActionLabel('Salvar alterações');
     }
 
     protected function getAddToHistoryFormAction(): Action
     {
         return Action::make('addToHistory')
-            ->label('Adicionar ao historico')
+            ->label('Adicionar ao Histórico')
             ->color('success')
             ->requiresConfirmation()
-            ->modalHeading('Adicionar valores ao historico')
-            ->modalDescription('Tem certeza de que deseja adicionar os valores atuais ao historico? Apos a confirmacao, esse registro nao podera mais ser removido.')
-            ->modalSubmitActionLabel('Adicionar ao historico')
+            ->modalHeading('Adicionar valores ao histórico')
+            ->modalDescription('Tem certeza de que deseja adicionar os valores atuais ao histórico? Após a confirmação, este registro não poderá mais ser removido.')
+            ->modalSubmitActionLabel('Adicionar ao histórico')
             ->action(function (): void {
                 $this->saveAndAddToHistory();
             });
@@ -66,7 +68,7 @@ class EditSalesBoard extends EditRecord
 
         Notification::make()
             ->success()
-            ->title('Valores adicionados ao historico com sucesso.')
+            ->title('Valores adicionados ao histórico com sucesso.')
             ->send();
     }
 

@@ -236,7 +236,7 @@ enum AccessPermission: string
         return match (true) {
             str_starts_with($this->value, 'users.'),
             str_starts_with($this->value, 'roles.'),
-            str_starts_with($this->value, 'invitations.') => 'Configurações',
+            str_starts_with($this->value, 'invitations.') => 'Acessos Externos',
             str_starts_with($this->value, 'nimbus.') => 'Gestão Documental Externa',
             str_starts_with($this->value, 'recruitment.') => 'Recrutamento',
             str_starts_with($this->value, 'audit.') => 'Auditoria',

@@ -21,23 +21,25 @@ class PuHistoriesRelationManager extends RelationManager
 
     protected static ?string $recordTitleAttribute = 'date';
 
-    protected static ?string $title = "Hist\u{00F3}rico de PU";
+    protected static ?string $title = 'Histórico de Preço Unitário (PU)';
 
-    protected static ?string $modelLabel = "Hist\u{00F3}rico de PU";
+    protected static ?string $modelLabel = 'Histórico de PU';
 
-    protected static ?string $pluralModelLabel = "Hist\u{00F3}rico de PUs";
+    protected static ?string $pluralModelLabel = 'Histórico de PUs';
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
                 DatePicker::make('date')
-                    ->label('Data')
+                    ->label('Data de Referência')
                     ->required(),
                 TextInput::make('unit_value')
-                    ->label('PU Atualizado (R$)')
+                    ->label('Valor do PU')
+                    ->prefix('R$')
                     ->numeric()
-                    ->required(),
+                    ->required()
+                    ->placeholder('0,000000'),
             ]);
     }
 
@@ -51,14 +53,14 @@ class PuHistoriesRelationManager extends RelationManager
                     ->date('d/m/Y')
                     ->sortable(),
                 TextColumn::make('unit_value')
-                    ->label('PU')
+                    ->label('Valor Unitário (PU)')
                     ->numeric(6, ',', '.')
                     ->sortable(),
             ])
             ->defaultSort('date', 'desc')
             ->headerActions([
                 \Filament\Actions\Action::make('download_template')
-                    ->label('Baixar Template')
+                    ->label('Download do Template')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
                     ->url(fn (): string => route('admin.pu-histories.template.download'))
@@ -70,11 +72,11 @@ class PuHistoriesRelationManager extends RelationManager
                     ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
                 \Filament\Actions\Action::make('import')
-                    ->label('Importar Planilha')
+                    ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->form([
                         FileUpload::make('file')
-                            ->label('Arquivo Excel (.xlsx)')
+                            ->label('Planilha de Preços (.xlsx)')
                             ->disk('local')
                             ->directory('imports')
                             ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
@@ -87,7 +89,7 @@ class PuHistoriesRelationManager extends RelationManager
                             $count = app(ImportPuHistoriesFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
                         } catch (\Throwable) {
                             Notification::make()
-                                ->title('Erro ao ler o arquivo')
+                                ->title('Erro ao processar o arquivo')
                                 ->danger()
                                 ->send();
 
@@ -95,12 +97,13 @@ class PuHistoriesRelationManager extends RelationManager
                         }
 
                         Notification::make()
-                            ->title("Importa\u{00E7}\u{00E3}o conclu\u{00ED}da!")
-                            ->body("{$count} registros foram importados ou atualizados.")
+                            ->title('Importação concluída com sucesso!')
+                            ->body("{$count} registros foram processados.")
                             ->success()
                             ->send();
                     }),
-                \Filament\Actions\CreateAction::make(),
+                \Filament\Actions\CreateAction::make()
+                    ->label('Lançar PU'),
             ])
             ->actions([
                 \Filament\Actions\EditAction::make(),
@@ -111,6 +114,6 @@ class PuHistoriesRelationManager extends RelationManager
                     \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('Nenhum registro de PU');
+            ->emptyStateHeading('Nenhum registro de PU cadastrado');
     }
 }

@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class SalesBoard extends Model
 {
     /** @use HasFactory<\Database\Factories\SalesBoardFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected const TRACKED_VALUE_FIELDS = [
         'stock_units',
@@ -64,6 +66,14 @@ class SalesBoard extends Model
             'paid_value' => 'decimal:2',
             'exchanged_value' => 'decimal:2',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['emission_id', 'construction_id', 'reference_month', 'stock_units', 'financed_units', 'paid_units', 'exchanged_units', 'stock_value', 'financed_value', 'paid_value', 'exchanged_value'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function emission(): BelongsTo

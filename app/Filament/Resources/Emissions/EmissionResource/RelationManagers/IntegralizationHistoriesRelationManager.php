@@ -27,18 +27,18 @@ class IntegralizationHistoriesRelationManager extends RelationManager
 
     protected static ?string $recordTitleAttribute = 'date';
 
-    protected static ?string $title = "Hist\u{00F3}rico de Integraliza\u{00E7}\u{00F5}es";
+    protected static ?string $title = 'Histórico de Integralizações';
 
-    protected static ?string $modelLabel = "Integraliza\u{00E7}\u{00E3}o";
+    protected static ?string $modelLabel = 'Integralização';
 
-    protected static ?string $pluralModelLabel = "Integraliza\u{00E7}\u{00F5}es";
+    protected static ?string $pluralModelLabel = 'Integralizações';
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->schema([
                 DatePicker::make('date')
-                    ->label('Data')
+                    ->label('Data de Integralização')
                     ->required(),
                 TextInput::make('quantity')
                     ->label('Quantidade')
@@ -52,13 +52,13 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
                     ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 0))
                     ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeDecimalValue($state))
-                    ->placeholder('1.000')
+                    ->placeholder('0')
                     ->validationMessages([
                         'required' => 'Informe a quantidade a integralizar.',
                         'numeric' => 'Informe uma quantidade válida.',
                     ]),
                 TextInput::make('unit_value')
-                    ->label('PU')
+                    ->label('Preço Unitário (PU)')
                     ->inputMode('decimal')
                     ->mask(RawJs::make(<<<'JS'
                         $money($input, ',', '.', 8)
@@ -68,22 +68,23 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncFinancialValue($get, $set))
                     ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 8))
                     ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeDecimalValue($state))
-                    ->placeholder('1.000,50000000'),
+                    ->placeholder('0,00000000'),
                 TextInput::make('financial_value')
-                    ->label('Financeiro')
+                    ->label('Valor Financeiro')
                     ->prefix('R$')
                     ->readOnly()
                     ->inputMode('decimal')
                     ->mask(RawJs::make(<<<'JS'
                         $money($input, ',', '.', 2)
                     JS))
-                    ->helperText('Calculado automaticamente a partir de Quantidade x PU.')
+                    ->helperText('Calculado automaticamente: Quantidade × PU.')
                     ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 2))
                     ->dehydrateStateUsing(fn (Get $get): ?float => self::calculateFinancialValue($get))
-                    ->placeholder('1.000.000,00'),
+                    ->placeholder('0,00'),
                 TextInput::make('investor_fund')
-                    ->label('Fundo (Investidor)')
-                    ->maxLength(255),
+                    ->label('Fundo do Investidor')
+                    ->maxLength(255)
+                    ->placeholder('Informe o nome do fundo'),
             ]);
     }
 
@@ -105,18 +106,18 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->numeric(8, ',', '.')
                     ->sortable(),
                 TextColumn::make('financial_value')
-                    ->label('Financeiro')
+                    ->label('Valor Financeiro')
                     ->money('BRL')
                     ->sortable(),
                 TextColumn::make('investor_fund')
-                    ->label('Fundo (Investidor)')
+                    ->label('Fundo do Investidor')
                     ->searchable()
                     ->sortable(),
             ])
             ->defaultSort('date', 'desc')
             ->headerActions([
                 \Filament\Actions\Action::make('download_template')
-                    ->label('Baixar Template')
+                    ->label('Download do Template')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
                     ->url(fn (): string => route('admin.integralization-histories.template.download'))
@@ -128,11 +129,11 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
                 \Filament\Actions\Action::make('import')
-                    ->label('Importar Planilha')
+                    ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->form([
                         FileUpload::make('file')
-                            ->label('Arquivo Excel (.xlsx)')
+                            ->label('Planilha de Dados (.xlsx)')
                             ->disk('local')
                             ->directory('imports')
                             ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
@@ -145,7 +146,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                             $count = app(ImportIntegralizationHistoriesFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
                         } catch (ValidationException $exception) {
                             Notification::make()
-                                ->title('Importação não realizada')
+                                ->title('Falha na importação')
                                 ->body(collect($exception->errors())->flatten()->implode(PHP_EOL))
                                 ->danger()
                                 ->persistent()
@@ -154,7 +155,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                             return;
                         } catch (\Throwable) {
                             Notification::make()
-                                ->title('Erro ao ler o arquivo')
+                                ->title('Erro ao processar o arquivo')
                                 ->danger()
                                 ->send();
 
@@ -162,21 +163,19 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                         }
 
                         Notification::make()
-                            ->title("Importa\u{00E7}\u{00E3}o conclu\u{00ED}da!")
-                            ->body("{$count} registros foram importados ou atualizados.")
+                            ->title('Importação concluída com sucesso!')
+                            ->body("{$count} registros foram processados.")
                             ->success()
                             ->send();
                     }),
                 \Filament\Actions\CreateAction::make()
+                    ->label('Lançar Integralização')
                     ->before(function (Action $action, array $data): void {
                         $this->validateIntegralizationQuantityOrHalt($action, $data);
                     }),
             ])
             ->actions([
-                \Filament\Actions\EditAction::make()
-                    ->before(function (Action $action, IntegralizationHistory $record, array $data): void {
-                        $this->validateIntegralizationQuantityOrHalt($action, $data, $record);
-                    }),
+                \Filament\Actions\EditAction::make(),
                 \Filament\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
@@ -184,7 +183,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading("Nenhuma integraliza\u{00E7}\u{00E3}o registrada");
+            ->emptyStateHeading('Nenhuma integralização cadastrada');
     }
 
     protected function afterActionCalled(Action $action): void

@@ -281,8 +281,8 @@ it('renders the submissions list in Portuguese without exposing creation to inte
         ->assertSuccessful()
         ->assertSee('Envios e Solicitações')
         ->assertDontSee('Criar envio e solicitação')
-        ->assertSee('CNPJ da Empresa')
-        ->assertSee('Empresa')
+        ->assertSee('CNPJ')
+        ->assertSee('Razão Social')
         ->assertSee('Status')
         ->assertSee('Visualizar')
         ->assertSee('12.345.678/0001-90')
@@ -340,23 +340,23 @@ it('renders the submission view page for authenticated admin users', function ()
             'Detalhes do Envio',
             'Informações Complementares',
             'Documentos de Retorno',
-            'Timeline da Submissão',
+            'Histórico de Observações',
             'Trilha de Auditoria',
         ])
         ->assertSeeInOrder([
             'Dados da Empresa',
             'Indicadores Financeiros',
-            'Dados do Cadastrante',
+            'Dados do Responsável',
         ])
         ->assertSee('Dados da Empresa')
         ->assertSee('Indicadores Financeiros')
-        ->assertSee('Filiado à Anbima')
-        ->assertSee('Dados do Cadastrante')
+        ->assertSee('Filiado à ANBIMA')
+        ->assertSee('Dados do Responsável')
         ->assertSee('Trilha de Auditoria')
         ->assertSee('Documentos de Retorno')
         ->assertSee('Anexar resposta')
-        ->assertSee('Nenhuma observação interna foi registrada neste envio até o momento.')
-        ->assertSee('Sócios')
+        ->assertSee('Nenhuma observação interna registrada até o momento.')
+        ->assertSee('Quadro Societário')
         ->assertSee('Arquivos')
         ->assertSee('Metadados do Registro')
         ->assertSee('User Agent da Sessão')
@@ -721,9 +721,9 @@ it('renders the portal users list under Administração', function () {
         ->assertSuccessful()
         ->assertSee('Usuários do Portal')
         ->assertSee('Novo usuário')
-        ->assertSee('Nome completo')
+        ->assertSee('Nome Completo')
         ->assertSee('E-mail')
-        ->assertSee('Gerar chave')
+        ->assertSee('Gerar Chave de Acesso')
         ->assertSee('Cliente Portal')
         ->assertSee('123.456.789-01')
         ->assertSee('(11) 99999-9999');
@@ -785,7 +785,7 @@ it('renders the access keys list under Administração', function () {
         ->get(AccessTokenResource::getUrl(panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Chaves de Acesso')
-        ->assertSee('Usuário do portal')
+        ->assertSee('Usuário do Portal')
         ->assertSee('Válida')
         ->assertSee('Revogar');
 });
@@ -920,7 +920,7 @@ it('renders the document categories list under Gestão Documental', function () 
         ->assertSee('Categorias de Documentos')
         ->assertSee('Nova categoria')
         ->assertSee('Institucional')
-        ->assertSee('Documentos vinculados');
+        ->assertSee('Documentos Vinculados');
 });
 
 it('renders the biblioteca geral list under Gestão Documental', function () {
@@ -1011,7 +1011,7 @@ it('renders the document management create forms in Portuguese', function () {
         ->get(DocumentCategoryResource::getUrl('create', panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Nova Categoria de Documento')
-        ->assertSee('Nome da categoria');
+        ->assertSee('Nome da Categoria');
 
     $this->actingAs($user)
         ->get(GeneralDocumentResource::getUrl('create', panel: 'admin'))
@@ -1025,6 +1025,6 @@ it('renders the document management create forms in Portuguese', function () {
         ->get(PortalDocumentResource::getUrl('create', panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Novo Documento do Usuário')
-        ->assertSee('Usuário do portal')
+        ->assertSee('Usuário do Portal')
         ->assertSee('Arquivo');
 });

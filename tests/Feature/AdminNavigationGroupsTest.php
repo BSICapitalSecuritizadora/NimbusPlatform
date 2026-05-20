@@ -13,6 +13,7 @@ use App\Filament\Resources\FundApplications\FundApplicationResource;
 use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
 use App\Filament\Resources\FundTypes\FundTypeResource;
+use App\Filament\Resources\Invitations\InvitationResource;
 use App\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource;
 use App\Filament\Resources\Receivables\ReceivableResource;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
@@ -30,7 +31,7 @@ beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
 });
 
-it('registers the Gestão section between Cadastro and Gestão de Acesso', function () {
+it('registers the Acessos Externos section between Gestão and Recrutamento', function () {
     $navigationGroups = collect(Filament::getPanel('admin')->getNavigationGroups())
         ->map(fn (NavigationGroup|string $group): string => $group instanceof NavigationGroup ? $group->getLabel() ?? '' : $group)
         ->values()
@@ -43,7 +44,7 @@ it('registers the Gestão section between Cadastro and Gestão de Acesso', funct
             'Comercial',
             'Cadastro',
             'Gestão',
-            'Gestão de Acesso',
+            'Acessos Externos',
             'Recrutamento',
             'Relatórios',
             'Configurações',
@@ -90,6 +91,26 @@ it('registers the Recebíveis resource inside Gestão', function () {
         ->and($managementGroup)->not->toBeNull()
         ->and($receivableItem)->not->toBeNull()
         ->and($receivableItem->getUrl())->toBe(ReceivableResource::getUrl(panel: 'admin'));
+});
+
+it('registers the Usuários Externos module inside Acessos Externos', function () {
+    $this->actingAs(makeNavigationAdminUser(['invitations.view']));
+
+    $externalAccessGroup = collect(Filament::getPanel('admin')->getNavigation())
+        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Acessos Externos');
+    $externalUsersItem = collect($externalAccessGroup?->getItems() ?? [])
+        ->first(fn ($item) => $item->getLabel() === 'Usuários Externos');
+    $invitationChildItem = collect($externalUsersItem?->getChildItems() ?? [])
+        ->first(fn ($item) => $item->getLabel() === 'Convites de Acesso');
+
+    expect(InvitationResource::getNavigationGroup())->toBe('Acessos Externos')
+        ->and(InvitationResource::getNavigationParentItem())->toBe('Usuários Externos')
+        ->and(InvitationResource::getNavigationLabel())->toBe('Convites de Acesso')
+        ->and($externalAccessGroup)->not->toBeNull()
+        ->and($externalUsersItem)->not->toBeNull()
+        ->and($externalUsersItem->getUrl())->toBe(InvitationResource::getUrl(panel: 'admin'))
+        ->and($invitationChildItem)->not->toBeNull()
+        ->and($invitationChildItem->getUrl())->toBe(InvitationResource::getUrl(panel: 'admin'));
 });
 
 it('registers the Fundos subsection inside Cadastro', function () {
@@ -147,7 +168,7 @@ it('uses pt-BR labels and translations for admin resources', function () {
         ->and(FundApplicationResource::getModelLabel())->toBe('Aplicação')
         ->and(DocumentResource::getNavigationLabel())->toBe('Documentos')
         ->and(DocumentResource::getModelLabel())->toBe('Documento')
-        ->and(ProposalRepresentativeResource::getNavigationLabel())->toBe('Representantes comerciais')
+        ->and(ProposalRepresentativeResource::getNavigationLabel())->toBe('Representantes Comerciais')
         ->and(NimbusDashboard::getNavigationLabel())->toBe('Visão Geral')
         ->and(NotificationSettings::getNavigationLabel())->toBe('Configurações de notificações')
         ->and(__('Go to page :page', ['page' => 2]))->toBe('Ir para a página 2')
@@ -155,12 +176,16 @@ it('uses pt-BR labels and translations for admin resources', function () {
         ->and(trans('proposals.status.em_analise'))->toBe('Em Análise Técnica');
 });
 
-function makeNavigationAdminUser(): User
+function makeNavigationAdminUser(array $permissions = []): User
 {
     $user = User::factory()->withTwoFactor()->create([
         'email' => fake()->unique()->safeEmail(),
     ]);
     $user->assignRole('admin');
+
+    if ($permissions !== []) {
+        $user->givePermissionTo($permissions);
+    }
 
     return $user;
 }

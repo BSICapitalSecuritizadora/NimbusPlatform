@@ -1,6 +1,8 @@
 <?php
 
 use App\Filament\Resources\Recruitment\JobApplicationResource;
+use App\Filament\Resources\Recruitment\Pages\CreateVacancy;
+use App\Filament\Resources\Recruitment\Pages\EditVacancy;
 use App\Filament\Resources\Recruitment\VacancyResource;
 use App\Models\JobApplication;
 use App\Models\Vacancy;
@@ -76,4 +78,25 @@ it('shows navigation badges for active vacancies and new applications', function
 
     expect(VacancyResource::getNavigationBadge())->toBe('3')
         ->and(JobApplicationResource::getNavigationBadge())->toBe('2');
+});
+
+it('keeps recruitment vacancy pages redirecting to the vacancies list', function () {
+    $createPage = new class extends CreateVacancy
+    {
+        public function redirectUrl(): string
+        {
+            return $this->getRedirectUrl();
+        }
+    };
+
+    $editPage = new class extends EditVacancy
+    {
+        public function redirectUrl(): string
+        {
+            return $this->getRedirectUrl();
+        }
+    };
+
+    expect($createPage->redirectUrl())->toBe(VacancyResource::getUrl('index'))
+        ->and($editPage->redirectUrl())->toBe(VacancyResource::getUrl('index'));
 });

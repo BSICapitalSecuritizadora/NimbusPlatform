@@ -9,11 +9,13 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Receivable extends Model
 {
     /** @use HasFactory<\Database\Factories\ReceivableFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected const MONEY_ATTRIBUTES = [
         'expected_interest_amount',
@@ -160,6 +162,14 @@ class Receivable extends Model
             ...array_fill_keys(self::DECIMAL_ATTRIBUTES, 'decimal:6'),
             'summary_payload' => 'array',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function emission(): BelongsTo

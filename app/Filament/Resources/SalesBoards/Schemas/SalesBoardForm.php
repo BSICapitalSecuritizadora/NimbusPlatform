@@ -20,11 +20,11 @@ class SalesBoardForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Dados do quadro de vendas')
+            Section::make('Dados do Quadro de Vendas')
                 ->columnSpanFull()
                 ->schema([
                     Select::make('emission_id')
-                        ->label('Emissão')
+                        ->label('Operação')
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()
@@ -36,7 +36,7 @@ class SalesBoardForm
                             }
                         })
                         ->validationMessages([
-                            'required' => 'Selecione a emissão.',
+                            'required' => 'Selecione a operação.',
                         ]),
 
                     Select::make('construction_id')
@@ -53,7 +53,7 @@ class SalesBoardForm
                         ->preload()
                         ->required()
                         ->disabled(fn (Get $get): bool => blank($get('emission_id')))
-                        ->helperText('Selecione primeiro a emissão para listar apenas os empreendimentos vinculados.')
+                        ->helperText('Selecione primeiro a operação para listar apenas os empreendimentos vinculados.')
                         ->rule(static function (Get $get): Closure {
                             return static function (string $attribute, mixed $value, Closure $fail) use ($get): void {
                                 if (blank($value) || blank($get('emission_id'))) {
@@ -66,7 +66,7 @@ class SalesBoardForm
                                     ->exists();
 
                                 if (! $exists) {
-                                    $fail('Selecione um empreendimento vinculado à emissão escolhida.');
+                                    $fail('Selecione um empreendimento vinculado à operação escolhida.');
                                 }
                             };
                         })
@@ -75,8 +75,8 @@ class SalesBoardForm
                         ]),
 
                     TextInput::make('reference_month')
-                        ->label('Competência')
-                        ->placeholder('mm/aaaa')
+                        ->label('Mês')
+                        ->placeholder('MM/AAAA')
                         ->mask('99/9999')
                         ->required()
                         ->formatStateUsing(fn (mixed $state): string => SalesBoard::formatReferenceMonthForDisplay($state))
@@ -98,17 +98,17 @@ class SalesBoardForm
                                     ->exists();
 
                                 if ($exists) {
-                                    $fail('Já existe um quadro de vendas para esta emissão, empreendimento e competência.');
+                                    $fail('Já existe um quadro de vendas para esta operação, empreendimento e Mês.');
                                 }
                             };
                         })
                         ->validationMessages([
-                            'required' => 'Informe a competência no formato mm/aaaa.',
+                            'required' => 'Informe a Mês no formato MM/AAAA.',
                         ]),
                 ])
                 ->columns(3),
 
-            Section::make('Quantidades por status')
+            Section::make('Quantidades por Status')
                 ->columnSpanFull()
                 ->schema([
                     static::quantityField('stock_units', 'Estoque'),
@@ -117,20 +117,20 @@ class SalesBoardForm
                     static::quantityField('exchanged_units', 'Permutado'),
 
                     TextInput::make('total_units')
-                        ->label('Valor total')
+                        ->label('Quantidade Total')
                         ->disabled()
                         ->dehydrated(false)
                         ->default(0),
                 ])
                 ->columns(5),
 
-            Section::make('Valores monetários por status')
+            Section::make('Valores por Status')
                 ->columnSpanFull()
                 ->schema([
-                    static::moneyField('stock_value', 'Valor total em estoque'),
-                    static::moneyField('financed_value', 'Valor total financiado'),
-                    static::moneyField('paid_value', 'Valor total quitado'),
-                    static::moneyField('exchanged_value', 'Valor total permutado'),
+                    static::moneyField('stock_value', 'Valor em estoque'),
+                    static::moneyField('financed_value', 'Valor financiado'),
+                    static::moneyField('paid_value', 'Valor quitado'),
+                    static::moneyField('exchanged_value', 'Valor permutado'),
                 ])
                 ->columns(2),
         ]);
@@ -186,9 +186,9 @@ class SalesBoardForm
     protected static function calculateTotalUnitsFromState(Get $get): int
     {
         return self::normalizeIntegerValue($get('stock_units'))
-            + self::normalizeIntegerValue($get('financed_units'))
-            + self::normalizeIntegerValue($get('paid_units'))
-            + self::normalizeIntegerValue($get('exchanged_units'));
+         + self::normalizeIntegerValue($get('financed_units'))
+         + self::normalizeIntegerValue($get('paid_units'))
+         + self::normalizeIntegerValue($get('exchanged_units'));
     }
 
     protected static function normalizeIntegerValue(mixed $value): int

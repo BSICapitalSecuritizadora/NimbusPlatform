@@ -21,13 +21,15 @@ class InvitationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;
 
-    protected static ?string $navigationLabel = 'Convites';
+    protected static ?string $navigationLabel = 'Convites de Acesso';
 
-    protected static ?string $modelLabel = 'Convite';
+    protected static ?string $modelLabel = 'Convite de Acesso';
 
-    protected static ?string $pluralModelLabel = 'Convites';
+    protected static ?string $pluralModelLabel = 'Convites de Acesso';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Gestão de Acesso';
+    protected static string|\UnitEnum|null $navigationGroup = 'Acessos Externos';
+
+    protected static ?string $navigationParentItem = 'Usuários Externos';
 
     protected static ?int $navigationSort = 10;
 

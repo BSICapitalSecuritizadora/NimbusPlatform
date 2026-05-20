@@ -39,7 +39,7 @@ it('shows the create and view actions with the expected filters on the list page
 
     Livewire::test(ListSalesBoards::class)
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Criar quadro de vendas')
+        ->assertActionHasLabel('create', 'Cadastrar Quadro de Vendas')
         ->assertTableActionExists('view', null, $salesBoard)
         ->assertTableActionHasLabel('view', 'Visualizar')
         ->assertTableActionHasUrl('view', SalesBoardResource::getUrl('view', ['record' => $salesBoard]), $salesBoard)
@@ -55,20 +55,20 @@ it('renders each sales board form section on its own row', function () {
         ->mapWithKeys(fn (Section $section): array => [$section->getHeading() => $section]);
 
     expect($sections->keys()->all())->toBe([
-        'Dados do quadro de vendas',
-        'Quantidades por status',
-        'Valores monetários por status',
+        'Dados do Quadro de Vendas',
+        'Quantidades por Status',
+        'Valores por Status',
     ]);
 
-    expect($sections['Dados do quadro de vendas']->getColumnSpan())->toMatchArray([
+    expect($sections['Dados do Quadro de Vendas']->getColumnSpan())->toMatchArray([
         'default' => 'full',
     ]);
 
-    expect($sections['Quantidades por status']->getColumnSpan())->toMatchArray([
+    expect($sections['Quantidades por Status']->getColumnSpan())->toMatchArray([
         'default' => 'full',
     ]);
 
-    expect($sections['Valores monetários por status']->getColumnSpan())->toMatchArray([
+    expect($sections['Valores por Status']->getColumnSpan())->toMatchArray([
         'default' => 'full',
     ]);
 });
@@ -428,9 +428,9 @@ it('requires confirmation before saving changes to a sales board', function () {
     }
 
     expect($saveAction->isConfirmationRequired())->toBeTrue()
-        ->and((string) $saveAction->getModalHeading())->toBe('Salvar alteracoes do quadro de vendas')
-        ->and((string) $saveAction->getModalDescription())->toBe('Confirme para salvar as alteracoes.')
-        ->and($saveAction->getModalSubmitActionLabel())->toBe('Salvar alteracoes');
+        ->and((string) $saveAction->getModalHeading())->toBe('Salvar alterações do quadro de vendas')
+        ->and((string) $saveAction->getModalDescription())->toBe('Confirme para salvar as alterações realizadas.')
+        ->and($saveAction->getModalSubmitActionLabel())->toBe('Salvar alterações');
 });
 
 it('configures a dedicated action to add the current values to history', function () {
@@ -448,11 +448,11 @@ it('configures a dedicated action to add the current values to history', functio
     $addToHistoryAction = $actions->first(fn (mixed $action): bool => $action->getName() === 'addToHistory');
 
     expect($addToHistoryAction)->not->toBeNull()
-        ->and($addToHistoryAction->getLabel())->toBe('Adicionar ao historico')
+        ->and($addToHistoryAction->getLabel())->toBe('Adicionar ao Histórico')
         ->and($addToHistoryAction->isConfirmationRequired())->toBeTrue()
-        ->and((string) $addToHistoryAction->getModalHeading())->toBe('Adicionar valores ao historico')
-        ->and((string) $addToHistoryAction->getModalDescription())->toBe('Tem certeza de que deseja adicionar os valores atuais ao historico? Apos a confirmacao, esse registro nao podera mais ser removido.')
-        ->and($addToHistoryAction->getModalSubmitActionLabel())->toBe('Adicionar ao historico')
+        ->and((string) $addToHistoryAction->getModalHeading())->toBe('Adicionar valores ao histórico')
+        ->and((string) $addToHistoryAction->getModalDescription())->toBe('Tem certeza de que deseja adicionar os valores atuais ao histórico? Após a confirmação, este registro não poderá mais ser removido.')
+        ->and($addToHistoryAction->getModalSubmitActionLabel())->toBe('Adicionar ao histórico')
         ->and($addToHistoryAction->getLivewireClickHandler())->toContain("mountAction('addToHistory'");
 });
 

@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class ExpenseServiceProvider extends Model
 {
     /** @use HasFactory<\Database\Factories\ExpenseServiceProviderFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'cnpj',
@@ -25,6 +27,14 @@ class ExpenseServiceProvider extends Model
         return Attribute::make(
             set: fn (?string $value): string => Str::digitsOnly((string) $value),
         );
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function expenses(): HasMany

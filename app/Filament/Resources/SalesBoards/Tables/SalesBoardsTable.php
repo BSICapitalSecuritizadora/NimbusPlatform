@@ -29,7 +29,7 @@ class SalesBoardsTable
                     ->wrap(),
 
                 TextColumn::make('reference_month')
-                    ->label('Competência')
+                    ->label('Mês')
                     ->date('m/Y')
                     ->sortable(),
 
@@ -50,7 +50,7 @@ class SalesBoardsTable
                     ->sortable(),
 
                 TextColumn::make('total_units')
-                    ->label('Valor total')
+                    ->label('Quantidade Total')
                     ->sortable(),
 
                 TextColumn::make('stock_value')
@@ -91,7 +91,7 @@ class SalesBoardsTable
                     ->preload(),
 
                 SelectFilter::make('reference_month')
-                    ->label('Competência')
+                    ->label('Mês')
                     ->options(fn (): array => SalesBoard::query()
                         ->orderByDesc('reference_month')
                         ->pluck('reference_month')

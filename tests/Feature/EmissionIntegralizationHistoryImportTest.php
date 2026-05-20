@@ -36,11 +36,11 @@ it('registers the spreadsheet import action on the integralization histories rel
     ])
         ->assertTableHeaderActionsExistInOrder(['download_template', 'manage_template', 'import', 'create'])
         ->assertTableActionExists('download_template')
-        ->assertTableActionHasLabel('download_template', 'Baixar Template')
+        ->assertTableActionHasLabel('download_template', 'Download do Template')
         ->assertTableActionExists('manage_template')
         ->assertTableActionHasLabel('manage_template', 'Configurar Template')
         ->assertTableActionExists('import')
-        ->assertTableActionHasLabel('import', 'Importar Planilha');
+        ->assertTableActionHasLabel('import', 'Importar Dados');
 });
 
 it('accepts pt-br financial masks when creating an integralization history manually', function () {

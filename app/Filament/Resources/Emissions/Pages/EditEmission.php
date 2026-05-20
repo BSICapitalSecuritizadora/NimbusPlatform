@@ -14,6 +14,8 @@ class EditEmission extends EditRecord
 {
     protected static string $resource = EmissionResource::class;
 
+    protected static ?string $title = 'Editar Emissão';
+
     protected Width|string|null $maxContentWidth = Width::Full;
 
     public bool $isExtractingClauses = false;
@@ -30,7 +32,9 @@ class EditEmission extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->label('Excluir Emissão')
+                ->modalHeading('Excluir Emissão'),
         ];
     }
 
@@ -77,5 +81,10 @@ class EditEmission extends EditRecord
         $this->getRecord()->refresh();
 
         $this->refreshFormData(['integralized_quantity']);
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Emissão atualizada com sucesso.';
     }
 }

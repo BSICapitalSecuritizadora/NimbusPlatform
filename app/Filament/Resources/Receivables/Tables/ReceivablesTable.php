@@ -5,7 +5,7 @@ namespace App\Filament\Resources\Receivables\Tables;
 use App\Models\Receivable;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -17,12 +17,12 @@ class ReceivablesTable
         return $table
             ->columns([
                 TextColumn::make('emission.name')
-                    ->label('Emissao')
+                    ->label('Emissão')
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('reference_month')
-                    ->label('Competencia')
+                    ->label('Mês')
                     ->date('m/Y')
                     ->sortable(),
 
@@ -31,43 +31,43 @@ class ReceivablesTable
                     ->sortable(),
 
                 TextColumn::make('active_contracts_count')
-                    ->label('Contratos ativos')
+                    ->label('Contratos Ativos')
                     ->sortable(),
 
                 TextColumn::make('expected_amortization_amount')
-                    ->label('Esperado amortizacao')
+                    ->label('Esperado Amortização')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('expected_interest_amount')
-                    ->label('Esperado juros')
+                    ->label('Esperado Juros')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('monthly_default_balance_amount')
-                    ->label('Inadimplencia mes')
+                    ->label('Inadimplência Mês')
                     ->money('BRL')
                     ->sortable(),
 
                 TextColumn::make('total_default_balance_amount')
-                    ->label('Inadimplencia geral')
+                    ->label('Inadimplência Geral')
                     ->money('BRL')
                     ->sortable(),
 
                 TextColumn::make('total_prepayment_amount')
-                    ->label('Pre-pagamento')
+                    ->label('Pré-pagamento')
                     ->money('BRL')
                     ->sortable(),
 
                 TextColumn::make('total_outstanding_balance_amount')
-                    ->label('Saldo devedor total')
+                    ->label('Saldo Devedor Total')
                     ->money('BRL')
                     ->sortable(),
 
                 TextColumn::make('sale_ltv_ratio')
-                    ->label('LTV venda')
+                    ->label('LTV Venda')
                     ->formatStateUsing(fn (mixed $state): string => $state === null ? '-' : number_format(((float) $state) * 100, 2, ',', '.').'%')
                     ->sortable(),
 
@@ -77,19 +77,19 @@ class ReceivablesTable
                     ->sortable(),
 
                 TextColumn::make('average_rate_details')
-                    ->label('Taxa media')
+                    ->label('Taxa Média')
                     ->wrap()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('emission_id')
-                    ->label('Emissao')
+                    ->label('Emissão')
                     ->relationship('emission', 'name')
                     ->searchable()
                     ->preload(),
 
                 SelectFilter::make('reference_month')
-                    ->label('Competencia')
+                    ->label('Mês')
                     ->options(fn (): array => Receivable::query()
                         ->orderByDesc('reference_month')
                         ->pluck('reference_month')
@@ -109,7 +109,7 @@ class ReceivablesTable
             ])
             ->defaultSort('reference_month', 'desc')
             ->recordActions([
-                EditAction::make(),
+                ViewAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

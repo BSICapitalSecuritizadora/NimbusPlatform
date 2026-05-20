@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\Activities;
 
+use App\Filament\Exports\ActivityExporter;
 use App\Filament\Resources\Activities\Pages\ManageActivities;
 use BackedEnum;
+use Filament\Actions\ExportAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -69,7 +71,8 @@ class ActivityResource extends Resource
                 \Filament\Infolists\Components\TextEntry::make('log_name')->label('Identificador do Log'),
                 \Filament\Infolists\Components\TextEntry::make('description')->label('Ação Executada'),
                 \Filament\Infolists\Components\TextEntry::make('causer.name')->label('Autor da Ação'),
-                \Filament\Infolists\Components\TextEntry::make('subject_type')->label('Entidade Modificada'),
+                \Filament\Infolists\Components\TextEntry::make('subject_type')->label('Entidade Modificada')
+                    ->formatStateUsing(fn (?string $state): string => self::friendlySubjectType($state)),
                 \Filament\Infolists\Components\TextEntry::make('created_at')->label('Data e Hora')->dateTime(),
                 \Filament\Infolists\Components\TextEntry::make('properties')
                     ->label('Dados da Alteração (JSON)')
@@ -93,6 +96,7 @@ class ActivityResource extends Resource
                     ->searchable(),
                 \Filament\Tables\Columns\TextColumn::make('subject_type')
                     ->label('Entidade Modificada')
+                    ->formatStateUsing(fn (?string $state): string => self::friendlySubjectType($state))
                     ->searchable()
                     ->sortable(),
                 \Filament\Tables\Columns\TextColumn::make('causer.name')
@@ -105,6 +109,20 @@ class ActivityResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                \Filament\Tables\Filters\SelectFilter::make('event')
+                    ->label('Tipo de Evento')
+                    ->options([
+                        'created' => 'Criação',
+                        'updated' => 'Atualização',
+                        'deleted' => 'Exclusão',
+                        'login' => 'Login',
+                        'logout' => 'Logout',
+                        'downloaded' => 'Download',
+                    ]),
+                \Filament\Tables\Filters\SelectFilter::make('causer_id')
+                    ->label('Usuário')
+                    ->options(fn (): array => \App\Models\User::query()->orderBy('name')->pluck('name', 'id')->all())
+                    ->searchable(),
                 \Filament\Tables\Filters\Filter::make('created_at')
                     ->form([
                         \Filament\Forms\Components\DatePicker::make('created_from')->label('Data Inicial'),
@@ -126,7 +144,11 @@ class ActivityResource extends Resource
             ->recordActions([
                 ViewAction::make(),
             ])
-            ->toolbarActions([]);
+            ->toolbarActions([
+                ExportAction::make()
+                    ->label('Exportar')
+                    ->exporter(ActivityExporter::class),
+            ]);
     }
 
     public static function getPages(): array
@@ -134,5 +156,36 @@ class ActivityResource extends Resource
         return [
             'index' => ManageActivities::route('/'),
         ];
+    }
+
+    public static function friendlySubjectType(?string $fqcn): string
+    {
+        if ($fqcn === null) {
+            return '—';
+        }
+
+        return match ($fqcn) {
+            'App\Models\User' => 'Usuário',
+            'App\Models\Investor' => 'Investidor',
+            'App\Models\Expense' => 'Despesa',
+            'App\Models\Construction' => 'Empreendimento',
+            'App\Models\Fund' => 'Fundo',
+            'App\Models\Receivable' => 'Recebível',
+            'App\Models\SalesBoard' => 'Quadro de Vendas',
+            'App\Models\Payment' => 'Pagamento',
+            'App\Models\Bank' => 'Banco',
+            'App\Models\ExpenseServiceProvider' => 'Prestador de Serviço',
+            'App\Models\Proposal' => 'Proposta',
+            'App\Models\Emission' => 'Emissão',
+            'App\Models\Document' => 'Documento',
+            'App\Models\FundBalanceHistory' => 'Histórico de Saldo do Fundo',
+            'App\Models\Guarantee' => 'Garantia',
+            'App\Models\IntegralizationHistory' => 'Histórico de Integralização',
+            'App\Models\PuHistory' => 'Histórico de PU',
+            'App\Models\SalesBoardHistory' => 'Histórico do Quadro de Vendas',
+            'Spatie\Permission\Models\Role' => 'Perfil de Acesso',
+            'Spatie\Permission\Models\Permission' => 'Permissão',
+            default => class_basename($fqcn),
+        };
     }
 }

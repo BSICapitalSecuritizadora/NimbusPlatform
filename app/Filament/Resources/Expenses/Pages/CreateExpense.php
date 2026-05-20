@@ -9,9 +9,9 @@ class CreateExpense extends CreateRecord
 {
     protected static string $resource = ExpenseResource::class;
 
-    protected static ?string $title = 'Criar despesa';
+    protected static ?string $title = 'Cadastrar Despesa';
 
-    protected static ?string $breadcrumb = 'Criar';
+    protected static ?string $breadcrumb = 'Cadastrar';
 
     /**
      * @param  array<string, mixed>  $data
@@ -24,6 +24,6 @@ class CreateExpense extends CreateRecord
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'Despesa criada com sucesso.';
+        return 'Despesa cadastrada com sucesso.';
     }
 }

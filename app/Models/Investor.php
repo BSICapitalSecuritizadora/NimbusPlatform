@@ -46,8 +46,9 @@ class Investor extends Authenticatable
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnlyDirty()
             ->logFillable()
+            ->logExcept(['password', 'remember_token'])
+            ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
 

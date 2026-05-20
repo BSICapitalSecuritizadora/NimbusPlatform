@@ -21,7 +21,7 @@ class PaymentsRelationManager extends RelationManager
 
     protected static ?string $recordTitleAttribute = 'payment_date';
 
-    protected static ?string $title = 'Fluxo de Pagamentos';
+    protected static ?string $title = 'Cronograma de Pagamentos';
 
     protected static ?string $modelLabel = 'Pagamento';
 
@@ -32,28 +32,36 @@ class PaymentsRelationManager extends RelationManager
         return $schema
             ->schema([
                 DatePicker::make('payment_date')
-                    ->label('Data do Pagamento')
+                    ->label('Data de Pagamento')
                     ->required(),
                 TextInput::make('premium_value')
-                    ->label('Prêmio (R$)')
+                    ->label('Valor do Prêmio')
+                    ->prefix('R$')
                     ->numeric()
                     ->default(0)
-                    ->required(),
+                    ->required()
+                    ->placeholder('0,00'),
                 TextInput::make('interest_value')
-                    ->label('Juros (R$)')
+                    ->label('Valor dos Juros')
+                    ->prefix('R$')
                     ->numeric()
                     ->default(0)
-                    ->required(),
+                    ->required()
+                    ->placeholder('0,00'),
                 TextInput::make('amortization_value')
-                    ->label('Amortização (R$)')
+                    ->label('Valor da Amortização')
+                    ->prefix('R$')
                     ->numeric()
                     ->default(0)
-                    ->required(),
+                    ->required()
+                    ->placeholder('0,00'),
                 TextInput::make('extra_amortization_value')
-                    ->label('Amortização Extraordinária (R$)')
+                    ->label('Amortização Extraordinária')
+                    ->prefix('R$')
                     ->numeric()
                     ->default(0)
-                    ->required(),
+                    ->required()
+                    ->placeholder('0,00'),
             ]);
     }
 
@@ -63,7 +71,7 @@ class PaymentsRelationManager extends RelationManager
             ->recordTitleAttribute('payment_date')
             ->columns([
                 TextColumn::make('payment_date')
-                    ->label('Data')
+                    ->label('Data de Pagamento')
                     ->date('d/m/Y')
                     ->sortable()
                     ->searchable(),
@@ -90,7 +98,7 @@ class PaymentsRelationManager extends RelationManager
             ])
             ->headerActions([
                 \Filament\Actions\Action::make('download_template')
-                    ->label('Baixar Template')
+                    ->label('Download do Template')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
                     ->url(fn (): string => route('admin.payments.template.download'))
@@ -102,11 +110,11 @@ class PaymentsRelationManager extends RelationManager
                     ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
                 \Filament\Actions\Action::make('import')
-                    ->label('Importar Planilha')
+                    ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->form([
                         FileUpload::make('file')
-                            ->label('Arquivo Excel (.xlsx)')
+                            ->label('Planilha de Pagamentos (.xlsx)')
                             ->disk('local')
                             ->directory('imports')
                             ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
@@ -119,7 +127,7 @@ class PaymentsRelationManager extends RelationManager
                             $count = app(ImportPaymentsFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
                         } catch (\Throwable) {
                             Notification::make()
-                                ->title('Erro ao ler o arquivo')
+                                ->title('Erro ao processar o arquivo')
                                 ->danger()
                                 ->send();
 
@@ -127,12 +135,13 @@ class PaymentsRelationManager extends RelationManager
                         }
 
                         Notification::make()
-                            ->title('Importação concluída!')
-                            ->body("{$count} pagamentos foram importados ou atualizados.")
+                            ->title('Importação concluída com sucesso!')
+                            ->body("{$count} pagamentos foram processados.")
                             ->success()
                             ->send();
                     }),
-                \Filament\Actions\CreateAction::make(),
+                \Filament\Actions\CreateAction::make()
+                    ->label('Lançar Pagamento'),
             ])
             ->actions([
                 \Filament\Actions\EditAction::make(),
@@ -143,6 +152,6 @@ class PaymentsRelationManager extends RelationManager
                     \Filament\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('Nenhum pagamento registrado');
+            ->emptyStateHeading('Nenhum pagamento cadastrado');
     }
 }

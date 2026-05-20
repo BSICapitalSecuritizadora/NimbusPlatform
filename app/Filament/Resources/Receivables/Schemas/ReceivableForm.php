@@ -19,21 +19,21 @@ class ReceivableForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Dados do resumo')
+            Section::make('Dados do Resumo')
                 ->schema([
                     Select::make('emission_id')
-                        ->label('Emissao')
+                        ->label('Emissão')
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()
                         ->required()
                         ->validationMessages([
-                            'required' => 'Selecione a emissao.',
+                            'required' => 'Selecione a emissão.',
                         ]),
 
                     TextInput::make('reference_month')
-                        ->label('Competencia')
-                        ->placeholder('mm/aaaa')
+                        ->label('Mês')
+                        ->placeholder('MM/AAAA')
                         ->mask('99/9999')
                         ->required()
                         ->formatStateUsing(fn (mixed $state): string => Receivable::formatReferenceMonthForDisplay($state))
@@ -54,12 +54,12 @@ class ReceivableForm
                                     ->exists();
 
                                 if ($exists) {
-                                    $fail('Ja existe um resumo de recebiveis para esta emissao e competencia.');
+                                    $fail('Já existe um resumo de recebíveis para esta operação e Mês.');
                                 }
                             };
                         })
                         ->validationMessages([
-                            'required' => 'Informe a competencia no formato mm/aaaa.',
+                            'required' => 'Informe a Mês no formato MM/AAAA.',
                         ]),
 
                     TextInput::make('portfolio_id')
@@ -68,56 +68,56 @@ class ReceivableForm
                         ->maxLength(255),
 
                     TextInput::make('active_contracts_count')
-                        ->label('Numero de contratos ativos')
+                        ->label('Número de Contratos Ativos')
                         ->numeric()
                         ->required()
                         ->minValue(0),
 
                     Textarea::make('average_rate_details')
-                        ->label('Taxa media da carteira')
+                        ->label('Taxa Média da Carteira')
                         ->rows(3)
                         ->required()
                         ->columnSpanFull(),
                 ])
                 ->columns(4),
 
-            Section::make('Fluxo do mes')
+            Section::make('Fluxo do Mês')
                 ->schema([
-                    static::moneyField('expected_interest_amount', 'Esperado - juros'),
-                    static::moneyField('expected_amortization_amount', 'Esperado - amortizacao'),
-                    static::moneyField('received_installment_interest_amount', 'Recebido do mes - juros'),
-                    static::moneyField('received_installment_amortization_amount', 'Recebido do mes - amortizacao'),
-                    static::moneyField('received_prepayment_interest_amount', 'Antecipacao - juros', defaultValue: 0),
-                    static::moneyField('received_prepayment_amortization_amount', 'Antecipacao - amortizacao', defaultValue: 0),
-                    static::moneyField('received_default_interest_amount', 'Inadimplencia - juros', defaultValue: 0),
-                    static::moneyField('received_default_amortization_amount', 'Inadimplencia - amortizacao', defaultValue: 0),
-                    static::moneyField('received_interest_and_penalty_amount', 'Juros e mora', defaultValue: 0),
+                    static::moneyField('expected_interest_amount', 'Esperado - Juros'),
+                    static::moneyField('expected_amortization_amount', 'Esperado - Amortização'),
+                    static::moneyField('received_installment_interest_amount', 'Recebido do Mês - Juros'),
+                    static::moneyField('received_installment_amortization_amount', 'Recebido do Mês - Amortização'),
+                    static::moneyField('received_prepayment_interest_amount', 'Antecipação - Juros', defaultValue: 0),
+                    static::moneyField('received_prepayment_amortization_amount', 'Antecipação - Amortização', defaultValue: 0),
+                    static::moneyField('received_default_interest_amount', 'Inadimplência - Juros', defaultValue: 0),
+                    static::moneyField('received_default_amortization_amount', 'Inadimplência - Amortização', defaultValue: 0),
+                    static::moneyField('received_interest_and_penalty_amount', 'Juros e Mora', defaultValue: 0),
                 ])
                 ->columns(3),
 
-            Section::make('Saldos e indicadores')
+            Section::make('Saldos e Indicadores')
                 ->schema([
-                    static::moneyField('performing_balance_pre_event_amount', 'Adimplente pre evento'),
-                    static::moneyField('non_performing_balance_pre_event_amount', 'Inadimplente pre evento'),
-                    static::moneyField('performing_balance_post_event_amount', 'Adimplente pos evento'),
-                    static::moneyField('non_performing_balance_post_event_amount', 'Inadimplente pos evento'),
-                    static::moneyField('monthly_default_balance_amount', 'Saldo inadimplencia mes', defaultValue: 0),
-                    static::moneyField('total_default_balance_amount', 'Saldo inadimplencia geral', defaultValue: 0),
-                    static::moneyField('linked_credits_current_amount', 'Creditos vinculados em dia', defaultValue: 0),
+                    static::moneyField('performing_balance_pre_event_amount', 'Adimplente Pré-Evento'),
+                    static::moneyField('non_performing_balance_pre_event_amount', 'Inadimplente Pré-Evento'),
+                    static::moneyField('performing_balance_post_event_amount', 'Adimplente Pós-Evento'),
+                    static::moneyField('non_performing_balance_post_event_amount', 'Inadimplente Pós-Evento'),
+                    static::moneyField('monthly_default_balance_amount', 'Saldo Inadimplência Mês', defaultValue: 0),
+                    static::moneyField('total_default_balance_amount', 'Saldo Inadimplência Geral', defaultValue: 0),
+                    static::moneyField('linked_credits_current_amount', 'Créditos Vinculados em Dia', defaultValue: 0),
                     static::moneyField('guarantees_value_amount', 'Garantias incorporadas ao PL do CRI', required: false),
-                    static::moneyField('total_prepayment_amount', 'Pre-pagamento no mes', defaultValue: 0),
-                    static::moneyField('total_outstanding_balance_amount', 'Saldo devedor total'),
-                    static::percentageField('top_five_debtors_concentration_ratio', 'Concentracao 5 maiores', required: false),
+                    static::moneyField('total_prepayment_amount', 'Pré-pagamento no Mês', defaultValue: 0),
+                    static::moneyField('total_outstanding_balance_amount', 'Saldo Devedor Total'),
+                    static::percentageField('top_five_debtors_concentration_ratio', 'Concentração 5 Maiores', required: false),
                     static::percentageField('portfolio_ltv_ratio', 'LTV', required: false),
-                    static::percentageField('sale_ltv_ratio', 'LTV venda', required: false),
+                    static::percentageField('sale_ltv_ratio', 'LTV Venda', required: false),
                     static::decimalField('portfolio_duration_years', 'Duration (anos)'),
                     static::decimalField('portfolio_duration_months', 'Duration (meses)'),
                 ])
                 ->columns(4),
 
-            Section::make('Vencidos e nao pagos')
+            Section::make('Vencidos e Não Pagos')
                 ->schema([
-                    static::moneyField('overdue_up_to_30_days_amount', 'Ate 30 dias', defaultValue: 0),
+                    static::moneyField('overdue_up_to_30_days_amount', 'Até 30 dias', defaultValue: 0),
                     static::moneyField('overdue_31_to_60_days_amount', '31 a 60 dias', defaultValue: 0),
                     static::moneyField('overdue_61_to_90_days_amount', '61 a 90 dias', defaultValue: 0),
                     static::moneyField('overdue_91_to_120_days_amount', '91 a 120 dias', defaultValue: 0),
@@ -128,9 +128,9 @@ class ReceivableForm
                 ])
                 ->columns(4),
 
-            Section::make('Pagos antecipadamente')
+            Section::make('Pagos Antecipadamente')
                 ->schema([
-                    static::moneyField('prepaid_up_to_30_days_amount', 'Ate 30 dias', defaultValue: 0),
+                    static::moneyField('prepaid_up_to_30_days_amount', 'Até 30 dias', defaultValue: 0),
                     static::moneyField('prepaid_31_to_60_days_amount', '31 a 60 dias', defaultValue: 0),
                     static::moneyField('prepaid_61_to_90_days_amount', '61 a 90 dias', defaultValue: 0),
                     static::moneyField('prepaid_91_to_120_days_amount', '91 a 120 dias', defaultValue: 0),
@@ -141,9 +141,9 @@ class ReceivableForm
                 ])
                 ->columns(4),
 
-            Section::make('Creditos vinculados')
+            Section::make('Créditos Vinculados')
                 ->schema([
-                    static::moneyField('linked_credits_up_to_30_days_amount', 'Ate 30 dias', defaultValue: 0),
+                    static::moneyField('linked_credits_up_to_30_days_amount', 'Até 30 dias', defaultValue: 0),
                     static::moneyField('linked_credits_31_to_60_days_amount', '31 a 60 dias', defaultValue: 0),
                     static::moneyField('linked_credits_61_to_90_days_amount', '61 a 90 dias', defaultValue: 0),
                     static::moneyField('linked_credits_91_to_120_days_amount', '91 a 120 dias', defaultValue: 0),

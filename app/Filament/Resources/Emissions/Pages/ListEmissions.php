@@ -13,7 +13,9 @@ class ListEmissions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Cadastrar Emissão')
+                ->icon('heroicon-o-plus-circle'),
         ];
     }
 }

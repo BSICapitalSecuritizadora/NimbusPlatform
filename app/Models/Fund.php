@@ -7,11 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Fund extends Model
 {
     /** @use HasFactory<\Database\Factories\FundFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'emission_id',
@@ -40,6 +42,14 @@ class Fund extends Model
             'minimum_balance_alert_balance' => 'decimal:2',
             'minimum_balance_alert_minimum_balance' => 'decimal:2',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['emission_id', 'fund_type_id', 'fund_name_id', 'fund_application_id', 'bank_id', 'agency', 'account', 'balance', 'minimum_balance'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function emission(): BelongsTo

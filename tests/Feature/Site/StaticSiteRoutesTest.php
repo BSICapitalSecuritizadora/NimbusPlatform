@@ -21,6 +21,22 @@ it('includes required security headers on every web response', function () {
         ->and($contentSecurityPolicy)->not->toContain("'unsafe-eval'");
 });
 
+it('allows the contact page CSP to embed Google Maps without invalid Vite IPv6 sources', function () {
+    $response = $this->get(route('site.contact'));
+    $contentSecurityPolicy = $response->headers->get('Content-Security-Policy');
+
+    $response->assertSuccessful()
+        ->assertSee('https://www.google.com/maps/embed?', false);
+
+    expect($contentSecurityPolicy)
+        ->not->toBeNull()
+        ->and($contentSecurityPolicy)->toContain("frame-src 'self' https://www.google.com")
+        ->and($contentSecurityPolicy)->toContain('http://localhost:5173')
+        ->and($contentSecurityPolicy)->toContain('ws://localhost:5173')
+        ->and($contentSecurityPolicy)->not->toContain('http://[::1]:5173')
+        ->and($contentSecurityPolicy)->not->toContain('ws://[::1]:5173');
+});
+
 it('renders static public site pages through route views', function (string $routeName, string $view) {
     $this->get(route($routeName))
         ->assertSuccessful()

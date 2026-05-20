@@ -10,6 +10,8 @@ class DocumentDownload extends Model
     protected $fillable = [
         'document_id',
         'investor_id',
+        'admin_user_id',
+        'source',
         'ip',
         'user_agent',
         'referer',
@@ -29,5 +31,10 @@ class DocumentDownload extends Model
     public function investor(): BelongsTo
     {
         return $this->belongsTo(Investor::class);
+    }
+
+    public function adminUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'admin_user_id');
     }
 }

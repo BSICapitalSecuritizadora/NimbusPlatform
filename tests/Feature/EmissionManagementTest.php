@@ -33,8 +33,8 @@ it('organizes the emission form into dedicated layout sections', function () {
 
     expect($sections->keys()->all())->toBe([
         'Dados da Operação',
-        'Partes Envolvidas',
-        'Estrutura da Emissão',
+        'Participantes da Emissão',
+        'Estrutura e Características',
         'Valores e Remuneração',
         'Cláusulas e Garantias',
         'Divulgação Institucional',
@@ -45,12 +45,12 @@ it('organizes the emission form into dedicated layout sections', function () {
         'xl' => 2,
     ]);
 
-    expect($sections['Partes Envolvidas']->getColumns())->toMatchArray([
+    expect($sections['Participantes da Emissão']->getColumns())->toMatchArray([
         'default' => 1,
         'xl' => 1,
     ]);
 
-    expect($sections['Estrutura da Emissão']->getColumns())->toMatchArray([
+    expect($sections['Estrutura e Características']->getColumns())->toMatchArray([
         'default' => 1,
         'xl' => 2,
     ]);
@@ -69,11 +69,11 @@ it('organizes the emission form into dedicated layout sections', function () {
         'default' => 'full',
     ]);
 
-    expect($sections['Partes Envolvidas']->getColumnSpan())->toMatchArray([
+    expect($sections['Participantes da Emissão']->getColumnSpan())->toMatchArray([
         'default' => 'full',
     ]);
 
-    expect($sections['Estrutura da Emissão']->getColumnSpan())->toMatchArray([
+    expect($sections['Estrutura e Características']->getColumnSpan())->toMatchArray([
         'default' => 'full',
     ]);
 
@@ -89,10 +89,10 @@ it('organizes the emission form into dedicated layout sections', function () {
         'default' => 'full',
     ]);
 
-    expect($sections['Partes Envolvidas']->getChildSchema()->getComponentByStatePath('issuer'))->not->toBeNull()
-        ->and($sections['Partes Envolvidas']->getChildSchema()->getComponentByStatePath('law_firm'))->not->toBeNull()
+    expect($sections['Participantes da Emissão']->getChildSchema()->getComponentByStatePath('issuer'))->not->toBeNull()
+        ->and($sections['Participantes da Emissão']->getChildSchema()->getComponentByStatePath('law_firm'))->not->toBeNull()
         ->and($sections['Dados da Operação']->getChildSchema()->getComponentByStatePath('registered_with_cvm'))->not->toBeNull()
-        ->and($sections['Estrutura da Emissão']->getChildSchema()->getComponentByStatePath('prepayment_possibility'))->not->toBeNull()
+        ->and($sections['Estrutura e Características']->getChildSchema()->getComponentByStatePath('prepayment_possibility'))->not->toBeNull()
         ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('offer_type')?->getLabel())->toBe('Tipo de Oferta')
         ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('offer_type')?->getColumnSpan())->toMatchArray([
             'default' => 'full',
@@ -338,7 +338,7 @@ it('creates an issuer inline from the emission form with the locked issuer type'
     ]);
 
     Livewire::test(CreateEmission::class)
-        ->assertFormComponentActionHasLabel('issuer', 'createOption', 'Cadastrar prestador')
+        ->assertFormComponentActionHasLabel('issuer', 'createOption', 'Cadastrar Prestador')
         ->mountFormComponentAction('issuer', 'createOption')
         ->fillForm([
             'cnpj' => '12.345.678/0001-90',
@@ -375,7 +375,7 @@ it('creates a settlement bank inline from the emission form with the locked sett
     ]);
 
     Livewire::test(CreateEmission::class)
-        ->assertFormComponentActionHasLabel('settlement_bank', 'createOption', 'Cadastrar prestador')
+        ->assertFormComponentActionHasLabel('settlement_bank', 'createOption', 'Cadastrar Prestador')
         ->mountFormComponentAction('settlement_bank', 'createOption')
         ->fillForm([
             'cnpj' => '22.333.444/0001-55',
@@ -412,7 +412,7 @@ it('creates a debtor inline from the emission form with the locked debtor type',
     ]);
 
     Livewire::test(CreateEmission::class)
-        ->assertFormComponentActionHasLabel('debtor', 'createOption', 'Cadastrar prestador')
+        ->assertFormComponentActionHasLabel('debtor', 'createOption', 'Cadastrar Prestador')
         ->mountFormComponentAction('debtor', 'createOption')
         ->fillForm([
             'cnpj' => '98.765.432/0001-10',
@@ -498,6 +498,7 @@ it('shows the summed integralized quantity on the emission edit form', function 
 
     $emission = Emission::factory()->create([
         'integralized_quantity' => 123,
+        'issued_quantity' => 10000,
     ]);
 
     $emission->integralizationHistories()->create([

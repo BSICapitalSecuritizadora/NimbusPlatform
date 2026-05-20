@@ -116,7 +116,7 @@ class ExpenseCalendar extends Page
                 ->color('gray')
                 ->url(ListExpenses::getUrl()),
             Action::make('create')
-                ->label('Criar despesa')
+                ->label('Cadastrar Despesa')
                 ->icon(Heroicon::OutlinedPlus)
                 ->url(CreateExpense::getUrl()),
         ];

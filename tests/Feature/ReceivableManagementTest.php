@@ -34,7 +34,7 @@ it('shows the import and create actions with the expected filters on the receiva
         ->assertActionExists('import')
         ->assertActionHasLabel('import', 'Importar Planilha')
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Criar resumo')
+        ->assertActionHasLabel('create', 'Cadastrar Resumo')
         ->assertTableFilterExists('emission_id')
         ->assertTableFilterExists('reference_month')
         ->assertTableFilterExists('portfolio_id');
@@ -153,7 +153,7 @@ it('shows a persistent notification with the import validation message', functio
 
     Notification::assertNotified(
         Notification::make()
-            ->title('Importacao nao realizada')
+            ->title('Importação não realizada')
             ->body("Nao foi encontrada nenhuma aba valida para importacao.\nAjuste o arquivo para que ele contenha a aba com o nome \"Resumo\".")
             ->danger()
             ->persistent(),

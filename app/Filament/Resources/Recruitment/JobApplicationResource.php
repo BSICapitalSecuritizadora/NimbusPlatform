@@ -59,49 +59,50 @@ class JobApplicationResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Triagem')
+            Section::make('Triagem e Avaliação')
                 ->schema([
                     Select::make('status')
-                        ->label('Status')
+                        ->label('Status da Candidatura')
                         ->options(JobApplication::statusOptions())
                         ->required()
                         ->native(false),
                     Placeholder::make('vacancy_title')
-                        ->label('Vaga')
+                        ->label('Vaga Pretendida')
                         ->content(fn (?JobApplication $record): string => $record?->vacancy?->title ?? '—'),
                     Placeholder::make('submitted_at')
                         ->label('Recebida em')
                         ->content(fn (?JobApplication $record): string => $record?->created_at?->format('d/m/Y H:i') ?? '—'),
                     Placeholder::make('reviewed_by')
-                        ->label('Última movimentação por')
+                        ->label('Última Movimentação por')
                         ->content(fn (?JobApplication $record): string => $record?->reviewedBy?->name ?? '—'),
                     Placeholder::make('reviewed_at_display')
-                        ->label('Última movimentação em')
+                        ->label('Última Movimentação em')
                         ->content(fn (?JobApplication $record): string => $record?->reviewed_at?->format('d/m/Y H:i') ?? '—'),
                     Placeholder::make('resume_download')
-                        ->label('Currículo')
+                        ->label('Currículo Anexado')
                         ->content(fn (?JobApplication $record): HtmlString|string => $record?->resume_path
                             ? new HtmlString(
-                                '<a href="'.e(route('admin.job-applications.resume', $record)).'" class="text-primary-600 hover:underline">Baixar currículo ↓</a>'
+                                '<a href="'.e(route('admin.job-applications.resume', $record)).'" class="text-primary-600 hover:underline">Download do Currículo ↓</a>'
                             )
                             : '—'),
                     Textarea::make('internal_notes')
-                        ->label('Notas internas')
+                        ->label('Observações Internas')
+                        ->placeholder('Registre aqui detalhes sobre a entrevista, avaliações técnicas e feedback dos gestores.')
                         ->rows(6)
                         ->columnSpanFull(),
                     Textarea::make('message')
-                        ->label('Mensagem enviada')
+                        ->label('Mensagem da Candidatura')
                         ->disabled()
                         ->rows(5)
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
-            Section::make('Dados do candidato')
+            Section::make('Dados do Candidato')
                 ->schema([
-                    TextInput::make('name')->label('Nome')->disabled(),
+                    TextInput::make('name')->label('Nome Completo')->disabled(),
                     TextInput::make('email')->label('E-mail')->disabled(),
-                    TextInput::make('phone')->label('Telefone')->disabled(),
-                    TextInput::make('linkedin_url')->label('LinkedIn')->disabled(),
+                    TextInput::make('phone')->label('Telefone para Contato')->disabled(),
+                    TextInput::make('linkedin_url')->label('Perfil no LinkedIn')->disabled(),
                 ])
                 ->columns(2),
         ]);
@@ -110,25 +111,25 @@ class JobApplicationResource extends Resource
     public static function infolist(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Triagem')
+            Section::make('Triagem e Avaliação')
                 ->schema([
                     TextEntry::make('status')
-                        ->label('Status')
+                        ->label('Status da Candidatura')
                         ->formatStateUsing(fn (?string $state): string => JobApplication::statusLabelFor($state)),
-                    TextEntry::make('vacancy.title')->label('Vaga'),
+                    TextEntry::make('vacancy.title')->label('Vaga Pretendida'),
                     TextEntry::make('created_at')->label('Recebida em')->dateTime('d/m/Y H:i'),
-                    TextEntry::make('reviewedBy.name')->label('Última movimentação por')->placeholder('—'),
-                    TextEntry::make('reviewed_at')->label('Última movimentação em')->dateTime('d/m/Y H:i')->placeholder('—'),
-                    TextEntry::make('internal_notes')->label('Notas internas')->placeholder('Sem notas')->columnSpanFull(),
+                    TextEntry::make('reviewedBy.name')->label('Última Movimentação por')->placeholder('—'),
+                    TextEntry::make('reviewed_at')->label('Última Movimentação em')->dateTime('d/m/Y H:i')->placeholder('—'),
+                    TextEntry::make('internal_notes')->label('Observações Internas')->placeholder('Sem observações registradas')->columnSpanFull(),
                 ])
                 ->columns(2),
-            Section::make('Dados do candidato')
+            Section::make('Dados do Candidato')
                 ->schema([
-                    TextEntry::make('name')->label('Nome'),
+                    TextEntry::make('name')->label('Nome Completo'),
                     TextEntry::make('email')->label('E-mail'),
-                    TextEntry::make('phone')->label('Telefone'),
-                    TextEntry::make('linkedin_url')->label('LinkedIn')->placeholder('—'),
-                    TextEntry::make('message')->label('Mensagem')->placeholder('Sem mensagem')->columnSpanFull(),
+                    TextEntry::make('phone')->label('Telefone para Contato'),
+                    TextEntry::make('linkedin_url')->label('Perfil no LinkedIn')->placeholder('—'),
+                    TextEntry::make('message')->label('Mensagem da Candidatura')->placeholder('Sem mensagem enviada')->columnSpanFull(),
                     TextEntry::make('resume_path')
                         ->label('Currículo')
                         ->formatStateUsing(fn (?string $state): string => $state ? basename($state) : '—'),

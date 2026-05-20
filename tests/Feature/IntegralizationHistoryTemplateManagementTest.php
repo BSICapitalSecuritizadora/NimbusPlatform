@@ -49,7 +49,7 @@ it('shows download and settings actions on the integralization histories relatio
         'pageClass' => EditEmission::class,
     ])
         ->assertTableHeaderActionsExistInOrder(['download_template', 'manage_template', 'import', 'create'])
-        ->assertTableActionHasLabel('download_template', 'Baixar Template')
+        ->assertTableActionHasLabel('download_template', 'Download do Template')
         ->assertTableActionHasLabel('manage_template', 'Configurar Template');
 });
 

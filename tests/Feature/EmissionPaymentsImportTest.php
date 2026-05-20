@@ -31,11 +31,11 @@ it('registers the spreadsheet import action on the payments relation manager', f
     ])
         ->assertTableHeaderActionsExistInOrder(['download_template', 'manage_template', 'import', 'create'])
         ->assertTableActionExists('download_template')
-        ->assertTableActionHasLabel('download_template', 'Baixar Template')
+        ->assertTableActionHasLabel('download_template', 'Download do Template')
         ->assertTableActionExists('manage_template')
         ->assertTableActionHasLabel('manage_template', 'Configurar Template')
         ->assertTableActionExists('import')
-        ->assertTableActionHasLabel('import', 'Importar Planilha');
+        ->assertTableActionHasLabel('import', 'Importar Dados');
 });
 
 it('imports legacy spreadsheet payments into the interest field', function () {

@@ -48,7 +48,11 @@
       "Bash(php *)",
       "Bash(php8.4 --version)",
       "Bash(./vendor/bin/pest *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(grep -v \"^.*:$\")",
+      "WebFetch(domain:rizasec.com)",
+      "WebFetch(domain:bsicapital-dfgsf6buagfrh8dn.westus3-01.azurewebsites.net)"
     ]
   }
 }

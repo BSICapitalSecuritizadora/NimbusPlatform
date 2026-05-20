@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\DocumentDownloads;
 
+use App\Filament\Exports\DocumentDownloadExporter;
 use App\Filament\Resources\DocumentDownloads\Pages\ManageDocumentDownloads;
 use App\Models\DocumentDownload;
 use BackedEnum;
+use Filament\Actions\ExportAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -68,14 +70,18 @@ class DocumentDownloadResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        // ... (Keep existing layout or add detailed view)
         return $schema
             ->components([
                 \Filament\Infolists\Components\TextEntry::make('document.title')->label('Documento'),
-                \Filament\Infolists\Components\TextEntry::make('investor.name')->label('Investidor'),
+                \Filament\Infolists\Components\TextEntry::make('source')->label('Origem')
+                    ->formatStateUsing(fn (string $state): string => $state === 'admin' ? 'Painel Admin' : 'Portal do Investidor')
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'admin' ? 'warning' : 'success'),
+                \Filament\Infolists\Components\TextEntry::make('investor.name')->label('Investidor')->placeholder('—'),
+                \Filament\Infolists\Components\TextEntry::make('adminUser.name')->label('Usuário Admin')->placeholder('—'),
                 \Filament\Infolists\Components\TextEntry::make('ip')->label('Endereço IP'),
                 \Filament\Infolists\Components\TextEntry::make('user_agent')->label('Navegador / Dispositivo'),
-                \Filament\Infolists\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime(),
+                \Filament\Infolists\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime('d/m/Y H:i:s'),
             ]);
     }
 
@@ -87,10 +93,22 @@ class DocumentDownloadResource extends Resource
                     ->label('Documento')
                     ->searchable()
                     ->sortable(),
+                \Filament\Tables\Columns\TextColumn::make('source')
+                    ->label('Origem')
+                    ->formatStateUsing(fn (string $state): string => $state === 'admin' ? 'Admin' : 'Portal')
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'admin' ? 'warning' : 'success'),
                 \Filament\Tables\Columns\TextColumn::make('investor.name')
                     ->label('Investidor')
+                    ->placeholder('—')
                     ->searchable()
                     ->sortable(),
+                \Filament\Tables\Columns\TextColumn::make('adminUser.name')
+                    ->label('Usuário Admin')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 \Filament\Tables\Columns\TextColumn::make('downloaded_at')
                     ->label('Data e Hora')
                     ->dateTime('d/m/Y H:i:s')
@@ -106,6 +124,9 @@ class DocumentDownloadResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                \Filament\Tables\Filters\SelectFilter::make('source')
+                    ->label('Origem')
+                    ->options(['portal' => 'Portal do Investidor', 'admin' => 'Painel Admin']),
                 \Filament\Tables\Filters\SelectFilter::make('investor_id')
                     ->label('Investidor')
                     ->relationship('investor', 'name')
@@ -138,7 +159,9 @@ class DocumentDownloadResource extends Resource
                 ViewAction::make(),
             ])
             ->toolbarActions([
-                // no bulk actions
+                ExportAction::make()
+                    ->label('Exportar')
+                    ->exporter(DocumentDownloadExporter::class),
             ]);
     }
 

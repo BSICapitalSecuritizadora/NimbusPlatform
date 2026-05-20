@@ -11,11 +11,11 @@ class SalesBoardHistoriesRelationManager extends RelationManager
 {
     protected static string $relationship = 'valueHistories';
 
-    protected static ?string $title = 'Historico de valores';
+    protected static ?string $title = 'Histórico de Valores';
 
-    protected static ?string $modelLabel = 'Historico de valores';
+    protected static ?string $modelLabel = 'Histórico de Valores';
 
-    protected static ?string $pluralModelLabel = 'Historico de valores';
+    protected static ?string $pluralModelLabel = 'Histórico de Valores';
 
     public function form(Schema $schema): Schema
     {
@@ -32,7 +32,7 @@ class SalesBoardHistoriesRelationManager extends RelationManager
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('reference_month')
-                    ->label('Competencia')
+                    ->label('Competência')
                     ->date('m/Y')
                     ->sortable(),
                 TextColumn::make('stock_units')
@@ -48,7 +48,7 @@ class SalesBoardHistoriesRelationManager extends RelationManager
                     ->label('Permutado')
                     ->sortable(),
                 TextColumn::make('total_units')
-                    ->label('Total')
+                    ->label('Quantidade Total')
                     ->sortable(),
                 TextColumn::make('stock_value')
                     ->label('Valor em estoque')
@@ -75,6 +75,6 @@ class SalesBoardHistoriesRelationManager extends RelationManager
             ->headerActions([])
             ->actions([])
             ->bulkActions([])
-            ->emptyStateHeading('Nenhum historico de valores registrado');
+            ->emptyStateHeading('Nenhum histórico de valores registrado');
     }
 }

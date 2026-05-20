@@ -35,7 +35,7 @@ class ListReceivables extends ListRecords
                 ->modalWidth('2xl')
                 ->form([
                     Select::make('emission_id')
-                        ->label('Emissao')
+                        ->label('Emissão')
                         ->options(fn (): array => Emission::query()
                             ->orderBy('name')
                             ->pluck('name', 'id')
@@ -44,14 +44,14 @@ class ListReceivables extends ListRecords
                         ->preload()
                         ->required()
                         ->validationMessages([
-                            'required' => 'Selecione a emissao para vincular os recebiveis importados.',
+                            'required' => 'Selecione a operação para vincular os recebíveis importados.',
                         ]),
                     FileUpload::make('file')
                         ->label('Arquivo Excel (.xlsx)')
                         ->disk('local')
                         ->directory('imports/receivables')
                         ->rules([new ReceivablesSpreadsheetFile])
-                        ->helperText('A competencia e os indicadores serao lidos da aba Resumo. Se ela nao existir, o sistema tentara Planilha1 e Plan1.')
+                        ->helperText('A competência e os indicadores serão lidos da aba "Resumo". Caso ela não exista, o sistema tentará as abas "Planilha1" ou "Plan1".')
                         ->required(),
                 ])
                 ->action(function (array $data, Action $action): void {
@@ -77,13 +77,13 @@ class ListReceivables extends ListRecords
                     }
 
                     Notification::make()
-                        ->title('Importacao concluida')
-                        ->body('O resumo da competencia '.Receivable::formatReferenceMonthForDisplay($result['reference_month']).' foi importado ou atualizado com sucesso.')
+                        ->title('Importação concluída com sucesso!')
+                        ->body('O resumo da competência '.Receivable::formatReferenceMonthForDisplay($result['reference_month']).' foi importado ou atualizado.')
                         ->success()
                         ->send();
                 }),
             CreateAction::make()
-                ->label('Criar resumo'),
+                ->label('Cadastrar Resumo'),
         ];
     }
 
@@ -110,7 +110,7 @@ class ListReceivables extends ListRecords
         }
 
         throw ValidationException::withMessages([
-            'file' => ['Nao foi possivel localizar o arquivo enviado. Envie a planilha novamente.'],
+            'file' => ['Não foi possível localizar o arquivo enviado. Por favor, envie a planilha novamente.'],
         ]);
     }
 
@@ -123,7 +123,7 @@ class ListReceivables extends ListRecords
             ->values();
 
         if ($messages->isEmpty()) {
-            return 'Nao foi possivel validar a planilha enviada.';
+            return 'Não foi possível validar a planilha enviada.';
         }
 
         return $messages->implode(PHP_EOL);
@@ -132,7 +132,7 @@ class ListReceivables extends ListRecords
     protected function notifyImportValidationFailure(ValidationException $exception): void
     {
         Notification::make()
-            ->title('Importacao nao realizada')
+            ->title('Importação não realizada')
             ->body($this->formatImportValidationErrors($exception))
             ->danger()
             ->persistent()
@@ -143,7 +143,7 @@ class ListReceivables extends ListRecords
     {
         Notification::make()
             ->title('Erro ao ler a planilha')
-            ->body('Nao foi possivel processar o arquivo informado.')
+            ->body('Não foi possível processar o arquivo informado.')
             ->danger()
             ->persistent()
             ->send();

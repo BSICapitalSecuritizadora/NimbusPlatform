@@ -11,6 +11,7 @@ use App\Filament\Resources\FundApplications\FundApplicationResource;
 use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
 use App\Filament\Resources\FundTypes\FundTypeResource;
+use App\Filament\Resources\Invitations\InvitationResource;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
 use App\Filament\Resources\Nimbus\Announcements\AnnouncementResource;
 use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
@@ -64,7 +65,7 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Comercial'),
                 NavigationGroup::make('Cadastro'),
                 NavigationGroup::make('Gestão'),
-                NavigationGroup::make('Gestão de Acesso'),
+                NavigationGroup::make('Acessos Externos'),
                 NavigationGroup::make('Recrutamento'),
                 NavigationGroup::make('Relatórios'),
                 NavigationGroup::make('Configurações'),
@@ -120,6 +121,13 @@ class AdminPanelProvider extends PanelProvider
                     ->visible(fn (): bool => auth()->user()?->can('expenses.view') ?? false)
                     ->url(fn (): string => ExpenseResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(ExpenseResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseCalendar::getRouteName())),
+                NavigationItem::make('Usuários Externos')
+                    ->group('Acessos Externos')
+                    ->icon(Heroicon::OutlinedUsers)
+                    ->sort(10)
+                    ->visible(fn (): bool => auth()->user()?->can('invitations.view') ?? false)
+                    ->url(fn (): string => InvitationResource::getUrl(panel: 'admin'))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(InvitationResource::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

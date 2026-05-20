@@ -9,12 +9,12 @@ class CreateSalesBoard extends CreateRecord
 {
     protected static string $resource = SalesBoardResource::class;
 
-    protected static ?string $title = 'Criar quadro de vendas';
+    protected static ?string $title = 'Cadastrar Quadro de Vendas';
 
-    protected static ?string $breadcrumb = 'Criar';
+    protected static ?string $breadcrumb = 'Cadastrar';
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'Quadro de vendas criado com sucesso.';
+        return 'Quadro de vendas cadastrado com sucesso.';
     }
 }

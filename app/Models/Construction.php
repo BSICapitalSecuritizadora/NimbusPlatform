@@ -11,11 +11,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Construction extends Model
 {
     /** @use HasFactory<\Database\Factories\ConstructionFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     public const MEASUREMENT_COMPANY_TYPE_NAME = 'Engenharia';
 
@@ -83,6 +85,14 @@ class Construction extends Model
         return Attribute::make(
             set: fn (?string $value): ?string => blank($value) ? null : Str::digitsOnly((string) $value),
         );
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function emission(): BelongsTo

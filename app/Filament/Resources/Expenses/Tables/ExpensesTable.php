@@ -44,12 +44,12 @@ class ExpensesTable
                     ->sortable(),
 
                 TextColumn::make('start_date')
-                    ->label('Início')
+                    ->label('Vencimento / Início')
                     ->date('d/m/Y')
                     ->sortable(),
 
                 TextColumn::make('end_date')
-                    ->label('Fim')
+                    ->label('Término')
                     ->date('d/m/Y')
                     ->placeholder('—')
                     ->sortable(),

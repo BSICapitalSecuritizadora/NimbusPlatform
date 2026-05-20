@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Expense extends Model
 {
     /** @use HasFactory<\Database\Factories\ExpenseFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     public const CATEGORY_OPTIONS = [
         'Agente Fiduciário' => 'Agente Fiduciário',
@@ -25,7 +27,7 @@ class Expense extends Model
         'Engenharia' => 'Engenharia',
         'Escriturador' => 'Escriturador',
         'Fee - Securitizadora' => 'Fee - Securitizadora',
-        'Horas complementares' => 'Horas complementares',
+        'Horas Complementares' => 'Horas Complementares',
         'IPTU' => 'IPTU',
         'Patrimônio Separado' => 'Patrimônio Separado',
         'Servicer' => 'Servicer',
@@ -66,6 +68,14 @@ class Expense extends Model
             'start_date' => 'date',
             'end_date' => 'date',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
     public function emission(): BelongsTo

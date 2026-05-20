@@ -10,7 +10,7 @@ class ViewSalesBoard extends ViewRecord
 {
     protected static string $resource = SalesBoardResource::class;
 
-    protected static ?string $title = 'Visualizar quadro de vendas';
+    protected static ?string $title = 'Visualizar Quadro de Vendas';
 
     protected static ?string $breadcrumb = 'Visualizar';
 

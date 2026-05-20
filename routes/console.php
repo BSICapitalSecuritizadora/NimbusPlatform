@@ -31,3 +31,7 @@ Artisan::command('inspire', function () {
 \Illuminate\Support\Facades\Schedule::command('invitations:prune')
     ->weekly()
     ->name('prune-expired-invitations');
+
+\Illuminate\Support\Facades\Schedule::command('activitylog:clean')
+    ->dailyAt('04:00')
+    ->name('audit-log-cleanup');

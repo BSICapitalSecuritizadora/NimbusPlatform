@@ -22,7 +22,7 @@ class ListExpenses extends ListRecords
                 ->icon(Heroicon::OutlinedCalendarDays)
                 ->url(ExpenseCalendar::getUrl()),
             CreateAction::make()
-                ->label('Criar despesa'),
+                ->label('Cadastrar Despesa'),
         ];
     }
 }

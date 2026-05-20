@@ -30,10 +30,10 @@ it('registers the spreadsheet import action on the pu histories relation manager
         'pageClass' => EditEmission::class,
     ])
         ->assertTableHeaderActionsExistInOrder(['download_template', 'manage_template', 'import', 'create'])
-        ->assertTableActionHasLabel('download_template', 'Baixar Template')
+        ->assertTableActionHasLabel('download_template', 'Download do Template')
         ->assertTableActionHasLabel('manage_template', 'Configurar Template')
         ->assertTableActionExists('import')
-        ->assertTableActionHasLabel('import', 'Importar Planilha');
+        ->assertTableActionHasLabel('import', 'Importar Dados');
 });
 
 it('imports pu history spreadsheets with data and pu headers', function () {

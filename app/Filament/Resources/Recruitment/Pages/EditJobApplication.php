@@ -10,10 +10,16 @@ class EditJobApplication extends EditRecord
 {
     protected static string $resource = JobApplicationResource::class;
 
+    protected static ?string $title = 'Avaliar Candidatura';
+
+    protected static ?string $breadcrumb = 'Avaliar';
+
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->label('Excluir Candidatura')
+                ->modalHeading('Excluir Candidatura'),
         ];
     }
 
@@ -32,6 +38,11 @@ class EditJobApplication extends EditRecord
         }
 
         return $data;
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Candidatura avaliada com sucesso.';
     }
 
     protected function getRedirectUrl(): string

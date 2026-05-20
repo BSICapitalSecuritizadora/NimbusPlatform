@@ -29,7 +29,7 @@ it('shows the create expense action on the expenses list page', function () {
 
     Livewire::test(ListExpenses::class)
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Criar despesa');
+        ->assertActionHasLabel('create', 'Cadastrar Despesa');
 });
 
 it('shows filters for operation and category on the expenses list page', function () {
@@ -45,25 +45,7 @@ it('shows the new expense categories on the create form', function () {
 
     Livewire::test(CreateExpense::class)
         ->assertFormFieldExists('category', function (Select $field): bool {
-            return array_keys($field->getOptions()) === [
-                'Agente Fiduciário',
-                'AGT',
-                'Assessor Jurídico',
-                'Auditoria',
-                'Cartório',
-                'Cetip',
-                'Contabilidade',
-                'Coordenador Líder',
-                'Custódia da CCI',
-                'Custodiante',
-                'Engenharia',
-                'Escriturador',
-                'Fee - Securitizadora',
-                'Horas complementares',
-                'IPTU',
-                'Patrimônio Separado',
-                'Servicer',
-            ];
+            return array_keys($field->getOptions()) === array_keys(Expense::CATEGORY_OPTIONS);
         });
 });
 

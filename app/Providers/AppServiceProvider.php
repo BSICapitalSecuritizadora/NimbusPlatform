@@ -56,6 +56,24 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(function (SocialiteWasCalled $event): void {
             $event->extendSocialite('azure', AzureProvider::class);
         });
+
+        Event::listen(function (\Illuminate\Auth\Events\Login $event): void {
+            activity('login')
+                ->causedBy($event->user)
+                ->withProperties(['guard' => $event->guard, 'ip' => request()->ip()])
+                ->log('login');
+        });
+
+        Event::listen(function (\Illuminate\Auth\Events\Logout $event): void {
+            if ($event->user === null) {
+                return;
+            }
+
+            activity('logout')
+                ->causedBy($event->user)
+                ->withProperties(['guard' => $event->guard, 'ip' => request()->ip()])
+                ->log('logout');
+        });
     }
 
     /**

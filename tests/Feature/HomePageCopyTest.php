@@ -9,9 +9,9 @@ uses(RefreshDatabase::class);
 it('renders the revised institutional copy on the home page', function () {
     $this->get(route('site.home'))
         ->assertSuccessful()
-        ->assertSeeText('Securitização e crédito estruturado com rigor técnico, governança e acompanhamento ponta a ponta.')
+        ->assertSeeText('Securitização e crédito estruturado com rigor técnico, governança sólida e acompanhamento especializado em todas as etapas')
         ->assertSeeText('Da estruturação à gestão: cobertura integral da operação')
-        ->assertSeeText('Solicitar Análise')
+        ->assertSeeText('Enviar Proposta')
         ->assertSeeText('Ver Emissões')
         ->assertSeeText('Parcerias')
         ->assertDontSeeText('Consultar Viabilidade')

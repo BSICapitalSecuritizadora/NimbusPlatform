@@ -10,6 +10,9 @@ class EditUser extends EditRecord
 {
     protected static string $resource = UserResource::class;
 
+    /** @var list<string> */
+    protected array $rolesBeforeSave = [];
+
     protected function getHeaderActions(): array
     {
         return [
@@ -27,5 +30,27 @@ class EditUser extends EditRecord
         $data['email'] = str((string) $data['email'])->lower()->toString();
 
         return $data;
+    }
+
+    protected function beforeSave(): void
+    {
+        $this->rolesBeforeSave = $this->record->roles->pluck('name')->sort()->values()->all();
+    }
+
+    protected function afterSave(): void
+    {
+        $rolesAfter = $this->record->fresh()->roles->pluck('name')->sort()->values()->all();
+
+        if ($this->rolesBeforeSave !== $rolesAfter) {
+            activity('roles')
+                ->causedBy(auth()->user())
+                ->performedOn($this->record)
+                ->event('updated')
+                ->withProperties([
+                    'before' => ['roles' => $this->rolesBeforeSave],
+                    'after' => ['roles' => $rolesAfter],
+                ])
+                ->log('updated');
+        }
     }
 }

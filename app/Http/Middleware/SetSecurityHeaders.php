@@ -75,7 +75,6 @@ class SetSecurityHeaders
                 $scriptSources,
                 'http://localhost:5173',
                 'http://127.0.0.1:5173',
-                'http://[::1]:5173',
             );
         }
 
@@ -95,7 +94,6 @@ class SetSecurityHeaders
                 $styleSources,
                 'http://localhost:5173',
                 'http://127.0.0.1:5173',
-                'http://[::1]:5173',
             );
         }
 
@@ -121,10 +119,8 @@ class SetSecurityHeaders
                 $connectSources,
                 'http://localhost:5173',
                 'http://127.0.0.1:5173',
-                'http://[::1]:5173',
                 'ws://localhost:5173',
                 'ws://127.0.0.1:5173',
-                'ws://[::1]:5173',
             );
         }
 
@@ -135,6 +131,7 @@ class SetSecurityHeaders
             "img-src 'self' data: blob: https:",
             "font-src {$fontSources}",
             'connect-src '.implode(' ', array_unique($connectSources)),
+            "frame-src 'self' https://www.google.com",
             "frame-ancestors 'self'",
             "form-action 'self'",
             "base-uri 'self'",
