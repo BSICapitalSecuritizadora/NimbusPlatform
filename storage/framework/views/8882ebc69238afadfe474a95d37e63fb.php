@@ -1,19 +1,19 @@
-<?php $__env->startSection('title', 'Documentos com ACL — BSI Capital'); ?>
+<?php $__env->startSection('title', 'Auditoria de Acessos — BSI Capital'); ?>
 
 <?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('<?php echo e(asset('images/documentos_acl.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('<?php echo e(asset('images/auditoria_acessos.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Tecnologia</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Documentos <br>com <span style="color: var(--gold);">ACL</span>
+                    Rastreabilidade e <br><span style="color: var(--gold);">Trilha de Auditoria</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Permissões granulares por perfil — agente fiduciário, investidor qualificado ou distribuidor — com controle de versão de documentos e log de acesso por operação, garantindo que cada parte visualize apenas os materiais autorizados para sua função.
+                    Registramos cada acesso a documentos por operação, download, alteração de permissão e sessão de usuário — gerando uma trilha imutável que suporta auditorias externas, fiscalização pela CVM e verificações de compliance interno.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -29,15 +29,15 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="<?php echo e(asset('images/documentos_acl.png')); ?>" class="img-fluid" alt="Documentos com ACL" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="<?php echo e(asset('images/auditoria_acessos.png')); ?>" class="img-fluid" alt="Auditoria de Acessos" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">Acesso controlado</div>
-                            <div class="fw-bold fs-5" style="color: #0b1220;">Por perfil e operação</div>
+                            <div class="text-muted small fw-medium">Trilha imutável</div>
+                            <div class="fw-bold fs-5" style="color: #0b1220;">Log por operação</div>
                         </div>
                     </div>
                 </div>
@@ -50,70 +50,70 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Governança documental e sigilo operacional</h2>
-            <p class="text-muted mx-auto" style="max-width: 640px;">ACL (Access Control List) — controle granular de quem pode ver o quê. Nossa tecnologia garante a segregação de acessos e a rastreabilidade total, com aderência às regras operacionais, regulatórias e de proteção de dados.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Governança e evidência de acesso</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossa trilha de auditoria fornece a segurança necessária para a governança corporativa e a verificação de eventos críticos em tempo real, com rastreabilidade completa de cada interação na plataforma.</p>
         </div>
 
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segregação por Operação</h3>
-                    <p class="text-muted mb-0">Gestão granular de permissões por série, tipo de investidor ou função — agente fiduciário, distribuidor, escriturador —, assegurando que informações sensíveis permaneçam restritas aos perfis autorizados para cada emissão.</p>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
-                    <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Rastreabilidade de Custódia</h3>
-                    <p class="text-muted mb-0">Cada interação no repositório gera registros auditáveis com timestamp — quem acessou, qual documento, em que momento —, permitindo o acompanhamento rigoroso de toda a trilha de custódia da operação.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento Fiduciário</h3>
+                    <p class="text-muted mb-0">Registramos em tempo real cada acesso, visualização de documento e download — com timestamp, identificação do usuário e contexto operacional —, gerando um histórico completo e imutável por operação.</p>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Blindagem Informacional</h3>
-                    <p class="text-muted mb-0">Infraestrutura desenhada para o cumprimento integral da LGPD e das normas de confidencialidade da CVM — impedindo que dados de uma operação sejam visíveis fora do escopo de acesso autorizado.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Prontidão para Auditoria</h3>
+                    <p class="text-muted mb-0">Geração automática de evidências estruturadas para processos de auditoria externa e atendimento às demandas da CVM, da ANBIMA e da Receita Federal — exportáveis com hash de integridade para validação de imutabilidade.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
+                    <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                    </div>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Integridade da Custódia</h3>
+                    <p class="text-muted mb-0">Logs armazenados com backup redundante, retenção mínima conforme exigido pela CVM para operações de mercado de capitais e verificação periódica de integridade — garantindo que o histórico da emissão permaneça blindado e auditável.</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Gestão de permissões na prática -->
+<!-- Como a trilha é utilizada na prática -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Como as Permissões São Geridas na Prática</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Como a Trilha de Auditoria é Utilizada na Prática</h2>
                 <p class="text-muted mb-4 lead">
-                    O controle de acesso não é uma configuração estática — ele evolui com a operação. Cada alteração de mandato, substituição de agente ou decisão de compliance gera um ciclo formal de revisão, aprovação e registro.
+                    O registro automático de cada interação só tem valor quando pode ser consultado, exportado e apresentado com precisão. A BSI Capital estrutura o acesso à trilha de forma que compliance, auditores e reguladores possam extrair evidências sem fricção operacional.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Configuração de perfis de acesso no momento da estruturação — agente fiduciário, investidor qualificado, distribuidor, escriturador — com revisão a cada evento contratual relevante.</span>
+                        <span class="text-dark fw-medium">Extração de logs por período, por usuário ou por operação específica — disponível para compliance interno, agente fiduciário e auditores externos mediante solicitação formal.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Revogação imediata por término de mandato, substituição de agente ou decisão de compliance — com registro auditável da alteração e confirmação às partes afetadas.</span>
+                        <span class="text-dark fw-medium">Registros exportáveis em formato estruturado (CSV e PDF auditado) com hash de integridade — permitindo validação independente da imutabilidade dos dados apresentados.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Fluxo formal de aprovação de novos acessos: solicitação, validação pelo compliance, ativação documentada e notificação ao titular — rastreabilidade completa de cada concessão.</span>
+                        <span class="text-dark fw-medium">Retenção dos logs pelo prazo mínimo exigido pela regulação vigente para operações de mercado de capitais, com verificação periódica de integridade e backup em infraestrutura redundante.</span>
                     </li>
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('<?php echo e(asset('images/documentos_acl.png')); ?>') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('<?php echo e(asset('images/auditoria_acessos.png')); ?>') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>
@@ -124,28 +124,28 @@
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-2">Serviços relacionados</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">O controle de acesso documental conecta-se diretamente à auditoria de acessos e ao portal onde as permissões têm efeito para o investidor.</p>
+            <p class="text-muted mx-auto" style="max-width: 560px;">A trilha de auditoria é alimentada pelo controle de acesso documental e consumida pelo compliance para vigilância regulatória contínua.</p>
         </div>
 
         <div class="row g-4 justify-content-center">
             <div class="col-md-5">
-                <a href="<?php echo e(route('site.servicos.auditoria-acessos')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.documentos-acl')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Auditoria de Acessos</h3>
-                    <p class="text-muted mb-3">Rastreabilidade completa dos acessos ao ambiente operacional — log de ações, revisão de permissões e conformidade com as políticas de segregação definidas no compliance.</p>
+                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Documentos com ACL</h3>
+                    <p class="text-muted mb-3">Controle granular de permissões por perfil e operação — cada acesso registrado na trilha de auditoria parte das regras definidas nas ACLs configuradas.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
 
             <div class="col-md-5">
-                <a href="<?php echo e(route('site.servicos.portal-investidor')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.compliance')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Portal do Investidor</h3>
-                    <p class="text-muted mb-3">Ambiente onde as permissões de ACL têm efeito — cada investidor visualiza apenas as operações e documentos autorizados para o seu perfil de acesso.</p>
+                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Compliance</h3>
+                    <p class="text-muted mb-3">A área de compliance consome a trilha de auditoria para vigilância regulatória — detectando padrões de acesso anômalos e suportando investigações internas.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -164,4 +164,4 @@
 <?php $__env->stopPush(); ?>
 <?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /home/desktop/projects/bsi-capital/resources/views/site/servicos/documentos-acl.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/servicos/auditoria-acessos.blade.php ENDPATH**/ ?>

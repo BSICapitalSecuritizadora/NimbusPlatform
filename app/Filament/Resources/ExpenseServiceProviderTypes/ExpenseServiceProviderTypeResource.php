@@ -23,6 +23,8 @@ class ExpenseServiceProviderTypeResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $navigationLabel = 'Tipos de prestador de serviço';
 
     protected static ?string $modelLabel = 'Tipo de prestador de serviço';

@@ -50,7 +50,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Financiamento de longo prazo para ativos estratégicos</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Capital para expansão e verticalização</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Soluções de funding estratégico voltadas a ganhos de escala, eficiência tecnológica e modernização da infraestrutura no agronegócio.</p>
         </div>
 

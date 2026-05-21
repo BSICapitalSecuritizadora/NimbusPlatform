@@ -264,8 +264,7 @@ class EmissionForm
                                     ->label('Quantidade Integralizada')
                                     ->readOnly()
                                     ->dehydrated(false)
-                                    ->default(0)
-                                    ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 0, ',', '.'))
+                                    ->default('0')
                                     ->afterStateHydrated(fn (Get $get, Set $set): null => self::syncRemainingQuantity($get, $set))
                                     ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncRemainingQuantity($get, $set))
                                     ->placeholder('0'),
@@ -274,8 +273,7 @@ class EmissionForm
                                     ->label('Quantidade Restante')
                                     ->readOnly()
                                     ->dehydrated(false)
-                                    ->default(0)
-                                    ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 0, ',', '.'))
+                                    ->default('0')
                                     ->placeholder('0'),
                             ]),
 
@@ -526,7 +524,9 @@ class EmissionForm
     {
         $set(
             'remaining_quantity',
-            self::calculateRemainingQuantity($get('issued_quantity'), $get('integralized_quantity')),
+            self::formatQuantityForDisplay(
+                self::calculateRemainingQuantity($get('issued_quantity'), $get('integralized_quantity')),
+            ),
         );
 
         return null;
@@ -551,6 +551,11 @@ class EmissionForm
         }
 
         return (int) str_replace(['.', ',', ' '], '', (string) $value);
+    }
+
+    public static function formatQuantityForDisplay(mixed $value): string
+    {
+        return number_format((float) self::normalizeQuantityValue($value), 0, ',', '.');
     }
 
     private static function serviceProviderField(string $field, string $label, string $typeName): Select

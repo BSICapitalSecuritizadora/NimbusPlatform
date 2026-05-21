@@ -524,7 +524,7 @@ it('shows the summed integralized quantity on the emission edit form', function 
         'record' => $emission->getRouteKey(),
     ])
         ->assertFormSet([
-            'integralized_quantity' => 7500,
+            'integralized_quantity' => '7.500',
             'remaining_quantity' => '2.500',
         ]);
 
@@ -543,7 +543,7 @@ it('shows the summed integralized quantity on the emission edit form', function 
 
     $page->call('refreshIntegralizedQuantity')
         ->assertFormSet([
-            'integralized_quantity' => 7750,
+            'integralized_quantity' => '7.750',
             'remaining_quantity' => '250',
         ]);
 });

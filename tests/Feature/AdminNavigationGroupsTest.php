@@ -149,14 +149,14 @@ it('registers the service provider resources inside Cadastro', function () {
         ->first(fn ($item) => $item->getLabel() === 'Prestadores de serviço');
 
     expect(ExpenseServiceProviderTypeResource::getNavigationGroup())->toBe('Cadastro')
+        ->and(ExpenseServiceProviderTypeResource::shouldRegisterNavigation())->toBeFalse()
         ->and(ExpenseServiceProviderTypeResource::getNavigationParentItem())->toBeNull()
         ->and(ExpenseServiceProviderTypeResource::getNavigationLabel())->toBe('Tipos de prestador de serviço')
         ->and(ExpenseServiceProviderResource::getNavigationGroup())->toBe('Cadastro')
         ->and(ExpenseServiceProviderResource::getNavigationParentItem())->toBeNull()
         ->and(ExpenseServiceProviderResource::getNavigationLabel())->toBe('Prestadores de serviço')
         ->and($registrationGroup)->not->toBeNull()
-        ->and($serviceProviderTypeItem)->not->toBeNull()
-        ->and($serviceProviderTypeItem->getUrl())->toBe(ExpenseServiceProviderTypeResource::getUrl(panel: 'admin'))
+        ->and($serviceProviderTypeItem)->toBeNull()
         ->and($serviceProviderItem)->not->toBeNull()
         ->and($serviceProviderItem->getUrl())->toBe(ExpenseServiceProviderResource::getUrl(panel: 'admin'));
 });

@@ -50,7 +50,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Especialização no ecossistema do agronegócio</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Inteligência técnica aplicada ao Agro</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Modelagem de crédito com conhecimento setorial aplicado, garantindo que a estrutura financeira respeite os marcos de produção e as janelas de safra.</p>
         </div>
 

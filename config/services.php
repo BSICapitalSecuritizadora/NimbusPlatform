@@ -58,4 +58,8 @@ return [
         'id' => env('CLARITY_PROJECT_ID'),
     ],
 
+    'portal' => [
+        'url' => env('APP_PORTAL_URL', '/portal'),
+    ],
+
 ];

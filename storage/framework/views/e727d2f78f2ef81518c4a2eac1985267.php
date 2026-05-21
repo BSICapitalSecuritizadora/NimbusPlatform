@@ -50,7 +50,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Cobertura integral: da modelagem ao fechamento</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Estruturação alinhada à sua operação</h2>
             <p class="text-muted mx-auto" style="max-width: 640px;">Cada empresa é única. Criamos a combinação ideal de prazo, garantias e fluxo de amortização — coordenando a modelagem financeira, a arquitetura jurídica e a conformidade regulatória em uma única estrutura coesa.</p>
         </div>
 
@@ -60,7 +60,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Modelagem Integrada</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Assessoria de Ponta a Ponta</h3>
                     <p class="text-muted mb-0">Coordenamos o ecossistema completo da operação: definição da tese financeira, coordenação jurídica, análise de crédito, arquitetura de garantias e fechamento — em uma única estrutura coesa.</p>
                 </div>
             </div>

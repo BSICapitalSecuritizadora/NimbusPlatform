@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Emissions\Pages;
 
 use App\Filament\Resources\Emissions\EmissionResource;
+use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -40,11 +41,13 @@ class EditEmission extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['integralized_quantity'] = $this->getRecord()->calculateIntegralizedQuantity();
-        $data['remaining_quantity'] = max(
+        $integralizedQuantity = $this->getRecord()->calculateIntegralizedQuantity();
+        $remainingQuantity = max(
             0,
-            (int) ($data['issued_quantity'] ?? 0) - (int) $data['integralized_quantity'],
+            (int) ($data['issued_quantity'] ?? 0) - $integralizedQuantity,
         );
+        $data['integralized_quantity'] = EmissionForm::formatQuantityForDisplay($integralizedQuantity);
+        $data['remaining_quantity'] = EmissionForm::formatQuantityForDisplay($remainingQuantity);
 
         return $data;
     }

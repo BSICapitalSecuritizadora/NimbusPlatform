@@ -50,7 +50,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Estrutura adaptada ao modelo cooperativo</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Sincronia Operacional e Associativa</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Operações desenhadas para respeitar a dinâmica financeira e associativa, integrando-se perfeitamente aos ciclos de produção e pagamento da cooperativa.</p>
         </div>
 

@@ -10,7 +10,7 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    <span style="color: var(--gold);">Originação Estratégica</span> <br>de Operações
+                    <span style="color: var(--gold);">Originação</span> <br>de Operações
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
                     Avaliamos o enquadramento do ativo, a elegibilidade do instrumento e a qualidade do lastro antes de avançar à estruturação — garantindo que a tese seja viável, precificável e aderente ao apetite do mercado.
@@ -164,4 +164,4 @@
 <?php $__env->stopPush(); ?>
 <?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /home/desktop/projects/bsi-capital/resources/views/site/servicos/originacao.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/servicos/originacao.blade.php ENDPATH**/ ?>

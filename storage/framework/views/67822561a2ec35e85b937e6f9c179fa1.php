@@ -1,19 +1,19 @@
-<?php $__env->startSection('title', 'Originação — BSI Capital'); ?>
+<?php $__env->startSection('title', 'Relatórios — BSI Capital'); ?>
 
 <?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('<?php echo e(asset('images/originacao.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('<?php echo e(asset('images/relatorios.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    <span style="color: var(--gold);">Originação Estratégica</span> <br>de Operações
+                    <span style="color: var(--gold);">Relatórios</span> <br>Gerenciais
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Avaliamos o enquadramento do ativo, a elegibilidade do instrumento e a qualidade do lastro antes de avançar à estruturação — garantindo que a tese seja viável, precificável e aderente ao apetite do mercado.
+                    Produzimos relatórios periódicos para agente fiduciário, investidores e escriturador — cobrindo desempenho do lastro, comportamento das garantias e eventos críticos com frequência mensal, trimestral e por evento, em conformidade com a escritura de emissão.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -29,15 +29,15 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="<?php echo e(asset('images/originacao.png')); ?>" class="img-fluid" alt="Originação de Operações" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="<?php echo e(asset('images/relatorios.png')); ?>" class="img-fluid" alt="Relatórios Gerenciais" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">Avaliação de lastro</div>
-                            <div class="fw-bold fs-5" style="color: #0b1220;">Da tese ao instrumento</div>
+                            <div class="text-muted small fw-medium">Relatório fiduciário</div>
+                            <div class="fw-bold fs-5" style="color: #0b1220;">Mensal e por evento</div>
                         </div>
                     </div>
                 </div>
@@ -50,102 +50,102 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Três pilares de uma originação bem construída</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">A fase inicial define o sucesso da captação. Atuamos na leitura precisa do ativo e do emissor para garantir que a estrutura avance com segurança, consistência e aderência ao mercado.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Transparência e rigor técnico</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossos relatórios são desenhados para apoiar o acompanhamento das operações com máxima clareza e aderência às exigências do mercado e dos órgãos reguladores.</p>
         </div>
 
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Validação de Teses</h3>
-                    <p class="text-muted mb-0">Avaliamos o enquadramento real da operação e a qualidade dos ativos — elegibilidade do lastro, concentração de devedores, maturidade do histórico de recebíveis — filtrando os direcionadores de viabilidade antes de avançar.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visibilidade de Performance</h3>
+                    <p class="text-muted mb-0">Consolidamos indicadores vitais como curvas de inadimplência, fluxos de recebimento, substituições de lastro e saúde das garantias reais de cada série emitida — com granularidade por devedor e por período.</p>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Modelagem Financeira</h3>
-                    <p class="text-muted mb-0">Projetamos fluxos de caixa e cenários de estresse para calibrar prazo, custo e cronograma de amortização — garantindo que o serviço da dívida seja compatível com a capacidade de pagamento do emissor.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Rigor e Conformidade</h3>
+                    <p class="text-muted mb-0">Relatórios produzidos em conformidade com os modelos da ANBIMA, as normas do ICVM 480 e as exigências do agente fiduciário — com rastreabilidade completa e histórico auditável de cada versão entregue.</p>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Posicionamento de Mercado</h3>
-                    <p class="text-muted mb-0">Elaboramos teaser, information memorandum e apresentações para investidores, posicionando a tese de forma consistente com o apetite do mercado e as condições de precificação do instrumento escolhido.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Análise Estratégica</h3>
+                    <p class="text-muted mb-0">Analisamos concentração de sacados, curva de pré-pagamento, cobertura de overcollateral e evolução do rating do lastro — transformando dados da carteira em inteligência acionável para o investidor e o agente fiduciário.</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Da tese ao mandato -->
+<!-- Ciclo de produção dos relatórios -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Da Análise Inicial ao Mandato de Estruturação</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Do Dado à Entrega: o Ciclo de Produção</h2>
                 <p class="text-muted mb-4 lead">
-                    A originação não é uma etapa isolada — é o alicerce de toda a operação. Coordenamos o diagnóstico financeiro, a due diligence jurídica e o mapeamento regulatório em paralelo, garantindo consistência entre as frentes antes de avançar ao fechamento.
+                    Cada relatório segue um ciclo estruturado de coleta, consolidação, revisão técnica e distribuição — garantindo que as informações cheguem aos destinatários certos, no prazo correto e no formato exigido pela escritura.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Diagnóstico do ativo, do emissor e do instrumento elegível — com mapeamento dos direcionadores de crédito e dos principais riscos da operação.</span>
+                        <span class="text-dark fw-medium">Consolidação dos dados operacionais da carteira — inadimplência, recebimentos, substituições e eventos de crédito — em conformidade com o cronograma definido na escritura de emissão.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Coordenação simultânea entre análise financeira, due diligence jurídica e enquadramento regulatório, evitando retrabalho e garantindo alinhamento entre frentes.</span>
+                        <span class="text-dark fw-medium">Revisão técnica e envio ao agente fiduciário, investidores e demais partes dentro dos prazos regulatórios — com confirmação de recebimento e registro de entrega.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Sounding com investidores e calibração de precificação, prazo e garantias para maximizar a aderência da oferta antes do mandato formal de estruturação.</span>
+                        <span class="text-dark fw-medium">Publicação no Portal do Investidor com notificação automática e rastreabilidade completa — cada relatório arquivado no histórico da operação com controle de versões.</span>
                     </li>
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('<?php echo e(asset('images/originacao.png')); ?>') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('<?php echo e(asset('images/relatorios.png')); ?>') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Outros serviços -->
+<!-- Serviços relacionados -->
 <section class="py-5 border-top" style="background-color: var(--bg);">
     <div class="container py-4">
         <div class="text-center mb-5">
-            <h2 class="h3 fw-bold text-dark mb-2">Próximas etapas da operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">A originação é o ponto de partida. Conheça os serviços que levam a operação do mandato ao fechamento.</p>
+            <h2 class="h3 fw-bold text-dark mb-2">Serviços relacionados</h2>
+            <p class="text-muted mx-auto" style="max-width: 560px;">Os relatórios alimentam o portal e sustentam a conformidade regulatória — conheça os serviços diretamente conectados a esta entrega.</p>
         </div>
 
         <div class="row g-4 justify-content-center">
             <div class="col-md-5">
-                <a href="<?php echo e(route('site.servicos.estrutura-juridica')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.portal-investidor')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Estrutura Jurídica</h3>
-                    <p class="text-muted mb-3">Arquitetura contratual e documental da operação — escrituras, contratos de cessão, validação de lastro e garantias com rigor técnico e precisão regulatória.</p>
+                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Portal do Investidor</h3>
+                    <p class="text-muted mb-3">Ambiente centralizado onde os relatórios produzidos são publicados — com acesso seguro, notificações automáticas e histórico completo por operação.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
 
             <div class="col-md-5">
-                <a href="<?php echo e(route('site.servicos.registro-distribuicao')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.compliance')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Registro e Distribuição</h3>
-                    <p class="text-muted mb-3">Coordenação do fluxo regulatório e estratégia de colocação junto a investidores e distribuidores, do protocolo ao fechamento da oferta.</p>
+                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Compliance</h3>
+                    <p class="text-muted mb-3">Gestão de conformidade regulatória que define os padrões e prazos a que cada relatório deve aderir junto à CVM e à ANBIMA.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -164,4 +164,4 @@
 <?php $__env->stopPush(); ?>
 <?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /home/desktop/projects/bsi-capital/resources/views/site/servicos/originacao.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/servicos/relatorios.blade.php ENDPATH**/ ?>
