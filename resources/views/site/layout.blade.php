@@ -10,7 +10,7 @@
             @yield('title', 'BSI Capital')
         @endisset
     </title>
-
+    <link rel="icon" type="image/jpeg" href="{{ asset('favicon.jpg') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -191,6 +191,42 @@
             border: 1px solid var(--gold);
             color: var(--brand);
             font-weight: 700;
+        }
+
+        .badge-type-cri {
+            background: var(--gold);
+            border: 1px solid var(--gold);
+            color: var(--brand);
+        }
+
+        .badge-type-cra {
+            background: #0d9488;
+            border: 1px solid #0d9488;
+            color: #fff;
+        }
+
+        .badge-type-cr {
+            background: #4f46e5;
+            border: 1px solid #4f46e5;
+            color: #fff;
+        }
+
+        .badge-status-active {
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.28);
+            color: #15803d;
+        }
+
+        .badge-status-closed {
+            background: rgba(100, 116, 139, 0.12);
+            border: 1px solid rgba(100, 116, 139, 0.28);
+            color: #475569;
+        }
+
+        .badge-status-default {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.28);
+            color: #b91c1c;
         }
 
         .btn {
@@ -846,10 +882,10 @@
                     <a class="nav-link {{ request()->routeIs('site.emissions*') ? 'active' : '' }}" href="{{ route('site.emissions') }}">Emissões</a>
                 </li>
 
-                {{-- Indústrias --}}
+                {{-- Soluções --}}
                 <li class="nav-item dropdown dropdown-mega">
                     <a class="nav-link dropdown-toggle {{ request()->routeIs('site.imobiliario.*', 'site.agronegocio.*', 'site.infra.*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown">
-                        Indústrias
+                        Soluções
                     </a>
                     <div class="dropdown-menu mega-menu p-0 border-0">
                         <div class="row g-3">
@@ -914,13 +950,9 @@
                     </div>
                 </li>
 
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('site.vacancies.*') ? 'active' : '' }}" href="{{ route('site.vacancies.index') }}">Trabalhe conosco</a>
-                </li>
-
                 {{-- Institucional --}}
                 <li class="nav-item dropdown dropdown-mega">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.about', 'site.partnerships', 'site.governance', 'site.compliance', 'site.ri', 'site.contact', 'site.vacancies.*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.about', 'site.partnerships', 'site.governance', 'site.compliance', 'site.ri', 'site.contact') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown">
                         Institucional
                     </a>
                     <div class="dropdown-menu mega-menu p-0 border-0">
@@ -951,6 +983,8 @@
                         </div>
                     </div>
                 </li>
+
+
             </ul>
 
             <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0 ps-lg-3" style="border-left: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border));">

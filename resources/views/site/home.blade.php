@@ -1,5 +1,5 @@
 @extends('site.layout')
-@section('title', 'BSI Capital - Securitizadora')
+@section('title', 'BSI Capital')
 
 @section('content')
 <section class="hero position-relative overflow-hidden">
@@ -15,10 +15,10 @@
                     A securitizadora que fica na operação do início ao fim.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    Securitização e crédito estruturado com rigor técnico, governança sólida e acompanhamento especializado em todas as etapas — da estruturação ao vencimento final.
+                    Securitização e crédito estruturado com rigor técnico, governança sólida e acompanhamento especializado em todas as etapas: da estruturação ao vencimento final.
                 </p>
 
-                <div class="d-flex flex-wrap gap-3 mb-4">
+                <div class="d-grid d-sm-flex gap-3 mb-4">
                     <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Enviar Proposta</a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Ver Emissões</a>
                 </div>
@@ -52,7 +52,7 @@
                 <div class="surface-card-dark p-4 p-lg-5">
                     <div class="kicker mb-3">ATUAÇÃO PONTA A PONTA</div>
                     <h2 class="h3 fw-bold mb-3 text-white">Da estruturação à gestão: cobertura integral da operação</h2>
-                    <p class="text-white-50 mb-4">
+                    <p class="text-white-50 mb-4" style="text-align: justify;">
                         Atuamos desde a concepção jurídico-financeira até o acompanhamento pós-emissão, com processos definidos, documentação controlada e fluxo de informações estruturado entre emissores, investidores e partes envolvidas.
                     </p>
 
@@ -61,21 +61,21 @@
                             <div class="badge badge-soft px-3 py-2">1</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Estruturação e Modelagem</div>
-                                <div class="small text-white-50">Desenho da tese, modelagem financeira, estruturação jurídico-regulatória e coordenação da oferta.</div>
+                                <div class="small text-white-50" style="text-align: justify;">Desenho da tese, modelagem financeira, estruturação jurídico-regulatória e coordenação da oferta.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">2</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Monitoramento e Governança</div>
-                                <div class="small text-white-50">Acompanhamento de covenants, garantias, indicadores da operação e eventos de crédito.</div>
+                                <div class="small text-white-50" style="text-align: justify;">Acompanhamento de covenants, garantias, indicadores da operação e eventos de crédito.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">3</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Transparência e Controle</div>
-                                <div class="small text-white-50">Gestão de documentos, trilha de auditoria, relatórios e visibilidade para investidores.</div>
+                                <div class="small text-white-50" style="text-align: justify;">Gestão de documentos, trilha de auditoria, relatórios e visibilidade para investidores.</div>
                             </div>
                         </div>
                     </div>
@@ -127,6 +127,9 @@
         </div>
     </div>
 </section>
+
+
+
 
 <section class="py-5 section-dark">
     <div class="container py-5">
@@ -182,6 +185,28 @@
                     </div>
                 </div>
             @endforeach
+        </div>
+    </div>
+</section>
+
+<section class="py-4" style="background: color-mix(in srgb, var(--surface) 94%, var(--brand) 6%); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-8">
+                <div class="section-kicker mb-2">Nossa missão</div>
+                <p class="fw-semibold mb-3" style="font-size: 1.05rem; color: var(--text); line-height: 1.6;">
+                    Prover soluções de securitização com alto padrão técnico e eficiência operacional, assegurando integridade e conformidade em todas as etapas do mercado de capitais.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="result-chip">Governança corporativa</span>
+                    <span class="result-chip">Transparência absoluta</span>
+                    <span class="result-chip">Diligência fiduciária</span>
+                    <span class="result-chip">Parcerias sólidas</span>
+                </div>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <a href="{{ route('site.about') }}" class="btn btn-outline-brand px-4">Conheça a BSI</a>
+            </div>
         </div>
     </div>
 </section>

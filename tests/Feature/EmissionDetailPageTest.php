@@ -4,6 +4,7 @@ use App\Models\Document;
 use App\Models\Emission;
 use App\Models\IntegralizationHistory;
 use App\Models\Payment;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -44,6 +45,7 @@ it('sums all integralization history entries while showing only the latest five 
         'type' => 'CRI',
         'if_code' => 'IF-INTEGRAL-01',
         'is_public' => true,
+        'issued_quantity' => 20000,
     ]);
 
     collect([
@@ -89,6 +91,41 @@ it('explains that only the latest five documents are highlighted by default', fu
     $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
         ->assertSee('Exibindo os documentos mais recentes por padrão');
+});
+
+it('shows the emission progress timeline with issue date, maturity date and status', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-01-06'));
+
+    $emission = Emission::factory()->active()->create([
+        'name' => 'CRI Linha do Tempo',
+        'type' => 'CRI',
+        'if_code' => 'IF-TIMELINE-01',
+        'is_public' => true,
+        'issue_date' => '2026-01-01',
+        'maturity_date' => '2026-01-11',
+        'integralization_status' => 'Aguardando Integração',
+    ]);
+
+    $response = $this->get(route('site.emissions.show', $emission->if_code));
+
+    $response
+        ->assertOk()
+        ->assertSee('Data de Emissão')
+        ->assertSee('01/01/2026')
+        ->assertSee('Data de Vencimento')
+        ->assertSee('11/01/2026')
+        ->assertSee('Aguardando Integração')
+        ->assertSee('50% do prazo decorrido')
+        ->assertSee('5 dias desde a emissão')
+        ->assertSee('5 dias até o vencimento')
+        ->assertSee('aria-valuenow="50"', false);
+
+    $content = mb_strtolower($response->getContent());
+
+    expect(substr_count($content, mb_strtolower('Data de Emissão')))->toBe(1)
+        ->and(substr_count($content, mb_strtolower('Data de Vencimento')))->toBe(1);
+
+    $this->travelBack();
 });
 
 it('renders the payment flow with the legacy chart model', function () {

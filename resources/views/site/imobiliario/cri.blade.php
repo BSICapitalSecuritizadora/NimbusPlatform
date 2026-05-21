@@ -14,13 +14,18 @@
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Securitização <span style="color: var(--gold);">Imobiliária</span>
                 </h1>
-                <p class="lead mb-5" style="color: #a5b4fc; max-width: 90%;">
+                <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
                     Expertise integral na estruturação e gestão de CRI, unindo segurança jurídica, monitoramento rigoroso do lastro e governança ativa da carteira.
                 </p>
-                <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                    Falar com nossa equipe
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                </a>
+                <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
+                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                        Falar com nossa equipe
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </a>
+                    <a href="{{ route('site.emissions') }}?type=CRI" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
+                        Ver emissões
+                    </a>
+                </div>
             </div>
             
             <div class="col-lg-6 d-none d-lg-block">
@@ -90,6 +95,84 @@
     </div>
 </section>
 
+<!-- Emissões em destaque -->
+@if(isset($featuredEmissions) && $featuredEmissions->isNotEmpty())
+<section class="py-5 border-top" style="background-color: var(--bg);">
+    <div class="container py-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-5">
+            <div>
+                <h2 class="h3 fw-bold text-dark mb-2">Emissões de CRI Estruturadas</h2>
+                <p class="text-muted mb-0">Operações públicas disponíveis para consulta técnica detalhada.</p>
+            </div>
+            <a href="{{ route('site.emissions') }}?type=CRI" class="btn btn-outline-brand btn-sm px-4 flex-shrink-0">Ver todas as emissões</a>
+        </div>
+
+        <div class="row g-4">
+            @foreach($featuredEmissions as $e)
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100 border-0 shadow-sm emission-card overflow-hidden">
+                        <div style="height: 4px; background: linear-gradient(90deg, var(--brand), var(--gold), var(--brand));"></div>
+                        <div class="card-body p-3 p-lg-4">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div class="flex-grow-1">
+                                    <div class="small text-uppercase text-muted fw-semibold mb-2">{{ $e->if_code ?? 'CRI' }}</div>
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        @if($e->type)
+                                            <span class="badge badge-type-{{ strtolower($e->type) }} px-3 py-2">{{ $e->type }}</span>
+                                        @endif
+                                        @if($e->status_label)
+                                            <span class="badge badge-status-{{ $e->status }} px-3 py-2">{{ $e->status_label }}</span>
+                                        @endif
+                                    </div>
+                                    <h3 class="h5 fw-bold text-brand mb-0" style="line-height: 1.45; word-wrap: break-word;">{{ $e->name }}</h3>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-center flex-shrink-0 p-2" style="width: 64px; height: 64px; border-radius: 14px; background: rgba(0,32,91,0.06); color: var(--brand);">
+                                    @if($e->logo_path)
+                                        <img src="{{ Storage::disk($e->logo_storage_disk)->url($e->logo_path) }}" alt="{{ $e->name }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                                    @else
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M9 8h1m4 0h1m-5 4h1m4 0h1M9 16h1m4 0h1M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path></svg>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="row g-2 small">
+                                <div class="col-6">
+                                    <div class="text-uppercase text-muted fw-semibold mb-1">Emissão</div>
+                                    <div class="fw-semibold">{{ $e->emission_number ?? '—' }}</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-uppercase text-muted fw-semibold mb-1">Série</div>
+                                    <div class="fw-semibold">{{ $e->series ?? '—' }}</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-uppercase text-muted fw-semibold mb-1">Data de emissão</div>
+                                    <div class="fw-semibold">{{ optional($e->issue_date)->format('d/m/Y') ?? '—' }}</div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-uppercase text-muted fw-semibold mb-1">Vencimento</div>
+                                    <div class="fw-semibold">{{ optional($e->maturity_date)->format('d/m/Y') ?? '—' }}</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="text-uppercase text-muted fw-semibold mb-1">Remuneração</div>
+                                    <div class="fw-semibold">{{ $e->formatted_remuneration ?? '—' }}</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="text-uppercase text-muted fw-semibold mb-1">Emissor</div>
+                                    <div class="fw-semibold">{{ $e->issuer ?? '—' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 p-3 p-lg-4 pt-0 d-grid">
+                            <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand btn-sm w-100">Consultar Operação</a>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+</section>
+@endif
+
 <!-- Additional Context or Stats -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -116,6 +199,40 @@
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div style="background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1000') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Outros segmentos imobiliários -->
+<section class="py-5 border-top" style="background-color: var(--bg);">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <h2 class="h3 fw-bold text-dark mb-2">Outros Segmentos do Imobiliário</h2>
+            <p class="text-muted mx-auto" style="max-width: 560px;">Atuamos em diferentes frentes do mercado imobiliário com estruturas adaptadas à natureza de cada ativo.</p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-5">
+                <a href="{{ route('site.imobiliario.incorporacao') }}" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                    <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    </div>
+                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Incorporação Imobiliária</h3>
+                    <p class="text-muted mb-3">Estruturação de CRI lastreados em créditos imobiliários oriundos de projetos de incorporação residencial e comercial.</p>
+                    <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
+                </a>
+            </div>
+
+            <div class="col-md-5">
+                <a href="{{ route('site.imobiliario.loteamentos') }}" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                    <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Loteamentos</h3>
+                    <p class="text-muted mb-3">Securitização de recebíveis de loteamentos urbanos e fechados com lastro em contratos de promessa de compra e venda.</p>
+                    <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
+                </a>
             </div>
         </div>
     </div>

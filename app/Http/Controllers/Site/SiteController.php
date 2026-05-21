@@ -45,7 +45,9 @@ class SiteController extends Controller
             ->when($q !== '', function ($qq) use ($q) {
                 $qq->where(function ($query) use ($q) {
                     $query->where('name', 'like', "%{$q}%")
-                        ->orWhere('issuer', 'like', "%{$q}%");
+                        ->orWhere('issuer', 'like', "%{$q}%")
+                        ->orWhere('if_code', 'like', "%{$q}%")
+                        ->orWhere('isin_code', 'like', "%{$q}%");
                 });
             })
             ->when($type, function ($qq) use ($type) {
@@ -64,6 +66,19 @@ class SiteController extends Controller
             ->withQueryString();
 
         return view('site.emissions', compact('emissions', 'q', 'type', 'issue_date_order', 'maturity_date_order'));
+    }
+
+    public function criRealEstate(): \Illuminate\View\View
+    {
+        $featuredEmissions = Emission::query()
+            ->where('is_public', true)
+            ->whereNotNull('if_code')
+            ->where('type', 'CRI')
+            ->orderByDesc('issue_date')
+            ->limit(3)
+            ->get();
+
+        return view('site.imobiliario.cri', compact('featuredEmissions'));
     }
 
     public function emissionShow(string $if_code)

@@ -295,6 +295,9 @@ it('filters emission service provider fields by the expected provider types', fu
         ->assertFormFieldExists('integralized_quantity', function (TextInput $field): bool {
             return $field->isReadOnly() && ! $field->isDehydrated();
         })
+        ->assertFormFieldExists('remaining_quantity', function (TextInput $field): bool {
+            return $field->isReadOnly() && ! $field->isDehydrated();
+        })
         ->assertFormFieldExists('bsi_code')
         ->assertFormFieldExists('corporate_purpose')
         ->assertFormFieldExists('subscription_and_integralization_terms')
@@ -521,7 +524,16 @@ it('shows the summed integralized quantity on the emission edit form', function 
         'record' => $emission->getRouteKey(),
     ])
         ->assertFormSet([
-            'integralized_quantity' => '7.500',
+            'integralized_quantity' => 7500,
+            'remaining_quantity' => '2.500',
+        ]);
+
+    $page
+        ->fillForm([
+            'issued_quantity' => '8.000',
+        ])
+        ->assertFormSet([
+            'remaining_quantity' => '500',
         ]);
 
     $emission->integralizationHistories()->create([
@@ -531,7 +543,8 @@ it('shows the summed integralized quantity on the emission edit form', function 
 
     $page->call('refreshIntegralizedQuantity')
         ->assertFormSet([
-            'integralized_quantity' => '7.750',
+            'integralized_quantity' => 7750,
+            'remaining_quantity' => '250',
         ]);
 });
 

@@ -169,10 +169,10 @@
                                     <div class="small text-uppercase text-muted fw-semibold mb-2">{{ $e->if_code ?? 'CRI' }}</div>
                                     <div class="d-flex flex-wrap gap-2 mb-2">
                                         @if($e->type)
-                                            <span class="badge badge-soft px-3 py-2">{{ $e->type }}</span>
+                                            <span class="badge badge-type-{{ strtolower($e->type) }} px-3 py-2">{{ $e->type }}</span>
                                         @endif
                                         @if($e->status_label)
-                                            <span class="badge px-3 py-2" style="background: rgba(0,32,91,0.08); color: var(--brand); border: 1px solid rgba(0,32,91,0.12);">
+                                            <span class="badge badge-status-{{ $e->status }} px-3 py-2">
                                                 {{ $e->status_label }}
                                             </span>
                                         @endif

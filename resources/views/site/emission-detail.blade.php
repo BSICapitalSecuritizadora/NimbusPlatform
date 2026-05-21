@@ -2,6 +2,118 @@
 
 @section('title', $emission->name . ' - Detalhes da Emissao - BSI Capital')
 
+@push('head')
+<style>
+    .emission-timeline-card {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, white 4%), color-mix(in srgb, var(--surface-alt) 94%, var(--brand) 6%));
+    }
+
+    .emission-timeline-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(160, 110, 40, 0), rgba(160, 110, 40, 0.34), rgba(9, 27, 35, 0.08), rgba(160, 110, 40, 0));
+    }
+
+    .emission-timeline-point {
+        height: 100%;
+        padding: 1rem 1.1rem;
+        border: 1px solid color-mix(in srgb, var(--brand) 8%, var(--border));
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--surface) 97%, white 3%);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+
+    .emission-timeline-label {
+        margin-bottom: 0.45rem;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .emission-timeline-value {
+        color: var(--brand);
+        font-size: clamp(1.18rem, 1.04rem + 0.34vw, 1.48rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+    }
+
+    .emission-timeline-status-badge,
+    .emission-timeline-progress-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.2rem;
+        padding: 0.45rem 0.9rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-align: center;
+    }
+
+    .emission-timeline-progress-pill {
+        border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border));
+        background: color-mix(in srgb, var(--surface) 94%, white 6%);
+        color: var(--brand);
+    }
+
+    .emission-timeline-track-shell {
+        position: relative;
+        padding-block: 0.45rem;
+    }
+
+    .emission-timeline-track {
+        position: relative;
+        overflow: visible;
+        height: 0.5rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--border) 84%, white);
+        box-shadow: inset 0 1px 1px rgba(9, 27, 35, 0.08);
+    }
+
+    .emission-timeline-track-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, color-mix(in srgb, #7ca6d8 78%, white), color-mix(in srgb, var(--brand) 76%, #7ca6d8 24%));
+        box-shadow: 0 0 0 1px rgba(124, 166, 216, 0.18), 0 3px 10px rgba(9, 27, 35, 0.14);
+    }
+
+    .emission-timeline-current-dot {
+        position: absolute;
+        top: 50%;
+        width: 1rem;
+        height: 1rem;
+        border: 3px solid #fff;
+        border-radius: 999px;
+        background: var(--brand);
+        box-shadow: 0 0 0 4px rgba(9, 27, 35, 0.12), 0 8px 18px rgba(9, 27, 35, 0.18);
+        transform: translateY(-50%);
+    }
+
+    .emission-timeline-current-dot::after {
+        content: "";
+        position: absolute;
+        inset: -0.38rem;
+        border-radius: inherit;
+        border: 1px solid rgba(9, 27, 35, 0.14);
+    }
+
+    .emission-timeline-meta {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 600;
+        line-height: 1.55;
+    }
+</style>
+@endpush
+
 @section('content')
 @php
     $cspNonce = \Illuminate\Support\Facades\Vite::cspNonce();
@@ -15,9 +127,68 @@
     $summaryCards = [
         ['label' => 'Tipo', 'value' => $emission->type ?? '—'],
         ['label' => 'Remuneração', 'value' => $emission->formatted_remuneration ?? '—'],
-        ['label' => 'Vencimento', 'value' => $emission->maturity_date?->format('d/m/Y') ?? '—'],
+        ['label' => 'Quantidade emitida', 'value' => $emission->issued_quantity ? number_format((float) $emission->issued_quantity, 0, ',', '.') : '—'],
         ['label' => 'Volume emitido', 'value' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 2, ',', '.') : '—'],
     ];
+
+    $timelineStartDate = $emission->issue_date?->copy()->startOfDay();
+    $timelineEndDate = $emission->maturity_date?->copy()->startOfDay();
+    $timelineCurrentDate = today()->startOfDay();
+    $timelineProgressPercentage = 0;
+    $timelineTotalDays = null;
+    $timelineElapsedDays = null;
+    $timelineRemainingDays = null;
+
+    if (($timelineStartDate !== null) && ($timelineEndDate !== null)) {
+        if ($timelineEndDate->lessThanOrEqualTo($timelineStartDate)) {
+            $timelineProgressPercentage = $timelineCurrentDate->greaterThanOrEqualTo($timelineEndDate) ? 100 : 0;
+            $timelineTotalDays = 0;
+            $timelineElapsedDays = $timelineCurrentDate->greaterThanOrEqualTo($timelineEndDate) ? 0 : null;
+            $timelineRemainingDays = $timelineCurrentDate->greaterThanOrEqualTo($timelineEndDate) ? 0 : 0;
+        } elseif ($timelineCurrentDate->lessThanOrEqualTo($timelineStartDate)) {
+            $timelineProgressPercentage = 0;
+            $timelineTotalDays = $timelineStartDate->diffInDays($timelineEndDate);
+            $timelineElapsedDays = 0;
+            $timelineRemainingDays = $timelineCurrentDate->diffInDays($timelineEndDate);
+        } elseif ($timelineCurrentDate->greaterThanOrEqualTo($timelineEndDate)) {
+            $timelineProgressPercentage = 100;
+            $timelineTotalDays = $timelineStartDate->diffInDays($timelineEndDate);
+            $timelineElapsedDays = $timelineTotalDays;
+            $timelineRemainingDays = 0;
+        } else {
+            $elapsedDays = $timelineStartDate->diffInDays($timelineCurrentDate);
+            $totalDays = max(1, $timelineStartDate->diffInDays($timelineEndDate));
+
+            $timelineTotalDays = $totalDays;
+            $timelineElapsedDays = $elapsedDays;
+            $timelineRemainingDays = $timelineCurrentDate->diffInDays($timelineEndDate);
+            $timelineProgressPercentage = (int) round(($elapsedDays / $totalDays) * 100);
+        }
+    }
+
+    $timelineStatusLabel = $emission->integralization_status ?: ($emission->status_label ?: 'Status não informado');
+    $timelineFillMinimumWidth = $timelineProgressPercentage > 0 ? '1.1rem' : '0';
+    $timelineProgressLabel = ($timelineTotalDays !== null)
+        ? number_format($timelineProgressPercentage, 0, ',', '.') . '% do prazo decorrido'
+        : 'Prazo não informado';
+    $timelineElapsedLabel = match (true) {
+        ($timelineStartDate === null) || ($timelineElapsedDays === null) => 'Data de emissão não informada',
+        $timelineCurrentDate->lessThan($timelineStartDate) => 'Emissão ainda não iniciada',
+        $timelineElapsedDays === 1 => '1 dia desde a emissão',
+        default => number_format($timelineElapsedDays, 0, ',', '.') . ' dias desde a emissão',
+    };
+    $timelineRemainingLabel = match (true) {
+        ($timelineEndDate === null) || ($timelineRemainingDays === null) => 'Vencimento não informado',
+        $timelineCurrentDate->greaterThanOrEqualTo($timelineEndDate) => 'Prazo encerrado',
+        $timelineRemainingDays === 1 => '1 dia até o vencimento',
+        default => number_format($timelineRemainingDays, 0, ',', '.') . ' dias até o vencimento',
+    };
+    $timelineIndicatorLeft = match (true) {
+        $timelineTotalDays === null => null,
+        $timelineProgressPercentage <= 0 => '0',
+        $timelineProgressPercentage >= 100 => 'calc(100% - 1rem)',
+        default => 'calc(' . $timelineProgressPercentage . '% - 0.5rem)',
+    };
 
 @endphp
 
@@ -28,9 +199,9 @@
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                     <span class="badge px-3 py-2 text-uppercase">Detalhe da emissão</span>
                     @if($emission->type)
-                        <span class="badge badge-soft px-3 py-2">{{ $emission->type }}</span>
+                        <span class="badge badge-type-{{ strtolower($emission->type) }} px-3 py-2">{{ $emission->type }}</span>
                     @endif
-                    <span class="badge px-3 py-2" style="background: {{ $statusPalette['bg'] }}; border: 1px solid {{ $statusPalette['border'] }}; color: {{ $statusPalette['text'] }};">
+                    <span class="badge badge-status-{{ $emission->status }} px-3 py-2">
                         {{ $statusPalette['label'] }}
                     </span>
                 </div>
@@ -50,10 +221,6 @@
                         </div>
                     </div>
                 </div>
-
-                <p class="lead mb-0" style="max-width: 860px;">
-                    Detalhamento técnico completo da estrutura, cronograma de fluxos e documentos regulatórios. Centralizamos todas as informações vitais da emissão para garantir a rastreabilidade e o monitoramento preciso do ativo.
-                </p>
             </div>
 
             <div class="col-lg-4">
@@ -70,8 +237,8 @@
                             <span class="fw-semibold text-white">{{ $emission->series ?? '—' }}</span>
                         </div>
                         <div class="d-flex justify-content-between gap-3">
-                            <span class="text-white-50">Data de emissão</span>
-                            <span class="fw-semibold text-white">{{ $emission->issue_date?->format('d/m/Y') ?? '—' }}</span>
+                            <span class="text-white-50">Tipo de oferta</span>
+                            <span class="fw-semibold text-white">{{ $emission->offer_type ?? '—' }}</span>
                         </div>
                         <div class="d-flex justify-content-between gap-3">
                             <span class="text-white-50">Segmento</span>
@@ -97,7 +264,62 @@
             @endforeach
         </div>
 
-        <div class="surface-card p-3 p-lg-4 mb-4">
+        <div class="surface-card emission-timeline-card p-4 p-lg-4 mb-4">
+            <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-start gap-3 mb-4">
+                <div class="row g-3 flex-grow-1">
+                    <div class="col-md-6">
+                        <div class="emission-timeline-point">
+                            <div class="emission-timeline-label">Data de Emissão</div>
+                            <div class="emission-timeline-value">{{ $emission->issue_date?->format('d/m/Y') ?? '—' }}</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="emission-timeline-point">
+                            <div class="emission-timeline-label">Data de Vencimento</div>
+                            <div class="emission-timeline-value">{{ $emission->maturity_date?->format('d/m/Y') ?? '—' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column align-items-xl-end gap-2">
+                    <span
+                        class="emission-timeline-status-badge"
+                        style="background: {{ $statusPalette['bg'] }}; border: 1px solid {{ $statusPalette['border'] }}; color: {{ $statusPalette['text'] }};"
+                    >
+                        {{ $timelineStatusLabel }}
+                    </span>
+                    <span class="emission-timeline-progress-pill">{{ $timelineProgressLabel }}</span>
+                </div>
+            </div>
+
+            <div class="emission-timeline-track-shell mb-3">
+                <div
+                    class="emission-timeline-track"
+                    role="progressbar"
+                    aria-label="Progresso da emissão"
+                    aria-valuenow="{{ $timelineProgressPercentage }}"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                >
+                    <div
+                        class="emission-timeline-track-fill"
+                        style="width: {{ $timelineProgressPercentage }}%; min-width: {{ $timelineFillMinimumWidth }};"
+                    ></div>
+
+                    @if($timelineIndicatorLeft !== null)
+                        <span class="emission-timeline-current-dot" style="left: {{ $timelineIndicatorLeft }};"></span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-2">
+                <div class="emission-timeline-meta">{{ $timelineElapsedLabel }}</div>
+                <div class="emission-timeline-meta text-lg-end">{{ $timelineRemainingLabel }}</div>
+            </div>
+        </div>
+
+        <div class="mb-4 d-flex justify-content-center">
             <ul class="nav nav-pills gap-2 emission-detail-tabs" id="emissionTabs" role="tablist">
                 <li class="nav-item"><a class="nav-link active" href="#caracteristicas">Características</a></li>
                 <li class="nav-item"><a class="nav-link" href="#pagamentos">Pagamentos</a></li>
@@ -121,8 +343,6 @@
                     'Emissor' => $emission->issuer,
                     'Coordenador líder' => $emission->lead_coordinator,
                     'Agente fiduciário' => $emission->trustee_agent,
-                    'Data de emissão' => $emission->issue_date?->format('d/m/Y'),
-                    'Data de vencimento' => $emission->maturity_date?->format('d/m/Y'),
                     'Remuneração' => $emission->formatted_remuneration,
                     'Tipo de oferta' => $emission->offer_type,
                     'Segmento' => $emission->segment,

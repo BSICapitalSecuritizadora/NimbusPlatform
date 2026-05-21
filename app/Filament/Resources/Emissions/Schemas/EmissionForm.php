@@ -16,7 +16,10 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Illuminate\Support\Facades\Cache;
@@ -239,22 +242,42 @@ class EmissionForm
                             ->suffix('%')
                             ->placeholder('0,00'),
 
-                        TextInput::make('issued_quantity')
-                            ->label('Quantidade Emitida')
-                            ->mask(RawJs::make(<<<'JS'
-                                $money($input, ',', '.', 0)
-                            JS))
-                            ->stripCharacters(['.', ','])
-                            ->minValue(0)
-                            ->placeholder('0'),
+                        Grid::make([
+                            'default' => 1,
+                            'xl' => 3,
+                        ])
+                            ->columnSpanFull()
+                            ->schema([
+                                TextInput::make('issued_quantity')
+                                    ->label('Quantidade Emitida')
+                                    ->mask(RawJs::make(<<<'JS'
+                                        $money($input, ',', '.', 0)
+                                    JS))
+                                    ->stripCharacters(['.', ','])
+                                    ->minValue(0)
+                                    ->live(onBlur: true)
+                                    ->afterStateHydrated(fn (Get $get, Set $set): null => self::syncRemainingQuantity($get, $set))
+                                    ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncRemainingQuantity($get, $set))
+                                    ->placeholder('0'),
 
-                        TextInput::make('integralized_quantity')
-                            ->label('Quantidade Integralizada')
-                            ->readOnly()
-                            ->dehydrated(false)
-                            ->default(0)
-                            ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 0, ',', '.'))
-                            ->placeholder('0'),
+                                TextInput::make('integralized_quantity')
+                                    ->label('Quantidade Integralizada')
+                                    ->readOnly()
+                                    ->dehydrated(false)
+                                    ->default(0)
+                                    ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 0, ',', '.'))
+                                    ->afterStateHydrated(fn (Get $get, Set $set): null => self::syncRemainingQuantity($get, $set))
+                                    ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncRemainingQuantity($get, $set))
+                                    ->placeholder('0'),
+
+                                TextInput::make('remaining_quantity')
+                                    ->label('Quantidade Restante')
+                                    ->readOnly()
+                                    ->dehydrated(false)
+                                    ->default(0)
+                                    ->formatStateUsing(fn ($state): string => number_format((float) ($state ?? 0), 0, ',', '.'))
+                                    ->placeholder('0'),
+                            ]),
 
                         TextInput::make('issued_price')
                             ->label('Preço Unitário de Emissão (PU)')
@@ -497,6 +520,37 @@ class EmissionForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    private static function syncRemainingQuantity(Get $get, Set $set): null
+    {
+        $set(
+            'remaining_quantity',
+            self::calculateRemainingQuantity($get('issued_quantity'), $get('integralized_quantity')),
+        );
+
+        return null;
+    }
+
+    private static function calculateRemainingQuantity(mixed $issuedQuantity, mixed $integralizedQuantity): int
+    {
+        return max(
+            0,
+            self::normalizeQuantityValue($issuedQuantity) - self::normalizeQuantityValue($integralizedQuantity),
+        );
+    }
+
+    private static function normalizeQuantityValue(mixed $value): int
+    {
+        if (blank($value)) {
+            return 0;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (int) round($value);
+        }
+
+        return (int) str_replace(['.', ',', ' '], '', (string) $value);
     }
 
     private static function serviceProviderField(string $field, string $label, string $typeName): Select

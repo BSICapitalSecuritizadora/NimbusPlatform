@@ -41,6 +41,10 @@ class EditEmission extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['integralized_quantity'] = $this->getRecord()->calculateIntegralizedQuantity();
+        $data['remaining_quantity'] = max(
+            0,
+            (int) ($data['issued_quantity'] ?? 0) - (int) $data['integralized_quantity'],
+        );
 
         return $data;
     }
@@ -80,7 +84,7 @@ class EditEmission extends EditRecord
     {
         $this->getRecord()->refresh();
 
-        $this->refreshFormData(['integralized_quantity']);
+        $this->refreshFormData(['integralized_quantity', 'remaining_quantity']);
     }
 
     protected function getSavedNotificationTitle(): ?string

@@ -42,7 +42,7 @@ Route::get('/emissoes/{if_code}', [SiteController::class, 'emissionShow'])->name
 Route::get('/ri', [SiteController::class, 'ri'])->name('site.ri');
 
 // Imobiliário
-Route::view('/imobiliario/cri-real-estate', 'site.imobiliario.cri')->name('site.imobiliario.cri');
+Route::get('/imobiliario/cri-real-estate', [SiteController::class, 'criRealEstate'])->name('site.imobiliario.cri');
 Route::view('/imobiliario/loteamentos', 'site.imobiliario.loteamentos')->name('site.imobiliario.loteamentos');
 Route::view('/imobiliario/incorporacao', 'site.imobiliario.incorporacao')->name('site.imobiliario.incorporacao');
 

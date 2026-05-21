@@ -52,7 +52,8 @@
       "Bash(echo \"exit:$?\")",
       "Bash(grep -v \"^.*:$\")",
       "WebFetch(domain:rizasec.com)",
-      "WebFetch(domain:bsicapital-dfgsf6buagfrh8dn.westus3-01.azurewebsites.net)"
+      "WebFetch(domain:bsicapital-dfgsf6buagfrh8dn.westus3-01.azurewebsites.net)",
+      "WebFetch(domain:investidor.rizasec.com)"
     ]
   }
 }

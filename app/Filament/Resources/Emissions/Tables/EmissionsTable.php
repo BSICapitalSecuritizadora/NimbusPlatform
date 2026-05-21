@@ -22,7 +22,13 @@ class EmissionsTable
 
                 TextColumn::make('type')
                     ->label('Tipo de Título')
-                    ->badge(),
+                    ->badge()
+                    ->color(fn (?string $state): string|array => match ($state) {
+                        'CRI' => \Filament\Support\Colors\Color::hex('#D4AF37'),
+                        'CRA' => \Filament\Support\Colors\Color::hex('#0D9488'),
+                        'CR' => \Filament\Support\Colors\Color::hex('#4F46E5'),
+                        default => 'gray',
+                    }),
 
                 TextColumn::make('if_code')
                     ->label('Código IF')
