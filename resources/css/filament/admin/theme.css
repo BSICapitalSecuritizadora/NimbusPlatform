@@ -50,35 +50,37 @@
 /* ── Simple layout (login page) background ── */
 .fi-simple-layout {
     background:
-        radial-gradient(circle at top left, rgb(9 27 35 / 0.12), transparent 28%),
-        radial-gradient(circle at top right, rgb(160 110 40 / 0.14), transparent 22%),
-        #ece9e8 !important;
+        radial-gradient(circle at top left, rgb(9 27 35 / 0.15), transparent 30%),
+        radial-gradient(circle at top right, rgb(212 175 55 / 0.15), transparent 25%),
+        #f6f3f2 !important;
 }
 
 :is(.dark, .dark *) .fi-simple-layout,
 .dark .fi-simple-layout {
     background:
-        radial-gradient(circle at top left, rgb(75 104 113 / 0.16), transparent 26%),
-        radial-gradient(circle at top right, rgb(160 110 40 / 0.12), transparent 20%),
-        #040c11 !important;
+        radial-gradient(circle at top left, rgb(212 175 55 / 0.12), transparent 40%),
+        radial-gradient(circle at bottom right, rgb(212 175 55 / 0.08), transparent 40%),
+        #091b23 !important;
 }
 
 /* ── Simple layout main card (glassmorphism) ── */
 .fi-simple-main-ctn > main,
 .fi-simple-main-ctn > section {
-    box-shadow: 0 20px 45px rgba(9, 27, 35, 0.08) !important;
-    background: rgb(230 228 228 / 0.9) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    backdrop-filter: blur(12px) !important;
-    border: 1px solid rgb(205 209 210 / 0.8) !important;
-    border-radius: 26px !important;
+    box-shadow: 0 20px 50px rgba(9, 27, 35, 0.12) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(212, 175, 55, 0.2) !important;
+    border-top: 3px solid #d4af37 !important;
+    border-radius: 20px !important;
 }
 
 :is(.dark, .dark *) .fi-simple-main-ctn > main,
 :is(.dark, .dark *) .fi-simple-main-ctn > section,
 .dark .fi-simple-main-ctn > main,
 .dark .fi-simple-main-ctn > section {
-    box-shadow: 0 24px 52px rgba(0, 0, 0, 0.35) !important;
-    background: rgba(255, 255, 255, 0.04) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5) !important;
+    background: rgba(9, 27, 35, 0.6) !important;
+    border: 1px solid rgba(212, 175, 55, 0.25) !important;
+    border-top: 3px solid #d4af37 !important;
 }

@@ -1,18 +1,52 @@
 @extends('site.layout')
 @section('title', 'Parcerias — BSI Capital')
 
+@push('head')
+<style>
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50%       { transform: translateY(-10px); }
+    }
+    .float-card { animation: float 4s ease-in-out infinite; }
+</style>
+@endpush
+
 @section('content')
-<section class="hero position-relative d-flex align-items-center" style="min-height: 48vh;">
-    <div class="container position-relative">
+<section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.1; background: url('{{ asset('images/compliance.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="container position-relative z-1">
         <div class="row align-items-center g-4">
-            <div class="col-lg-8">
-                <span class="badge mb-3 px-3 py-2 text-uppercase">Ecossistema institucional</span>
-                <h1 class="display-4 fw-bold mb-3">
-                    Parcerias estruturadas para ampliar originação, distribuição e execução
+            <div class="col-lg-6">
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Ecossistema institucional</span>
+                <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
+                    Parcerias estruturadas para ampliar <span style="color: var(--gold);">originação, distribuição e execução</span>
                 </h1>
-                <p class="lead mb-0" style="max-width: 760px;">
+                <p class="lead mb-5" style="color: #E6E4E4; max-width: 520px;">
                     A BSI Capital desenvolve parcerias com originadores, consultorias, assessorias, plataformas e agentes do mercado que buscam uma operação tecnicamente sólida, governança clara e capacidade real de execução.
                 </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg px-4">Falar sobre parcerias</a>
+                    <a href="{{ route('proposal.create') }}" class="btn btn-lg px-4" style="background: rgba(255,255,255,0.08); color: #E6E4E4; border: 1px solid rgba(230,228,228,0.25);">Enviar oportunidade</a>
+                </div>
+            </div>
+            <div class="col-lg-6 d-none d-lg-flex justify-content-center">
+                <div class="position-relative w-100" style="max-width: 480px;">
+                    <img src="{{ asset('images/compliance.png') }}" alt="Parcerias BSI Capital" class="img-fluid rounded-3" style="opacity: 0.85;">
+                    <div class="float-card position-absolute bottom-0 start-0 translate-middle-y ms-4 bg-white rounded-3 p-3 shadow-lg d-flex align-items-center gap-3" style="min-width: 220px;">
+                        <div class="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width:40px;height:40px;background:rgba(160,110,40,0.12);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size:0.85rem;">Rede de parceiros</div>
+                            <div class="text-muted" style="font-size:0.75rem;">Originação · Distribuição · Execução</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -49,7 +83,7 @@
             <div class="col-lg-8">
                 <div class="row g-4">
                     <div class="col-md-6">
-                        <div class="card h-100 border-0 p-4">
+                        <div class="surface-card h-100 p-4">
                             <div class="section-kicker mb-2">Quem pode se conectar</div>
                             <h3 class="h4 fw-bold text-brand mb-3">Perfis com aderência à nossa atuação</h3>
                             <p class="section-copy mb-0">
@@ -58,7 +92,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card h-100 border-0 p-4">
+                        <div class="surface-card h-100 p-4">
                             <div class="section-kicker mb-2">Critérios de entrada</div>
                             <h3 class="h4 fw-bold text-brand mb-3">Clareza comercial e disciplina operacional</h3>
                             <p class="section-copy mb-0">
@@ -67,7 +101,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card h-100 border-0 p-4">
+                        <div class="surface-card h-100 p-4">
                             <div class="section-kicker mb-2">Setores atendidos</div>
                             <h3 class="h4 fw-bold text-brand mb-3">Imobiliário, agro, infra e crédito corporativo</h3>
                             <p class="section-copy mb-0">
@@ -76,7 +110,7 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card h-100 border-0 p-4">
+                        <div class="surface-card h-100 p-4">
                             <div class="section-kicker mb-2">Relacionamento</div>
                             <h3 class="h4 fw-bold text-brand mb-3">Fluxo previsível e comunicação objetiva</h3>
                             <p class="section-copy mb-0">
@@ -96,7 +130,7 @@
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Como trabalhamos</div>
                 <h2 class="display-6 fw-bold mb-3">Um processo simples, com filtros técnicos desde o início</h2>
-                <p class="text-muted mb-0">
+                <p class="mb-0" style="color: #E6E4E4;">
                     O objetivo é acelerar o que faz sentido e interromper cedo o que não atende aos requisitos mínimos de qualidade, estrutura e aderência regulatória.
                 </p>
             </div>
@@ -130,25 +164,26 @@
 
 <section class="py-5">
     <div class="container">
-        <div class="card border-0 overflow-hidden" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f);">
+        <div class="card border-0 overflow-hidden" style="background: var(--brand-strong);">
             <div class="row g-0 align-items-center">
                 <div class="col-lg-8">
                     <div class="p-4 p-lg-5">
                         <div class="section-kicker mb-2">Próximo passo</div>
                         <h2 class="h2 fw-bold text-white mb-3">Vamos estruturar uma parceria com critério técnico e alinhamento comercial?</h2>
-                        <p class="text-white-50 mb-0" style="max-width: 640px;">
+                        <p class="mb-0" style="color: #E6E4E4; max-width: 640px;">
                             Se você tem uma oportunidade, uma base de relacionamento ou uma frente comercial aderente à nossa atuação, podemos avaliar o melhor formato de parceria para avançar com segurança.
                         </p>
                     </div>
                 </div>
                 <div class="col-lg-4">
                     <div class="p-4 p-lg-5 d-flex flex-column gap-3">
-                        <a href="{{ route('site.contact') }}" class="btn btn-light btn-lg">Falar sobre parcerias</a>
-                        <a href="{{ route('proposal.create') }}" class="btn btn-outline-brand btn-lg" style="background: rgba(255,255,255,0.05); color: #fff; border-color: rgba(255,255,255,0.18);">Enviar oportunidade</a>
+                        <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg">Falar sobre parcerias</a>
+                        <a href="{{ route('proposal.create') }}" class="btn btn-lg" style="background: rgba(255,255,255,0.08); color: #E6E4E4; border: 1px solid rgba(230,228,228,0.25);">Enviar oportunidade</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
 @endsection

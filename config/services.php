@@ -62,4 +62,8 @@ return [
         'url' => env('APP_PORTAL_URL', '/portal'),
     ],
 
+    'contact' => [
+        'email' => env('CONTACT_EMAIL', 'contato@bsicapital.com.br'),
+    ],
+
 ];

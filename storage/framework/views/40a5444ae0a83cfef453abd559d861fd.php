@@ -1,15 +1,17 @@
 <?php $__env->startSection('title', 'Contato — BSI Capital'); ?>
 
+
 <?php $__env->startSection('content'); ?>
-<section class="hero position-relative d-flex align-items-center" style="min-height: 42vh;">
-    <div class="container position-relative">
+<section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.1; background: url('<?php echo e(asset('images/compliance.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="container position-relative z-1">
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
-                <span class="badge mb-3 px-3 py-2 text-uppercase">Atendimento institucional</span>
-                <h1 class="display-4 fw-bold mb-3">
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Atendimento institucional</span>
+                <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Entre em contato com a <span style="color: var(--gold);">BSI Capital</span>
                 </h1>
-                <p class="lead mb-0" style="max-width: 760px;">
+                <p class="lead mb-0" style="color: #E6E4E4; max-width: 760px;">
                     Estamos à disposição para avaliar novas teses de operação ou suportar demandas institucionais. Nosso atendimento prioriza o rigor técnico e a viabilidade fiduciária exigidos pelo mercado.
                 </p>
             </div>
@@ -42,7 +44,7 @@
                     <h2 class="h4 fw-bold text-brand mb-2">São Paulo</h2>
                     <p class="section-copy mb-0">
                         Avenida das Nações Unidas, 14.401<br>
-                        Tarumã Tower, Sala 713<br>
+                        Tarumã Tower, Salas 712 e 713<br>
                         Chácara Santo Antônio, São Paulo - SP
                     </p>
                 </div>
@@ -77,39 +79,107 @@
 
             <div class="col-lg-7">
                 <div class="surface-card h-100 p-4 p-lg-5">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('contact_success')): ?>
+                        <div class="alert alert-success d-flex align-items-center gap-3 mb-4" role="alert">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <span>Mensagem enviada com sucesso. Nossa equipe retornará em até 24 horas úteis.</span>
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
                     <div class="mb-4">
                         <div class="section-kicker mb-2">Formulário</div>
                         <h2 class="h3 fw-bold text-brand mb-2">Envie sua mensagem</h2>
                         <p class="section-copy mb-0">As informações abaixo permitem um direcionamento técnico e seguro da sua demanda para a área responsável.</p>
                     </div>
 
-                    <form action="#" method="POST" class="row g-3">
+                    <form action="<?php echo e(route('site.contact.submit')); ?>" method="POST" class="row g-3">
+                        <?php echo csrf_field(); ?>
                         <div class="col-md-6">
                             <label class="form-label">Nome</label>
-                            <input type="text" class="form-control" placeholder="Informe seu nome completo" required>
+                            <input type="text" name="name" class="form-control <?php $__errorArgs = ['name'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" placeholder="Informe seu nome completo" value="<?php echo e(old('name')); ?>" required>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['name'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><div class="invalid-feedback"><?php echo e($message); ?></div><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">E-mail</label>
-                            <input type="email" class="form-control" placeholder="Informe seu e-mail corporativo" required>
+                            <input type="email" name="email" class="form-control <?php $__errorArgs = ['email'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" placeholder="Informe seu e-mail corporativo" value="<?php echo e(old('email')); ?>" required>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['email'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><div class="invalid-feedback"><?php echo e($message); ?></div><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Telefone</label>
-                            <input type="tel" class="form-control" placeholder="Informe seu telefone">
+                            <input type="tel" name="phone" id="phone" class="form-control" placeholder="(00) 00000-0000" value="<?php echo e(old('phone')); ?>">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Assunto</label>
-                            <select class="form-select">
-                                <option selected disabled>Selecione a área de interesse</option>
-                                <option>Relações com investidores</option>
-                                <option>Comercial e novos negócios</option>
-                                <option>Compliance e canal de ética</option>
-                                <option>Carreiras / Trabalhe conosco</option>
-                                <option>Assuntos institucionais</option>
+                            <select name="subject" class="form-select <?php $__errorArgs = ['subject'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" required>
+                                <option value="" selected disabled>Selecione a área de interesse</option>
+                                <option value="Relações com investidores" <?php if(old('subject') === 'Relações com investidores'): echo 'selected'; endif; ?>>Relações com investidores</option>
+                                <option value="Comercial e novos negócios" <?php if(old('subject') === 'Comercial e novos negócios'): echo 'selected'; endif; ?>>Comercial e novos negócios</option>
+                                <option value="Compliance e canal de ética" <?php if(old('subject') === 'Compliance e canal de ética'): echo 'selected'; endif; ?>>Compliance e canal de ética</option>
+                                <option value="Carreiras / Trabalhe conosco" <?php if(old('subject') === 'Carreiras / Trabalhe conosco'): echo 'selected'; endif; ?>>Carreiras / Trabalhe conosco</option>
+                                <option value="Assuntos institucionais" <?php if(old('subject') === 'Assuntos institucionais'): echo 'selected'; endif; ?>>Assuntos institucionais</option>
                             </select>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['subject'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><div class="invalid-feedback"><?php echo e($message); ?></div><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Mensagem</label>
-                            <textarea class="form-control" rows="5" placeholder="Descreva brevemente sua demanda ou tese de operação" required></textarea>
+                            <textarea name="message" class="form-control <?php $__errorArgs = ['message'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" rows="5" placeholder="Descreva brevemente sua demanda ou tese de operação" required><?php echo e(old('message')); ?></textarea>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['message'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?><div class="invalid-feedback"><?php echo e($message); ?></div><?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                         <div class="col-12 pt-2">
                             <button type="submit" class="btn btn-brand btn-lg px-5 mb-3">Iniciar Atendimento</button>
@@ -150,6 +220,32 @@
         </div>
     </div>
 </section>
+
+<?php $__env->startPush('scripts'); ?>
+<script nonce="<?php echo e(\Illuminate\Support\Facades\Vite::cspNonce()); ?>">
+    document.addEventListener('DOMContentLoaded', function() {
+        const phoneInput = document.getElementById('phone');
+        if (phoneInput) {
+            phoneInput.addEventListener('input', function(e) {
+                let raw = e.target.value.replace(/\D/g, "").substring(0, 11);
+                let formatted = raw;
+                if (raw.length > 2) {
+                    formatted = '(' + raw.substring(0, 2) + ') ' + raw.substring(2);
+                }
+                if (raw.length > 6) {
+                    if (raw.length === 11) {
+                        formatted = '(' + raw.substring(0, 2) + ') ' + raw.substring(2, 7) + '-' + raw.substring(7);
+                    } else {
+                        formatted = '(' + raw.substring(0, 2) + ') ' + raw.substring(2, 6) + '-' + raw.substring(6);
+                    }
+                }
+                e.target.value = formatted;
+            });
+        }
+    });
+</script>
+<?php $__env->stopPush(); ?>
+
 <?php $__env->stopSection(); ?>
 
 <?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/contact.blade.php ENDPATH**/ ?>

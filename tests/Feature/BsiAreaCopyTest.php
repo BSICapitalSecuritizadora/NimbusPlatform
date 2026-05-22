@@ -29,7 +29,7 @@ beforeEach(function () {
 it('renders the revised about copy on the bsi area page', function () {
     $this->get(route('site.about'))
         ->assertSuccessful()
-        ->assertSee('Fundada em 2009, a BSI Capital estrutura soluções estratégicas')
+        ->assertSee('Securitizadora constituída em 2009, a BSI Capital')
         ->assertSee('Missão, visão e valores')
         ->assertSee('Integridade e Ética');
 });

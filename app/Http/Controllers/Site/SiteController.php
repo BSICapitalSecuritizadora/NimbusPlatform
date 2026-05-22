@@ -3,13 +3,28 @@
 namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Site\ContactFormRequest;
+use App\Mail\ContactFormMail;
+use App\Models\ContactMessage;
 use App\Models\Document;
 use App\Models\Emission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
 class SiteController extends Controller
 {
+    public function submitContact(ContactFormRequest $request): \Illuminate\Http\RedirectResponse
+    {
+        $data = $request->validated();
+
+        ContactMessage::create($data);
+
+        Mail::to(config('services.contact.email'))->send(new ContactFormMail($data));
+
+        return back()->with('contact_success', true);
+    }
+
     public function governance()
     {
         $documents = Document::query()

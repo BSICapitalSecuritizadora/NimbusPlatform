@@ -1,28 +1,36 @@
 <section class="py-5 bg-transparent">
     <div class="container py-4">
+        <!-- BREADCRUMB -->
+        <div class="mb-4">
+            <a href="{{ route('site.partnerships') }}" class="d-inline-flex align-items-center gap-2 text-decoration-none fw-semibold" style="color: var(--brand);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                Parcerias
+            </a>
+        </div>
+
         <!-- HEADER CARD -->
-        <div class="surface-card p-4 p-lg-5 mb-5 border-0 shadow-sm" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f); color: #fff;">
+        <div class="surface-card p-4 p-lg-5 mb-5 border-0 shadow-sm" style="background: var(--brand-strong); color: #fff;">
             <div class="row align-items-center g-5">
                 <div class="col-lg-7">
-                    <span class="badge badge-soft px-3 py-2 mb-3">OPORTUNIDADE</span>
-                    <h1 class="display-5 fw-bold mb-3">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Oportunidade</span>
+                    <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                         Envie sua <span style="color: var(--gold);">Proposta</span>
                     </h1>
-                    <p class="lead text-white-50 mb-0" style="font-size: 1.1rem; max-width: 600px;">
+                    <p class="lead mb-0" style="color: #E6E4E4; max-width: 600px;">
                         Seja para securitização, estruturação ou novos negócios, preencha o formulário abaixo para iniciarmos uma análise preliminar.
                     </p>
                 </div>
                 <div class="col-lg-5">
                     <div class="d-flex flex-column gap-3">
                         <div class="p-4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;">
-                            <div class="kicker mb-2" style="color: var(--gold);">FLUXO</div>
+                            <div class="section-kicker mb-2">Fluxo</div>
                             <div class="fs-5 fw-bold mb-1">Cadastro inicial</div>
-                            <div class="small text-white-50">Os dados da empresa e do contato são registrados nesta primeira etapa.</div>
+                            <div class="small" style="color: #E6E4E4;">Os dados da empresa e do contato são registrados nesta primeira etapa.</div>
                         </div>
                         <div class="p-4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;">
-                            <div class="kicker mb-2" style="color: var(--gold);">CONTINUAÇÃO</div>
+                            <div class="section-kicker mb-2">Continuação</div>
                             <div class="fs-5 fw-bold mb-1">Link seguro por e-mail</div>
-                            <div class="small text-white-50">Depois do envio, você recebe um acesso protegido para complementar as informações.</div>
+                            <div class="small" style="color: #E6E4E4;">Depois do envio, você recebe um acesso protegido para complementar as informações.</div>
                         </div>
                     </div>
                 </div>
@@ -240,11 +248,12 @@
             </div>
 
             <!-- SUBMIT BUTTON -->
-            <div class="surface-card p-4 p-lg-5 mb-5 border-0" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f); color: #fff;">
+            <div class="surface-card p-4 p-lg-5 mb-5 border-0" style="background: var(--brand-strong); color: #fff;">
                 <div class="row align-items-center g-4">
                     <div class="col-lg-8">
-                        <div class="kicker mb-2" style="color: var(--gold);">PRÓXIMO PASSO</div>
-                        <p class="mb-0 text-white-50" style="font-size: 1.05rem;">
+                        <div class="section-kicker mb-2">Próximo passo</div>
+                        <h2 class="h3 fw-bold text-white mb-3">Pronto para avançar com sua proposta?</h2>
+                        <p class="mb-0" style="color: #E6E4E4; font-size: 1.05rem;">
                             Após o envio, você receberá um link seguro para complementar os dados do empreendimento e anexar os documentos necessários.
                         </p>
                     </div>

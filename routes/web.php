@@ -36,6 +36,7 @@ Route::get('/governanca', [SiteController::class, 'governance'])->name('site.gov
 Route::get('/compliance', [SiteController::class, 'complianceBsi'])->name('site.compliance');
 Route::get('/documentos/{document}/download', SiteDocumentDownloadController::class)->name('site.documents.download');
 Route::view('/contato', 'site.contact')->name('site.contact');
+Route::post('/contato', [SiteController::class, 'submitContact'])->name('site.contact.submit');
 
 Route::get('/emissoes', [SiteController::class, 'emissions'])->name('site.emissions');
 Route::get('/emissoes/{if_code}', [SiteController::class, 'emissionShow'])->name('site.emissions.show');

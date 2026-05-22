@@ -52,6 +52,42 @@
             justify-content: flex-end;
         }
     }
+
+    .search-input-group {
+        background: #ffffff;
+        border: 1px solid rgba(9,27,35,0.1);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(9,27,35,0.02);
+    }
+    .search-input-group:focus-within {
+        border-color: var(--gold) !important;
+        box-shadow: 0 0 0 3px rgba(212,175,55,0.15) !important;
+    }
+
+    .filter-select {
+        background-color: rgba(9,27,35,0.03);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        color: var(--brand);
+        font-weight: 500;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+    }
+    .filter-select:focus {
+        background-color: #ffffff;
+        border-color: rgba(9,27,35,0.15);
+        box-shadow: 0 0 0 3px rgba(9,27,35,0.05);
+    }
+    .filter-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #5d687b;
+        margin-bottom: 0.5rem;
+    }
 </style>
 <?php $__env->stopPush(); ?>
 
@@ -72,7 +108,7 @@
                 <span class="badge mb-3 px-3 py-2 text-uppercase">Mercado primário</span>
                 <h1 class="display-4 fw-bold mb-3">Track Record de Operações: Especialidade em Securitização e Crédito Estruturado</h1>
                 <p class="lead mb-0" style="max-width: 760px;">
-                    Explore o detalhamento técnico das emissões estruturadas pela BSI Capital. Unimos transparência ativa e rigor na análise do lastro para sustentar estruturas sólidas e auditáveis no mercado de capitais.
+                    Acesse o pipeline de emissões e operações estruturadas com a governança da BSI Capital. Unimos transparência ativa e rigor na análise do lastro para sustentar estruturas sólidas e auditáveis no mercado de capitais.
                 </p>
             </div>
         </div>
@@ -81,29 +117,29 @@
 
 <section class="py-5">
     <div class="container py-lg-4">
-        <div class="surface-card p-4 p-lg-5 mb-4">
+        <div class="bg-white rounded-4 shadow-sm p-4 p-lg-5 mb-4" style="border: 1px solid rgba(9,27,35,0.05);">
             <div class="row g-4 align-items-end">
                 <div class="col-lg-5">
-                    <div class="section-kicker mb-2">Pesquisa e filtros</div>
+                    <div class="small text-uppercase fw-bold mb-2" style="color: var(--gold); letter-spacing: 0.15em;">Pesquisa e filtros</div>
                     <h2 class="h3 fw-bold text-brand mb-3">Inteligência de Dados e Filtros Dinâmicos</h2>
-                    <p class="section-copy mb-0">
+                    <p class="mb-0" style="color: #5d687b;">
                         Localize operações com precisão por setor, instrumento ou emissor. Disponibilizamos dados estruturados e granulares para dar suporte às análises mais exigentes e ao monitoramento estratégico de ativos no mercado de capitais.
                     </p>
                 </div>
                 <div class="col-lg-7">
                     <form method="GET" class="row g-3">
                         <div class="col-12">
-                            <div class="input-group">
-                                <span class="input-group-text border-end-0 bg-transparent ps-4">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <div class="input-group search-input-group">
+                                <span class="input-group-text border-0 bg-transparent ps-4" style="color: var(--brand);">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                                 </span>
-                                <input class="form-control border-start-0" name="q" value="<?php echo e($q ?? ''); ?>" placeholder="Busque por nome, emissor ou código IF">
-                                <button class="btn btn-brand px-4 px-md-5">Buscar</button>
+                                <input class="form-control border-0 bg-transparent shadow-none px-3 py-3" name="q" value="<?php echo e($q ?? ''); ?>" placeholder="Busque por nome, emissor ou código IF" style="font-size: 0.95rem; color: var(--brand);">
+                                <button class="btn btn-brand px-4 px-md-5 border-0" style="font-weight: 600;">Buscar</button>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Tipo de emissão</label>
-                            <select name="type" class="form-select" onchange="this.form.submit()">
+                            <label class="form-label filter-label">Tipo de emissão</label>
+                            <select name="type" class="form-select shadow-none filter-select" onchange="this.form.submit()">
                                 <option value="">Todos os tipos</option>
                                 <option value="CR" <?php echo e(($type ?? '') === 'CR' ? 'selected' : ''); ?>>CR</option>
                                 <option value="CRA" <?php echo e(($type ?? '') === 'CRA' ? 'selected' : ''); ?>>CRA</option>
@@ -111,16 +147,16 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Data de emissão</label>
-                            <select name="issue_date_order" class="form-select" onchange="this.form.submit()">
+                            <label class="form-label filter-label">Data de emissão</label>
+                            <select name="issue_date_order" class="form-select shadow-none filter-select" onchange="this.form.submit()">
                                 <option value="">Ordenar por...</option>
                                 <option value="desc" <?php echo e(($issue_date_order ?? '') === 'desc' ? 'selected' : ''); ?>>Mais recente &gt; Mais antiga</option>
                                 <option value="asc" <?php echo e(($issue_date_order ?? '') === 'asc' ? 'selected' : ''); ?>>Mais antiga &gt; Mais recente</option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Data de vencimento</label>
-                            <select name="maturity_date_order" class="form-select" onchange="this.form.submit()">
+                            <label class="form-label filter-label">Data de vencimento</label>
+                            <select name="maturity_date_order" class="form-select shadow-none filter-select" onchange="this.form.submit()">
                                 <option value="">Ordenar por...</option>
                                 <option value="desc" <?php echo e(($maturity_date_order ?? '') === 'desc' ? 'selected' : ''); ?>>Mais recente &gt; Mais antiga</option>
                                 <option value="asc" <?php echo e(($maturity_date_order ?? '') === 'asc' ? 'selected' : ''); ?>>Mais antiga &gt; Mais recente</option>
@@ -226,14 +262,14 @@
                             </div>
                         </div>
                         <div class="card-footer bg-transparent border-0 p-3 p-lg-4 pt-0 d-grid">
-                            <a href="<?php echo e(route('site.emissions.show', $e->if_code)); ?>" class="btn btn-outline-brand btn-sm w-100">Consultar Operação</a>
+                            <a href="<?php echo e(route('site.emissions.show', $e->if_code)); ?>" class="btn btn-outline-brand btn-sm w-100">Acessar Data Room</a>
                         </div>
                     </div>
                 </div>
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                 <div class="col-12">
                     <div class="card p-5 text-center text-muted">
-                        <div class="fw-semibold mb-2">Nenhuma operação corresponde aos filtros atuais.</div>
+                        <div class="fw-semibold mb-2">Nenhuma operação corresponde aos filtros atuais. Fale com nossa mesa de estruturação para demandas específicas.</div>
                         <div class="small">Revise os critérios selecionados ou limpe a pesquisa para ampliar o universo de consulta.</div>
                     </div>
                 </div>

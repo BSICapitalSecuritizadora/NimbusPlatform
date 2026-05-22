@@ -14,8 +14,8 @@ it('exposes the finalized emission core enums', function () {
     ])->and(Emission::STATUS_OPTIONS)->toBe([
         'draft' => 'Em Elaboração',
         'default' => 'Default',
-        'active' => 'Ativa',
-        'closed' => 'Finalizada',
+        'active' => 'Em Distribuição',
+        'closed' => 'Liquidada',
     ])->and(Emission::ISSUER_SITUATION_OPTIONS)->toBe([
         'Recuperação Judicial' => 'Recuperação Judicial',
         'Inadimplente' => 'Inadimplente',
@@ -124,7 +124,7 @@ it('supports the finalized emission core fields and casts', function () {
         ->and($emission->issued_volume)->toBe('1481472.90')
         ->and($emission->prepayment_possibility)->toBeTrue()
         ->and($emission->is_public)->toBeTrue()
-        ->and($emission->status_label)->toBe('Ativa')
+        ->and($emission->status_label)->toBe('Em Distribuição')
         ->and($emission->bsi_code)->toBe(sprintf('BSI-%s-%04d', $emission->created_at?->format('Y'), $emission->id))
         ->and($emission->formatted_remuneration)->toBe('CDI + 2,00% a.a.')
         ->and($emission->only([

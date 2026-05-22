@@ -52,6 +52,75 @@
             justify-content: flex-end;
         }
     }
+
+    .filter-pill {
+        border-radius: 50rem;
+        padding: 0.55rem 1.25rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .filter-pill.active {
+        background: var(--brand);
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(9,27,35,0.15);
+    }
+    .filter-pill.inactive {
+        background: rgba(9,27,35,0.04);
+        color: #5d687b;
+        border-color: rgba(9,27,35,0.08);
+    }
+    .filter-pill.inactive:hover {
+        background: rgba(9,27,35,0.08);
+        color: var(--brand);
+        transform: translateY(-1px);
+    }
+
+    .search-input-group {
+        background: #ffffff;
+        border: 1px solid rgba(9,27,35,0.1);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(9,27,35,0.02);
+    }
+    .search-input-group:focus-within {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 3px rgba(212,175,55,0.15);
+    }
+
+    /* Mobile horizontal scroll for filters */
+    .filter-scroll-wrapper {
+        margin: 0 -1.5rem;
+        padding: 0 1.5rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Firefox */
+    }
+    .filter-scroll-wrapper::-webkit-scrollbar {
+        display: none; /* Chrome/Safari/Edge */
+    }
+    .filter-pills-container {
+        flex-wrap: nowrap;
+        padding-bottom: 0.5rem; /* space for active shadow */
+    }
+    
+    @media (min-width: 992px) {
+        .filter-scroll-wrapper {
+            margin: 0;
+            padding: 0;
+            overflow-x: visible;
+        }
+        .filter-pills-container {
+            flex-wrap: wrap;
+            padding-bottom: 0;
+        }
+    }
 </style>
 <?php $__env->stopPush(); ?>
 
@@ -63,27 +132,37 @@
     ]);
 ?>
 
-<section class="hero position-relative d-flex align-items-center" style="min-height: 38vh;">
-    <div class="container position-relative">
-        <div class="row g-4 align-items-end">
+<section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.1; background: url('<?php echo e(asset('images/relatorios.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="container position-relative z-1">
+        <div class="row g-4 align-items-center">
             <div class="col-lg-8">
-                <span class="badge mb-3 px-3 py-2 text-uppercase">Institucional</span>
-                <h1 class="display-4 fw-bold mb-3">Relações com <span style="color: var(--gold);">Investidores</span></h1>
-                <p class="lead mb-0" style="max-width: 760px;">
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
+                <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">Relações com <span style="color: var(--gold);">Investidores</span></h1>
+                <p class="lead mb-5" style="color: #E6E4E4; max-width: 760px;">
                     Seja bem-vindo à nossa Central de Transparência. Aqui você acessa documentos e comunicados oficiais em tempo real, com a fidelidade informacional necessária para sua tomada de decisão.
                 </p>
+                <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
+                    <a href="<?php echo e(config('services.portal.url')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                        Acessar o Portal
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </a>
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
+                        Falar com RI
+                    </a>
+                </div>
             </div>
             <div class="col-lg-4">
                 <div class="surface-card-dark p-4">
                     <div class="small text-uppercase text-white-50 fw-semibold mb-2">Repositório Institucional</div>
-                    <div class="d-flex justify-content-between align-items-end mb-2">
+                    <div class="d-flex justify-content-between align-items-end mb-3">
                         <div>
                             <div class="fs-2 fw-bold text-white"><?php echo e($docs->total()); ?></div>
                             <div class="small text-white-50">documento(s) disponível(is)</div>
                         </div>
                         <div class="badge badge-soft px-3 py-2"><?php echo e(count($categories)); ?> categorias</div>
                     </div>
-                    <div class="small text-white-50">Busca, filtros e histórico em uma leitura mais clara e consistente com o restante da plataforma.</div>
+                    <div class="small text-white-50">Fatos Relevantes, atas de assembleia, demonstrações financeiras e documentos de operação — histórico documental público da BSI Capital com busca e filtros por emissão.</div>
                 </div>
             </div>
         </div>
@@ -92,27 +171,28 @@
 
 <section class="py-5">
     <div class="container py-lg-4">
-        <div class="surface-card p-4 p-lg-5 mb-4">
+        <div class="bg-white rounded-4 shadow-sm p-4 p-lg-5 mb-4" style="border: 1px solid rgba(9,27,35,0.05);">
             <div class="row g-4 align-items-end">
                 <div class="col-lg-7">
-                    <div class="section-kicker mb-2">Consulta pública</div>
+                    <div class="small text-uppercase fw-bold mb-2" style="color: var(--gold); letter-spacing: 0.15em;">Consulta pública</div>
                     <h2 class="h3 fw-bold text-brand mb-3">Repositório de Documentos Públicos: Navegação estruturada</h2>
-                    <p class="section-copy mb-0">
+                    <p class="mb-0" style="color: #5d687b;">
                         Localize publicações oficiais por categoria ou palavra-chave, assegurando o acesso direto ao histórico documental da BSI Capital com precisão e clareza.
                     </p>
                 </div>
                 <div class="col-lg-5">
                     <form method="GET" id="riForm">
-                        <div class="input-group">
+                        <div class="input-group search-input-group">
                             <input
                                 type="text"
-                                class="form-control border-end-0"
+                                class="form-control border-0 bg-transparent shadow-none px-4 py-3"
                                 name="q"
                                 value="<?php echo e($q); ?>"
                                 placeholder="Pesquisar documentos e comunicados..."
+                                style="font-size: 0.95rem; color: var(--brand);"
                             >
-                            <button type="submit" class="input-group-text border-start-0 bg-transparent px-3">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <button type="submit" class="input-group-text border-0 bg-transparent px-4" style="color: var(--brand);">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </button>
                         </div>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($category): ?>
@@ -122,14 +202,18 @@
                 </div>
             </div>
 
-            <div class="d-flex flex-wrap gap-2 mt-4">
-                <a href="<?php echo e(route('site.ri', array_filter(['q' => $q]))); ?>" class="btn <?php echo e(!$category ? 'btn-brand' : 'btn-outline-brand'); ?> btn-sm px-4">Todos</a>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
-                    <a href="<?php echo e(route('site.ri', array_filter(['category' => $key, 'q' => $q]))); ?>" class="btn <?php echo e($category === $key ? 'btn-brand' : 'btn-outline-brand'); ?> btn-sm px-4">
-                        <?php echo e($label); ?>
+            <div class="mt-4 pt-4 border-top" style="border-color: rgba(9,27,35,0.06) !important;">
+                <div class="filter-scroll-wrapper">
+                    <div class="d-flex gap-2 filter-pills-container">
+                        <a href="<?php echo e(route('site.ri', array_filter(['q' => $q]))); ?>" class="filter-pill flex-shrink-0 <?php echo e(!$category ? 'active' : 'inactive'); ?>">Todos</a>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
+                            <a href="<?php echo e(route('site.ri', array_filter(['category' => $key, 'q' => $q]))); ?>" class="filter-pill flex-shrink-0 <?php echo e($category === $key ? 'active' : 'inactive'); ?>">
+                                <?php echo e($label); ?>
 
-                    </a>
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
+                            </a>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -220,28 +304,6 @@
     </div>
 </section>
 
-<section class="pb-5">
-    <div class="container">
-        <div class="card border-0 overflow-hidden" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f);">
-            <div class="row g-0 align-items-center">
-                <div class="col-lg-8">
-                    <div class="p-4 p-lg-5">
-                        <div class="section-kicker mb-2">Canal de contato com investidores</div>
-                        <h2 class="h3 fw-bold text-white mb-3">Precisa de apoio sobre documentos públicos ou comunicados?</h2>
-                        <p class="text-white-50 mb-0">
-                            Entre em contato com nossa equipe para esclarecimentos sobre publicações, informações institucionais e temas de relacionamento com investidores.
-                        </p>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="p-4 p-lg-5">
-                        <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-light btn-lg">Fale com RI</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 <?php $__env->stopSection(); ?>
 
 <?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /home/desktop/projects/bsi-capital/resources/views/site/ri.blade.php ENDPATH**/ ?>

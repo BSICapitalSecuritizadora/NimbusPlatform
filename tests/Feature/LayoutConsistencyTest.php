@@ -9,7 +9,7 @@ dataset('public-layout-routes', [
     'home' => [
         'site.home',
         [
-            'Securitização e crédito estruturado com rigor técnico, governança sólida e acompanhamento especializado em todas as etapas',
+            'Estruturação, emissão e gestão fiduciária de CRI, CRA e CR.',
             'Estruturas alinhadas ao ativo, ao setor e ao fluxo da operação',
             'Da estruturação à gestão: cobertura integral da operação',
         ],
@@ -32,7 +32,7 @@ dataset('public-layout-routes', [
     'partnerships' => [
         'site.partnerships',
         [
-            'Parcerias estruturadas para ampliar originação, distribuição e execução',
+            'Parcerias estruturadas para ampliar',
             'Modelos de parceria',
             'Vamos estruturar uma parceria com critério técnico e alinhamento comercial?',
         ],
@@ -49,7 +49,7 @@ dataset('public-layout-routes', [
         [
             'Relações com Investidores',
             'Repositório Institucional',
-            'Precisa de apoio sobre documentos públicos ou comunicados?',
+            'Repositório Institucional',
         ],
     ],
     'careers' => [

@@ -1,4 +1,4 @@
-<?php $__env->startSection('title', 'BSI Capital'); ?>
+<?php $__env->startSection('title', 'BSI Capital Securitizadora'); ?>
 
 <?php $__env->startSection('content'); ?>
 <section class="hero position-relative overflow-hidden">
@@ -14,7 +14,7 @@
                     A securitizadora que fica na operação do início ao fim.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    Securitização e crédito estruturado com rigor técnico, governança sólida e acompanhamento especializado em todas as etapas: da estruturação ao vencimento final.
+                    Estruturação, emissão e gestão fiduciária de CRI, CRA e CR. Protegemos os interesses de investidores e emissores com controle tecnológico e diligência técnica, da originação até a liquidação final.
                 </p>
 
                 <div class="d-grid d-sm-flex gap-3 mb-4">
@@ -108,13 +108,13 @@
         ?>
 
         <div class="row g-4">
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $industries; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$title, $desc, $img, $link]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $industries; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$industryTitle, $desc, $img, $link]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
                 <div class="col-md-6 col-xl-4">
                     <div class="card h-100 overflow-hidden position-relative border-0 shadow-sm card-hover" style="min-height: 420px;">
-                        <img src="<?php echo e($img); ?>" class="position-absolute w-100 h-100 object-fit-cover" alt="<?php echo e($title); ?>">
+                        <img src="<?php echo e($img); ?>" class="position-absolute w-100 h-100 object-fit-cover" alt="<?php echo e($industryTitle); ?>">
                         <div class="position-absolute w-100 h-100" style="background: linear-gradient(180deg, rgba(2, 9, 24, 0.05) 0%, rgba(0, 18, 51, 0.82) 74%, rgba(0, 18, 51, 0.96) 100%);"></div>
                         <div class="position-relative h-100 d-flex flex-column justify-content-end p-4 text-white">
-                            <h3 class="h4 fw-bold mb-3 text-white"><?php echo e($title); ?></h3>
+                            <h3 class="h4 fw-bold mb-3 text-white"><?php echo e($industryTitle); ?></h3>
                             <p class="mb-4 text-white-50"><?php echo e($desc); ?></p>
                             <div>
                                 <a href="<?php echo e($link); ?>" class="btn btn-light px-4">Explorar Solução</a>
@@ -135,7 +135,7 @@
         <div class="row align-items-end g-4 mb-5">
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Governança em Execução</div>
-                <h2 class="display-6 fw-bold mb-3">Controle, governança e precisão em cada etapa da operação</h2>
+                <h2 class="display-6 fw-bold mb-3">Tecnologia e diligência aplicadas na prática</h2>
                 <p class="text-muted mb-0">
                     Da estruturação ao monitoramento pós-emissão, atuamos com processos rigorosos, tecnologia proprietária e visão integrada para garantir transparência, rastreabilidade e segurança operacional.
                 </p>
@@ -148,13 +148,13 @@
         <?php
             $cases = [
                 [
-                    'title' => 'Estruturação de CRI',
+                    'title' => 'Desmobilização de portfólio imobiliário via CRI',
                     'desc' => 'Modelagem técnica integral, coordenação jurídica e financeira, controle de lastro e monitoramento ativo da operação até o vencimento final.',
                     'img' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'estruturacao-cri',
                 ],
                 [
-                    'title' => 'Gestão de Ativos e Documentos',
+                    'title' => 'Governança digital em operação estruturada',
                     'desc' => 'Ecosistema digital com acessos dedicados para emissores e investidores, integrando custódia de documentos e trilha de auditoria com total transparência.',
                     'img' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'gestao-de-documentos',
@@ -194,7 +194,7 @@
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Nossa missão</div>
                 <p class="fw-semibold mb-3" style="font-size: 1.05rem; color: var(--text); line-height: 1.6;">
-                    Prover soluções de securitização com alto padrão técnico e eficiência operacional, assegurando integridade e conformidade em todas as etapas do mercado de capitais.
+                    Viabilizar o acesso ao mercado de capitais por meio de estruturas de crédito robustas, atuando como o elo de segurança e governança entre quem produz e quem investe.
                 </p>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="result-chip">Governança corporativa</span>
@@ -219,15 +219,15 @@
                         <div class="section-kicker mb-2">Relacionamento institucional</div>
                         <h2 class="h2 fw-bold text-white mb-3">Entre em contato com a BSI Capital</h2>
                         <p class="text-white-50 mb-0" style="max-width: 640px;">
-                            Nossa equipe técnica está pronta para atuar na estruturação de operações, coordenação de ofertas ou relações com investidores, garantindo agilidade e suporte consultivo em cada contato.
+                            Traga sua operação para a BSI Capital. Converse diretamente com nossos especialistas em estruturação e gestão de risco.
                         </p>
                     </div>
                 </div>
                 <div class="col-lg-4">
                     <div class="p-4 p-lg-5 d-flex flex-column gap-3 align-items-start align-items-lg-stretch">
-                        <a href="<?php echo e(route('proposal.create')); ?>" class="btn btn-light btn-lg">Enviar Proposta</a>
+                        <a href="<?php echo e(route('proposal.create')); ?>" class="btn btn-light btn-lg">Falar com um Estruturador</a>
                         <a href="<?php echo e(route('site.contact')); ?>" class="text-white-50 text-decoration-none small" style="padding: 0.25rem 0;">
-                            ou fale com nossa equipe →
+                            ou avaliar viabilidade →
                         </a>
                     </div>
                 </div>

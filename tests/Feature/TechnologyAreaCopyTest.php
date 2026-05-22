@@ -19,7 +19,7 @@ it('renders the revised access audit copy on the technology area page', function
 it('renders the revised integrations copy on the technology area page', function () {
     $this->get(route('site.servicos.integracoes'))
         ->assertSuccessful()
-        ->assertSee('Integração para escala e eficiência')
+        ->assertSee('Integrações')
         ->assertSee('Conexão com Ecossistema')
-        ->assertSee('Arquitetura Flexível');
+        ->assertSee('Conectividade nativa com o ecossistema de mercado de capitais');
 });

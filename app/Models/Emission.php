@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -66,8 +68,8 @@ class Emission extends Model
     public const STATUS_OPTIONS = [
         'draft' => 'Em Elaboração',
         'default' => 'Default',
-        'active' => 'Ativa',
-        'closed' => 'Finalizada',
+        'active' => 'Em Distribuição',
+        'closed' => 'Liquidada',
     ];
 
     public const ISSUER_SITUATION_OPTIONS = [
@@ -293,6 +295,11 @@ class Emission extends Model
         return $this->hasMany(Guarantee::class);
     }
 
+    public function guaranteeSnapshots(): HasMany
+    {
+        return $this->hasMany(GuaranteeSnapshot::class);
+    }
+
     public function receivables(): HasMany
     {
         return $this->hasMany(Receivable::class);
@@ -311,6 +318,34 @@ class Emission extends Model
     public function integralizationHistories(): HasMany
     {
         return $this->hasMany(IntegralizationHistory::class);
+    }
+
+    public function requiresMonthlyGuaranteeSnapshotUpdate(?CarbonInterface $referenceDate = null): bool
+    {
+        if (! self::hasGuaranteeSnapshotsTable()) {
+            return false;
+        }
+
+        $referenceDate ??= now();
+
+        $latestSnapshot = $this->guaranteeSnapshots()
+            ->latest('reference_month')
+            ->first();
+
+        if (! $latestSnapshot instanceof GuaranteeSnapshot) {
+            return true;
+        }
+
+        if ($latestSnapshot->reference_month === null) {
+            return true;
+        }
+
+        return $latestSnapshot->reference_month->lt($referenceDate->copy()->startOfMonth());
+    }
+
+    public static function hasGuaranteeSnapshotsTable(): bool
+    {
+        return Schema::hasTable('guarantee_snapshots');
     }
 
     private function sumIntegralizationHistoriesQuantity(?IntegralizationHistory $ignoringIntegralizationHistory = null): float

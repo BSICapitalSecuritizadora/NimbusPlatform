@@ -129,7 +129,7 @@
 
 @push('scripts')
 <script src="https://unpkg.com/imask"></script>
-<script>
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
     document.addEventListener('DOMContentLoaded', function () {
         IMask(document.getElementById('phone_num'), { mask: '(00) 00000-0000' });
     });

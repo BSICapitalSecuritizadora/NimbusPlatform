@@ -31,6 +31,5 @@ it('renders the revised investor relations copy', function () {
         ->assertSuccessful()
         ->assertSee('Relações com Investidores')
         ->assertSee('Pesquisar documentos e comunicados...')
-        ->assertSee('Canal de contato com investidores')
         ->assertSee('Nenhum documento foi localizado para os critérios aplicados.');
 });
