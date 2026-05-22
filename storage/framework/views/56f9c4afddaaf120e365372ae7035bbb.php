@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Código de Acesso ao Portal - BSI Capital</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        /* Reset */
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-rspace: 0pt; mso-table-lspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+        body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #ece9e8; }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .email-body { background-color: #1a1a2e !important; }
+            .email-card { background-color: #16213e !important; }
+        }
+    </style>
+</head>
+<body style="margin:0; padding:0; background-color:#ece9e8; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased;">
+
+    <!-- Wrapper -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ece9e8;">
+        <tr>
+            <td align="center" style="padding:40px 16px;">
+
+                <!-- Main Card -->
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(9,27,35,0.12), 0 4px 16px rgba(9,27,35,0.06);">
+
+                    <!-- ═══════════════ HEADER ═══════════════ -->
+                    <tr>
+                        <td bgcolor="#091b23" style="background-color: #091b23; background: linear-gradient(135deg, #06151c 0%, #091b23 50%, #22424c 100%); padding:0;">
+                            <!-- Gold top accent line -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="height:4px; background: linear-gradient(90deg, #7b541e, #b4864a, #7b541e);"></td>
+                                </tr>
+                            </table>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:40px 40px 36px 40px; text-align:center;">
+                                        <img src="<?php echo e(asset('images/logo-bsi-email.png')); ?>"
+                                             alt="BSI Capital Securitizadora"
+                                             width="300"
+                                             style="display:inline-block; max-width:300px; height:auto;">
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- ═══════════════ BODY ═══════════════ -->
+                    <tr>
+                        <td style="background-color:#ffffff; padding:0;">
+
+                            <!-- Security banner -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:24px 40px; background-color:#f4eee6; border-bottom:1px solid #d7c09c;">
+                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="vertical-align:middle; padding-right:14px;">
+                                                    <!-- Shield icon (SVG-safe for email) -->
+                                                    <div style="width:40px; height:40px; background: linear-gradient(135deg, #b4864a 0%, #a06e28 100%); border-radius:10px; text-align:center; line-height:40px; font-size:20px;">
+                                                        &#128274;
+                                                    </div>
+                                                </td>
+                                                <td style="vertical-align:middle;">
+                                                    <div style="font-size:13px; font-weight:700; color:#1f2937; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">
+                                                        Gestão Documental Externa
+                                                    </div>
+                                                    <div style="font-size:13px; color:#6b7280; line-height:1.4;">
+                                                        Validação de identidade para acesso seguro
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Greeting + Message -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:36px 40px 0 40px;">
+                                        <p style="margin:0 0 20px 0; font-size:20px; font-weight:700; color:#091b23; line-height:1.3;">
+                                            Olá, <?php echo e(explode(' ', $user->full_name ?? 'Parceiro')[0]); ?>!
+                                        </p>
+                                        <p style="margin:0 0 32px 0; font-size:15px; line-height:1.7; color:#4b5563;">
+                                            Para darmos andamento à sua solicitação e envio de documentos com toda a segurança,
+                                            geramos o seu <strong style="color:#1f2937;">código único de validação</strong>.
+                                            Ele é pessoal e intransferível.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- ─── CODE BOX ─── -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:0 40px;">
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:12px; overflow:hidden; border:1px solid #e5e7eb;">
+                                            <!-- Code label header -->
+                                            <tr>
+                                                <td style="background-color:#f9fafb; padding:14px 24px; border-bottom:1px solid #e5e7eb;">
+                                                    <div style="font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:#6b7280; font-weight:600; text-align:center;">
+                                                        Seu Código de Acesso
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <!-- Code value -->
+                                            <tr>
+                                                <td style="background-color:#ffffff; padding:28px 24px; text-align:center;">
+                                                    <div style="font-family:'Courier New',Courier,monospace; font-size:32px; font-weight:700; color:#091b23; letter-spacing:4px; line-height:1;">
+                                                        <?php echo e($code); ?>
+
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <!-- Expiry footer -->
+                                            <tr>
+                                                <td style="background-color:#fefce8; padding:12px 24px; border-top:1px solid #fef08a;">
+                                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                        <tr>
+                                                            <td style="text-align:center;">
+                                                                <span style="font-size:12px; color:#854d0e;">
+                                                                    &#9200;&nbsp;
+                                                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($expiresAt): ?>
+                                                                        Válido até <strong><?php echo e($expiresAt->format('d/m/Y')); ?></strong> às <strong><?php echo e($expiresAt->format('H:i')); ?></strong>
+                                                                    <?php else: ?>
+                                                                        Este código expirará em breve
+                                                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- CTA Text -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:32px 40px 0 40px;">
+                                        <p style="margin:0 0 24px 0; font-size:15px; line-height:1.7; color:#4b5563; text-align:center;">
+                                            Clique no botão abaixo para acessar o Portal do Cliente<br>
+                                            e utilizar este código para entrar:
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- ─── CTA BUTTON ─── -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:0 40px; text-align:center;">
+                                        <!--[if mso]>
+                                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="<?php echo e($accessUrl); ?>" style="height:52px;v-text-anchor:middle;width:280px;" arcsize="50%" fillcolor="#091b23">
+                                            <w:anchorlock/>
+                                            <center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;">Acessar o Portal &rarr;</center>
+                                        </v:roundrect>
+                                        <![endif]-->
+                                        <!--[if !mso]><!-->
+                                        <a href="<?php echo e($accessUrl); ?>"
+                                           target="_blank"
+                                           style="display:inline-block; background-color: #091b23; background:linear-gradient(135deg, #06151c 0%, #091b23 100%); color:#e6e4e4; text-decoration:none; font-weight:700; font-size:15px; padding:16px 48px; border-radius:50px; letter-spacing:0.3px; box-shadow:0 4px 14px rgba(9,27,35,0.25); mso-hide:all;">
+                                            Acessar o Portal &rarr;
+                                        </a>
+                                        <!--<![endif]-->
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Fallback link -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:24px 40px 0 40px;">
+                                        <p style="margin:0 0 8px 0; font-size:12px; color:#9ca3af; text-align:center;">
+                                            Se o botão não funcionar, copie e cole este link no navegador:
+                                        </p>
+                                        <p style="margin:0; font-size:12px; color:#091b23; word-break:break-all; text-align:center; line-height:1.5;">
+                                            <a href="<?php echo e($accessUrl); ?>" style="color:#2563eb; text-decoration:underline;"><?php echo e($accessUrl); ?></a>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- ─── SECURITY TIPS ─── -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:32px 40px 0 40px;">
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc; border-radius:12px; border:1px solid #e5e7eb;">
+                                            <tr>
+                                                <td style="padding:20px 24px;">
+                                                    <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#6b7280; margin-bottom:12px;">
+                                                        &#128161; Dicas de segurança
+                                                    </div>
+                                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                        <tr>
+                                                            <td style="padding:4px 0; font-size:13px; color:#4b5563; line-height:1.5;">
+                                                                <span style="color:#a06e28; font-weight:bold; margin-right:6px;">&#10003;</span>
+                                                                Nunca compartilhe este código com terceiros
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td style="padding:4px 0; font-size:13px; color:#4b5563; line-height:1.5;">
+                                                                <span style="color:#a06e28; font-weight:bold; margin-right:6px;">&#10003;</span>
+                                                                A BSI Capital jamais solicitará seu código por telefone
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td style="padding:4px 0; font-size:13px; color:#4b5563; line-height:1.5;">
+                                                                <span style="color:#a06e28; font-weight:bold; margin-right:6px;">&#10003;</span>
+                                                                Acesse somente pelo link oficial fornecido neste e-mail
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Bottom spacing -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:36px 0 0 0;"></td>
+                                </tr>
+                            </table>
+
+                        </td>
+                    </tr>
+
+                    <!-- ═══════════════ FOOTER ═══════════════ -->
+                    <tr>
+                        <td style="background-color:#f9fafb; border-top:1px solid #e5e7eb; padding:0;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="padding:24px 40px; text-align:center;">
+                                        <p style="margin:0 0 8px 0; font-size:12px; color:#9ca3af; line-height:1.5;">
+                                            Este é um e-mail automático. Por favor, não responda.
+                                        </p>
+                                        <p style="margin:0 0 4px 0; font-size:12px; color:#9ca3af; line-height:1.5;">
+                                            &copy; <?php echo e(date('Y')); ?> BSI Capital Securitizadora S/A
+                                        </p>
+                                        <p style="margin:0; font-size:11px; color:#c4c8cc;">
+                                            Todos os direitos reservados
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                </table>
+                <!-- /Main Card -->
+
+            </td>
+        </tr>
+    </table>
+    <!-- /Wrapper -->
+
+</body>
+</html>
+<?php /**PATH /home/desktop/projects/bsi-capital/resources/views/emails/nimbus/access-code.blade.php ENDPATH**/ ?>
