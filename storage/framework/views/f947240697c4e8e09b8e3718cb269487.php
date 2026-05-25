@@ -1,8 +1,6 @@
-@extends('site.layout')
+<?php $__env->startSection('title', $emission->name . ' - Detalhes da Emissao - BSI Capital'); ?>
 
-@section('title', $emission->name . ' - Detalhes da Emissao - BSI Capital')
-
-@push('head')
+<?php $__env->startPush('head'); ?>
 <style>
     .emission-timeline-card {
         position: relative;
@@ -266,10 +264,10 @@
         box-shadow: 0 0 0 4px rgba(212,175,55,0.15);
     }
 </style>
-@endpush
+<?php $__env->stopPush(); ?>
 
-@section('content')
-@php
+<?php $__env->startSection('content'); ?>
+<?php
     $cspNonce = \Illuminate\Support\Facades\Vite::cspNonce();
 
     $statusPalette = match ($emission->status) {
@@ -344,7 +342,7 @@
         default => 'calc(' . $timelineProgressPercentage . '% - 0.5rem)',
     };
 
-@endphp
+?>
 
 <section class="hero position-relative overflow-hidden" style="padding-top: 4.75rem; padding-bottom: 4rem;">
     <div class="container position-relative">
@@ -352,26 +350,27 @@
             <div class="col-lg-8">
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                     <span class="badge px-3 py-2 text-uppercase">Detalhe da emissão</span>
-                    @if($emission->type)
-                        <span class="badge badge-type-{{ strtolower($emission->type) }} px-3 py-2">{{ $emission->type }}</span>
-                    @endif
-                    <span class="badge badge-status-{{ $emission->status }} px-3 py-2">
-                        {{ $statusPalette['label'] }}
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($emission->type): ?>
+                        <span class="badge badge-type-<?php echo e(strtolower($emission->type)); ?> px-3 py-2"><?php echo e($emission->type); ?></span>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <span class="badge badge-status-<?php echo e($emission->status); ?> px-3 py-2">
+                        <?php echo e($statusPalette['label']); ?>
+
                     </span>
                 </div>
 
                 <div class="d-flex flex-wrap align-items-center gap-4 mb-4">
-                    @if($emission->logo_path)
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($emission->logo_path): ?>
                         <div class="liquid-glass-logo d-inline-flex align-items-center justify-content-center px-4 py-3" style="min-height: 86px; min-width: 180px;">
-                            <img src="{{ Storage::disk($emission->logo_storage_disk)->url($emission->logo_path) }}" alt="{{ $emission->name }}" style="max-height: 52px; max-width: 180px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+                            <img src="<?php echo e(Storage::disk($emission->logo_storage_disk)->url($emission->logo_path)); ?>" alt="<?php echo e($emission->name); ?>" style="max-height: 52px; max-width: 180px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
                         </div>
-                    @endif
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <div>
-                        <h1 class="display-5 fw-bold mb-2">{{ $emission->name }}</h1>
+                        <h1 class="display-5 fw-bold mb-2"><?php echo e($emission->name); ?></h1>
                         <div class="d-flex flex-wrap gap-3 small text-white-50">
-                            <span>IF {{ $emission->if_code ?? '—' }}</span>
-                            <span>ISIN {{ $emission->isin_code ?? '—' }}</span>
-                            <span>Emissor: {{ $emission->issuer ?? '—' }}</span>
+                            <span>IF <?php echo e($emission->if_code ?? '—'); ?></span>
+                            <span>ISIN <?php echo e($emission->isin_code ?? '—'); ?></span>
+                            <span>Emissor: <?php echo e($emission->issuer ?? '—'); ?></span>
                         </div>
                     </div>
                 </div>
@@ -384,19 +383,19 @@
                     <div class="d-flex flex-column gap-3">
                         <div class="d-flex justify-content-between gap-3">
                             <span class="text-white-50">Número da emissão</span>
-                            <span class="fw-semibold text-white">{{ $emission->emission_number ?? '—' }}</span>
+                            <span class="fw-semibold text-white"><?php echo e($emission->emission_number ?? '—'); ?></span>
                         </div>
                         <div class="d-flex justify-content-between gap-3">
                             <span class="text-white-50">Série</span>
-                            <span class="fw-semibold text-white">{{ $emission->series ?? '—' }}</span>
+                            <span class="fw-semibold text-white"><?php echo e($emission->series ?? '—'); ?></span>
                         </div>
                         <div class="d-flex justify-content-between gap-3">
                             <span class="text-white-50">Tipo de oferta</span>
-                            <span class="fw-semibold text-white">{{ $emission->offer_type ?? '—' }}</span>
+                            <span class="fw-semibold text-white"><?php echo e($emission->offer_type ?? '—'); ?></span>
                         </div>
                         <div class="d-flex justify-content-between gap-3">
                             <span class="text-white-50">Segmento</span>
-                            <span class="fw-semibold text-white">{{ $emission->segment ?? '—' }}</span>
+                            <span class="fw-semibold text-white"><?php echo e($emission->segment ?? '—'); ?></span>
                         </div>
                     </div>
                 </div>
@@ -408,14 +407,14 @@
 <section class="py-5">
     <div class="container py-lg-4">
         <div class="row g-4 mb-4">
-            @foreach($summaryCards as $summaryCard)
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $summaryCards; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $summaryCard): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
                 <div class="col-sm-6 col-xl-3">
                     <div class="surface-card h-100 p-4">
-                        <div class="section-kicker mb-2">{{ $summaryCard['label'] }}</div>
-                        <div class="h4 fw-bold text-brand mb-0" style="line-height: 1.4;">{{ $summaryCard['value'] }}</div>
+                        <div class="section-kicker mb-2"><?php echo e($summaryCard['label']); ?></div>
+                        <div class="h4 fw-bold text-brand mb-0" style="line-height: 1.4;"><?php echo e($summaryCard['value']); ?></div>
                     </div>
                 </div>
-            @endforeach
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
         </div>
 
         <div class="surface-card emission-timeline-card p-4 p-lg-4 mb-4">
@@ -424,14 +423,14 @@
                     <div class="col-md-6">
                         <div class="emission-timeline-point">
                             <div class="emission-timeline-label">Data de Emissão</div>
-                            <div class="emission-timeline-value">{{ $emission->issue_date?->format('d/m/Y') ?? '—' }}</div>
+                            <div class="emission-timeline-value"><?php echo e($emission->issue_date?->format('d/m/Y') ?? '—'); ?></div>
                         </div>
                     </div>
 
                     <div class="col-md-6">
                         <div class="emission-timeline-point">
                             <div class="emission-timeline-label">Data de Vencimento</div>
-                            <div class="emission-timeline-value">{{ $emission->maturity_date?->format('d/m/Y') ?? '—' }}</div>
+                            <div class="emission-timeline-value"><?php echo e($emission->maturity_date?->format('d/m/Y') ?? '—'); ?></div>
                         </div>
                     </div>
                 </div>
@@ -439,11 +438,12 @@
                 <div class="d-flex flex-column align-items-xl-end gap-2">
                     <span
                         class="emission-timeline-status-badge"
-                        style="background: {{ $statusPalette['bg'] }}; border: 1px solid {{ $statusPalette['border'] }}; color: {{ $statusPalette['text'] }};"
+                        style="background: <?php echo e($statusPalette['bg']); ?>; border: 1px solid <?php echo e($statusPalette['border']); ?>; color: <?php echo e($statusPalette['text']); ?>;"
                     >
-                        {{ $timelineStatusLabel }}
+                        <?php echo e($timelineStatusLabel); ?>
+
                     </span>
-                    <span class="emission-timeline-progress-pill">{{ $timelineProgressLabel }}</span>
+                    <span class="emission-timeline-progress-pill"><?php echo e($timelineProgressLabel); ?></span>
                 </div>
             </div>
 
@@ -452,24 +452,24 @@
                     class="emission-timeline-track"
                     role="progressbar"
                     aria-label="Progresso da emissão"
-                    aria-valuenow="{{ $timelineProgressPercentage }}"
+                    aria-valuenow="<?php echo e($timelineProgressPercentage); ?>"
                     aria-valuemin="0"
                     aria-valuemax="100"
                 >
                     <div
                         class="emission-timeline-track-fill"
-                        style="width: {{ $timelineProgressPercentage }}%; min-width: {{ $timelineFillMinimumWidth }};"
+                        style="width: <?php echo e($timelineProgressPercentage); ?>%; min-width: <?php echo e($timelineFillMinimumWidth); ?>;"
                     ></div>
 
-                    @if($timelineIndicatorLeft !== null)
-                        <span class="emission-timeline-current-dot" style="left: {{ $timelineIndicatorLeft }};"></span>
-                    @endif
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($timelineIndicatorLeft !== null): ?>
+                        <span class="emission-timeline-current-dot" style="left: <?php echo e($timelineIndicatorLeft); ?>;"></span>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </div>
             </div>
 
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-2">
-                <div class="emission-timeline-meta">{{ $timelineElapsedLabel }}</div>
-                <div class="emission-timeline-meta text-lg-end">{{ $timelineRemainingLabel }}</div>
+                <div class="emission-timeline-meta"><?php echo e($timelineElapsedLabel); ?></div>
+                <div class="emission-timeline-meta text-lg-end"><?php echo e($timelineRemainingLabel); ?></div>
             </div>
         </div>
 
@@ -491,7 +491,7 @@
             </div>
 
             <div class="row g-4">
-                @foreach([
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = [
                     'Série' => $emission->series,
                     'Número da emissão' => $emission->emission_number,
                     'Emissor' => $emission->issuer,
@@ -507,14 +507,14 @@
                     'Quantidade emitida' => $emission->issued_quantity ? number_format((float) $emission->issued_quantity, 0, ',', '.') : null,
                     'Quantidade integralizada' => $emission->integralized_quantity ? number_format((float) $emission->integralized_quantity, 0, ',', '.') : null,
                     'Total emitido' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 0, ',', '.') : null,
-                ] as $label => $value)
+                ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $label => $value): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
                     <div class="col-sm-6 col-xl-4">
                         <div class="tech-data-card h-100 p-4">
-                            <div class="tech-data-label">{{ $label }}</div>
-                            <div class="tech-data-value">{{ $value ?: '—' }}</div>
+                            <div class="tech-data-label"><?php echo e($label); ?></div>
+                            <div class="tech-data-value"><?php echo e($value ?: '—'); ?></div>
                         </div>
                     </div>
-                @endforeach
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
             </div>
         </div>
 
@@ -528,21 +528,21 @@
             </div>
 
             <div class="tech-data-card p-4 mb-4" style="min-height: 360px;">
-                @if(isset($emission->payments) && $emission->payments->count() > 0)
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($emission->payments) && $emission->payments->count() > 0): ?>
                     <div style="position: relative; height: 320px; width: 100%;">
                         <canvas id="paymentsChart"></canvas>
                     </div>
-                @else
+                <?php else: ?>
                     <div class="d-flex align-items-center justify-content-center rounded-4 border border-brand-subtle text-muted text-center px-4" style="min-height: 320px; border-style: dashed !important;">
                         Nenhum dado de pagamento registrado até o momento.
                     </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
 
             <div class="row g-4">
                 <div class="col-lg-6">
                     <div class="tech-data-card h-100 p-4">
-                        @php
+                        <?php
                             $lastFiveDays = collect();
                             for ($i = 0; $i < 5; $i++) {
                                 $date = \Carbon\Carbon::today()->subDays($i);
@@ -553,55 +553,56 @@
                                 ]);
                             }
                             $todayPu = $lastFiveDays->first()['value'] ?? $emission->current_pu;
-                        @endphp
+                        ?>
 
                         <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
                             <div>
                                 <div class="section-kicker mb-1">PU atual</div>
-                                <div class="h4 fw-bold text-brand mb-0">{{ $todayPu ? 'R$ ' . number_format((float) $todayPu, 6, ',', '.') : '—' }}</div>
+                                <div class="h4 fw-bold text-brand mb-0"><?php echo e($todayPu ? 'R$ ' . number_format((float) $todayPu, 6, ',', '.') : '—'); ?></div>
                             </div>
                             <span class="badge badge-premium px-3 py-2">Últimos 5 dias</span>
                         </div>
 
                         <div class="d-flex flex-column gap-2">
-                            @foreach($lastFiveDays as $dayPu)
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $lastFiveDays; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $dayPu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
                                 <div class="d-flex justify-content-between gap-3 history-row px-3 py-2">
-                                    <span class="small text-muted">{{ $dayPu['date']->format('d/m/Y') }}</span>
-                                    <span class="small fw-semibold text-brand">{{ $dayPu['value'] ? 'R$ ' . number_format((float) $dayPu['value'], 6, ',', '.') : '—' }}</span>
+                                    <span class="small text-muted"><?php echo e($dayPu['date']->format('d/m/Y')); ?></span>
+                                    <span class="small fw-semibold text-brand"><?php echo e($dayPu['value'] ? 'R$ ' . number_format((float) $dayPu['value'], 6, ',', '.') : '—'); ?></span>
                                 </div>
-                            @endforeach
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-lg-6">
                     <div class="tech-data-card h-100 p-4">
-                        @php
+                        <?php
                             $integralizationHistory = $emission->integralizationHistories()->orderByDesc('date')->take(5)->get();
                             $totalIntegralization = $emission->integralizationHistories()->sum('quantity');
-                        @endphp
+                        ?>
 
                         <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
                             <div>
                                 <div class="section-kicker mb-1">Integralização</div>
                                 <div class="h4 fw-bold text-brand mb-0">
-                                    {{ $totalIntegralization ? number_format((float) $totalIntegralization, 0, ',', '.') : ($emission->integralization_status ?: '—') }}
+                                    <?php echo e($totalIntegralization ? number_format((float) $totalIntegralization, 0, ',', '.') : ($emission->integralization_status ?: '—')); ?>
+
                                 </div>
                             </div>
                             <span class="badge badge-premium px-3 py-2">Histórico</span>
                         </div>
 
                         <div class="d-flex flex-column gap-2">
-                            @forelse($integralizationHistory as $history)
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $integralizationHistory; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $history): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
                                 <div class="d-flex justify-content-between gap-3 history-row px-3 py-2">
-                                    <span class="small text-muted">{{ $history->date->format('d/m/Y') }}</span>
-                                    <span class="small fw-semibold text-brand">{{ number_format((float) $history->quantity, 0, ',', '.') }}</span>
+                                    <span class="small text-muted"><?php echo e($history->date->format('d/m/Y')); ?></span>
+                                    <span class="small fw-semibold text-brand"><?php echo e(number_format((float) $history->quantity, 0, ',', '.')); ?></span>
                                 </div>
-                            @empty
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                                 <div class="history-row px-3 py-4 small text-muted text-center">
                                     Nenhum evento de integralização registrado.
                                 </div>
-                            @endforelse
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -609,7 +610,7 @@
         </div>
 
         <div class="surface-card p-4 p-lg-5" id="documentos">
-            @php
+            <?php
                 $allCategories = [
                     'anuncios' => 'Anúncios',
                     'assembleias' => 'Assembleias',
@@ -621,7 +622,7 @@
                 ];
                 $documents = $emission->documents;
                 $documentDisplayLimit = 5;
-            @endphp
+            ?>
 
             <div class="row g-4 align-items-end mb-4">
                 <div class="col-lg-8">
@@ -629,65 +630,66 @@
                     <h2 class="h3 fw-bold text-brand mb-2">Repositório de Documentos e Atos da Operação</h2>
                     <p class="section-copy mb-0">Acesso integral ao histórico de fatos relevantes, relatórios e documentos regulatórios da emissão. Utilize os filtros para navegar com total transparência e rastreabilidade.</p>
                 </div>
-                @if($documents->count() > 0)
-                    @php
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($documents->count() > 0): ?>
+                    <?php
                         $docCategories = $documents->pluck('category')
                             ->filter()
                             ->unique()
                             ->sortBy(fn (string $category): string => strtolower($allCategories[$category] ?? $category));
-                    @endphp
+                    ?>
                     <div class="col-lg-4">
-                        @if($docCategories->isNotEmpty())
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($docCategories->isNotEmpty()): ?>
                             <label for="docCategoryFilter" class="form-label tech-data-label">Categoria</label>
-                            <select id="docCategoryFilter" class="form-select shadow-none doc-filter-select" data-limit="{{ $documentDisplayLimit }}">
+                            <select id="docCategoryFilter" class="form-select shadow-none doc-filter-select" data-limit="<?php echo e($documentDisplayLimit); ?>">
                                 <option value="">Todas</option>
-                                @foreach($docCategories as $category)
-                                    <option value="{{ $category }}">{{ $allCategories[$category] ?? ucfirst($category) }}</option>
-                                @endforeach
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $docCategories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
+                                    <option value="<?php echo e($category); ?>"><?php echo e($allCategories[$category] ?? ucfirst($category)); ?></option>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                             </select>
-                        @endif
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
 
-            @if($documents->count() > 0)
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($documents->count() > 0): ?>
                 <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
                     <div class="small text-muted">
-                        @if($documents->count() > $documentDisplayLimit)
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($documents->count() > $documentDisplayLimit): ?>
                             Exibindo os documentos mais recentes por padrão. Utilize o filtro para aprofundar a consulta.
-                        @else
-                            {{ $documents->count() }} documento(s) disponível(is) para consulta técnica e download.
-                        @endif
+                        <?php else: ?>
+                            <?php echo e($documents->count()); ?> documento(s) disponível(is) para consulta técnica e download.
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
                 </div>
 
                 <div class="d-grid gap-3 d-lg-none">
-                    @foreach($documents as $index => $doc)
-                        <article class="tech-data-card p-4 emission-doc-card doc-entry" data-category="{{ $doc->category }}" data-index="{{ $index }}" style="{{ $index >= $documentDisplayLimit ? 'display: none;' : '' }}">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $documents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $doc): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
+                        <article class="tech-data-card p-4 emission-doc-card doc-entry" data-category="<?php echo e($doc->category); ?>" data-index="<?php echo e($index); ?>" style="<?php echo e($index >= $documentDisplayLimit ? 'display: none;' : ''); ?>">
                             <div class="d-flex flex-column gap-3">
                                 <div>
-                                    <div class="small text-muted mb-2">{{ optional($doc->published_at)->format('d/m/Y') ?? '—' }}</div>
-                                    <div class="fw-semibold text-brand mb-2">{{ $doc->title }}</div>
+                                    <div class="small text-muted mb-2"><?php echo e(optional($doc->published_at)->format('d/m/Y') ?? '—'); ?></div>
+                                    <div class="fw-semibold text-brand mb-2"><?php echo e($doc->title); ?></div>
 
                                     <div class="d-flex flex-wrap gap-2">
-                                        @if($doc->category)
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($doc->category): ?>
                                             <span class="badge badge-premium px-3 py-2">
-                                                {{ $allCategories[$doc->category] ?? ucfirst($doc->category) }}
+                                                <?php echo e($allCategories[$doc->category] ?? ucfirst($doc->category)); ?>
+
                                             </span>
-                                        @endif
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </div>
                                 </div>
 
-                                @if($doc->description)
-                                    <div class="small text-muted">{{ $doc->description }}</div>
-                                @endif
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($doc->description): ?>
+                                    <div class="small text-muted"><?php echo e($doc->description); ?></div>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                                <a href="{{ Storage::disk($doc->resolved_storage_disk)->url($doc->file_path) }}" target="_blank" class="btn doc-action-btn text-center">
+                                <a href="<?php echo e(Storage::disk($doc->resolved_storage_disk)->url($doc->file_path)); ?>" target="_blank" class="btn doc-action-btn text-center">
                                     Baixar
                                 </a>
                             </div>
                         </article>
-                    @endforeach
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                 </div>
 
                 <div class="document-table-container d-none d-lg-block">
@@ -700,43 +702,44 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($documents as $index => $doc)
-                                <tr class="doc-entry" data-category="{{ $doc->category }}" data-index="{{ $index }}" style="{{ $index >= $documentDisplayLimit ? 'display: none;' : '' }}">
-                                    <td class="text-muted">{{ optional($doc->published_at)->format('d/m/Y') ?? '—' }}</td>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $documents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $doc): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
+                                <tr class="doc-entry" data-category="<?php echo e($doc->category); ?>" data-index="<?php echo e($index); ?>" style="<?php echo e($index >= $documentDisplayLimit ? 'display: none;' : ''); ?>">
+                                    <td class="text-muted"><?php echo e(optional($doc->published_at)->format('d/m/Y') ?? '—'); ?></td>
                                     <td>
-                                        <div class="fw-semibold text-brand mb-1">{{ $doc->title }}</div>
+                                        <div class="fw-semibold text-brand mb-1"><?php echo e($doc->title); ?></div>
                                         <div class="d-flex flex-wrap align-items-center gap-2">
-                                            @if($doc->category)
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($doc->category): ?>
                                                 <span class="badge badge-premium px-3 py-1">
-                                                    {{ $allCategories[$doc->category] ?? ucfirst($doc->category) }}
+                                                    <?php echo e($allCategories[$doc->category] ?? ucfirst($doc->category)); ?>
+
                                                 </span>
-                                            @endif
-                                            @if($doc->description)
-                                                <span class="small text-muted">{{ $doc->description }}</span>
-                                            @endif
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($doc->description): ?>
+                                                <span class="small text-muted"><?php echo e($doc->description); ?></span>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         </div>
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ Storage::disk($doc->resolved_storage_disk)->url($doc->file_path) }}" target="_blank" class="btn doc-action-btn w-100">
+                                        <a href="<?php echo e(Storage::disk($doc->resolved_storage_disk)->url($doc->file_path)); ?>" target="_blank" class="btn doc-action-btn w-100">
                                             Baixar
                                         </a>
                                     </td>
                                 </tr>
-                            @endforeach
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                         </tbody>
                     </table>
                 </div>
-            @else
+            <?php else: ?>
                 <div class="surface-card-soft p-5 text-center text-muted">
                     Nenhum documento disponível para esta operação.
                 </div>
-            @endif
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </div>
 </section>
 
-@push('scripts')
-<script nonce="{{ $cspNonce }}">
+<?php $__env->startPush('scripts'); ?>
+<script nonce="<?php echo e($cspNonce); ?>">
 document.addEventListener('DOMContentLoaded', function() {
     const tabLinks = document.querySelectorAll('#emissionTabs .nav-link');
 
@@ -775,9 +778,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-@if(isset($emission->payments) && $emission->payments->count() > 0)
+<?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($emission->payments) && $emission->payments->count() > 0): ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script nonce="{{ $cspNonce }}">
+<script nonce="<?php echo e($cspNonce); ?>">
 document.addEventListener('DOMContentLoaded', function() {
     const chartElement = document.getElementById('paymentsChart');
 
@@ -785,7 +788,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    const labels = {!! json_encode($emission->payments->pluck('payment_date')->map(fn ($date) => $date->format('d/m/Y'))) !!};
+    const labels = <?php echo json_encode($emission->payments->pluck('payment_date')->map(fn ($date) => $date->format('d/m/Y'))); ?>;
 
     new Chart(chartElement, {
         type: 'bar',
@@ -794,28 +797,28 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [
                 {
                     label: 'Prêmio',
-                    data: {!! json_encode($emission->payments->pluck('premium_value')) !!},
+                    data: <?php echo json_encode($emission->payments->pluck('premium_value')); ?>,
                     backgroundColor: '#a06e28',
                     borderRadius: 6,
                     barPercentage: 0.52,
                 },
                 {
                     label: 'Juros',
-                    data: {!! json_encode($emission->payments->pluck('interest_value')) !!},
+                    data: <?php echo json_encode($emission->payments->pluck('interest_value')); ?>,
                     backgroundColor: '#64748b',
                     borderRadius: 6,
                     barPercentage: 0.52,
                 },
                 {
                     label: 'Amortização Extraordinária',
-                    data: {!! json_encode($emission->payments->pluck('extra_amortization_value')) !!},
+                    data: <?php echo json_encode($emission->payments->pluck('extra_amortization_value')); ?>,
                     backgroundColor: '#1d3fb8',
                     borderRadius: 6,
                     barPercentage: 0.52,
                 },
                 {
                     label: 'Amortização',
-                    data: {!! json_encode($emission->payments->pluck('amortization_value')) !!},
+                    data: <?php echo json_encode($emission->payments->pluck('amortization_value')); ?>,
                     backgroundColor: '#091b23',
                     borderRadius: 6,
                     barPercentage: 0.52,
@@ -908,7 +911,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-@endif
+<?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-@endpush
-@endsection
+<?php $__env->stopPush(); ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/emission-detail.blade.php ENDPATH**/ ?>
