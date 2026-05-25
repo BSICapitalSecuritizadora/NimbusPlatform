@@ -12,6 +12,7 @@ use App\Models\ExpenseServiceProviderType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Select;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -36,7 +37,9 @@ it('shows filters for operation and category on the expenses list page', functio
     $this->actingAs(makeExpenseAdminUser());
 
     Livewire::test(ListExpenses::class)
-        ->assertTableFilterExists('emission_id')
+        ->assertTableFilterExists('emission_id', function (SelectFilter $filter): bool {
+            return $filter->isMultiple();
+        })
         ->assertTableFilterExists('category');
 });
 
@@ -186,6 +189,43 @@ it('filters expenses by operation', function () {
         ->filterTable('emission_id', $selectedEmission->id)
         ->assertCanSeeTableRecords([$selectedExpense])
         ->assertCanNotSeeTableRecords([$otherExpense]);
+});
+
+it('filters expenses by multiple operations', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $firstEmission = Emission::factory()->create([
+        'name' => 'CRI Conviva',
+    ]);
+    $secondEmission = Emission::factory()->create([
+        'name' => 'CRI Atlas',
+    ]);
+    $thirdEmission = Emission::factory()->create([
+        'name' => 'CRI Boreal',
+    ]);
+    $serviceProvider = ExpenseServiceProvider::factory()->create();
+
+    $firstExpense = Expense::factory()->create([
+        'emission_id' => $firstEmission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Servicer',
+    ]);
+    $secondExpense = Expense::factory()->create([
+        'emission_id' => $secondEmission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Servicer',
+    ]);
+    $thirdExpense = Expense::factory()->create([
+        'emission_id' => $thirdEmission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Engenharia',
+    ]);
+
+    Livewire::test(ListExpenses::class)
+        ->assertCanSeeTableRecords([$firstExpense, $secondExpense, $thirdExpense])
+        ->filterTable('emission_id', [$firstEmission->id, $secondEmission->id])
+        ->assertCanSeeTableRecords([$firstExpense, $secondExpense])
+        ->assertCanNotSeeTableRecords([$thirdExpense]);
 });
 
 it('filters expenses by category', function () {

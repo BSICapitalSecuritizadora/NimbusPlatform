@@ -57,6 +57,7 @@ class ExpensesTable
             ->filters([
                 SelectFilter::make('emission_id')
                     ->label('Operação')
+                    ->multiple()
                     ->relationship('emission', 'name')
                     ->searchable()
                     ->preload(),
