@@ -1,6 +1,6 @@
 @extends('site.layout')
 
-@section('title', 'CR (futuro) — BSI Capital')
+@section('title', 'CR — BSI Capital')
 
 @section('content')
 <!-- Hero Section -->
