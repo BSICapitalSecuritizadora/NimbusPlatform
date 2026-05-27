@@ -207,7 +207,7 @@
                         <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqCooperativa">
                             <div class="accordion-body px-0 text-muted">
                                 O Certificado de Direitos Creditórios do Agronegócio (CDCA) é um título emitido pela própria cooperativa que serve de base para o CRA. Ele permite "empacotar" milhares de CPRs dos cooperados de forma eficiente, simplificando a gestão do lastro e facilitando o acesso ao investidor de mercado.
-                            </button>
+                            </div>
                         </div>
                     </div>
                     <!-- FAQ 3 -->

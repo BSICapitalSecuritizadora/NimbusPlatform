@@ -101,6 +101,41 @@ it('filters calendar events by operation and category', function () {
         )->toBeTrue();
 });
 
+it('builds quarterly payment events only for matching months', function () {
+    $emission = Emission::factory()->create([
+        'name' => 'CRI Trimestral',
+    ]);
+    $serviceProvider = ExpenseServiceProvider::factory()->create([
+        'name' => 'BSI Capital',
+    ]);
+
+    Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Engenharia',
+        'amount' => 1200,
+        'period' => Expense::PERIOD_QUARTERLY,
+        'start_date' => '2026-02-10',
+        'end_date' => '2026-11-10',
+    ]);
+
+    $aprilCalendar = app(BuildExpenseCalendar::class)->handle('2026-04');
+    $mayCalendar = app(BuildExpenseCalendar::class)->handle('2026-05');
+
+    expect($aprilCalendar['summary']['event_count'])->toBe(0)
+        ->and($mayCalendar['summary']['event_count'])->toBe(1)
+        ->and($mayCalendar['summary']['total_amount'])->toBe('R$ 1.200,00')
+        ->and(
+            collect($mayCalendar['weeks'])
+                ->flatten(1)
+                ->flatMap(fn (array $day): array => $day['events'])
+                ->contains(fn (array $event): bool => $event['date'] === '2026-05-10'
+                    && $event['operation'] === 'CRI Trimestral'
+                    && $event['category'] === 'Engenharia'
+                    && $event['amount_label'] === 'R$ 1.200,00')
+        )->toBeTrue();
+});
+
 it('renders scheduled payment events on the expense calendar page', function () {
     $this->actingAs(makeExpenseCalendarAdminUser());
 
