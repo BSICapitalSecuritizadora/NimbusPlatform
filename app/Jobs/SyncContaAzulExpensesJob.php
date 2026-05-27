@@ -20,8 +20,7 @@ class SyncContaAzulExpensesJob implements ShouldQueue
 
     public function handle(ContaAzulClient $client): void
     {
-        $lookbackDays = config('conta-azul.sync_lookback_days', 60);
-        $from = now()->subDays($lookbackDays)->toDateString();
+        $from = config('conta-azul.sync_start_date', '2025-01-01');
         $to = now()->addYear()->toDateString();
 
         $funds = Fund::query()

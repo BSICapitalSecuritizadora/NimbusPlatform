@@ -34,6 +34,20 @@ class ExpensesTable
 
                 TextColumn::make('amount')
                     ->label('Valor')
+                    ->state(function (\App\Models\Expense $record): float {
+                        $latestHistory = $record->histories()
+                            ->orderByDesc('due_date')
+                            ->first();
+
+                        if ($latestHistory !== null) {
+                            return (float) $record->histories()
+                                ->whereYear('due_date', $latestHistory->due_date->year)
+                                ->whereMonth('due_date', $latestHistory->due_date->month)
+                                ->sum('amount');
+                        }
+
+                        return (float) $record->amount;
+                    })
                     ->money('BRL')
                     ->sortable(),
 

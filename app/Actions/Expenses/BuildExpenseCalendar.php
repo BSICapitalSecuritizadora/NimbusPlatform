@@ -90,49 +90,35 @@ class BuildExpenseCalendar
         return now()->toImmutable()->startOfMonth();
     }
 
-    /**
-     * @return Collection<int, array{
-     *     id: string,
-     *     date: string,
-     *     amount: float,
-     *     operation: string,
-     *     category: string,
-     *     service_provider: string,
-     *     amount_label: string,
-     *     period_label: string
-     * }>
-     */
     protected function buildEvents(CarbonImmutable $monthStart, CarbonImmutable $monthEnd, array $filters = []): Collection
     {
-        return Expense::query()
-            ->with(['emission', 'serviceProvider'])
-            ->whereDate('start_date', '<=', $monthEnd->toDateString())
-            ->where(function ($query) use ($monthStart): void {
-                $query
-                    ->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $monthStart->toDateString());
+        return \App\Models\ExpenseHistory::query()
+            ->with(['expense.emission', 'expense.serviceProvider'])
+            ->whereDate('due_date', '>=', $monthStart->toDateString())
+            ->whereDate('due_date', '<=', $monthEnd->toDateString())
+            ->whereHas('expense', function ($query) use ($filters): void {
+                $query->when(
+                    filled($filters['emission_id'] ?? null),
+                    fn ($q): mixed => $q->where('emission_id', $filters['emission_id']),
+                )->when(
+                    filled($filters['category'] ?? null),
+                    fn ($q): mixed => $q->where('category', $filters['category']),
+                );
             })
-            ->when(
-                filled($filters['emission_id'] ?? null),
-                fn ($query): mixed => $query->where('emission_id', $filters['emission_id']),
-            )
-            ->when(
-                filled($filters['category'] ?? null),
-                fn ($query): mixed => $query->where('category', $filters['category']),
-            )
             ->get()
-            ->flatMap(function (Expense $expense) use ($monthStart, $monthEnd): Collection {
-                return collect($this->resolveExpenseOccurrences($expense, $monthStart, $monthEnd))
-                    ->map(fn (CarbonImmutable $occurrence): array => [
-                        'id' => "expense-{$expense->getKey()}-{$occurrence->toDateString()}",
-                        'date' => $occurrence->toDateString(),
-                        'amount' => round((float) $expense->amount, 2),
-                        'operation' => (string) ($expense->emission?->name ?? 'Operação sem nome'),
-                        'category' => $expense->category,
-                        'service_provider' => (string) ($expense->serviceProvider?->name ?? 'Prestador não informado'),
-                        'amount_label' => $this->formatCurrency($expense->amount),
-                        'period_label' => Expense::PERIOD_OPTIONS[$expense->period] ?? $expense->period,
-                    ]);
+            ->map(function (\App\Models\ExpenseHistory $history): array {
+                $expense = $history->expense;
+                
+                return [
+                    'id' => "expense-history-{$history->getKey()}",
+                    'date' => $history->due_date->toDateString(),
+                    'amount' => round((float) $history->amount, 2),
+                    'operation' => (string) ($expense->emission?->name ?? 'Operação sem nome'),
+                    'category' => $expense->category,
+                    'service_provider' => (string) ($expense->serviceProvider?->name ?? 'Prestador não informado'),
+                    'amount_label' => $this->formatCurrency($history->amount),
+                    'period_label' => Expense::PERIOD_OPTIONS[$expense->period] ?? $expense->period,
+                ];
             })
             ->sortBy([
                 ['date', 'asc'],
@@ -140,47 +126,6 @@ class BuildExpenseCalendar
                 ['category', 'asc'],
             ])
             ->values();
-    }
-
-    /**
-     * @return array<int, CarbonImmutable>
-     */
-    protected function resolveExpenseOccurrences(Expense $expense, CarbonImmutable $monthStart, CarbonImmutable $monthEnd): array
-    {
-        $seriesStart = CarbonImmutable::instance($expense->start_date)->startOfDay();
-        $seriesEnd = $expense->end_date
-            ? CarbonImmutable::instance($expense->end_date)->endOfDay()
-            : $seriesStart->endOfDay();
-
-        if ($expense->period === Expense::PERIOD_SINGLE) {
-            return $seriesStart->betweenIncluded($monthStart, $monthEnd) ? [$seriesStart] : [];
-        }
-
-        $intervalInMonths = Expense::periodIntervalInMonths($expense->period);
-
-        if (($intervalInMonths === null) || $seriesStart->gt($monthEnd) || $seriesEnd->lt($monthStart)) {
-            return [];
-        }
-
-        $monthsDiff = max(0, $seriesStart->diffInMonths($monthStart));
-        $occurrenceIndex = max(0, intdiv($monthsDiff, $intervalInMonths) - 1);
-        $occurrences = [];
-
-        while (true) {
-            $occurrence = $seriesStart->addMonthsNoOverflow($occurrenceIndex * $intervalInMonths);
-
-            if ($occurrence->gt($seriesEnd) || $occurrence->gt($monthEnd)) {
-                break;
-            }
-
-            if ($occurrence->gte($monthStart)) {
-                $occurrences[] = $occurrence;
-            }
-
-            $occurrenceIndex++;
-        }
-
-        return $occurrences;
     }
 
     protected function formatCurrency(float|string|null $amount): string

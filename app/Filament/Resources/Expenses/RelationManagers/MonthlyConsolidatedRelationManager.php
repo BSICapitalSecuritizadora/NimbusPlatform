@@ -34,6 +34,7 @@ class MonthlyConsolidatedRelationManager extends RelationManager
                     ->selectRaw('COUNT(*) as total_payments')
                     ->selectRaw('MIN(id) as id')
                     ->groupByRaw("DATE_FORMAT(due_date, '%Y-%m-01')")
+                    ->where('due_date', '>=', '2025-01-01')
                     ->reorder()
             )
             ->columns([
