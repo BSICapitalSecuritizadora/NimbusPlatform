@@ -13,11 +13,11 @@
                     Capital Estratégico para <span style="color: var(--gold);">Cooperativas</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Soluções de financiamento estruturado que otimizam o caixa, diversificam as fontes de funding e garantem liquidez imediata para o suporte aos cooperados.
+                    Estruturas de CRA e CDCA desenhadas para cooperativas, integrando a segurança do Ato Cooperativo à eficiência do mercado de capitais sob as diretrizes da OCB.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Consultar viabilidade estrutural
+                        Otimizar Funding da Cooperativa
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="<?php echo e(route('site.emissions')); ?>?type=CRA" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -119,6 +119,129 @@
     </div>
 </section>
 
+<!-- Ciclo de Liquidez do Cooperado -->
+<section class="py-5 bg-light border-top">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <h2 class="h3 fw-bold text-dark mb-4">Eficiência no Fomento Associativo</h2>
+                <p class="text-muted mb-4">A securitização funciona como um motor de liquidez que conecta a força da produção cooperada ao vigor do mercado de capitais.</p>
+                
+                <div class="d-flex flex-column gap-4">
+                    <div class="d-flex gap-3">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
+                        <div>
+                            <h5 class="h6 fw-bold mb-1">Captação via CRA/CDCA</h5>
+                            <p class="small text-muted mb-0">A cooperativa acessa o investidor final, reduzindo spreads bancários e diversificando as fontes de financiamento.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <div>
+                            <h5 class="h6 fw-bold mb-1">Suporte ao Cooperado</h5>
+                            <p class="small text-muted mb-0">Com caixa reforçado, a cooperativa antecipa pagamentos de safra ou fornece insumos com taxas mais competitivas.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                        <div>
+                            <h5 class="h6 fw-bold mb-1">Ratings e Auditoria (Big Four)</h5>
+                            <p class="small text-muted mb-0">Estruturamos a operação para atender aos mais altos padrões de transparência exigidos por agências de rating e auditorias externas.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="position-relative p-4 bg-white shadow-sm rounded-4 border">
+                    <div class="text-brand fw-bold small text-uppercase mb-3" style="letter-spacing: 0.05em;">Segurança Fiduciária</div>
+                    <h3 class="h4 fw-bold mb-3">Preservação do Ato Cooperativo</h3>
+                    <p class="text-muted">Nossa modelagem técnica garante que a securitização de recebíveis não descaracterize a natureza do **Ato Cooperativo (Lei 5.764/71)**. Protegemos a eficiência tributária da cooperativa, garantindo que o lastro estruturado em CPRs e CDCAs mantenha a não incidência de impostos sobre a base associativa.</p>
+                    <div style="height: 2px; width: 60px; background: var(--gold);" class="my-4"></div>
+                    <p class="small text-muted mb-0 font-italic">*Conformidade total com as normas da OCB e regulamentação da CVM.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5 bg-white">
+    <div class="container py-5">
+        <div class="row g-5">
+            <div class="col-lg-4">
+                <div class="pe-lg-4">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Governança Cooperativa</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Excelência no Associativismo</h2>
+                    <p class="text-muted mb-4">Esclarecemos os pontos críticos sobre estruturação financeira para o modelo cooperativista.</p>
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-sm px-4 py-2">Falar com Consultoria Agro</a>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="accordion accordion-flush custom-accordion" id="faqCooperativa">
+                    <!-- FAQ 1 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                01. Como a BSI garante a segurança fiscal do Ato Cooperativo?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqCooperativa">
+                            <div class="accordion-body px-0 text-muted">
+                                Realizamos uma blindagem jurídica na estruturação do lastro para garantir que a cessão dos créditos mercantil-cooperativos não seja interpretada como ato comercial visando lucro, preservando assim a não incidência de tributos como PIS e COFINS sobre as transações entre cooperativa e associado.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 2 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                02. Qual o papel do CDCA na securitização da cooperativa?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqCooperativa">
+                            <div class="accordion-body px-0 text-muted">
+                                O Certificado de Direitos Creditórios do Agronegócio (CDCA) é um título emitido pela própria cooperativa que serve de base para o CRA. Ele permite "empacotar" milhares de CPRs dos cooperados de forma eficiente, simplificando a gestão do lastro e facilitando o acesso ao investidor de mercado.
+                            </button>
+                        </div>
+                    </div>
+                    <!-- FAQ 3 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                03. Como lidamos com a pulverização do lastro (centenas de cooperados)?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqCooperativa">
+                            <div class="accordion-body px-0 text-muted">
+                                Utilizamos tecnologia de monitoramento de risco que analisa a concentração por cultura, região e perfil do associado. Isso permite que mesmo uma carteira com milhares de pequenos produtores tenha um rating de crédito elevado, pois o risco é mitigado pela diversificação da base.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 4 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                04. A BSI auxilia no processo de obtenção de Rating?
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqCooperativa">
+                            <div class="accordion-body px-0 text-muted">
+                                Sim. Atuamos na estruturação da governança e na preparação do fluxo informacional para as agências de risco (Fitch, S&P, Moody's). Uma cooperativa com balanço auditado por Big Four e rating de primeira linha consegue reduzir drasticamente seu custo de capital no mercado.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Outros segmentos do agronegócio -->
 <section class="py-5 border-top" style="background-color: var(--bg);">
     <div class="container py-4">
@@ -159,6 +282,24 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+    }
+
+    .custom-accordion .accordion-button:not(.collapsed) {
+        box-shadow: none;
+        color: var(--brand);
+    }
+
+    .custom-accordion .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .custom-accordion .accordion-button::after {
+        background-size: 1rem;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
     }
 </style>
 <?php $__env->stopPush(); ?>

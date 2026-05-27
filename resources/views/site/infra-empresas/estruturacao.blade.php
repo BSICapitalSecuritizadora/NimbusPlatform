@@ -15,11 +15,11 @@
                     Estruturação <br><span style="color: var(--gold);">sob Medida</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Modelagem financeira e jurídica personalizada para operações que exigem arquitetura de crédito além dos instrumentos padronizados — Debêntures, Notas Comerciais e veículos híbridos, da tese inicial ao fechamento, com coordenação regulatória integrada.
+                    Engenharia financeira para ativos atípicos e teses de investimento complexas. Convertemos contratos complexos em estruturas de capital eficientes com segurança fiduciária.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Consultar Especialista
+                        Avaliar Viabilidade de Ativos Atípicos
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -121,6 +121,115 @@
     </div>
 </section>
 
+<!-- Matriz de Ativos e Soluções Tailor-Made -->
+<section class="py-5 bg-light border-top">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h2 class="h3 fw-bold text-dark mb-2">Matriz de Ativos Atípicos</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Estruturamos operações onde o crédito tradicional não alcança, utilizando modelagem avançada para colaterais complexos.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="h-100 p-4 bg-white rounded-4 shadow-sm border-0 card-hover">
+                    <div class="text-brand fw-bold mb-3 fs-5">BTS & Sale-Leaseback</div>
+                    <p class="small text-muted mb-0">Securitização de contratos de aluguel atípicos de longo prazo para galpões logísticos e plantas industriais.</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="h-100 p-4 bg-white rounded-4 shadow-sm border-0 card-hover">
+                    <div class="text-brand fw-bold mb-3 fs-5">Ativos Judiciais</div>
+                    <p class="small text-muted mb-0">Antecipação estratégica de precatórios e direitos creditórios homologados com modelagem probabilística.</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="h-100 p-4 bg-white rounded-4 shadow-sm border-0 card-hover">
+                    <div class="text-brand fw-bold mb-3 fs-5">Recebíveis de Saúde</div>
+                    <p class="small text-muted mb-0">Monetização de fluxos de planos de saúde, SUS e convênios para hospitais e redes de medicina diagnóstica.</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="h-100 p-4 bg-white rounded-4 shadow-sm border-0 card-hover">
+                    <div class="text-brand fw-bold mb-3 fs-5">Telecom & Infra</div>
+                    <p class="small text-muted mb-0">Estruturação de recebíveis de compartilhamento de torres, fibra óptica e infraestrutura de rede.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5 bg-white">
+    <div class="container py-5">
+        <div class="row g-5">
+            <div class="col-lg-4">
+                <div class="pe-lg-4">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Engenharia Fiduciária</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Arquitetura de Crédito Complexa</h2>
+                    <p class="text-muted mb-4">Esclarecemos os aspectos técnicos da modelagem e execução de operações sob medida.</p>
+                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Consultar Tese de Estruturação</a>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="accordion accordion-flush custom-accordion" id="faqEstruturacao">
+                    <!-- FAQ 1 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                01. Qual o diferencial da modelagem financeira da BSI para ativos atípicos?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqEstruturacao">
+                            <div class="accordion-body px-0 text-muted">
+                                Utilizamos modelagem estocástica e simulações de estresse (Stress Test) para precificar ativos com fluxos de caixa incertos, como ativos judiciais ou contratos de performance. Isso garante que a estrutura tenha colchões de liquidez adequados para suportar cenários adversos sem comprometer o pagamento aos investidores.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 2 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                02. Qual o prazo médio (Time-to-Market) para uma estruturação sob medida?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqEstruturacao">
+                            <div class="accordion-body px-0 text-muted">
+                                Devido à complexidade jurídica e regulatória, o ciclo completo — da definição da tese ao fechamento — leva em média de 60 a 90 dias. Esse prazo inclui a auditoria do lastro, o registro nos órgãos competentes (CVM/ANBIMA) e a coordenação da distribuição junto aos investidores.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 3 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                03. Como é tratada a complexidade jurídica e fiscal em veículos híbridos?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqEstruturacao">
+                            <div class="accordion-body px-0 text-muted">
+                                Atuamos em conjunto com consultores tributários para garantir a eficiência fiscal da operação, explorando regimes como o Patrimônio de Afetação e a segregação fiduciária. Nos veículos híbridos (ex: CR + Debênture), a BSI coordena a harmonização dos contratos para que as garantias sejam compartilhadas ou segregadas conforme o apetite de cada tranche.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 4 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                04. A BSI estrutura operações para empresas em Special Situations?
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqEstruturacao">
+                            <div class="accordion-body px-0 text-muted">
+                                Sim. Temos expertise em modelar créditos para empresas em processos de recuperação ou reestruturação de dívida, utilizando ativos segregados para gerar liquidez nova (*fresh money*) através de instrumentos securitizados que isolam o risco do ativo do risco da empresa mãe.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Outros segmentos Infra & Empresas -->
 <section class="py-5 border-top" style="background-color: var(--bg);">
     <div class="container py-4">
@@ -161,6 +270,24 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+    }
+
+    .custom-accordion .accordion-button:not(.collapsed) {
+        box-shadow: none;
+        color: var(--brand);
+    }
+
+    .custom-accordion .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .custom-accordion .accordion-button::after {
+        background-size: 1rem;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
     }
 </style>
 @endpush

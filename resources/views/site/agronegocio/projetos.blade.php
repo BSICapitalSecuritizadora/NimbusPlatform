@@ -15,11 +15,11 @@
                     Capex e <br><span style="color: var(--gold);">Investimentos Estratégicos</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Mobilização de capital para expansão e modernização operacional, com estruturas de longo prazo desenhadas para sustentar o crescimento sustentável no campo.
+                    Mobilização de capital estratégico para infraestrutura, armazenagem e modernização, com carências e prazos desenhados para o tempo de maturação do seu investimento.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Falar com nossa equipe
+                        Avaliar Expansão de CAPEX
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}?type=CRA" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -121,6 +121,129 @@
     </div>
 </section>
 
+<!-- Diferenciais da Securitização de Infraestrutura -->
+<section class="py-5 bg-light border-top">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <h2 class="h3 fw-bold text-dark mb-4">Por que securitizar o CAPEX Rural?</h2>
+                <p class="text-muted mb-4">Diferente do crédito bancário tradicional, o mercado de capitais oferece a flexibilidade necessária para projetos que levam tempo para gerar retorno.</p>
+                
+                <div class="d-flex flex-column gap-4">
+                    <div class="d-flex gap-3">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
+                        <div>
+                            <h5 class="h6 fw-bold mb-1">Carência Customizada</h5>
+                            <p class="small text-muted mb-0">Estruturamos carências de até 2 safras para o pagamento de juros e principal, respeitando o tempo de construção e início da operação.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </div>
+                        <div>
+                            <h5 class="h6 fw-bold mb-1">Garantias Reais Robustas</h5>
+                            <p class="small text-muted mb-0">Alienação fiduciária do imóvel rural e das benfeitorias, conferindo ao título um rating de crédito superior e menor custo financeiro.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-3">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                        <div>
+                            <h5 class="h6 fw-bold mb-1">Agilidade Complementar</h5>
+                            <p class="small text-muted mb-0">Atuamos onde as linhas oficiais (BNDES/FCO) atingem o limite, oferecendo o volume extra necessário para o fechamento do funding.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="position-relative p-4 bg-white shadow-sm rounded-4 border">
+                    <div class="text-brand fw-bold small text-uppercase mb-3" style="letter-spacing: 0.05em;">Monitoramento Técnico</div>
+                    <h3 class="h4 fw-bold mb-3">Segurança na Execução do Projeto</h3>
+                    <p class="text-muted">Projetos de infraestrutura como **Silos, Armazéns e Usinas de Biogás** exigem um controle rigoroso de desembolso. A BSI Capital utiliza auditoria de engenharia independente para validar cada marco físico antes da liberação das tranches de recursos, eliminando o risco de desvio de finalidade e garantindo a entrega do ativo.</p>
+                    <div style="height: 2px; width: 60px; background: var(--gold);" class="my-4"></div>
+                    <p class="small text-muted mb-0 font-italic">*Suporte em projetos Greenfield (do zero) e Brownfield (expansão).</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5 bg-white">
+    <div class="container py-5">
+        <div class="row g-5">
+            <div class="col-lg-4">
+                <div class="pe-lg-4">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Consultoria Técnica</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Viabilizando a Infraestrutura Rural</h2>
+                    <p class="text-muted mb-4">Esclarecemos os principais mecanismos de estruturação para projetos de longo prazo no agronegócio.</p>
+                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Falar com Estruturação</a>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="accordion accordion-flush custom-accordion" id="faqProjetos">
+                    <!-- FAQ 1 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                01. Quais os prazos médios de carência para projetos de infraestrutura?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqProjetos">
+                            <div class="accordion-body px-0 text-muted">
+                                Para projetos de CAPEX (armazenagem, irrigação, usinas), estruturamos carências que variam de 12 a 24 meses, podendo chegar a 2 safras completas. O objetivo é que o produtor ou agroindústria só comece a amortizar a dívida quando o ativo já estiver operando e gerando ganhos de eficiência ou receita.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 2 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                02. Como funciona a estruturação de Garantias Reais Rurais?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqProjetos">
+                            <div class="accordion-body px-0 text-muted">
+                                Utilizamos a Hipoteca ou Alienação Fiduciária de Imóvel Rural como garantia principal. Realizamos uma avaliação técnica do valor da terra e das benfeitorias (LTV - Loan to Value), garantindo que a operação esteja sobrecolateralizada, o que reduz o risco para o investidor e o custo para o tomador.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 3 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                03. O que são tranches de obra e como elas são liberadas?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqProjetos">
+                            <div class="accordion-body px-0 text-muted">
+                                Diferente de um empréstimo comum, os recursos do CRA de projeto são liberados em parcelas (tranches) conforme a evolução da obra. Após a vistoria técnica e emissão do laudo de medição, a securitizadora libera o recurso necessário para a próxima etapa do cronograma físico-financeiro.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 4 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                04. Posso usar a securitização para projetos de energia solar ou biogás?
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqProjetos">
+                            <div class="accordion-body px-0 text-muted">
+                                Com certeza. Projetos de energia renovável no campo são ideais para o mercado de capitais, pois possuem fluxos de economia/receita previsíveis e forte apelo ESG, facilitando a captação via CRAs Verdes com taxas extremamente competitivas.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Outros segmentos do agronegócio -->
 <section class="py-5 border-top" style="background-color: var(--bg);">
     <div class="container py-4">
@@ -161,6 +284,24 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+    }
+
+    .custom-accordion .accordion-button:not(.collapsed) {
+        box-shadow: none;
+        color: var(--brand);
+    }
+
+    .custom-accordion .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .custom-accordion .accordion-button::after {
+        background-size: 1rem;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
     }
 </style>
 @endpush

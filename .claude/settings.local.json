@@ -53,7 +53,12 @@
       "Bash(grep -v \"^.*:$\")",
       "WebFetch(domain:rizasec.com)",
       "WebFetch(domain:bsicapital-dfgsf6buagfrh8dn.westus3-01.azurewebsites.net)",
-      "WebFetch(domain:investidor.rizasec.com)"
+      "WebFetch(domain:investidor.rizasec.com)",
+      "WebFetch(domain:developers.contaazul.com)",
+      "WebSearch",
+      "WebFetch(domain:devdocs.contaazul.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.robertodiasduarte.com.br)"
     ]
   }
 }

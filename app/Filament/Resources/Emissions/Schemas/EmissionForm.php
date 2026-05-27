@@ -117,6 +117,7 @@ class EmissionForm
                             ->placeholder('Gerado automaticamente pelo sistema')
                             ->helperText('Código identificador gerado automaticamente.')
                             ->columnSpanFull(),
+
                     ]),
 
                 Section::make('Participantes da Emissão')

@@ -30,6 +30,7 @@ class Fund extends Model
         'minimum_balance_alert_balance',
         'minimum_balance_alert_minimum_balance',
         'minimum_balance_alert_recipients_hash',
+        'conta_azul_account_id',
     ];
 
     protected function casts(): array

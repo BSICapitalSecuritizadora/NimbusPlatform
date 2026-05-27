@@ -109,6 +109,160 @@
         font-weight: 600;
         line-height: 1.55;
     }
+
+    .emission-detail-tabs-container {
+        display: inline-flex;
+        background: rgba(9,27,35,0.03);
+        padding: 0.35rem;
+        border-radius: 50rem;
+        border: 1px solid rgba(9,27,35,0.06);
+    }
+    .emission-detail-tabs-container .nav-link {
+        color: #5d687b;
+        font-weight: 600;
+        font-size: 0.95rem;
+        padding: 0.6rem 1.75rem;
+        border-radius: 50rem;
+        transition: all 0.3s ease;
+        border: none;
+        background: transparent;
+    }
+    .emission-detail-tabs-container .nav-link:hover {
+        color: var(--brand);
+    }
+    .emission-detail-tabs-container .nav-link.active {
+        color: var(--brand);
+        background: #ffffff;
+        box-shadow: 0 2px 10px rgba(9,27,35,0.08);
+    }
+
+    .liquid-glass-logo {
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+    .liquid-glass-logo:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .tech-data-card {
+        background: #ffffff;
+        border: 1px solid rgba(9,27,35,0.04);
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(9,27,35,0.02);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .tech-data-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(9,27,35,0.06);
+        border-color: rgba(9,27,35,0.08);
+    }
+    .tech-data-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        color: #8c98a4;
+        font-weight: 700;
+        margin-bottom: 0.4rem;
+        text-transform: uppercase;
+    }
+    .tech-data-value {
+        font-size: 1.05rem;
+        color: var(--brand);
+        font-weight: 600;
+        line-height: 1.3;
+    }
+    
+    .history-row {
+        background: rgba(9,27,35,0.015);
+        border: 1px solid rgba(9,27,35,0.03);
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+    .history-row:hover {
+        background: #ffffff;
+        border-color: rgba(9,27,35,0.08);
+        box-shadow: 0 4px 12px rgba(9,27,35,0.03);
+    }
+    
+    .badge-premium {
+        background: rgba(212,175,55,0.12);
+        color: var(--gold);
+        border: 1px solid rgba(212,175,55,0.25);
+        font-weight: 600;
+        font-size: 0.75rem;
+        border-radius: 8px;
+    }
+    
+    .document-table-container {
+        background: #ffffff;
+        border: 1px solid rgba(9,27,35,0.04);
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(9,27,35,0.02);
+        overflow: hidden;
+    }
+    .document-table-container thead th {
+        background: rgba(9,27,35,0.02);
+        border-bottom: 1px solid rgba(9,27,35,0.05);
+        color: #8c98a4;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1rem 1.5rem;
+        border-top: none;
+    }
+    .document-table-container tbody td {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(9,27,35,0.03);
+        vertical-align: middle;
+    }
+    .document-table-container tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .document-table-container tbody tr {
+        transition: all 0.2s ease;
+    }
+    .document-table-container tbody tr:hover {
+        background: rgba(9,27,35,0.015);
+    }
+    
+    .doc-action-btn {
+        background: rgba(9,27,35,0.03);
+        color: var(--brand);
+        border: 1px solid transparent;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 0.4rem 1.2rem;
+        transition: all 0.2s ease;
+    }
+    .doc-action-btn:hover {
+        background: #ffffff;
+        border-color: rgba(9,27,35,0.1);
+        box-shadow: 0 4px 12px rgba(9,27,35,0.05);
+        color: var(--brand);
+        transform: translateY(-2px);
+    }
+    
+    .doc-filter-select {
+        background-color: #ffffff;
+        border: 1px solid rgba(9,27,35,0.1);
+        border-radius: 12px;
+        padding: 0.7rem 1rem;
+        font-weight: 500;
+        color: var(--brand);
+        box-shadow: 0 2px 8px rgba(9,27,35,0.02);
+        transition: all 0.2s ease;
+    }
+    .doc-filter-select:focus {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 4px rgba(212,175,55,0.15);
+    }
 </style>
 <?php $__env->stopPush(); ?>
 
@@ -126,7 +280,7 @@
         ['label' => 'Tipo', 'value' => $emission->type ?? '—'],
         ['label' => 'Remuneração', 'value' => $emission->formatted_remuneration ?? '—'],
         ['label' => 'Quantidade emitida', 'value' => $emission->issued_quantity ? number_format((float) $emission->issued_quantity, 0, ',', '.') : '—'],
-        ['label' => 'Volume emitido', 'value' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 2, ',', '.') : '—'],
+        ['label' => 'Total emitido', 'value' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 2, ',', '.') : '—'],
     ];
 
     $timelineStartDate = $emission->issue_date?->copy()->startOfDay();
@@ -207,8 +361,8 @@
 
                 <div class="d-flex flex-wrap align-items-center gap-4 mb-4">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($emission->logo_path): ?>
-                        <div class="surface-card-dark d-inline-flex align-items-center justify-content-center px-4 py-3" style="min-height: 86px; min-width: 180px;">
-                            <img src="<?php echo e(Storage::disk($emission->logo_storage_disk)->url($emission->logo_path)); ?>" alt="<?php echo e($emission->name); ?>" style="max-height: 52px; max-width: 180px; object-fit: contain;">
+                        <div class="liquid-glass-logo d-inline-flex align-items-center justify-content-center px-4 py-3" style="min-height: 86px; min-width: 180px;">
+                            <img src="<?php echo e(Storage::disk($emission->logo_storage_disk)->url($emission->logo_path)); ?>" alt="<?php echo e($emission->name); ?>" style="max-height: 52px; max-width: 180px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
                         </div>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <div>
@@ -320,7 +474,7 @@
         </div>
 
         <div class="mb-4 d-flex justify-content-center">
-            <ul class="nav nav-pills gap-2 emission-detail-tabs" id="emissionTabs" role="tablist">
+            <ul class="nav nav-pills gap-1 emission-detail-tabs-container" id="emissionTabs" role="tablist">
                 <li class="nav-item"><a class="nav-link active" href="#caracteristicas">Características</a></li>
                 <li class="nav-item"><a class="nav-link" href="#pagamentos">Pagamentos</a></li>
                 <li class="nav-item"><a class="nav-link" href="#documentos">Documentos</a></li>
@@ -331,8 +485,8 @@
             <div class="row g-4 align-items-end mb-4">
                 <div class="col-lg-8">
                     <div class="section-kicker mb-2">Características</div>
-                    <h2 class="h3 fw-bold text-brand mb-2">Ficha Técnica e Variáveis da Operação</h2>
-                    <p class="section-copy mb-0">Informações consolidadas sobre os aspectos jurídicos, comerciais e de governança. Dados estruturados para fundamentar o monitoramento contínuo e a análise de conformidade do ativo.</p>
+                    <h2 class="h3 fw-bold text-brand mb-2">Ficha Técnica da Operação</h2>
+                    <p class="section-copy mb-0">Informações consolidadas sobre os principais aspectos jurídicos, comerciais e operacionais da emissão, organizadas para apoiar o acompanhamento, a análise e a transparência da operação.</p>
                 </div>
             </div>
 
@@ -343,19 +497,21 @@
                     'Emissor' => $emission->issuer,
                     'Coordenador líder' => $emission->lead_coordinator,
                     'Agente fiduciário' => $emission->trustee_agent,
+                    'Devedor' => $emission->debtor,
                     'Remuneração' => $emission->formatted_remuneration,
+                    'Periodicidade de Pagamento de Juros' => $emission->interest_payment_frequency,
                     'Tipo de oferta' => $emission->offer_type,
                     'Segmento' => $emission->segment,
                     'Concentração' => $emission->concentration,
                     'Preço de emissão' => $emission->issued_price ? 'R$ ' . number_format((float) $emission->issued_price, 2, ',', '.') : null,
                     'Quantidade emitida' => $emission->issued_quantity ? number_format((float) $emission->issued_quantity, 0, ',', '.') : null,
                     'Quantidade integralizada' => $emission->integralized_quantity ? number_format((float) $emission->integralized_quantity, 0, ',', '.') : null,
-                    'Volume emitido' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 0, ',', '.') : null,
+                    'Total emitido' => $emission->issued_volume ? 'R$ ' . number_format((float) $emission->issued_volume, 0, ',', '.') : null,
                 ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $label => $value): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
                     <div class="col-sm-6 col-xl-4">
-                        <div class="surface-card-soft h-100 p-4">
-                            <div class="small text-uppercase text-muted fw-semibold mb-2"><?php echo e($label); ?></div>
-                            <div class="fw-semibold text-brand"><?php echo e($value ?: '—'); ?></div>
+                        <div class="tech-data-card h-100 p-4">
+                            <div class="tech-data-label"><?php echo e($label); ?></div>
+                            <div class="tech-data-value"><?php echo e($value ?: '—'); ?></div>
                         </div>
                     </div>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
@@ -365,13 +521,13 @@
         <div class="surface-card p-4 p-lg-5 mb-4" id="pagamentos">
             <div class="row g-4 align-items-end mb-4">
                 <div class="col-lg-8">
-                    <div class="section-kicker mb-2">Fluxo financeiro</div>
+                    <div class="section-kicker mb-2">Monitoramento financeiro</div>
                     <h2 class="h3 fw-bold text-brand mb-2">Fluxo de pagamentos e acompanhamento</h2>
                     <p class="section-copy mb-0">Consolidação dos eventos financeiros da operação, incluindo histórico de PU e integralização.</p>
                 </div>
             </div>
 
-            <div class="surface-card-soft p-4 mb-4" style="min-height: 360px;">
+            <div class="tech-data-card p-4 mb-4" style="min-height: 360px;">
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($emission->payments) && $emission->payments->count() > 0): ?>
                     <div style="position: relative; height: 320px; width: 100%;">
                         <canvas id="paymentsChart"></canvas>
@@ -385,7 +541,7 @@
 
             <div class="row g-4">
                 <div class="col-lg-6">
-                    <div class="surface-card-soft h-100 p-4">
+                    <div class="tech-data-card h-100 p-4">
                         <?php
                             $lastFiveDays = collect();
                             for ($i = 0; $i < 5; $i++) {
@@ -404,12 +560,12 @@
                                 <div class="section-kicker mb-1">PU atual</div>
                                 <div class="h4 fw-bold text-brand mb-0"><?php echo e($todayPu ? 'R$ ' . number_format((float) $todayPu, 6, ',', '.') : '—'); ?></div>
                             </div>
-                            <span class="badge badge-soft px-3 py-2">Últimos 5 dias</span>
+                            <span class="badge badge-premium px-3 py-2">Últimos 5 dias</span>
                         </div>
 
                         <div class="d-flex flex-column gap-2">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $lastFiveDays; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $dayPu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
-                                <div class="d-flex justify-content-between gap-3 rounded-4 bg-white px-3 py-2">
+                                <div class="d-flex justify-content-between gap-3 history-row px-3 py-2">
                                     <span class="small text-muted"><?php echo e($dayPu['date']->format('d/m/Y')); ?></span>
                                     <span class="small fw-semibold text-brand"><?php echo e($dayPu['value'] ? 'R$ ' . number_format((float) $dayPu['value'], 6, ',', '.') : '—'); ?></span>
                                 </div>
@@ -419,7 +575,7 @@
                 </div>
 
                 <div class="col-lg-6">
-                    <div class="surface-card-soft h-100 p-4">
+                    <div class="tech-data-card h-100 p-4">
                         <?php
                             $integralizationHistory = $emission->integralizationHistories()->orderByDesc('date')->take(5)->get();
                             $totalIntegralization = $emission->integralizationHistories()->sum('quantity');
@@ -433,17 +589,17 @@
 
                                 </div>
                             </div>
-                            <span class="badge badge-soft px-3 py-2">Histórico</span>
+                            <span class="badge badge-premium px-3 py-2">Histórico</span>
                         </div>
 
                         <div class="d-flex flex-column gap-2">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $integralizationHistory; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $history): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
-                                <div class="d-flex justify-content-between gap-3 rounded-4 bg-white px-3 py-2">
+                                <div class="d-flex justify-content-between gap-3 history-row px-3 py-2">
                                     <span class="small text-muted"><?php echo e($history->date->format('d/m/Y')); ?></span>
                                     <span class="small fw-semibold text-brand"><?php echo e(number_format((float) $history->quantity, 0, ',', '.')); ?></span>
                                 </div>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
-                                <div class="rounded-4 bg-white px-3 py-4 small text-muted text-center">
+                                <div class="history-row px-3 py-4 small text-muted text-center">
                                     Nenhum evento de integralização registrado.
                                 </div>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -472,7 +628,7 @@
                 <div class="col-lg-8">
                     <div class="section-kicker mb-2">Consulta documental</div>
                     <h2 class="h3 fw-bold text-brand mb-2">Repositório de Documentos e Atos da Operação</h2>
-                    <p class="section-copy mb-0">Acesso integral aos fatos relevantes, relatórios e documentos regulatórios da emissão. Utilize os filtros por categoria para navegar pelo histórico documental com total transparência e rastreabilidade.</p>
+                    <p class="section-copy mb-0">Acesso integral ao histórico de fatos relevantes, relatórios e documentos regulatórios da emissão. Utilize os filtros para navegar com total transparência e rastreabilidade.</p>
                 </div>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($documents->count() > 0): ?>
                     <?php
@@ -483,8 +639,8 @@
                     ?>
                     <div class="col-lg-4">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($docCategories->isNotEmpty()): ?>
-                            <label for="docCategoryFilter" class="form-label">Categoria</label>
-                            <select id="docCategoryFilter" class="form-select" data-limit="<?php echo e($documentDisplayLimit); ?>">
+                            <label for="docCategoryFilter" class="form-label tech-data-label">Categoria</label>
+                            <select id="docCategoryFilter" class="form-select shadow-none doc-filter-select" data-limit="<?php echo e($documentDisplayLimit); ?>">
                                 <option value="">Todas</option>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $docCategories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
                                     <option value="<?php echo e($category); ?>"><?php echo e($allCategories[$category] ?? ucfirst($category)); ?></option>
@@ -508,7 +664,7 @@
 
                 <div class="d-grid gap-3 d-lg-none">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $documents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $doc): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
-                        <article class="surface-card-soft p-4 emission-doc-card doc-entry" data-category="<?php echo e($doc->category); ?>" data-index="<?php echo e($index); ?>" style="<?php echo e($index >= $documentDisplayLimit ? 'display: none;' : ''); ?>">
+                        <article class="tech-data-card p-4 emission-doc-card doc-entry" data-category="<?php echo e($doc->category); ?>" data-index="<?php echo e($index); ?>" style="<?php echo e($index >= $documentDisplayLimit ? 'display: none;' : ''); ?>">
                             <div class="d-flex flex-column gap-3">
                                 <div>
                                     <div class="small text-muted mb-2"><?php echo e(optional($doc->published_at)->format('d/m/Y') ?? '—'); ?></div>
@@ -516,7 +672,7 @@
 
                                     <div class="d-flex flex-wrap gap-2">
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($doc->category): ?>
-                                            <span class="badge px-3 py-2" style="background: rgba(212,175,55,0.12); border: 1px solid rgba(212,175,55,0.22); color: var(--brand);">
+                                            <span class="badge badge-premium px-3 py-2">
                                                 <?php echo e($allCategories[$doc->category] ?? ucfirst($doc->category)); ?>
 
                                             </span>
@@ -528,7 +684,7 @@
                                     <div class="small text-muted"><?php echo e($doc->description); ?></div>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                                <a href="<?php echo e(Storage::disk($doc->resolved_storage_disk)->url($doc->file_path)); ?>" target="_blank" class="btn btn-outline-brand btn-sm px-3">
+                                <a href="<?php echo e(Storage::disk($doc->resolved_storage_disk)->url($doc->file_path)); ?>" target="_blank" class="btn doc-action-btn text-center">
                                     Baixar
                                 </a>
                             </div>
@@ -536,13 +692,13 @@
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                 </div>
 
-                <div class="table-shell d-none d-lg-block">
-                    <table class="table align-middle mb-0">
+                <div class="document-table-container d-none d-lg-block">
+                    <table class="table align-middle mb-0 border-0">
                         <thead>
                             <tr>
-                                <th style="width: 160px;">Data</th>
-                                <th>Título</th>
-                                <th style="width: 120px;" class="text-end">Ação</th>
+                                <th style="width: 160px; border-top: none;">Data</th>
+                                <th style="border-top: none;">Título</th>
+                                <th style="width: 120px; border-top: none;" class="text-end">Ação</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -551,9 +707,9 @@
                                     <td class="text-muted"><?php echo e(optional($doc->published_at)->format('d/m/Y') ?? '—'); ?></td>
                                     <td>
                                         <div class="fw-semibold text-brand mb-1"><?php echo e($doc->title); ?></div>
-                                        <div class="d-flex flex-wrap gap-2">
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
                                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($doc->category): ?>
-                                                <span class="badge px-3 py-2" style="background: rgba(212,175,55,0.12); border: 1px solid rgba(212,175,55,0.22); color: var(--brand);">
+                                                <span class="badge badge-premium px-3 py-1">
                                                     <?php echo e($allCategories[$doc->category] ?? ucfirst($doc->category)); ?>
 
                                                 </span>
@@ -564,7 +720,7 @@
                                         </div>
                                     </td>
                                     <td class="text-end">
-                                        <a href="<?php echo e(Storage::disk($doc->resolved_storage_disk)->url($doc->file_path)); ?>" target="_blank" class="btn btn-outline-brand btn-sm px-3">
+                                        <a href="<?php echo e(Storage::disk($doc->resolved_storage_disk)->url($doc->file_path)); ?>" target="_blank" class="btn doc-action-btn w-100">
                                             Baixar
                                         </a>
                                     </td>
@@ -709,9 +865,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(11, 18, 32, 0.92)',
-                    padding: 12,
-                    cornerRadius: 10,
+                    backgroundColor: '#ffffff',
+                    titleColor: '#091b23',
+                    bodyColor: '#5c6980',
+                    borderColor: 'rgba(9,27,35,0.08)',
+                    borderWidth: 1,
+                    padding: 14,
+                    cornerRadius: 12,
+                    boxPadding: 6,
+                    usePointStyle: true,
+                    boxWidth: 8,
+                    boxHeight: 8,
+                    titleFont: {
+                        family: "'Inter', sans-serif",
+                        size: 13,
+                        weight: '700'
+                    },
+                    bodyFont: {
+                        family: "'Inter', sans-serif",
+                        size: 12,
+                        weight: '500'
+                    },
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';

@@ -15,11 +15,11 @@
                     Inovação em <br><span style="color: var(--gold);">Securitização: CR</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Estruturamos as primeiras operações de CR para infraestrutura e grandes corporações, acompanhando a evolução regulatória para ampliar os setores e volumes elegíveis ao instrumento.
+                    Estruturamos operações de CR para infraestrutura e grandes corporações, utilizando o novo marco regulatório da CVM para converter fluxos futuros em capital imediato.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Falar com nossa equipe
+                        Simular Estrutura de CR
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -121,6 +121,145 @@
     </div>
 </section>
 
+<!-- CR vs. Debênture -->
+<section class="py-5 bg-light border-top">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <h2 class="h3 fw-bold text-dark mb-4">CR vs. Debêntures: A Superioridade do Regime Fiduciário</h2>
+                <p class="text-muted mb-4">Para projetos de infraestrutura e CAPEX corporativo, o Certificado de Recebíveis (CR) oferece vantagens estruturais que a dívida direta (Debênture) não consegue atingir.</p>
+                
+                <div class="comparison-table-container">
+                    <table class="table align-middle mb-0 border-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">Característica</th>
+                                <th class="text-center highlight-col" style="width: 35%;">CR (Securitização)</th>
+                                <th class="text-center" style="width: 35%;">Debênture</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold text-dark">Risco de Crédito</td>
+                                <td class="text-center highlight-col">Focado no Ativo (Lastro)</td>
+                                <td class="text-center text-muted">Total da Empresa Mãe</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-dark">Regime Fiduciário</td>
+                                <td class="text-center highlight-col">Patrimônio Segregado</td>
+                                <td class="text-center text-muted">Inexistente</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-dark">Flexibilidade</td>
+                                <td class="text-center highlight-col">Tranches por Obra/Performance</td>
+                                <td class="text-center text-muted">Fluxo Rígido</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-dark">Garantias</td>
+                                <td class="text-center highlight-col">Direto no Fluxo Futuro</td>
+                                <td class="text-center text-muted">Garantia Real/Flutuante</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="p-4 bg-white shadow-sm rounded-4 border">
+                    <div class="text-brand fw-bold small text-uppercase mb-3" style="letter-spacing: 0.05em;">Mitigação de Risco</div>
+                    <h3 class="h4 fw-bold mb-3">Monitoramento de Recebíveis Futuros</h3>
+                    <p class="text-muted">A grande inovação do CR é a capacidade de securitizar o que ainda não foi faturado (**Recebíveis Futuros**). Para mitigar o risco de performance, a BSI Capital utiliza:</p>
+                    <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
+                        <li class="d-flex align-items-start gap-2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <span class="small text-dark fw-medium">**Contas Escrow Automáticas:** Direcionamento direto dos fluxos de caixa para segregação.</span>
+                        </li>
+                        <li class="d-flex align-items-start gap-2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <span class="small text-dark fw-medium">**Gatilhos de Sobrecolateralização:** Exigência de lastro excedente para cobrir variações de receita.</span>
+                        </li>
+                        <li class="d-flex align-items-start gap-2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <span class="small text-dark fw-medium">**Monitoramento via API:** Conexão com sistemas de faturamento para visibilidade em tempo real.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5 bg-white">
+    <div class="container py-5">
+        <div class="row g-5">
+            <div class="col-lg-4">
+                <div class="pe-lg-4">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Regulação CVM 175</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">A Nova Era da Securitização</h2>
+                    <p class="text-muted mb-4">Esclarecemos as principais mudanças trazidas pelo novo marco regulatório para emissores e investidores.</p>
+                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Consultar Framework Regulatório</a>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="accordion accordion-flush custom-accordion" id="faqCR">
+                    <!-- FAQ 1 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                01. O que mudou com a Resolução CVM 175 para o mercado de CR?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqCR">
+                            <div class="accordion-body px-0 text-muted">
+                                A CVM 175 trouxe maior flexibilidade e segurança, permitindo a estruturação de títulos em classes e subclasses (sênior e subordinada) dentro de um mesmo veículo. Além disso, padronizou o Regime Fiduciário, garantindo que o lastro esteja juridicamente isolado do balanço da securitizadora e do originador de forma muito mais robusta.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 2 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                02. O que são "Recebíveis Futuros" e qual a garantia de recebimento?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqCR">
+                            <div class="accordion-body px-0 text-muted">
+                                São fluxos de caixa de contratos ainda não faturados (ex: venda de energia a ser produzida ou mensalidades escolares). A garantia é dada pelo monitoramento da performance operacional do projeto e por reforços de crédito como conta reserva, seguro-garantia ou fianças que cobrem o período de maturação do ativo.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 3 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                03. Por que o CR é considerado mais seguro para o Project Finance?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqCR">
+                            <div class="accordion-body px-0 text-muted">
+                                Porque ele isola o ativo. Se a empresa dona do projeto tiver problemas financeiros em outras áreas, o projeto securitizado via CR continua operando de forma segregada. Isso permite que bancos e investidores financiem a infraestrutura focando apenas na viabilidade técnica do projeto em si.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 4 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                04. Setores como Saúde e Educação podem emitir CR?
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqCR">
+                            <div class="accordion-body px-0 text-muted">
+                                Sim. Diferente do CRI e CRA, o CR é agnóstico ao setor. Hospitais podem antecipar fluxos de planos de saúde e redes de ensino podem securitizar mensalidades futuras para financiar expansões de campus, tudo com as mesmas vantagens fiscais e estruturais da securitização tradicional.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Outros segmentos Infra & Empresas -->
 <section class="py-5 border-top" style="background-color: var(--bg);">
     <div class="container py-4">
@@ -161,6 +300,77 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+    }
+
+    .custom-accordion .accordion-button:not(.collapsed) {
+        box-shadow: none;
+        color: var(--brand);
+    }
+
+    .custom-accordion .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .custom-accordion .accordion-button::after {
+        background-size: 1rem;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    }
+
+    .table th {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .comparison-table-container {
+        background: #ffffff;
+        border: 1px solid rgba(9,27,35,0.04);
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(9,27,35,0.02);
+        overflow: hidden;
+    }
+    .comparison-table-container thead th {
+        background: rgba(9,27,35,0.015);
+        border-bottom: 1px solid rgba(9,27,35,0.04);
+        color: #8c98a4;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1.25rem 1.5rem;
+        border-top: none;
+        vertical-align: middle;
+    }
+    .comparison-table-container thead th.highlight-col {
+        background: rgba(212,175,55,0.06);
+        color: var(--brand);
+    }
+    .comparison-table-container tbody td {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(9,27,35,0.03);
+        vertical-align: middle;
+        font-size: 0.95rem;
+    }
+    .comparison-table-container tbody tr:last-child td {
+        border-bottom: none;
+    }
+    .comparison-table-container tbody td.highlight-col {
+        background: rgba(212,175,55,0.03);
+        font-weight: 600;
+        color: var(--brand);
+    }
+    .comparison-table-container tbody tr {
+        transition: all 0.2s ease;
+    }
+    .comparison-table-container tbody tr:hover {
+        background: rgba(9,27,35,0.01);
+    }
+    .comparison-table-container tbody tr:hover td.highlight-col {
+        background: rgba(212,175,55,0.06);
     }
 </style>
 @endpush

@@ -86,6 +86,9 @@ class SiteController extends Controller
     public function criRealEstate(): \Illuminate\View\View
     {
         $featuredEmissions = Emission::query()
+            ->with(['documents' => function ($query) {
+                $query->visibleOnPublicSite()->orderByDesc('published_at');
+            }])
             ->where('is_public', true)
             ->whereNotNull('if_code')
             ->where('type', 'CRI')

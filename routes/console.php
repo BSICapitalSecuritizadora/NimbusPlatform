@@ -35,3 +35,8 @@ Artisan::command('inspire', function () {
 \Illuminate\Support\Facades\Schedule::command('activitylog:clean')
     ->dailyAt('04:00')
     ->name('audit-log-cleanup');
+
+\Illuminate\Support\Facades\Schedule::job(\App\Jobs\SyncContaAzulExpensesJob::class)
+    ->dailyAt('06:00')
+    ->name('conta-azul-expenses-sync')
+    ->withoutOverlapping();

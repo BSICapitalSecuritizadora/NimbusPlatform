@@ -209,6 +209,16 @@ class FundForm
                             'unique' => 'Ja existe um fundo cadastrado com esta combinacao de operacao, aplicacao e conta.',
                         ]),
 
+                    TextInput::make('conta_azul_account_id')
+                        ->label('ID da conta no Conta Azul')
+                        ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
+                        ->helperText('UUID da conta financeira correspondente no Conta Azul. Execute php /tmp/conta_azul_accounts.php para listar os IDs disponíveis.')
+                        ->unique(table: Fund::class, column: 'conta_azul_account_id', ignoreRecord: true)
+                        ->validationMessages([
+                            'unique' => 'Este ID já está vinculado a outro fundo.',
+                        ])
+                        ->columnSpanFull(),
+
                     TextInput::make('balance')
                         ->label('Saldo')
                         ->required()

@@ -65,7 +65,7 @@ it('creates an expense linked to the selected operation and service provider', f
     Livewire::test(CreateExpense::class)
         ->fillForm([
             'emission_id' => $emission->id,
-            'category' => 'Servicer',
+            'category' => 'Service',
             'expense_service_provider_id' => $serviceProvider->id,
             'amount' => '1.250,50',
             'period' => Expense::PERIOD_SINGLE,
@@ -79,7 +79,7 @@ it('creates an expense linked to the selected operation and service provider', f
     expect($expense)->not->toBeNull()
         ->and($expense?->emission_id)->toBe($emission->id)
         ->and($expense?->expense_service_provider_id)->toBe($serviceProvider->id)
-        ->and($expense?->category)->toBe('Servicer')
+        ->and($expense?->category)->toBe('Service')
         ->and($expense?->amount)->toBe('1250.50')
         ->and($expense?->period)->toBe(Expense::PERIOD_SINGLE)
         ->and($expense?->start_date?->toDateString())->toBe('2026-04-16')
@@ -96,7 +96,7 @@ it('creates an expense without a service provider', function () {
     Livewire::test(CreateExpense::class)
         ->fillForm([
             'emission_id' => $emission->id,
-            'category' => 'Servicer',
+            'category' => 'Service',
             'amount' => '980,00',
             'period' => Expense::PERIOD_SINGLE,
             'start_date' => '2026-04-18',
@@ -109,7 +109,7 @@ it('creates an expense without a service provider', function () {
     expect($expense)->not->toBeNull()
         ->and($expense?->emission_id)->toBe($emission->id)
         ->and($expense?->expense_service_provider_id)->toBeNull()
-        ->and($expense?->category)->toBe('Servicer')
+        ->and($expense?->category)->toBe('Service')
         ->and($expense?->amount)->toBe('980.00')
         ->and($expense?->period)->toBe(Expense::PERIOD_SINGLE)
         ->and($expense?->start_date?->toDateString())->toBe('2026-04-18')
@@ -153,7 +153,7 @@ it('requires the expense amount', function () {
     Livewire::test(CreateExpense::class)
         ->fillForm([
             'emission_id' => $emission->id,
-            'category' => 'Servicer',
+            'category' => 'Service',
             'expense_service_provider_id' => $serviceProvider->id,
             'period' => Expense::PERIOD_SINGLE,
             'start_date' => '2026-04-16',
@@ -176,7 +176,7 @@ it('filters expenses by operation', function () {
     $selectedExpense = Expense::factory()->create([
         'emission_id' => $selectedEmission->id,
         'expense_service_provider_id' => $serviceProvider->id,
-        'category' => 'Servicer',
+        'category' => 'Service',
     ]);
     $otherExpense = Expense::factory()->create([
         'emission_id' => $otherEmission->id,
@@ -208,12 +208,12 @@ it('filters expenses by multiple operations', function () {
     $firstExpense = Expense::factory()->create([
         'emission_id' => $firstEmission->id,
         'expense_service_provider_id' => $serviceProvider->id,
-        'category' => 'Servicer',
+        'category' => 'Service',
     ]);
     $secondExpense = Expense::factory()->create([
         'emission_id' => $secondEmission->id,
         'expense_service_provider_id' => $serviceProvider->id,
-        'category' => 'Servicer',
+        'category' => 'Service',
     ]);
     $thirdExpense = Expense::factory()->create([
         'emission_id' => $thirdEmission->id,
@@ -279,7 +279,7 @@ it('updates an existing expense without a service provider', function () {
     $expense = Expense::factory()->create([
         'emission_id' => $emission->id,
         'expense_service_provider_id' => $serviceProvider->id,
-        'category' => 'Servicer',
+        'category' => 'Service',
         'amount' => 570.50,
         'period' => Expense::PERIOD_SINGLE,
         'start_date' => '2026-04-07',
@@ -291,7 +291,7 @@ it('updates an existing expense without a service provider', function () {
     ])
         ->fillForm([
             'emission_id' => $emission->id,
-            'category' => 'Servicer',
+            'category' => 'Service',
             'expense_service_provider_id' => null,
             'amount' => '570,50',
             'period' => Expense::PERIOD_SINGLE,

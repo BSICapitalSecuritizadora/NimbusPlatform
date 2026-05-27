@@ -20,6 +20,11 @@ class ExpenseForm
     {
         return $schema->components([
             Section::make('Dados da despesa')
+                ->columnSpanFull()
+                ->columns([
+                    'default' => 1,
+                    'xl' => 2,
+                ])
                 ->schema([
                     Select::make('emission_id')
                         ->label('Operação')
@@ -57,21 +62,41 @@ class ExpenseForm
                     TextInput::make('amount')
                         ->label('Valor')
                         ->required()
+                        ->readOnly(fn (string $operation): bool => $operation === 'edit')
+                        ->dehydrated(fn (string $operation): bool => $operation !== 'edit')
                         ->prefix('R$')
                         ->inputMode('decimal')
                         ->mask(RawJs::make(<<<'JS'
                             $money($input, ',', '.')
                         JS))
-                        ->formatStateUsing(fn (mixed $state): ?string => self::formatCurrencyForDisplay($state))
+                        ->formatStateUsing(function (mixed $state, ?Expense $record): ?string {
+                            if ($record !== null) {
+                                $sum = self::sumLatestMonthHistories($record);
+
+                                if ($sum !== null) {
+                                    return self::formatCurrencyForDisplay($sum);
+                                }
+                            }
+
+                            return self::formatCurrencyForDisplay($state);
+                        })
                         ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
                         ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
                         ->validationMessages([
                             'required' => 'Informe o valor da despesa.',
                         ])
                         ->placeholder('1.000,00'),
+                ]),
 
+            Section::make('Periodicidade e datas')
+                ->columnSpanFull()
+                ->columns([
+                    'default' => 1,
+                    'xl' => 3,
+                ])
+                ->schema([
                     Select::make('period')
-                        ->label('Data / Período')
+                        ->label('Período')
                         ->options(Expense::PERIOD_OPTIONS)
                         ->default(Expense::PERIOD_SINGLE)
                         ->required()
@@ -95,9 +120,24 @@ class ExpenseForm
                             'required' => 'Informe a data de fim para períodos recorrentes.',
                             'after_or_equal' => 'A data de fim deve ser igual ou posterior à data de início.',
                         ]),
-                ])
-                ->columns(2),
+                ]),
         ]);
+    }
+
+    protected static function sumLatestMonthHistories(Expense $expense): ?float
+    {
+        $latestHistory = $expense->histories()
+            ->orderByDesc('due_date')
+            ->first();
+
+        if ($latestHistory === null) {
+            return null;
+        }
+
+        return (float) $expense->histories()
+            ->whereYear('due_date', $latestHistory->due_date->year)
+            ->whereMonth('due_date', $latestHistory->due_date->month)
+            ->sum('amount');
     }
 
     protected static function normalizeCurrencyValue(mixed $value): ?float

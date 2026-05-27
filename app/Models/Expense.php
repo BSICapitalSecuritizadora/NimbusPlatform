@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -18,10 +19,13 @@ class Expense extends Model
         'AGT' => 'AGT',
         'Assessor Jurídico' => 'Assessor Jurídico',
         'Auditoria' => 'Auditoria',
+        'Bloqueio Judicial' => 'Bloqueio Judicial',
         'Cartório' => 'Cartório',
         'Cetip' => 'Cetip',
+        'Condomínio' => 'Condomínio',
         'Contabilidade' => 'Contabilidade',
         'Coordenador Líder' => 'Coordenador Líder',
+        'Correios' => 'Correios',
         'Custódia da CCI' => 'Custódia da CCI',
         'Custodiante' => 'Custodiante',
         'Engenharia' => 'Engenharia',
@@ -30,7 +34,9 @@ class Expense extends Model
         'Horas Complementares' => 'Horas Complementares',
         'IPTU' => 'IPTU',
         'Patrimônio Separado' => 'Patrimônio Separado',
-        'Servicer' => 'Servicer',
+        'Service' => 'Service',
+        'Taxa Anbima' => 'Taxa Anbima',
+        'Taxa CVM' => 'Taxa CVM',
     ];
 
     public const PERIOD_SINGLE = 'single';
@@ -59,6 +65,7 @@ class Expense extends Model
         'period',
         'start_date',
         'end_date',
+        'conta_azul_bill_id',
     ];
 
     protected function casts(): array
@@ -86,6 +93,11 @@ class Expense extends Model
     public function serviceProvider(): BelongsTo
     {
         return $this->belongsTo(ExpenseServiceProvider::class, 'expense_service_provider_id');
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(ExpenseHistory::class);
     }
 
     public static function isRecurringPeriod(?string $period): bool

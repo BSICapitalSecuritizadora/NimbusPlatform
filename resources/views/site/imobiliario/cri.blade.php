@@ -135,7 +135,7 @@
                                 </div>
                             </div>
 
-                            <div class="row g-2 small">
+                            <div class="row g-2 small mb-3">
                                 <div class="col-6">
                                     <div class="text-uppercase text-muted fw-semibold mb-1">Emissão</div>
                                     <div class="fw-semibold">{{ $e->emission_number ?? '—' }}</div>
@@ -161,9 +161,35 @@
                                     <div class="fw-semibold">{{ $e->issuer ?? '—' }}</div>
                                 </div>
                             </div>
+
+                            @if($e->documents->isNotEmpty())
+                            <div class="border-top pt-3">
+                                <div class="text-uppercase text-muted fw-bold mb-2" style="font-size: 0.65rem; letter-spacing: 0.05em;">Acesso Rápido aos Documentos</div>
+                                <div class="d-flex flex-column gap-2">
+                                    @php
+                                        $termo = $e->documents->first(fn($doc) => str_contains(strtolower($doc->title), 'termo') || $doc->category === 'documentos_operacao');
+                                        $relatorio = $e->documents->first(fn($doc) => str_contains(strtolower($doc->title), 'relatório') || str_contains(strtolower($doc->title), 'mensal'));
+                                    @endphp
+                                    
+                                    @if($termo)
+                                        <a href="{{ route('site.documents.download', $termo->id) }}" class="d-flex align-items-center gap-2 text-decoration-none py-1" style="color: var(--brand); font-size: 0.85rem;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                            <span class="fw-medium text-truncate">Termo de Securitização</span>
+                                        </a>
+                                    @endif
+
+                                    @if($relatorio)
+                                        <a href="{{ route('site.documents.download', $relatorio->id) }}" class="d-flex align-items-center gap-2 text-decoration-none py-1" style="color: var(--brand); font-size: 0.85rem;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                            <span class="fw-medium text-truncate">Último Relatório de Monitoramento</span>
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+                            @endif
                         </div>
                         <div class="card-footer bg-transparent border-0 p-3 p-lg-4 pt-0 d-grid">
-                            <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand btn-sm w-100">Consultar Operação</a>
+                            <a href="{{ route('site.emissions.show', $e->if_code) }}" class="btn btn-outline-brand btn-sm w-100">Consultar Operação Completa</a>
                         </div>
                     </div>
                 </div>
@@ -199,6 +225,78 @@
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div style="background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1000') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5 bg-light">
+    <div class="container py-5">
+        <div class="row g-5">
+            <div class="col-lg-4">
+                <div class="pe-lg-4">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Dúvidas Frequentes</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Inteligência aplicada ao crédito imobiliário</h2>
+                    <p class="text-muted mb-4">Entenda os fundamentos técnicos da securitização e como estruturamos operações de alta complexidade.</p>
+                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Falar com um especialista</a>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="accordion accordion-flush custom-accordion" id="faqCRI">
+                    <!-- FAQ 1 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                01. O que é um CRI e qual sua finalidade?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqCRI">
+                            <div class="accordion-body px-0 text-muted">
+                                O Certificado de Recebíveis Imobiliários (CRI) é um título de renda fixa que representa a promessa de pagamento de créditos imobiliários. Sua finalidade é antecipar o fluxo de caixa para empresas do setor (incorporadoras, loteadoras), transformando recebíveis de longo prazo em capital imediato para novos investimentos.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 2 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                02. Quais são as principais vantagens para o Emissor?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqCRI">
+                            <div class="accordion-body px-0 text-muted">
+                                A securitização oferece taxas competitivas frente ao crédito bancário tradicional, prazos alongados e a possibilidade de desalavancagem do balanço. Além disso, permite a estruturação "sob medida", adequando o fluxo de pagamento do CRI ao cronograma de recebimento dos ativos imobiliários.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 3 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                03. Como é garantida a segurança do lastro na BSI Capital?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqCRI">
+                            <div class="accordion-body px-0 text-muted">
+                                Através de um rigoroso processo de auditoria e governança ativa. Utilizamos cessão fiduciária de direitos creditórios, alienação fiduciária de imóveis e monitoramento contínuo via Portal do Investidor, garantindo que os covenants financeiros e a integridade das garantias sejam preservados durante toda a vida da operação.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 4 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                04. O que é o Patrimônio Separado em um CRI?
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqCRI">
+                            <div class="accordion-body px-0 text-muted">
+                                É um mecanismo legal que isola os ativos que lastreiam o CRI do patrimônio da securitizadora. Isso significa que os recebíveis e garantias da operação não respondem por dívidas da BSI Capital, conferindo segurança jurídica absoluta para os investidores em caso de qualquer eventualidade com a instituição.
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -244,6 +342,28 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+    }
+
+    .custom-accordion .accordion-button:not(.collapsed) {
+        box-shadow: none;
+        color: var(--brand);
+    }
+
+    .custom-accordion .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .custom-accordion .accordion-button::after {
+        background-size: 1rem;
+    }
+
+    .emission-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .emission-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
     }
 </style>
 @endpush

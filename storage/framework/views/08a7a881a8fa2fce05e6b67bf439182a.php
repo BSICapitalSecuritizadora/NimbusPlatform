@@ -17,7 +17,7 @@
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Falar com nossa equipe
+                        Estudo de Viabilidade
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="<?php echo e(route('site.emissions')); ?>?type=CRI" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -119,6 +119,112 @@
     </div>
 </section>
 
+<!-- Guia Rápido de Securitização -->
+<section class="py-5 bg-light border-top">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h2 class="h3 fw-bold text-dark mb-2">Mecânica de Securitização para Loteadores</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Entenda como estruturamos a operação para maximizar sua liquidez mantendo a segurança do investidor.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="h-100 p-4 bg-white rounded-4 shadow-sm border-0">
+                    <div class="text-brand fw-bold mb-3 fs-4">01.</div>
+                    <h4 class="h5 fw-bold mb-3">Série Sênior e Subordinada</h4>
+                    <p class="small text-muted mb-0">Dividimos o CRI em séries. A Sênior é destinada ao mercado, enquanto a Subordinada (retida pelo loteador) funciona como um colchão de garantia, absorvendo as primeiras inadimplências e alinhando interesses.</p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="h-100 p-4 bg-white rounded-4 shadow-sm border-0">
+                    <div class="text-brand fw-bold mb-3 fs-4">02.</div>
+                    <h4 class="h5 fw-bold mb-3">Fundo de Reserva (PMT)</h4>
+                    <p class="small text-muted mb-0">Estruturamos fundos que retêm de 3 a 6 meses de serviço da dívida. Isso garante que, mesmo em meses de sazonalidade nas vendas, o pagamento ao investidor ocorra sem sobressaltos.</p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="h-100 p-4 bg-white rounded-4 shadow-sm border-0">
+                    <div class="text-brand fw-bold mb-3 fs-4">03.</div>
+                    <h4 class="h5 fw-bold mb-3">Alienação Fiduciária</h4>
+                    <p class="small text-muted mb-0">O lastro é composto pela cessão dos recebíveis e, em muitos casos, pela alienação fiduciária do próprio terreno. Isso confere ao título uma das maiores proteções do mercado financeiro.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="py-5 bg-white">
+    <div class="container py-5">
+        <div class="row g-5">
+            <div class="col-lg-4">
+                <div class="pe-lg-4">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Dúvidas do Loteador</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Soluções para o ciclo de capital</h2>
+                    <p class="text-muted mb-4">Esclarecemos os pontos críticos para quem busca acelerar o desenvolvimento de loteamentos via mercado de capitais.</p>
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-sm px-4 py-2 shadow-sm">Solicitar Estudo de Caso</a>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="accordion accordion-flush custom-accordion" id="faqLoteamento">
+                    <!-- FAQ 1 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                01. Posso securitizar lotes ainda não vendidos (Unperformed)?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqLoteamento">
+                            <div class="accordion-body px-0 text-muted">
+                                Sim. Chamamos essa operação de CRI de Desenvolvimento. O recurso é captado para custear as obras de infraestrutura e a liberação é feita mediante medição de obra por empresa independente. O lastro inicial é a própria área, que vai sendo substituído pelos contratos de venda conforme o projeto avança.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 2 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                02. Qual o volume mínimo de carteira para viabilizar um CRI?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqLoteamento">
+                            <div class="accordion-body px-0 text-muted">
+                                Geralmente, operações de securitização tornam-se eficientes a partir de R$ 10 milhões em VGV (Valor Geral de Vendas) para emissão.Volumes menores podem ser avaliados dependendo da praça e do estágio de maturação do loteamento.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 3 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                03. Qual a diferença entre Loteamento Aberto e Fechado para a BSI?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqLoteamento">
+                            <div class="accordion-body px-0 text-muted">
+                                Loteamentos fechados (acesso controlado) costumam ter taxas de juros mais atrativas no mercado devido à menor inadimplência histórica e melhor conservação das áreas comuns. No entanto, estruturamos ambos os modelos, aplicando critérios de monitoramento de lastro específicos para cada realidade urbana.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FAQ 4 -->
+                    <div class="accordion-item bg-transparent border-bottom py-3">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                04. Como funciona o repasse das parcelas pagas pelos clientes?
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqLoteamento">
+                            <div class="accordion-body px-0 text-muted">
+                                Os pagamentos dos clientes são direcionados para uma conta centralizadora controlada pela securitizadora. Nós processamos o pagamento dos juros e amortização aos investidores do CRI e o excedente (spread do loteador) é liberado para a conta da loteadora mensalmente.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Outros segmentos imobiliários -->
 <section class="py-5 border-top" style="background-color: var(--bg);">
     <div class="container py-4">
@@ -159,6 +265,24 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+    }
+
+    .custom-accordion .accordion-button:not(.collapsed) {
+        box-shadow: none;
+        color: var(--brand);
+    }
+
+    .custom-accordion .accordion-button:focus {
+        box-shadow: none;
+    }
+
+    .custom-accordion .accordion-button::after {
+        background-size: 1rem;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
     }
 </style>
 <?php $__env->stopPush(); ?>
