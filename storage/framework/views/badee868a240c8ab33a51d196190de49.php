@@ -88,6 +88,78 @@
     </div>
 </section>
 
+<!-- Tecnologia e Governança -->
+<section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-6">
+                <h2 class="h4 fw-bold text-dark mb-4">Tecnologia em Background Check</h2>
+                <p class="text-muted small mb-4">Nossa estrutura de KYC (Know Your Customer) e KYP (Know Your Partner) é automatizada e integrada às principais bases de dados para garantir rapidez e segurança no onboarding.</p>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
+                            <div class="fw-bold text-dark smaller mb-1">Bases Públicas</div>
+                            <div class="text-muted smaller">Receita Federal, COAF e Tribunais.</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
+                            <div class="fw-bold text-dark smaller mb-1">Listas Restritivas</div>
+                            <div class="text-muted smaller">OFAC, ONU e PEPs internacionais.</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
+                            <div class="fw-bold text-dark smaller mb-1">Crédito & Fraude</div>
+                            <div class="text-muted smaller">Serasa Experian e Bureau de Crédito.</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
+                            <div class="fw-bold text-dark smaller mb-1">ESG & Mídia</div>
+                            <div class="text-muted smaller">Monitoramento reputacional e ambiental.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
+                    <div class="text-center mb-4">
+                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Esteira de Aprovação</span>
+                    </div>
+                    <div class="d-flex flex-column gap-3 position-relative">
+                        <div class="position-absolute h-100 border-start border-2 border-dashed opacity-20" style="left: 20px; top: 0;"></div>
+                        
+                        <div class="d-flex align-items-center gap-3 position-relative z-1">
+                            <div class="bg-brand text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="width: 40px; height: 40px; min-width: 40px;">1</div>
+                            <div class="flex-grow-1 p-2 bg-light rounded-3 border">
+                                <div class="fw-bold smaller text-brand">Triagem Automatizada</div>
+                                <div class="smaller text-muted">Background check instantâneo em 50+ bases.</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3 position-relative z-1">
+                            <div class="bg-brand text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="width: 40px; height: 40px; min-width: 40px;">2</div>
+                            <div class="flex-grow-1 p-2 bg-light rounded-3 border">
+                                <div class="fw-bold smaller text-brand">Análise de Risco (Compliance)</div>
+                                <div class="smaller text-muted">Parecer técnico detalhado sobre as partes.</div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3 position-relative z-1">
+                            <div class="bg-gold text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="width: 40px; height: 40px; min-width: 40px;">3</div>
+                            <div class="flex-grow-1 p-3 bg-brand-subtle rounded-3 border border-brand-subtle shadow-xs">
+                                <div class="fw-bold small text-brand">Comitê de Crédito Independente</div>
+                                <div class="smaller text-muted">Decisão final segregada da área comercial.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Ciclo de monitoramento -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -109,6 +181,10 @@
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         <span class="text-dark fw-medium">Relatórios de compliance encaminhados ao COAF, à CVM e demais órgãos reguladores aplicáveis, dentro dos prazos e nos formatos normativos exigidos pela regulação vigente.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span class="text-dark fw-medium">Colaboração ativa com auditorias independentes (Big Four) para validação periódica do lastro, das demonstrações financeiras e da aderência aos processos de governança.</span>
                     </li>
                 </ul>
             </div>

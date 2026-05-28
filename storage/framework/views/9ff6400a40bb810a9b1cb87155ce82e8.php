@@ -220,4 +220,4 @@
 <?php $__env->stopPush(); ?>
 <?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /home/desktop/projects/bsi-capital/resources/views/site/servicos/registro-distribuicao.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/servicos/registro-distribuicao.blade.php ENDPATH**/ ?>

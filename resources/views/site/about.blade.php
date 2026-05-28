@@ -204,6 +204,129 @@
     </div>
 </section>
 
+<!-- Tecnologia e Infraestrutura -->
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6 order-lg-2">
+                <div class="position-relative">
+                    <img src="{{ asset('images/compliance.png') }}" class="img-fluid rounded-4 shadow-lg" alt="Tecnologia BSI" style="filter: grayscale(20%); width: 100%; height: 400px; object-fit: cover;">
+                </div>
+            </div>
+            <div class="col-lg-6 order-lg-1">
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Fintech-as-a-Service</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Infraestrutura Tecnológica e Escalabilidade</h2>
+                <p class="text-muted mb-4">O mercado de capitais exige agilidade sem abrir mão da segurança. Na BSI Capital, integramos esteiras digitais e APIs proprietárias para automatizar a originação, estruturação e liquidação de operações.</p>
+                <ul class="list-unstyled mb-0">
+                    <li class="d-flex align-items-start mb-3">
+                        <div class="me-3 text-brand">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <div>
+                            <strong class="d-block text-dark">Esteiras Digitais de Crédito</strong>
+                            <span class="text-muted small">Automação no fluxo de aprovação e formalização de garantias.</span>
+                        </div>
+                    </li>
+                    <li class="d-flex align-items-start mb-3">
+                        <div class="me-3 text-brand">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <div>
+                            <strong class="d-block text-dark">Integração via APIs</strong>
+                            <span class="text-muted small">Conexão fluida com originadores e plataformas de gestão financeira.</span>
+                        </div>
+                    </li>
+                    <li class="d-flex align-items-start">
+                        <div class="me-3 text-brand">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <div>
+                            <strong class="d-block text-dark">Monitoramento em Tempo Real</strong>
+                            <span class="text-muted small">Dashboards interativos para acompanhamento de lastros e covenants.</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ESG e Sustentabilidade -->
+<section class="py-5" style="background-color: var(--bg);">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid #2e7d32; color: #2e7d32; background: rgba(46,125,50,0.05); letter-spacing: 0.1em; font-weight: 600;">Sustentabilidade</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Compromisso ESG na Originação</h2>
+                <p class="text-muted mb-4">Acreditamos que o crédito estruturado é um vetor de transformação socioambiental. Integramos critérios ESG (Ambiental, Social e Governança) em nosso processo de análise, priorizando operações que geram impacto positivo e mitigam riscos de longo prazo.</p>
+                <div class="d-flex flex-wrap gap-4">
+                    <div class="text-center">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center mb-2 mx-auto" style="width: 50px; height: 50px; background: rgba(46,125,50,0.1); color: #2e7d32;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        </div>
+                        <span class="small fw-bold text-dark">Títulos Verdes</span>
+                    </div>
+                    <div class="text-center">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center mb-2 mx-auto" style="width: 50px; height: 50px; background: rgba(46,125,50,0.1); color: #2e7d32;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                        </div>
+                        <span class="small fw-bold text-dark">Impacto Social</span>
+                    </div>
+                    <div class="text-center">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center mb-2 mx-auto" style="width: 50px; height: 50px; background: rgba(46,125,50,0.1); color: #2e7d32;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        </div>
+                        <span class="small fw-bold text-dark">Governança</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 16px; overflow: hidden;">
+                    <div class="card-body p-5 bg-white text-center d-flex flex-column justify-content-center align-items-center">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="1.5" class="mb-4"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        <h4 class="fw-bold mb-3 text-dark">Conformidade e Transparência</h4>
+                        <p class="text-muted mb-0">Nossas operações são estruturadas com foco em diligência contínua, assegurando que os ativos lastreados sigam rigorosamente as premissas socioambientais acordadas com os investidores.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Nossa Liderança -->
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container py-5">
+        <div class="text-center mb-5 pb-3">
+            <h2 class="h3 fw-bold text-dark mb-3">Liderança Executiva</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Profissionais com ampla trajetória no mercado financeiro e de capitais, comprometidos com a segurança e o retorno das operações estruturadas.</p>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm text-center h-100 p-4" style="border-radius: 16px;">
+                    <div class="mb-4 mx-auto rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; border: 3px solid var(--brand);">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </div>
+                    <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Diretoria Executiva</h4>
+                    <p class="text-brand small fw-medium text-uppercase mb-3">Sócios-Diretores</p>
+                    <p class="text-muted small mb-0">Com vasta experiência em estruturação de recebíveis e mercado de capitais, lideram a visão estratégica e originação de novas operações.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm text-center h-100 p-4" style="border-radius: 16px;">
+                    <div class="mb-4 mx-auto rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; border: 3px solid var(--brand);">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </div>
+                    <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Conselho de Administração</h4>
+                    <p class="text-brand small fw-medium text-uppercase mb-3">Governança & Risco</p>
+                    <p class="text-muted small mb-0">Responsáveis por assegurar as melhores práticas de conformidade regulatória, compliance e rigor fiduciário junto à CVM e ANBIMA.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
 <!-- Credenciais / Selos -->
 <section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong) 0%, var(--brand) 100%);">
     <div class="container py-5">

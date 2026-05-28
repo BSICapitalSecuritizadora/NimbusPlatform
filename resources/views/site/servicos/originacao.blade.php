@@ -90,6 +90,43 @@
     </div>
 </section>
 
+<!-- Segmentos de Especialidade -->
+<section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <h2 class="h3 fw-bold text-dark mb-2">Ecossistemas de Atuação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossa inteligência de originação é transversal, com profundo conhecimento técnico em setores estratégicos.</p>
+        </div>
+
+        <div class="row g-4 text-center justify-content-center">
+            <div class="col-6 col-md-4">
+                <div class="p-3 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
+                    <div class="mb-3 text-gold">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    </div>
+                    <h4 class="h6 fw-bold mb-0">Imobiliário</h4>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="p-3 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
+                    <div class="mb-3 text-gold">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                    </div>
+                    <h4 class="h6 fw-bold mb-0">Agronegócio</h4>
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <div class="p-3 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
+                    <div class="mb-3 text-gold">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    </div>
+                    <h4 class="h6 fw-bold mb-0">Infraestrutura</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Da tese ao mandato -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -111,6 +148,10 @@
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         <span class="text-dark fw-medium">Sounding com investidores e calibração de precificação, prazo e garantias para maximizar a aderência da oferta antes do mandato formal de estruturação.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span class="text-dark fw-medium">Plataforma própria para acompanhamento em tempo real do pipeline, garantindo transparência total entre originador e estruturador em cada etapa do fluxo.</span>
                     </li>
                 </ul>
             </div>

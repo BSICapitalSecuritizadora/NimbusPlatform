@@ -47,7 +47,8 @@ class InvestorResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('Identificação do Investidor')
+                Section::make('Dados Principais')
+                    ->description('Informações básicas de identificação e acesso.')
                     ->schema([
                         TextInput::make('name')
                             ->label('Nome Completo / Razão Social')
@@ -70,6 +71,43 @@ class InvestorResource extends Resource
                             ->dehydrateStateUsing(fn ($state) => filled($state) ? Hash::make($state) : null)
                             ->maxLength(255),
 
+                        Toggle::make('is_active')
+                            ->label('Status de Ativação')
+                            ->default(true)
+                            ->inline(false),
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('Documentos')
+                    ->description('Documentação pessoal.')
+                    ->schema([
+                        TextInput::make('cpf')
+                            ->label('CPF')
+                            ->placeholder('123.456.789-00')
+                            ->mask('999.999.999-99')
+                            ->rule('regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/')
+                            ->validationMessages([
+                                'regex' => 'Use o formato xxx.xxx.xxx-xx.',
+                            ])
+                            ->maxLength(14),
+
+                        TextInput::make('rg')
+                            ->label('RG')
+                            ->placeholder('12.345.678-9')
+                            ->mask('99.999.999-*')
+                            ->rule('regex:/^\d{2}\.\d{3}\.\d{3}-[\dXx]$/')
+                            ->validationMessages([
+                                'regex' => 'Use o formato xx.xxx.xxx-x.',
+                            ])
+                            ->maxLength(12),
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('Contato')
+                    ->description('Informações para comunicação.')
+                    ->schema([
                         TextInput::make('phone')
                             ->label('Telefone Fixo')
                             ->tel()
@@ -91,27 +129,13 @@ class InvestorResource extends Resource
                                 'regex' => 'Use o formato (xx) xxxxx-xxxx.',
                             ])
                             ->maxLength(20),
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
 
-                        TextInput::make('cpf')
-                            ->label('CPF')
-                            ->placeholder('123.456.789-00')
-                            ->mask('999.999.999-99')
-                            ->rule('regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/')
-                            ->validationMessages([
-                                'regex' => 'Use o formato xxx.xxx.xxx-xx.',
-                            ])
-                            ->maxLength(14),
-
-                        TextInput::make('rg')
-                            ->label('RG')
-                            ->placeholder('12.345.678-9')
-                            ->mask('99.999.999-*')
-                            ->rule('regex:/^\d{2}\.\d{3}\.\d{3}-[\dXx]$/')
-                            ->validationMessages([
-                                'regex' => 'Use o formato xx.xxx.xxx-x.',
-                            ])
-                            ->maxLength(12),
-
+                Section::make('Operações e Acessos')
+                    ->description('Vínculos com operações e histórico de acessos ao sistema.')
+                    ->schema([
                         Select::make('emissions')
                             ->label('Operações Vinculadas')
                             ->relationship('emissions', 'name')
@@ -121,22 +145,24 @@ class InvestorResource extends Resource
                             ->placeholder('Nenhuma operação vinculada.')
                             ->columnSpanFull(),
 
-                        Toggle::make('is_active')
-                            ->label('Status de Ativação')
-                            ->default(true),
-
                         DateTimePicker::make('last_login_at')
                             ->label('Último Acesso ao Sistema'),
 
                         DateTimePicker::make('last_portal_seen_at')
                             ->label('Última Interação no Portal'),
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
 
+                Section::make('Observações')
+                    ->description('Anotações e informações complementares.')
+                    ->schema([
                         Textarea::make('notes')
                             ->label('Informações Complementares / Notas')
                             ->rows(6)
                             ->columnSpanFull(),
                     ])
-                    ->columns(2),
+                    ->columnSpanFull(),
             ]);
     }
 

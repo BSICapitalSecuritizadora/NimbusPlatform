@@ -90,6 +90,88 @@
     </div>
 </section>
 
+<!-- Entregas e Inteligência -->
+<section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-7">
+                <div class="position-relative p-4 bg-white rounded-4 shadow-sm border border-brand-subtle overflow-hidden">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Monitoramento de Performance</span>
+                        <div class="d-flex gap-1">
+                            <div class="bg-gold rounded-circle" style="width: 8px; height: 8px;"></div>
+                            <div class="bg-gold opacity-20 rounded-circle" style="width: 8px; height: 8px;"></div>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <div class="bg-light rounded-3 p-3 mb-3">
+                                <div class="small fw-bold text-muted mb-2">Curva de Inadimplência</div>
+                                <div style="height: 100px; width: 100%; position: relative;">
+                                    <canvas id="inadimplenciaChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="bg-brand-subtle p-2 rounded-2 text-center">
+                                        <div class="smaller text-muted">Overcollateral</div>
+                                        <div class="small fw-bold text-brand">125.4%</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-brand-subtle p-2 rounded-2 text-center">
+                                        <div class="smaller text-muted">Fundo de Reserva</div>
+                                        <div class="small fw-bold text-brand">R$ 1.2M</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-light rounded-3 p-3 h-100">
+                                <div class="small fw-bold text-muted mb-3">Checklist Fiduciário</div>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="bg-gold rounded-circle" style="width: 6px; height: 6px;"></div>
+                                        <div class="smaller text-muted">Covenants</div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="bg-gold rounded-circle" style="width: 6px; height: 6px;"></div>
+                                        <div class="smaller text-muted">Gatilhos</div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="bg-gold rounded-circle" style="width: 6px; height: 6px;"></div>
+                                        <div class="smaller text-muted">Rating</div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 text-center">
+                                    <div class="smaller fw-bold text-gold">Status: OK</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <h2 class="h4 fw-bold text-dark mb-4">Relatórios e Entregas</h2>
+                <div class="d-flex flex-column gap-3">
+                    <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
+                        <div class="fw-bold text-dark small mb-1">Relatórios de Servicer</div>
+                        <div class="text-muted smaller">Conciliação diária de cobrança, fluxos de recebimento e performance de ativos.</div>
+                    </div>
+                    <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
+                        <div class="fw-bold text-dark small mb-1">Relatórios do Agente Fiduciário</div>
+                        <div class="text-muted smaller">Consolidação de indicadores para verificação de covenants e proteção do investidor.</div>
+                    </div>
+                    <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
+                        <div class="fw-bold text-dark small mb-1">Informes Regulatórios (CVM/ANBIMA)</div>
+                        <div class="text-muted smaller">Geração e protocolo do Informe Mensal (IM) e Trimestral em conformidade legal.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Ciclo de produção dos relatórios -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -107,6 +189,10 @@
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         <span class="text-dark fw-medium">Revisão técnica e envio ao agente fiduciário, investidores e demais partes dentro dos prazos regulatórios — com confirmação de recebimento e registro de entrega.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span class="text-dark fw-medium">Integração nativa com os principais servicers e agentes de cobrança do mercado, permitindo a leitura automática de arquivos de remessa e retorno para conciliação diária do lastro.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
@@ -163,5 +249,83 @@
         100% { transform: translateY(0px); }
     }
 </style>
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('inadimplenciaChart').getContext('2d');
+        
+        const brand = '#091b23';
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+                datasets: [{
+                    label: 'Inadimplência',
+                    data: [1.2, 1.8, 1.6, 2.4, 2.2, 3.4],
+                    backgroundColor: [
+                        'rgba(160, 110, 40, 0.25)',
+                        'rgba(160, 110, 40, 0.25)',
+                        'rgba(160, 110, 40, 0.25)',
+                        'rgba(160, 110, 40, 0.5)',
+                        'rgba(160, 110, 40, 0.5)',
+                        'rgba(160, 110, 40, 1)',
+                    ],
+                    borderRadius: {
+                        topLeft: 4,
+                        topRight: 4,
+                        bottomLeft: 0,
+                        bottomRight: 0
+                    },
+                    borderSkipped: false,
+                    barPercentage: 0.9,
+                    categoryPercentage: 0.9
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: brand,
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: false,
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        display: false,
+                        beginAtZero: true,
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1500,
+                    easing: 'easeOutQuart'
+                }
+            }
+        });
+    });
+</script>
 @endpush
 @endsection

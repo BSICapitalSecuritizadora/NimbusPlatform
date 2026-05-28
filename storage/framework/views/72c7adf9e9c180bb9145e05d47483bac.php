@@ -1,7 +1,6 @@
-@extends('site.layout')
-@section('title', 'Parcerias — BSI Capital')
+<?php $__env->startSection('title', 'Parcerias — BSI Capital'); ?>
 
-@push('head')
+<?php $__env->startPush('head'); ?>
 <style>
     @keyframes float {
         0%, 100% { transform: translateY(0px); }
@@ -9,11 +8,11 @@
     }
     .float-card { animation: float 4s ease-in-out infinite; }
 </style>
-@endpush
+<?php $__env->stopPush(); ?>
 
-@section('content')
+<?php $__env->startSection('content'); ?>
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.1; background: url('{{ asset('images/compliance.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.1; background: url('<?php echo e(asset('images/compliance.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
     <div class="container position-relative z-1">
         <div class="row align-items-center g-4">
             <div class="col-lg-6">
@@ -25,13 +24,13 @@
                     A BSI Capital desenvolve parcerias com originadores, consultorias, assessorias, plataformas e agentes do mercado que buscam uma operação tecnicamente sólida, governança clara e capacidade real de execução.
                 </p>
                 <div class="d-flex flex-wrap gap-3">
-                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg px-4">Falar sobre parcerias</a>
-                    <a href="{{ route('proposal.create') }}" class="btn btn-lg px-4" style="background: rgba(255,255,255,0.08); color: #E6E4E4; border: 1px solid rgba(230,228,228,0.25);">Enviar oportunidade</a>
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg px-4">Falar sobre parcerias</a>
+                    <a href="<?php echo e(route('proposal.create')); ?>" class="btn btn-lg px-4" style="background: rgba(255,255,255,0.08); color: #E6E4E4; border: 1px solid rgba(230,228,228,0.25);">Enviar oportunidade</a>
                 </div>
             </div>
             <div class="col-lg-6 d-none d-lg-flex justify-content-center">
                 <div class="position-relative w-100" style="max-width: 480px;">
-                    <img src="{{ asset('images/compliance.png') }}" alt="Parcerias BSI Capital" class="img-fluid rounded-3" style="opacity: 0.85;">
+                    <img src="<?php echo e(asset('images/compliance.png')); ?>" alt="Parcerias BSI Capital" class="img-fluid rounded-3" style="opacity: 0.85;">
                     <div class="float-card position-absolute bottom-0 start-0 translate-middle-y ms-4 bg-white rounded-3 p-3 shadow-lg d-flex align-items-center gap-3" style="min-width: 220px;">
                         <div class="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width:40px;height:40px;background:rgba(160,110,40,0.12);">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -244,8 +243,8 @@
                 </div>
                 <div class="col-lg-4">
                     <div class="p-4 p-lg-5 d-flex flex-column gap-3">
-                        <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg">Falar sobre parcerias</a>
-                        <a href="{{ route('proposal.create') }}" class="btn btn-lg" style="background: rgba(255,255,255,0.08); color: #E6E4E4; border: 1px solid rgba(230,228,228,0.25);">Enviar oportunidade</a>
+                        <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg">Falar sobre parcerias</a>
+                        <a href="<?php echo e(route('proposal.create')); ?>" class="btn btn-lg" style="background: rgba(255,255,255,0.08); color: #E6E4E4; border: 1px solid rgba(230,228,228,0.25);">Enviar oportunidade</a>
                     </div>
                 </div>
             </div>
@@ -253,4 +252,6 @@
     </div>
 </section>
 
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/partnerships.blade.php ENDPATH**/ ?>

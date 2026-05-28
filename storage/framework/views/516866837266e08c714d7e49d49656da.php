@@ -88,6 +88,76 @@
     </div>
 </section>
 
+<!-- Escopo e Enquadramento -->
+<section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="row g-5">
+            <div class="col-lg-6">
+                <h2 class="h4 fw-bold text-dark mb-4">Documentos Essenciais</h2>
+                <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
+                                <li class="small d-flex align-items-center gap-2 text-muted">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Escritura de Emissão
+                                </li>
+                                <li class="small d-flex align-items-center gap-2 text-muted">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Contrato de Cessão
+                                </li>
+                                <li class="small d-flex align-items-center gap-2 text-muted">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Termo de Garantias
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
+                                <li class="small d-flex align-items-center gap-2 text-muted">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Prospecto e Lâmina
+                                </li>
+                                <li class="small d-flex align-items-center gap-2 text-muted">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Regulamento do Fundo
+                                </li>
+                                <li class="small d-flex align-items-center gap-2 text-muted">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    Acordos de Investimento
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <h2 class="h4 fw-bold text-dark mb-4">Especialidade por Lastro</h2>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-xs card-hover transition-all border-start border-4 border-gold">
+                            <div class="fw-bold text-dark small" style="min-width: 100px;">Imobiliário</div>
+                            <div class="text-muted smaller">Lei 9.514/97 (CRI) e Lei 14.430/22 (Marco Legal)</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-xs card-hover transition-all border-start border-4 border-gold">
+                            <div class="fw-bold text-dark small" style="min-width: 100px;">Agronegócio</div>
+                            <div class="text-muted smaller">Lei 11.076/04 (CRA) e Lei do Agro (13.986/20)</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-xs card-hover transition-all border-start border-4 border-gold">
+                            <div class="fw-bold text-dark small" style="min-width: 100px;">Comercial</div>
+                            <div class="text-muted smaller">Cessão de Créditos e Estruturas de FIDC</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Acompanhamento jurídico pós-fechamento -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -109,6 +179,10 @@
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         <span class="text-dark fw-medium">Atualização contínua da documentação conforme novos normativos da CVM e alterações regulatórias que impactem a estrutura da emissão em vigor.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span class="text-dark fw-medium">Formalização digital ponta a ponta, integrando assinaturas eletrônicas e custódia digital para conferir agilidade ao closing sem abrir mão do rigor jurídico.</span>
                     </li>
                 </ul>
             </div>

@@ -88,6 +88,83 @@
     </div>
 </section>
 
+<!-- Conectividade e APIs -->
+<section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <h2 class="h4 fw-bold text-dark mb-4">Conectividade e Integração B2B</h2>
+                <p class="text-muted small mb-4">Entendemos que a agilidade institucional exige dados fluidos. Além do portal web, oferecemos infraestrutura para consumo de dados via API, facilitando a vida de Assets e administradores.</p>
+                <div class="d-flex flex-column gap-3">
+                    <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-sm card-hover transition-all">
+                        <div class="bg-light p-2 rounded-circle text-gold">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark small">Data Feed via API</div>
+                            <div class="text-muted smaller">Integração direta com sistemas de controle de risco e gestão (ERP/Asset Management).</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-sm card-hover transition-all">
+                        <div class="bg-light p-2 rounded-circle text-gold">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark small">Exportação Estruturada</div>
+                            <div class="text-muted smaller">Downloads em massa de PU e cronogramas em formatos compatíveis com backoffice (JSON/CSV).</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="position-relative p-4 bg-white rounded-4 shadow-sm border border-brand-subtle overflow-hidden">
+                    <div class="text-center mb-3">
+                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Dashboard Visual</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-7">
+                            <div class="bg-light rounded-3 p-3 mb-3" style="height: 120px;">
+                                <div class="w-25 h-2 bg-brand opacity-10 rounded mb-2"></div>
+                                <div class="w-75 h-4 bg-brand opacity-20 rounded mb-4"></div>
+                                <div class="d-flex gap-2 align-items-end" style="height: 40px;">
+                                    <div class="flex-grow-1 bg-gold opacity-50 rounded-top" style="height: 40%;"></div>
+                                    <div class="flex-grow-1 bg-gold opacity-50 rounded-top" style="height: 70%;"></div>
+                                    <div class="flex-grow-1 bg-gold opacity-50 rounded-top" style="height: 55%;"></div>
+                                    <div class="flex-grow-1 bg-gold opacity-50 rounded-top" style="height: 90%;"></div>
+                                </div>
+                            </div>
+                            <div class="bg-light rounded-3 p-3" style="height: 100px;">
+                                <div class="w-50 h-2 bg-brand opacity-10 rounded mb-2"></div>
+                                <div class="row g-2">
+                                    <div class="col-6"><div class="h-8 bg-white rounded shadow-xs"></div></div>
+                                    <div class="col-6"><div class="h-8 bg-white rounded shadow-xs"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-5">
+                            <div class="bg-brand-subtle rounded-3 p-3 h-100 border border-brand-subtle">
+                                <div class="w-75 h-2 bg-brand opacity-20 rounded mb-3"></div>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="h-2 bg-white rounded"></div>
+                                    <div class="h-2 bg-white rounded"></div>
+                                    <div class="h-2 bg-white rounded"></div>
+                                    <div class="h-2 bg-white rounded w-50"></div>
+                                </div>
+                                <div class="mt-4 pt-4 border-top border-white opacity-50">
+                                    <div class="h-8 bg-white rounded-pill"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(255,255,255,0.05); backdrop-filter: blur(1px);">
+                        <span class="small fw-bold text-brand px-3 py-2 bg-white rounded-pill shadow-sm border">Ambiente Proprietário</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Experiência do produto -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -109,6 +186,10 @@
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         <span class="text-dark fw-medium">Acesso aos documentos da operação com controle de versões — escrituras, adendos e termos de cessão — organizados cronologicamente e disponíveis para download.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span class="text-dark fw-medium">Interface dedicada para Agentes Fiduciários, com painel exclusivo para monitoramento de covenants, gatilhos financeiros e status de garantias em tempo real.</span>
                     </li>
                 </ul>
             </div>

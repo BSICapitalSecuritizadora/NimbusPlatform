@@ -1,11 +1,9 @@
-@extends('site.layout')
+<?php $__env->startSection('title', 'Compliance — BSI Capital'); ?>
 
-@section('title', 'Compliance — BSI Capital')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.12; background: url('{{ asset('images/compliance.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.12; background: url('<?php echo e(asset('images/compliance.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -18,11 +16,11 @@
                     Estrutura ativa de KYC/KYP com reporte ao COAF, conformidade à Instrução CVM 60 e ciclos periódicos de revisão de PLD/FTP — garantindo idoneidade das partes, segregação de funções e proteção de dados conforme a LGPD em todas as operações estruturadas pela BSI Capital.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                         Falar com Especialista
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
-                    <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
+                    <a href="<?php echo e(route('site.emissions')); ?>" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
                         Ver emissões
                     </a>
                 </div>
@@ -31,7 +29,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/compliance.png') }}" class="img-fluid" alt="Compliance & Ética Corporativa" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="<?php echo e(asset('images/compliance.png')); ?>" class="img-fluid" alt="Compliance & Ética Corporativa" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -141,7 +139,7 @@
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5" class="mb-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     <h2 class="h3 fw-bold mb-3" style="color: #fff;">Nosso Código de Ética</h2>
                     <p style="color: #8892b0; line-height: 1.7;">Mais do que um documento, nosso Código de Ética e Conduta é a base da nossa cultura fiduciária. Ele orienta cada decisão e define o padrão de integridade inegociável da BSI Capital.</p>
-                    <a href="{{ route('public-documents') }}" class="btn btn-brand mt-3 d-inline-flex align-items-center gap-2">
+                    <a href="<?php echo e(route('public-documents')); ?>" class="btn btn-brand mt-3 d-inline-flex align-items-center gap-2">
                         Leitura Completa
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
                     </a>
@@ -189,32 +187,33 @@
         </div>
 
         <div class="row g-4 justify-content-center">
-            @forelse($documents as $document)
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $documents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $document): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
             <div class="col-md-6 col-lg-4">
-                <a href="{{ route('site.documents.download', $document) }}" class="text-decoration-none" download>
+                <a href="<?php echo e(route('site.documents.download', $document)); ?>" class="text-decoration-none" download>
                     <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.05); border-radius: 16px; transition: .3s;">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                            <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">{{ $document->title }}</h4>
+                            <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;"><?php echo e($document->title); ?></h4>
                         </div>
                         <div class="d-flex align-items-center justify-content-between">
                             <span style="color: #8892b0; font-size: 0.85rem;">
-                                {{ $document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y') }}
-                                @if($document->file_size)
-                                    · {{ number_format($document->file_size / 1024, 0) }} KB
-                                @endif
+                                <?php echo e($document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y')); ?>
+
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($document->file_size): ?>
+                                    · <?php echo e(number_format($document->file_size / 1024, 0)); ?> KB
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </span>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         </div>
                     </div>
                 </a>
             </div>
-            @empty
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
             <div class="col-12 text-center py-4">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                 <p class="mb-0" style="color: #8892b0;">Os documentos normativos de compliance estarão disponíveis nesta seção após sua publicação oficial.</p>
             </div>
-            @endforelse
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </div>
 </section>
@@ -228,7 +227,7 @@
                 <h2 class="h3 fw-bold text-dark mb-3">Canal de Integridade e Denúncia</h2>
                 <p class="text-muted mb-4">A BSI Capital disponibiliza um Canal de Integridade para o relato seguro de desvios de conduta, irregularidades ou descumprimento de normas. Asseguramos o **anonimato tecnológico absoluto** (com criptografia de ponta a ponta e sem rastreamento de IP) e mantemos uma política rigorosa de não retaliação ao denunciante de boa-fé.</p>
                 <p class="text-muted mb-4">A gestão do canal é pautada por protocolos de independência, com os relatos sendo encaminhados diretamente ao Comitê de Compliance — sem qualquer interferência da área comercial ou de diretores estatutários envolvidos.</p>
-                <a href="{{ route('site.contact') }}" class="btn btn-brand d-inline-flex align-items-center gap-2 px-4 py-2">
+                <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand d-inline-flex align-items-center gap-2 px-4 py-2">
                     Reportar ao Comitê
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
@@ -261,7 +260,7 @@
     </div>
 </section>
 
-@push('head')
+<?php $__env->startPush('head'); ?>
 <style>
     @keyframes float {
         0% { transform: translateY(0px); }
@@ -269,5 +268,7 @@
         100% { transform: translateY(0px); }
     }
 </style>
-@endpush
-@endsection
+<?php $__env->stopPush(); ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/compliance.blade.php ENDPATH**/ ?>

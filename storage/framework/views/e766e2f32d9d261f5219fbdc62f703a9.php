@@ -1,11 +1,9 @@
-@extends('site.layout')
+<?php $__env->startSection('title', 'Documentos com ACL — BSI Capital'); ?>
 
-@section('title', 'Documentos com ACL — BSI Capital')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/documentos_acl.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('<?php echo e(asset('images/documentos_acl.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -19,11 +17,11 @@
                     Permissões granulares por perfil — agente fiduciário, investidor qualificado ou distribuidor — com controle de versão de documentos e log de acesso por operação, garantindo que cada parte visualize apenas os materiais autorizados para sua função.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                         Consultar Especialista
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
-                    <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
+                    <a href="<?php echo e(route('site.emissions')); ?>" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
                         Ver emissões
                     </a>
                 </div>
@@ -32,7 +30,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/documentos_acl.png') }}" class="img-fluid" alt="Documentos com ACL" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="<?php echo e(asset('images/documentos_acl.png')); ?>" class="img-fluid" alt="Documentos com ACL" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -201,7 +199,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/documentos_acl.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('<?php echo e(asset('images/documentos_acl.png')); ?>') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>
@@ -217,7 +215,7 @@
 
         <div class="row g-4 justify-content-center">
             <div class="col-md-5">
-                <a href="{{ route('site.servicos.auditoria-acessos') }}" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.auditoria-acessos')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </div>
@@ -228,7 +226,7 @@
             </div>
 
             <div class="col-md-5">
-                <a href="{{ route('site.servicos.portal-investidor') }}" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.portal-investidor')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                     </div>
@@ -241,7 +239,7 @@
     </div>
 </section>
 
-@push('head')
+<?php $__env->startPush('head'); ?>
 <style>
     @keyframes float {
         0% { transform: translateY(0px); }
@@ -249,5 +247,7 @@
         100% { transform: translateY(0px); }
     }
 </style>
-@endpush
-@endsection
+<?php $__env->stopPush(); ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/servicos/documentos-acl.blade.php ENDPATH**/ ?>

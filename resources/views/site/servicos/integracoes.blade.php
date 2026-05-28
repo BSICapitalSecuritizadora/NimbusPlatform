@@ -22,8 +22,9 @@
                         Consultar Especialista
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
-                    <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                        Ver emissões
+                    <a href="#" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                        Portal Developer
                     </a>
                 </div>
             </div>
@@ -84,6 +85,81 @@
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Arquitetura Aberta</h3>
                     <p class="text-muted mb-0">APIs REST documentadas com autenticação OAuth 2.0 e escopos granulares por operação — permitindo que ERPs de emissores, plataformas de cobrança e sistemas de gestão de garantias se conectem com segurança e rastreabilidade.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Arquitetura e Ecossistema -->
+<section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="row g-5 align-items-center text-center text-lg-start">
+            <div class="col-lg-5">
+                <h2 class="h4 fw-bold text-dark mb-4">Arquitetura de Conectividade</h2>
+                <p class="text-muted small mb-4">Atuamos como o centro de inteligência de dados, conectando todas as pontas da operação de forma fluida e segura.</p>
+                
+                <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle mb-4">
+                    <div class="fw-bold smaller text-brand mb-3">Conectividade com ERPs de Mercado:</div>
+                    <div class="row g-3">
+                        <div class="col-4"><div class="smaller border rounded p-2 text-center text-muted">SAP</div></div>
+                        <div class="col-4"><div class="smaller border rounded p-2 text-center text-muted">TOTVS</div></div>
+                        <div class="col-4"><div class="smaller border rounded p-2 text-center text-muted">Sienge</div></div>
+                        <div class="col-4"><div class="smaller border rounded p-2 text-center text-muted">Mega</div></div>
+                        <div class="col-4"><div class="smaller border rounded p-2 text-center text-muted">Sankhya</div></div>
+                        <div class="col-4"><div class="smaller border rounded p-2 text-center text-muted">+ Outros</div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-7">
+                <div class="p-4 bg-white rounded-4 shadow-sm border border-brand-subtle position-relative overflow-hidden">
+                    <div class="text-center mb-4">
+                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Mapa de Fluxo de Dados</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <!-- Originador -->
+                        <div class="text-center" style="width: 25%;">
+                            <div class="p-3 border rounded-3 bg-light mb-2 shadow-xs">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+                                <div class="smaller fw-bold text-dark mt-1">Originador</div>
+                            </div>
+                            <div class="smaller text-muted opacity-75">ERP / CRM</div>
+                        </div>
+
+                        <div class="flex-grow-1 position-relative">
+                            <div class="border-top border-2 border-dashed opacity-25 w-100"></div>
+                            <div class="position-absolute top-50 start-50 translate-middle">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+                            </div>
+                        </div>
+
+                        <!-- BSI Hub -->
+                        <div class="text-center" style="width: 30%;">
+                            <div class="p-3 border-gold rounded-3 bg-brand text-white mb-2 shadow-md border-2" style="background: var(--brand-strong);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                <div class="smaller fw-bold mt-1">BSI API HUB</div>
+                            </div>
+                            <div class="smaller text-gold fw-bold">Validação & Registro</div>
+                        </div>
+
+                        <div class="flex-grow-1 position-relative">
+                            <div class="border-top border-2 border-dashed opacity-25 w-100"></div>
+                            <div class="position-absolute top-50 start-50 translate-middle">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+                            </div>
+                        </div>
+
+                        <!-- Mercado -->
+                        <div class="text-center" style="width: 25%;">
+                            <div class="p-3 border rounded-3 bg-light mb-2 shadow-xs">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                                <div class="smaller fw-bold text-dark mt-1">Mercado</div>
+                            </div>
+                            <div class="smaller text-muted opacity-75">B3 / Custodiantes</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,11 +1,9 @@
-@extends('site.layout')
+<?php $__env->startSection('title', 'Portal do Investidor — BSI Capital'); ?>
 
-@section('title', 'Portal do Investidor — BSI Capital')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/portal_investidor.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('<?php echo e(asset('images/portal_investidor.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -18,11 +16,11 @@
                     Ambiente centralizado para acompanhar posição de PU, cronogramas de amortização, histórico de Fatos Relevantes e documentos fiduciários — com acesso seguro, segregado por operação e disponível 24 horas.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="{{ config('services.portal.url') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                    <a href="<?php echo e(config('services.portal.url')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                         Acessar o Portal
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
-                    <a href="{{ route('site.contact') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
                         Falar com nossa equipe
                     </a>
                 </div>
@@ -31,7 +29,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/portal_investidor.png') }}" class="img-fluid" alt="Portal do Investidor" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="<?php echo e(asset('images/portal_investidor.png')); ?>" class="img-fluid" alt="Portal do Investidor" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -196,7 +194,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/portal_investidor.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('<?php echo e(asset('images/portal_investidor.png')); ?>') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>
@@ -212,7 +210,7 @@
 
         <div class="row g-4 justify-content-center">
             <div class="col-md-5">
-                <a href="{{ route('site.servicos.relatorios') }}" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.relatorios')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     </div>
@@ -223,7 +221,7 @@
             </div>
 
             <div class="col-md-5">
-                <a href="{{ route('site.servicos.compliance') }}" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.compliance')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
@@ -236,7 +234,7 @@
     </div>
 </section>
 
-@push('head')
+<?php $__env->startPush('head'); ?>
 <style>
     @keyframes float {
         0% { transform: translateY(0px); }
@@ -244,5 +242,7 @@
         100% { transform: translateY(0px); }
     }
 </style>
-@endpush
-@endsection
+<?php $__env->stopPush(); ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/servicos/portal-investidor.blade.php ENDPATH**/ ?>

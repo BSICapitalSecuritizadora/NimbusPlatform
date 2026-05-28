@@ -1,10 +1,9 @@
-@extends('site.layout')
-@section('title','Governança Corporativa — BSI Capital')
+<?php $__env->startSection('title','Governança Corporativa — BSI Capital'); ?>
 
-@section('content')
+<?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.08; background: url('{{ asset('images/estrutura_juridica.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.08; background: url('<?php echo e(asset('images/estrutura_juridica.png')); ?>') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -17,11 +16,11 @@
                     Nossa estrutura de governança integra instâncias decisórias, controles internos rigorosos e disciplina regulatória, assegurando a integridade institucional e a perenidade das operações estruturadas.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
                         Falar com Especialista
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
-                    <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
+                    <a href="<?php echo e(route('site.emissions')); ?>" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
                         Ver emissões
                     </a>
                 </div>
@@ -30,7 +29,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/estrutura_juridica.png') }}" class="img-fluid" alt="Governança Corporativa" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="<?php echo e(asset('images/estrutura_juridica.png')); ?>" class="img-fluid" alt="Governança Corporativa" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -187,7 +186,7 @@
                         <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">Estatuto Social</h4>
                     </div>
                     <p class="small mb-3" style="color: #8892b0;">Documento fundamental que rege a organização e o funcionamento da BSI Capital Securitizadora S.A.</p>
-                    <a href="{{ route('public-documents') }}" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-2" style="border-color: rgba(255,255,255,0.2);">
+                    <a href="<?php echo e(route('public-documents')); ?>" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-2" style="border-color: rgba(255,255,255,0.2);">
                         Consultar no RI
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
                     </a>
@@ -200,7 +199,7 @@
                         <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">Atas de Assembleia</h4>
                     </div>
                     <p class="small mb-3" style="color: #8892b0;">Registro das deliberações e decisões estratégicas tomadas em assembleias gerais.</p>
-                    <a href="{{ route('site.ri') }}" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-2" style="border-color: rgba(255,255,255,0.2);">
+                    <a href="<?php echo e(route('site.ri')); ?>" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-2" style="border-color: rgba(255,255,255,0.2);">
                         Acessar Atas
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
                     </a>
@@ -298,32 +297,33 @@
         </div>
 
         <div class="row g-4">
-            @forelse($documents as $document)
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $documents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $document): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoop($loop->index); ?><?php endif; ?>
             <div class="col-md-6 col-lg-4">
-                <a href="{{ route('site.documents.download', $document) }}" class="text-decoration-none" download>
+                <a href="<?php echo e(route('site.documents.download', $document)); ?>" class="text-decoration-none" download>
                     <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.04); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06) !important; transition: .3s;">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                            <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">{{ $document->title }}</h4>
+                            <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;"><?php echo e($document->title); ?></h4>
                         </div>
                         <div class="d-flex align-items-center justify-content-between">
                             <span style="color: #8892b0; font-size: 0.85rem;">
-                                {{ $document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y') }}
-                                @if($document->file_size)
-                                    · {{ number_format($document->file_size / 1024, 0) }} KB
-                                @endif
+                                <?php echo e($document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y')); ?>
+
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($document->file_size): ?>
+                                    · <?php echo e(number_format($document->file_size / 1024, 0)); ?> KB
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </span>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                         </div>
                     </div>
                 </a>
             </div>
-            @empty
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
             <div class="col-12 text-center py-4">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                 <p class="mb-0" style="color: #8892b0;">Os documentos normativos de governança estarão disponíveis nesta seção após sua publicação oficial.</p>
             </div>
-            @endforelse
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
 
     </div>
@@ -404,13 +404,13 @@
     <div class="container py-5 text-center">
         <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Estamos à Sua Disposição</h2>
         <p class="mx-auto mb-5" style="max-width: 550px; color: #E6E4E4;">Se precisar de esclarecimentos sobre nossas práticas de governança ou canais institucionais de contato, fale com nossa equipe.</p>
-        <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg">
+        <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg">
             Fale com nossa equipe
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         </a>
     </div>
 </section>
-@push('head')
+<?php $__env->startPush('head'); ?>
 <style>
     @keyframes float {
         0% { transform: translateY(0px); }
@@ -418,5 +418,7 @@
         100% { transform: translateY(0px); }
     }
 </style>
-@endpush
-@endsection
+<?php $__env->stopPush(); ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/governance.blade.php ENDPATH**/ ?>

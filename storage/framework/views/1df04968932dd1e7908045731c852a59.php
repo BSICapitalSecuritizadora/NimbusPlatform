@@ -161,6 +161,73 @@
     </div>
 </section>
 
+</section>
+
+<section class="py-5" style="background-color: var(--bg);">
+    <div class="container py-lg-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Diferencial Boutique</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Por que originadores escolhem a BSI Capital?</h2>
+                <p class="text-muted mb-4">No mercado de capitais, agilidade e flexibilidade são os ativos mais escassos. Fugimos da estrutura de "massa" para oferecer um suporte de estruturação próximo e resolutivo.</p>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-brand">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline></svg>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-1" style="font-size: 1rem; color: #0b1220;">Velocidade de Resposta</h5>
+                                <p class="small text-muted mb-0">Decisões rápidas de enquadramento técnico, sem as burocracias de grandes comitês bancários.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-brand">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-1" style="font-size: 1rem; color: #0b1220;">Flexibilidade em Ativos</h5>
+                                <p class="small text-muted mb-0">Expertise para estruturar ativos complexos ou teses de nicho que fogem do padrão de prateleira.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-lg p-4 p-lg-5" style="border-radius: 20px; background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);">
+                    <h4 class="fw-bold mb-4" style="color: var(--brand); font-size: 1.1rem;">Material de Apoio (Enablement)</h4>
+                    <p class="text-muted small mb-4">Ajudamos você a apresentar a BSI Capital para seus clientes com materiais técnicos e lâminas de apoio.</p>
+                    <div class="list-group list-group-flush mb-4">
+                        <a href="#" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center justify-content-between px-0 py-3 border-bottom">
+                            <div class="d-flex align-items-center gap-3">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                <span class="fw-medium text-dark">Apresentação Institucional</span>
+                            </div>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action bg-transparent d-flex align-items-center justify-content-between px-0 py-3 border-bottom">
+                            <div class="d-flex align-items-center gap-3">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                <span class="fw-medium text-dark">Checklist de Enquadramento</span>
+                            </div>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </a>
+                    </div>
+                    <div class="p-3 rounded-3" style="background: rgba(160,110,40,0.05); border: 1px dashed var(--gold);">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            <span class="small fw-bold text-dark">Portal do Parceiro</span>
+                        </div>
+                        <p class="small text-muted mb-0">Em breve: Plataforma exclusiva para submissão e acompanhamento de deals em tempo real.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section class="py-5">
     <div class="container">
         <div class="card border-0 overflow-hidden" style="background: var(--brand-strong);">

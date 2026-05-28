@@ -90,6 +90,58 @@
     </div>
 </section>
 
+<!-- Estratégia e Ritos -->
+<section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="row g-5">
+            <div class="col-lg-6">
+                <h2 class="h4 fw-bold text-dark mb-4">Ritos de Oferta (RCVM 160)</h2>
+                <p class="text-muted small mb-4">Apoiamos a definição do rito regulatório ideal, calibrando o perfil da oferta ao apetite e ao porte da captação.</p>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
+                            <div class="fw-bold text-dark small mb-1">Rito Automático</div>
+                            <div class="text-muted smaller">Focado em investidores Profissionais e Qualificados, garantindo agilidade no time-to-market.</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
+                            <div class="fw-bold text-dark small mb-1">Rito Ordinário</div>
+                            <div class="text-muted smaller">Análise prévia da CVM para ofertas com esforços amplos de distribuição, incluindo o varejo.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <h2 class="h4 fw-bold text-dark mb-4">Rede de Distribuição</h2>
+                <p class="text-muted small mb-4">Atuamos na coordenação do sindicato de distribuição, conectando a tese aos principais canais de liquidez.</p>
+                <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
+                    <div class="d-flex flex-column gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-light p-2 rounded-circle text-gold">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark small">Plataformas e Corretoras</div>
+                                <div class="text-muted smaller">Acesso às maiores prateleiras de investimento do país.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-light p-2 rounded-circle text-gold">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark small">Investidores Institucionais</div>
+                                <div class="text-muted smaller">Conexão direta com Assets, Pensões e Family Offices.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Da liquidação ao pós-emissão -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -107,6 +159,10 @@
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         <span class="text-dark fw-medium">Emissão dos comunicados pós-closing: Fato Relevante de encerramento da oferta, relatório de alocação e informes ao agente fiduciário.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span class="text-dark fw-medium">Acompanhamento em tempo real via dashboard do progresso da oferta e da formação do livro de ordens, garantindo total transparência ao emissor.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>

@@ -24,7 +24,8 @@ class FundForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Dados do fundo')
+            Section::make('Classificação')
+                ->description('Defina a operação e as características do fundo.')
                 ->schema([
                     Select::make('emission_id')
                         ->label('Operacao')
@@ -128,7 +129,13 @@ class FundForm
                                 ->modalHeading('Editar aplicacao')
                                 ->modalWidth('2xl'),
                         ),
+                ])
+                ->columns(2)
+                ->columnSpanFull(),
 
+            Section::make('Dados Bancários')
+                ->description('Informações da conta e integração financeira.')
+                ->schema([
                     Select::make('bank_id')
                         ->label('Banco')
                         ->relationship('bank', 'name')
@@ -218,7 +225,13 @@ class FundForm
                             'unique' => 'Este ID já está vinculado a outro fundo.',
                         ])
                         ->columnSpanFull(),
+                ])
+                ->columns(3)
+                ->columnSpanFull(),
 
+            Section::make('Saldos e Limites')
+                ->description('Controle de saldo atual e valor mínimo exigido.')
+                ->schema([
                     TextInput::make('balance')
                         ->label('Saldo')
                         ->required()
@@ -234,8 +247,7 @@ class FundForm
                             'required' => 'Informe o saldo do fundo.',
                         ])
                         ->placeholder('1.000,00')
-                        ->helperText('Atualize o saldo no primeiro dia de cada mes. O valor do mes anterior sera salvo automaticamente no historico de saldo. Se o saldo ficar abaixo do valor minimo, um aviso sera exibido apos o salvamento e o alerta por e-mail sera enviado aos investidores vinculados a emissao.')
-                        ->columnSpanFull(),
+                        ->helperText('Atualize o saldo no primeiro dia de cada mes. O valor do mes anterior sera salvo automaticamente no historico de saldo. Se o saldo ficar abaixo do valor minimo, um aviso sera exibido apos o salvamento e o alerta por e-mail sera enviado aos investidores vinculados a emissao.'),
 
                     TextInput::make('minimum_balance')
                         ->label('Valor minimo')
@@ -247,10 +259,10 @@ class FundForm
                         ->formatStateUsing(fn (mixed $state): ?string => self::formatCurrencyForDisplay($state))
                         ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
                         ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
-                        ->placeholder('1.000,00')
-                        ->columnSpanFull(),
+                        ->placeholder('1.000,00'),
                 ])
-                ->columns(2),
+                ->columns(2)
+                ->columnSpanFull(),
         ]);
     }
 

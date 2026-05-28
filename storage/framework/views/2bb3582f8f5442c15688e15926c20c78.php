@@ -12,6 +12,7 @@
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
                     Documentos <br>com <span style="color: var(--gold);">ACL</span>
                 </h1>
+                <p class="h5 fw-medium mb-4" style="color: var(--gold); letter-spacing: 0.05em;">COFRE DIGITAL E DATA ROOM SEGURO</p>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
                     Permissões granulares por perfil — agente fiduciário, investidor qualificado ou distribuidor — com controle de versão de documentos e log de acesso por operação, garantindo que cada parte visualize apenas os materiais autorizados para sua função.
                 </p>
@@ -88,6 +89,87 @@
     </div>
 </section>
 
+<!-- Visualização de Controle de Acesso -->
+<section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-5">
+                <h2 class="h4 fw-bold text-dark mb-4">Arquitetura de Visibilidade</h2>
+                <p class="text-muted small mb-4">Um único repositório, múltiplas visões. Nossa tecnologia de ACL garante que cada stakeholder acesse exatamente o que sua função exige, protegendo o sigilo estratégico da operação.</p>
+                
+                <div class="d-flex flex-column gap-3">
+                    <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
+                        <div class="fw-bold text-dark small mb-1">Agente Fiduciário</div>
+                        <div class="text-muted smaller">Acesso total a documentos de lastro, seguros e garantias para monitoramento de covenants.</div>
+                    </div>
+                    <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
+                        <div class="fw-bold text-dark small mb-1">Investidor</div>
+                        <div class="text-muted smaller">Acesso a relatórios de performance, fatos relevantes e demonstrações financeiras da série.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-7">
+                <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
+                    <div class="text-center mb-4">
+                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Simulação de Repositório ACL</span>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <!-- Perfil 1 -->
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-3 border bg-light h-100">
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <div class="bg-brand text-white rounded-circle p-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+                                    <span class="smaller fw-bold text-brand">Agente Fiduciário</span>
+                                </div>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="d-flex align-items-center gap-2 smaller text-dark bg-white p-2 rounded border shadow-xs">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                                        Escritura e Aditamentos
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 smaller text-dark bg-white p-2 rounded border shadow-xs text-brand fw-bold">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                                        Dossiê de Garantias
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 smaller text-muted opacity-50 p-2">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        Dados Sensíveis Sacados
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Perfil 2 -->
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-3 border bg-light h-100">
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <div class="bg-gold text-white rounded-circle p-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+                                    <span class="smaller fw-bold text-dark">Investidor Qualificado</span>
+                                </div>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="d-flex align-items-center gap-2 smaller text-dark bg-white p-2 rounded border shadow-xs">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                                        Relatórios de Performance
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 smaller text-dark bg-white p-2 rounded border shadow-xs">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                                        Fatos Relevantes
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 smaller text-muted opacity-50 p-2">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        Contratos Sociais Emissor
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Gestão de permissões na prática -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -101,6 +183,10 @@
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         <span class="text-dark fw-medium">Configuração de perfis de acesso no momento da estruturação — agente fiduciário, investidor qualificado, distribuidor, escriturador — com revisão a cada evento contratual relevante.</span>
+                    </li>
+                    <li class="d-flex align-items-start gap-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        <span class="text-dark fw-medium">Data Room seguro desde o "Dia Zero": suporte à troca de minutas, documentos de lastro e due diligence jurídica entre advogados e emissores durante toda a fase de estruturação (Closing).</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>

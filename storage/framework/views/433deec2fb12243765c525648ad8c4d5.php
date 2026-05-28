@@ -325,6 +325,31 @@
     </div>
 </section>
 
+<!-- Parceiros e Operações em Destaque -->
+<section class="py-5" style="background-color: var(--bg); border-top: 1px solid rgba(0,32,91,0.05); border-bottom: 1px solid rgba(0,32,91,0.05);">
+    <div class="container py-4">
+        <div class="text-center mb-4">
+            <h6 class="text-uppercase fw-bold text-muted mb-0" style="letter-spacing: 0.1em; font-size: 0.85rem;">Setores de Atuação & Estruturas</h6>
+        </div>
+        <div class="row align-items-center justify-content-center opacity-50 g-4">
+            <div class="col-6 col-md-3 col-lg-2 text-center">
+                <span class="fw-bold fs-5" style="color: #0b1220;">AGRO<span style="color: var(--brand);">CRA</span></span>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2 text-center">
+                <span class="fw-bold fs-5" style="color: #0b1220;">IMOB<span style="color: var(--brand);">CRI</span></span>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2 text-center">
+                <span class="fw-bold fs-5" style="color: #0b1220;">INFRA<span style="color: var(--brand);">DEB</span></span>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2 text-center">
+                <span class="fw-bold fs-5" style="color: #0b1220;">CREDIT<span style="color: var(--brand);">FIDC</span></span>
+            </div>
+            <div class="col-6 col-md-3 col-lg-2 text-center">
+                <span class="fw-bold fs-5" style="color: #0b1220;">YIELD<span style="color: var(--brand);">NC</span></span>
+            </div>
+        </div>
+    </div>
+</section>
 
 <!-- Credenciais / Selos -->
 <section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong) 0%, var(--brand) 100%);">
@@ -381,4 +406,4 @@
 <?php $__env->stopPush(); ?>
 <?php $__env->stopSection(); ?>
 
-<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /home/desktop/projects/bsi-capital/resources/views/site/about.blade.php ENDPATH**/ ?>
+<?php echo $__env->make('site.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /var/www/html/resources/views/site/about.blade.php ENDPATH**/ ?>

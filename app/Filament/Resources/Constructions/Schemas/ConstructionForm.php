@@ -21,7 +21,8 @@ class ConstructionForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Dados da obra')
+            Section::make('Identificação')
+                ->description('Informações gerais sobre o empreendimento.')
                 ->schema([
                     Select::make('emission_id')
                         ->label('Emissão')
@@ -60,7 +61,13 @@ class ConstructionForm
                                 }
                             };
                         }),
+                ])
+                ->columns(3)
+                ->columnSpanFull(),
 
+            Section::make('Localização')
+                ->description('Endereço principal da obra.')
+                ->schema([
                     TextInput::make('city')
                         ->label('Cidade')
                         ->required()
@@ -77,7 +84,13 @@ class ConstructionForm
                         ->validationMessages([
                             'required' => 'Selecione o estado.',
                         ]),
+                ])
+                ->columns(2)
+                ->columnSpanFull(),
 
+            Section::make('Prazos e Valores')
+                ->description('Período de execução e estimativa financeira.')
+                ->schema([
                     TextInput::make('construction_start_date')
                         ->label('Início da obra')
                         ->placeholder('mm/aaaa')
@@ -119,7 +132,13 @@ class ConstructionForm
                         ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
                         ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
                         ->placeholder('1.000,00'),
+                ])
+                ->columns(3)
+                ->columnSpanFull(),
 
+            Section::make('Medição')
+                ->description('Empresa responsável pelo acompanhamento e medição.')
+                ->schema([
                     Select::make('measurement_company_id')
                         ->label('Empresa de medição')
                         ->relationship(
@@ -161,7 +180,8 @@ class ConstructionForm
                             $component->state(ExpenseServiceProvider::formatCnpj($record?->measurementCompany?->cnpj));
                         }),
                 ])
-                ->columns(2),
+                ->columns(2)
+                ->columnSpanFull(),
         ]);
     }
 
