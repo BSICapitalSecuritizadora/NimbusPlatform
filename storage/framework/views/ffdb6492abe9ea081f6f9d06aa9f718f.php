@@ -1084,7 +1084,7 @@
                 </p>
                 <p class="small mb-3" style="color: var(--muted); line-height: 1.65;">
                     CNPJ 11.257.352/0001-43<br>
-                    Av. das Nações Unidas, 14.401 — Sala 712 e 713<br>
+                    Av. das Nações Unidas, 14.401, Sala 712 e 713<br>
                     Chácara Santo Antônio, São Paulo – SP
                 </p>
                 <div class="d-flex gap-3 justify-content-center justify-content-md-start mt-2">
@@ -1151,6 +1151,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+<?php app('livewire')->forceAssetInjection(); ?>
+<?php echo app('flux')->scripts(['nonce' => \Illuminate\Support\Facades\Vite::cspNonce()]); ?>
 
 <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>

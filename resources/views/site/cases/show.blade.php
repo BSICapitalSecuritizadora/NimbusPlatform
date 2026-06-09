@@ -44,7 +44,7 @@
                 </div>
                 @endif
 
-                <hr class="my-5 opacity-10">
+                <hr class="my-5" style="opacity: 0.1;">
 
                 <div class="row">
                     <div class="col-lg-8 case-content">

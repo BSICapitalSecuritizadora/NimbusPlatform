@@ -1,4 +1,4 @@
-<?php $__env->startSection('title', 'Recebíveis — BSI Capital'); ?>
+<?php $__env->startSection('title', 'Recebíveis Empresariais | BSI Capital'); ?>
 
 <?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
@@ -13,15 +13,15 @@
                     Antecipação de <br><span style="color: var(--gold);">Recebíveis</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Converta carteiras de duplicatas e contratos em liquidez imediata através de uma esteira digital ágil, reforçando seu capital de giro sem consumir limites bancários.
+                    Transforme duplicatas e contratos em liquidez imediata com uma esteira digital robusta. Reforce seu capital de giro sem consumir limites bancários tradicionais.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Receber Estudo de Antecipação
+                    <a href="<?php echo e(route('proposal.create')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                        Receber Estudo
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="<?php echo e(route('site.emissions')); ?>" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                        Ver emissões
+                        Ver Emissões
                     </a>
                 </div>
             </div>
@@ -36,10 +36,42 @@
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">Cessão fiduciária</div>
-                            <div class="fw-bold fs-5" style="color: #0b1220;">Liquidez sem banco</div>
+                            <div class="text-muted small fw-medium">Esteira Digital</div>
+                            <div class="fw-bold fs-5" style="color: #0b1220;">Liquidez Fora do Balanço</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- BSI em Operações (Social Proof) -->
+<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong), var(--brand));">
+    <div class="container py-4">
+        <div class="row g-4 text-center">
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">R$ 250Mi+</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Antecipados / Mês</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">50k+</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Sacados Monitorados</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">API</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Integração ERP Nativa</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">D+0</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Liquidez no Mesmo Dia</div>
                 </div>
             </div>
         </div>
@@ -50,8 +82,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Liquidez estruturada para expansão empresarial</h2>
-            <p class="text-muted mx-auto" style="max-width: 640px;">Elegíveis para vendas B2B, contratos de serviço recorrente, mensalidades, receitas de concessão e direitos creditórios — estruturamos via CR ou instrumento adequado ao perfil do emissor e do lastro.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Funding estratégico para o ciclo de caixa</h2>
+            <p class="text-muted mx-auto" style="max-width: 640px;">Estruturamos soluções para vendas B2B, contratos recorrentes e direitos creditórios, utilizando o instrumento ideal para o perfil do seu lastro.</p>
         </div>
 
         <div class="row g-4">
@@ -60,8 +92,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Captação eficiente</h3>
-                    <p class="text-muted mb-0">Securitização fora do balanço, sem consumir limite bancário e sem covenants restritivos — melhorando indicadores financeiros e preservando flexibilidade para outras operações da companhia.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Captação Off-Balance</h3>
+                    <p class="text-muted mb-0">Melhore seus índices financeiros com a securitização fora do balanço. Libere limites bancários para investimentos em CAPEX enquanto nós financiamos seu giro.</p>
                 </div>
             </div>
 
@@ -70,8 +102,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Estrutura de garantias</h3>
-                    <p class="text-muted mb-0">Cessão fiduciária, contas vinculadas, controles de performance e mecanismos de reforço podem ser combinados conforme a qualidade e a maturidade da carteira.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Garantias Dinâmicas</h3>
+                    <p class="text-muted mb-0">Cessão fiduciária combinada com contas vinculadas e controles de performance. Reforçamos a segurança do título sem engessar a operação.</p>
                 </div>
             </div>
 
@@ -80,8 +112,73 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Programas recorrentes</h3>
-                    <p class="text-muted mb-0">Estruturas revolving permitem novas captações sobre a mesma base operacional, com maior previsibilidade e eficiência na utilização da carteira.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Esteiras Revolving</h3>
+                    <p class="text-muted mb-0">Programas recorrentes que permitem novas antecipações automáticas sobre a mesma base operacional, garantindo previsibilidade total ao caixa.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Perfil de Atuação e Tíquetes -->
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Diretrizes de Crédito</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Perfil das Carteiras Estruturadas</h2>
+                <p class="text-muted mb-4">Focamos em empresas do Middle Market e Corporate que possuem carteiras de recebíveis pulverizadas ou contratos de longo prazo.</p>
+                
+                <div class="row g-4">
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">R$ 10MM a R$ 200MM</div>
+                            <div class="small text-muted">Tíquete médio para estruturação de veículos exclusivos.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">Receita > R$ 50MM/ano</div>
+                            <div class="small text-muted">Perfil ideal para otimização de custo de capital.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">Pulverização</div>
+                            <div class="small text-muted">Monitoramento de múltiplos sacados via tecnologia.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">SaaS e Indústria</div>
+                            <div class="small text-muted">Expertise em fluxos recorrentes e duplicatas mercantis.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-lg overflow-hidden" style="border-radius: 24px;">
+                    <div class="card-body p-5" style="background: var(--brand);">
+                        <h4 class="text-white fw-bold mb-4">Por que securitizar conosco?</h4>
+                        <div class="d-flex flex-column gap-3">
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Redução de custo comparado ao cheque especial/giro bancário.</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Agilidade na aprovação de novos sacados via score digital.</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Gestão fiduciária que protege o emissor e o investidor.</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Isenção de IOF nas operações de securitização.</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -93,22 +190,22 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Da Originação ao Monitoramento Contínuo da Carteira</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Gestão ativa da carteira</h2>
                 <p class="text-muted mb-4 lead">
-                    Após a cessão, a carteira precisa ser acompanhada — inadimplência, concentração de devedores e substituição de recebíveis afetam diretamente a integridade do lastro. Gerimos esse processo de forma ativa, estruturado via CR ou instrumento compatível com o setor e o perfil do emissor.
+                    Nossa entrega não para no fechamento. Gerimos a inadimplência e a concentração de devedores em tempo real, garantindo que o lastro permaneça saudável durante todo o programa.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Monitoramento contínuo da inadimplência, concentração de devedores e critérios de substituição de recebíveis cedidos.</span>
+                        <span class="text-dark fw-medium">Monitoramento contínuo da saúde dos devedores e critérios de substituição.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Ativação de gatilhos de reforço — overcollateral e reserva de liquidez — quando indicadores de performance da carteira se deterioram.</span>
+                        <span class="text-dark fw-medium">Gatilhos automáticos de reforço de lastro e reservas de liquidez.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Relatórios periódicos para investidores com posição da carteira, evolução do lastro e conformidade com os covenants da escritura.</span>
+                        <span class="text-dark fw-medium">Transparência total via dashboards periódicos de performance e lastro.</span>
                     </li>
                 </ul>
             </div>
@@ -119,11 +216,42 @@
     </div>
 </section>
 
+<!-- Leadership Quote -->
+<section class="py-5" style="background: var(--bg);">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
+                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
+                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
+                    </div>
+                    <div class="row align-items-center g-4 position-relative z-1">
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; background: url('<?php echo e(asset('images/avatar-placeholder.png')); ?>') center/cover; border: 4px solid var(--gold-soft);"></div>
+                        </div>
+                        <div class="col-md-9">
+                            <blockquote class="blockquote mb-0">
+                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6;">
+                                    "A securitização corporativa transforma contas a receber em um motor de crescimento. Nossa tecnologia permite que empresas Middle Market tenham acesso à mesma inteligência financeira de grandes S.A., convertendo vendas a prazo em liquidez imediata com segurança e agilidade."
+                                </p>
+                                <footer class="blockquote-footer mt-2">
+                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria Financeira</span>
+                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
+                                </footer>
+                            </blockquote>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Casos de Uso e Setores Elegíveis -->
 <section class="py-5 bg-light border-top">
     <div class="container py-5">
         <div class="text-center mb-5">
-            <h2 class="h3 fw-bold text-dark mb-2">Casos de Uso: Liquidez Sob Medida</h2>
+            <h2 class="h3 fw-bold text-dark mb-2">Liquidez Sob Medida</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Veja como diferentes setores utilizam a securitização para otimizar seus ciclos de caixa.</p>
         </div>
 
@@ -134,8 +262,8 @@
                     <div class="mb-3 text-brand">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20V9l4-2 4 2 4-2 4 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M7 22v-5"/><path d="M17 22v-5"/><path d="M2 14h20"/></svg>
                     </div>
-                    <h4 class="h5 fw-bold mb-3">Indústria e Comércio B2B</h4>
-                    <p class="small text-muted mb-0">Antecipação de duplicatas mercantil de vendas a prazo para grandes redes de varejo ou distribuidores, garantindo capital para compra de insumos e matéria-prima.</p>
+                    <h4 class="h5 fw-bold mb-3">Indústria B2B</h4>
+                    <p class="small text-muted mb-0">Antecipação de duplicatas mercantil de vendas para grandes redes, garantindo capital para compra de matéria-prima sem juros bancários elevados.</p>
                 </div>
             </div>
             <!-- Tecnologia/SaaS -->
@@ -144,8 +272,8 @@
                     <div class="mb-3 text-brand">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                     </div>
-                    <h4 class="h5 fw-bold mb-3">Serviços e Tecnologia (SaaS)</h4>
-                    <p class="small text-muted mb-0">Securitização de fluxos recorrentes de contratos de assinatura ou manutenção de software, antecipando o valor anual dos contratos para investimento em P&D.</p>
+                    <h4 class="h5 fw-bold mb-3">Tecnologia (SaaS)</h4>
+                    <p class="small text-muted mb-0">Securitização de fluxos de contratos de assinatura (MRR), antecipando o valor anual para investimento em P&D e expansão de mercado.</p>
                 </div>
             </div>
             <!-- Concessões -->
@@ -154,8 +282,8 @@
                     <div class="mb-3 text-brand">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </div>
-                    <h4 class="h5 fw-bold mb-3">Concessões e Parcerias Públicas</h4>
-                    <p class="small text-muted mb-0">Monetização de receitas tarifárias futuras ou contraprestações públicas em projetos de infraestrutura, saneamento ou iluminação pública.</p>
+                    <h4 class="h5 fw-bold mb-3">Concessões e PPPs</h4>
+                    <p class="small text-muted mb-0">Monetização de receitas tarifárias futuras em projetos de infraestrutura, saneamento ou iluminação pública, antecipando o retorno do CAPEX.</p>
                 </div>
             </div>
         </div>
@@ -168,10 +296,10 @@
         <div class="row g-5">
             <div class="col-lg-4">
                 <div class="pe-lg-4">
-                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Consultoria Financeira</span>
-                    <h2 class="h3 fw-bold text-dark mb-4">Agilidade e Inteligência de Crédito</h2>
-                    <p class="text-muted mb-4">Esclarecemos os principais diferenciais da securitização corporativa frente ao crédito bancário.</p>
-                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-sm px-4 py-2">Falar com Estruturação</a>
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Agilidade e Inteligência</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Diferenciais Competitivos</h2>
+                    <p class="text-muted mb-4">Esclarecemos os principais pontos sobre estruturação corporativa frente ao crédito bancário tradicional.</p>
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-sm px-4 py-2">Consultar Estruturação</a>
                 </div>
             </div>
             <div class="col-lg-8">
@@ -180,12 +308,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
-                                01. Qual a diferença entre securitização corporativa e desconto bancário?
+                                01. Qual a diferença para o desconto bancário comum?
                             </button>
                         </h2>
                         <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqRecebiveis">
                             <div class="accordion-body px-0 text-muted">
-                                Diferente do desconto bancário, a securitização é uma operação de mercado de capitais que ocorre "fora do balanço" (off-balance). Ela não consome seu limite de crédito no banco, não possui incidência de IOF sobre a operação e melhora seus índices de liquidez imediata.
+                                A securitização é uma operação off-balance. Ela não consome seu limite de crédito no banco, não possui incidência de IOF e melhora seus índices de liquidez imediata no balanço.
                             </div>
                         </div>
                     </div>
@@ -193,12 +321,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
-                                02. Quando escolher entre um FIDC e um CR para minha empresa?
+                                02. Quando escolher entre um FIDC e um CR corporativo?
                             </button>
                         </h2>
                         <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqRecebiveis">
                             <div class="accordion-body px-0 text-muted">
-                                O FIDC (Fundo de Investimento em Direitos Creditórios) é ideal para operações recorrentes e fluxos de caixa constantes (esteira digital). Já o CR (Certificado de Recebíveis) é mais indicado para captações pontuais de maior volume ou projetos com lastro em contratos de longo prazo (infraestrutura/CAPEX).
+                                O FIDC é ideal para operações recorrentes e fluxos constantes (esteira digital). O CR é indicado para captações pontuais de maior volume ou lastreadas em contratos de longo prazo.
                             </div>
                         </div>
                     </div>
@@ -206,12 +334,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
-                                03. Qual a agilidade na liberação de recursos após a primeira estruturação?
+                                03. Qual a agilidade na liberação de novos recursos?
                             </button>
                         </h2>
                         <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqRecebiveis">
                             <div class="accordion-body px-0 text-muted">
-                                Após a montagem da estrutura mestre (esteira digital), a liberação de novos lotes de recebíveis ocorre de forma quase instantânea via API ou portal de custódia. O processo de estruturação inicial leva, em média, de 30 a 60 dias, dependendo da complexidade do lastro.
+                                Após a estruturação inicial da esteira digital, a liberação de novos lotes ocorre em D+0 ou D+1 via API, permitindo uma gestão dinâmica do fluxo de caixa.
                             </div>
                         </div>
                     </div>
@@ -219,12 +347,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
-                                04. A securitização exige garantias reais da empresa?
+                                04. A securitização exige garantias reais extras?
                             </button>
                         </h2>
                         <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqRecebiveis">
                             <div class="accordion-body px-0 text-muted">
-                                Geralmente, a garantia principal é o próprio recebível (cessão fiduciária). Em alguns casos, dependendo do rating da empresa e da qualidade dos devedores, podem ser estruturados reforços de crédito como sobrecolateralização (excesso de lastro) ou aval dos sócios, sem a necessidade de hipotecas de imóveis.
+                                A garantia principal é o próprio recebível. Dependendo do rating, estruturamos reforços como sobrecolateralização, sem a necessidade de hipotecas de imóveis da empresa.
                             </div>
                         </div>
                     </div>
@@ -239,17 +367,17 @@
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-2">Outros Segmentos de Infra & Empresas</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">Estruturamos soluções de crédito para empresas e projetos de infraestrutura em diferentes estágios e necessidades de capital.</p>
+            <p class="text-muted mx-auto" style="max-width: 560px;">Estruturamos soluções de crédito para empresas e projetos de infraestrutura em diferentes estágios.</p>
         </div>
 
         <div class="row g-4 justify-content-center">
             <div class="col-md-5">
                 <a href="<?php echo e(route('site.infra.cr')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">CR</h3>
-                    <p class="text-muted mb-3">O novo instrumento de securitização para infraestrutura e grandes corporações, conectando setores como saúde, educação e telecomunicações ao mercado de capitais.</p>
+                    <p class="text-muted mb-3">O novo instrumento de securitização para infraestrutura e corporações, conectando novos setores ao mercado de capitais.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -260,7 +388,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Estruturação sob Medida</h3>
-                    <p class="text-muted mb-3">Modelagem financeira e jurídica personalizada para operações complexas que exigem arquitetura de crédito além dos instrumentos padronizados.</p>
+                    <p class="text-muted mb-3">Modelagem personalizada para operações complexas que exigem arquitetura de crédito customizada.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>

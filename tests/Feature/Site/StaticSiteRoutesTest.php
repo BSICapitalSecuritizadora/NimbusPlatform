@@ -60,7 +60,6 @@ it('renders static public site pages through route views', function (string $rou
     'portal do investidor page' => ['site.servicos.portal-investidor', 'site.servicos.portal-investidor'],
     'relatorios page' => ['site.servicos.relatorios', 'site.servicos.relatorios'],
     'servicos compliance page' => ['site.servicos.compliance', 'site.servicos.compliance'],
-    'documentos acl page' => ['site.servicos.documentos-acl', 'site.servicos.documentos-acl'],
     'auditoria acessos page' => ['site.servicos.auditoria-acessos', 'site.servicos.auditoria-acessos'],
     'integracoes page' => ['site.servicos.integracoes', 'site.servicos.integracoes'],
 ]);
@@ -89,7 +88,6 @@ it('maps static public site pages to the laravel view controller', function (str
     'site.servicos.portal-investidor',
     'site.servicos.relatorios',
     'site.servicos.compliance',
-    'site.servicos.documentos-acl',
     'site.servicos.auditoria-acessos',
     'site.servicos.integracoes',
 ]);

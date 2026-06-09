@@ -15,7 +15,7 @@
                     Portal do <span style="color: var(--gold);">Investidor</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Ambiente centralizado para acompanhar posição de PU, cronogramas de amortização, histórico de Fatos Relevantes e documentos fiduciários — com acesso seguro, segregado por operação e disponível 24 horas.
+                    Acompanhe suas posições de PU, cronogramas de amortização e documentos fiduciários em um ambiente seguro, segregado por operação e disponível em tempo real.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ config('services.portal.url') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -52,8 +52,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Transparência ativa e controle total sobre suas posições</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Consolidamos os dados estratégicos da operação em uma interface segura e organizada, alinhada às rotinas de acompanhamento do investidor institucional.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Transparência ativa para decisões fundamentadas</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Centralizamos os dados da sua operação em uma interface intuitiva, eliminando a busca manual por informações e garantindo controle total ao investidor.</p>
         </div>
 
         <div class="row g-4">
@@ -62,8 +62,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segurança e Privacidade</h3>
-                    <p class="text-muted mb-0">Autenticação multifator, criptografia de ponta e segregação rigorosa de acessos por operação — com conformidade total à LGPD e às exigências de confidencialidade da CVM.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Privacidade e Blindagem</h3>
+                    <p class="text-muted mb-0">Segurança de nível bancário com autenticação multifator e criptografia. Garantimos que seus dados estejam protegidos e em total conformidade com a LGPD e normas da CVM.</p>
                 </div>
             </div>
 
@@ -72,8 +72,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Repositório Estratégico</h3>
-                    <p class="text-muted mb-0">Acesso imediato a relatórios fiduciários, Fatos Relevantes, escrituras, adendos e trilhas de auditoria — toda a documentação da operação em um histórico rastreável e organizado por emissão.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Documentação Organizada</h3>
+                    <p class="text-muted mb-0">Esqueça o e-mail. Tenha acesso imediato a escrituras, adendos, relatórios fiduciários e fatos relevantes em um repositório cronológico e fácil de navegar.</p>
                 </div>
             </div>
 
@@ -82,8 +82,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência de Ativos</h3>
-                    <p class="text-muted mb-0">Acompanhe a evolução do Preço Unitário (PU), cronogramas de amortização, rentabilidade acumulada e eventos de pagamento futuros com detalhamento financeiro completo por série e emissão.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento Financeiro</h3>
+                    <p class="text-muted mb-0">Visualize a evolução do PU, saldos devedores e fluxos de amortização. Informação financeira clara para simplificar sua gestão de portfólio.</p>
                 </div>
             </div>
         </div>
@@ -95,8 +95,8 @@
     <div class="container py-4">
         <div class="row align-items-center g-5">
             <div class="col-lg-5">
-                <h2 class="h4 fw-bold text-dark mb-4">Conectividade e Integração B2B</h2>
-                <p class="text-muted small mb-4">Entendemos que a agilidade institucional exige dados fluidos. Além do portal web, oferecemos infraestrutura para consumo de dados via API, facilitando a vida de Assets e administradores.</p>
+                <h2 class="h4 fw-bold text-dark mb-4">Dados Fluidos para sua Gestão</h2>
+                <p class="text-muted small mb-4">Sabemos que agilidade exige integração. Além da interface web, entregamos dados estruturados via API para facilitar a vida de gestoras e administradores.</p>
                 <div class="d-flex flex-column gap-3">
                     <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-sm card-hover transition-all">
                         <div class="bg-light p-2 rounded-circle text-gold">
@@ -121,46 +121,109 @@
             <div class="col-lg-7">
                 <div class="position-relative p-4 bg-white rounded-4 shadow-sm border border-brand-subtle overflow-hidden">
                     <div class="text-center mb-3">
-                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Dashboard Visual</span>
+                        <span class="badge bg-gold-subtle text-gold px-3 py-1 rounded-pill smaller fw-bold">Interface do Portal</span>
                     </div>
-                    <div class="row g-3">
-                        <div class="col-7">
-                            <div class="bg-light rounded-3 p-3 mb-3" style="height: 120px;">
-                                <div class="w-25 h-2 bg-brand opacity-10 rounded mb-2"></div>
-                                <div class="w-75 h-4 bg-brand opacity-20 rounded mb-4"></div>
-                                <div class="d-flex gap-2 align-items-end" style="height: 40px;">
-                                    <div class="flex-grow-1 bg-gold opacity-50 rounded-top" style="height: 40%;"></div>
-                                    <div class="flex-grow-1 bg-gold opacity-50 rounded-top" style="height: 70%;"></div>
-                                    <div class="flex-grow-1 bg-gold opacity-50 rounded-top" style="height: 55%;"></div>
-                                    <div class="flex-grow-1 bg-gold opacity-50 rounded-top" style="height: 90%;"></div>
-                                </div>
+                    
+                    <!-- Simulated Dashboard Visual -->
+                    <div class="bg-light rounded-4 p-3 border shadow-xs">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="d-flex gap-2">
+                                <div class="bg-brand rounded" style="width: 30px; height: 8px;"></div>
+                                <div class="bg-gold rounded" style="width: 20px; height: 8px;"></div>
                             </div>
-                            <div class="bg-light rounded-3 p-3" style="height: 100px;">
-                                <div class="w-50 h-2 bg-brand opacity-10 rounded mb-2"></div>
+                            <div class="bg-white rounded-pill px-2 py-1 shadow-xs" style="font-size: 0.6rem;">Usuário Logado</div>
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <div class="bg-white rounded-3 p-3 border shadow-sm mb-3">
+                                    <div class="smaller text-muted mb-2">Evolução de PU (Série 1)</div>
+                                    <div style="height: 60px; width: 100%; position: relative;">
+                                        <svg viewBox="0 0 100 40" style="width: 100%; height: 100%;" preserveAspectRatio="none">
+                                            <defs>
+                                                <linearGradient id="puGradient" x1="0" x2="0" y1="0" y2="1">
+                                                    <stop offset="0%" stop-color="var(--gold, #d4af37)" stop-opacity="0.4"/>
+                                                    <stop offset="100%" stop-color="var(--gold, #d4af37)" stop-opacity="0"/>
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M0,35 L10,32 L20,34 L30,28 L40,29 L50,22 L60,24 L70,18 L80,15 L90,10 L100,5 L100,40 L0,40 Z" fill="url(#puGradient)" stroke="none"></path>
+                                            <path d="M0,35 L10,32 L20,34 L30,28 L40,29 L50,22 L60,24 L70,18 L80,15 L90,10 L100,5" fill="none" stroke="var(--gold, #d4af37)" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+                                            <circle cx="100" cy="5" r="1.5" fill="var(--gold, #d4af37)" />
+                                        </svg>
+                                    </div>
+                                </div>
                                 <div class="row g-2">
-                                    <div class="col-6"><div class="h-8 bg-white rounded shadow-xs"></div></div>
-                                    <div class="col-6"><div class="h-8 bg-white rounded shadow-xs"></div></div>
+                                    <div class="col-6">
+                                        <div class="bg-white rounded-3 p-2 border text-center">
+                                            <div style="font-size: 0.5rem;" class="text-muted">Saldo Devedor</div>
+                                            <div class="fw-bold" style="font-size: 0.7rem;">R$ 42.5M</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="bg-white rounded-3 p-2 border text-center">
+                                            <div style="font-size: 0.5rem;" class="text-muted">Próximo Pagto.</div>
+                                            <div class="fw-bold text-success" style="font-size: 0.7rem;">15/06</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-5">
-                            <div class="bg-brand-subtle rounded-3 p-3 h-100 border border-brand-subtle">
-                                <div class="w-75 h-2 bg-brand opacity-20 rounded mb-3"></div>
-                                <div class="d-flex flex-column gap-2">
-                                    <div class="h-2 bg-white rounded"></div>
-                                    <div class="h-2 bg-white rounded"></div>
-                                    <div class="h-2 bg-white rounded"></div>
-                                    <div class="h-2 bg-white rounded w-50"></div>
-                                </div>
-                                <div class="mt-4 pt-4 border-top border-white opacity-50">
-                                    <div class="h-8 bg-white rounded-pill"></div>
+                            <div class="col-md-4">
+                                <div class="rounded-3 p-3 text-white h-100" style="background-color: var(--brand-strong, #091b23);">
+                                    <div class="smaller opacity-75 mb-3">Últimos Fatos Relevantes</div>
+                                    <div class="d-flex flex-column gap-2">
+                                        <div class="p-1 rounded smaller" style="font-size: 0.55rem; background-color: rgba(255,255,255,0.1);">• Encerramento da Oferta</div>
+                                        <div class="p-1 rounded smaller" style="font-size: 0.55rem; background-color: rgba(255,255,255,0.1);">• Pagamento de Juros Série A</div>
+                                        <div class="p-1 rounded smaller" style="font-size: 0.55rem; background-color: rgba(255,255,255,0.1);">• Waiver aprovado em AGT</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(255,255,255,0.05); backdrop-filter: blur(1px);">
-                        <span class="small fw-bold text-brand px-3 py-2 bg-white rounded-pill shadow-sm border">Ambiente Proprietário</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Documentos e Relatórios Visuais -->
+<section class="py-5 bg-white border-bottom">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h2 class="h4 fw-bold text-dark">Documentação e Reporting</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Acesse a prateleira completa de documentos da sua operação de forma organizada e rastreável.</p>
+        </div>
+        
+        <div class="row g-4 justify-content-center">
+            <div class="col-6 col-md-3">
+                <div class="text-center p-3 border rounded-4 shadow-xs card-hover transition-all bg-light">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
+                    <div class="fw-bold small text-dark">Escrituras e Termos</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-center p-3 border rounded-4 shadow-xs card-hover transition-all bg-light">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                    </div>
+                    <div class="fw-bold small text-dark">Relatórios Fiduciários</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-center p-3 border rounded-4 shadow-xs card-hover transition-all bg-light">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    </div>
+                    <div class="fw-bold small text-dark">Cronogramas Financeiros</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-center p-3 border rounded-4 shadow-xs card-hover transition-all bg-light">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    </div>
+                    <div class="fw-bold small text-dark">Fatos Relevantes</div>
                 </div>
             </div>
         </div>
@@ -172,31 +235,67 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">O que o Investidor Encontra ao Acessar o Portal</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">A Experiência do Usuário no Portal</h2>
                 <p class="text-muted mb-4 lead">
-                    O portal não é apenas um repositório — é um ambiente de acompanhamento ativo. Cada módulo é estruturado para reduzir o tempo entre o evento operacional e a informação disponível ao investidor.
+                    O portal foi desenhado para ser uma ferramenta de trabalho, não apenas um arquivo. Reduzimos o tempo de resposta entre o evento operacional e a visibilidade para o investidor.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Painel de posições por emissão com PU atualizado, saldo devedor e próximos eventos de pagamento — amortização, juros e atualização monetária — organizados por data.</span>
+                        <span class="text-dark fw-medium">Painel consolidado com PU atualizado e próximos eventos de pagamento (amortização e juros) organizados por data.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Notificações automáticas de Fatos Relevantes, publicação de relatórios periódicos e convocações de assembleias, com histórico completo de comunicados por operação.</span>
+                        <span class="text-dark fw-medium">Alertas em tempo real sobre Fatos Relevantes, relatórios periódicos e convocações de assembleias.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Acesso aos documentos da operação com controle de versões — escrituras, adendos e termos de cessão — organizados cronologicamente e disponíveis para download.</span>
+                        <span class="text-dark fw-medium">Histórico completo de documentos com controle de versões e downloads ilimitados.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Interface dedicada para Agentes Fiduciários, com painel exclusivo para monitoramento de covenants, gatilhos financeiros e status de garantias em tempo real.</span>
+                        <span class="text-dark fw-medium">Acesso dedicado para Agentes Fiduciários monitorarem covenants e status de garantias sem ruído.</span>
                     </li>
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div style="background: url('{{ asset('images/portal_investidor.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Como obter acesso -->
+<section class="py-5 bg-light" style="border-top: 1px solid var(--border);">
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="bg-white p-4 p-md-5 rounded-4 shadow-sm border">
+                    <h2 class="h4 fw-bold text-dark mb-4 text-center">Como obter acesso ao Portal?</h2>
+                    <div class="d-flex flex-column gap-4">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="bg-gold-subtle text-gold p-2 rounded-circle fw-bold small" style="width: 32px; height: 32px; display: grid; place-items: center; flex-shrink: 0;">1</div>
+                            <div>
+                                <h4 class="h6 fw-bold text-dark mb-1">Onboarding Automático</h4>
+                                <p class="smaller text-muted mb-0">No momento do fechamento da operação (*closing*), investidores e emissores recebem um convite por e-mail com as credenciais de acesso temporárias.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="bg-gold-subtle text-gold p-2 rounded-circle fw-bold small" style="width: 32px; height: 32px; display: grid; place-items: center; flex-shrink: 0;">2</div>
+                            <div>
+                                <h4 class="h6 fw-bold text-dark mb-1">Ativação Segura</h4>
+                                <p class="smaller text-muted mb-0">Ao primeiro login, será solicitada a criação de uma senha forte e a configuração da Autenticação Multifator (MFA) via aplicativo ou SMS.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="bg-gold-subtle text-gold p-2 rounded-circle fw-bold small" style="width: 32px; height: 32px; display: grid; place-items: center; flex-shrink: 0;">3</div>
+                            <div>
+                                <h4 class="h6 fw-bold text-dark mb-1">Suporte Dedicado</h4>
+                                <p class="smaller text-muted mb-0">Caso você já seja um investidor da BSI e ainda não tenha suas credenciais, entre em contato com nosso time de RI ou através do suporte direto no portal.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

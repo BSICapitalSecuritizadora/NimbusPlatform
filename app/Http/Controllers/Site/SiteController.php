@@ -25,7 +25,7 @@ class SiteController extends Controller
         return back()->with('contact_success', true);
     }
 
-    public function governance()
+    public function documents()
     {
         $documents = Document::query()
             ->visibleOnPublicSite()
@@ -34,6 +34,24 @@ class SiteController extends Controller
             ->get();
 
         return view('site.governance', compact('documents'));
+    }
+
+    public function documentosAcl()
+    {
+        $latestEmissions = Emission::query()
+            ->where('is_public', true)
+            ->whereNotNull('if_code')
+            ->orderByDesc('issue_date')
+            ->limit(3)
+            ->get();
+
+        $stats = [
+            'total_volume' => Emission::where('is_public', true)->sum('issued_volume'),
+            'active_count' => Emission::where('is_public', true)->count(),
+            'document_count' => Document::visibleOnPublicSite()->count(),
+        ];
+
+        return view('site.servicos.documentos-acl', compact('latestEmissions', 'stats'));
     }
 
     public function complianceBsi()

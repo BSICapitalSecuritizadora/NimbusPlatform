@@ -13,11 +13,11 @@
                     <span style="color: var(--gold);">Compliance</span> <br>& Governança
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Estrutura ativa de KYC, PLD/FTP e monitoramento de covenants — com reporte ao COAF e conformidade à Instrução CVM 60 — garantindo integridade regulatória para emissores, investidores e agente fiduciário ao longo de toda a operação.
+                    Muito além de cumprir normas, nossa estrutura de compliance protege sua operação. Combinamos processos ágeis de verificação (KYC/PLD) com um monitoramento rigoroso de obrigações, garantindo segurança jurídica e transparência para todos os envolvidos.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Consultar Especialista
+                        Falar com um Especialista
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="<?php echo e(route('site.emissions')); ?>" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -36,8 +36,8 @@
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">PLD/FTP ativo</div>
-                            <div class="fw-bold fs-5" style="color: #0b1220;">KYC de emissores</div>
+                            <div class="text-muted small fw-medium">Monitoramento ativo</div>
+                            <div class="fw-bold fs-5" style="color: #0b1220;">KYC & PLD/FTP</div>
                         </div>
                     </div>
                 </div>
@@ -50,8 +50,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Vigilância ativa ao longo da operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Nosso ambiente de compliance sustenta a integridade das operações com políticas e procedimentos rigorosos, compatíveis com o mercado regulado e as exigências da CVM e da ANBIMA.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Segurança e conformidade em cada etapa</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Mantemos a integridade do seu negócio através de uma governança sólida. Nossas práticas são desenhadas para atender as exigências da CVM e ANBIMA de forma prática e eficiente.</p>
         </div>
 
         <div class="row g-4">
@@ -60,8 +60,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Prevenção e Análise de Risco</h3>
-                    <p class="text-muted mb-0">Protocolos rigorosos de KYC e KYP integrados a uma estrutura de PLD/FTP — com reporte ao COAF e conformidade à Instrução CVM 60 —, garantindo a idoneidade das partes e a mitigação de riscos reputacionais e regulatórios.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Prevenção e Gestão de Riscos</h3>
+                    <p class="text-muted mb-0">Conhecemos profundamente quem caminha conosco. Nossas análises de parceiros e clientes (KYC/KYP) são detalhadas para afastar riscos reputacionais e garantir conformidade total com as normas do COAF e CVM.</p>
                 </div>
             </div>
 
@@ -71,7 +71,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Vigilância de Covenants</h3>
-                    <p class="text-muted mb-0">Monitoramento contínuo das obrigações contratuais e financeiras — com alerta precoce quando indicadores se aproximam dos gatilhos de breach — para detectar e endereçar qualquer evento que comprometa a higidez da operação.</p>
+                    <p class="text-muted mb-0">Antecipamos problemas antes que eles aconteçam. Acompanhamos cada cláusula contratual de perto, emitindo alertas preventivos para que eventuais desvios sejam corrigidos rapidamente, mantendo a saúde da operação.</p>
                 </div>
             </div>
 
@@ -81,7 +81,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 1-2 2v14a2 2 0 0 1 2 2h7m0-18v18"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Independência Institucional</h3>
-                    <p class="text-muted mb-0">Comitê de crédito independente da área comercial, política formalizada de conflito de interesses e vedação de dupla subordinação — garantindo que decisões de risco não sejam influenciadas por pressões de captação.</p>
+                    <p class="text-muted mb-0">Decisões isentas e focadas na segurança. Nosso comitê de crédito atua com total autonomia em relação à área comercial, garantindo que cada risco seja avaliado de forma técnica e transparente.</p>
                 </div>
             </div>
         </div>
@@ -93,8 +93,8 @@
     <div class="container py-4">
         <div class="row g-5 align-items-center">
             <div class="col-lg-6">
-                <h2 class="h4 fw-bold text-dark mb-4">Tecnologia em Background Check</h2>
-                <p class="text-muted small mb-4">Nossa estrutura de KYC (Know Your Customer) e KYP (Know Your Partner) é automatizada e integrada às principais bases de dados para garantir rapidez e segurança no onboarding.</p>
+                <h2 class="h4 fw-bold text-dark mb-4">Tecnologia a serviço da agilidade</h2>
+                <p class="text-muted small mb-4">Unimos tecnologia e inteligência para acelerar seu processo de entrada. Nosso sistema se conecta em tempo real com as bases de dados mais confiáveis do mercado, garantindo um onboarding rápido, seguro e sem burocracias desnecessárias.</p>
                 <div class="row g-3">
                     <div class="col-6">
                         <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
@@ -116,42 +116,90 @@
                     </div>
                     <div class="col-6">
                         <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
-                            <div class="fw-bold text-dark smaller mb-1">ESG & Mídia</div>
+                            <div class="fw-bold text-dark smaller mb-1">Reputação & ESG</div>
                             <div class="text-muted smaller">Monitoramento reputacional e ambiental.</div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Box de Downloads Rápidos -->
+                <div class="mt-5 p-4 bg-white rounded-4 border shadow-sm">
+                    <h4 class="h6 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Políticas e Governança
+                    </h4>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="#" class="d-flex justify-content-between align-items-center p-2 bg-light rounded text-decoration-none border-hover transition-all">
+                            <span class="smaller fw-medium text-dark">Código de Ética e Conduta</span>
+                            <span class="badge bg-gold-subtle text-gold">PDF</span>
+                        </a>
+                        <a href="#" class="d-flex justify-content-between align-items-center p-2 bg-light rounded text-decoration-none border-hover transition-all">
+                            <span class="smaller fw-medium text-dark">Política de PLD/FTP</span>
+                            <span class="badge bg-gold-subtle text-gold">PDF</span>
+                        </a>
+                        <a href="<?php echo e(route('site.governance')); ?>" class="smaller text-brand fw-bold mt-2 d-inline-block">Ver todos os documentos →</a>
+                    </div>
+                </div>
             </div>
             <div class="col-lg-6">
-                <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
+                <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle overflow-hidden">
                     <div class="text-center mb-4">
-                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Esteira de Aprovação</span>
+                        <span class="badge bg-gold-subtle text-gold px-3 py-1 rounded-pill smaller fw-bold">Fluxo Industrial de Risco</span>
                     </div>
+                    <h3 class="h5 fw-bold text-dark mb-4 text-center">Nossa Esteira de Aprovação</h3>
                     <div class="d-flex flex-column gap-3 position-relative">
-                        <div class="position-absolute h-100 border-start border-2 border-dashed opacity-20" style="left: 20px; top: 0;"></div>
+                        <div class="position-absolute h-100 border-start border-2 border-dashed" style="left: 20px; top: 0; opacity: 0.2;"></div>
                         
                         <div class="d-flex align-items-center gap-3 position-relative z-1">
-                            <div class="bg-brand text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="width: 40px; height: 40px; min-width: 40px;">1</div>
+                            <div class="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="background-color: var(--brand, #091b23); width: 40px; height: 40px; min-width: 40px;">1</div>
                             <div class="flex-grow-1 p-2 bg-light rounded-3 border">
-                                <div class="fw-bold smaller text-brand">Triagem Automatizada</div>
-                                <div class="smaller text-muted">Background check instantâneo em 50+ bases.</div>
+                                <div class="fw-bold smaller" style="color: var(--brand, #091b23);">Check-up Digital</div>
+                                <div class="smaller text-muted">Consultas instantâneas em mais de 50 bases para uma visão clara de riscos.</div>
                             </div>
                         </div>
 
                         <div class="d-flex align-items-center gap-3 position-relative z-1">
-                            <div class="bg-brand text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="width: 40px; height: 40px; min-width: 40px;">2</div>
+                            <div class="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="background-color: var(--brand, #091b23); width: 40px; height: 40px; min-width: 40px;">2</div>
                             <div class="flex-grow-1 p-2 bg-light rounded-3 border">
-                                <div class="fw-bold smaller text-brand">Análise de Risco (Compliance)</div>
-                                <div class="smaller text-muted">Parecer técnico detalhado sobre as partes.</div>
+                                <div class="fw-bold smaller" style="color: var(--brand, #091b23);">Olhar Especialista</div>
+                                <div class="smaller text-muted">Nossa equipe mergulha nos detalhes com uma análise técnica e criteriosa.</div>
                             </div>
                         </div>
 
                         <div class="d-flex align-items-center gap-3 position-relative z-1">
-                            <div class="bg-gold text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="width: 40px; height: 40px; min-width: 40px;">3</div>
-                            <div class="flex-grow-1 p-3 bg-brand-subtle rounded-3 border border-brand-subtle shadow-xs">
-                                <div class="fw-bold small text-brand">Comitê de Crédito Independente</div>
-                                <div class="smaller text-muted">Decisão final segregada da área comercial.</div>
+                            <div class="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="background-color: var(--gold, #d4af37); width: 40px; height: 40px; min-width: 40px;">3</div>
+                            <div class="flex-grow-1 p-3 rounded-3 border shadow-xs" style="background-color: rgba(212,175,55,0.05); border-color: rgba(212,175,55,0.2) !important;">
+                                <div class="fw-bold small" style="color: var(--gold, #d4af37);">Decisão Final Independente</div>
+                                <div class="smaller text-muted">Um comitê autônomo avalia o projeto, garantindo imparcialidade total.</div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Canal de Ética e Denúncias -->
+<section class="py-5 bg-white">
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="p-4 p-md-5 rounded-4 border bg-light d-flex flex-column flex-md-row align-items-center gap-5 shadow-sm">
+                    <div class="flex-shrink-0 text-center">
+                        <div class="bg-white p-4 rounded-circle shadow-sm border border-brand-subtle mb-3 mx-auto" style="width: 100px; height: 100px; display: grid; place-items: center; color: var(--gold);">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </div>
+                        <span class="badge bg-gold text-white px-3 py-1 text-uppercase fw-bold" style="font-size: 0.6rem;">Canal Seguro</span>
+                    </div>
+                    <div>
+                        <h3 class="h4 fw-bold text-dark mb-3">Compromisso com a Ética</h3>
+                        <p class="text-muted mb-4">
+                            Valorizamos a transparência e a integridade em tudo o que fazemos. Por isso, oferecemos um canal seguro para relatar qualquer comportamento que não esteja alinhado com nossos valores. O anonimato é garantido e protegemos quem nos ajuda a manter um ambiente ético e profissional.
+                        </p>
+                        <div class="d-flex flex-wrap gap-3">
+                            <a href="#" class="btn btn-dark btn-sm px-4 py-2">Realizar Denúncia Anônima</a>
+                            <a href="#" class="btn btn-outline-dark btn-sm px-4 py-2">Consultar Status</a>
                         </div>
                     </div>
                 </div>
@@ -165,26 +213,26 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Do Alerta ao Encaminhamento: o Ciclo de Monitoramento</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Monitoramento contínuo: do alerta à solução</h2>
                 <p class="text-muted mb-4 lead">
-                    Compliance não é uma função reativa — é um processo contínuo. Cada evento de crédito, desvio de covenant ou gatilho regulatório segue um protocolo estruturado de detecção, notificação e encaminhamento, com rastreabilidade completa de cada decisão tomada.
+                    O monitoramento não para após a emissão. Atuamos de forma proativa para que cada detalhe da operação seja respeitado. Se algo sair do planejado, nossos protocolos de ação rápida garantem que investidores e reguladores sejam informados com total clareza e agilidade.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Revisão periódica de covenants financeiros e operacionais, com alerta automático quando um indicador se aproxima do gatilho de breach definido na escritura de emissão.</span>
+                        <span class="text-dark fw-medium">Acompanhamento atento de cada cláusula contratual e financeira, com alertas automáticos para evitar qualquer desvio.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Acionamento do protocolo de covenant breach: notificação imediata ao agente fiduciário, coordenação de convocação de assembleia de titulares e suporte às medidas de reforço previstas na escritura.</span>
+                        <span class="text-dark fw-medium">Resposta rápida em caso de desvios, com notificação imediata aos parceiros e suporte total nas assembleias de titulares.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Relatórios de compliance encaminhados ao COAF, à CVM e demais órgãos reguladores aplicáveis, dentro dos prazos e nos formatos normativos exigidos pela regulação vigente.</span>
+                        <span class="text-dark fw-medium">Reportes rigorosos aos órgãos reguladores (COAF, CVM), garantindo que todas as obrigações legais sejam cumpridas no prazo.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Colaboração ativa com auditorias independentes (Big Four) para validação periódica do lastro, das demonstrações financeiras e da aderência aos processos de governança.</span>
+                        <span class="text-dark fw-medium">Trabalho conjunto com auditorias renomadas (Big Four) para validar o lastro e a governança de cada operação.</span>
                     </li>
                 </ul>
             </div>
@@ -210,7 +258,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Relatórios e Monitoramento</h3>
-                    <p class="text-muted mb-3">Produção dos relatórios periódicos que publicam os dados de compliance — inadimplência, covenants e eventos de crédito — para investidores e agente fiduciário.</p>
+                    <p class="text-muted mb-3">Acompanhe cada detalhe da sua carteira. Geramos relatórios periódicos e transparentes sobre inadimplência, covenants e eventos de crédito, mantendo investidores e agentes fiduciários sempre bem informados.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -221,7 +269,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Auditoria de Acessos</h3>
-                    <p class="text-muted mb-3">Rastreabilidade completa dos acessos ao ambiente operacional — log de ações, controle de permissões e conformidade com as políticas de segregação definidas no compliance.</p>
+                    <p class="text-muted mb-3">Segurança total nos seus dados. Monitoramos cada acesso ao ambiente operacional com rastreabilidade completa, garantindo que as políticas de segregação e segurança sejam sempre respeitadas.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>

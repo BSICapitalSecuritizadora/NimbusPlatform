@@ -5,17 +5,17 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/loteamento.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('https://images.unsplash.com/photo-1590674800285-ddc5c7048f02?auto=format&fit=crop&q=80&w=1000') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Imobiliário</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Desenvolvimento <br><span style="color: var(--gold);">Urbano</span>
+                    Expansão <br><span style="color: var(--gold);">Urbana</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Modelagem estratégica para aquisição de áreas, infraestrutura e aceleração de vendas, convertendo recebíveis futuros em liquidez imediata.
+                    Securitização estratégica para loteamentos: financiamento de infraestrutura e antecipação de recebíveis com monitoramento técnico de obra e gestão de carteira.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -31,15 +31,15 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/loteamento.png') }}" class="img-fluid" alt="Loteamentos" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="https://images.unsplash.com/photo-1590674800285-ddc5c7048f02?auto=format&fit=crop&q=80&w=1000" class="img-fluid" alt="Loteamentos" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">Recebíveis futuros</div>
-                            <div class="fw-bold fs-5" style="color: #0b1220;">Liquidez imediata</div>
+                            <div class="text-muted small fw-medium">Financiamento de obra</div>
+                            <div class="fw-bold fs-5" style="color: #0b1220;">Infraestrutura Urbana</div>
                         </div>
                     </div>
                 </div>
@@ -106,7 +106,7 @@
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Acompanhamento de marcos construtivos com liberação de recursos vinculada ao avanço físico.</span>
+                        <span class="text-dark fw-medium">Acompanhamento de marcos construtivos com liberação de recursos vinculada ao avanço físico via drone e medição independente.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
@@ -115,7 +115,64 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/loteamento.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('https://images.unsplash.com/photo-1541888946425-d81bb19480c5?auto=format&fit=crop&q=80&w=1000') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Gestão do Pulverizado e Inteligência Tecnológica -->
+<section class="py-5 bg-light border-top">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <div class="pe-lg-5">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Gestão Pulverizada</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Inteligência na Gestão de Recebíveis</h2>
+                    <p class="text-muted mb-4 lead">
+                        O maior desafio de um CRI de loteamento é a gestão da carteira pulverizada. A BSI Capital utiliza tecnologia proprietária para garantir a integridade do fluxo de caixa.
+                    </p>
+                    <div class="row g-4 mb-4">
+                        <div class="col-sm-6">
+                            <h4 class="h6 fw-bold text-brand mb-2">Monitoramento de Inadimplência</h4>
+                            <p class="small text-muted mb-0">Alertas automáticos e dashboards em tempo real para controle da saúde da carteira.</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <h4 class="h6 fw-bold text-brand mb-2">Conta Centralizadora</h4>
+                            <p class="small text-muted mb-0">Segregação total dos fluxos, garantindo que o repasse aos investidores seja a prioridade absoluta.</p>
+                        </div>
+                    </div>
+                    <p class="text-muted small">Mesmo em cenários de inadimplência pontual, nossa estrutura de **Série Subordinada** e **Fundo de Reserva** garante a continuidade dos pagamentos sem interrupções.</p>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="p-4 p-lg-5 rounded-4 border bg-white shadow-lg">
+                    <h3 class="h5 fw-bold text-dark mb-4 text-center">Presença em todo o território nacional</h3>
+                    <p class="text-muted text-center mb-5">Atuamos com especialistas locais em polos de desenvolvimento urbano de Norte a Sul do Brasil.</p>
+                    
+                    <div class="row g-3 text-center">
+                        <div class="col-4">
+                            <div class="fw-bold h4 mb-0 text-brand">12+</div>
+                            <div class="small text-muted">Estados Atendidos</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold h4 mb-0 text-brand">R$ 5B+</div>
+                            <div class="small text-muted">VGV Estruturado</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold h4 mb-0 text-brand">100+</div>
+                            <div class="small text-muted">Loteamentos</div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4" style="opacity: 0.1;">
+                    
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        @foreach(['SP', 'MG', 'PR', 'SC', 'GO', 'MS', 'MT', 'BA', 'PE', 'CE'] as $uf)
+                            <span class="badge bg-light text-muted border px-3 py-2">{{ $uf }}</span>
+                        @endforeach
+                    </div>
+                </div>
             </div>
         </div>
     </div>

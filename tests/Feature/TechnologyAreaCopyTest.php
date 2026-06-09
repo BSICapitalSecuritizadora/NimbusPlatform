@@ -21,5 +21,7 @@ it('renders the revised integrations copy on the technology area page', function
         ->assertSuccessful()
         ->assertSee('Integrações')
         ->assertSee('Conexão com Ecossistema')
-        ->assertSee('Conectividade nativa com o ecossistema de mercado de capitais');
+        ->assertSee('Conectividade nativa com o ecossistema de mercado de capitais')
+        ->assertDontSee('Portal Developer')
+        ->assertDontSee('Arquitetura de Conectividade');
 });

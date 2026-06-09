@@ -46,15 +46,78 @@
     </div>
 </section>
 
+<!-- Administração e Conselhos -->
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container py-5">
+        <div class="text-center mb-5 pb-3">
+            <h2 class="h3 fw-bold text-dark mb-3">Administração e Conselhos</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossa governança é exercida por profissionais com trajetória consolidada, garantindo isenção e rigor técnico em todas as instâncias decisórias.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 16px;">
+                    <h4 class="fw-bold mb-4" style="color: var(--brand); font-size: 1.1rem; border-left: 4px solid var(--gold); padding-left: 15px;">Diretoria Executiva</h4>
+                    <div class="d-flex flex-column gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border: 1px solid rgba(0,32,91,0.1);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">Diretor(a) Presidente (CEO)</div>
+                                <div class="text-muted small">Estratégia e Relação com Investidores</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border: 1px solid rgba(0,32,91,0.1);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">Diretor(a) de Operações (COO)</div>
+                                <div class="text-muted small">Estruturação e Execução Técnica</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm p-4 h-100" style="border-radius: 16px;">
+                    <h4 class="fw-bold mb-4" style="color: var(--brand); font-size: 1.1rem; border-left: 4px solid var(--gold); padding-left: 15px;">Conselho de Administração</h4>
+                    <div class="d-flex flex-column gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border: 1px solid rgba(0,32,91,0.1);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">Presidente do Conselho</div>
+                                <div class="text-muted small">Conselheiro(a) Independente</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; border: 1px solid rgba(0,32,91,0.1);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark">Membro do Conselho</div>
+                                <div class="text-muted small">Especialista em Mercado de Capitais</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Programa de Compliance -->
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid rgba(212,175,55,0.4); color: var(--gold); background: var(--brand); box-shadow: 0 4px 12px rgba(9,27,35,0.15); letter-spacing: 0.1em; font-weight: 600;">Compliance</span>
-                <h2 class="h3 fw-bold text-dark mb-4">Programa de Compliance</h2>
-                <p class="text-muted mb-3">A BSI Capital mantém um Programa de Compliance robusto, pautado por revisões periódicas que asseguram a aderência contínua às melhores práticas do mercado financeiro e de capitais.</p>
-                <p class="text-muted mb-4">Essa estrutura fundamenta a definição de políticas e procedimentos que resguardam a integridade dos fluxos internos, mitigando riscos operacionais, reputacionais e de conformidade com transparência e rigor analítico.</p>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid rgba(212,175,55,0.4); color: var(--gold); background: var(--brand); box-shadow: 0 4px 12px rgba(9,27,35,0.15); letter-spacing: 0.1em; font-weight: 600;">Compliance & ESG</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Programa de Compliance e ESG</h2>
+                <p class="text-muted mb-3">A BSI Capital mantém um Programa de Compliance robusto, integrado à supervisão de critérios ESG, assegurando a aderência contínua às melhores práticas do mercado.</p>
+                <p class="text-muted mb-4">Essa estrutura fundamenta a definição de políticas que resguardam a integridade dos fluxos internos e a sustentabilidade das operações de longo prazo, com total transparência.</p>
 
                 <div class="d-flex flex-column gap-3">
                     <div class="d-flex align-items-start gap-3">
@@ -62,8 +125,8 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
                         <div>
-                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Políticas e Normativos Internos</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Diretrizes aplicáveis a colaboradores e prestadores de serviços, alinhadas aos valores da companhia.</div>
+                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Vigilância Regulatória e ESG</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Monitoramento contínuo de exigências da CVM e de conformidade com selos de títulos verdes e sociais.</div>
                         </div>
                     </div>
                     <div class="d-flex align-items-start gap-3">
@@ -71,17 +134,8 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
                         <div>
-                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Vigilância Regulatória</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Acompanhamento contínuo das exigências da CVM e demais órgãos reguladores do setor.</div>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(0,32,91,0.08); color: var(--brand);">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        </div>
-                        <div>
-                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Gerenciamento de Riscos</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Controles desenhados para mitigar a exposição a riscos operacionais e de imagem institucional.</div>
+                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Governança de Impacto</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Fiscalização ativa dos critérios socioambientais nas teses de crédito e ativos estruturados.</div>
                         </div>
                     </div>
                 </div>
@@ -93,38 +147,138 @@
                     <div class="d-flex flex-column gap-3">
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
                             <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: var(--brand); color: #fff;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            </div>
+                            <div>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Comitê Independente</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Composto por membros externos para garantir imparcialidade e isenção absoluta nas decisões críticas.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
+                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: var(--brand); color: #fff;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Diretoria Executiva</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Gestão estratégica e supervisão integral das diretrizes operacionais da companhia.</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Gestão estratégica e supervisão integral das diretrizes operacionais e de ESG.</div>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: var(--brand); color: #fff;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Documentação Corporativa e Regulatória -->
+<section class="py-5" style="background: #0b1220;">
+    <div class="container py-5">
+        <div class="text-center mb-5 pb-3">
+            <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Documentação Corporativa</h2>
+            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Estatutos, Atas e Políticas: O coração da nossa transparência institucional disponível para consulta pública.</p>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 p-4 border-0" style="background: rgba(212,175,55,0.08); border-radius: 16px; border: 1px solid var(--gold) !important;">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                        <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">Estatuto Social</h4>
+                    </div>
+                    <p class="small mb-3" style="color: #8892b0;">Documento fundamental que rege a organização e o funcionamento da BSI Capital Securitizadora S.A.</p>
+                    <a href="<?php echo e(route('public-documents')); ?>" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-2" style="border-color: rgba(255,255,255,0.2);">
+                        Consultar no RI
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.04); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06) !important;">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">Atas de Assembleia</h4>
+                    </div>
+                    <p class="small mb-3" style="color: #8892b0;">Registro das deliberações e decisões estratégicas tomadas em assembleias gerais.</p>
+                    <a href="<?php echo e(route('site.ri')); ?>" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-2" style="border-color: rgba(255,255,255,0.2);">
+                        Acessar Atas
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="fw-bold mb-4" style="color: var(--gold); font-size: 1rem;">Políticas e Manuais Regulatórios</h5>
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="d-flex flex-column gap-3">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); color: var(--gold);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                        <div>
+                            <div class="fw-bold" style="color: #ffffff; font-size: 0.95rem;">Políticas e Normativos Internos</div>
+                            <div style="color: #8892b0; font-size: 0.9rem;">Diretrizes aplicáveis a colaboradores e prestadores de serviços, alinhadas aos valores da companhia.</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); color: var(--gold);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                        <div>
+                            <div class="fw-bold" style="color: #ffffff; font-size: 0.95rem;">Vigilância Regulatória</div>
+                            <div style="color: #8892b0; font-size: 0.9rem;">Acompanhamento contínuo das exigências da CVM e demais órgãos reguladores do setor.</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); color: var(--gold);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                        <div>
+                            <div class="fw-bold" style="color: #ffffff; font-size: 0.95rem;">Gerenciamento de Riscos</div>
+                            <div style="color: #8892b0; font-size: 0.9rem;">Controles desenhados para mitigar a exposição a riscos operacionais e de imagem institucional.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card border-0 p-5" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05) !important; border-radius: 20px;">
+                    <h4 class="fw-bold mb-4" style="color: var(--gold); font-size: 1.1rem;">Estrutura de Governança</h4>
+                    <div class="d-flex flex-column gap-3">
+                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
+                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: rgba(255,255,255,0.05); color: #fff;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            </div>
+                            <div>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Diretoria Executiva</div>
+                                <div style="font-size: 0.85rem; color: #8892b0;">Gestão estratégica e supervisão integral das diretrizes operacionais da companhia.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
+                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: rgba(255,255,255,0.05); color: #fff;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                             </div>
                             <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Comitê de Compliance</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Zelo pelas diretrizes de conformidade, conduta ética e eficiência dos controles internos.</div>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Comitê de Compliance</div>
+                                <div style="font-size: 0.85rem; color: #8892b0;">Zelo pelas diretrizes de conformidade, conduta ética e eficiência dos controles internos.</div>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: var(--brand); color: #fff;">
+                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
+                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: rgba(255,255,255,0.05); color: #fff;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                             </div>
                             <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Comitê de Riscos</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Monitoramento fiduciário e mitigação de riscos associados às operações de securitização.</div>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Comitê de Riscos</div>
+                                <div style="font-size: 0.85rem; color: #8892b0;">Monitoramento fiduciário e mitigação de riscos associados às operações de securitização.</div>
                             </div>
                         </div>
-                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: var(--brand); color: #fff;">
+                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
+                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: rgba(255,255,255,0.05); color: #fff;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                             </div>
                             <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Auditoria Interna</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Avaliação independente com estrita segregação de funções, visando a eficácia do ambiente de controle.</div>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Auditoria Interna</div>
+                                <div style="font-size: 0.85rem; color: #8892b0;">Avaliação independente com estrita segregação de funções, visando a eficácia do ambiente de controle.</div>
                             </div>
                         </div>
                     </div>

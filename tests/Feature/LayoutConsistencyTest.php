@@ -25,7 +25,7 @@ dataset('public-layout-routes', [
         'site.contact',
         [
             'Atendimento institucional',
-            'Atendimento claro e direcionado à área responsável',
+            'Canal direto para a frente certa',
             'São Paulo',
         ],
     ],

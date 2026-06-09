@@ -58,3 +58,10 @@ it('limits featured emissions to three on the CRI page', function () {
     $response->assertSuccessful()
         ->assertViewHas('featuredEmissions', fn ($emissions) => $emissions->count() <= 3);
 });
+
+it('loads flux assets for the viability simulator on the CRI page', function () {
+    $this->get(route('site.imobiliario.cri'))
+        ->assertSuccessful()
+        ->assertSee('/flux/flux', false)
+        ->assertSee('/livewire-', false);
+});

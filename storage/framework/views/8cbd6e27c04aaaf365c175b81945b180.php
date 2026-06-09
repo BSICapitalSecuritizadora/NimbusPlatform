@@ -46,6 +46,38 @@
     </div>
 </section>
 
+<!-- Selos e Certificações -->
+<section class="py-4" style="background: #f8f9fa; border-bottom: 1px solid rgba(0,32,91,0.05);">
+    <div class="container">
+        <div class="row align-items-center justify-content-center g-4 opacity-75">
+            <div class="col-6 col-md-3 text-center">
+                <div class="d-flex flex-column align-items-center">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" class="mb-2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <span class="small fw-bold text-uppercase text-dark" style="letter-spacing: 0.05em; font-size: 0.7rem;">Compliance S.A.</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 text-center">
+                <div class="d-flex flex-column align-items-center">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" class="mb-2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span class="small fw-bold text-uppercase text-dark" style="letter-spacing: 0.05em; font-size: 0.7rem;">Auditoria Ativa</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 text-center">
+                <div class="d-flex flex-column align-items-center">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" class="mb-2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span class="small fw-bold text-uppercase text-dark" style="letter-spacing: 0.05em; font-size: 0.7rem;">CVM & ANBIMA</span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 text-center">
+                <div class="d-flex flex-column align-items-center">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" class="mb-2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span class="small fw-bold text-uppercase text-dark" style="letter-spacing: 0.05em; font-size: 0.7rem;">LGPD Compliant</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Pilares Section -->
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
@@ -92,6 +124,54 @@
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Privacidade (LGPD)</h3>
                     <p class="text-muted mb-0">Tratamento de dados sob rigorosos padrões de segurança cibernética e sigilo fiduciário, em estrita observância à LGPD.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Cultura Ética e Código de Conduta -->
+<section class="py-5" style="background-color: var(--bg);">
+    <div class="container py-5">
+        <div class="row g-5 align-items-center">
+            <div class="col-lg-5">
+                <div class="p-5" style="background: var(--brand-strong); border-radius: 24px; box-shadow: 0 20px 40px rgba(0,32,91,0.15);">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5" class="mb-4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <h2 class="h3 fw-bold mb-3" style="color: #fff;">Nosso Código de Ética</h2>
+                    <p style="color: #8892b0; line-height: 1.7;">Mais do que um documento, nosso Código de Ética e Conduta é a base da nossa cultura fiduciária. Ele orienta cada decisão e define o padrão de integridade inegociável da BSI Capital.</p>
+                    <a href="<?php echo e(route('public-documents')); ?>" class="btn btn-brand mt-3 d-inline-flex align-items-center gap-2">
+                        Leitura Completa
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Educação & Prevenção</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Treinamento e Engajamento Contínuo</h2>
+                <p class="text-muted mb-4">Acreditamos que o compliance eficaz nasce da consciência, não apenas do controle. Por isso, mantemos um calendário permanente de capacitação para todos os nossos colaboradores e parceiros estratégicos.</p>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-brand mt-1">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-1" style="font-size: 1rem; color: #0b1220;">Onboarding Ético</h5>
+                                <p class="small text-muted mb-0">Todo novo integrante passa por imersão profunda em nossos valores e políticas antes de iniciar suas atividades.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-brand mt-1">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-1" style="font-size: 1rem; color: #0b1220;">Ciclos de Reciclagem</h5>
+                                <p class="small text-muted mb-0">Treinamentos semestrais sobre PLD/FTP, LGPD e combate à corrupção, adaptados às mudanças regulatórias.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -145,8 +225,8 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Canal de Integridade</span>
                 <h2 class="h3 fw-bold text-dark mb-3">Canal de Integridade e Denúncia</h2>
-                <p class="text-muted mb-4">A BSI Capital disponibiliza um Canal de Integridade independente para o relato seguro de desvios de conduta, irregularidades ou descumprimento de normas. Asseguramos o anonimato absoluto e mantemos uma política rigorosa de não retaliação ao denunciante de boa-fé.</p>
-                <p class="text-muted mb-4">Os relatos são encaminhados diretamente ao Comitê de Compliance, com acesso restrito e apuração independente da área comercial — garantindo imparcialidade e sigilo em todo o rito investigativo.</p>
+                <p class="text-muted mb-4">A BSI Capital disponibiliza um Canal de Integridade para o relato seguro de desvios de conduta, irregularidades ou descumprimento de normas. Asseguramos o **anonimato tecnológico absoluto** (com criptografia de ponta a ponta e sem rastreamento de IP) e mantemos uma política rigorosa de não retaliação ao denunciante de boa-fé.</p>
+                <p class="text-muted mb-4">A gestão do canal é pautada por protocolos de independência, com os relatos sendo encaminhados diretamente ao Comitê de Compliance — sem qualquer interferência da área comercial ou de diretores estatutários envolvidos.</p>
                 <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand d-inline-flex align-items-center gap-2 px-4 py-2">
                     Reportar ao Comitê
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>

@@ -13,7 +13,7 @@
                     <span style="color: var(--gold);">Relatórios</span> <br>Gerenciais
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Produzimos relatórios periódicos para agente fiduciário, investidores e escriturador — cobrindo desempenho do lastro, comportamento das garantias e eventos críticos com frequência mensal, trimestral e por evento, em conformidade com a escritura de emissão.
+                    Monitoramos o desempenho do lastro e a saúde das garantias com rigor técnico. Entregamos clareza para investidores e agentes fiduciários através de reportes mensais, trimestrais e alertas imediatos por evento.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -50,8 +50,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Transparência e rigor técnico</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Nossos relatórios são desenhados para apoiar o acompanhamento das operações com máxima clareza e aderência às exigências do mercado e dos órgãos reguladores.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Informação técnica para quem gere risco</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossos relatórios vão além do cumprimento regulatório. Eles são ferramentas de controle desenhadas para dar visibilidade real sobre cada ativo da operação.</p>
         </div>
 
         <div class="row g-4">
@@ -60,8 +60,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visibilidade de Performance</h3>
-                    <p class="text-muted mb-0">Consolidamos indicadores vitais como curvas de inadimplência, fluxos de recebimento, substituições de lastro e saúde das garantias reais de cada série emitida — com granularidade por devedor e por período.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visibilidade da Carteira</h3>
+                    <p class="text-muted mb-0">Acompanhe curvas de inadimplência, fluxos de recebimento e a saúde das garantias com precisão. Olhamos para o detalhe, devedor a devedor, para que nada passe despercebido.</p>
                 </div>
             </div>
 
@@ -70,8 +70,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Rigor e Conformidade</h3>
-                    <p class="text-muted mb-0">Relatórios produzidos em conformidade com os modelos da ANBIMA, as normas do ICVM 480 e as exigências do agente fiduciário — com rastreabilidade completa e histórico auditável de cada versão entregue.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Conformidade Sem Atrito</h3>
+                    <p class="text-muted mb-0">Relatórios rigorosamente alinhados aos modelos ANBIMA, CVM (RCVM 160/480) e exigências dos agentes fiduciários. Garantimos entrega pontual e trilha de auditoria completa.</p>
                 </div>
             </div>
 
@@ -80,8 +80,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Análise Estratégica</h3>
-                    <p class="text-muted mb-0">Analisamos concentração de sacados, curva de pré-pagamento, cobertura de overcollateral e evolução do rating do lastro — transformando dados da carteira em inteligência acionável para o investidor e o agente fiduciário.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência de Dados</h3>
+                    <p class="text-muted mb-0">Transformamos dados operacionais em indicadores estratégicos: concentração de sacados, overcollateral e comportamento de pré-pagamentos para apoiar sua gestão.</p>
                 </div>
             </div>
         </div>
@@ -95,54 +95,59 @@
             <div class="col-lg-7">
                 <div class="position-relative p-4 bg-white rounded-4 shadow-sm border border-brand-subtle overflow-hidden">
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Monitoramento de Performance</span>
+                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Monitoramento de Gatilhos</span>
                         <div class="d-flex gap-1">
                             <div class="bg-gold rounded-circle" style="width: 8px; height: 8px;"></div>
-                            <div class="bg-gold opacity-20 rounded-circle" style="width: 8px; height: 8px;"></div>
+                            <div class="bg-gold rounded-circle" style="width: 8px; height: 8px; opacity: 0.2;"></div>
                         </div>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-8">
-                            <div class="bg-light rounded-3 p-3 mb-3">
-                                <div class="small fw-bold text-muted mb-2">Curva de Inadimplência</div>
+                            <div class="bg-light rounded-3 p-3 mb-3 border">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="small fw-bold text-muted">Inadimplência (D+30)</div>
+                                    <div class="smaller text-success fw-bold">Dentro do Limite</div>
+                                </div>
                                 <div style="height: 100px; width: 100%; position: relative;">
                                     <canvas id="inadimplenciaChart"></canvas>
                                 </div>
                             </div>
                             <div class="row g-2">
                                 <div class="col-6">
-                                    <div class="bg-brand-subtle p-2 rounded-2 text-center">
+                                    <div class="bg-white border p-2 rounded-2 text-center shadow-xs">
                                         <div class="smaller text-muted">Overcollateral</div>
                                         <div class="small fw-bold text-brand">125.4%</div>
+                                        <div class="smaller text-success" style="font-size: 0.6rem;">Min: 115%</div>
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="bg-brand-subtle p-2 rounded-2 text-center">
-                                        <div class="smaller text-muted">Fundo de Reserva</div>
-                                        <div class="small fw-bold text-brand">R$ 1.2M</div>
+                                    <div class="bg-white border p-2 rounded-2 text-center shadow-xs">
+                                        <div class="smaller text-muted">LTV Médio</div>
+                                        <div class="small fw-bold text-brand">58.2%</div>
+                                        <div class="smaller text-success" style="font-size: 0.6rem;">Max: 70%</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="bg-light rounded-3 p-3 h-100">
-                                <div class="small fw-bold text-muted mb-3">Checklist Fiduciário</div>
-                                <div class="d-flex flex-column gap-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="bg-gold rounded-circle" style="width: 6px; height: 6px;"></div>
-                                        <div class="smaller text-muted">Covenants</div>
+                            <div class="rounded-3 p-3 text-white h-100 shadow-sm" style="background-color: var(--brand-strong, #091b23);">
+                                <div class="small fw-bold opacity-75 mb-3">Status de Covenants</div>
+                                <div class="d-flex flex-column gap-3">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="smaller opacity-75">Financeiro</span>
+                                        <span class="badge bg-success" style="font-size: 0.5rem;">OK</span>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="bg-gold rounded-circle" style="width: 6px; height: 6px;"></div>
-                                        <div class="smaller text-muted">Gatilhos</div>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="smaller opacity-75">Garantias</span>
+                                        <span class="badge bg-success" style="font-size: 0.5rem;">OK</span>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <div class="bg-gold rounded-circle" style="width: 6px; height: 6px;"></div>
-                                        <div class="smaller text-muted">Rating</div>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="smaller opacity-75">Operacional</span>
+                                        <span class="badge bg-success" style="font-size: 0.5rem;">OK</span>
                                     </div>
-                                </div>
-                                <div class="mt-4 text-center">
-                                    <div class="smaller fw-bold text-gold">Status: OK</div>
+                                    <div class="mt-2 pt-2 border-top text-center" style="border-color: rgba(255,255,255,0.15) !important;">
+                                        <div class="smaller fw-bold text-gold" style="color: var(--gold, #d4af37);">LIQUIDAÇÃO: NORMAL</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -170,31 +175,121 @@
     </div>
 </section>
 
+<!-- Checklist de Relatórios -->
+<section class="py-5 bg-white border-bottom">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h2 class="h4 fw-bold text-dark">Checklist de Reports</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Transparência total com um pacote completo de informações periódicas e mandatórias.</p>
+        </div>
+        
+        <div class="row g-4 justify-content-center text-center">
+            <div class="col-6 col-md-2">
+                <div class="p-3">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    </div>
+                    <div class="fw-bold smaller text-dark">Informe Mensal CVM</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="p-3">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    </div>
+                    <div class="fw-bold smaller text-dark">Relatório Fiduciário</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="p-3">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    </div>
+                    <div class="fw-bold smaller text-dark">Status de Garantias</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="p-3">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    </div>
+                    <div class="fw-bold smaller text-dark">Fluxo de Caixa</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="p-3">
+                    <div class="mb-3 text-brand">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    </div>
+                    <div class="fw-bold smaller text-dark">Informe de Rendimentos</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Caminho Crítico de Mitigação -->
+<section class="py-5 bg-light" style="border-top: 1px solid var(--border);">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <h2 class="h3 fw-bold text-dark mb-4">Caminho Crítico: Prontidão para Eventos de Gatilho</h2>
+                <p class="text-muted">Nosso monitoramento é ativo. Diante de qualquer desvio de performance ou quebra de gatilho financeiro, acionamos um protocolo imediato de resposta para proteger a estrutura e manter a transparência total.</p>
+            </div>
+            <div class="col-lg-7">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="p-3 bg-white rounded-4 border shadow-xs h-100 text-center">
+                            <div class="h5 fw-bold text-danger mb-2">01</div>
+                            <div class="fw-bold small text-dark mb-1">Detecção Digital</div>
+                            <p class="smaller text-muted mb-0">Identificação instantânea do desvio via conciliação diária.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-white rounded-4 border shadow-xs h-100 text-center">
+                            <div class="h5 fw-bold text-warning mb-2">02</div>
+                            <div class="fw-bold small text-dark mb-1">Alerta Imediato</div>
+                            <p class="smaller text-muted mb-0">Notificação às partes interessadas e Agente Fiduciário.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-white rounded-4 border shadow-xs h-100 text-center">
+                            <div class="h5 fw-bold text-success mb-2">03</div>
+                            <div class="fw-bold small text-dark mb-1">Ações de Cura</div>
+                            <p class="smaller text-muted mb-0">Execução do plano de remediação ou acionamento de garantias.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Ciclo de produção dos relatórios -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Do Dado à Entrega: o Ciclo de Produção</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Integridade do Dado: Da Coleta à Entrega</h2>
                 <p class="text-muted mb-4 lead">
-                    Cada relatório segue um ciclo estruturado de coleta, consolidação, revisão técnica e distribuição — garantindo que as informações cheguem aos destinatários certos, no prazo correto e no formato exigido pela escritura.
+                    Nossa rotina é pautada por precisão e prazos fatais. Cada informação passa por um rito de verificação técnica antes de ser distribuída, garantindo que o investidor receba dados confiáveis para sua tomada de decisão.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Consolidação dos dados operacionais da carteira — inadimplência, recebimentos, substituições e eventos de crédito — em conformidade com o cronograma definido na escritura de emissão.</span>
+                        <span class="text-dark fw-medium">Consolidamos inadimplência, substituições e fluxos de recebimento conforme os gatilhos e cronogramas da escritura.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Revisão técnica e envio ao agente fiduciário, investidores e demais partes dentro dos prazos regulatórios — com confirmação de recebimento e registro de entrega.</span>
+                        <span class="text-dark fw-medium">Realizamos revisões técnicas antes do envio ao Agente Fiduciário e Investidores, respeitando rigorosamente os prazos regulatórios.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Integração nativa com os principais servicers e agentes de cobrança do mercado, permitindo a leitura automática de arquivos de remessa e retorno para conciliação diária do lastro.</span>
+                        <span class="text-dark fw-medium">Mantemos integração direta com servicers para conciliação diária de lastro, reduzindo o tempo de resposta operacional.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Publicação no Portal do Investidor com notificação automática e rastreabilidade completa — cada relatório arquivado no histórico da operação com controle de versões.</span>
+                        <span class="text-dark fw-medium">Publicamos no Portal do Investidor com controle de versões e trilha de auditoria, garantindo a imutabilidade do histórico.</span>
                     </li>
                 </ul>
             </div>

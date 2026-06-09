@@ -37,6 +37,10 @@ class RolesAndPermissionsSeeder extends Seeder
             'constructions.view', 'constructions.create', 'constructions.update',
             'sales-boards.view', 'sales-boards.create', 'sales-boards.update',
             'receivables.view', 'receivables.create', 'receivables.update',
+            'negotiations.view', 'negotiations.create', 'negotiations.update',
+            'operations.view', 'operations.create', 'operations.update',
+            'measurements.view', 'measurements.create', 'measurements.update',
+            'measurements.review', 'measurements.pay', 'measurements.finalize',
         ]);
 
         $commercialRepresentative->syncPermissions([

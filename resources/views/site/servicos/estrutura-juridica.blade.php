@@ -90,6 +90,72 @@
     </div>
 </section>
 
+<!-- Engenharia de Segregação -->
+<section class="py-5" style="background-color: #f8fafc; border-top: 1px solid var(--border);">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-12 text-center mb-5">
+                <h2 class="h3 fw-bold text-dark">Engenharia de Segregação: O Patrimônio de Afetação</h2>
+                <p class="text-muted mx-auto" style="max-width: 700px;">
+                    A base da segurança no mercado de securitização é a blindagem dos ativos. Entenda como a BSI Capital estrutura a segregação jurídica para proteger investidores e emissores.
+                </p>
+            </div>
+            
+            <div class="col-lg-7">
+                <!-- Visual Flow Diagram -->
+                <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-4 p-4 bg-white rounded-4 shadow-sm border">
+                    <!-- Originador -->
+                    <div class="text-center p-3 rounded-3 bg-light border w-100" style="max-width: 200px;">
+                        <div class="fw-bold text-dark mb-1" style="font-size: 0.9rem;">Originador</div>
+                        <div class="smaller text-muted" style="font-size: 0.75rem;">Empresa / Cedente</div>
+                    </div>
+                    
+                    <div class="d-flex align-items-center justify-content-center">
+                        <svg class="d-none d-md-block" width="40" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        <svg class="d-md-none" width="24" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                    </div>
+
+                    <!-- Securitizadora (Container) -->
+                    <div class="p-1 rounded-4 border-dashed border-gold border-2 position-relative w-100" style="max-width: 280px; background: rgba(212,175,55, 0.05);">
+                         <div class="text-center p-3 bg-white rounded-3 shadow-sm">
+                            <div class="fw-bold text-dark mb-1" style="font-size: 0.9rem;">Patrimônio de Afetação</div>
+                            <div class="smaller text-muted" style="font-size: 0.75rem;">Lastro Segregado (CRI/CRA)</div>
+                            <hr class="my-2" style="opacity: 0.1;">
+                            <div class="fw-bold" style="color: var(--gold); font-size: 0.7rem; letter-spacing: 0.05em;">BLINDAGEM JURÍDICA</div>
+                         </div>
+                         <div class="position-absolute top-0 start-50 translate-middle badge bg-gold text-white px-2 py-1" style="font-size: 0.6rem; background-color: var(--gold) !important;">BSI CAPITAL</div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-center">
+                        <svg class="d-none d-md-block" width="40" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        <svg class="d-md-none" width="24" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                    </div>
+
+                    <!-- Investidores -->
+                    <div class="text-center p-3 rounded-3 text-white w-100" style="max-width: 200px; background-color: var(--brand);">
+                        <div class="fw-bold mb-1" style="font-size: 0.9rem;">Investidores</div>
+                        <div class="smaller opacity-75" style="font-size: 0.75rem;">Detentores dos Títulos</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-5">
+                <div class="card border-0 p-4 text-white rounded-4 shadow-lg" style="background-color: var(--brand-strong);">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="p-2 rounded bg-gold shadow-sm">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        </div>
+                        <h3 class="h5 fw-bold mb-0 text-white">Segurança de Nível Institucional</h3>
+                    </div>
+                    <p class="small opacity-90 mb-0" style="line-height: 1.6;">
+                        O <strong>Patrimônio Separado</strong> garante que os ativos da operação não se confundam com o balanço da securitizadora. Em caso de insolvência da BSI, o fluxo de pagamentos é intocado e pertence exclusivamente aos investidores, sob gestão de um agente fiduciário.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Escopo e Enquadramento -->
 <section class="py-5" style="background-color: var(--surface-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
     <div class="container py-4">
@@ -190,6 +256,28 @@
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div style="background: url('{{ asset('images/estrutura_juridica.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Case de Sucesso Jurídico -->
+<section class="py-5 bg-white border-top">
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="p-4 p-md-5 rounded-4 border bg-light d-flex flex-column flex-md-row align-items-center gap-4 shadow-sm">
+                    <div class="flex-shrink-0 bg-white p-3 rounded-circle shadow-sm border border-brand-subtle" style="width: 80px; height: 80px; display: grid; place-items: center; color: var(--gold);">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    </div>
+                    <div>
+                        <span class="badge bg-success-subtle text-success mb-2 px-3 py-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">Eficiência Jurídica em Prática</span>
+                        <h3 class="h4 fw-bold text-dark mb-2">Estruturação de CRA em tempo recorde</h3>
+                        <p class="text-muted mb-0" style="font-size: 0.95rem;">
+                            Fomos desafiados a estruturar uma operação de CRA com múltiplas garantias reais (imóveis rurais e penhor de safra) em apenas <strong>15 dias úteis</strong>. Graças à nossa "Engenharia Documental" pré-formatada e due diligence integrada, o fechamento ocorreu sem pendências jurídicas, garantindo o custo de oportunidade para o emissor.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

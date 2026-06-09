@@ -68,7 +68,7 @@ Route::view('/servicos/relatorios', 'site.servicos.relatorios')->name('site.serv
 Route::view('/servicos/compliance', 'site.servicos.compliance')->name('site.servicos.compliance');
 
 // Serviços > Tecnologia
-Route::view('/servicos/documentos-acl', 'site.servicos.documentos-acl')->name('site.servicos.documentos-acl');
+Route::get('/servicos/documentos-acl', [SiteController::class, 'documentosAcl'])->name('site.servicos.documentos-acl');
 Route::view('/servicos/auditoria-acessos', 'site.servicos.auditoria-acessos')->name('site.servicos.auditoria-acessos');
 Route::view('/servicos/integracoes', 'site.servicos.integracoes')->name('site.servicos.integracoes');
 

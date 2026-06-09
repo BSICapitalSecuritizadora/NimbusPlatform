@@ -136,6 +136,8 @@ class EmissionForm
 
                         self::serviceProviderField('registrar', 'Escriturador', 'Escriturador'),
 
+                        self::serviceProviderField('distributor', 'Distribuidor', 'Distribuidor'),
+
                         self::serviceProviderField('trustee_agent', 'Agente Fiduciário', 'Agente Fiduciário'),
 
                         self::serviceProviderField('debtor', 'Devedor', 'Devedor'),
@@ -209,6 +211,11 @@ class EmissionForm
                             ->label('Segmento de Atuação')
                             ->maxLength(255)
                             ->placeholder('Informe o segmento'),
+
+                        TextInput::make('target_audience')
+                            ->label('Público Alvo')
+                            ->maxLength(255)
+                            ->placeholder('Informe o público alvo'),
                     ]),
 
                 Section::make('Valores e Remuneração')
@@ -420,6 +427,41 @@ class EmissionForm
 
                         Select::make('works_fund')
                             ->label('Fundo de Obras')
+                            ->options(self::YES_NO_OPTIONS)
+                            ->placeholder('Selecione'),
+
+                        Select::make('fiduciary_assignment')
+                            ->label('Cessão Fiduciária')
+                            ->options(self::YES_NO_OPTIONS)
+                            ->placeholder('Selecione'),
+
+                        Select::make('vehicle_fiduciary_alienation')
+                            ->label('Alienação Fiduciária de Veículos')
+                            ->options(self::YES_NO_OPTIONS)
+                            ->placeholder('Selecione'),
+
+                        Select::make('quota_fiduciary_alienation')
+                            ->label('Alienação Fiduciária de Cotas')
+                            ->options(self::YES_NO_OPTIONS)
+                            ->placeholder('Selecione'),
+
+                        Select::make('surety')
+                            ->label('Fiança')
+                            ->options(self::YES_NO_OPTIONS)
+                            ->placeholder('Selecione'),
+
+                        Select::make('real_estate_guarantee')
+                            ->label('Garantia de Imóveis')
+                            ->options(self::YES_NO_OPTIONS)
+                            ->placeholder('Selecione'),
+
+                        Select::make('property_fiduciary_alienation')
+                            ->label('Alienação Fiduciária de Imóvel')
+                            ->options(self::YES_NO_OPTIONS)
+                            ->placeholder('Selecione'),
+
+                        Select::make('aval')
+                            ->label('Aval')
                             ->options(self::YES_NO_OPTIONS)
                             ->placeholder('Selecione'),
 

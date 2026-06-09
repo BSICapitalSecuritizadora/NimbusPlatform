@@ -93,6 +93,51 @@
     </div>
 </section>
 
+<!-- Process Flow Section -->
+<section class="py-5 bg-white border-top">
+    <div class="container py-5">
+        <div class="text-center mb-5 pb-3">
+            <h2 class="h3 fw-bold text-dark mb-3">Como funciona o fluxo de Securitização</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Uma jornada estruturada para transformar ativos imobiliários em liquidez imediata com total segurança jurídica.</p>
+        </div>
+
+        <div class="row g-4 flow-container position-relative">
+            <!-- Step 1 -->
+            <div class="col-md-3 flow-item">
+                <div class="p-4 rounded-4 bg-light border h-100 text-center position-relative z-1 shadow-sm">
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 40px; height: 40px; font-weight: bold; background: var(--brand-strong) !important;">1</div>
+                    <h4 class="h6 fw-bold text-uppercase mb-3" style="color: var(--brand-strong);">Emissor</h4>
+                    <p class="small text-muted mb-0">Originador do crédito (Incorporadora/Loteadora) busca antecipação de recebíveis imobiliários.</p>
+                </div>
+            </div>
+            <!-- Step 2 -->
+            <div class="col-md-3 flow-item">
+                <div class="p-4 rounded-4 bg-light border h-100 text-center position-relative z-1 shadow-sm">
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 40px; height: 40px; font-weight: bold; background: var(--brand-strong) !important;">2</div>
+                    <h4 class="h6 fw-bold text-uppercase mb-3" style="color: var(--brand-strong);">Securitizadora</h4>
+                    <p class="small text-muted mb-0">BSI Capital estrutura a operação, registra a emissão na CVM e emite os títulos (CRI).</p>
+                </div>
+            </div>
+            <!-- Step 3 -->
+            <div class="col-md-3 flow-item">
+                <div class="p-4 rounded-4 bg-light border h-100 text-center position-relative z-1 shadow-sm">
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 40px; height: 40px; font-weight: bold; background: var(--brand-strong) !important;">3</div>
+                    <h4 class="h6 fw-bold text-uppercase mb-3" style="color: var(--brand-strong);">Garantias</h4>
+                    <p class="small text-muted mb-0">Segregação do lastro em Patrimônio Separado e formalização de alienação fiduciária.</p>
+                </div>
+            </div>
+            <!-- Step 4 -->
+            <div class="col-md-3 flow-item">
+                <div class="p-4 rounded-4 bg-light border h-100 text-center position-relative z-1 shadow-sm">
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 40px; height: 40px; font-weight: bold; background: var(--brand-strong) !important;">4</div>
+                    <h4 class="h6 fw-bold text-uppercase mb-3" style="color: var(--brand-strong);">Investidores</h4>
+                    <p class="small text-muted mb-0">Captação de recursos no mercado e monitoramento ativo do fluxo de pagamentos e covenants.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Emissões em destaque -->
 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($featuredEmissions) && $featuredEmissions->isNotEmpty()): ?>
 <section class="py-5 border-top" style="background-color: var(--bg);">
@@ -202,29 +247,78 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Excelência Operacional e Transparência Pós-Fechamento</h2>
+                <div class="mb-4">
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Tecnologia & Transparência</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Gestão Digital e Transparência Pós-Fechamento</h2>
+                </div>
                 <p class="text-muted mb-4 lead">
-                    Asseguramos a perenidade da operação através de uma gestão ativa. Nossa plataforma integra o controle de fluxos de caixa e o monitoramento de contas vinculadas ao cumprimento rigoroso das obrigações da escritura.
+                    Asseguramos a perenidade da operação através de uma gestão ativa apoiada por tecnologia. Nossa plataforma integra o controle de fluxos de caixa e o monitoramento em tempo real.
                 </p>
-                <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
+                <ul class="list-unstyled d-flex flex-column gap-3 mb-5">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Relatórios granulares de desempenho da carteira para investidores e agente fiduciário.</span>
+                        <span class="text-dark fw-medium">Relatórios granulares e automáticos de desempenho da carteira.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Monitoramento contínuo de lastro, covenants e eventos de crédito com suporte técnico.</span>
+                        <span class="text-dark fw-medium">Monitoramento contínuo de lastro e covenants com alertas preventivos.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Acessos dedicados via Portal do Investidor, com custódia documental e trilha de auditoria.</span>
+                        <span class="text-dark fw-medium">Acesso dedicado via <strong>Portal do Investidor</strong> com trilha de auditoria completa.</span>
                     </li>
                 </ul>
+                <div class="d-flex gap-3">
+                    <a href="<?php echo e(route('investor.login')); ?>" class="btn btn-brand px-4 py-2">Acessar Portal</a>
+                </div>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1000') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div class="position-relative">
+                    <div style="background: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1000') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                    <div class="position-absolute bg-white p-4 rounded-4 shadow-lg border" style="bottom: 30px; right: -20px; max-width: 280px;">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="bg-success bg-opacity-10 p-2 rounded-circle">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+                            </div>
+                            <div class="fw-bold small">Monitoramento Ativo</div>
+                        </div>
+                        <div class="text-muted smaller">Covenants financeiros e performance de lastro atualizados diariamente em nossa plataforma.</div>
+                    </div>
+                </div>
             </div>
         </div>
+    </div>
+</section>
+
+<!-- Viability Simulator -->
+<section class="py-5 bg-light border-top">
+    <div class="container py-5">
+        <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('imobiliario.viability-simulator', []);
+
+$__keyOuter = $__key ?? null;
+
+$__key = null;
+$__componentSlots = [];
+
+$__key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-3577331036-0', $__key);
+
+$__html = app('livewire')->mount($__name, $__params, $__key, $__componentSlots);
+
+echo $__html;
+
+unset($__html);
+unset($__key);
+$__key = $__keyOuter;
+unset($__keyOuter);
+unset($__name);
+unset($__params);
+unset($__componentSlots);
+unset($__split);
+?>
     </div>
 </section>
 
@@ -362,6 +456,21 @@
     .emission-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Flow Diagram Arrows */
+    @media (min-width: 768px) {
+        .flow-container .flow-item:not(:last-child)::after {
+            content: "→";
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            color: var(--brand-strong);
+            opacity: 0.2;
+            z-index: 0;
+        }
     }
 </style>
 <?php $__env->stopPush(); ?>

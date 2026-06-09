@@ -54,6 +54,21 @@ enum AccessPermission: string
     case ReceivablesCreate = 'receivables.create';
     case ReceivablesUpdate = 'receivables.update';
     case ReceivablesDelete = 'receivables.delete';
+    case NegotiationsView = 'negotiations.view';
+    case NegotiationsCreate = 'negotiations.create';
+    case NegotiationsUpdate = 'negotiations.update';
+    case NegotiationsDelete = 'negotiations.delete';
+    case OperationsView = 'operations.view';
+    case OperationsCreate = 'operations.create';
+    case OperationsUpdate = 'operations.update';
+    case OperationsDelete = 'operations.delete';
+    case MeasurementsView = 'measurements.view';
+    case MeasurementsCreate = 'measurements.create';
+    case MeasurementsUpdate = 'measurements.update';
+    case MeasurementsDelete = 'measurements.delete';
+    case MeasurementsReview = 'measurements.review';
+    case MeasurementsPay = 'measurements.pay';
+    case MeasurementsFinalize = 'measurements.finalize';
     case RecruitmentVacanciesView = 'recruitment.vacancies.view';
     case RecruitmentVacanciesCreate = 'recruitment.vacancies.create';
     case RecruitmentVacanciesUpdate = 'recruitment.vacancies.update';
@@ -187,6 +202,21 @@ enum AccessPermission: string
             self::ReceivablesCreate => 'Recebíveis: criar',
             self::ReceivablesUpdate => 'Recebíveis: editar',
             self::ReceivablesDelete => 'Recebíveis: excluir',
+            self::NegotiationsView => 'Negociações: visualizar',
+            self::NegotiationsCreate => 'Negociações: criar',
+            self::NegotiationsUpdate => 'Negociações: editar',
+            self::NegotiationsDelete => 'Negociações: excluir',
+            self::OperationsView => 'Operações de obra: visualizar',
+            self::OperationsCreate => 'Operações de obra: criar',
+            self::OperationsUpdate => 'Operações de obra: editar',
+            self::OperationsDelete => 'Operações de obra: excluir',
+            self::MeasurementsView => 'Medições: visualizar',
+            self::MeasurementsCreate => 'Medições: criar',
+            self::MeasurementsUpdate => 'Medições: editar',
+            self::MeasurementsDelete => 'Medições: excluir',
+            self::MeasurementsReview => 'Medições: analisar (aprovar/recusar/pausar)',
+            self::MeasurementsPay => 'Medições: registrar pagamento e comprovante',
+            self::MeasurementsFinalize => 'Medições: finalizar',
             self::RecruitmentVacanciesView => 'Vagas: visualizar',
             self::RecruitmentVacanciesCreate => 'Vagas: criar',
             self::RecruitmentVacanciesUpdate => 'Vagas: editar',
@@ -276,6 +306,21 @@ enum AccessPermission: string
                 self::ReceivablesCreate,
                 self::ReceivablesUpdate,
                 self::ReceivablesDelete,
+                self::NegotiationsView,
+                self::NegotiationsCreate,
+                self::NegotiationsUpdate,
+                self::NegotiationsDelete,
+                self::OperationsView,
+                self::OperationsCreate,
+                self::OperationsUpdate,
+                self::OperationsDelete,
+                self::MeasurementsView,
+                self::MeasurementsCreate,
+                self::MeasurementsUpdate,
+                self::MeasurementsDelete,
+                self::MeasurementsReview,
+                self::MeasurementsPay,
+                self::MeasurementsFinalize,
             ], true) => 'Gestão',
             default => 'Outros',
         };

@@ -124,6 +124,9 @@ it('filters emission service provider fields by the expected provider types', fu
     $registrarType = ExpenseServiceProviderType::factory()->create([
         'name' => 'Escriturador',
     ]);
+    $distributorType = ExpenseServiceProviderType::factory()->create([
+        'name' => 'Distribuidor',
+    ]);
     $trusteeType = ExpenseServiceProviderType::factory()->create([
         'name' => 'Agente Fiduciário',
     ]);
@@ -140,6 +143,10 @@ it('filters emission service provider fields by the expected provider types', fu
     ExpenseServiceProvider::factory()->create([
         'name' => 'BSI Emissor',
         'expense_service_provider_type_id' => $issuerType->id,
+    ]);
+    ExpenseServiceProvider::factory()->create([
+        'name' => 'Distribuidora Kappa',
+        'expense_service_provider_type_id' => $distributorType->id,
     ]);
     ExpenseServiceProvider::factory()->create([
         'name' => 'Coord Alpha',
@@ -195,6 +202,11 @@ it('filters emission service provider fields by the expected provider types', fu
         ->assertFormFieldExists('registrar', function (Select $field): bool {
             return $field->getOptions() === [
                 'Escriturador Ômega' => 'Escriturador Ômega',
+            ];
+        })
+        ->assertFormFieldExists('distributor', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Distribuidora Kappa' => 'Distribuidora Kappa',
             ];
         })
         ->assertFormFieldExists('trustee_agent', function (Select $field): bool {
@@ -292,6 +304,49 @@ it('filters emission service provider fields by the expected provider types', fu
                 'Não' => 'Não',
             ];
         })
+        ->assertFormFieldExists('fiduciary_assignment', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Sim' => 'Sim',
+                'Não' => 'Não',
+            ];
+        })
+        ->assertFormFieldExists('vehicle_fiduciary_alienation', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Sim' => 'Sim',
+                'Não' => 'Não',
+            ];
+        })
+        ->assertFormFieldExists('quota_fiduciary_alienation', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Sim' => 'Sim',
+                'Não' => 'Não',
+            ];
+        })
+        ->assertFormFieldExists('surety', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Sim' => 'Sim',
+                'Não' => 'Não',
+            ];
+        })
+        ->assertFormFieldExists('real_estate_guarantee', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Sim' => 'Sim',
+                'Não' => 'Não',
+            ];
+        })
+        ->assertFormFieldExists('property_fiduciary_alienation', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Sim' => 'Sim',
+                'Não' => 'Não',
+            ];
+        })
+        ->assertFormFieldExists('aval', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Sim' => 'Sim',
+                'Não' => 'Não',
+            ];
+        })
+        ->assertFormFieldExists('target_audience')
         ->assertFormFieldExists('integralized_quantity', function (TextInput $field): bool {
             return $field->isReadOnly() && ! $field->isDehydrated();
         })
@@ -319,6 +374,7 @@ it('filters emission service provider fields by the expected provider types', fu
         ->assertFormComponentActionExists('lead_coordinator', 'createOption')
         ->assertFormComponentActionExists('settlement_bank', 'createOption')
         ->assertFormComponentActionExists('registrar', 'createOption')
+        ->assertFormComponentActionExists('distributor', 'createOption')
         ->assertFormComponentActionExists('trustee_agent', 'createOption')
         ->assertFormComponentActionExists('debtor', 'createOption')
         ->assertFormComponentActionExists('law_firm', 'createOption');
@@ -563,6 +619,9 @@ it('stores emission provider selections and yes no options from the create form'
     $registrarType = ExpenseServiceProviderType::factory()->create([
         'name' => 'Escriturador',
     ]);
+    $distributorType = ExpenseServiceProviderType::factory()->create([
+        'name' => 'Distribuidor',
+    ]);
     $trusteeType = ExpenseServiceProviderType::factory()->create([
         'name' => 'Agente Fiduciário',
     ]);
@@ -576,6 +635,10 @@ it('stores emission provider selections and yes no options from the create form'
     ExpenseServiceProvider::factory()->create([
         'name' => 'BSI Capital Securitizadora',
         'expense_service_provider_type_id' => $issuerType->id,
+    ]);
+    ExpenseServiceProvider::factory()->create([
+        'name' => 'Distribuidora XPTO',
+        'expense_service_provider_type_id' => $distributorType->id,
     ]);
     ExpenseServiceProvider::factory()->create([
         'name' => 'Lastro RDV DTVM',
@@ -612,6 +675,7 @@ it('stores emission provider selections and yes no options from the create form'
             'lead_coordinator' => 'Lastro RDV DTVM',
             'settlement_bank' => 'Banco Liquidante XPTO',
             'registrar' => 'Escriturador XPTO',
+            'distributor' => 'Distribuidora XPTO',
             'fiduciary_regime' => 'Sim',
             'monetary_update_period' => 'Mensal',
             'interest_payment_frequency' => 'Anual',
@@ -636,6 +700,14 @@ it('stores emission provider selections and yes no options from the create form'
             'expense_fund' => 'Não',
             'reserve_fund' => 'Sim',
             'works_fund' => 'Não',
+            'fiduciary_assignment' => 'Sim',
+            'vehicle_fiduciary_alienation' => 'Não',
+            'quota_fiduciary_alienation' => 'Sim',
+            'surety' => 'Não',
+            'real_estate_guarantee' => 'Sim',
+            'property_fiduciary_alienation' => 'Não',
+            'aval' => 'Sim',
+            'target_audience' => 'Investidores Profissionais',
             'property_description' => 'Portfólio de imóveis residenciais.',
             'segregated_estate' => 'Constituído conforme termo de securitização.',
             'guarantees_description' => 'Alienação fiduciária e cessão de recebíveis.',
@@ -652,6 +724,7 @@ it('stores emission provider selections and yes no options from the create form'
         ->and($emission->lead_coordinator)->toBe('Lastro RDV DTVM')
         ->and($emission->settlement_bank)->toBe('Banco Liquidante XPTO')
         ->and($emission->registrar)->toBe('Escriturador XPTO')
+        ->and($emission->distributor)->toBe('Distribuidora XPTO')
         ->and($emission->fiduciary_regime)->toBe('Sim')
         ->and($emission->monetary_update_period)->toBe('Mensal')
         ->and($emission->interest_payment_frequency)->toBe('Anual')
@@ -676,6 +749,14 @@ it('stores emission provider selections and yes no options from the create form'
         ->and($emission->expense_fund)->toBe('Não')
         ->and($emission->reserve_fund)->toBe('Sim')
         ->and($emission->works_fund)->toBe('Não')
+        ->and($emission->fiduciary_assignment)->toBe('Sim')
+        ->and($emission->vehicle_fiduciary_alienation)->toBe('Não')
+        ->and($emission->quota_fiduciary_alienation)->toBe('Sim')
+        ->and($emission->surety)->toBe('Não')
+        ->and($emission->real_estate_guarantee)->toBe('Sim')
+        ->and($emission->property_fiduciary_alienation)->toBe('Não')
+        ->and($emission->aval)->toBe('Sim')
+        ->and($emission->target_audience)->toBe('Investidores Profissionais')
         ->and($emission->property_description)->toBe('Portfólio de imóveis residenciais.')
         ->and($emission->segregated_estate)->toBe('Constituído conforme termo de securitização.')
         ->and($emission->guarantees_description)->toBe('Alienação fiduciária e cessão de recebíveis.')

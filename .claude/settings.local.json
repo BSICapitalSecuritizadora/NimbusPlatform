@@ -58,7 +58,20 @@
       "WebSearch",
       "WebFetch(domain:devdocs.contaazul.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:www.robertodiasduarte.com.br)"
+      "WebFetch(domain:www.robertodiasduarte.com.br)",
+      "Read(//mnt/c/xampp/htdocs/NimbusReport/**)",
+      "Read(//mnt/c/xampp/htdocs/**)",
+      "Bash(awk '/CREATE TABLE `caracteristicas`/,/;/' db.sql)",
+      "Bash(awk '/CREATE TABLE `__TRACKED_VAR__`/,/;/' db.sql)",
+      "Bash(grep -oE \"\\\\`[a-z_]+\\\\` [a-z]+\\(\\\\\\([0-9,]+\\\\\\)\\)?\")",
+      "Bash(grep -vE \"^\\\\`\\(id|serie_id|created_at|updated_at\\)\\\\`\")",
+      "Bash(sed -n '1,30p' app/Filament/Resources/Operations/RelationManagers/MeasurementsRelationManager.php)",
+      "Bash(sed -n '1,30p' app/Filament/Resources/Operations/RelationManagers/PaymentsRelationManager.php)",
+      "Bash(sed -n '1,60p' app/Mail/Transport/MicrosoftGraphTransport.php)",
+      "Bash(sed -n '1,25p' config/nimbus.php)",
+      "Read(//home/desktop/projects/**)",
+      "Read(//home/desktop/**)",
+      "Bash(grep -rnoE '\\\\$router->\\(get|post|put|delete\\)\\\\\\([^,]+' public app core)"
     ]
   }
 }
