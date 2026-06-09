@@ -84,7 +84,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Mobilidade de capital para novos mercados</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Preparação para o próximo ciclo de investimentos</h2>
             <p class="text-muted mx-auto" style="max-width: 640px;">O CR permite que empresas de diversos setores acessem investidores institucionais com a mesma eficiência tributária e jurídica do imobiliário e do agro.</p>
         </div>
 
@@ -94,7 +94,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Project Finance</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Ativos de Longo Prazo</h3>
                     <p class="text-muted mb-0">Estruturas desenhadas para projetos com fluxos previsíveis e maturação estendida, garantindo fôlego financeiro durante a implantação.</p>
                 </div>
             </div>
@@ -114,7 +114,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Vanguarda Regulatória</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência Regulatória</h3>
                     <p class="text-muted mb-0">Expertise técnica para definir critérios de elegibilidade e arquitetura de garantias conforme as novas normas da CVM e ANBIMA.</p>
                 </div>
             </div>

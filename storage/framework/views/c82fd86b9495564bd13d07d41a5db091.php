@@ -67,4 +67,4 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Nenhum evento registrado ainda.</p>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </div>
-<?php /**PATH /var/www/html/resources/views/filament/infolists/measurement-timeline.blade.php ENDPATH**/ ?>
+<?php /**PATH /home/desktop/projects/bsi-capital/resources/views/filament/infolists/measurement-timeline.blade.php ENDPATH**/ ?>

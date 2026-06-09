@@ -132,7 +132,7 @@ new class extends Component
                             <div class="bg-white shadow-sm p-2 rounded-3 me-3 text-brand" style="border: 1px solid rgba(0,0,0,0.05);">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             </div>
-                            <div class="text-xs text-muted text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Prazo Médio Estimado</div>
+                            <div class="text-xs text-muted text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Prazo (meses)</div>
                         </div>
                         
                         <div class="display-6 fw-bolder mb-4 text-dark" style="letter-spacing: -0.5px;">{{ $term }} <span class="h5 text-muted fw-normal">meses</span></div>
@@ -170,7 +170,7 @@ new class extends Component
                                     </select>
                                 </div>
                                 <div class="col-7">
-                                    <label class="form-label text-muted mb-2 text-uppercase" style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px;">Taxa (%)</label>
+                                    <label class="form-label text-muted mb-2 text-uppercase" style="font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px;">Percentual (%)</label>
                                     <div class="input-group input-group-lg shadow-sm">
                                         <input
                                             type="number"

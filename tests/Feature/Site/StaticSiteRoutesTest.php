@@ -59,10 +59,16 @@ it('renders static public site pages through route views', function (string $rou
     'registro distribuicao page' => ['site.servicos.registro-distribuicao', 'site.servicos.registro-distribuicao'],
     'portal do investidor page' => ['site.servicos.portal-investidor', 'site.servicos.portal-investidor'],
     'relatorios page' => ['site.servicos.relatorios', 'site.servicos.relatorios'],
-    'servicos compliance page' => ['site.servicos.compliance', 'site.servicos.compliance'],
+    'monitoramento regulatorio page' => ['site.servicos.monitoramento-regulatorio', 'site.servicos.compliance'],
     'auditoria acessos page' => ['site.servicos.auditoria-acessos', 'site.servicos.auditoria-acessos'],
     'integracoes page' => ['site.servicos.integracoes', 'site.servicos.integracoes'],
 ]);
+
+it('redirects the legacy services compliance url to the monitoramento regulatorio page', function () {
+    $this->get('/servicos/compliance')
+        ->assertMovedPermanently()
+        ->assertRedirect(route('site.servicos.monitoramento-regulatorio'));
+});
 
 it('maps static public site pages to the laravel view controller', function (string $routeName) {
     $route = Route::getRoutes()->getByName($routeName);
@@ -87,7 +93,7 @@ it('maps static public site pages to the laravel view controller', function (str
     'site.servicos.registro-distribuicao',
     'site.servicos.portal-investidor',
     'site.servicos.relatorios',
-    'site.servicos.compliance',
+    'site.servicos.monitoramento-regulatorio',
     'site.servicos.auditoria-acessos',
     'site.servicos.integracoes',
 ]);

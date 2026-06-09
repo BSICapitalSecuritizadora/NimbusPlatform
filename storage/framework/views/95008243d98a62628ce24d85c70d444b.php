@@ -1,4 +1,4 @@
-<?php $__env->startSection('title', 'Incorporação — BSI Capital'); ?>
+<?php $__env->startSection('title', 'Incorporação | BSI Capital'); ?>
 
 <?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
@@ -10,18 +10,18 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Imobiliário</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Alavancagem e <br><span style="color: var(--gold);">Liquidez</span>
+                    Crédito para <br><span style="color: var(--gold);">Incorporação</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Estruturas de crédito desenhadas para sustentar o ciclo completo da incorporação — da planta ao estoque pronto — unindo governança rigorosa à otimização do equity.
+                    Viabilizamos o ciclo completo do seu projeto, desde a aquisição do terreno até o estoque pronto. Estruturas sob medida para otimizar seu equity com governança técnica.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Simular Alavancagem
+                    <a href="<?php echo e(route('proposal.create')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                        Simular Operação
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="<?php echo e(route('site.emissions')); ?>?type=CRI" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                        Ver emissões
+                        Portfólio de CRI
                     </a>
                 </div>
             </div>
@@ -46,12 +46,44 @@
     </div>
 </section>
 
+<!-- BSI em Números (Social Proof) -->
+<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong), var(--brand));">
+    <div class="container py-4">
+        <div class="row g-4 text-center">
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">+R$ 2Bi</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Emissões Realizadas</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">85+</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Projetos Financiados</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">15</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Estados Atendidos</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">R$ 450Mi</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">VGV Sob Gestão</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Benefícios Section -->
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Ciclo de crédito inteligente</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Modelos de financiamento moldados à dinâmica da incorporação, com gestão ativa de garantias e suporte consultivo desde o lançamento até a quitação final.</p>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Do lançamento à entrega das chaves, estruturamos o financiamento ideal para garantir o fluxo de caixa que sua incorporação precisa.</p>
         </div>
 
         <div class="row g-4">
@@ -60,8 +92,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Eficiência de Equity</h3>
-                    <p class="text-muted mb-0">Estruturas desenhadas para otimizar o retorno sobre o equity, reduzindo aportes iniciais de capital próprio e preservando a liquidez para novos lançamentos.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Alavancagem de Equity</h3>
+                    <p class="text-muted mb-0">Reduza o aporte de capital próprio e aumente o ROE do projeto. Nossa estruturação permite que você escale seus lançamentos sem drenar o caixa da holding.</p>
                 </div>
             </div>
 
@@ -71,7 +103,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">CRI de Produção</h3>
-                    <p class="text-muted mb-0">Securitização de recebíveis com ciclos de desembolso sincronizados ao andamento físico-financeiro, garantindo fluxo de recursos aderente à curva de construção.</p>
+                    <p class="text-muted mb-0">Recursos liberados conforme a medição da obra. Sincronismo total entre o cronograma físico-financeiro e o aporte de capital no canteiro.</p>
                 </div>
             </div>
 
@@ -81,7 +113,72 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança Fiduciária</h3>
-                    <p class="text-muted mb-0">Monitoramento técnico do Patrimônio de Afetação e das contas centralizadoras, assegurando segregação de riscos e transparência absoluta na aplicação dos recursos.</p>
+                    <p class="text-muted mb-0">Monitoramento técnico rigoroso do Patrimônio de Afetação. Garantimos a blindagem jurídica e a transparência que investidores e incorporadores exigem.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Perfil de Atuação e Tíquetes -->
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Diretrizes de Crédito</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Perfil das Operações Estruturadas</h2>
+                <p class="text-muted mb-4">Focamos em parcerias de longo prazo com incorporadores que possuem track record comprovado e projetos com viabilidade econômica sólida.</p>
+                
+                <div class="row g-4">
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">R$ 15MM a R$ 150MM</div>
+                            <div class="small text-muted">Tíquete médio por operação de securitização.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">Rating Mínimo B+</div>
+                            <div class="small text-muted">Análise de crédito baseada em governança e solidez.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">VGV > R$ 40MM</div>
+                            <div class="small text-muted">Perfil ideal para projetos residenciais ou comerciais.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">LTV até 70%</div>
+                            <div class="small text-muted">Loan-to-Value ajustado à fase do empreendimento.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-lg overflow-hidden" style="border-radius: 24px;">
+                    <div class="card-body p-5" style="background: var(--brand);">
+                        <h4 class="text-white fw-bold mb-4">Público Alvo</h4>
+                        <div class="d-flex flex-column gap-3">
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Incorporadoras com mais de 5 anos de mercado.</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Empresas com Patrimônio de Afetação ativo.</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Projetos em áreas urbanas consolidadas.</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Estruturas de capital que buscam desalavancagem de equity.</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -93,22 +190,22 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Controle Operacional ao Longo do Ciclo Construtivo</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Gestão ativa do início ao fim</h2>
                 <p class="text-muted mb-4 lead">
-                    Após o fechamento, nossa atuação é ativa: monitoramos o Patrimônio de Afetação, as SPEs e o RET para garantir que cada etapa da obra corresponda ao fluxo financeiro projetado — com total rastreabilidade para investidores e agente fiduciário.
+                    Nossa entrega vai além da estruturação. Atuamos na ponta, garantindo que o fluxo financeiro acompanhe a realidade do canteiro, protegendo tanto o incorporador quanto o investidor.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Verificação do Patrimônio de Afetação e conformidade com o RET durante todo o ciclo da SPE.</span>
+                        <span class="text-dark fw-medium">Monitoramento do Patrimônio de Afetação e conformidade com o RET.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Acompanhamento do avanço de obra e liberação de tranches vinculada a marcos físico-financeiros verificados.</span>
+                        <span class="text-dark fw-medium">Liberação de recursos vinculada a marcos reais de avanço de obra.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Relatórios técnicos periódicos sobre transferência de unidades, evolução do lastro e posição das contas centralizadoras.</span>
+                        <span class="text-dark fw-medium">Transparência total com relatórios periódicos de lastro e posição de contas.</span>
                     </li>
                 </ul>
             </div>
@@ -119,45 +216,103 @@
     </div>
 </section>
 
-<!-- Mecânica de Liberação de Recursos -->
+<!-- Mecânica de Liberação de Recursos (S-Curve Visual) -->
 <section class="py-5 bg-light border-top">
     <div class="container py-5">
-        <div class="row align-items-center g-5">
-            <div class="col-lg-5">
-                <h2 class="h3 fw-bold text-dark mb-4">Fluxo de Desembolso Controlado</h2>
-                <p class="text-muted mb-4">Em operações de produção, a segurança do investidor e a saúde do projeto dependem de uma liberação de recursos sincronizada com a realidade do canteiro de obras.</p>
+        <div class="row g-5">
+            <div class="col-lg-6">
+                <h2 class="h3 fw-bold text-dark mb-4">Fluxo de Desembolso Sincronizado (Curva S)</h2>
+                <p class="text-muted mb-5">Em operações de produção, a liberação de recursos não é linear. Ela segue a Curva S de evolução física da obra, garantindo que o caixa esteja disponível no momento de maior intensidade do canteiro.</p>
                 
-                <div class="d-flex flex-column gap-4">
-                    <div class="d-flex gap-3">
-                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">1</div>
-                        <div>
-                            <h5 class="h6 fw-bold mb-1">Conta Escrow (Centralizadora)</h5>
-                            <p class="small text-muted mb-0">Os recursos captados via CRI são depositados em uma conta segregada sob gestão da securitizadora.</p>
+                <div class="position-relative p-4 bg-white rounded-4 border shadow-sm mb-4">
+                    <svg viewBox="0 0 400 200" class="w-100 h-auto mb-3" style="max-height: 250px;">
+                        <!-- Grid Lines -->
+                        <line x1="0" y1="180" x2="400" y2="180" stroke="#eee" stroke-width="1"/>
+                        <line x1="0" y1="140" x2="400" y2="140" stroke="#eee" stroke-width="1"/>
+                        <line x1="0" y1="100" x2="400" y2="100" stroke="#eee" stroke-width="1"/>
+                        <line x1="0" y1="60" x2="400" y2="60" stroke="#eee" stroke-width="1"/>
+                        <line x1="0" y1="20" x2="400" y2="20" stroke="#eee" stroke-width="1"/>
+                        
+                        <!-- S-Curve Path (Physical Evolution) -->
+                        <path d="M 0 180 Q 100 180 200 100 T 400 20" fill="none" stroke="var(--gold)" stroke-width="4" stroke-linecap="round"/>
+                        
+                        <!-- Disbursement Bars (Tranches) -->
+                        <rect x="20" y="160" width="20" height="20" fill="var(--brand)" opacity="0.4"/>
+                        <rect x="80" y="150" width="20" height="30" fill="var(--brand)" opacity="0.6"/>
+                        <rect x="140" y="120" width="20" height="60" fill="var(--brand)" opacity="0.8"/>
+                        <rect x="200" y="80" width="20" height="100" fill="var(--brand)"/>
+                        <rect x="260" y="60" width="20" height="120" fill="var(--brand)"/>
+                        <rect x="320" y="40" width="20" height="140" fill="var(--brand)" opacity="0.8"/>
+                        
+                        <text x="5" y="15" font-size="10" fill="#999">100% Obra</text>
+                        <text x="350" y="195" font-size="10" fill="#999">Tempo</text>
+                    </svg>
+                    
+                    <div class="d-flex justify-content-between small text-muted px-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-inline-block" style="width: 12px; height: 3px; background: var(--gold);"></span> Curva de Evolução Física
                         </div>
-                    </div>
-                    <div class="d-flex gap-3">
-                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">2</div>
-                        <div>
-                            <h5 class="h6 fw-bold mb-1">Medição Independente</h5>
-                            <p class="small text-muted mb-0">Uma empresa de engenharia terceira verifica o avanço físico e atesta o cumprimento do cronograma.</p>
-                        </div>
-                    </div>
-                    <div class="d-flex gap-3">
-                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">3</div>
-                        <div>
-                            <h5 class="h6 fw-bold mb-1">Liberação por Tranches</h5>
-                            <p class="small text-muted mb-0">Com o laudo positivo, liberamos os recursos necessários para a próxima etapa, garantindo a conclusão da obra.</p>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="d-inline-block" style="width: 12px; height: 12px; background: var(--brand);"></span> Liberação de Tranches
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-7">
-                <div class="position-relative p-4 bg-white shadow-sm rounded-4 border">
-                    <div class="text-brand fw-bold small text-uppercase mb-3" style="letter-spacing: 0.05em;">Vantagem Estratégica</div>
-                    <h3 class="h4 fw-bold mb-3">Produção vs. Estoque Pronto</h3>
-                    <p class="text-muted">Além do crédito de produção (obras), estruturamos operações para **monetização de estoque pronto**. Se sua incorporadora possui unidades concluídas, você pode converter esse ativo imobiliário em liquidez imediata para novos lançamentos, sem esperar pelo fluxo de repasse bancário final.</p>
-                    <div style="height: 2px; width: 60px; background: var(--gold);" class="my-4"></div>
-                    <p class="small text-muted mb-0 font-italic">*Soluções híbridas disponíveis para projetos em fase de entrega.</p>
+            
+            <div class="col-lg-6">
+                <div class="d-flex flex-column h-100 justify-content-center">
+                    <div class="d-flex gap-4 mb-4">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-weight: bold;">1</div>
+                        <div>
+                            <h5 class="fw-bold mb-2">Medição Físico-Financeira</h5>
+                            <p class="text-muted small">A securitizadora valida o avanço da obra via empresa de engenharia independente antes de cada liberação.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-4 mb-4">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-weight: bold;">2</div>
+                        <div>
+                            <h5 class="fw-bold mb-2">Preservação de Lastro</h5>
+                            <p class="text-muted small">Garantimos que o valor desembolsado esteja sempre coberto pelo Valor Geral de Venda (VGV) remanescente e pelas garantias reais.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-4">
+                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-weight: bold;">3</div>
+                        <div>
+                            <h5 class="fw-bold mb-2">Segurança para o Investidor</h5>
+                            <p class="text-muted small">O fluxo de recursos controlado impede o desvio de finalidade e assegura a conclusão do ativo imobiliário.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Leadership Quote -->
+<section class="py-5" style="background: var(--bg);">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
+                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
+                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
+                    </div>
+                    <div class="row align-items-center g-4 position-relative z-1">
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; background: url('<?php echo e(asset('images/avatar-placeholder.png')); ?>') center/cover; border: 4px solid var(--gold-soft);"></div>
+                        </div>
+                        <div class="col-md-9">
+                            <blockquote class="blockquote mb-0">
+                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6;">
+                                    "O segredo de um CRI de incorporação não está apenas nas garantias, mas na execução. Entendemos que o sucesso da operação depende do sincronismo entre o cronograma de obra e o fluxo de caixa da SPE. Nosso papel é garantir que o incorporador tenha liquidez para entregar o projeto no prazo."
+                                </p>
+                                <footer class="blockquote-footer mt-2">
+                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria de Real Estate</span>
+                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
+                                </footer>
+                            </blockquote>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

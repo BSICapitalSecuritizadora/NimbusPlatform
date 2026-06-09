@@ -115,7 +115,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Soluções feitas para o campo</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Inteligência técnica aplicada ao Agro</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Estruturamos o crédito respeitando as janelas de safra e os marcos reais de produção.</p>
         </div>
 
@@ -135,7 +135,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Funding Alternativo</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Diversificação de Funding</h3>
                     <p class="text-muted mb-0">Reduza a dependência bancária. O mercado de capitais oferece taxas competitivas e prazos longos para projetos de expansão.</p>
                 </div>
             </div>

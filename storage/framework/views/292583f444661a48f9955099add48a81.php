@@ -1,5 +1,7 @@
 <?php $__env->startSection('title', 'CRI e Real Estate — BSI Capital'); ?>
 
+<?php $__env->startSection('uses_flux', '1'); ?>
+
 <?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">

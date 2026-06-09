@@ -10,10 +10,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Tecnologia</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    <span style="color: var(--gold);">Integrações</span> <br>& APIs
+                    <span style="color: var(--gold);">Integrações</span> <br>inteligentes
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Conectamos a plataforma da BSI Capital ao ecossistema de mercado de capitais — B3, escrituradores, custodiantes e ERPs de emissores — por meio de APIs REST com autenticação OAuth 2.0, eliminando reprocessamento manual e garantindo consistência de lastro em tempo real.
+                    Conectamos sua operação diretamente ao mercado de capitais. Através de APIs seguras, integramos a BSI Capital à B3, escrituradores e custodiantes, automatizando fluxos e garantindo que seus dados estejam sempre sincronizados, sem erros manuais.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -48,7 +48,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Conectividade nativa com o ecossistema de mercado de capitais</h2>
-            <p class="text-muted mx-auto" style="max-width: 640px;">A interoperabilidade entre sistemas elimina retrabalho, reduz risco operacional e garante que os dados que sustentam cada operação estejam sincronizados entre todas as partes.</p>
+            <p class="text-muted mx-auto" style="max-width: 640px;">Sistemas integrados significam menos erros e mais agilidade. Automatizamos a troca de informações entre todas as partes da operação, eliminando tarefas manuais e garantindo total precisão dos dados.</p>
         </div>
 
         <div class="row g-4">
@@ -58,7 +58,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Conexão com Ecossistema</h3>
-                    <p class="text-muted mb-0">Integração direta com B3, escrituradores e custodiantes — sincronizando registros de emissão, movimentações de custódia e eventos de pagamento sem intervenção manual e com confirmação de liquidação em tempo real.</p>
+                    <p class="text-muted mb-0">Integração total com B3 e custodiantes. Sincronizamos emissões e pagamentos automaticamente, garantindo agilidade na liquidação e eliminando o trabalho manual.</p>
                 </div>
             </div>
 
@@ -67,8 +67,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento Dinâmico</h3>
-                    <p class="text-muted mb-0">Captura de indicadores de performance via webhooks em tempo real — inadimplência, substituições de lastro e eventos de covenant — com disparo automático de alertas quando gatilhos contratuais são atingidos.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento em Tempo Real</h3>
+                    <p class="text-muted mb-0">Acompanhamento dinâmico da sua operação. Receba alertas automáticos sobre inadimplência ou eventos contratuais. Nossa tecnologia monitora cada detalhe e te avisa no momento exato.</p>
                 </div>
             </div>
 
@@ -77,8 +77,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Arquitetura Aberta</h3>
-                    <p class="text-muted mb-0">APIs REST documentadas com autenticação OAuth 2.0 e escopos granulares por operação — permitindo que ERPs de emissores, plataformas de cobrança e sistemas de gestão de garantias se conectem com segurança e rastreabilidade.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Integração Flexível</h3>
+                    <p class="text-muted mb-0">Nossas APIs seguras permitem que seus sistemas internos e ERPs se conectem à nossa plataforma com total segurança, mantendo o controle completo sobre quem acessa cada informação.</p>
                 </div>
             </div>
         </div>
@@ -90,22 +90,22 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Como a Integração Funciona na Prática</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Integração simples e segura</h2>
                 <p class="text-muted mb-4 lead">
-                    Cada nova integração passa por um processo estruturado de homologação antes de entrar em produção — garantindo que os fluxos de dados entre sistemas sejam validados, rastreáveis e auditáveis desde o primeiro evento.
+                    Trabalhamos de forma estruturada para garantir que cada conexão seja segura e eficiente. Da homologação à produção, validamos cada etapa para que sua operação rode sem surpresas.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Onboarding em ambiente de sandbox com dados sintéticos — validação completa dos fluxos de envio, recebimento e reconciliação antes da ativação em produção.</span>
+                        <span class="text-dark fw-medium">Ambiente de testes (Sandbox): Validamos todos os fluxos com dados simulados antes da ativação real, garantindo que tudo funcione perfeitamente.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Webhooks configurados por evento crítico — liquidação financeira, vencimento de parcela, pagamento de juros e substituição de lastro — com retry automático e log de entrega auditável.</span>
+                        <span class="text-dark fw-medium">Alertas automáticos: Seja notificado instantaneamente sobre liquidações, pagamentos ou vencimentos, com registros detalhados de cada evento.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Credenciais OAuth 2.0 com escopos por operação e revogação imediata — cada sistema parceiro acessa apenas os dados autorizados para a emissão específica à qual está vinculado.</span>
+                        <span class="text-dark fw-medium">Segurança de ponta: Controle total sobre o acesso aos dados. Cada parceiro visualiza apenas o que é necessário, com segurança reforçada em cada conexão.</span>
                     </li>
                 </ul>
             </div>
@@ -121,7 +121,7 @@
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-2">Serviços relacionados</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">As integrações alimentam a trilha de auditoria e operam sob as permissões de acesso definidas nas ACLs documentais.</p>
+            <p class="text-muted mx-auto" style="max-width: 560px;">Nossas integrações trabalham em conjunto com ferramentas de auditoria e controle de acesso, garantindo segurança máxima em cada etapa.</p>
         </div>
 
         <div class="row g-4 justify-content-center">
@@ -131,7 +131,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Auditoria de Acessos</h3>
-                    <p class="text-muted mb-3">Cada chamada de API e evento de integração é registrado na trilha de auditoria — com timestamp, origem e contexto operacional —, garantindo rastreabilidade completa dos fluxos automatizados.</p>
+                    <p class="text-muted mb-3">Rastreabilidade total. Cada interação via API é registrada detalhadamente, permitindo auditorias precisas e total transparência nos processos automáticos.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -142,7 +142,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Documentos com ACL</h3>
-                    <p class="text-muted mb-3">As permissões de acesso configuradas nas ACLs definem quais sistemas integrados podem consultar e receber documentos de cada operação — controle granular por perfil e emissão.</p>
+                    <p class="text-muted mb-3">Controle de documentos. Defina exatamente quais sistemas ou perfis podem acessar cada documento, garantindo que a informação certa chegue apenas a quem tem permissão.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>

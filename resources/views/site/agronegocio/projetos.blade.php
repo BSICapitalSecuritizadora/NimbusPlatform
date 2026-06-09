@@ -84,7 +84,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Eficiência operacional e ganho de escala</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Capital para expansão e verticalização</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Desenvolvemos o funding necessário para que o produtor e a agroindústria possam verticalizar a produção e modernizar seus ativos.</p>
         </div>
 
@@ -94,7 +94,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="18" height="11" rx="2" ry="2"></rect><path d="M3 10l9-7 9 7"></path><line x1="12" y1="10" x2="12" y2="21"></line><line x1="7" y1="10" x2="7" y2="21"></line><line x1="17" y1="10" x2="17" y2="21"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Armazenagem e Logística</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Infraestrutura Produtiva</h3>
                     <p class="text-muted mb-0">Reduza a dependência de terceiros e controle sua comercialização. Financiamento para silos e terminais com fluxos aderentes à safra.</p>
                 </div>
             </div>
@@ -114,7 +114,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Energia e Irrigação</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Energia e Sustentabilidade</h3>
                     <p class="text-muted mb-0">Financiamento para usinas fotovoltaicas e sistemas de irrigação, alinhando rentabilidade aos padrões ESG de produção sustentável.</p>
                 </div>
             </div>

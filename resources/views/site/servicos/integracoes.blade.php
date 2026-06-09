@@ -49,7 +49,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Tecnologia que conecta você ao mercado</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Conectividade nativa com o ecossistema de mercado de capitais</h2>
             <p class="text-muted mx-auto" style="max-width: 640px;">Sistemas integrados significam menos erros e mais agilidade. Automatizamos a troca de informações entre todas as partes da operação, eliminando tarefas manuais e garantindo total precisão dos dados.</p>
         </div>
 

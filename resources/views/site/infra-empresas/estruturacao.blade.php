@@ -94,7 +94,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Assessoria 360º</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Assessoria de Ponta a Ponta</h3>
                     <p class="text-muted mb-0">Coordenamos todo o ecossistema: tese financeira, análise jurídica e arquitetura de garantias para viabilizar o fechamento da operação.</p>
                 </div>
             </div>
@@ -104,7 +104,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Veículos Estratégicos</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Instrumentos Estratégicos</h3>
                     <p class="text-muted mb-0">Atuamos com Debêntures, Notas Comerciais e veículos híbridos, definindo o instrumento mais eficiente para a sua capacidade de pagamento.</p>
                 </div>
             </div>

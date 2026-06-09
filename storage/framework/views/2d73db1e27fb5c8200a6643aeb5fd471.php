@@ -1,4 +1,4 @@
-<?php $__env->startSection('title', 'CR — BSI Capital'); ?>
+<?php $__env->startSection('title', 'CR | Certificado de Recebíveis | BSI Capital'); ?>
 
 <?php $__env->startSection('content'); ?>
 <!-- Hero Section -->
@@ -10,18 +10,18 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Infra & Empresas</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Inovação em <br><span style="color: var(--gold);">Securitização: CR</span>
+                    O Futuro da <br><span style="color: var(--gold);">Securitização: CR</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Estruturamos operações de CR para infraestrutura e grandes corporações, utilizando o novo marco regulatório da CVM para converter fluxos futuros em capital imediato.
+                    Acesse o mercado de capitais via Certificado de Recebíveis. Utilizamos o novo marco regulatório para transformar fluxos futuros em capital imediato para sua empresa.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Simular Estrutura de CR
+                    <a href="<?php echo e(route('proposal.create')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                        Simular Estrutura
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="<?php echo e(route('site.emissions')); ?>" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                        Ver emissões
+                        Ver Portfólio
                     </a>
                 </div>
             </div>
@@ -36,10 +36,42 @@
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">CR</div>
-                            <div class="fw-bold fs-5" style="color: #0b1220;">Além do CRI e CRA</div>
+                            <div class="text-muted small fw-medium">Marco CVM 175</div>
+                            <div class="fw-bold fs-5" style="color: #0b1220;">Eficiência Regulatória</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- BSI no Novo Marco (Social Proof) -->
+<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong), var(--brand));">
+    <div class="container py-4">
+        <div class="row g-4 text-center">
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">R$ 1.2Bi</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Pipeline em Estruturação</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">+R$ 10Bi</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Histórico de Custódia</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">5+</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Novos Setores Atendidos</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="px-3">
+                    <div class="display-5 fw-bold text-white mb-1">100%</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Aderência à CVM 175</div>
                 </div>
             </div>
         </div>
@@ -51,7 +83,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Preparação para o próximo ciclo de investimentos</h2>
-            <p class="text-muted mx-auto" style="max-width: 640px;">Acompanhamos a evolução regulatória para estruturar operações com consistência técnica e governança ativa — conectando saúde, educação, telecomunicações, energia e saneamento ao mercado de capitais.</p>
+            <p class="text-muted mx-auto" style="max-width: 640px;">O CR permite que empresas de diversos setores acessem investidores institucionais com a mesma eficiência tributária e jurídica do imobiliário e do agro.</p>
         </div>
 
         <div class="row g-4">
@@ -61,7 +93,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Ativos de Longo Prazo</h3>
-                    <p class="text-muted mb-0">Estruturas ideais para projetos de infraestrutura com fluxos previsíveis e horizontes de maturidade estendidos (Project Finance).</p>
+                    <p class="text-muted mb-0">Estruturas desenhadas para projetos com fluxos previsíveis e maturação estendida, garantindo fôlego financeiro durante a implantação.</p>
                 </div>
             </div>
 
@@ -70,8 +102,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acesso ao Mercado de Capitais</h3>
-                    <p class="text-muted mb-0">O CR abre o mercado de capitais para setores antes sem acesso via securitização — saúde, educação, telecomunicações e saneamento. Conectamos esses emissores a investidores institucionais com estruturas sob medida.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acesso à Liquidez</h3>
+                    <p class="text-muted mb-0">Conectamos emissores de saúde, educação e telecomunicações ao mercado de capitais, diversificando as fontes de funding além dos bancos.</p>
                 </div>
             </div>
 
@@ -81,7 +113,72 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência Regulatória</h3>
-                    <p class="text-muted mb-0">A BSI atua na vanguarda da estruturação do CR, definindo critérios de elegibilidade e arquitetura operacional para antecipar demandas do mercado.</p>
+                    <p class="text-muted mb-0">Expertise técnica para definir critérios de elegibilidade e arquitetura de garantias conforme as novas normas da CVM e ANBIMA.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Perfil de Atuação e Tíquetes -->
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Diretrizes de Securitização</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Perfil para Emissões de CR</h2>
+                <p class="text-muted mb-4">Focamos em corporações e projetos com receitas recorrentes e governança auditada que buscam alternativas à dívida bancária.</p>
+                
+                <div class="row g-4">
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">R$ 30MM a R$ 500MM</div>
+                            <div class="small text-muted">Tíquete médio por operação de CR corporativo.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">Faturamento consolidado</div>
+                            <div class="small text-muted">Ideal para empresas com receita bruta anual > R$ 100MM.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">Regime Fiduciário</div>
+                            <div class="small text-muted">Total isolamento de risco via patrimônio separado.</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
+                            <div class="fw-bold text-brand h5 mb-1">Recebíveis Futuros</div>
+                            <div class="small text-muted">Securitização de contratos de performance ou assinatura.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-lg overflow-hidden" style="border-radius: 24px;">
+                    <div class="card-body p-5" style="background: var(--brand);">
+                        <h4 class="text-white fw-bold mb-4">Setores com Alto Potencial</h4>
+                        <div class="d-flex flex-column gap-3">
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Saúde (Hospitais, Clínicas, Diagnósticos).</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Educação (Redes de Ensino, Faculdades).</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Telecomunicações e Infraestrutura de TI.</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 text-white">
+                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
+                                <span>Energia e Saneamento descentralizado.</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -93,22 +190,22 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Infraestrutura Técnica Pronta para as Primeiras Emissões</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Governança pronta para o novo marco</h2>
                 <p class="text-muted mb-4 lead">
-                    Enquanto o mercado de CR se consolida, a BSI Capital já estrutura as primeiras operações e constrói a base operacional para recebê-las com rigor técnico. Nossa atuação vai da modelagem inicial ao reporte contínuo aos investidores.
+                    Nossa infraestrutura de gestão e custódia já opera sob as premissas da CVM 175. Atuamos na modelagem de frameworks de elegibilidade específicos para setores que acabam de entrar na rota da securitização.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Frameworks de estruturação e critérios de elegibilidade já modelados para saúde, educação, telecomunicações, energia e saneamento.</span>
+                        <span class="text-dark fw-medium">Frameworks de elegibilidade modelados para Saúde, Educação e Telecom.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Infraestrutura de custódia, reporte e governança preparada para suportar as primeiras emissões de CR com transparência total.</span>
+                        <span class="text-dark fw-medium">Monitoramento de performance operacional via integração tecnológica.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Monitoramento contínuo das diretrizes da CVM e da ANBIMA, com adaptação imediata de cada nova regulamentação às estruturas em desenvolvimento.</span>
+                        <span class="text-dark fw-medium">Adaptação imediata às diretrizes regulatórias da CVM e ANBIMA.</span>
                     </li>
                 </ul>
             </div>
@@ -119,13 +216,44 @@
     </div>
 </section>
 
+<!-- Leadership Quote -->
+<section class="py-5" style="background: var(--bg);">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
+                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
+                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
+                    </div>
+                    <div class="row align-items-center g-4 position-relative z-1">
+                        <div class="col-md-3 text-center">
+                            <div class="rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; background: url('<?php echo e(asset('images/avatar-placeholder.png')); ?>') center/cover; border: 4px solid var(--gold-soft);"></div>
+                        </div>
+                        <div class="col-md-9">
+                            <blockquote class="blockquote mb-0">
+                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6;">
+                                    "O CR é a maior revolução do mercado de capitais na última década. Ele permite que o isolamento de risco e a eficiência fiduciária, antes restritos ao agro e imobiliário, cheguem a toda a economia real. Nosso papel é ser o elo que transforma bons projetos em ativos de alta liquidez."
+                                </p>
+                                <footer class="blockquote-footer mt-2">
+                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria de Estruturação Corporativa</span>
+                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
+                                </footer>
+                            </blockquote>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- CR vs. Debênture -->
 <section class="py-5 bg-light border-top">
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <h2 class="h3 fw-bold text-dark mb-4">CR vs. Debêntures: A Superioridade do Regime Fiduciário</h2>
-                <p class="text-muted mb-4">Para projetos de infraestrutura e CAPEX corporativo, o Certificado de Recebíveis (CR) oferece vantagens estruturais que a dívida direta (Debênture) não consegue atingir.</p>
+                <h2 class="h3 fw-bold text-dark mb-4">CR vs. Debêntures: Vantagens Fiduciárias</h2>
+                <p class="text-muted mb-4">Para projetos de infraestrutura e CAPEX corporativo, o Certificado de Recebíveis oferece benefícios que a dívida direta não consegue atingir.</p>
                 
                 <div class="comparison-table-container">
                     <table class="table align-middle mb-0 border-0">
@@ -140,21 +268,21 @@
                             <tr>
                                 <td class="fw-bold text-dark">Risco de Crédito</td>
                                 <td class="text-center highlight-col">Focado no Ativo (Lastro)</td>
-                                <td class="text-center text-muted">Total da Empresa Mãe</td>
+                                <td class="text-center text-muted">Risco Total da Empresa</td>
                             </tr>
                             <tr>
                                 <td class="fw-bold text-dark">Regime Fiduciário</td>
                                 <td class="text-center highlight-col">Patrimônio Segregado</td>
-                                <td class="text-center text-muted">Inexistente</td>
+                                <td class="text-center text-muted">Balanço do Emissor</td>
                             </tr>
                             <tr>
                                 <td class="fw-bold text-dark">Flexibilidade</td>
-                                <td class="text-center highlight-col">Tranches por Obra/Performance</td>
-                                <td class="text-center text-muted">Fluxo Rígido</td>
+                                <td class="text-center highlight-col">Tranches por Performance</td>
+                                <td class="text-center text-muted">Fluxo Pré-definido</td>
                             </tr>
                             <tr>
                                 <td class="fw-bold text-dark">Garantias</td>
-                                <td class="text-center highlight-col">Direto no Fluxo Futuro</td>
+                                <td class="text-center highlight-col">Vínculo em Fluxo Futuro</td>
                                 <td class="text-center text-muted">Garantia Real/Flutuante</td>
                             </tr>
                         </tbody>
@@ -164,20 +292,20 @@
             <div class="col-lg-6">
                 <div class="p-4 bg-white shadow-sm rounded-4 border">
                     <div class="text-brand fw-bold small text-uppercase mb-3" style="letter-spacing: 0.05em;">Mitigação de Risco</div>
-                    <h3 class="h4 fw-bold mb-3">Monitoramento de Recebíveis Futuros</h3>
-                    <p class="text-muted">A grande inovação do CR é a capacidade de securitizar o que ainda não foi faturado (**Recebíveis Futuros**). Para mitigar o risco de performance, a BSI Capital utiliza:</p>
+                    <h3 class="h4 fw-bold mb-3">Segurança em Recebíveis Futuros</h3>
+                    <p class="text-muted">A inovação do CR permite securitizar fluxos ainda não faturados. Para garantir a performance, utilizamos mecanismos de controle dinâmico:</p>
                     <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                         <li class="d-flex align-items-start gap-2">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <span class="small text-dark fw-medium">**Contas Escrow Automáticas:** Direcionamento direto dos fluxos de caixa para segregação.</span>
+                            <span class="small text-dark fw-medium">Contas Escrow Automáticas: Direcionamento direto para segregação de caixa.</span>
                         </li>
                         <li class="d-flex align-items-start gap-2">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <span class="small text-dark fw-medium">**Gatilhos de Sobrecolateralização:** Exigência de lastro excedente para cobrir variações de receita.</span>
+                            <span class="small text-dark fw-medium">Gatilhos de Lastro: Exigência de excedente para cobrir variações de receita.</span>
                         </li>
                         <li class="d-flex align-items-start gap-2">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <span class="small text-dark fw-medium">**Monitoramento via API:** Conexão com sistemas de faturamento para visibilidade em tempo real.</span>
+                            <span class="small text-dark fw-medium">Monitoramento via API: Visibilidade em tempo real do faturamento do emissor.</span>
                         </li>
                     </ul>
                 </div>
@@ -195,7 +323,7 @@
                     <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Regulação CVM 175</span>
                     <h2 class="h3 fw-bold text-dark mb-4">A Nova Era da Securitização</h2>
                     <p class="text-muted mb-4">Esclarecemos as principais mudanças trazidas pelo novo marco regulatório para emissores e investidores.</p>
-                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-sm px-4 py-2">Consultar Framework Regulatório</a>
+                    <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-sm px-4 py-2">Framework Regulatório</a>
                 </div>
             </div>
             <div class="col-lg-8">
@@ -204,12 +332,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
-                                01. O que mudou com a Resolução CVM 175 para o mercado de CR?
+                                01. O que mudou com a CVM 175 para o mercado de CR?
                             </button>
                         </h2>
                         <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqCR">
                             <div class="accordion-body px-0 text-muted">
-                                A CVM 175 trouxe maior flexibilidade e segurança, permitindo a estruturação de títulos em classes e subclasses (sênior e subordinada) dentro de um mesmo veículo. Além disso, padronizou o Regime Fiduciário, garantindo que o lastro esteja juridicamente isolado do balanço da securitizadora e do originador de forma muito mais robusta.
+                                A resolução permitiu maior flexibilidade, possibilitando estruturar títulos em classes sênior e subordinada em um mesmo veículo. Padronizou o Regime Fiduciário, garantindo isolamento jurídico robusto do lastro.
                             </div>
                         </div>
                     </div>
@@ -217,12 +345,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
-                                02. O que são "Recebíveis Futuros" e qual a garantia de recebimento?
+                                02. O que são Recebíveis Futuros e qual a garantia?
                             </button>
                         </h2>
                         <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqCR">
                             <div class="accordion-body px-0 text-muted">
-                                São fluxos de caixa de contratos ainda não faturados (ex: venda de energia a ser produzida ou mensalidades escolares). A garantia é dada pelo monitoramento da performance operacional do projeto e por reforços de crédito como conta reserva, seguro-garantia ou fianças que cobrem o período de maturação do ativo.
+                                São fluxos de contratos ainda não faturados, como venda de energia ou mensalidades. A garantia vem do monitoramento da performance operacional e reforços como contas reserva e seguro-garantia.
                             </div>
                         </div>
                     </div>
@@ -230,12 +358,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
-                                03. Por que o CR é considerado mais seguro para o Project Finance?
+                                03. Por que o CR é superior para o Project Finance?
                             </button>
                         </h2>
                         <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqCR">
                             <div class="accordion-body px-0 text-muted">
-                                Porque ele isola o ativo. Se a empresa dona do projeto tiver problemas financeiros em outras áreas, o projeto securitizado via CR continua operando de forma segregada. Isso permite que bancos e investidores financiem a infraestrutura focando apenas na viabilidade técnica do projeto em si.
+                                Ele isola o ativo de outros problemas financeiros da empresa mãe. Investidores financiam a infraestrutura focando apenas na viabilidade técnica e no fluxo de caixa segregado do projeto.
                             </div>
                         </div>
                     </div>
@@ -248,7 +376,7 @@
                         </h2>
                         <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqCR">
                             <div class="accordion-body px-0 text-muted">
-                                Sim. Diferente do CRI e CRA, o CR é agnóstico ao setor. Hospitais podem antecipar fluxos de planos de saúde e redes de ensino podem securitizar mensalidades futuras para financiar expansões de campus, tudo com as mesmas vantagens fiscais e estruturais da securitização tradicional.
+                                Sim. O CR é agnóstico ao setor. Hospitais e redes de ensino podem antecipar fluxos futuros para financiar expansões com as mesmas vantagens fiscais da securitização tradicional.
                             </div>
                         </div>
                     </div>
@@ -263,7 +391,7 @@
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-2">Outros Segmentos de Infra & Empresas</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">Estruturamos soluções de crédito para empresas e projetos de infraestrutura em diferentes estágios e necessidades de capital.</p>
+            <p class="text-muted mx-auto" style="max-width: 560px;">Estruturamos soluções de crédito para empresas e projetos de infraestrutura em diferentes estágios.</p>
         </div>
 
         <div class="row g-4 justify-content-center">
@@ -273,7 +401,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Recebíveis Empresariais</h3>
-                    <p class="text-muted mb-3">Securitização de recebíveis comerciais e contratos de longo prazo para empresas que buscam capital fora do sistema bancário tradicional.</p>
+                    <p class="text-muted mb-3">Securitização de recebíveis comerciais e contratos de longo prazo para empresas fora do sistema bancário tradicional.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -284,7 +412,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line><line x1="10" y1="3" x2="8" y2="21"></line><line x1="16" y1="3" x2="14" y2="21"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Estruturação sob Medida</h3>
-                    <p class="text-muted mb-3">Modelagem financeira e jurídica personalizada para operações complexas que exigem arquitetura de crédito além dos instrumentos padronizados.</p>
+                    <p class="text-muted mb-3">Modelagem financeira e jurídica personalizada para operações complexas que exigem arquitetura de crédito customizada.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>

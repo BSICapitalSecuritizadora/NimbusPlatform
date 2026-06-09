@@ -1003,7 +1003,7 @@
                                 <div class="mega-kicker">Transparência e acompanhamento ao investidor.</div>
                                 <a class="mega-link" href="{{ route('site.servicos.portal-investidor') }}">Portal do investidor</a>
                                 <a class="mega-link" href="{{ route('site.servicos.relatorios') }}">Relatórios</a>
-                                <a class="mega-link" href="{{ route('site.servicos.compliance') }}">Compliance</a>
+                                <a class="mega-link" href="{{ route('site.servicos.monitoramento-regulatorio') }}">Monitoramento regulatório</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
@@ -1150,7 +1150,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
-@fluxScripts(['nonce' => \Illuminate\Support\Facades\Vite::cspNonce()])
+@hasSection('uses_flux')
+    @fluxScripts(['nonce' => \Illuminate\Support\Facades\Vite::cspNonce()])
+@endif
 @stack('scripts')
 </body>
 </html>

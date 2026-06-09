@@ -65,7 +65,8 @@ Route::view('/servicos/registro-distribuicao', 'site.servicos.registro-distribui
 // Serviços > Gestão
 Route::view('/servicos/portal-do-investidor', 'site.servicos.portal-investidor')->name('site.servicos.portal-investidor');
 Route::view('/servicos/relatorios', 'site.servicos.relatorios')->name('site.servicos.relatorios');
-Route::view('/servicos/compliance', 'site.servicos.compliance')->name('site.servicos.compliance');
+Route::permanentRedirect('/servicos/compliance', '/servicos/monitoramento-regulatorio');
+Route::view('/servicos/monitoramento-regulatorio', 'site.servicos.compliance')->name('site.servicos.monitoramento-regulatorio');
 
 // Serviços > Tecnologia
 Route::get('/servicos/documentos-acl', [SiteController::class, 'documentosAcl'])->name('site.servicos.documentos-acl');

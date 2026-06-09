@@ -16,9 +16,10 @@ it('renders the revised reports copy on the management area page', function () {
         ->assertSee('Rigor e Conformidade');
 });
 
-it('renders the revised compliance copy on the management area page', function () {
-    $this->get(route('site.servicos.compliance'))
+it('renders the revised monitoramento regulatorio copy on the management area page', function () {
+    $this->get(route('site.servicos.monitoramento-regulatorio'))
         ->assertSuccessful()
+        ->assertSee('monitoramento regulatório protege sua operação')
         ->assertSee('Vigilância ativa ao longo da operação')
         ->assertSee('Vigilância de Covenants')
         ->assertSee('Monitoramento contínuo das obrigações');

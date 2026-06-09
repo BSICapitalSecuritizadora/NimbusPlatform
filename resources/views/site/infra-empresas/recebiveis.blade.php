@@ -84,7 +84,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Funding estratégico para o ciclo de caixa</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Liquidez estruturada para expansão empresarial</h2>
             <p class="text-muted mx-auto" style="max-width: 640px;">Estruturamos soluções para vendas B2B, contratos recorrentes e direitos creditórios, utilizando o instrumento ideal para o perfil do seu lastro.</p>
         </div>
 
@@ -104,7 +104,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Garantias Dinâmicas</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Estrutura de garantias</h3>
                     <p class="text-muted mb-0">Cessão fiduciária combinada com contas vinculadas e controles de performance. Reforçamos a segurança do título sem engessar a operação.</p>
                 </div>
             </div>

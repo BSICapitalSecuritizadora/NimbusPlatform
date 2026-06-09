@@ -1,5 +1,9 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
 it('renders the revised document ACL copy on the technology area page', function () {
     $this->get(route('site.servicos.documentos-acl'))
         ->assertSuccessful()

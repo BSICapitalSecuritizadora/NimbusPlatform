@@ -84,7 +84,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Soluções para cada fase da obra</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Ciclo de crédito inteligente</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Do lançamento à entrega das chaves, estruturamos o financiamento ideal para garantir o fluxo de caixa que sua incorporação precisa.</p>
         </div>
 
@@ -114,7 +114,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Gestão do Patrimônio</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança Fiduciária</h3>
                     <p class="text-muted mb-0">Monitoramento técnico rigoroso do Patrimônio de Afetação. Garantimos a blindagem jurídica e a transparência que investidores e incorporadores exigem.</p>
                 </div>
             </div>

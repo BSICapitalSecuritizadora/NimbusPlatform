@@ -52,7 +52,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Transparência ativa para decisões fundamentadas</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Transparência ativa e controle total sobre suas posições</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Centralizamos os dados da sua operação em uma interface intuitiva, eliminando a busca manual por informações e garantindo controle total ao investidor.</p>
         </div>
 
@@ -72,7 +72,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Documentação Organizada</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Repositório Estratégico</h3>
                     <p class="text-muted mb-0">Esqueça o e-mail. Tenha acesso imediato a escrituras, adendos, relatórios fiduciários e fatos relevantes em um repositório cronológico e fácil de navegar.</p>
                 </div>
             </div>
@@ -82,7 +82,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Monitoramento Financeiro</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência de Ativos</h3>
                     <p class="text-muted mb-0">Visualize a evolução do PU, saldos devedores e fluxos de amortização. Informação financeira clara para simplificar sua gestão de portfólio.</p>
                 </div>
             </div>
@@ -322,11 +322,11 @@
             </div>
 
             <div class="col-md-5">
-                <a href="{{ route('site.servicos.compliance') }}" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="{{ route('site.servicos.monitoramento-regulatorio') }}" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Compliance</h3>
+                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Monitoramento regulatório</h3>
                     <p class="text-muted mb-3">Gestão de conformidade regulatória que garante que as informações publicadas no portal atendam às exigências da CVM e da ANBIMA.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>

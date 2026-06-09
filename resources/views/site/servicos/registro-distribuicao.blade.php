@@ -15,7 +15,7 @@
                     Registro e <span style="color: var(--gold);">Distribuição</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Mais do que protocolo, cuidamos da jornada da sua oferta. Do registro na CVM à liquidação na B3, assumimos a interface com cada agente para garantir que o fechamento ocorra no tempo e na taxa planejada.
+                    Nós cuidamos da jornada completa da sua oferta. Acompanhamos cada passo, do registro na CVM até a liquidação na B3, assumindo a interface com todos os agentes para que o fechamento aconteça exatamente como planejado.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -52,8 +52,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Execução técnica para quem não quer surpresas</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Assumimos a complexidade operacional da oferta, conectando infraestrutura de mercado e investidores para uma liquidação sem fricção.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Execução estratégica até a liquidação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Assumimos a complexidade operacional da oferta para você. Conectamos toda a infraestrutura do mercado aos investidores para garantir uma liquidação tranquila e sem surpresas.</p>
         </div>
 
         <div class="row g-4">
@@ -62,8 +62,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segurança no Rito Regulatório</h3>
-                    <p class="text-muted mb-0">Navegamos pela burocracia da CVM, B3 e ANBIMA por você. Gerenciamos prazos e exigências para que o registro e o depósito da operação sejam etapas fluidas, nunca gargalos.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Gestão de Fluxo Regulatório</h3>
+                    <p class="text-muted mb-0">Nós lidamos com a burocracia da CVM, B3 e ANBIMA. Gerenciamos de perto os prazos e exigências para que o registro e o depósito da operação sejam rápidos e eficientes.</p>
                 </div>
             </div>
 
@@ -73,7 +73,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Distribuição Assertiva</h3>
-                    <p class="text-muted mb-0">Conectamos sua tese aos bolsos de liquidez corretos. Coordenamos roadshows e o cronograma de captação focando no alinhamento real entre a oferta e o apetite dos investidores.</p>
+                    <p class="text-muted mb-0">Levamos a sua tese para quem realmente quer investir. Coordenamos roadshows e o calendário de captação buscando sempre o melhor alinhamento entre a oferta e o mercado.</p>
                 </div>
             </div>
 
@@ -82,8 +82,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visibilidade do Bookbuilding</h3>
-                    <p class="text-muted mb-0">Não espere pelo encerramento para saber o resultado. Acompanhe a formação do livro e a sensibilidade de preço em tempo real para decisões estratégicas de taxa e alocação.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência de Bookbuilding</h3>
+                    <p class="text-muted mb-0">Fique no controle do início ao fim. Acompanhe a formação do livro e a sensibilidade de preço em tempo real para tomar as melhores decisões sobre taxa e alocação.</p>
                 </div>
             </div>
         </div>
@@ -95,7 +95,7 @@
     <div class="container py-5">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-3">Do Registro ao Closing: O Fluxo da Operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 700px;">Gerenciamos cada marco crítico da oferta para garantir previsibilidade e agilidade na captação.</p>
+            <p class="text-muted mx-auto" style="max-width: 700px;">Nós acompanhamos cada etapa crítica da oferta de perto para dar previsibilidade e agilidade à sua captação.</p>
         </div>
 
         <div class="position-relative">
@@ -110,7 +110,7 @@
                             <span class="fw-bold text-gold">01</span>
                         </div>
                         <h4 class="h6 fw-bold text-dark mb-2">Protocolo e Registro</h4>
-                        <p class="smaller text-muted mb-0 px-2">Submissão à CVM (Rito Automático/Ordinário) e depósito na B3.</p>
+                        <p class="smaller text-muted mb-0 px-2">Submissão à CVM e depósito oficial na B3.</p>
                     </div>
                 </div>
                 <!-- Step 2 -->
@@ -120,7 +120,7 @@
                             <span class="fw-bold text-gold">02</span>
                         </div>
                         <h4 class="h6 fw-bold text-dark mb-2">Roadshow e Book</h4>
-                        <p class="smaller text-muted mb-0 px-2">Apresentação a investidores e formação do livro de ordens em tempo real.</p>
+                        <p class="smaller text-muted mb-0 px-2">Apresentação para os investidores e formação do livro de ordens ao vivo.</p>
                     </div>
                 </div>
                 <!-- Step 3 -->
@@ -130,7 +130,7 @@
                             <span class="fw-bold text-gold">03</span>
                         </div>
                         <h4 class="h6 fw-bold text-dark mb-2">Pricing e Alocação</h4>
-                        <p class="smaller text-muted mb-0 px-2">Definição final de taxa, volume e rateio entre os investidores.</p>
+                        <p class="smaller text-muted mb-0 px-2">Ajuste final da taxa, volume da operação e rateio entre os participantes.</p>
                     </div>
                 </div>
                 <!-- Step 4 -->
@@ -140,7 +140,7 @@
                             <span class="fw-bold text-gold">04</span>
                         </div>
                         <h4 class="h6 fw-bold text-dark mb-2">Liquidação (Closing)</h4>
-                        <p class="smaller text-muted mb-0 px-2">Transferência de recursos, entrega dos títulos e anúncio de encerramento.</p>
+                        <p class="smaller text-muted mb-0 px-2">Transferência do dinheiro, entrega dos títulos e conclusão oficial.</p>
                     </div>
                 </div>
             </div>
@@ -156,7 +156,7 @@
                 <span class="badge bg-gold-subtle text-gold mb-3 px-3 py-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">Rede e Alcance</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Capacidade de Distribuição em Escala</h2>
                 <p class="text-muted mb-4">
-                    Conectamos sua oferta a um sindicato robusto, garantindo que a tese chegue aos bolsos de liquidez corretos — do varejo de alta renda aos maiores fundos institucionais do país.
+                    Nossa equipe conecta sua oferta a um grupo forte de parceiros, garantindo que o seu projeto alcance desde os investidores de varejo até os maiores fundos do país.
                 </p>
                 
                 <div class="row g-4">
@@ -169,7 +169,7 @@
                     <div class="col-sm-6">
                         <div class="p-3 bg-white rounded-3 shadow-sm border-bottom border-3 border-gold">
                             <div class="h3 fw-bold text-dark mb-0">+100</div>
-                            <div class="smaller text-muted">Investidores Institucionais (Assets/Pensões)</div>
+                            <div class="smaller text-muted">Investidores Institucionais Parceiros</div>
                         </div>
                     </div>
                 </div>
@@ -208,7 +208,7 @@
                             </div>
                         </div>
                         <p class="smaller text-white opacity-50 mt-4 mb-0" style="font-style: italic;">
-                            * Interface BSI Intel: Transparência total para o emissor acompanhar a captação em tempo real.
+                            * Interface BSI Intel. Acompanhe o avanço da captação do seu projeto em tempo real.
                         </p>
                     </div>
                 </div>
@@ -223,25 +223,25 @@
         <div class="row g-5">
             <div class="col-lg-6">
                 <h2 class="h4 fw-bold text-dark mb-4">Ritos de Oferta (RCVM 160)</h2>
-                <p class="text-muted small mb-4">Definimos o rito regulatório ideal para sua oferta, calibrando o custo e o tempo de aprovação ao apetite do mercado.</p>
+                <p class="text-muted small mb-4">Ajudamos você a escolher o rito regulatório perfeito, equilibrando tempo, custo e o perfil de investidor que queremos alcançar.</p>
                 <div class="row g-3">
                     <div class="col-12">
                         <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
                             <div class="fw-bold text-dark small mb-1">Rito Automático</div>
-                            <div class="text-muted smaller">Focado em investidores Profissionais e Qualificados, garantindo agilidade no time-to-market.</div>
+                            <div class="text-muted smaller">Ideal para investidores qualificados e profissionais, com aprovação mais rápida e direta ao mercado.</div>
                         </div>
                     </div>
                     <div class="col-12">
                         <div class="p-3 bg-white rounded-3 shadow-sm border-start border-4 border-gold">
                             <div class="fw-bold text-dark small mb-1">Rito Ordinário</div>
-                            <div class="text-muted smaller">Análise prévia da CVM para ofertas com esforços amplos de distribuição, incluindo o varejo.</div>
+                            <div class="text-muted smaller">Passa pela análise prévia da CVM e permite acessar o varejo com uma distribuição ampla.</div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-6">
                 <h2 class="h4 fw-bold text-dark mb-4">Rede de Distribuição</h2>
-                <p class="text-muted small mb-4">Montamos e coordenamos o sindicato de distribuição, conectando sua tese aos canais de liquidez mais eficientes.</p>
+                <p class="text-muted small mb-4">Nós estruturamos a equipe ideal de distribuição, conectando a sua operação aos parceiros com maior capacidade de captação.</p>
                 <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
                     <div class="d-flex flex-column gap-3">
                         <div class="d-flex align-items-center gap-3">
@@ -250,7 +250,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold text-dark small">Plataformas e Corretoras</div>
-                                <div class="text-muted smaller">Acesso às maiores prateleiras de investimento do país.</div>
+                                <div class="text-muted smaller">Sua oferta disponível nas principais vitrines de investimento do país.</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3">
@@ -259,7 +259,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold text-dark small">Investidores Institucionais</div>
-                                <div class="text-muted smaller">Conexão direta com Assets, Pensões e Family Offices.</div>
+                                <div class="text-muted smaller">Linha direta com quem movimenta grandes volumes no mercado corporativo.</div>
                             </div>
                         </div>
                     </div>
@@ -274,26 +274,26 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Liquidação Precisa e Pós-Emissão</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Pós-Emissão e Tranquilidade</h2>
                 <p class="text-muted mb-4 lead">
-                    O closing é apenas o começo. Do acompanhamento da liquidação financeira à emissão dos comunicados pós-oferta, garantimos que a transição para a "vida" da operação ocorra com rigor e sem pendências operacionais.
+                    O closing é o marco inicial da vida da operação. Da liquidação financeira aos avisos obrigatórios, nossa equipe trabalha para que não existam pendências burocráticas.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Confirmamos a entrada dos recursos e coordenamos a transferência de titularidade junto ao escriturador e custodiante.</span>
+                        <span class="text-dark fw-medium">Validamos o recebimento dos recursos e organizamos a documentação final de titularidade.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Cuidamos dos comunicados pós-closing: Fatos Relevantes de encerramento, relatórios de alocação e informes mandatórios.</span>
+                        <span class="text-dark fw-medium">Emitimos todos os comunicados regulatórios de encerramento da oferta e alocação.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Transparência total via dashboard para você acompanhar o progresso da oferta e a formação do livro de ordens em tempo real.</span>
+                        <span class="text-dark fw-medium">Você acompanha o fechamento através do nosso painel interativo.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Monitoramos os primeiros pagamentos (juros e amortizações) para garantir que a operação nasça em total conformidade com a escritura.</span>
+                        <span class="text-dark fw-medium">Apoiamos a estruturação dos primeiros pagamentos de juros e amortização para iniciar a operação com o pé direito.</span>
                     </li>
                 </ul>
             </div>
@@ -309,7 +309,7 @@
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-2">Etapas adjacentes da operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">O registro e a distribuição conectam a estrutura jurídica ao monitoramento contínuo da operação — conheça as etapas que precedem e sucedem este serviço.</p>
+            <p class="text-muted mx-auto" style="max-width: 560px;">O registro e a distribuição conectam a estrutura jurídica ao monitoramento contínuo da operação. Conheça as etapas que vêm antes e depois deste serviço.</p>
         </div>
 
         <div class="row g-4 justify-content-center">
@@ -319,7 +319,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Estrutura Jurídica</h3>
-                    <p class="text-muted mb-3">Engenharia documental, validação de lastro e garantias e rigor regulatório — a base jurídica que precede o registro da oferta.</p>
+                    <p class="text-muted mb-3">Construímos a base legal que antecede a oferta. Da engenharia documental à validação do lastro e das garantias com total rigor regulatório.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -330,7 +330,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Relatórios e Monitoramento</h3>
-                    <p class="text-muted mb-3">Acompanhamento contínuo da operação pós-closing — relatórios periódicos para investidores, agente fiduciário e demais partes da estrutura.</p>
+                    <p class="text-muted mb-3">Mantemos a operação no trilho após o fechamento. Entregamos relatórios periódicos para os investidores, agentes fiduciários e demais envolvidos.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>

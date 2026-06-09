@@ -16,7 +16,7 @@
                 </h1>
                 <p class="h5 fw-medium mb-4" style="color: var(--gold); letter-spacing: 0.05em;">COFRE DIGITAL E DATA ROOM SEGURO</p>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Controle total sobre quem acessa cada documento. Gerencie permissões por perfil de stakeholder e acompanhe o histórico completo de visualizações por operação, com segurança de nível bancário.
+                    Tenha controle total sobre quem acessa cada arquivo. Nossa tecnologia permite gerenciar permissões e acompanhar todo o histórico de visualizações com segurança de nível bancário.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -53,8 +53,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Segurança absoluta e controle de visibilidade</h2>
-            <p class="text-muted mx-auto" style="max-width: 640px;">Nossa tecnologia de ACL assegura que dados estratégicos nunca saiam do círculo de confiança da operação. Tudo é auditado e rastreado em tempo real.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Governança documental e sigilo operacional</h2>
+            <p class="text-muted mx-auto" style="max-width: 640px;">Garantimos que os dados estratégicos da sua operação fiquem sempre protegidos. Tudo o que acontece no ambiente é rastreado em tempo real.</p>
         </div>
 
         <div class="row g-4">
@@ -63,8 +63,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Acesso por Perfil</h3>
-                    <p class="text-muted mb-0">Agentes fiduciários, distribuidores e investidores visualizam apenas o que é pertinente à sua função. O sigilo é mantido de ponta a ponta, sem ruídos informacionais.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segregação por Operação</h3>
+                    <p class="text-muted mb-0">Agentes fiduciários, distribuidores e investidores veem apenas o que precisam para trabalhar. O sigilo da sua operação é mantido de ponta a ponta.</p>
                 </div>
             </div>
 
@@ -73,8 +73,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Trilha de Auditoria</h3>
-                    <p class="text-muted mb-0">Saiba exatamente quem abriu cada arquivo e em que momento. Registros detalhados garantem total transparência para processos de compliance e auditorias externas.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Rastreabilidade de Custódia</h3>
+                    <p class="text-muted mb-0">Saiba exatamente quem abriu cada arquivo e quando. Nossos registros trazem a transparência necessária para passar por qualquer auditoria sem dor de cabeça.</p>
                 </div>
             </div>
 
@@ -83,8 +83,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Conformidade LGPD</h3>
-                    <p class="text-muted mb-0">Proteção nativa para dados sensíveis. Nossa infraestrutura impede vazamentos e garante que a custódia das informações siga rigorosamente as normas da CVM.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Conformidade Direta</h3>
+                    <p class="text-muted mb-0">Proteção real para dados sensíveis. Evitamos vazamentos e garantimos que a forma como lidamos com a informação esteja 100% alinhada à LGPD e à CVM.</p>
                 </div>
             </div>
         </div>
@@ -99,21 +99,21 @@
                 <div class="p-4 rounded-4 bg-white shadow-sm border h-100">
                     <div class="display-6 fw-bold text-brand mb-2">R$ {{ number_format($stats['total_volume'] / 1000000, 1, ',', '.') }} Mi</div>
                     <div class="text-uppercase small fw-bold text-muted" style="letter-spacing: 0.1em;">Total Estruturado</div>
-                    <div class="mt-3 smaller text-muted">Volume de crédito monitorado por nossa infraestrutura.</div>
+                    <div class="mt-3 smaller text-muted">Volume financeiro que confia na nossa infraestrutura.</div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-4 rounded-4 bg-white shadow-sm border h-100">
                     <div class="display-6 fw-bold text-brand mb-2">{{ $stats['active_count'] }}</div>
-                    <div class="text-uppercase small fw-bold text-muted" style="letter-spacing: 0.1em;">Operações em curso</div>
-                    <div class="mt-3 smaller text-muted">Emissões ativas com gestão documental via ACL.</div>
+                    <div class="text-uppercase small fw-bold text-muted" style="letter-spacing: 0.1em;">Operações ativas</div>
+                    <div class="mt-3 smaller text-muted">Emissões rodando hoje com nossa gestão documental.</div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-4 rounded-4 bg-white shadow-sm border h-100">
                     <div class="display-6 fw-bold text-brand mb-2">{{ $stats['document_count'] }}</div>
-                    <div class="text-uppercase small fw-bold text-muted" style="letter-spacing: 0.1em;">Arquivos Públicos</div>
-                    <div class="mt-3 smaller text-muted">Acesso livre para transparência e RI.</div>
+                    <div class="text-uppercase small fw-bold text-muted" style="letter-spacing: 0.1em;">Arquivos disponíveis</div>
+                    <div class="mt-3 smaller text-muted">Acesso fácil para transparência e Relação com Investidores.</div>
                 </div>
             </div>
         </div>
@@ -131,8 +131,8 @@
             
             <div class="row align-items-center g-5 position-relative z-1">
                 <div class="col-lg-7" style="color: #E6E4E4;">
-                    <h2 class="h2 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em; text-wrap: balance;">Informação pública vs. Sigilo estratégico</h2>
-                    <p class="lead mb-5" style="color: #E6E4E4; opacity: 0.85; font-weight: 300;">Equilibramos a transparência exigida pelo mercado com o sigilo necessário para a proteção dos ativos. Cada público acessa exatamente o que precisa.</p>
+                    <h2 class="h2 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em; text-wrap: balance;">O que é público e o que é estratégico</h2>
+                    <p class="lead mb-5" style="color: #E6E4E4; opacity: 0.85; font-weight: 300;">Entregamos a transparência que o mercado exige sem abrir mão da segurança que a sua operação precisa. Cada perfil só vê o que deve ver.</p>
                     
                     <div class="row g-4">
                         <div class="col-sm-6">
@@ -141,8 +141,8 @@
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
                                 </div>
                                 <div>
-                                    <div class="fw-bold mb-2" style="color: #ffffff;">Portal de RI</div>
-                                    <p class="small mb-0" style="color: #E6E4E4; opacity: 0.75; line-height: 1.6;">Download direto de prospectos, anúncios e fatos relevantes sem necessidade de autenticação.</p>
+                                    <div class="fw-bold mb-2" style="color: #ffffff;">Portal Aberto</div>
+                                    <p class="small mb-0" style="color: #E6E4E4; opacity: 0.75; line-height: 1.6;">Qualquer pessoa pode baixar prospectos e comunicados gerais, sem precisar fazer login ou se identificar.</p>
                                 </div>
                             </div>
                         </div>
@@ -152,8 +152,8 @@
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                                 </div>
                                 <div>
-                                    <div class="fw-bold mb-2" style="color: #ffffff;">Ambiente Restrito</div>
-                                    <p class="small mb-0" style="color: #E6E4E4; opacity: 0.75; line-height: 1.6;">O sistema ACL blinda documentos de lastro e dados sensíveis para acesso exclusivo de stakeholders autorizados.</p>
+                                    <div class="fw-bold mb-2" style="color: #ffffff;">Ambiente Fechado</div>
+                                    <p class="small mb-0" style="color: #E6E4E4; opacity: 0.75; line-height: 1.6;">Documentos sensíveis e contratos ficam trancados, visíveis apenas para os parceiros previamente aprovados.</p>
                                 </div>
                             </div>
                         </div>
@@ -168,10 +168,10 @@
                                 </div>
                             </div>
                         </div>
-                        <h3 class="h4 fw-bold mb-3 mt-3" style="color: #091B23;">Busca por documentos públicos?</h3>
-                        <p class="small mb-4" style="color: #6c757d; line-height: 1.6;">Não é necessário login para acessar documentos de transparência obrigatória das nossas emissões.</p>
+                        <h3 class="h4 fw-bold mb-3 mt-3" style="color: #091B23;">Quer consultar documentos públicos?</h3>
+                        <p class="small mb-4" style="color: #6c757d; line-height: 1.6;">Navegue facilmente pelas informações abertas das nossas emissões, sem barreiras de acesso.</p>
                         <a href="{{ route('site.emissions') }}" class="btn w-100 py-3 fw-bold d-inline-flex align-items-center justify-content-center gap-2" style="background-color: #091B23; color: #ffffff; border: none; transition: all 0.3s ease;">
-                            Ver Portal de Emissões
+                            Acessar Portal de Emissões
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                         </a>
                     </div>
@@ -187,11 +187,11 @@
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-end mb-5">
             <div>
-                <h2 class="h3 fw-bold mb-2" style="color: #091B23;">Operações em monitoramento</h2>
-                <p class="text-muted mb-0">Exemplos de emissões que utilizam nossa infraestrutura de documentos.</p>
+                <h2 class="h3 fw-bold mb-2" style="color: #091B23;">Operações no nosso radar</h2>
+                <p class="text-muted mb-0">Alguns exemplos práticos de emissões que usam nosso cofre digital.</p>
             </div>
             <a href="{{ route('site.emissions') }}" class="fw-bold text-decoration-none d-flex align-items-center gap-1" style="color: #A06E28; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-                Ver todas 
+                Ver portfólio completo 
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
             </a>
         </div>
@@ -252,17 +252,17 @@
     <div class="container py-4">
         <div class="row g-5 align-items-center">
             <div class="col-lg-5">
-                <h2 class="h4 fw-bold text-dark mb-4">Arquitetura de Visibilidade</h2>
-                <p class="text-muted small mb-4">Um único repositório, múltiplas visões. Nossa tecnologia de ACL garante que cada stakeholder acesse exatamente o que sua função exige, protegendo o sigilo estratégico da operação.</p>
+                <h2 class="h4 fw-bold text-dark mb-4">Muitos acessos, um só repositório</h2>
+                <p class="text-muted small mb-4">Nossa estrutura de ACL centraliza os arquivos da operação em um único local seguro, mas molda a visão de acordo com quem está acessando.</p>
                 
                 <div class="d-flex flex-column gap-3">
                     <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
                         <div class="fw-bold text-dark small mb-1">Agente Fiduciário</div>
-                        <div class="text-muted smaller">Acesso total a documentos de lastro, seguros e garantias para monitoramento de covenants.</div>
+                        <div class="text-muted smaller">Pode ver tudo o que importa para monitorar as garantias e obrigações do contrato.</div>
                     </div>
                     <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
                         <div class="fw-bold text-dark small mb-1">Investidor</div>
-                        <div class="text-muted smaller">Acesso a relatórios de performance, fatos relevantes e demonstrações financeiras da série.</div>
+                        <div class="text-muted smaller">Fica focado nos relatórios de desempenho e nos avisos importantes sobre os seus títulos.</div>
                     </div>
                 </div>
             </div>
@@ -270,7 +270,7 @@
             <div class="col-lg-7">
                 <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
                     <div class="text-center mb-4">
-                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Simulação de Repositório ACL</span>
+                        <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Como funciona na tela</span>
                     </div>
                     
                     <div class="row g-3">
@@ -316,7 +316,7 @@
                                     </div>
                                     <div class="d-flex align-items-center gap-2 smaller text-muted opacity-50 p-2">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                                        Contratos Sociais Emissor
+                                        Contratos Sociais do Emissor
                                     </div>
                                 </div>
                             </div>
@@ -333,26 +333,26 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Gestão ativa do ciclo de vida documental</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Controle vivo da documentação</h2>
                 <p class="text-muted mb-4 lead">
-                    O controle de acesso acompanha a evolução da operação. Do closing à liquidação, cada mudança de mandato ou decisão de compliance é refletida instantaneamente no sistema, com registros permanentes de cada alteração.
+                    As permissões acompanham a realidade da operação. Se alguém entra ou sai do projeto, o sistema reflete a mudança de forma imediata, registrando quem liberou ou revogou cada acesso.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium"><strong>Setup de Estruturação:</strong> Definição imediata de perfis para agentes, investidores e distribuidores, revisados a cada novo evento contratual.</span>
+                        <span class="text-dark fw-medium"><strong>Organização Inicial:</strong> Começamos definindo quem é quem na operação e que tipo de arquivo cada parceiro deve ver.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium"><strong>Data Room Seguro:</strong> Suporte total à troca de minutas, documentos de lastro e due diligence jurídica entre advogados e emissores desde o "Dia Zero".</span>
+                        <span class="text-dark fw-medium"><strong>Ambiente Protegido:</strong> Os advogados e emissores trocam minutas e documentos com segurança máxima desde o primeiro dia.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium"><strong>Atualização de Mandatos:</strong> Revogação ou concessão imediata de acessos em casos de substituição de agentes, garantindo que apenas os atuais responsáveis visualizem os dados.</span>
+                        <span class="text-dark fw-medium"><strong>Ajustes Rápidos:</strong> Se um parceiro for substituído, nós cortamos o acesso antigo e liberamos o novo em poucos cliques.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium"><strong>Workflow de Aprovação:</strong> Fluxo rigoroso de validação pelo compliance para novos acessos, com notificação automática e ativação documentada.</span>
+                        <span class="text-dark fw-medium"><strong>Aprovação Formal:</strong> Ninguém entra no sistema sem passar pela revisão rigorosa do nosso setor de compliance.</span>
                     </li>
                 </ul>
             </div>
@@ -368,7 +368,7 @@
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-2">Serviços relacionados</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">O controle de acesso documental conecta-se diretamente à auditoria de acessos e ao portal onde as permissões têm efeito para o investidor.</p>
+            <p class="text-muted mx-auto" style="max-width: 560px;">O controle de acesso documental está diretamente ligado à forma como auditamos o sistema e ao portal que entrega essas informações ao investidor.</p>
         </div>
 
         <div class="row g-4 justify-content-center">
@@ -378,7 +378,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Auditoria de Acessos</h3>
-                    <p class="text-muted mb-3">Rastreabilidade completa dos acessos ao ambiente operacional — log de ações, revisão de permissões e conformidade com as políticas de segregação definidas no compliance.</p>
+                    <p class="text-muted mb-3">Acompanhe de perto quem acessa o seu ambiente operacional. Registramos todas as ações e revisamos as permissões para garantir que tudo siga as regras de compliance.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -389,7 +389,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Portal do Investidor</h3>
-                    <p class="text-muted mb-3">Ambiente onde as permissões de ACL têm efeito — cada investidor visualiza apenas as operações e documentos autorizados para o seu perfil de acesso.</p>
+                    <p class="text-muted mb-3">O espaço onde as regras de acesso são aplicadas na prática. Garantimos que cada investidor veja apenas os documentos e as operações que realmente importam para ele.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>

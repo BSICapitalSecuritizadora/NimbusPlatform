@@ -228,4 +228,4 @@
 
 </body>
 </html>
-<?php /**PATH /var/www/html/resources/views/emails/measurements/workflow.blade.php ENDPATH**/ ?>
+<?php /**PATH /home/desktop/projects/bsi-capital/resources/views/emails/measurements/workflow.blade.php ENDPATH**/ ?>

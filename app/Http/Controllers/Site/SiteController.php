@@ -25,7 +25,7 @@ class SiteController extends Controller
         return back()->with('contact_success', true);
     }
 
-    public function documents()
+    public function governance()
     {
         $documents = Document::query()
             ->visibleOnPublicSite()

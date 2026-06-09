@@ -12,7 +12,7 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Agronegócio</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Capital para <span style="color: var(--gold);">Cooperativas</span>
+                    Capital Estratégico para <span style="color: var(--gold);">Cooperativas</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
                     Estruturamos operações de CRA e CDCA que preservam a segurança do Ato Cooperativo, unindo o fomento à base associativa com a eficiência do mercado de capitais.
@@ -84,7 +84,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Sincronia com o modelo associativo</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Sincronia Operacional e Associativa</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Nossas estruturas respeitam a dinâmica das cooperativas, integrando-se aos ciclos de produção e pagamento sem afetar a relação com o associado.</p>
         </div>
 

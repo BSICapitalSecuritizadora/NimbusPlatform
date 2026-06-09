@@ -50,7 +50,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Governança baseada em fatos, não em suposições</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Governança e evidência de acesso</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Logs técnicos convertidos em provas auditáveis. Cada interação é selada criptograficamente, garantindo integridade total para o compliance e o agente fiduciário.</p>
         </div>
 
@@ -70,7 +70,7 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Resposta Imediata</h3>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Prontidão para Auditoria</h3>
                     <p class="text-muted mb-0">Relatórios estruturados e exportáveis eliminam semanas de trabalho manual em <em>due diligences</em>. Auditores externos validam a conformidade da operação em minutos, com acesso autônomo.</p>
                 </div>
             </div>
@@ -187,7 +187,7 @@
             </div>
             
             <div class="col-lg-5">
-                <h2 class="h4 fw-bold text-dark mb-4">Vigilância Inteligente</h2>
+                <h2 class="h4 fw-bold text-dark mb-4">Monitoramento Fiduciário</h2>
                 <div class="d-flex flex-column gap-3">
                     <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
                         <div class="fw-bold text-dark small mb-1">Proteção do Lastro (Sacados)</div>
@@ -263,12 +263,12 @@
             </div>
 
             <div class="col-md-5">
-                <a href="<?php echo e(route('site.servicos.compliance')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
+                <a href="<?php echo e(route('site.servicos.monitoramento-regulatorio')); ?>" class="card card-opea h-100 p-4 border-0 shadow-sm card-hover text-decoration-none" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Gestão de Compliance</h3>
-                    <p class="text-muted mb-3">Vigilância contínua para sua operação. O compliance utiliza as trilhas para identificar desvios e suportar decisões estratégicas de risco.</p>
+                    <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Monitoramento regulatório</h3>
+                    <p class="text-muted mb-3">Vigilância contínua para sua operação. O monitoramento regulatório utiliza as trilhas para identificar desvios e suportar decisões estratégicas de risco.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>

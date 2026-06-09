@@ -1,6 +1,6 @@
 @extends('site.layout')
 
-@section('title', 'Compliance — BSI Capital')
+@section('title', 'Monitoramento Regulatório — BSI Capital')
 
 @section('content')
 <!-- Hero Section -->
@@ -12,10 +12,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    <span style="color: var(--gold);">Compliance</span> <br>& Governança
+                    <span style="color: var(--gold);">Monitoramento</span> <br>Regulatório
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Muito além de cumprir normas, nossa estrutura de compliance protege sua operação. Combinamos processos ágeis de verificação (KYC/PLD) com um monitoramento rigoroso de obrigações, garantindo segurança jurídica e transparência para todos os envolvidos.
+                    Nossa frente de monitoramento regulatório protege sua operação do onboarding ao pós-emissão. Combinamos processos ágeis de verificação (KYC/PLD) com um acompanhamento rigoroso de obrigações, garantindo segurança jurídica e transparência para todos os envolvidos.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/compliance.png') }}" class="img-fluid" alt="Compliance & Governança" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/compliance.png') }}" class="img-fluid" alt="Monitoramento regulatório" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -52,7 +52,7 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Segurança e conformidade em cada etapa</h2>
+            <h2 class="h3 fw-bold text-dark mb-3">Vigilância ativa ao longo da operação</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Mantemos a integridade do seu negócio através de uma governança sólida. Nossas práticas são desenhadas para atender as exigências da CVM e ANBIMA de forma prática e eficiente.</p>
         </div>
 
@@ -73,7 +73,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Vigilância de Covenants</h3>
-                    <p class="text-muted mb-0">Antecipamos problemas antes que eles aconteçam. Acompanhamos cada cláusula contratual de perto, emitindo alertas preventivos para que eventuais desvios sejam corrigidos rapidamente, mantendo a saúde da operação.</p>
+                    <p class="text-muted mb-0">Monitoramento contínuo das obrigações contratuais: acompanhamos cada cláusula de perto, emitindo alertas preventivos para que eventuais desvios sejam corrigidos rapidamente, mantendo a saúde da operação.</p>
                 </div>
             </div>
 
@@ -182,7 +182,7 @@
     </div>
 </section>
 
-<!-- Canal de Ética e Denúncias -->
+<!-- Tratativa de alertas -->
 <section class="py-5 bg-white">
     <div class="container py-4">
         <div class="row justify-content-center">
@@ -192,16 +192,19 @@
                         <div class="bg-white p-4 rounded-circle shadow-sm border border-brand-subtle mb-3 mx-auto" style="width: 100px; height: 100px; display: grid; place-items: center; color: var(--gold);">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                         </div>
-                        <span class="badge bg-gold text-white px-3 py-1 text-uppercase fw-bold" style="font-size: 0.6rem;">Canal Seguro</span>
+                        <span class="badge bg-gold text-white px-3 py-1 text-uppercase fw-bold" style="font-size: 0.6rem;">Escalonamento</span>
                     </div>
                     <div>
-                        <h3 class="h4 fw-bold text-dark mb-3">Compromisso com a Ética</h3>
+                        <h3 class="h4 fw-bold text-dark mb-3">Gestão de alertas e exceções</h3>
                         <p class="text-muted mb-4">
-                            Valorizamos a transparência e a integridade em tudo o que fazemos. Por isso, oferecemos um canal seguro para relatar qualquer comportamento que não esteja alinhado com nossos valores. O anonimato é garantido e protegemos quem nos ajuda a manter um ambiente ético e profissional.
+                            Quando um covenant, prazo regulatório ou documento crítico sai do trilho, nosso time registra a ocorrência, define responsáveis e preserva a trilha auditável até a regularização. O objetivo aqui é acelerar a resposta operacional com clareza para emissores, investidores e agentes fiduciários.
+                        </p>
+                        <p class="text-muted mb-4">
+                            Temas institucionais, canal de integridade e diretrizes éticas da BSI continuam concentrados na página institucional de Compliance, evitando ambiguidades na navegação do site.
                         </p>
                         <div class="d-flex flex-wrap gap-3">
-                            <a href="#" class="btn btn-dark btn-sm px-4 py-2">Realizar Denúncia Anônima</a>
-                            <a href="#" class="btn btn-outline-dark btn-sm px-4 py-2">Consultar Status</a>
+                            <a href="{{ route('site.contact') }}" class="btn btn-dark btn-sm px-4 py-2">Falar com especialistas</a>
+                            <a href="{{ route('site.compliance') }}" class="btn btn-outline-dark btn-sm px-4 py-2">Compliance institucional</a>
                         </div>
                     </div>
                 </div>
@@ -250,7 +253,7 @@
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-2">Serviços relacionados</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">O compliance sustenta a integridade dos dados publicados nos relatórios e o controle de acesso ao ambiente do investidor.</p>
+            <p class="text-muted mx-auto" style="max-width: 560px;">O monitoramento regulatório sustenta a integridade dos dados publicados nos relatórios e o controle de acesso ao ambiente do investidor.</p>
         </div>
 
         <div class="row g-4 justify-content-center">

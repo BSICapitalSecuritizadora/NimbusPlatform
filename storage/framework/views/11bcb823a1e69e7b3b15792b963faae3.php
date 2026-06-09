@@ -10,10 +10,10 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Somos a <span style="color: var(--gold);">BSI Capital</span> <br>Securitizadora S.A.
+                    Prazer, somos a <br><span style="color: var(--gold);">BSI Capital</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Securitizadora constituída em 2009, a BSI Capital é companhia aberta registrada na CVM, com atuação em crédito estruturado e emissão de CRI, CRA, CR, Debêntures e Notas Comerciais — combinando rigor fiduciário, conformidade regulatória e execução técnica ao longo de toda a vida da operação.
+                    Securitizadora constituída em 2009, a BSI Capital ajuda empresas a crescer conectando bons projetos ao mercado de capitais. Companhia aberta com registro na CVM, unimos a segurança do mercado tradicional à agilidade da tecnologia para estruturar operações de crédito que fazem a diferença.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="<?php echo e(route('site.contact')); ?>" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -70,12 +70,125 @@
     </div>
 </section>
 
+<!-- Timeline de Sucessos -->
+<section class="py-5 bg-white border-top position-relative overflow-hidden">
+    <!-- Decoração de fundo sutil -->
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at top right, rgba(212,175,55,0.03), transparent 50%); pointer-events: none;"></div>
+
+    <div class="container py-5 position-relative z-1">
+        <div class="text-center mb-5 pb-4">
+            <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Evolução</span>
+            <h2 class="display-6 fw-bold text-dark mb-3">Nossa Trajetória</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px; font-size: 1.1rem;">Mais de uma década de evolução constante e compromisso com o mercado de capitais.</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-8">
+                <div class="position-relative py-4">
+                    <!-- Vertical Line (Timeline Backbone) -->
+                    <div class="position-absolute start-50 translate-middle-x h-100 d-none d-md-block" style="width: 2px; background: linear-gradient(to bottom, transparent, rgba(0,32,91,0.15) 10%, rgba(212,175,55,0.3) 90%, transparent); left: 50%;"></div>
+                    <!-- Mobile Line -->
+                    <div class="position-absolute start-0 h-100 d-md-none ms-3" style="width: 2px; background: linear-gradient(to bottom, transparent, rgba(0,32,91,0.15) 10%, rgba(212,175,55,0.3) 90%, transparent); left: 12px;"></div>
+
+                    <!-- 2009 -->
+                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline" style="transition: all 0.4s ease;">
+                        <div class="col-10 col-md-5 order-2 order-md-1 text-md-end pe-md-5 ps-5 ps-md-3">
+                            <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; transition: all 0.3s ease;">
+                                <div class="h3 fw-bold text-brand mb-2" style="font-family: var(--font-heading);">2009</div>
+                                <h5 class="fw-bold text-dark mb-2">Fundação</h5>
+                                <p class="text-muted small mb-0">Início das atividades com foco em estruturação de recebíveis imobiliários.</p>
+                            </div>
+                        </div>
+                        <div class="col-2 col-md-2 order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
+                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
+                                <div class="rounded-circle bg-white" style="width: 6px; height: 6px;"></div>
+                            </div>
+                        </div>
+                        <div class="d-none d-md-flex col-md-2 order-1 order-md-2 text-center position-relative align-items-center justify-content-center">
+                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
+                                <div class="rounded-circle bg-white" style="width: 10px; height: 10px;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-5 order-3 d-none d-md-block ps-md-5"></div>
+                    </div>
+
+                    <!-- 2014 -->
+                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline" style="transition: all 0.4s ease;">
+                        <div class="col-md-5 order-md-1 d-none d-md-block pe-md-5"></div>
+                        <div class="col-2 col-md-2 order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
+                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
+                                <div class="rounded-circle bg-white" style="width: 6px; height: 6px;"></div>
+                            </div>
+                        </div>
+                        <div class="d-none d-md-flex col-md-2 order-2 order-md-2 text-center position-relative align-items-center justify-content-center">
+                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
+                                <div class="rounded-circle bg-white" style="width: 10px; height: 10px;"></div>
+                            </div>
+                        </div>
+                        <div class="col-10 col-md-5 order-2 order-md-3 ps-5 ps-md-5">
+                            <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; transition: all 0.3s ease;">
+                                <div class="h3 fw-bold text-brand mb-2" style="font-family: var(--font-heading);">2014</div>
+                                <h5 class="fw-bold text-dark mb-2">Registro CVM</h5>
+                                <p class="text-muted small mb-0">Consolidação como Companhia Aberta Categoria B, ampliando a transparência e governança.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2018 -->
+                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline" style="transition: all 0.4s ease;">
+                        <div class="col-10 col-md-5 order-2 order-md-1 text-md-end pe-md-5 ps-5 ps-md-3">
+                            <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; transition: all 0.3s ease;">
+                                <div class="h3 fw-bold text-brand mb-2" style="font-family: var(--font-heading);">2018</div>
+                                <h5 class="fw-bold text-dark mb-2">Expansão para o Agro</h5>
+                                <p class="text-muted small mb-0">Primeiras emissões de CRA, diversificando o portfólio para o setor de agronegócio.</p>
+                            </div>
+                        </div>
+                        <div class="col-2 col-md-2 order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
+                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
+                                <div class="rounded-circle bg-white" style="width: 6px; height: 6px;"></div>
+                            </div>
+                        </div>
+                        <div class="d-none d-md-flex col-md-2 order-1 order-md-2 text-center position-relative align-items-center justify-content-center">
+                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
+                                <div class="rounded-circle bg-white" style="width: 10px; height: 10px;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-5 order-3 d-none d-md-block ps-md-5"></div>
+                    </div>
+
+                    <!-- Hoje -->
+                    <div class="row align-items-center mb-0 position-relative hover-scale-timeline" style="transition: all 0.4s ease;">
+                        <div class="col-md-5 order-md-1 d-none d-md-block pe-md-5"></div>
+                        <div class="col-2 col-md-2 order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
+                            <div class="rounded-circle bg-gold d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 28px; height: 28px; border: 4px solid #fff;">
+                                <div class="rounded-circle bg-white" style="width: 8px; height: 8px;"></div>
+                            </div>
+                        </div>
+                        <div class="d-none d-md-flex col-md-2 order-2 order-md-2 text-center position-relative align-items-center justify-content-center">
+                            <div class="rounded-circle bg-gold d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 48px; height: 48px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease; box-shadow: 0 0 15px rgba(212,175,55,0.3) !important;">
+                                <div class="rounded-circle bg-white" style="width: 12px; height: 12px;"></div>
+                            </div>
+                        </div>
+                        <div class="col-10 col-md-5 order-2 order-md-3 ps-5 ps-md-5">
+                            <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; background: linear-gradient(145deg, #ffffff, #fcfaf5); border: 1px solid rgba(212,175,55,0.15) !important; transition: all 0.3s ease;">
+                                <div class="h3 fw-bold text-gold mb-2" style="font-family: var(--font-heading);">Hoje</div>
+                                <h5 class="fw-bold text-dark mb-2">+R$ 1 Bilhão</h5>
+                                <p class="text-muted small mb-0">Marco histórico em volume estruturado e implementação de infraestrutura digital proprietária.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Missão, Visão, Valores -->
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Missão, visão e valores</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Diretrizes fundamentais que orientam nossa atuação institucional e o relacionamento com o mercado e stakeholders.</p>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossa atuação é baseada em princípios claros que garantem parcerias duradouras e resultados reais.</p>
         </div>
 
         <div class="row g-4">
@@ -84,8 +197,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: rgba(0,32,91,0.08); color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Missão</h3>
-                    <p class="text-muted mb-0">Viabilizar o acesso ao mercado de capitais por meio de estruturas de crédito robustas, atuando como o elo de segurança e governança entre quem produz e quem investe.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Nossa Missão</h3>
+                    <p class="text-muted mb-0">Criar caminhos seguros para que empresas acessem recursos no mercado de capitais, gerando valor para quem investe e combustível para quem produz.</p>
                 </div>
             </div>
 
@@ -94,8 +207,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: rgba(0,32,91,0.08); color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Visão</h3>
-                    <p class="text-muted mb-0">Consolidar a BSI Capital como referência em securitização e crédito estruturado, fundamentada em uma atuação fiduciária responsável e na excelência contínua na execução.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Nossa Visão</h3>
+                    <p class="text-muted mb-0">Ser a primeira escolha em securitização, reconhecidos pela agilidade técnica e pela confiança que transmitimos em cada operação estruturada.</p>
                 </div>
             </div>
 
@@ -104,8 +217,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: rgba(0,32,91,0.08); color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Valores</h3>
-                    <p class="text-muted mb-0">Governança corporativa, transparência absoluta, diligência fiduciária e o fomento de parcerias sólidas, pilares que sustentam a credibilidade institucional.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Nossos Valores</h3>
+                    <p class="text-muted mb-0">Transparência no dia a dia, tecnologia que simplifica processos e uma governança rigorosa para proteger o patrimônio de todos os parceiros.</p>
                 </div>
             </div>
         </div>
@@ -116,8 +229,8 @@
 <section class="py-5" style="background: #0b1220;">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Nossa Cultura</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Princípios ativos que orientam a condução das operações e preservam o valor entregue aos nossos públicos.</p>
+            <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Nosso jeito de trabalhar</h2>
+            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Acreditamos que a confiança é construída com ética, inovação e foco total no que realmente importa: o sucesso da sua operação.</p>
         </div>
 
         <div class="row g-4">
@@ -127,7 +240,7 @@
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Integridade e Ética</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Atuamos com integridade absoluta e adesão rigorosa às normas regulatórias, garantindo segurança fiduciária a todos os envolvidos.</p>
+                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Trabalhamos com transparência absoluta e respeito total às normas, garantindo que sua operação esteja sempre em solo seguro.</p>
                 </div>
             </div>
 
@@ -136,8 +249,8 @@
                     <div class="mb-3">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Inovação Aplicada</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Integramos tecnologia de ponta à inteligência fiduciária para otimizar processos críticos, provendo agilidade e conformidade escalável.</p>
+                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Inovação prática</h4>
+                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Usamos a tecnologia para simplificar o complexo. Menos burocracia e mais agilidade para que o crédito chegue onde precisa.</p>
                 </div>
             </div>
 
@@ -146,8 +259,8 @@
                     <div class="mb-3">
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Foco em Soluções</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Entregamos estruturas de securitização personalizadas, baseadas em uma análise minuciosa de cada tese de crédito e ativo.</p>
+                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Foco na solução</h4>
+                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Cada cliente é único. Criamos estruturas personalizadas, desenhadas sob medida para o tamanho do seu desafio.</p>
                 </div>
             </div>
         </div>
@@ -297,28 +410,41 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Liderança Executiva</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Profissionais com ampla trajetória no mercado financeiro e de capitais, comprometidos com a segurança e o retorno das operações estruturadas.</p>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossos líderes combinam décadas de experiência no mercado financeiro com uma visão clara de futuro e inovação.</p>
         </div>
 
         <div class="row g-4 justify-content-center">
+            <!-- Líder 1 -->
             <div class="col-md-6 col-lg-4">
                 <div class="card border-0 shadow-sm text-center h-100 p-4" style="border-radius: 16px;">
-                    <div class="mb-4 mx-auto rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; border: 3px solid var(--brand);">
-                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <div class="mb-4 mx-auto position-relative" style="width: 120px; height: 120px;">
+                        <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; border: 3px solid var(--brand);">
+                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </div>
+                        <a href="https://linkedin.com" target="_blank" class="position-absolute bottom-0 end-0 bg-white rounded-circle p-2 shadow-sm border d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="LinkedIn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#0077b5"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                        </a>
                     </div>
                     <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Diretoria Executiva</h4>
-                    <p class="text-brand small fw-medium text-uppercase mb-3">Sócios-Diretores</p>
-                    <p class="text-muted small mb-0">Com vasta experiência em estruturação de recebíveis e mercado de capitais, lideram a visão estratégica e originação de novas operações.</p>
+                    <p class="text-brand small fw-bold text-uppercase mb-3">Sócios-Diretores</p>
+                    <p class="text-muted small mb-0">Especialistas com vasta trajetória na estruturação de ativos imobiliários, agronegócio e crédito corporativo estruturado.</p>
                 </div>
             </div>
+            
+            <!-- Líder 2 -->
             <div class="col-md-6 col-lg-4">
                 <div class="card border-0 shadow-sm text-center h-100 p-4" style="border-radius: 16px;">
-                    <div class="mb-4 mx-auto rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; border: 3px solid var(--brand);">
-                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <div class="mb-4 mx-auto position-relative" style="width: 120px; height: 120px;">
+                        <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; border: 3px solid var(--brand);">
+                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </div>
+                        <a href="https://linkedin.com" target="_blank" class="position-absolute bottom-0 end-0 bg-white rounded-circle p-2 shadow-sm border d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="LinkedIn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#0077b5"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.761 0 5-2.239 5-5v-14c0-2.761-2.239-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                        </a>
                     </div>
-                    <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Conselho de Administração</h4>
-                    <p class="text-brand small fw-medium text-uppercase mb-3">Governança & Risco</p>
-                    <p class="text-muted small mb-0">Responsáveis por assegurar as melhores práticas de conformidade regulatória, compliance e rigor fiduciário junto à CVM e ANBIMA.</p>
+                    <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Governança e Risco</h4>
+                    <p class="text-brand small fw-bold text-uppercase mb-3">Conselho de Administração</p>
+                    <p class="text-muted small mb-0">Responsáveis por assegurar o rigor fiduciário e a conformidade regulatória junto à CVM e ANBIMA.</p>
                 </div>
             </div>
         </div>
@@ -376,6 +502,41 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+    }
+
+    .hover-scale-timeline:hover .timeline-card {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,.08) !important;
+    }
+    .hover-scale-timeline:hover .timeline-dot {
+        transform: scale(1.15);
+    }
+    .timeline-card {
+        position: relative;
+    }
+    @media (min-width: 768px) {
+        .hover-scale-timeline:nth-child(odd) .timeline-card::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 10px 0 10px 10px;
+            border-style: solid;
+            border-color: transparent transparent transparent #fff;
+            filter: drop-shadow(2px 0px 2px rgba(0,0,0,0.02));
+        }
+        .hover-scale-timeline:nth-child(even) .timeline-card::after {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 10px 10px 10px 0;
+            border-style: solid;
+            border-color: transparent #fff transparent transparent;
+            filter: drop-shadow(-2px 0px 2px rgba(0,0,0,0.02));
+        }
     }
 </style>
 <?php $__env->stopPush(); ?>
