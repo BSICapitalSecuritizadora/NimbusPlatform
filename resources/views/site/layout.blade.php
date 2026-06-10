@@ -33,7 +33,7 @@
 </head>
 <body>
 @php
-    $portalUrl = env('APP_PORTAL_URL', '/portal');
+    $portalUrl = config('app.portal_url');
 @endphp
 
 @include('site.partials.navbar')

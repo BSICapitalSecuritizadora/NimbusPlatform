@@ -24,6 +24,14 @@ yarn-error.log
 /.vscode
 /.zed
 /.DS_Store
+/.codex-artifacts
+
+# Claude harness local settings (machine-specific, not shared)
+/.claude/settings.local.json
+
+# Stray artifact materialized by some shells from the
+# "Composer\Config::disableProcessTimeout" script line in composer.json
+/ComposerConfig*
 
 # OS & Editor Trash
 *.save
