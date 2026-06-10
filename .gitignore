@@ -28,6 +28,7 @@ yarn-error.log
 
 # Claude harness local settings (machine-specific, not shared)
 /.claude/settings.local.json
+/.claude/worktrees/
 
 # Stray artifact materialized by some shells from the
 # "Composer\Config::disableProcessTimeout" script line in composer.json

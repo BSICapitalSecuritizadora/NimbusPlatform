@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4b8639cab70bcab9f846178ad0c0b4b6",
+    "content-hash": "70ab84b7bbf124cc316cfbe95ffe2bc2",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -77,12 +77,12 @@
             "version": "1.8.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/Azure-OSS/azure-storage-php-blob.git",
+                "url": "https://github.com/Azure-OSS/azure-storage-php.git",
                 "reference": "748dc333b60a0cc157e09ac0554102d7e88f61ee"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Azure-OSS/azure-storage-php-blob/zipball/748dc333b60a0cc157e09ac0554102d7e88f61ee",
+                "url": "https://api.github.com/repos/Azure-OSS/azure-storage-php/zipball/748dc333b60a0cc157e09ac0554102d7e88f61ee",
                 "reference": "748dc333b60a0cc157e09ac0554102d7e88f61ee",
                 "shasum": ""
             },
@@ -2082,12 +2082,12 @@
             "version": "v7.0.5",
             "source": {
                 "type": "git",
-                "url": "https://github.com/firebase/php-jwt.git",
+                "url": "https://github.com/googleapis/php-jwt.git",
                 "reference": "47ad26bab5e7c70ae8a6f08ed25ff83631121380"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/firebase/php-jwt/zipball/47ad26bab5e7c70ae8a6f08ed25ff83631121380",
+                "url": "https://api.github.com/repos/googleapis/php-jwt/zipball/47ad26bab5e7c70ae8a6f08ed25ff83631121380",
                 "reference": "47ad26bab5e7c70ae8a6f08ed25ff83631121380",
                 "shasum": ""
             },

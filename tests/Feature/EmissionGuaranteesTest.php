@@ -180,7 +180,7 @@ it('calculates outstanding balance from the latest pu in the month and cumulativ
 
     $this->actingAs(makeAdminUser());
 
-    $emission = Emission::factory()->create();
+    $emission = Emission::factory()->create(['issued_quantity' => 100000]);
 
     GuaranteeSnapshot::factory()->create([
         'emission_id' => $emission->id,
@@ -230,7 +230,7 @@ it('stores monthly guarantee indicators without requiring a manual outstanding b
 
     $this->actingAs(makeAdminUser());
 
-    $emission = Emission::factory()->create();
+    $emission = Emission::factory()->create(['issued_quantity' => 100000]);
 
     IntegralizationHistory::query()->create([
         'emission_id' => $emission->id,
@@ -271,7 +271,7 @@ it('colors the coverage index card according to the configured thresholds', func
 
     $this->actingAs(makeAdminUser());
 
-    $greenEmission = Emission::factory()->create();
+    $greenEmission = Emission::factory()->create(['issued_quantity' => 100000]);
     GuaranteeSnapshot::factory()->create([
         'emission_id' => $greenEmission->id,
         'reference_month' => '2026-04-01',
@@ -299,7 +299,7 @@ it('colors the coverage index card according to the configured thresholds', func
         ->assertSeeHtml('border-emerald-400/20 bg-emerald-500/10')
         ->assertSee('131%');
 
-    $yellowEmission = Emission::factory()->create();
+    $yellowEmission = Emission::factory()->create(['issued_quantity' => 100000]);
     GuaranteeSnapshot::factory()->create([
         'emission_id' => $yellowEmission->id,
         'reference_month' => '2026-04-01',
@@ -327,7 +327,7 @@ it('colors the coverage index card according to the configured thresholds', func
         ->assertSeeHtml('border-amber-400/20 bg-amber-500/10')
         ->assertSee('125%');
 
-    $redEmission = Emission::factory()->create();
+    $redEmission = Emission::factory()->create(['issued_quantity' => 100000]);
     GuaranteeSnapshot::factory()->create([
         'emission_id' => $redEmission->id,
         'reference_month' => '2026-04-01',
