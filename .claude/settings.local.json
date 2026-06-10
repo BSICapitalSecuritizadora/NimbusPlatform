@@ -71,7 +71,8 @@
       "Bash(sed -n '1,25p' config/nimbus.php)",
       "Read(//home/desktop/projects/**)",
       "Read(//home/desktop/**)",
-      "Bash(grep -rnoE '\\\\$router->\\(get|post|put|delete\\)\\\\\\([^,]+' public app core)"
+      "Bash(grep -rnoE '\\\\$router->\\(get|post|put|delete\\)\\\\\\([^,]+' public app core)",
+      "Bash(grep -nE 'portalUrl|\\\\$slot|\\\\$title' resources/views/site/layout.blade.php)"
     ]
   }
 }

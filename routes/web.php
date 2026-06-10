@@ -1,25 +1,16 @@
 <?php
 
-use App\Actions\Proposals\StoreProposalContinuationData;
-use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\Http\Controllers\Auth\AzureController;
 use App\Http\Controllers\Nimbus\AdminSubmissionFileController;
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
+use App\Http\Controllers\Site\ProposalContinuationController;
 use App\Http\Controllers\Site\PublicDocumentsController;
 use App\Http\Controllers\Site\SiteController;
 use App\Http\Controllers\Site\SiteDocumentDownloadController;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
-use App\Http\Requests\VerifyProposalContinuationRequest;
 use App\Livewire\Proposals\ContinuationForm;
-use App\Models\Proposal;
-use App\Models\ProposalContinuationAccess;
-use App\Models\ProposalFile;
-use App\Services\DocumentStorageService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 // Microsoft Azure Auth
 Route::get('/auth/azure/redirect', [AzureController::class, 'redirect'])->name('auth.azure.redirect');
@@ -77,122 +68,20 @@ Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
     ->name('public-documents');
 
 // Proposals (Integrated from NimbusForms)
-$proposalContinuationRelations = [
-    'company.sectors',
-    'contact',
-    'projects.characteristics.unitTypes',
-    'files',
-];
-
-$loadProposalContinuation = static function (ProposalContinuationAccess $access) use ($proposalContinuationRelations): Proposal {
-    return $access->proposal()
-        ->with($proposalContinuationRelations)
-        ->firstOrFail();
-};
-
-$hasAuthorizedContinuationSession = static function (Request $request, ProposalContinuationAccess $access): bool {
-    return $request->session()->has($access->verifiedSessionKey()) && $access->isActive();
-};
-
-$ensureMagicLinkConfirmed = static function (Request $request, ProposalContinuationAccess $access): void {
-    abort_unless($request->session()->has($access->magicLinkSessionKey()) && $access->isActive(), 403);
-};
-
-$ensureAuthorizedContinuation = static function (Request $request, ProposalContinuationAccess $access) use ($ensureMagicLinkConfirmed, $hasAuthorizedContinuationSession): void {
-    $ensureMagicLinkConfirmed($request, $access);
-
-    abort_unless($hasAuthorizedContinuationSession($request, $access), 403);
-
-    $access->markAuthorizedUsage();
-};
-
-$ensureContinuationCanStore = static function (Proposal $proposal): void {
-    abort_unless($proposal->canBeCompletedByRequester(), 403);
-};
-
 Route::redirect('/proposta', '/proposals/create')->name('site.proposal.create');
 Route::get('/proposals/create', \App\Livewire\Proposals\CreateProposalForm::class)->name('proposal.create');
-Route::get('/proposta/continuar/{access}', function (Request $request, ProposalContinuationAccess $access) use ($hasAuthorizedContinuationSession, $loadProposalContinuation) {
-    abort_unless($request->hasValidSignature() && $access->isActive(), 403);
-
-    $access->markLinkOpened();
-
-    $request->session()->put($access->magicLinkSessionKey(), true);
-
-    if ($hasAuthorizedContinuationSession($request, $access)) {
-        return redirect()->route('site.proposal.continuation.form', $access);
-    }
-
-    return view('site.proposal.access', [
-        'access' => $access,
-        'proposal' => $loadProposalContinuation($access),
-    ]);
-})
+Route::get('/proposta/continuar/{access}', [ProposalContinuationController::class, 'access'])
     ->middleware('throttle:proposal-link-access')
     ->name('site.proposal.continuation.access');
-Route::post('/proposta/continuar/{access}', function (VerifyProposalContinuationRequest $request, ProposalContinuationAccess $access) use ($ensureMagicLinkConfirmed, $loadProposalContinuation) {
-    $ensureMagicLinkConfirmed($request, $access);
-
-    $access->markLinkOpened();
-
-    $proposal = $loadProposalContinuation($access);
-
-    // H-3: validate both fields together to prevent enumeration of which one is wrong
-    $cnpjMatches = Str::digitsOnly($request->validated('cnpj')) === Str::digitsOnly((string) $proposal->company?->cnpj);
-    $codeMatches = $access->matchesCode($request->validated('code'));
-
-    if (! $cnpjMatches || ! $codeMatches) {
-        throw ValidationException::withMessages([
-            'code' => 'CNPJ ou código inválido.',
-        ]);
-    }
-
-    $request->session()->put($access->verifiedSessionKey(), true);
-
-    $access->markVerified();
-
-    return redirect()
-        ->route('site.proposal.continuation.form', $access)
-        ->with('success', 'Acesso validado. Você já pode continuar o preenchimento.');
-})
+Route::post('/proposta/continuar/{access}', [ProposalContinuationController::class, 'verify'])
     ->middleware(['throttle:proposal-verification', 'throttle:proposal-verification-global'])
     ->name('site.proposal.continuation.verify');
 Route::get('/proposta/continuar/{access}/formulario', ContinuationForm::class)
     ->name('site.proposal.continuation.form');
-Route::post('/proposta/continuar/{access}/formulario', function (Request $request, ProposalContinuationAccess $access, StoreProposalContinuationData $storeProposalContinuationData) use ($ensureAuthorizedContinuation, $ensureContinuationCanStore, $loadProposalContinuation) {
-    $ensureAuthorizedContinuation($request, $access);
-
-    $proposal = $loadProposalContinuation($access);
-    $ensureContinuationCanStore($proposal);
-
-    $storeProposalContinuationData->handle(
-        $proposal,
-        StoreProposalContinuationDataDTO::fromFlatPayload($request->all()),
-        $request->file('arquivos', []),
-    );
-
-    return redirect()
-        ->route('site.proposal.continuation.form', $access)
-        ->with('success', 'Empreendimento(s) salvo(s) com sucesso.');
-})
+Route::post('/proposta/continuar/{access}/formulario', [ProposalContinuationController::class, 'store'])
     ->middleware('throttle:proposal-continuation-store')
     ->name('site.proposal.continuation.store');
-Route::get('/proposta/continuar/{access}/arquivos/{file}', function (
-    Request $request,
-    ProposalContinuationAccess $access,
-    ProposalFile $file,
-    DocumentStorageService $documentStorageService,
-) use ($ensureAuthorizedContinuation) {
-    $ensureAuthorizedContinuation($request, $access);
-
-    abort_unless($file->proposal_id === $access->proposal_id, 404);
-    abort_unless($documentStorageService->privateExists($file->file_path), 404);
-
-    return $documentStorageService->downloadPrivate(
-        $file->file_path,
-        $file->original_name,
-    );
-})
+Route::get('/proposta/continuar/{access}/arquivos/{file}', [ProposalContinuationController::class, 'downloadFile'])
     ->middleware('throttle:proposal-continuation-download')
     ->name('site.proposal.continuation.files.download');
 
