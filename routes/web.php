@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AzureController;
 use App\Http\Controllers\Nimbus\AdminSubmissionFileController;
+use App\Http\Controllers\Operacional\ProposalDashboardController as OperacionalProposalDashboardController;
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
 use App\Http\Controllers\Site\ProposalContinuationController;
@@ -128,6 +129,15 @@ Route::middleware(['auth'])->get('/pending-approval', fn () => view('pages.auth.
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
+
+// Operacional Interno (Fase 1 — POC Inertia/Vue, read-only, ao lado do Filament)
+Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class, \App\Http\Middleware\HandleInertiaRequests::class])
+    ->prefix('operacional')
+    ->name('operacional.')
+    ->group(function () {
+        Route::get('/propostas', [OperacionalProposalDashboardController::class, 'index'])
+            ->name('proposals.dashboard');
+    });
 
 // Estudos de Caso (Públicos)
 Route::get('/estudos-de-caso/{slug}', [App\Http\Controllers\Site\CaseStudyController::class, 'show'])->name('site.cases.show');
