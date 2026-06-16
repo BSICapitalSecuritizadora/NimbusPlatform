@@ -31,6 +31,7 @@ class FundFactory extends Factory
                     ->getKey();
             },
             'fund_application_id' => FundApplication::factory(),
+            'trade_name' => fake()->optional()->company(),
             'bank_id' => Bank::factory(),
             'agency' => fake()->numerify('####-#'),
             'account' => fake()->unique()->numerify('#####-#'),

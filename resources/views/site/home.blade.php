@@ -19,30 +19,30 @@
                 </p>
 
                 <div class="d-grid d-sm-flex gap-3 mb-4">
-                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Enviar Proposta</a>
+                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Submeter Operação para Análise</a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Ver Emissões</a>
                 </div>
 
                 <div class="row g-3">
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
-                            <div class="kicker mb-2">Desde</div>
-                            <div class="hero-metric-value fw-bold" style="font-size: 1.5rem">2009</div>
-                            <div class="small text-white-50">Presença contínua nos segmentos imobiliário, agrícola e corporativo.</div>
+                            <div class="kicker mb-2">Histórico</div>
+                            <div class="hero-metric-value fw-bold text-white" style="font-size: 1.5rem">Desde 2009</div>
+                            <div class="small text-white-50">Sólida trajetória no mercado de securitização e crédito estruturado.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
-                            <div class="kicker mb-2">Governança</div>
-                            <div class="hero-metric-value fw-bold" style="font-size: 1.5rem">CVM</div>
-                            <div class="small text-white-50">Companhia aberta registrada e aderente aos padrões de compliance.</div>
+                            <div class="kicker mb-2">Escala</div>
+                            <div class="hero-metric-value fw-bold text-white" style="font-size: 1.5rem">R$ [X] Bilhões</div>
+                            <div class="small text-white-50">Volume emitido e sob gestão em diversas classes de ativos.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
-                            <div class="kicker mb-2">Instrumentos</div>
-                            <div class="hero-metric-value fw-bold" style="font-size: 1.5rem; letter-spacing: .04em;">CRI · CRA · CR</div>
-                            <div class="small text-white-50">Atuação nos três principais instrumentos de securitização do mercado de capitais.</div>
+                            <div class="kicker mb-2">Regulação</div>
+                            <div class="hero-metric-value fw-bold text-white" style="font-size: 1.5rem">CVM</div>
+                            <div class="small text-white-50">Companhia aberta registrada e aderente aos rigorosos padrões de compliance.</div>
                         </div>
                     </div>
                 </div>
@@ -79,6 +79,27 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{{-- Trust Bar --}}
+<section class="py-4 border-bottom border-top" style="background: var(--surface-light);">
+    <div class="container">
+        <div class="row align-items-center justify-content-between g-4">
+            <div class="col-lg-3">
+                <div class="section-kicker mb-0">Conectados ao mercado</div>
+                <div class="small text-muted">Ecossistema de integração institucional</div>
+            </div>
+            <div class="col-lg-9">
+                <div class="d-flex flex-wrap justify-content-center justify-content-lg-end align-items-center gap-4 gap-lg-5 opacity-50 grayscale">
+                    {{-- Placeholders para logos de parceiros (Auditoria, Ratings, etc) --}}
+                    <div class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.1em;">Auditoria Big 4</div>
+                    <div class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.1em;">Agências de Rating</div>
+                    <div class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.1em;">Agentes Fiduciários</div>
+                    <div class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.1em;">Custodiantes</div>
                 </div>
             </div>
         </div>
@@ -136,9 +157,9 @@
         <div class="row align-items-end g-4 mb-5">
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Governança em Execução</div>
-                <h2 class="display-6 fw-bold mb-3">Tecnologia e diligência aplicadas na prática</h2>
+                <h2 class="display-6 fw-bold mb-3">BSI Sentinel: Tecnologia e diligência aplicadas na prática</h2>
                 <p class="text-muted mb-0">
-                    Da estruturação ao monitoramento pós-emissão, atuamos com processos rigorosos, tecnologia proprietária e visão integrada para garantir transparência, rastreabilidade e segurança operacional.
+                    Da estruturação ao monitoramento pós-emissão, atuamos com processos rigorosos e a plataforma <span class="text-brand-light">BSI Sentinel</span>, nossa tecnologia proprietária para garantir transparência, rastreabilidade e segurança operacional.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -149,14 +170,14 @@
         @php
             $cases = [
                 [
-                    'title' => 'Desmobilização de portfólio imobiliário via CRI',
-                    'desc' => 'Modelagem técnica integral, coordenação jurídica e financeira, controle de lastro e monitoramento ativo da operação até o vencimento final.',
+                    'title' => 'Estruturação de CRI com Gestão Integral de Lastro e Reporting',
+                    'desc' => 'Modelagem técnica integral, coordenação jurídica e financeira, controle de lastro e monitoramento ativo via BSI Sentinel até o vencimento final.',
                     'img' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'estruturacao-cri',
                 ],
                 [
-                    'title' => 'Governança digital em operação estruturada',
-                    'desc' => 'Ecosistema digital com acessos dedicados para emissores e investidores, integrando custódia de documentos e trilha de auditoria com total transparência.',
+                    'title' => 'Monitoramento Ativo e Governança Digital de Ativos',
+                    'desc' => 'Ecosistema digital BSI Sentinel com acessos dedicados para emissores e investidores, integrando custódia de documentos e trilha de auditoria fiduciária.',
                     'img' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
                     'slug' => 'gestao-de-documentos',
                 ],
@@ -174,7 +195,7 @@
                             <div class="col-md-7">
                                 <div class="p-4 p-lg-5 d-flex flex-column h-100">
                                     <div class="section-kicker mb-2">Estudo de Caso</div>
-                                    <h3 class="h3 fw-bold mb-3">{{ $case['title'] }}</h3>
+                                    <h3 class="h3 fw-bold mb-3" style="font-size: 1.4rem;">{{ $case['title'] }}</h3>
                                     <p class="text-muted mb-4">{{ $case['desc'] }}</p>
                                     <div class="mt-auto">
                                         <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-gold px-4">Analisar Caso</a>
@@ -226,7 +247,7 @@
                 </div>
                 <div class="col-lg-4">
                     <div class="p-4 p-lg-5 d-flex flex-column gap-3 align-items-start align-items-lg-stretch">
-                        <a href="{{ route('proposal.create') }}" class="btn btn-light btn-lg">Falar com um Estruturador</a>
+                        <a href="{{ route('proposal.create') }}" class="btn btn-light btn-lg">Solicitar Análise de Estruturação</a>
                         <a href="{{ route('site.contact') }}" class="text-white-50 text-decoration-none small" style="padding: 0.25rem 0;">
                             ou avaliar viabilidade →
                         </a>

@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
+use App\Domain\PuCalculator\Contracts\IndexRateProvider;
+use App\Domain\PuCalculator\Services\BusinessCalendarService;
+use App\Domain\PuCalculator\Services\IndexRateLookupService;
 use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\Document;
 use App\Models\Nimbus\Submission;
@@ -35,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\ConstructionProgressProvider::class,
             \App\Services\MeasurementPlanProgressProvider::class,
         );
+
+        $this->app->bind(BusinessDayCalendar::class, BusinessCalendarService::class);
+        $this->app->bind(IndexRateProvider::class, IndexRateLookupService::class);
     }
 
     /**

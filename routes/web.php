@@ -20,6 +20,8 @@ Route::get('/auth/azure/callback', [AzureController::class, 'callback'])->name('
 Route::get('/', [HomeController::class, 'index'])->name('site.home');
 
 Route::view('/servicos', 'site.service')->name('site.services');
+Route::view('/servicos/servicer', 'site.servicer')->name('site.servicos.servicer');
+Route::view('/intelligence', 'site.intelligence.index')->name('site.intelligence');
 Route::view('/sobre', 'site.about')->name('site.about');
 Route::view('/parcerias', 'site.partnerships')->name('site.partnerships');
 Route::view('/politica-de-privacidade', 'site.privacy-policy')->name('site.privacy-policy');

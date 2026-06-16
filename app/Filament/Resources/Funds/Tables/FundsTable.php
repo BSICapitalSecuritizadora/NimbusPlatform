@@ -32,6 +32,13 @@ class FundsTable
                     ->sortable()
                     ->wrap(),
 
+                TextColumn::make('trade_name')
+                    ->label('Nome fantasia')
+                    ->searchable()
+                    ->sortable()
+                    ->wrap()
+                    ->toggleable(),
+
                 TextColumn::make('fundApplication.name')
                     ->label('Aplicacao')
                     ->searchable()

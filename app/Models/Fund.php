@@ -20,6 +20,7 @@ class Fund extends Model
         'fund_type_id',
         'fund_name_id',
         'fund_application_id',
+        'trade_name',
         'bank_id',
         'agency',
         'account',
@@ -48,7 +49,7 @@ class Fund extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['emission_id', 'fund_type_id', 'fund_name_id', 'fund_application_id', 'bank_id', 'agency', 'account', 'balance', 'minimum_balance'])
+            ->logOnly(['emission_id', 'fund_type_id', 'fund_name_id', 'fund_application_id', 'trade_name', 'bank_id', 'agency', 'account', 'balance', 'minimum_balance'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }

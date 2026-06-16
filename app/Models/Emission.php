@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\LogOptions;
@@ -324,9 +325,34 @@ class Emission extends Model
         return $this->hasMany(PuHistory::class);
     }
 
+    public function puParameter(): HasOne
+    {
+        return $this->hasOne(EmissionPuParameter::class);
+    }
+
+    public function puEvents(): HasMany
+    {
+        return $this->hasMany(EmissionPuEvent::class);
+    }
+
+    public function puDailyCurves(): HasMany
+    {
+        return $this->hasMany(EmissionPuDailyCurve::class);
+    }
+
     public function integralizationHistories(): HasMany
     {
         return $this->hasMany(IntegralizationHistory::class);
+    }
+
+    public function extractedObligations(): HasMany
+    {
+        return $this->hasMany(ExtractedObligation::class);
+    }
+
+    public function obligations(): HasMany
+    {
+        return $this->hasMany(Obligation::class);
     }
 
     public function requiresMonthlyGuaranteeSnapshotUpdate(?CarbonInterface $referenceDate = null): bool

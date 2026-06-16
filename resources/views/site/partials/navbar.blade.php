@@ -68,7 +68,8 @@
                                 <div class="mega-title">Gestão</div>
                                 <div class="mega-kicker">Transparência e acompanhamento ao investidor.</div>
                                 <a class="mega-link" href="{{ route('site.servicos.portal-investidor') }}">Portal do investidor</a>
-                                <a class="mega-link" href="{{ route('site.servicos.relatorios') }}">Relatórios</a>
+                                <a class="mega-link" href="{{ route('site.servicos.servicer') }}">Servicer / Administração</a>
+                                <a class="mega-link" href="{{ route('site.servicos.relatorios') }}">Relatórios fiduciários</a>
                                 <a class="mega-link" href="{{ route('site.servicos.monitoramento-regulatorio') }}">Monitoramento regulatório</a>
                             </div>
 
@@ -102,6 +103,7 @@
                                 <div class="mega-title">Relações com Investidores</div>
                                 <div class="mega-kicker">Documentos públicos e comunicados.</div>
                                 <a class="mega-link" href="{{ route('site.ri') }}">R.I</a>
+                                <a class="mega-link" href="{{ route('site.intelligence') }}">Intelligence (Análises)</a>
                                 <a class="mega-link" href="{{ route('site.ri', ['category' => 'fatos_relevantes']) }}">Fatos relevantes</a>
                                 <a class="mega-link" href="{{ route('site.ri', ['category' => 'assembleias']) }}">Assembleias</a>
                             </div>
@@ -122,7 +124,7 @@
 
             <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0 ps-lg-3" style="border-left: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border));">
                 <a href="{{ $portalUrl }}" class="btn btn-outline-brand btn-sm">Portal do Investidor</a>
-                <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-sm">Envie sua proposta</a>
+                <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-sm">Solicitar Análise</a>
             </div>
         </div>
     </div>

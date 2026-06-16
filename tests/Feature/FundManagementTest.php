@@ -86,6 +86,7 @@ it('creates a fund linked to the selected auxiliary records', function () {
             'fund_type_id' => $fundType->id,
             'fund_name_id' => $fundName->id,
             'fund_application_id' => $fundApplication->id,
+            'trade_name' => 'Fundo Atlas Capital',
             'bank_id' => $bank->id,
             'agency' => '1234-5',
             'account' => '12345-6',
@@ -102,6 +103,7 @@ it('creates a fund linked to the selected auxiliary records', function () {
         ->and($fund?->fund_name_id)->toBe($fundName->id)
         ->and($fund?->fund_application_id)->toBe($fundApplication->id)
         ->and($fund?->bank_id)->toBe($bank->id)
+        ->and($fund?->trade_name)->toBe('Fundo Atlas Capital')
         ->and($fund?->agency)->toBe('1234-5')
         ->and($fund?->account)->toBe('12345-6')
         ->and($fund?->balance)->toBe('150000.25')

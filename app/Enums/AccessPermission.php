@@ -32,6 +32,10 @@ enum AccessPermission: string
     case FundsCreate = 'funds.create';
     case FundsUpdate = 'funds.update';
     case FundsDelete = 'funds.delete';
+    case ObligationsView = 'obligations.view';
+    case ObligationsCreate = 'obligations.create';
+    case ObligationsUpdate = 'obligations.update';
+    case ObligationsDelete = 'obligations.delete';
     case DocumentsView = 'documents.view';
     case DocumentsCreate = 'documents.create';
     case DocumentsUpdate = 'documents.update';
@@ -180,6 +184,10 @@ enum AccessPermission: string
             self::FundsCreate => 'Fundos: criar',
             self::FundsUpdate => 'Fundos: editar',
             self::FundsDelete => 'Fundos: excluir',
+            self::ObligationsView => 'Obrigações: visualizar',
+            self::ObligationsCreate => 'Obrigações: criar',
+            self::ObligationsUpdate => 'Obrigações: editar',
+            self::ObligationsDelete => 'Obrigações: excluir',
             self::DocumentsView => 'Documentos: visualizar',
             self::DocumentsCreate => 'Documentos: criar',
             self::DocumentsUpdate => 'Documentos: editar',
@@ -294,6 +302,10 @@ enum AccessPermission: string
                 self::EmissionsCreate,
                 self::EmissionsUpdate,
                 self::EmissionsDelete,
+                self::ObligationsView,
+                self::ObligationsCreate,
+                self::ObligationsUpdate,
+                self::ObligationsDelete,
                 self::ExpensesView,
                 self::ExpensesCreate,
                 self::ExpensesUpdate,

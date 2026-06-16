@@ -33,6 +33,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'emissions.view', 'emissions.create', 'emissions.update',
             'expenses.view', 'expenses.create', 'expenses.update',
             'funds.view', 'funds.create', 'funds.update',
+            'obligations.view', 'obligations.create', 'obligations.update',
             'documents.view', 'documents.create', 'documents.update',
             'constructions.view', 'constructions.create', 'constructions.update',
             'sales-boards.view', 'sales-boards.create', 'sales-boards.update',

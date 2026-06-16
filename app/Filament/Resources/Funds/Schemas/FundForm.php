@@ -129,6 +129,11 @@ class FundForm
                                 ->modalHeading('Editar aplicacao')
                                 ->modalWidth('2xl'),
                         ),
+
+                    TextInput::make('trade_name')
+                        ->label('Nome fantasia')
+                        ->maxLength(255)
+                        ->columnSpanFull(),
                 ])
                 ->columns(2)
                 ->columnSpanFull(),

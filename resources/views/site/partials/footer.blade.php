@@ -33,8 +33,9 @@
                         <div class="d-flex flex-column gap-2 fw-medium">
                             <a href="{{ route('site.emissions') }}" class="footer-link">Ver Emissões</a>
                             <a href="{{ route('site.ri') }}" class="footer-link">Rel. com Investidores</a>
+                            <a href="{{ route('site.intelligence') }}" class="footer-link">BSI Intelligence</a>
+                            <a href="{{ route('site.servicos.servicer') }}" class="footer-link">Servicer</a>
                             <a href="{{ route('proposal.create') }}" class="footer-link">Envie sua proposta</a>
-                            <a href="{{ route('site.vacancies.index') }}" class="footer-link">Trabalhe conosco</a>
                         </div>
                     </div>
                     <div class="col-6 col-sm-6">
