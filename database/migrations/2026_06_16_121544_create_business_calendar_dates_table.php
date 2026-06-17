@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['calendar_code', 'calendar_date']);
-            $table->index(['calendar_code', 'is_business_day', 'calendar_date']);
+            $table->index(['calendar_code', 'is_business_day', 'calendar_date'], 'bcd_lookup_index');
         });
     }
 

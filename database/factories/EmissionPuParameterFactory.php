@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\Emission;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -22,6 +23,8 @@ class EmissionPuParameterFactory extends Factory
             'indexer' => PuIndexer::Cdi->value,
             'business_day_basis' => 252,
             'calendar_code' => 'B3',
+            'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+            'index_rate_lag_business_days' => 1,
             'legacy_projection_enabled' => true,
         ];
     }

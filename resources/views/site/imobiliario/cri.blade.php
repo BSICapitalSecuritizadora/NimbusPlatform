@@ -14,14 +14,14 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Imobiliário</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Securitização <span style="color: var(--gold);">Imobiliária</span>
+                    Securitização de Recebíveis <span style="color: var(--gold);">Imobiliários (CRI)</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Expertise integral na estruturação e gestão de CRI, unindo segurança jurídica, monitoramento rigoroso do lastro e governança ativa da carteira.
+                    Transformamos ativos imobiliários em liquidez estratégica através de estruturas de CRI sob medida, com governança ativa e monitoramento rigoroso do lastro.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Falar com nossa equipe
+                        Apresentar Operação Imobiliária
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}?type=CRI" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -44,6 +44,65 @@
                         <div>
                             <div class="text-muted small fw-medium">Crédito estruturado</div>
                             <div class="fw-bold fs-5" style="color: #0b1220;">Execução com controle</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@include('site.partials.imobiliario-stats')
+
+<!-- Público-Alvo Section -->
+<section class="py-5" style="background-color: #ffffff;">
+    <div class="container py-5">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Público-Alvo</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Para quem é o Certificado de Recebíveis Imobiliários?</h2>
+                <p class="text-muted mb-4 lead">
+                    O CRI é o instrumento ideal para empresas que buscam funding estruturado no mercado de capitais, permitindo antecipar recebíveis e otimizar o capital de giro.
+                </p>
+                <div class="d-flex flex-column gap-3">
+                    @foreach([
+                        'Incorporadoras e Loteadoras buscando financiamento de obra ou liquidez de estoque.',
+                        'Detentores de contratos de aluguel atípicos (Built-to-Suit ou Sale-Leaseback).',
+                        'Empresas com fluxos de recebíveis imobiliários pulverizados ou concentrados.',
+                        'Shopping centers e empreendimentos comerciais para expansão ou retrofit.',
+                        'Originadores e estruturadores que necessitam de uma securitizadora sólida.',
+                    ] as $item)
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-gold p-1 rounded-circle" style="width: 8px; height: 8px;"></div>
+                            <span class="text-dark fw-medium">{{ $item }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="row g-4">
+                    <div class="col-sm-6">
+                        <div class="p-4 rounded-4 shadow-sm border h-100" style="background: #f8f9fa;">
+                            <h3 class="h6 fw-bold text-brand mb-3">Funding Estruturado</h3>
+                            <p class="small text-muted mb-0">Substitua dívidas bancárias caras por emissões no mercado de capitais com taxas competitivas e prazos adequados.</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-4 rounded-4 shadow-sm border h-100" style="background: #f8f9fa;">
+                            <h3 class="h6 fw-bold text-brand mb-3">Antecipação de Recebíveis</h3>
+                            <p class="small text-muted mb-0">Transforme sua carteira de vendas a prazo em caixa imediato para novos lançamentos e investimentos.</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-4 rounded-4 shadow-sm border h-100" style="background: #f8f9fa;">
+                            <h3 class="h6 fw-bold text-brand mb-3">Eficiência Tributária</h3>
+                            <p class="small text-muted mb-0">Aproveite a isenção de IR para investidores pessoa física, tornando a captação via CRI altamente atrativa.</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-4 rounded-4 shadow-sm border h-100" style="background: #f8f9fa;">
+                            <h3 class="h6 fw-bold text-brand mb-3">Governança e Solidez</h3>
+                            <p class="small text-muted mb-0">Estruturas com Patrimônio Separado e monitoramento ativo, garantindo segurança jurídica absoluta.</p>
                         </div>
                     </div>
                 </div>
@@ -109,33 +168,41 @@
             <!-- Step 1 -->
             <div class="col-md-3 flow-item">
                 <div class="p-4 rounded-4 bg-light border h-100 text-center position-relative z-1 shadow-sm">
-                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 40px; height: 40px; font-weight: bold; background: var(--brand-strong) !important;">1</div>
-                    <h4 class="h6 fw-bold text-uppercase mb-3" style="color: var(--brand-strong);">Emissor</h4>
-                    <p class="small text-muted mb-0">Originador do crédito (Incorporadora/Loteadora) busca antecipação de recebíveis imobiliários.</p>
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 50px; height: 50px; background: var(--brand-strong) !important;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    </div>
+                    <h4 class="h6 fw-bold text-uppercase mb-2" style="color: var(--brand-strong);">Originação</h4>
+                    <p class="small text-muted mb-0">Emissor imobiliário busca antecipação de recebíveis ou funding estruturado.</p>
                 </div>
             </div>
             <!-- Step 2 -->
             <div class="col-md-3 flow-item">
                 <div class="p-4 rounded-4 bg-light border h-100 text-center position-relative z-1 shadow-sm">
-                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 40px; height: 40px; font-weight: bold; background: var(--brand-strong) !important;">2</div>
-                    <h4 class="h6 fw-bold text-uppercase mb-3" style="color: var(--brand-strong);">Securitizadora</h4>
-                    <p class="small text-muted mb-0">BSI Capital estrutura a operação, registra a emissão na CVM e emite os títulos (CRI).</p>
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 50px; height: 50px; background: var(--brand-strong) !important;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <h4 class="h6 fw-bold text-uppercase mb-2" style="color: var(--brand-strong);">Estruturação</h4>
+                    <p class="small text-muted mb-0">Securitizadora empacota a operação, registra na CVM e formaliza garantias.</p>
                 </div>
             </div>
             <!-- Step 3 -->
             <div class="col-md-3 flow-item">
                 <div class="p-4 rounded-4 bg-light border h-100 text-center position-relative z-1 shadow-sm">
-                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 40px; height: 40px; font-weight: bold; background: var(--brand-strong) !important;">3</div>
-                    <h4 class="h6 fw-bold text-uppercase mb-3" style="color: var(--brand-strong);">Garantias</h4>
-                    <p class="small text-muted mb-0">Segregação do lastro em Patrimônio Separado e formalização de alienação fiduciária.</p>
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 50px; height: 50px; background: var(--brand-strong) !important;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    </div>
+                    <h4 class="h6 fw-bold text-uppercase mb-2" style="color: var(--brand-strong);">Distribuição</h4>
+                    <p class="small text-muted mb-0">Emissão do CRI e captação de recursos junto a investidores no mercado de capitais.</p>
                 </div>
             </div>
             <!-- Step 4 -->
             <div class="col-md-3 flow-item">
                 <div class="p-4 rounded-4 bg-light border h-100 text-center position-relative z-1 shadow-sm">
-                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 40px; height: 40px; font-weight: bold; background: var(--brand-strong) !important;">4</div>
-                    <h4 class="h6 fw-bold text-uppercase mb-3" style="color: var(--brand-strong);">Investidores</h4>
-                    <p class="small text-muted mb-0">Captação de recursos no mercado e monitoramento ativo do fluxo de pagamentos e covenants.</p>
+                    <div class="mb-3 d-inline-flex align-items-center justify-content-center bg-brand rounded-circle text-white shadow-sm" style="width: 50px; height: 50px; background: var(--brand-strong) !important;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    </div>
+                    <h4 class="h6 fw-bold text-uppercase mb-2" style="color: var(--brand-strong);">Monitoramento</h4>
+                    <p class="small text-muted mb-0">Controle contínuo do lastro, garantias e repasse de proventos aos investidores.</p>
                 </div>
             </div>
         </div>
@@ -278,7 +345,7 @@
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div class="position-relative">
-                    <div style="background: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1000') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                    <div style="background: url('{{ asset('images/documentos_acl.png') }}') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); filter: grayscale(20%); mix-blend-mode: multiply;"></div>
                     <div class="position-absolute bg-white p-4 rounded-4 shadow-lg border" style="bottom: 30px; right: -20px; max-width: 280px;">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <div class="bg-success bg-opacity-10 p-2 rounded-circle">
@@ -307,10 +374,10 @@
         <div class="row g-5">
             <div class="col-lg-4">
                 <div class="pe-lg-4">
-                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Dúvidas Frequentes</span>
-                    <h2 class="h3 fw-bold text-dark mb-4">Inteligência aplicada ao crédito imobiliário</h2>
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Dúvidas Estratégicas</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Aspectos Estratégicos da Securitização</h2>
                     <p class="text-muted mb-4">Entenda os fundamentos técnicos da securitização e como estruturamos operações de alta complexidade.</p>
-                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Falar com um especialista</a>
+                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Consultar especialista em estruturação</a>
                 </div>
             </div>
             <div class="col-lg-8">
@@ -389,7 +456,7 @@
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Incorporação Imobiliária</h3>
                     <p class="text-muted mb-3">Estruturação de CRI lastreados em créditos imobiliários oriundos de projetos de incorporação residencial e comercial.</p>
-                    <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
+                    <span class="small fw-semibold" style="color: var(--brand);">Submeter projeto para avaliação →</span>
                 </a>
             </div>
 
@@ -400,7 +467,7 @@
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Loteamentos</h3>
                     <p class="text-muted mb-3">Securitização de recebíveis de loteamentos urbanos e fechados com lastro em contratos de promessa de compra e venda.</p>
-                    <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
+                    <span class="small fw-semibold" style="color: var(--brand);">Apresentar projeto de loteamento →</span>
                 </a>
             </div>
         </div>

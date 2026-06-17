@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,8 @@ class EmissionPuParameter extends Model
         'indexer',
         'business_day_basis',
         'calendar_code',
+        'index_rate_lookup_mode',
+        'index_rate_lag_business_days',
         'legacy_projection_enabled',
     ];
 
@@ -32,6 +35,7 @@ class EmissionPuParameter extends Model
             'initial_unit_value' => 'decimal:16',
             'spread_rate' => 'decimal:8',
             'business_day_basis' => 'integer',
+            'index_rate_lag_business_days' => 'integer',
             'legacy_projection_enabled' => 'boolean',
         ];
     }
@@ -44,5 +48,12 @@ class EmissionPuParameter extends Model
     public function getIndexerEnumAttribute(): PuIndexer
     {
         return PuIndexer::from((string) $this->indexer);
+    }
+
+    public function getIndexRateLookupModeEnumAttribute(): PuIndexRateLookupMode
+    {
+        return PuIndexRateLookupMode::from(
+            (string) ($this->index_rate_lookup_mode ?? PuIndexRateLookupMode::PreviousAvailableBusinessDay->value),
+        );
     }
 }

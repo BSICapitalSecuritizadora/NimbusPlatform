@@ -118,6 +118,7 @@ it('stores suggestions and replaces previous pending ones when the job runs', fu
             'title' => 'Nova obrigação sugerida',
             'priority' => 'high',
             'source_excerpt' => 'trecho literal',
+            'confidence_score' => 0.85,
         ],
     ]);
 
@@ -133,6 +134,66 @@ it('stores suggestions and replaces previous pending ones when the job runs', fu
     expect($created->first()->title)->toBe('Nova obrigação sugerida')
         ->and($created->first()->document_id)->toBe($document->id)
         ->and($created->first()->priority)->toBe('high');
+});
+
+it('discards low-confidence obligations during extraction', function () {
+    $emission = Emission::factory()->create();
+    $document = makeTermDocument($emission);
+
+    fakeGeminiObligations([
+        ['title' => 'Obrigação confiável', 'source_excerpt' => 'x', 'confidence_score' => 0.92],
+        ['title' => 'Obrigação fraca', 'source_excerpt' => 'x', 'confidence_score' => 0.40],
+        ['title' => 'Obrigação sem score', 'source_excerpt' => 'x'],
+    ]);
+
+    $proposals = app(GeminiService::class)->extractObligations($document);
+
+    expect($proposals)->toHaveCount(1)
+        ->and($proposals[0]['title'])->toBe('Obrigação confiável');
+});
+
+it('deduplicates near-identical obligations keeping the most complete', function () {
+    $emission = Emission::factory()->create();
+    $document = makeTermDocument($emission);
+
+    fakeGeminiObligations([
+        [
+            'title' => 'Enviar relatório mensal ao Agente Fiduciário',
+            'source_clause' => 'Cláusula 8.1',
+            'responsible_party' => 'Emissora',
+            'recurrence' => 'Mensal',
+            'description' => 'curto',
+            'source_excerpt' => 'x',
+            'confidence_score' => 0.80,
+        ],
+        [
+            'title' => 'Enviar relatório mensal ao Agente Fiduciário.',
+            'source_clause' => 'Cláusula 8.1',
+            'responsible_party' => 'Emissora',
+            'recurrence' => 'Mensal',
+            'description' => 'A Emissora deverá enviar ao Agente Fiduciário relatório mensal detalhado de acompanhamento da carteira.',
+            'due_rule' => 'até o 10º dia útil',
+            'source_excerpt' => 'x',
+            'confidence_score' => 0.95,
+        ],
+        [
+            'title' => 'Constituir fundo de reserva',
+            'responsible_party' => 'Emissora',
+            'recurrence' => 'Única',
+            'source_excerpt' => 'x',
+            'confidence_score' => 0.90,
+        ],
+    ]);
+
+    $proposals = app(GeminiService::class)->extractObligations($document);
+
+    expect($proposals)->toHaveCount(2);
+
+    $relatorio = collect($proposals)->firstWhere('due_rule', 'até o 10º dia útil');
+
+    expect($relatorio)->not->toBeNull()
+        ->and($relatorio['confidence_score'])->toBe(0.95)
+        ->and(collect($proposals)->pluck('title'))->toContain('Constituir fundo de reserva');
 });
 
 it('persists obligations with long clause text without truncation errors', function () {
@@ -151,6 +212,7 @@ it('persists obligations with long clause text without truncation errors', funct
             'due_rule' => $longDueRule,
             'source_clause' => $longSourceClause,
             'source_excerpt' => 'trecho literal',
+            'confidence_score' => 0.90,
         ],
     ]);
 

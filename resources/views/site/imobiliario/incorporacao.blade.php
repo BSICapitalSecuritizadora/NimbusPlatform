@@ -12,14 +12,14 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Imobiliário</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Crédito para <br><span style="color: var(--gold);">Incorporação</span>
+                    Funding Estruturado para <br><span style="color: var(--gold);">Incorporação Imobiliária</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
                     Viabilizamos o ciclo completo do seu projeto, desde a aquisição do terreno até o estoque pronto. Estruturas sob medida para otimizar seu equity com governança técnica.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Simular Operação
+                        Submeter operação para avaliação
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}?type=CRI" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -48,37 +48,7 @@
     </div>
 </section>
 
-<!-- BSI em Números (Social Proof) -->
-<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong), var(--brand));">
-    <div class="container py-4">
-        <div class="row g-4 text-center">
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">+R$ 2Bi</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Emissões Realizadas</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">85+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Projetos Financiados</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">15</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Estados Atendidos</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">R$ 450Mi</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">VGV Sob Gestão</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
+@include('site.partials.imobiliario-stats')
 
 <!-- Benefícios Section -->
 <section class="py-5" style="background-color: var(--bg);">
@@ -327,10 +297,10 @@
         <div class="row g-5">
             <div class="col-lg-4">
                 <div class="pe-lg-4">
-                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Dúvidas Técnicas</span>
-                    <h2 class="h3 fw-bold text-dark mb-4">Governança aplicada à Incorporação</h2>
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Diretrizes Estratégicas</span>
+                    <h2 class="h3 fw-bold text-dark mb-4">Inteligência aplicada à Incorporação</h2>
                     <p class="text-muted mb-4">Esclarecemos os principais mecanismos de mitigação de risco e estruturação para o setor de incorporação.</p>
-                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Falar com Estruturação</a>
+                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Consultar especialista em Real Estate</a>
                 </div>
             </div>
             <div class="col-lg-8">
@@ -409,7 +379,7 @@
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">CRI e Real Estate</h3>
                     <p class="text-muted mb-3">Estruturação e gestão de CRI com segurança jurídica, monitoramento rigoroso do lastro e governança ativa da carteira.</p>
-                    <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
+                    <span class="small fw-semibold" style="color: var(--brand);">Solicitar análise de estruturação →</span>
                 </a>
             </div>
 
@@ -420,7 +390,7 @@
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Loteamentos</h3>
                     <p class="text-muted mb-3">Securitização de recebíveis de loteamentos urbanos e fechados com lastro em contratos de promessa de compra e venda.</p>
-                    <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
+                    <span class="small fw-semibold" style="color: var(--brand);">Apresentar projeto de loteamento →</span>
                 </a>
             </div>
         </div>

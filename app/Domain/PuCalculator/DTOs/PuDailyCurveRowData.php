@@ -21,6 +21,7 @@ final readonly class PuDailyCurveRowData
         public string $updatedUnitValue,
         public string $amortizationRatio,
         public string $amortizationUnitValue,
+        public string $amortizationValue,
         public string $residualUnitValue,
         public string $quantity,
         public string $totalValue,
@@ -41,11 +42,12 @@ final readonly class PuDailyCurveRowData
     /**
      * @return array<string, mixed>
      */
-    public function toPersistenceArray(int $emissionId): array
+    public function toPersistenceArray(int $emissionId, string $calculationVersion): array
     {
         return [
             'emission_id' => $emissionId,
             'curve_date' => $this->date->toDateString(),
+            'calculation_version' => $calculationVersion,
             'is_business_day' => $this->isBusinessDay,
             'unit_base_value' => $this->unitBaseValue,
             'unit_corrected_value' => $this->unitCorrectedValue,
@@ -57,6 +59,7 @@ final readonly class PuDailyCurveRowData
             'updated_unit_value' => $this->updatedUnitValue,
             'amortization_ratio' => $this->amortizationRatio,
             'amortization_unit_value' => $this->amortizationUnitValue,
+            'amortization_value' => $this->amortizationValue,
             'residual_unit_value' => $this->residualUnitValue,
             'quantity' => $this->quantity,
             'total_value' => $this->totalValue,

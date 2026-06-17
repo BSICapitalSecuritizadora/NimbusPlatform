@@ -36,10 +36,7 @@ class LegacyProjectionService
                 [
                     'premium_value' => '0.00',
                     'interest_value' => $this->rounder->round($row->interestPaymentValue, DecimalRounder::LEGACY_MONEY_SCALE),
-                    'amortization_value' => $this->rounder->round(
-                        bcsub($row->paymentTotalValue, $row->interestPaymentValue, DecimalRounder::INTERNAL_SCALE),
-                        DecimalRounder::LEGACY_MONEY_SCALE,
-                    ),
+                    'amortization_value' => $this->rounder->round($row->amortizationValue, DecimalRounder::LEGACY_MONEY_SCALE),
                     'extra_amortization_value' => '0.00',
                 ],
             );

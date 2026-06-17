@@ -11,4 +11,6 @@ use Carbon\CarbonImmutable;
 interface IndexRateProvider
 {
     public function rateForDate(PuIndexer $indexer, CarbonImmutable $date): ?IndexRateData;
+
+    public function exactRateForDate(PuIndexer $indexer, CarbonImmutable $date): ?IndexRateData;
 }

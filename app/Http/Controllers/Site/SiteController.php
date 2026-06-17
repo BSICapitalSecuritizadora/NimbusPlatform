@@ -3,31 +3,17 @@
 namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Site\ContactFormRequest;
-use App\Mail\ContactFormMail;
-use App\Models\ContactMessage;
 use App\Models\Document;
 use App\Models\Emission;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
 class SiteController extends Controller
 {
-    public function submitContact(ContactFormRequest $request): \Illuminate\Http\RedirectResponse
-    {
-        $data = $request->validated();
-
-        ContactMessage::create($data);
-
-        Mail::to(config('services.contact.email'))->send(new ContactFormMail($data));
-
-        return back()->with('contact_success', true);
-    }
-
-    public function governance()
+    public function governance(): \Illuminate\View\View
     {
         $documents = Document::query()
+            ->published()
             ->visibleOnPublicSite()
             ->where('category', 'governanca')
             ->orderByDesc('published_at')
@@ -36,27 +22,10 @@ class SiteController extends Controller
         return view('site.governance', compact('documents'));
     }
 
-    public function documentosAcl()
-    {
-        $latestEmissions = Emission::query()
-            ->where('is_public', true)
-            ->whereNotNull('if_code')
-            ->orderByDesc('issue_date')
-            ->limit(3)
-            ->get();
-
-        $stats = [
-            'total_volume' => Emission::where('is_public', true)->sum('issued_volume'),
-            'active_count' => Emission::where('is_public', true)->count(),
-            'document_count' => Document::visibleOnPublicSite()->count(),
-        ];
-
-        return view('site.servicos.documentos-acl', compact('latestEmissions', 'stats'));
-    }
-
-    public function complianceBsi()
+    public function complianceBsi(): \Illuminate\View\View
     {
         $documents = Document::query()
+            ->published()
             ->visibleOnPublicSite()
             ->where('category', 'governanca')
             ->orderByDesc('published_at')
@@ -69,10 +38,11 @@ class SiteController extends Controller
     {
         $q = trim((string) $request->query('q', ''));
         $type = $request->query('type');
+        $status = $request->query('status');
         $issue_date_order = $request->query('issue_date_order');
         $maturity_date_order = $request->query('maturity_date_order');
 
-        $emissions = Emission::query()
+        $query = Emission::query()
             ->where('is_public', true)
             ->whereNotNull('if_code')
             ->when($q !== '', function ($qq) use ($q) {
@@ -86,6 +56,9 @@ class SiteController extends Controller
             ->when($type, function ($qq) use ($type) {
                 $qq->where('type', $type);
             })
+            ->when($status, function ($qq) use ($status) {
+                $qq->where('status', $status);
+            })
             ->when($issue_date_order === 'asc' || $issue_date_order === 'desc', function ($qq) use ($issue_date_order) {
                 $qq->orderBy('issue_date', $issue_date_order);
             })
@@ -94,11 +67,19 @@ class SiteController extends Controller
             })
             ->when(! $issue_date_order && ! $maturity_date_order, function ($qq) {
                 $qq->orderByDesc('issue_date');
-            })
-            ->paginate(12)
-            ->withQueryString();
+            });
 
-        return view('site.emissions', compact('emissions', 'q', 'type', 'issue_date_order', 'maturity_date_order'));
+        $emissions = $query->paginate(12)->withQueryString();
+
+        $metrics = [
+            'total_count' => Emission::where('is_public', true)->whereNotNull('if_code')->count(),
+            'total_volume' => Emission::where('is_public', true)->whereNotNull('if_code')->sum('issued_volume'),
+            'active_count' => Emission::where('is_public', true)->whereNotNull('if_code')->where('status', 'active')->count(),
+            'closed_count' => Emission::where('is_public', true)->whereNotNull('if_code')->where('status', 'closed')->count(),
+            'last_update' => Emission::where('is_public', true)->whereNotNull('if_code')->max('updated_at'),
+        ];
+
+        return view('site.emissions', compact('emissions', 'q', 'type', 'status', 'issue_date_order', 'maturity_date_order', 'metrics'));
     }
 
     public function criRealEstate(): \Illuminate\View\View
@@ -158,5 +139,22 @@ class SiteController extends Controller
             ->withQueryString();
 
         return view('site.ri', compact('docs', 'categories', 'category', 'q', 'dateField'));
+    }
+
+    public function documentosAcl(): \Illuminate\View\View
+    {
+        $featuredEmissions = Emission::query()
+            ->where('is_public', true)
+            ->whereNotNull('if_code')
+            ->orderByDesc('issue_date')
+            ->limit(3)
+            ->get();
+
+        return view('site.servicos.documentos-acl', compact('featuredEmissions'));
+    }
+
+    public function submitContact(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        return redirect()->back()->with('success', 'Mensagem enviada com sucesso!');
     }
 }

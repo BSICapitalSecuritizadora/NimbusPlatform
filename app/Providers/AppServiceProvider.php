@@ -5,7 +5,11 @@ namespace App\Providers;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\Contracts\IndexRateProvider;
 use App\Domain\PuCalculator\Services\BusinessCalendarService;
+use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
+use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\IndexRateLookupService;
+use App\Domain\PuCalculator\Services\IndexRateService;
+use App\Domain\PuCalculator\Services\RoundingService;
 use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\Document;
 use App\Models\Nimbus\Submission;
@@ -40,8 +44,16 @@ class AppServiceProvider extends ServiceProvider
             \App\Services\MeasurementPlanProgressProvider::class,
         );
 
-        $this->app->bind(BusinessDayCalendar::class, BusinessCalendarService::class);
-        $this->app->bind(IndexRateProvider::class, IndexRateLookupService::class);
+        $this->app->singleton(RoundingService::class);
+        $this->app->alias(RoundingService::class, DecimalRounder::class);
+
+        $this->app->singleton(BusinessDayCalendarService::class);
+        $this->app->alias(BusinessDayCalendarService::class, BusinessCalendarService::class);
+        $this->app->bind(BusinessDayCalendar::class, BusinessDayCalendarService::class);
+
+        $this->app->singleton(IndexRateService::class);
+        $this->app->alias(IndexRateService::class, IndexRateLookupService::class);
+        $this->app->bind(IndexRateProvider::class, IndexRateService::class);
     }
 
     /**

@@ -15,6 +15,7 @@ class EmissionPuDailyCurveFactory extends Factory
         return [
             'emission_id' => Emission::factory(),
             'curve_date' => fake()->date(),
+            'calculation_version' => 'v1',
             'is_business_day' => true,
             'unit_base_value' => '1000.0000000000000000',
             'unit_corrected_value' => '1000.0000000000000000',
@@ -26,6 +27,7 @@ class EmissionPuDailyCurveFactory extends Factory
             'updated_unit_value' => '1000.0000000000000000',
             'amortization_ratio' => '0.0000000000000000',
             'amortization_unit_value' => '0.0000000000000000',
+            'amortization_value' => '0.0000000000000000',
             'residual_unit_value' => '1000.0000000000000000',
             'quantity' => '1000.0000',
             'total_value' => '1000000.0000000000000000',

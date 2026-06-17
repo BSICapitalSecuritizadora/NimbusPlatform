@@ -45,6 +45,26 @@ class DecimalRounder
         return $this->round(Decimal::of($value)->value(), $scale);
     }
 
+    public function truncate(string|int|float $value, int $scale): string
+    {
+        $normalizedValue = Decimal::of($value)->value();
+        $sign = '';
+
+        if (str_starts_with($normalizedValue, '-')) {
+            $sign = '-';
+            $normalizedValue = substr($normalizedValue, 1);
+        }
+
+        [$integerPart, $decimalPart] = array_pad(explode('.', $normalizedValue, 2), 2, '');
+
+        return sprintf(
+            '%s%s.%s',
+            $sign,
+            $integerPart,
+            substr($decimalPart.str_repeat('0', $scale), 0, $scale),
+        );
+    }
+
     public function absoluteDifference(string|int|float|null $left, string|int|float|null $right, int $scale = self::INTERNAL_SCALE): string
     {
         $leftValue = $this->normalize($left, $scale + 4);

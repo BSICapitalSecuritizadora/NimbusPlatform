@@ -5,12 +5,15 @@ namespace App\Domain\PuCalculator\Services;
 use App\Domain\PuCalculator\Calculators\DailyFactorCalculator;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\Contracts\IndexRateProvider;
+use App\Domain\PuCalculator\DTOs\IndexRateData;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
+use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
+use App\Models\EmissionPuParameter;
 use App\Models\IntegralizationHistory;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -43,7 +46,6 @@ class PuCurveGenerationService
         $lastResidualUnitValue = $baseUnitValue;
         $factorDiAccumulated = '1.0000000000000000';
         $factorSpread = '1.0000000000000000';
-        $lastResetDate = $startDate;
         $businessDaysSinceReset = 0;
         $rows = [];
 
@@ -53,12 +55,11 @@ class PuCurveGenerationService
                 $factorDiAccumulated = '1.0000000000000000';
                 $factorSpread = '1.0000000000000000';
                 $businessDaysSinceReset = 0;
-                $lastResetDate = $currentDate->subDay();
             }
 
             $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $parameter->calendar_code);
             $quantity = $this->quantityForDate($quantityTimeline, $currentDate);
-            $rateSnapshot = $this->indexRateProvider->rateForDate($parameter->indexer_enum, $currentDate);
+            $rateSnapshot = $this->resolveRateSnapshot($parameter, $currentDate, $isBusinessDay);
 
             if ($currentDate->equalTo($startDate)) {
                 $factorDi = '1.0000000000000000';
@@ -71,30 +72,57 @@ class PuCurveGenerationService
             } else {
                 if ($isBusinessDay) {
                     $businessDaysSinceReset++;
-                    $factorDi = $this->dailyFactorCalculator->factorDiForDay(
-                        $rateSnapshot?->value,
-                        true,
-                        (int) $parameter->business_day_basis,
-                    );
-                    $factorDiAccumulated = $this->rounder->round(
-                        bcmul($factorDiAccumulated, $factorDi, DecimalRounder::INTERNAL_SCALE),
-                        DecimalRounder::FACTOR_SCALE,
-                    );
                     $factorSpread = $this->dailyFactorCalculator->factorSpreadForBusinessDays(
                         (string) $parameter->spread_rate,
                         $businessDaysSinceReset,
                         (int) $parameter->business_day_basis,
                     );
-                } else {
-                    $factorDi = '1.0000000000000000';
                 }
+
+                $shouldApplyDi = $this->shouldApplyDi(
+                    $parameter,
+                    $isBusinessDay,
+                    $rateSnapshot,
+                );
+
+                $factorDi = $this->dailyFactorCalculator->factorDiForDay(
+                    $rateSnapshot?->value,
+                    $shouldApplyDi,
+                    (int) $parameter->business_day_basis,
+                );
+
+                if ($parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact) {
+                    $factorDi = $this->rounder->normalize(
+                        $this->rounder->round($factorDi, 8),
+                        DecimalRounder::FACTOR_SCALE,
+                    );
+                }
+
+                $factorDiAccumulated = $this->rounder->round(
+                    bcmul($factorDiAccumulated, $factorDi, DecimalRounder::INTERNAL_SCALE),
+                    DecimalRounder::FACTOR_SCALE,
+                );
 
                 if ($businessDaysSinceReset === 0) {
                     $factorSpread = '1.0000000000000000';
                 }
 
+                if ($parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact) {
+                    $factorSpread = $this->rounder->normalize(
+                        $this->rounder->round($factorSpread, 9),
+                        DecimalRounder::FACTOR_SCALE,
+                    );
+                }
+
+                $factorSpreadDiBase = $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
+                    ? $this->rounder->normalize(
+                        $this->rounder->round($factorDiAccumulated, 8),
+                        DecimalRounder::FACTOR_SCALE,
+                    )
+                    : $factorDiAccumulated;
+
                 $factorSpreadDi = $this->rounder->round(
-                    bcmul($factorDiAccumulated, $factorSpread, DecimalRounder::INTERNAL_SCALE),
+                    bcmul($factorSpreadDiBase, $factorSpread, DecimalRounder::INTERNAL_SCALE),
                     DecimalRounder::FACTOR_SCALE,
                 );
                 $interestRealUnitValue = $this->rounder->round(
@@ -109,8 +137,8 @@ class PuCurveGenerationService
                     bcadd($baseUnitValue, $interestRealUnitValue, DecimalRounder::INTERNAL_SCALE),
                     DecimalRounder::UNIT_SCALE,
                 );
-                $dupInterest = $lastResetDate->diffInDays($currentDate);
-                $dutInterest = $businessDaysSinceReset;
+                $dupInterest = $businessDaysSinceReset;
+                $dutInterest = (int) $parameter->business_day_basis;
             }
 
             $interestPaymentUnitValue = '0.000000000000';
@@ -184,16 +212,27 @@ class PuCurveGenerationService
             if (bccomp($residualUnitValue, '0', DecimalRounder::UNIT_SCALE) < 0) {
                 $residualUnitValue = '0.000000000000';
             }
+            $residualUnitValueForTotals = $this->rounder->round($residualUnitValue, DecimalRounder::VALIDATION_SCALE);
+            $interestPaymentUnitValueForTotals = $this->rounder->round($interestPaymentUnitValue, DecimalRounder::VALIDATION_SCALE);
+            $amortizationUnitValueForTotals = $this->rounder->round($amortizationUnitValue, DecimalRounder::VALIDATION_SCALE);
+            $paymentTotalUnitValueForTotals = $this->rounder->round(
+                bcadd($interestPaymentUnitValueForTotals, $amortizationUnitValueForTotals, DecimalRounder::INTERNAL_SCALE),
+                DecimalRounder::VALIDATION_SCALE,
+            );
             $totalValue = $this->rounder->round(
-                bcmul($residualUnitValue, $quantity, DecimalRounder::INTERNAL_SCALE),
+                bcmul($residualUnitValueForTotals, $quantity, DecimalRounder::INTERNAL_SCALE),
                 DecimalRounder::TOTAL_SCALE,
             );
             $interestPaymentValue = $this->rounder->round(
-                bcmul($interestPaymentUnitValue, $quantity, DecimalRounder::INTERNAL_SCALE),
+                bcmul($interestPaymentUnitValueForTotals, $quantity, DecimalRounder::INTERNAL_SCALE),
+                DecimalRounder::TOTAL_SCALE,
+            );
+            $amortizationValue = $this->rounder->round(
+                bcmul($amortizationUnitValueForTotals, $quantity, DecimalRounder::INTERNAL_SCALE),
                 DecimalRounder::TOTAL_SCALE,
             );
             $paymentTotalValue = $this->rounder->round(
-                bcmul($paymentTotalUnitValue, $quantity, DecimalRounder::INTERNAL_SCALE),
+                bcmul($paymentTotalUnitValueForTotals, $quantity, DecimalRounder::INTERNAL_SCALE),
                 DecimalRounder::TOTAL_SCALE,
             );
 
@@ -210,6 +249,7 @@ class PuCurveGenerationService
                 updatedUnitValue: $updatedUnitValue,
                 amortizationRatio: $amortizationRatio,
                 amortizationUnitValue: $amortizationUnitValue,
+                amortizationValue: $amortizationValue,
                 residualUnitValue: $residualUnitValue,
                 quantity: $quantity,
                 totalValue: $totalValue,
@@ -221,8 +261,8 @@ class PuCurveGenerationService
                 dutCorrection: 0,
                 dupInterest: $dupInterest,
                 dutInterest: $dutInterest,
-                indexRateDate: $rateSnapshot?->date,
-                indexRateValue: $rateSnapshot?->value,
+                indexRateDate: $rateSnapshot?->reportedDate(),
+                indexRateValue: $rateSnapshot?->reportedValue(),
                 eventOriginalDate: $eventOriginalDate,
                 eventEffectiveDate: $eventEffectiveDate,
             );
@@ -336,5 +376,47 @@ class PuCurveGenerationService
         }
 
         return $resolvedValue;
+    }
+
+    private function resolveRateSnapshot(
+        EmissionPuParameter $parameter,
+        CarbonImmutable $currentDate,
+        bool $isBusinessDay,
+    ): ?IndexRateData {
+        $lookupMode = $parameter->index_rate_lookup_mode_enum;
+
+        return match ($lookupMode) {
+            PuIndexRateLookupMode::PreviousAvailableBusinessDay => $isBusinessDay
+                ? $this->indexRateProvider->rateForDate($parameter->indexer_enum, $currentDate)
+                : null,
+            PuIndexRateLookupMode::PreviousCalendarDayExact => $this->indexRateProvider->exactRateForDate(
+                $parameter->indexer_enum,
+                $currentDate->subDay(),
+            ),
+            PuIndexRateLookupMode::BusinessDayLagExact => $this->indexRateProvider->exactRateForDate(
+                $parameter->indexer_enum,
+                $this->businessDayCalendar->shiftBusinessDays(
+                    $currentDate,
+                    -((int) $parameter->index_rate_lag_business_days),
+                    $parameter->calendar_code,
+                ),
+            ),
+        };
+    }
+
+    private function shouldApplyDi(
+        EmissionPuParameter $parameter,
+        bool $isBusinessDay,
+        ?IndexRateData $rateSnapshot,
+    ): bool {
+        if ($rateSnapshot === null) {
+            return false;
+        }
+
+        return match ($parameter->index_rate_lookup_mode_enum) {
+            PuIndexRateLookupMode::PreviousCalendarDayExact => true,
+            PuIndexRateLookupMode::PreviousAvailableBusinessDay,
+            PuIndexRateLookupMode::BusinessDayLagExact => $isBusinessDay,
+        };
     }
 }

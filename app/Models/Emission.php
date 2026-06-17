@@ -355,6 +355,16 @@ class Emission extends Model
         return $this->hasMany(Obligation::class);
     }
 
+    public function obligationGenerationRuns(): HasMany
+    {
+        return $this->hasMany(ObligationGenerationRun::class);
+    }
+
+    public function latestObligationGenerationRun(): HasOne
+    {
+        return $this->hasOne(ObligationGenerationRun::class)->latestOfMany();
+    }
+
     public function requiresMonthlyGuaranteeSnapshotUpdate(?CarbonInterface $referenceDate = null): bool
     {
         if (! self::hasGuaranteeSnapshotsTable()) {

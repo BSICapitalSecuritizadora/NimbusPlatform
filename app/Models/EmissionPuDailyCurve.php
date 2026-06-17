@@ -14,6 +14,7 @@ class EmissionPuDailyCurve extends Model
     protected $fillable = [
         'emission_id',
         'curve_date',
+        'calculation_version',
         'is_business_day',
         'unit_base_value',
         'unit_corrected_value',
@@ -25,6 +26,7 @@ class EmissionPuDailyCurve extends Model
         'updated_unit_value',
         'amortization_ratio',
         'amortization_unit_value',
+        'amortization_value',
         'residual_unit_value',
         'quantity',
         'total_value',
@@ -46,6 +48,7 @@ class EmissionPuDailyCurve extends Model
     {
         return [
             'curve_date' => 'date',
+            'calculation_version' => 'string',
             'is_business_day' => 'boolean',
             'unit_base_value' => 'decimal:16',
             'unit_corrected_value' => 'decimal:16',
@@ -57,6 +60,7 @@ class EmissionPuDailyCurve extends Model
             'updated_unit_value' => 'decimal:16',
             'amortization_ratio' => 'decimal:16',
             'amortization_unit_value' => 'decimal:16',
+            'amortization_value' => 'decimal:16',
             'residual_unit_value' => 'decimal:16',
             'quantity' => 'decimal:4',
             'total_value' => 'decimal:16',
@@ -78,5 +82,22 @@ class EmissionPuDailyCurve extends Model
     public function emission(): BelongsTo
     {
         return $this->belongsTo(Emission::class);
+    }
+
+    public function scopeForCalculationVersion($query, ?string $calculationVersion)
+    {
+        if ($calculationVersion === null) {
+            return $query;
+        }
+
+        return $query->where('calculation_version', $calculationVersion);
+    }
+
+    public static function latestCalculationVersionForEmission(int $emissionId): ?string
+    {
+        return static::query()
+            ->where('emission_id', $emissionId)
+            ->orderByDesc('id')
+            ->value('calculation_version');
     }
 }

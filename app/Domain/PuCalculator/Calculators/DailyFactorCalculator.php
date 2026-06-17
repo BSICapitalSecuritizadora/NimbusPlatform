@@ -51,6 +51,15 @@ class DailyFactorCalculator
             return '1.0000000000000000';
         }
 
+        if ($numerator < 0) {
+            $positivePower = $this->powRatio($base, abs($numerator), $denominator, $scale + 4);
+
+            return $this->rounder->round(
+                bcdiv('1', $positivePower, $scale + 4),
+                $scale,
+            );
+        }
+
         $cacheKey = implode('|', [$base, $numerator, $denominator, $scale]);
 
         if (isset($this->cache[$cacheKey])) {
@@ -58,13 +67,20 @@ class DailyFactorCalculator
         }
 
         $workingScale = $scale + 8;
-        $poweredBase = Decimal::of($base)->powerInt($numerator, $workingScale)->value();
 
         if ($denominator === 1) {
-            return $this->cache[$cacheKey] = $this->rounder->round($poweredBase, $scale);
+            return $this->cache[$cacheKey] = $this->rounder->round(
+                Decimal::of($base)->powerInt($numerator, $workingScale)->value(),
+                $scale,
+            );
         }
 
-        return $this->cache[$cacheKey] = $this->nthRoot($poweredBase, $denominator, $scale, $workingScale);
+        $unitFactor = $this->nthRoot($base, $denominator, $workingScale, $workingScale + 4);
+
+        return $this->cache[$cacheKey] = $this->rounder->round(
+            Decimal::of($unitFactor)->powerInt($numerator, $workingScale)->value(),
+            $scale,
+        );
     }
 
     private function nthRoot(string $value, int $root, int $scale, int $workingScale): string

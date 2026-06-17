@@ -11,6 +11,10 @@ use Spatie\SimpleExcel\SimpleExcelReader;
 
 class PuSpreadsheetReferenceReader
 {
+    public function __construct(
+        private readonly DecimalRounder $rounder,
+    ) {}
+
     /**
      * @return array{sheet_name: string, rows: list<SpreadsheetReferenceRowData>}
      */
@@ -54,14 +58,28 @@ class PuSpreadsheetReferenceReader
 
             $referenceRows[] = new SpreadsheetReferenceRowData(
                 date: $date,
+                unitBaseValue: $this->parseDecimal($row[$columnMap['valorunitariobase'] ?? -1] ?? null, DecimalRounder::UNIT_SCALE),
+                correctedUnitValue: $this->parseDecimal($row[$columnMap['valorunitariocorrigido'] ?? -1] ?? null, DecimalRounder::UNIT_SCALE),
+                factorDi: $this->parseDecimal($row[$columnMap['fatordi'] ?? -1] ?? null, DecimalRounder::FACTOR_SCALE),
+                factorDiAccumulated: $this->parseDecimal($row[$columnMap['fatordiacumulado'] ?? -1] ?? null, DecimalRounder::FACTOR_SCALE),
+                factorSpread: $this->parseDecimal($row[$columnMap['fatorspread'] ?? -1] ?? null, DecimalRounder::FACTOR_SCALE),
+                factorSpreadDi: $this->parseDecimal($row[$columnMap['fatorspreadxdi'] ?? -1] ?? null, DecimalRounder::FACTOR_SCALE),
                 updatedUnitValue: $this->parseDecimal($row[$columnMap['valorunitariocorrigidomaisjurosvalorunitarioatualizado'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
                 residualUnitValue: $this->parseDecimal($row[$columnMap['valorunitarioresidual'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
                 interestRealUnitValue: $this->parseDecimal($row[$columnMap['jurosreal'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
                 amortizationUnitValue: $this->parseDecimal($row[$columnMap['amortizacaoreal'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
                 quantity: $this->parseDecimal($row[$columnMap['quantidade'] ?? -1] ?? null, DecimalRounder::QUANTITY_SCALE),
                 totalValue: $this->parseDecimal($row[$columnMap['valortotal'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
-                paymentTotalValue: $this->parseDecimal($row[$columnMap['pgtotalseminadimpencia'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
+                paymentInterestTotal: $this->parseDecimal($row[$columnMap['pgtojurostotal'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
+                paymentAmortizationPrincipalTotal: $this->parseDecimal($row[$columnMap['pgtoamortordprincipaltotal'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
+                paymentAmortizationCorrectionTotal: $this->parseDecimal($row[$columnMap['pgtoamortordcorrecaototal'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
+                paymentTotalValue: $this->parseDecimal($row[$columnMap['pgtototalseminadimpencia'] ?? -1] ?? null, DecimalRounder::VALIDATION_SCALE),
+                eventOriginalDate: $this->parseDate($row[$columnMap['dataoriginalevento'] ?? -1] ?? null),
+                eventDueDate: $this->parseDate($row[$columnMap['datadevencimentodoevento'] ?? -1] ?? null),
+                indexRateDate: $this->parseDate($row[$columnMap['datadoindiceutilizado'] ?? -1] ?? null),
                 indexRateValue: $this->parseDecimal($row[$columnMap['valordoindiceutilizado'] ?? -1] ?? null, DecimalRounder::RATE_SCALE),
+                dupCorrection: $this->parseInteger($row[$columnMap['dupcorrecao'] ?? -1] ?? null),
+                dutCorrection: $this->parseInteger($row[$columnMap['dutcorrecao'] ?? -1] ?? null),
                 dupInterest: $this->parseInteger($row[$columnMap['dupjuros'] ?? -1] ?? null),
                 dutInterest: $this->parseInteger($row[$columnMap['dutjuros'] ?? -1] ?? null),
             );
@@ -92,7 +110,7 @@ class PuSpreadsheetReferenceReader
             return null;
         }
 
-        return (new DecimalRounder)->round(
+        return $this->rounder->round(
             Decimal::of(is_string($value) ? trim($value) : $value)->value(),
             $scale,
         );

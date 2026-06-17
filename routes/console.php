@@ -40,3 +40,13 @@ Artisan::command('inspire', function () {
     ->dailyAt('06:00')
     ->name('conta-azul-expenses-sync')
     ->withoutOverlapping();
+
+\Illuminate\Support\Facades\Schedule::command('obligations:recalculate-statuses')
+    ->dailyAt('06:00')
+    ->name('obligations-recalculate-statuses')
+    ->withoutOverlapping();
+
+\Illuminate\Support\Facades\Schedule::command('obligations:send-due-notifications')
+    ->dailyAt('06:15')
+    ->name('obligations-send-due-notifications')
+    ->withoutOverlapping();

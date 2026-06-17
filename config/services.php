@@ -52,6 +52,7 @@ return [
 
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
+        'obligations_min_confidence' => (float) env('GEMINI_OBLIGATIONS_MIN_CONFIDENCE', 0.6),
     ],
 
     'clarity' => [

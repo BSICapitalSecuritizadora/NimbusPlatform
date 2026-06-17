@@ -11,6 +11,7 @@ final readonly class PuCurveGenerationResult
      */
     public function __construct(
         public array $rows,
+        public ?string $calculationVersion = null,
     ) {}
 
     /**
@@ -22,5 +23,13 @@ final readonly class PuCurveGenerationResult
             $this->rows,
             static fn (PuDailyCurveRowData $row): bool => $row->hasPayment(),
         ));
+    }
+
+    public function withCalculationVersion(string $calculationVersion): self
+    {
+        return new self(
+            rows: $this->rows,
+            calculationVersion: $calculationVersion,
+        );
     }
 }

@@ -3,14 +3,14 @@
 namespace App\Actions\Emissions;
 
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
-use App\Domain\PuCalculator\Services\PuCurveGenerationService;
+use App\Domain\PuCalculator\Services\PuCurveGeneratorService;
 use App\Domain\PuCalculator\Services\PuCurvePersistenceService;
 use App\Models\Emission;
 
 class GeneratePuDailyCurve
 {
     public function __construct(
-        private readonly PuCurveGenerationService $generationService,
+        private readonly PuCurveGeneratorService $generationService,
         private readonly PuCurvePersistenceService $persistenceService,
     ) {}
 

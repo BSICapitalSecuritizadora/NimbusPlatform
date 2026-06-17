@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Emissions\GeneratePuDailyCurve;
+use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
@@ -14,6 +15,7 @@ it('generates and persists a deterministic zero-rate curve with legacy projectio
     $emission = Emission::factory()->create([
         'type' => 'CRI',
         'status' => 'active',
+        'issued_quantity' => 1000,
     ]);
 
     seedBusinessCalendar('2026-01-01', '2026-01-05');
@@ -59,6 +61,7 @@ it('generates and persists a deterministic zero-rate curve with legacy projectio
     $result = app(GeneratePuDailyCurve::class)->handle($emission);
 
     expect($result->rows)->toHaveCount(5)
+        ->and($result->calculationVersion)->toBe('v1')
         ->and($emission->puDailyCurves()->count())->toBe(5)
         ->and(PuHistory::query()->where('emission_id', $emission->id)->count())->toBe(5)
         ->and(Payment::query()->where('emission_id', $emission->id)->count())->toBe(1);
@@ -67,6 +70,7 @@ it('generates and persists a deterministic zero-rate curve with legacy projectio
     $payment = Payment::query()->where('emission_id', $emission->id)->sole();
 
     expect($eventRow->payment_total_unit_value)->toBe('100.0000000000000000')
+        ->and($eventRow->amortization_value)->toBe('10000.0000000000000000')
         ->and($eventRow->payment_total_value)->toBe('10000.0000000000000000')
         ->and($eventRow->residual_unit_value)->toBe('900.0000000000000000')
         ->and($payment->interest_value)->toBe('0.00')
@@ -78,6 +82,7 @@ it('uses cumulative quantity, keeps factor identities and resets the base after 
     $emission = Emission::factory()->create([
         'type' => 'CRI',
         'status' => 'active',
+        'issued_quantity' => 20000,
     ]);
 
     seedBusinessCalendar('2026-03-02', '2026-03-10');
@@ -137,13 +142,161 @@ it('uses cumulative quantity, keeps factor identities and resets the base after 
         ),
         DecimalRounder::UNIT_SCALE,
     );
+    $expectedMarchSixthTotal = roundDecimal(
+        bcmul(
+            roundDecimal((string) $marchSixth->residual_unit_value, DecimalRounder::VALIDATION_SCALE),
+            (string) $marchSixth->quantity,
+            DecimalRounder::INTERNAL_SCALE,
+        ),
+        DecimalRounder::TOTAL_SCALE,
+    );
 
     expect($marchSixth->quantity)->toBe('8000.0000')
+        ->and((string) $marchSixth->total_value)->toBe($expectedMarchSixthTotal)
         ->and(bccomp((string) $marchNinth->interest_payment_unit_value, '0', DecimalRounder::UNIT_SCALE))->toBe(1)
         ->and(bccomp((string) $marchNinth->factor_spread_di, $expectedFactorSpreadDi, 12))->toBe(0)
         ->and(bccomp((string) $marchNinth->interest_real_unit_value, $expectedInterest, 8))->toBe(0)
         ->and((string) $marchNinth->payment_total_value)->toBe((string) $marchNinth->interest_payment_value)
         ->and((string) $marchTenth->unit_base_value)->toBe((string) $marchNinth->residual_unit_value);
+});
+
+it('persists a new calculation version on subsequent generations', function () {
+    $emission = Emission::factory()->create([
+        'type' => 'CRI',
+        'status' => 'active',
+        'issued_quantity' => 1000,
+    ]);
+
+    seedBusinessCalendar('2026-04-01', '2026-04-03');
+    seedFixedCdiRates('2026-04-01', '2026-04-03', '13.65000000');
+
+    $emission->integralizationHistories()->create([
+        'date' => '2026-04-01',
+        'quantity' => '10.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '10000.00',
+        'investor_fund' => 'Head Invest',
+    ]);
+
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-04-01',
+        'curve_end_date' => '2026-04-03',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '5.00000000',
+        'indexer' => 'CDI',
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'legacy_projection_enabled' => false,
+    ]);
+
+    $firstResult = app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
+    $secondResult = app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
+
+    expect($firstResult->calculationVersion)->toBe('v1')
+        ->and($secondResult->calculationVersion)->toBe('v2')
+        ->and($emission->puDailyCurves()->count())->toBe(6)
+        ->and($emission->puDailyCurves()->distinct('calculation_version')->count('calculation_version'))->toBe(2);
+});
+
+it('applies CDI on saturday only when configured to use the exact previous calendar day', function () {
+    $emission = Emission::factory()->create([
+        'type' => 'CR',
+        'status' => 'active',
+        'issued_quantity' => 1000,
+    ]);
+
+    seedBusinessCalendar('2026-01-08', '2026-01-13');
+    seedFixedCdiRates('2026-01-08', '2026-01-13', '14.90000000');
+
+    $emission->integralizationHistories()->create([
+        'date' => '2026-01-08',
+        'quantity' => '10.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '10000.00',
+        'investor_fund' => 'Head Invest',
+    ]);
+
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-01-08',
+        'curve_end_date' => '2026-01-13',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.50000000',
+        'indexer' => 'CDI',
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousCalendarDayExact->value,
+        'index_rate_lag_business_days' => 1,
+        'legacy_projection_enabled' => false,
+    ]);
+
+    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
+
+    $saturday = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-10')->sole();
+    $sunday = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-11')->sole();
+    $monday = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-12')->sole();
+    $tuesday = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-13')->sole();
+
+    expect(bccomp((string) $saturday->factor_di, '1', 8))->toBe(1)
+        ->and($saturday->index_rate_date?->toDateString())->toBe('2026-01-09')
+        ->and((string) $sunday->factor_di)->toBe('1.0000000000000000')
+        ->and($sunday->index_rate_date)->toBeNull()
+        ->and((string) $monday->factor_di)->toBe('1.0000000000000000')
+        ->and($monday->index_rate_date)->toBeNull()
+        ->and(bccomp((string) $tuesday->factor_di, '1', 8))->toBe(1)
+        ->and($tuesday->index_rate_date?->toDateString())->toBe('2026-01-12');
+});
+
+it('uses lagged business-day CDI lookup and stores DUP/DUT with business-day semantics', function () {
+    $emission = Emission::factory()->create([
+        'type' => 'CRI',
+        'status' => 'active',
+        'issued_quantity' => 1000,
+    ]);
+
+    seedBusinessCalendar('2026-02-23', '2026-03-10');
+    seedFixedCdiRates('2026-02-23', '2026-03-10', '14.90000000');
+
+    $emission->integralizationHistories()->create([
+        'date' => '2026-03-02',
+        'quantity' => '10.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '10000.00',
+        'investor_fund' => 'Head Invest',
+    ]);
+
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-03-02',
+        'curve_end_date' => '2026-03-10',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.50000000',
+        'indexer' => 'CDI',
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
+        'index_rate_lag_business_days' => 5,
+        'legacy_projection_enabled' => false,
+    ]);
+
+    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
+
+    $start = $emission->puDailyCurves()->whereDate('curve_date', '2026-03-02')->sole();
+    $friday = $emission->puDailyCurves()->whereDate('curve_date', '2026-03-06')->sole();
+    $saturday = $emission->puDailyCurves()->whereDate('curve_date', '2026-03-07')->sole();
+    $monday = $emission->puDailyCurves()->whereDate('curve_date', '2026-03-09')->sole();
+
+    expect($start->dup_interest)->toBe(0)
+        ->and($start->dut_interest)->toBe(0)
+        ->and((string) $friday->factor_di)->toBe('1.0005513100000000')
+        ->and($friday->index_rate_date?->toDateString())->toBe('2026-02-27')
+        ->and($friday->dup_interest)->toBe(4)
+        ->and($friday->dut_interest)->toBe(252)
+        ->and((string) $saturday->factor_di)->toBe('1.0000000000000000')
+        ->and($saturday->index_rate_date?->toDateString())->toBe('2026-03-02')
+        ->and($saturday->dup_interest)->toBe(4)
+        ->and($saturday->dut_interest)->toBe(252)
+        ->and($monday->index_rate_date?->toDateString())->toBe('2026-03-02')
+        ->and($monday->dup_interest)->toBe(5)
+        ->and($monday->dut_interest)->toBe(252);
 });
 
 function seedBusinessCalendar(string $startDate, string $endDate): void

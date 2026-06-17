@@ -64,6 +64,8 @@ class EmissionResource extends Resource
         return [
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager::class,
+            \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuEventsRelationManager::class,
+            \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuDailyCurvesRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteesRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSuggestionsRelationManager::class,

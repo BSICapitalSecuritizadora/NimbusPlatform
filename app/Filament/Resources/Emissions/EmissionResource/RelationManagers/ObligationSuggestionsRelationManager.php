@@ -6,6 +6,7 @@ use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Jobs\GenerateEmissionObligationsJob;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
+use App\Models\ObligationGenerationRun;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -17,7 +18,9 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 
 class ObligationSuggestionsRelationManager extends RelationManager
 {
@@ -28,6 +31,10 @@ class ObligationSuggestionsRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Sugestão';
 
     protected static ?string $pluralModelLabel = 'Obrigações Sugeridas';
+
+    protected ?ObligationGenerationRun $generationRunCache = null;
+
+    protected bool $generationRunResolved = false;
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -59,7 +66,8 @@ class ObligationSuggestionsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('title')
-            ->description('Revise as obrigações sugeridas pela IA a partir do Termo de Securitização e aprove para consolidá-las.')
+            ->poll($this->shouldPollGeneration() ? '4s' : null)
+            ->description(fn (): string|Htmlable => $this->generationDescription())
             ->columns([
                 TextColumn::make('title')
                     ->label('Título')
@@ -102,7 +110,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
                         default => 'warning',
                     }),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('confidence_score', 'desc')
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
@@ -137,11 +145,22 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->icon('heroicon-o-sparkles')
             ->color('warning')
             ->authorize(fn (): bool => $this->canManage())
+            ->disabled(fn (): bool => $this->hasActiveGenerationRun())
             ->requiresConfirmation()
             ->modalHeading('Gerar obrigações do Termo de Securitização')
             ->modalDescription('A IA analisará o Termo de Securitização e gerará obrigações sugeridas. O processo pode levar alguns minutos. As sugestões pendentes anteriores serão substituídas.')
             ->modalSubmitActionLabel('Iniciar geração')
             ->action(function (): void {
+                if ($this->hasActiveGenerationRun()) {
+                    Notification::make()
+                        ->title('Geração já em andamento')
+                        ->body('Aguarde a conclusão da geração atual antes de iniciar uma nova.')
+                        ->warning()
+                        ->send();
+
+                    return;
+                }
+
                 $document = $this->findSecuritizationTerm();
 
                 if ($document === null) {
@@ -154,14 +173,65 @@ class ObligationSuggestionsRelationManager extends RelationManager
                     return;
                 }
 
-                GenerateEmissionObligationsJob::dispatch($this->getOwnerRecord()->id, $document->id);
+                $run = ObligationGenerationRun::create([
+                    'emission_id' => $this->getOwnerRecord()->id,
+                    'document_id' => $document->id,
+                    'user_id' => auth()->id(),
+                    'status' => ObligationGenerationRun::STATUS_PENDING,
+                    'current_step' => 'queued',
+                    'message' => 'Preparando leitura do Termo...',
+                ]);
+
+                GenerateEmissionObligationsJob::dispatch($this->getOwnerRecord()->id, $document->id, $run->id);
 
                 Notification::make()
                     ->title('Geração de obrigações iniciada')
-                    ->body('As sugestões aparecerão nesta aba assim que o processamento for concluído. Atualize a página em alguns minutos.')
+                    ->body('Acompanhe o progresso nesta aba. As sugestões aparecerão automaticamente ao concluir.')
                     ->info()
                     ->send();
             });
+    }
+
+    protected function latestGenerationRun(): ?ObligationGenerationRun
+    {
+        if ($this->generationRunResolved) {
+            return $this->generationRunCache;
+        }
+
+        $this->generationRunResolved = true;
+
+        return $this->generationRunCache = $this->getOwnerRecord()
+            ->latestObligationGenerationRun()
+            ->first();
+    }
+
+    protected function hasActiveGenerationRun(): bool
+    {
+        return $this->latestGenerationRun()?->isActive() ?? false;
+    }
+
+    protected function shouldPollGeneration(): bool
+    {
+        return $this->hasActiveGenerationRun();
+    }
+
+    protected function generationDescription(): string|Htmlable
+    {
+        $run = $this->latestGenerationRun();
+
+        $isDisplayable = $run !== null && (
+            $run->isActive()
+            || $run->hasFailed()
+            || ($run->isCompleted() && $run->finished_at?->gt(now()->subMinutes(10)))
+        );
+
+        $banner = $isDisplayable
+            ? view('filament.obligations.generation-progress', ['run' => $run])->render()
+            : '';
+
+        return new HtmlString(
+            $banner.'<span class="block">Revise as obrigações sugeridas pela IA a partir do Termo de Securitização e aprove para consolidá-las.</span>'
+        );
     }
 
     protected function makeApproveAction(): Action

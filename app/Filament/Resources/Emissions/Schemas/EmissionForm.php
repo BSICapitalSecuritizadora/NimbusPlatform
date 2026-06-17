@@ -410,6 +410,22 @@ class EmissionForm
                             ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses))
                             ->extraAttributes(['wire:poll.5000ms' => 'checkGeminiExtractionStatus']),
 
+                        Placeholder::make('pu_curve_generation_progress')
+                            ->label('')
+                            ->content(new HtmlString(
+                                '<div class="flex items-center gap-2 text-sm text-sky-600 dark:text-sky-400">
+                                    <svg class="animate-spin size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                    Geracao da curva diaria de PU em andamento. A pagina sera atualizada automaticamente ao concluir.
+                                </div>'
+                            ))
+                            ->columnSpanFull()
+                            ->visibleOn('edit')
+                            ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isGeneratingPuCurve))
+                            ->extraAttributes(['wire:poll.5000ms' => 'checkPuCurveGenerationStatus']),
+
                         Select::make('guarantee_fund')
                             ->label('Fundo de Fiança')
                             ->options(self::YES_NO_OPTIONS)

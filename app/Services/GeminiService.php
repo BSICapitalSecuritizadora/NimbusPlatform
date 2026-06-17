@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Document;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class GeminiService
@@ -94,7 +95,22 @@ REGRAS DE FUNDAMENTAÇÃO (CRÍTICAS):
 - `due_rule` deve reproduzir o prazo LITERALMENTE como escrito, vindo da mesma cláusula/parágrafo da obrigação. Se o prazo não estiver na mesma cláusula, defina `due_rule` como null.
 - `source_excerpt` deve ser uma citação LITERAL do texto (máximo 300 caracteres) que comprove a obrigação. Não parafraseie.
 - Se `responsible_party` ou `required_evidence` não estiverem explícitos, defina como null.
-- Não duplique obrigações: se a mesma obrigação aparecer em mais de uma cláusula, extraia apenas uma vez.
+- Não duplique obrigações: se a mesma obrigação aparecer em mais de uma cláusula, extraia apenas uma vez (a versão mais completa).
+
+O QUE É UMA OBRIGAÇÃO VÁLIDA (extraia APENAS se houver):
+- uma AÇÃO concreta e acionável a ser realizada por uma parte (ex.: enviar, pagar, manter, constituir, comunicar, comprovar, reforçar, não fazer X);
+- uma parte obrigada identificável (responsible_party) OU um destinatário claro do dever;
+- e pelo menos um destes: prazo/periodicidade/condição de acionamento, evidência exigida, ou consequência operacional/de acompanhamento.
+
+O QUE NÃO É OBRIGAÇÃO (NÃO extraia — ignore por completo):
+- definições, conceitos e glossário;
+- descrições genéricas, considerandos e contexto jurídico sem tarefa prática;
+- cláusulas meramente informativas ou declaratórias;
+- mera descrição do fluxo normal de remuneração/amortização sem um dever de fazer associado;
+- repetições de uma obrigação já extraída;
+- trechos sem ação prática clara para acompanhar.
+
+Em caso de dúvida sobre ser ou não uma obrigação acionável, NÃO extraia. Prefira uma lista curta, objetiva e confiável a uma lista longa e ruidosa.
 
 CAMPOS:
 - title: título conciso em português imperativo (ex.: "Enviar relatório mensal ao Agente Fiduciário").
@@ -251,10 +267,163 @@ PROMPT;
             return [];
         }
 
-        return array_values(array_filter(array_map(
+        $normalized = array_values(array_filter(array_map(
             fn (mixed $item): ?array => is_array($item) ? $this->normalizeObligationProposal($item) : null,
             $obligations,
         )));
+
+        $rawCount = count($normalized);
+
+        [$confident, $weak] = $this->partitionByConfidence($normalized);
+
+        [$deduped, $duplicates] = $this->dedupeProposals($confident);
+
+        Log::info('GeminiService: obrigações extraídas e filtradas', [
+            'document_id' => $document->id,
+            'raw' => $rawCount,
+            'discarded_low_confidence' => count($weak),
+            'discarded_duplicates' => count($duplicates),
+            'kept' => count($deduped),
+            'min_confidence' => $this->obligationsMinConfidence(),
+            'low_confidence_titles' => array_map(static fn (array $i): ?string => $i['title'] ?? null, $weak),
+            'duplicate_titles' => array_map(static fn (array $i): ?string => $i['title'] ?? null, $duplicates),
+        ]);
+
+        return $deduped;
+    }
+
+    private function obligationsMinConfidence(): float
+    {
+        return (float) config('services.gemini.obligations_min_confidence', 0.6);
+    }
+
+    /**
+     * Split proposals into those meeting the minimum confidence and the weak ones.
+     * A null confidence_score is treated as weak (unverifiable strength).
+     *
+     * @param  array<int, array<string, mixed>>  $proposals
+     * @return array{0: array<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
+     */
+    private function partitionByConfidence(array $proposals): array
+    {
+        $min = $this->obligationsMinConfidence();
+        $confident = [];
+        $weak = [];
+
+        foreach ($proposals as $proposal) {
+            $score = $proposal['confidence_score'] ?? null;
+
+            if (is_numeric($score) && (float) $score >= $min) {
+                $confident[] = $proposal;
+            } else {
+                $weak[] = $proposal;
+            }
+        }
+
+        return [$confident, $weak];
+    }
+
+    /**
+     * Collapse near-duplicate obligations, keeping the most complete version of each.
+     *
+     * @param  array<int, array<string, mixed>>  $proposals
+     * @return array{0: array<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
+     */
+    private function dedupeProposals(array $proposals): array
+    {
+        /** @var array<int, array<string, mixed>> $kept */
+        $kept = [];
+        $duplicates = [];
+
+        foreach ($proposals as $proposal) {
+            $matchIndex = null;
+
+            foreach ($kept as $index => $existing) {
+                if ($this->areObligationsSimilar($existing, $proposal)) {
+                    $matchIndex = $index;
+
+                    break;
+                }
+            }
+
+            if ($matchIndex === null) {
+                $kept[] = $proposal;
+
+                continue;
+            }
+
+            if ($this->obligationCompleteness($proposal) > $this->obligationCompleteness($kept[$matchIndex])) {
+                $duplicates[] = $kept[$matchIndex];
+                $kept[$matchIndex] = $proposal;
+            } else {
+                $duplicates[] = $proposal;
+            }
+        }
+
+        return [array_values($kept), $duplicates];
+    }
+
+    /**
+     * @param  array<string, mixed>  $a
+     * @param  array<string, mixed>  $b
+     */
+    private function areObligationsSimilar(array $a, array $b): bool
+    {
+        $titleA = $this->normalizeForComparison((string) ($a['title'] ?? ''));
+        $titleB = $this->normalizeForComparison((string) ($b['title'] ?? ''));
+
+        if ($titleA === '' || $titleB === '') {
+            return false;
+        }
+
+        $clauseA = $this->normalizeForComparison((string) ($a['source_clause'] ?? ''));
+        $clauseB = $this->normalizeForComparison((string) ($b['source_clause'] ?? ''));
+
+        if ($titleA === $titleB && ($clauseA === $clauseB || $clauseA === '' || $clauseB === '')) {
+            return true;
+        }
+
+        $sameParty = $this->normalizeForComparison((string) ($a['responsible_party'] ?? ''))
+            === $this->normalizeForComparison((string) ($b['responsible_party'] ?? ''));
+        $sameRecurrence = $this->normalizeForComparison((string) ($a['recurrence'] ?? ''))
+            === $this->normalizeForComparison((string) ($b['recurrence'] ?? ''));
+
+        if (! $sameParty || ! $sameRecurrence) {
+            return false;
+        }
+
+        similar_text($titleA, $titleB, $percent);
+
+        return $percent >= 88.0;
+    }
+
+    /**
+     * Higher is more complete; used to pick which of two duplicates to keep.
+     *
+     * @param  array<string, mixed>  $proposal
+     */
+    private function obligationCompleteness(array $proposal): float
+    {
+        $score = is_numeric($proposal['confidence_score'] ?? null) ? (float) $proposal['confidence_score'] : 0.0;
+        $filledFields = 0;
+
+        foreach (['description', 'due_rule', 'responsible_party', 'required_evidence', 'source_clause', 'source_excerpt'] as $field) {
+            if (filled($proposal[$field] ?? null)) {
+                $filledFields++;
+            }
+        }
+
+        $descriptionLength = mb_strlen((string) ($proposal['description'] ?? ''));
+
+        return ($score * 100) + ($filledFields * 10) + min($descriptionLength / 100, 10);
+    }
+
+    private function normalizeForComparison(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = (string) preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $value);
+
+        return (string) preg_replace('/\s+/u', ' ', $value);
     }
 
     /**

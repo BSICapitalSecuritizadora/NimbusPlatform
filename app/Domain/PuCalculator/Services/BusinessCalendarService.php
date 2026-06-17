@@ -12,6 +12,11 @@ class BusinessCalendarService implements BusinessDayCalendar
     /** @var array<string, bool> */
     private array $cache = [];
 
+    public function flushCache(): void
+    {
+        $this->cache = [];
+    }
+
     public function isBusinessDay(CarbonImmutable $date, ?string $calendarCode = null): bool
     {
         $calendarKey = sprintf('%s|%s', $calendarCode ?? 'B3', $date->toDateString());
@@ -43,5 +48,32 @@ class BusinessCalendarService implements BusinessDayCalendar
         }
 
         throw new RuntimeException('Unable to resolve next business day for the requested date.');
+    }
+
+    public function shiftBusinessDays(CarbonImmutable $date, int $offset, ?string $calendarCode = null): CarbonImmutable
+    {
+        if ($offset === 0) {
+            return $date;
+        }
+
+        $candidate = $date;
+        $remaining = abs($offset);
+        $step = $offset > 0 ? 1 : -1;
+
+        for ($attempt = 0; $attempt < 3700; $attempt++) {
+            $candidate = $step > 0 ? $candidate->addDay() : $candidate->subDay();
+
+            if (! $this->isBusinessDay($candidate, $calendarCode)) {
+                continue;
+            }
+
+            $remaining--;
+
+            if ($remaining === 0) {
+                return $candidate;
+            }
+        }
+
+        throw new RuntimeException('Unable to shift the requested number of business days.');
     }
 }
