@@ -42,6 +42,22 @@ return [
         'max_kb' => (int) env('UPLOAD_RESUME_MAX_KB', 10240),
     ],
 
+    'obligation_evidence' => [
+        'max_kb' => (int) env('UPLOAD_OBLIGATION_EVIDENCE_MAX_KB', 20480),
+        'allowed_extensions' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'png', 'jpg', 'jpeg'],
+        'allowed_mimes' => [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'text/csv',
+            'text/plain',
+            'image/png',
+            'image/jpeg',
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | ClamAV antivirus scanning (M-8)

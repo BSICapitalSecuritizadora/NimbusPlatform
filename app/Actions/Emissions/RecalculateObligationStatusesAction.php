@@ -3,6 +3,8 @@
 namespace App\Actions\Emissions;
 
 use App\Models\Obligation;
+use App\Models\ObligationHistoryEntry;
+use App\Services\Obligations\ObligationHistoryRecorder;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -36,32 +38,34 @@ class RecalculateObligationStatusesAction
             'reference_date' => $today->toDateString(),
         ]);
 
-        Obligation::query()
-            ->whereNotNull('due_date')
-            ->whereIn('status', self::AUTO_MANAGED_STATUSES)
-            ->chunkById(200, function (Collection $obligations) use ($today, &$analyzed, &$markedAVencer, &$markedVencida, &$unchanged): void {
-                foreach ($obligations as $obligation) {
-                    $analyzed++;
+        ObligationHistoryRecorder::usingSource(ObligationHistoryEntry::SOURCE_SCHEDULED_COMMAND, function () use ($today, &$analyzed, &$markedAVencer, &$markedVencida, &$unchanged): void {
+            Obligation::query()
+                ->whereNotNull('due_date')
+                ->whereIn('status', self::AUTO_MANAGED_STATUSES)
+                ->chunkById(200, function (Collection $obligations) use ($today, &$analyzed, &$markedAVencer, &$markedVencida, &$unchanged): void {
+                    foreach ($obligations as $obligation) {
+                        $analyzed++;
 
-                    $expectedStatus = $obligation->due_date->copy()->startOfDay()->lt($today)
-                        ? 'vencida'
-                        : 'a_vencer';
+                        $expectedStatus = $obligation->due_date->copy()->startOfDay()->lt($today)
+                            ? 'vencida'
+                            : 'a_vencer';
 
-                    if ($obligation->status === $expectedStatus) {
-                        $unchanged++;
+                        if ($obligation->status === $expectedStatus) {
+                            $unchanged++;
 
-                        continue;
+                            continue;
+                        }
+
+                        $obligation->update(['status' => $expectedStatus]);
+
+                        if ($expectedStatus === 'vencida') {
+                            $markedVencida++;
+                        } else {
+                            $markedAVencer++;
+                        }
                     }
-
-                    $obligation->update(['status' => $expectedStatus]);
-
-                    if ($expectedStatus === 'vencida') {
-                        $markedVencida++;
-                    } else {
-                        $markedAVencer++;
-                    }
-                }
-            });
+                });
+        });
 
         $result = [
             'analyzed' => $analyzed,

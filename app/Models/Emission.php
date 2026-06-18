@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -353,6 +354,11 @@ class Emission extends Model
     public function obligations(): HasMany
     {
         return $this->hasMany(Obligation::class);
+    }
+
+    public function obligationEvidences(): HasManyThrough
+    {
+        return $this->hasManyThrough(ObligationEvidence::class, Obligation::class);
     }
 
     public function obligationGenerationRuns(): HasMany

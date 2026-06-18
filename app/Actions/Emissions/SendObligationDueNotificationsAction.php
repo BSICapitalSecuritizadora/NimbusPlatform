@@ -6,6 +6,7 @@ use App\Filament\Resources\Emissions\EmissionResource;
 use App\Mail\ObligationDueNotificationMail;
 use App\Models\Obligation;
 use App\Models\ObligationNotification;
+use App\Services\Obligations\ObligationHistoryRecorder;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +22,10 @@ class SendObligationDueNotificationsAction
      * @var list<string>
      */
     public const PROTECTED_STATUSES = ['concluida', 'em_analise', 'nao_aplicavel'];
+
+    public function __construct(
+        protected ObligationHistoryRecorder $historyRecorder,
+    ) {}
 
     /**
      * Send due/overdue notifications for every eligible obligation.
@@ -72,12 +77,28 @@ class SendObligationDueNotificationsAction
 
                     $eligible++;
 
+                    $ownEmail = $obligation->responsibleUser?->email;
                     $recipient = $this->resolveRecipient($obligation, $fallbackEmail);
 
                     if ($recipient === null) {
+                        Log::warning('SendObligationDueNotifications: obrigação elegível sem destinatário e sem fallback_email configurado — ignorada.', [
+                            'obligation_id' => $obligation->id,
+                            'emission_id' => $obligation->emission_id,
+                            'milestone' => $milestone,
+                        ]);
+
                         $ignored++;
 
                         continue;
+                    }
+
+                    if (blank($ownEmail)) {
+                        Log::info('SendObligationDueNotifications: usando fallback_email (obrigação sem responsável).', [
+                            'obligation_id' => $obligation->id,
+                            'emission_id' => $obligation->emission_id,
+                            'milestone' => $milestone,
+                            'recipient' => $recipient,
+                        ]);
                     }
 
                     if ($this->alreadyNotified($obligation, $milestone)) {
@@ -195,6 +216,8 @@ class SendObligationDueNotificationsAction
                 'error_message' => Str::limit($exception->getMessage(), 500),
             ]);
 
+            $this->historyRecorder->recordNotificationFailed($obligation, $milestone, $type, $recipient, $exception->getMessage());
+
             return false;
         }
 
@@ -207,6 +230,8 @@ class SendObligationDueNotificationsAction
             'status' => ObligationNotification::STATUS_SENT,
             'sent_at' => now(),
         ]);
+
+        $this->historyRecorder->recordNotificationSent($obligation, $milestone, $type, $recipient);
 
         return true;
     }

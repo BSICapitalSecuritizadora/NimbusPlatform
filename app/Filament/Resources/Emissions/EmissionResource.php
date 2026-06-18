@@ -70,6 +70,7 @@ class EmissionResource extends Resource
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteesRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSuggestionsRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager::class,
+            \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationEvidencesRelationManager::class,
         ];
     }
 

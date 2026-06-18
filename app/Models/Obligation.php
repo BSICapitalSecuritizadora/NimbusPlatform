@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Observers\ObligationObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+#[ObservedBy(ObligationObserver::class)]
 class Obligation extends Model
 {
     /** @use HasFactory<\Database\Factories\ObligationFactory> */
@@ -100,5 +103,10 @@ class Obligation extends Model
     public function notifications(): HasMany
     {
         return $this->hasMany(ObligationNotification::class);
+    }
+
+    public function historyEntries(): HasMany
+    {
+        return $this->hasMany(ObligationHistoryEntry::class);
     }
 }

@@ -152,6 +152,9 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/admin/documents/{document}/download', App\Http\Controllers\Admin\AdminDocumentDownloadController::class)
         ->name('admin.documents.download')
         ->middleware('throttle:60,1');
+    Route::get('/admin/obligations/evidences/{evidence}/download', App\Http\Controllers\Admin\ObligationEvidenceDownloadController::class)
+        ->name('admin.obligations.evidences.download')
+        ->middleware('throttle:60,1');
 });
 
 Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(function () {

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -100,6 +101,7 @@ class ObligationsRelationManager extends RelationManager
                     ->authorize(fn (): bool => $this->canManage()),
             ])
             ->actions([
+                $this->makeHistoryAction(),
                 EditAction::make()
                     ->authorize(fn (): bool => $this->canManage()),
                 DeleteAction::make()
@@ -113,6 +115,27 @@ class ObligationsRelationManager extends RelationManager
             ])
             ->emptyStateHeading('Nenhuma obrigação consolidada')
             ->emptyStateDescription('Aprove sugestões na aba "Obrigações Sugeridas" ou cadastre manualmente.');
+    }
+
+    protected function makeHistoryAction(): Action
+    {
+        return Action::make('history')
+            ->label('Histórico')
+            ->icon('heroicon-o-clock')
+            ->color('gray')
+            ->modalHeading('Histórico da Obrigação')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Fechar')
+            ->authorize(fn (): bool => auth()->user()?->can('obligations.view') ?? false)
+            ->modalContent(fn (Obligation $record) => view('filament.obligations.history-timeline', [
+                'obligation' => $record,
+                'entries' => $record->historyEntries()
+                    ->with('user')
+                    ->latest('occurred_at')
+                    ->latest('id')
+                    ->limit(200)
+                    ->get(),
+            ]));
     }
 
     protected function canManage(): bool
