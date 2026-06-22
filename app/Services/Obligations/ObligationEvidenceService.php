@@ -78,13 +78,21 @@ class ObligationEvidenceService
     protected function validate(UploadedFile $file): void
     {
         $allowedExtensions = (array) config('uploads.obligation_evidence.allowed_extensions', []);
+        $allowedMimes = (array) config('uploads.obligation_evidence.allowed_mimes', []);
         $maxKb = (int) config('uploads.obligation_evidence.max_kb', 20480);
 
         $extension = mb_strtolower($file->getClientOriginalExtension());
+        $mimeType = $file->getMimeType();
 
         if (! in_array($extension, $allowedExtensions, true)) {
             throw ValidationException::withMessages([
                 'file' => 'Tipo de arquivo não permitido. Envie PDF, DOC, DOCX, XLS, XLSX, CSV, PNG ou JPG.',
+            ]);
+        }
+
+        if (! is_string($mimeType) || ! in_array($mimeType, $allowedMimes, true)) {
+            throw ValidationException::withMessages([
+                'file' => 'O tipo do arquivo enviado não é suportado. Envie PDF, DOC, DOCX, XLS, XLSX, CSV, PNG ou JPG.',
             ]);
         }
 

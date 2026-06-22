@@ -123,6 +123,17 @@ it('uses the configured fallback email when there is no responsible user', funct
     Mail::assertSent(ObligationDueNotificationMail::class, fn (ObligationDueNotificationMail $mail): bool => $mail->hasTo('ops@bsi.test'));
 });
 
+it('prefers the responsible user email over the configured fallback email', function () {
+    config(['obligations.notifications.fallback_email' => 'ops@bsi.test']);
+    $user = User::factory()->create(['email' => 'resp@bsi.test']);
+    makeObligationFor('a_vencer', now()->addDays(7), $user);
+
+    runNotifications();
+
+    Mail::assertSent(ObligationDueNotificationMail::class, fn (ObligationDueNotificationMail $mail): bool => $mail->hasTo('resp@bsi.test')
+        && ! $mail->hasTo('ops@bsi.test'));
+});
+
 it('does not send a duplicate notification for the same milestone', function () {
     $user = User::factory()->create(['email' => 'resp@bsi.test']);
     $obligation = makeObligationFor('a_vencer', now()->addDays(7), $user);

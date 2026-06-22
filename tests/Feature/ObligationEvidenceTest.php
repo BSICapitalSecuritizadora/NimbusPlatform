@@ -72,10 +72,35 @@ it('rejects files with a disallowed extension', function () {
     expect(ObligationEvidence::count())->toBe(0);
 });
 
+it('rejects files with a disallowed mime type', function () {
+    $obligation = Obligation::factory()->create();
+    $file = UploadedFile::fake()->create('comprovante.pdf', 10, 'application/x-msdownload');
+
+    expect(fn () => evidenceService()->store($obligation, $file, null, null))
+        ->toThrow(ValidationException::class);
+
+    expect(ObligationEvidence::count())->toBe(0);
+});
+
 it('blocks an upload when the antivirus flags the file as infected', function () {
     $this->mock(ClamAvFileScanner::class, function ($mock) {
         $mock->shouldReceive('isEnabled')->andReturnTrue();
         $mock->shouldReceive('scan')->andReturn(ClamAvFileScanner::RESULT_INFECTED);
+    });
+
+    $obligation = Obligation::factory()->create();
+    $file = UploadedFile::fake()->create('comprovante.pdf', 50, 'application/pdf');
+
+    expect(fn () => app(ObligationEvidenceService::class)->store($obligation, $file, null, null))
+        ->toThrow(ValidationException::class);
+
+    expect(ObligationEvidence::count())->toBe(0);
+});
+
+it('blocks an upload when the antivirus is enabled but unavailable', function () {
+    $this->mock(ClamAvFileScanner::class, function ($mock) {
+        $mock->shouldReceive('isEnabled')->andReturnTrue();
+        $mock->shouldReceive('scan')->andReturn(ClamAvFileScanner::RESULT_UNAVAILABLE);
     });
 
     $obligation = Obligation::factory()->create();
