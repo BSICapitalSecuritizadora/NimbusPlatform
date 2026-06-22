@@ -7,7 +7,7 @@ uses(RefreshDatabase::class);
 it('renders the revised document ACL copy on the technology area page', function () {
     $this->get(route('site.servicos.documentos-acl'))
         ->assertSuccessful()
-        ->assertSee('Governança documental e sigilo operacional')
+        ->assertSee('Governança documental, permissões e rastreabilidade')
         ->assertSee('Segregação por Operação')
         ->assertSee('Rastreabilidade de Custódia');
 });
@@ -15,17 +15,17 @@ it('renders the revised document ACL copy on the technology area page', function
 it('renders the revised access audit copy on the technology area page', function () {
     $this->get(route('site.servicos.auditoria-acessos'))
         ->assertSuccessful()
-        ->assertSee('Governança e evidência de acesso')
+        ->assertSee('Governança, logs e evidências operacionais')
         ->assertSee('Monitoramento Fiduciário')
-        ->assertSee('Prontidão para Auditoria');
+        ->assertSee('Relatórios para auditoria e compliance');
 });
 
 it('renders the revised integrations copy on the technology area page', function () {
     $this->get(route('site.servicos.integracoes'))
         ->assertSuccessful()
         ->assertSee('Integrações')
-        ->assertSee('Conexão com Ecossistema')
-        ->assertSee('Conectividade nativa com o ecossistema de mercado de capitais')
+        ->assertSee('Conectividade operacional com o ecossistema da operação')
+        ->assertSee('Conectividade para stakeholders e sistemas')
         ->assertDontSee('Portal Developer')
         ->assertDontSee('Arquitetura de Conectividade');
 });

@@ -46,7 +46,12 @@ class PuHomologationReportService
             ],
             'parameters' => [
                 'indexer' => $snapshot['indexer'] ?? null,
+                'indexer_label' => $this->indexerLabel($snapshot['indexer'] ?? null),
+                'is_homologated_indexer' => $this->isHomologatedIndexer($snapshot['indexer'] ?? null),
+                'calculation_method' => $snapshot['calculation_method'] ?? null,
+                'method_version' => $snapshot['method_version'] ?? $version->engine_version,
                 'spread_rate' => $snapshot['spread_rate'] ?? null,
+                'annual_rate' => $snapshot['annual_rate'] ?? null,
                 'initial_unit_value' => $snapshot['initial_unit_value'] ?? null,
                 'curve_start_date' => $snapshot['curve_start_date'] ?? null,
                 'curve_end_date' => $snapshot['curve_end_date'] ?? null,
@@ -76,6 +81,20 @@ class PuHomologationReportService
             $version->emission_id,
             $version->calculation_version,
         );
+    }
+
+    private function indexerLabel(?string $indexer): string
+    {
+        if ($indexer === null) {
+            return '—';
+        }
+
+        return \App\Domain\PuCalculator\Enums\PuIndexer::tryFrom($indexer)?->label() ?? $indexer;
+    }
+
+    private function isHomologatedIndexer(?string $indexer): bool
+    {
+        return \App\Domain\PuCalculator\Enums\PuIndexer::tryFrom((string) $indexer)?->isHomologated() ?? false;
     }
 
     private function emissionIdentifier(EmissionPuCurveVersion $version): string

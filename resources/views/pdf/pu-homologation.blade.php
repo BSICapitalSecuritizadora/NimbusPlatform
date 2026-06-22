@@ -67,7 +67,15 @@
 
     <div class="section-title">Parâmetros do Cálculo</div>
     <table class="kv">
-        <tr><td class="label">Indexador</td><td class="value">{{ $parameters['indexer'] ?? '-' }}</td></tr>
+        <tr><td class="label">Indexador</td><td class="value">{{ $parameters['indexer_label'] ?? ($parameters['indexer'] ?? '-') }}
+            @if (($parameters['is_homologated_indexer'] ?? false) === false)
+                <span class="badge warn">experimental</span>
+            @endif
+        </td></tr>
+        <tr><td class="label">Método de cálculo</td><td class="value">{{ $parameters['calculation_method'] ?? '-' }} ({{ $parameters['method_version'] ?? '-' }})</td></tr>
+        @if (!empty($parameters['annual_rate']))
+            <tr><td class="label">Taxa prefixada (% a.a.)</td><td class="value">{{ $parameters['annual_rate'] }}</td></tr>
+        @endif
         <tr><td class="label">Spread (% a.a.)</td><td class="value">{{ $parameters['spread_rate'] ?? '-' }}</td></tr>
         <tr><td class="label">PU inicial</td><td class="value">{{ $parameters['initial_unit_value'] ?? '-' }}</td></tr>
         <tr><td class="label">Início da curva</td><td class="value">{{ $parameters['curve_start_date'] ?? '-' }}</td></tr>

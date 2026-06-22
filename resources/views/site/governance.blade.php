@@ -11,18 +11,18 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Transparência</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Governança que <br><span style="color: var(--gold);">gera confiança</span>
+                    Governança Corporativa com <br><span style="color: var(--gold);">transparência, controles e responsabilidade fiduciária</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Acreditamos que a transparência é o que sustenta o mercado de capitais. Por isso, nossa estrutura de governança é desenhada para garantir que cada decisão seja técnica, isenta e totalmente alinhada às melhores práticas de mercado, sustentada por controles internos rigorosos e disciplina regulatória.
+                    Nossa estrutura de governança é orientada por transparência, controles internos, segregação de funções e disciplina regulatória, apoiando decisões técnicas, rastreáveis e alinhadas às responsabilidades da BSI no mercado de capitais.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Falar com Especialista
+                    <a href="#documentacao" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                        Conhecer práticas de governança
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.ri') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                        Relação com Investidores
+                        Relações com Investidores
                     </a>
                 </div>
             </div>
@@ -37,8 +37,8 @@
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">Conselho Ativo</div>
-                            <div class="fw-bold fs-5" style="color: #0b1220;">100% Independente</div>
+                            <div class="text-muted small fw-medium">Governança</div>
+                            <div class="fw-bold fs-5" style="color: #0b1220;">Segregação Decisória</div>
                         </div>
                     </div>
                 </div>
@@ -55,9 +55,9 @@
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid rgba(212,175,55,0.4); color: var(--gold); background: var(--brand); box-shadow: 0 4px 12px rgba(9,27,35,0.15); letter-spacing: 0.1em; font-weight: 600;">Conformidade</span>
-                <h2 class="h3 fw-bold text-dark mb-4">Integridade e Sustentabilidade</h2>
-                <p class="text-muted mb-3">Mais do que uma exigência, a conformidade faz parte do nosso dia a dia. Atuamos com políticas rigorosas para assegurar que cada operação seja ética, transparente e segura.</p>
-                <p class="text-muted mb-4">Nossa análise também olha para o futuro. Usamos referências como <strong>GRI</strong> e <strong>SASB</strong> para monitorar o impacto socioambiental de cada ativo, garantindo que o crescimento seja sustentável para todos.</p>
+                <h2 class="h3 fw-bold text-dark mb-4">Integridade, conformidade e responsabilidade socioambiental</h2>
+                <p class="text-muted mb-3">Mais do que uma exigência, a conformidade faz parte da nossa cultura. Atuamos com políticas institucionais para apoiar operações éticas, transparentes e alinhadas às normas aplicáveis.</p>
+                <p class="text-muted mb-4">Consideramos aspectos socioambientais e de governança na análise das operações, conforme a natureza do ativo, documentos da emissão e critérios aplicáveis de mercado.</p>
 
                 <div class="d-flex flex-column gap-3">
                     <div class="d-flex align-items-start gap-3">
@@ -66,7 +66,7 @@
                         </div>
                         <div>
                             <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Respeito às Normas</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Seguimos rigorosamente todas as determinações da CVM e os padrões de autorregulação da ANBIMA.</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Atuação orientada pelas determinações da CVM e os padrões de autorregulação da ANBIMA.</div>
                         </div>
                     </div>
                     <div class="d-flex align-items-start gap-3">
@@ -74,8 +74,8 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                         </div>
                         <div>
-                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Foco em Ativos Verdes</div>
-                            <div class="text-muted" style="font-size: 0.9rem;">Priorizamos a estruturação de títulos que respeitam padrões globais de sustentabilidade e impacto social.</div>
+                            <div class="fw-bold" style="color: #0b1220; font-size: 0.95rem;">Aspectos ESG</div>
+                            <div class="text-muted" style="font-size: 0.9rem;">Consideramos fatores socioambientais e de governança na análise das operações, quando aplicável.</div>
                         </div>
                     </div>
                 </div>
@@ -90,8 +90,8 @@
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                             </div>
                             <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Independência Decisória</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Membros externos participam dos nossos comitês para garantir que o interesse do investidor esteja sempre em primeiro lugar.</div>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Segregação decisória e governança</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">A estrutura de comitês e controles internos apoia a análise técnica, o registro das decisões e a mitigação de conflitos de interesse.</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(0,32,91,0.04);">
@@ -99,8 +99,8 @@
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                             </div>
                             <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Fiscalização Ativa</div>
-                                <div class="text-muted" style="font-size: 0.85rem;">Acompanhamento diário das teses de crédito e dos ativos garantidores.</div>
+                                <div class="fw-bold" style="font-size: 0.95rem; color: #0b1220;">Acompanhamento e controles internos</div>
+                                <div class="text-muted" style="font-size: 0.85rem;">Acompanhamento das teses de crédito e dos ativos garantidores conforme os documentos da operação.</div>
                             </div>
                         </div>
                     </div>
@@ -129,7 +129,7 @@
                         <div class="col-md-8 p-5 d-flex flex-column justify-content-center">
                             <span class="badge mb-3 px-3 py-2 text-uppercase align-self-start" style="border: 1px solid rgba(0,32,91,0.2); color: var(--brand); background: rgba(0,32,91,0.05); letter-spacing: 0.1em; font-weight: 600;">Confidencial</span>
                             <h4 class="h3 fw-bold text-dark mb-3">Compromisso com a Integridade</h4>
-                            <p class="text-muted mb-4" style="font-size: 1.05rem; line-height: 1.6;">Possuímos um canal independente e seguro para denúncias e relatos de condutas que não estejam alinhadas com nossos valores éticos e políticas internas.</p>
+                            <p class="text-muted mb-4" style="font-size: 1.05rem; line-height: 1.6;">Possuímos um canal institucional para recebimento e tratamento de relatos, conforme políticas internas, para condutas que não estejam alinhadas com nossos valores éticos.</p>
                             <div class="d-flex flex-wrap gap-3 mt-2">
                                 <a href="mailto:etica@bsicapital.com.br" class="btn btn-brand d-inline-flex align-items-center gap-2 px-4 py-3 shadow-sm" style="border-radius: 10px; transition: all 0.3s ease;">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
@@ -152,8 +152,8 @@
 <section class="py-5" style="background: #0b1220;">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Documentação Corporativa</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Estatutos, Atas e Políticas: O coração da nossa transparência institucional disponível para consulta pública.</p>
+            <h2 id="documentacao" class="h3 fw-bold mb-3" style="color: #ffffff;">Documentação Corporativa</h2>
+            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Documentos institucionais, societários e normativos disponíveis para consulta pública.</p>
         </div>
 
         <div class="row g-4 mb-5">
@@ -229,7 +229,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Diretoria Executiva</div>
-                                <div style="font-size: 0.85rem; color: #8892b0;">Gestão estratégica e supervisão integral das diretrizes operacionais da companhia.</div>
+                                <div style="font-size: 0.85rem; color: #8892b0;">Gestão estratégica e supervisão das diretrizes operacionais e estratégicas da companhia.</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
@@ -238,7 +238,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Comitê de Compliance</div>
-                                <div style="font-size: 0.85rem; color: #8892b0;">Zelo pelas diretrizes de conformidade, conduta ética e eficiência dos controles internos.</div>
+                                <div style="font-size: 0.85rem; color: #8892b0;">Zelar por conformidade, conduta ética e controles internos.</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
@@ -247,7 +247,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Comitê de Riscos</div>
-                                <div style="font-size: 0.85rem; color: #8892b0;">Monitoramento fiduciário e mitigação de riscos associados às operações de securitização.</div>
+                                <div style="font-size: 0.85rem; color: #8892b0;">Monitoramento de riscos associados às operações.</div>
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
@@ -256,7 +256,7 @@
                             </div>
                             <div>
                                 <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Auditoria Interna</div>
-                                <div style="font-size: 0.85rem; color: #8892b0;">Avaliação independente com estrita segregação de funções, visando a eficácia do ambiente de controle.</div>
+                                <div style="font-size: 0.85rem; color: #8892b0;">Avaliação de controles e processos, conforme estrutura interna aplicável.</div>
                             </div>
                         </div>
                     </div>
@@ -310,8 +310,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Como protegemos sua operação</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Nossa gestão de riscos não é apenas teórica. Atuamos em frentes específicas para antecipar desafios e proteger o patrimônio dos investidores.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Controles aplicados à governança da operação</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Atuamos em frentes específicas para mitigar riscos operacionais, apoiando decisões técnicas e a rastreabilidade da operação.</p>
         </div>
 
         <div class="row g-4">
@@ -321,7 +321,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Análise de Crédito</h3>
-                    <p class="text-muted mb-0">Olhamos de perto para cada garantia. Avaliamos a qualidade dos recebíveis e a robustez do lastro para garantir que a estrutura seja sólida desde o primeiro dia.</p>
+                    <p class="text-muted mb-0">Avaliamos a qualidade dos recebíveis, garantias e lastro, buscando assegurar a robustez da estrutura conforme normas aplicáveis.</p>
 
                 </div>
             </div>
@@ -332,7 +332,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência de Mercado</h3>
-                    <p class="text-muted mb-0">Monitoramos taxas, indexadores e o cenário econômico. Nossa equipe acompanha as variações do mercado para ajustar as estratégias sempre que necessário.</p>
+                    <p class="text-muted mb-0">Acompanhamos taxas, indexadores e o cenário econômico, apoiando decisões e monitoramento da operação.</p>
                 </div>
             </div>
 
@@ -342,7 +342,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segurança Operacional</h3>
-                    <p class="text-muted mb-0">Processos claros e trilhas de auditoria que não deixam dúvidas. Nossos controles internos são desenhados para evitar falhas e garantir a integridade total dos dados.</p>
+                    <p class="text-muted mb-0">Controles internos, registros e trilhas de auditoria para apoiar a rastreabilidade operacional e consistência dos dados.</p>
                 </div>
             </div>
         </div>
@@ -355,19 +355,19 @@
         <div class="row justify-content-center text-center">
             <div class="col-lg-10">
                 <div class="p-5 rounded-4 border shadow-sm" style="background: linear-gradient(to right, rgba(212,175,55,0.02), rgba(0,32,91,0.02));">
-                    <h2 class="h4 fw-bold mb-4" style="color: var(--brand);">Princípios Inegociáveis</h2>
+                    <h2 class="h4 fw-bold mb-4" style="color: var(--brand);">Princípios de governança</h2>
                     <div class="row g-4">
                         <div class="col-md-4">
-                            <div class="fw-bold mb-2" style="color: var(--gold);">Transparência Radical</div>
+                            <div class="fw-bold mb-2" style="color: var(--gold);">Transparência e prestação de contas</div>
                             <p class="small text-muted mb-0">Comunicação aberta e precisa com todos os stakeholders sobre o desempenho e os riscos das operações.</p>
                         </div>
                         <div class="col-md-4">
                             <div class="fw-bold mb-2" style="color: var(--gold);">Equidade de Tratamento</div>
-                            <p class="small text-muted mb-0">Garantia de isonomia e respeito aos direitos de todos os investidores, independentemente do porte ou perfil.</p>
+                            <p class="small text-muted mb-0">Tratamento equitativo de investidores e stakeholders, conforme normas aplicáveis, documentos da operação e direitos de cada parte.</p>
                         </div>
                         <div class="col-md-4">
                             <div class="fw-bold mb-2" style="color: var(--gold);">Accountability</div>
-                            <p class="small text-muted mb-0">Prestação de contas rigorosa, com responsabilidade clara sobre cada decisão e resultado alcançado.</p>
+                            <p class="small text-muted mb-0">Prestação de contas com responsabilidades definidas, registro das decisões e acompanhamento dos processos sob responsabilidade da companhia.</p>
                         </div>
                     </div>
                 </div>
@@ -382,7 +382,7 @@
         <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Estamos à Sua Disposição</h2>
         <p class="mx-auto mb-5" style="max-width: 550px; color: #E6E4E4;">Se precisar de esclarecimentos sobre nossas práticas de governança ou canais institucionais de contato, fale com nossa equipe.</p>
         <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center gap-2 px-5 py-3 shadow-lg">
-            Fale com nossa equipe
+            Falar com Governança e Compliance
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         </a>
     </div>

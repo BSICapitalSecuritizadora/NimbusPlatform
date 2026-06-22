@@ -601,16 +601,30 @@ class EditEmission extends EditRecord
                 ->label('Valor unitario inicial')
                 ->required()
                 ->inputMode('decimal'),
-            TextInput::make('spread_rate')
-                ->label('Spread (% a.a.)')
-                ->required()
-                ->inputMode('decimal'),
             Select::make('indexer')
                 ->label('Indexador')
                 ->options([
-                    PuIndexer::Cdi->value => 'CDI',
+                    PuIndexer::Cdi->value => PuIndexer::Cdi->label(),
+                    PuIndexer::Prefixed->value => PuIndexer::Prefixed->label(),
+                    PuIndexer::Ipca->value => PuIndexer::Ipca->label(),
                 ])
+                ->default(PuIndexer::Cdi->value)
+                ->live()
                 ->required(),
+            Placeholder::make('ipca_notice')
+                ->label('')
+                ->content('O indexador IPCA esta EM PREPARACAO: os parametros podem ser cadastrados, mas a geracao da curva permanece bloqueada nesta versao.')
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Ipca->value),
+            TextInput::make('spread_rate')
+                ->label('Spread (% a.a.)')
+                ->inputMode('decimal')
+                ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value)
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value),
+            TextInput::make('annual_rate')
+                ->label('Taxa prefixada (% a.a.)')
+                ->inputMode('decimal')
+                ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Prefixed->value)
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Prefixed->value),
             TextInput::make('business_day_basis')
                 ->label('Base de dias uteis')
                 ->numeric()
@@ -628,13 +642,14 @@ class EditEmission extends EditRecord
                     PuIndexRateLookupMode::BusinessDayLagExact->value => 'CDI exato com defasagem em dias uteis',
                 ])
                 ->live()
-                ->required(),
+                ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value)
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value),
             TextInput::make('index_rate_lag_business_days')
                 ->label('Defasagem util do CDI')
                 ->numeric()
                 ->default(1)
-                ->required(fn (Get $get): bool => $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value)
-                ->visible(fn (Get $get): bool => $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value),
+                ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value)
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value),
             Toggle::make('legacy_projection_enabled')
                 ->label('Atualizar projecoes legadas (payments / pu_histories)')
                 ->default(true),
@@ -653,6 +668,7 @@ class EditEmission extends EditRecord
             'curve_end_date' => $parameter?->curve_end_date?->toDateString() ?? $this->getRecord()->maturity_date?->toDateString(),
             'initial_unit_value' => $parameter?->getRawOriginal('initial_unit_value') ?? $this->getRecord()->getRawOriginal('issued_price') ?? '1000.0000000000000000',
             'spread_rate' => $parameter?->getRawOriginal('spread_rate') ?? $this->getRecord()->getRawOriginal('remuneration_rate') ?? '0.00000000',
+            'annual_rate' => $parameter?->getRawOriginal('annual_rate'),
             'indexer' => $parameter?->indexer ?? PuIndexer::Cdi->value,
             'business_day_basis' => $parameter?->business_day_basis ?? 252,
             'calendar_code' => $parameter?->calendar_code ?? 'B3',

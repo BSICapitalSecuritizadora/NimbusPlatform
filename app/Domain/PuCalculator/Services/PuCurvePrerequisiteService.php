@@ -6,6 +6,7 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteIssue;
+use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
@@ -64,17 +65,26 @@ class PuCurvePrerequisiteService
             );
         }
 
-        if ($parameter->spread_rate === null) {
+        $indexer = $parameter->indexer_enum;
+
+        if ($indexer === PuIndexer::Ipca) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'indexer',
+                'A curva IPCA esta em preparacao e nao pode ser gerada nesta versao da calculadora.',
+            );
+        }
+
+        if ($indexer->usesSpread() && $parameter->spread_rate === null) {
             $issues[] = PuCurvePrerequisiteIssue::blocking(
                 'spread_rate',
                 'Informe o spread anual da operacao.',
             );
         }
 
-        if ((string) $parameter->indexer !== 'CDI') {
+        if ($indexer->usesAnnualRate() && bccomp((string) ($parameter->annual_rate ?? '0'), '0', DecimalRounder::RATE_SCALE) <= 0) {
             $issues[] = PuCurvePrerequisiteIssue::blocking(
-                'indexer',
-                'A fase atual da calculadora suporta apenas operacoes indexadas ao CDI.',
+                'annual_rate',
+                'Informe a taxa prefixada anual maior que zero.',
             );
         }
 
@@ -93,7 +103,8 @@ class PuCurvePrerequisiteService
         }
 
         if (
-            $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
+            $indexer->requiresIndexRates()
+            && $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
             && (int) $parameter->index_rate_lag_business_days < 1
         ) {
             $issues[] = PuCurvePrerequisiteIssue::blocking(
@@ -105,7 +116,10 @@ class PuCurvePrerequisiteService
         if ($startDate !== null && $endDate !== null && $endDate->gte($startDate)) {
             $this->validateIntegralizationTimeline($issues, $emission, $endDate);
             $this->validateCalendarCoverage($issues, $startDate, $endDate, (string) $parameter->calendar_code);
-            $this->validateIndexCoverage($issues, $parameter, $startDate, $endDate);
+
+            if ($indexer === PuIndexer::Cdi) {
+                $this->validateIndexCoverage($issues, $parameter, $startDate, $endDate);
+            }
         }
 
         if ($emission->puEvents->isEmpty()) {

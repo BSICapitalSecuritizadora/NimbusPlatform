@@ -53,9 +53,14 @@
                         <span>Validada: <strong>{{ $version->validated_at?->format('d/m/Y H:i') ?? '-' }}</strong> {{ $version->validatedBy?->name ? '— '.$version->validatedBy->name : '' }}</span>
                         <span>Homologada: <strong>{{ $version->homologated_at?->format('d/m/Y H:i') ?? '-' }}</strong> {{ $version->homologatedBy?->name ? '— '.$version->homologatedBy->name : '' }}</span>
                         <span>Linhas geradas: <strong>{{ $version->rows_count ?? '-' }}</strong></span>
-                        <span>Indexador: <strong>{{ $params['indexer'] ?? '-' }}</strong></span>
-                        <span>Spread: <strong>{{ $params['spread_rate'] ?? '-' }}</strong></span>
-                        <span>PU inicial: <strong>{{ $params['initial_unit_value'] ?? '-' }}</strong></span>
+                        <span>Indexador: <strong>{{ $params['indexer'] ?? '—' }}</strong></span>
+                        <span>Método: <strong>{{ $params['calculation_method'] ?? '—' }}</strong></span>
+                        @if (!empty($params['annual_rate']))
+                            <span>Taxa prefixada: <strong>{{ $params['annual_rate'] }}</strong></span>
+                        @else
+                            <span>Spread: <strong>{{ $params['spread_rate'] ?? '—' }}</strong></span>
+                        @endif
+                        <span>PU inicial: <strong>{{ $params['initial_unit_value'] ?? '—' }}</strong></span>
                         <span>Período: <strong>{{ $params['curve_start_date'] ?? '-' }} → {{ $params['curve_end_date'] ?? '-' }}</strong></span>
                         <span>Engine: <strong>{{ $version->engine_version ?? '-' }}</strong></span>
                     </div>

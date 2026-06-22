@@ -83,7 +83,16 @@ class PuCurveExportService
             $firstRow->calculation_version,
         );
 
-        return response()->streamDownload(function () use ($rows): void {
+        $snapshot = \App\Models\EmissionPuCurveVersion::query()
+            ->where('emission_id', $emission->id)
+            ->where('calculation_version', $firstRow->calculation_version)
+            ->orderByDesc('id')
+            ->first(['parameters_snapshot'])?->parameters_snapshot ?? [];
+
+        $indexer = $snapshot['indexer'] ?? $emission->puParameter?->indexer ?? '';
+        $calculationMethod = $snapshot['calculation_method'] ?? ($emission->puParameter?->resolvedCalculationMethod()->value ?? '');
+
+        return response()->streamDownload(function () use ($rows, $indexer, $calculationMethod): void {
             $handle = fopen('php://output', 'wb');
 
             if ($handle === false) {
@@ -95,6 +104,8 @@ class PuCurveExportService
             fputcsv($handle, [
                 'data',
                 'versao_calculo',
+                'indexador',
+                'metodo_calculo',
                 'PU_atualizado',
                 'PU_residual',
                 'juros_real',
@@ -116,6 +127,8 @@ class PuCurveExportService
                 fputcsv($handle, [
                     $row->curve_date?->toDateString(),
                     $row->calculation_version,
+                    (string) $indexer,
+                    (string) $calculationMethod,
                     (string) $row->updated_unit_value,
                     (string) $row->residual_unit_value,
                     (string) $row->interest_real_unit_value,

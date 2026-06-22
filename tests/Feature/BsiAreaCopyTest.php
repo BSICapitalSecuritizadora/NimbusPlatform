@@ -29,7 +29,7 @@ beforeEach(function () {
 it('renders the revised about copy on the bsi area page', function () {
     $this->get(route('site.about'))
         ->assertSuccessful()
-        ->assertSee('Securitizadora constituída em 2009, a BSI Capital')
+        ->assertSee('Securitizadora registrada na CVM, a BSI Capital')
         ->assertSee('Missão, visão e valores')
         ->assertSee('Integridade e Ética');
 });
@@ -37,9 +37,9 @@ it('renders the revised about copy on the bsi area page', function () {
 it('renders the revised governance copy on the bsi area page', function () {
     $this->get(route('site.governance'))
         ->assertSuccessful()
-        ->assertSee('controles internos rigorosos e disciplina regulatória')
+        ->assertSee('controles internos, segregação de funções e disciplina regulatória')
         ->assertSee('Políticas e Normativos Internos')
-        ->assertSee('Gestão de Riscos');
+        ->assertSee('Controles aplicados à governança da operação');
 });
 
 it('renders the revised compliance copy on the bsi area page', function () {

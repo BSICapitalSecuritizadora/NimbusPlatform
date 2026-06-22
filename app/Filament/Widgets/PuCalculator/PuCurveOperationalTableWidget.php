@@ -31,6 +31,7 @@ class PuCurveOperationalTableWidget extends TableWidget
                 Emission::query()
                     ->whereHas('puParameter')
                     ->with([
+                        'puParameter',
                         'latestPuCurveVersion.generatedBy',
                     ]),
             )
@@ -44,6 +45,12 @@ class PuCurveOperationalTableWidget extends TableWidget
                 TextColumn::make('latestPuCurveVersion.calculation_version')
                     ->label('Versão')
                     ->placeholder('—'),
+                TextColumn::make('indexer')
+                    ->label('Indexador')
+                    ->badge()
+                    ->state(fn (Emission $record): string => $record->latestPuCurveVersion?->parameters_snapshot['indexer']
+                        ?? $record->puParameter?->indexer
+                        ?? '—'),
                 TextColumn::make('latestPuCurveVersion.status')
                     ->label('Status')
                     ->badge()
