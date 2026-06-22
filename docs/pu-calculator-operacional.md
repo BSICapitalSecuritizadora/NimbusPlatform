@@ -153,6 +153,73 @@ Reporta jobs pendentes, jobs falhos (`failed_jobs`) e versões `processing` há 
 monitoramento/alertas. Observação: os contadores assumem o driver `database`; com Horizon/Redis as métricas
 de pendência vêm do próprio Horizon.
 
+## Monitoramento operacional (scheduler + alertas + painel)
+
+### Migrations
+
+Antes de tudo, aplique as migrations pendentes no ambiente real:
+
+```bash
+php artisan migrate
+```
+
+Inclui `obsolete_reason` (timeline/PDF) e a permissão `pu.dashboard.view` (painel operacional).
+
+### Scheduler
+
+O `pu:queue-health --alert` roda automaticamente a cada 10 minutos (registrado em `routes/console.php`,
+nome `pu-queue-health`). Em produção, garanta o cron do scheduler:
+
+```cron
+* * * * * cd /var/www/html && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Verifique com `php artisan schedule:list`. O comando só lê o banco e só envia e-mail se houver
+destinatários — é seguro em ambientes locais.
+
+### Worker de fila
+
+Igual à seção anterior: mantenha `php artisan queue:work --tries=1 --timeout=900` supervisionado
+(Supervisor/systemd) ou Laravel Horizon. **Sem worker, as curvas ficam "processando" indefinidamente.**
+
+### Alertas por e-mail
+
+Configure os destinatários no `.env`:
+
+```dotenv
+PU_CALCULATOR_ALERT_RECIPIENTS="ops@empresa.com,risco@empresa.com"
+PU_CALCULATOR_STALE_PROCESSING_MINUTES=30
+PU_CALCULATOR_ALERT_COOLDOWN_MINUTES=180
+```
+
+O alerta (`PuCurveHealthAlertMail`) é disparado pelo scheduler quando há problema crítico:
+curva travada em "processando", job de PU falho (`GeneratePuDailyCurveJob`/`ValidatePuCurveJob`),
+curva em estado de erro ou CDI obrigatório faltante. Há **cooldown** (default 180 min) por conjunto de
+problemas — um problema novo re-dispara imediatamente. Sem destinatários configurados, nenhum e-mail é
+enviado. Slack/Teams não estão integrados nesta fase (apenas e-mail).
+
+### Painel Operacional de PU (dashboard multi-emissão)
+
+Acesse **Gestão > Painel Operacional de PU** (`/admin/pu-curve-dashboard`, permissão `pu.dashboard.view`).
+Mostra cards consolidados (emissões com PU, homologadas, validadas, divergentes, processando, erro,
+obsoletas, sem curva, CDI faltante, jobs pendentes/falhos) e uma tabela por emissão com versão atual,
+status, datas de geração/validação/homologação, responsável, maior divergência e CDI faltante, com ações
+rápidas: timeline, PDF de homologação e abrir a emissão para reprocessar.
+
+### Como interpretar alertas / agir
+
+- **Curva "processando" há muito tempo** → confirme o worker (`queue:work`/Horizon) e veja
+  `php artisan queue:failed`; reprocesse pela tela da emissão se o job morreu.
+- **Job de PU falho** → `php artisan queue:failed` lista; corrija a causa e `queue:retry`.
+- **CDI faltante** → `php artisan pu:check-missing-data {emissão}` e complete os índices/calendário.
+- **Curva em erro** → veja `error_message` no painel/timeline e os logs.
+
+### Drivers de fila
+
+Os contadores de fila (`pu:queue-health`, painel, alertas) assumem o driver **`database`** (tabelas `jobs`/
+`failed_jobs`). Com **Horizon/Redis**, as métricas de pendência/falha devem vir do Horizon — a integração
+Horizon completa não faz parte desta fase.
+
 ## Troubleshooting
 
 - **"Geração bloqueada por dados incompletos"** — rode `pu:check-missing-data` e complete calendário/CDI/parâmetros.

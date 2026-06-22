@@ -29,6 +29,12 @@ class ObligationHistoryEntry extends Model
 
     public const EVENT_WAIVED = 'waived';
 
+    public const EVENT_SUBMITTED_FOR_REVIEW = 'submitted_for_review';
+
+    public const EVENT_MARKED_NOT_APPLICABLE = 'marked_not_applicable';
+
+    public const EVENT_REOPENED = 'reopened';
+
     public const EVENT_NOTIFICATION_SENT = 'notification_sent';
 
     public const EVENT_NOTIFICATION_FAILED = 'notification_failed';
@@ -47,6 +53,8 @@ class ObligationHistoryEntry extends Model
 
     public const SOURCE_NOTIFICATION = 'notification';
 
+    public const SOURCE_WORKFLOW = 'workflow';
+
     /**
      * Friendly, business-facing labels for each event type.
      *
@@ -62,6 +70,9 @@ class ObligationHistoryEntry extends Model
         self::EVENT_RECALCULATED_STATUS => 'Status recalculado',
         self::EVENT_COMPLETED => 'Obrigação concluída',
         self::EVENT_WAIVED => 'Marcada como não aplicável',
+        self::EVENT_SUBMITTED_FOR_REVIEW => 'Enviada para análise',
+        self::EVENT_MARKED_NOT_APPLICABLE => 'Marcada como não aplicável',
+        self::EVENT_REOPENED => 'Obrigação reaberta',
         self::EVENT_NOTIFICATION_SENT => 'Notificação enviada',
         self::EVENT_NOTIFICATION_FAILED => 'Falha na notificação',
         self::EVENT_EVIDENCE_UPLOADED => 'Evidência anexada',
@@ -79,6 +90,7 @@ class ObligationHistoryEntry extends Model
         self::SOURCE_SCHEDULED_COMMAND => 'Rotina automática',
         self::SOURCE_SYSTEM => 'Sistema',
         self::SOURCE_NOTIFICATION => 'Notificação automática',
+        self::SOURCE_WORKFLOW => 'Workflow operacional',
     ];
 
     protected $fillable = [

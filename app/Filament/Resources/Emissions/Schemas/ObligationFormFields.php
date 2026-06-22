@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Emissions\Schemas;
 use App\Models\ExtractedObligation;
 use App\Models\Obligation;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -109,11 +110,9 @@ class ObligationFormFields
         ];
 
         if ($mode === 'obligation') {
-            $fields[] = Select::make('status')
-                ->label('Status')
-                ->options(Obligation::STATUS_OPTIONS)
-                ->default('em_dia')
-                ->required();
+            $fields[] = Placeholder::make('status_summary')
+                ->label('Status atual')
+                ->content(fn (?Obligation $record): string => $record?->status_label ?? (Obligation::STATUS_OPTIONS['em_dia'] ?? 'Em dia'));
         }
 
         $fields[] = Textarea::make('required_evidence')

@@ -351,6 +351,11 @@ class Emission extends Model
         return $this->puCurveVersions()->current()->first();
     }
 
+    public function latestPuCurveVersion(): HasOne
+    {
+        return $this->hasOne(EmissionPuCurveVersion::class)->latestOfMany();
+    }
+
     public function integralizationHistories(): HasMany
     {
         return $this->hasMany(IntegralizationHistory::class);

@@ -2,21 +2,31 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\PuCalculator\SendPuCurveHealthAlertsAction;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Services\PuOperationalMonitorService;
 use App\Models\EmissionPuCurveVersion;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class PuQueueHealthCommand extends Command
 {
-    protected $signature = 'pu:queue-health {--stale-minutes=30 : Minutos para considerar uma geracao travada}';
+    protected $signature = 'pu:queue-health
+        {--stale-minutes= : Minutos para considerar uma geracao travada (default: config)}
+        {--alert : Dispara alerta por e-mail quando houver problema critico}';
 
     protected $description = 'Verifica saude da fila usada pela calculadora de PU (jobs pendentes, falhos e versoes travadas).';
 
-    public function handle(): int
-    {
-        $staleMinutes = (int) $this->option('stale-minutes');
+    public function handle(
+        PuOperationalMonitorService $monitor,
+        SendPuCurveHealthAlertsAction $sendAlerts,
+    ): int {
+        $staleMinutes = $this->option('stale-minutes') !== null
+            ? (int) $this->option('stale-minutes')
+            : (int) config('pu_calculator.stale_processing_minutes', 30);
+
         $hasProblem = false;
 
         $pendingJobs = Schema::hasTable('jobs') ? DB::table('jobs')->count() : 0;
@@ -49,6 +59,19 @@ class PuQueueHealthCommand extends Command
         } else {
             $this->line('Versoes travadas em processamento: 0');
         }
+
+        if ($this->option('alert')) {
+            $alerted = $sendAlerts->handle();
+            $this->line($alerted ? 'Alerta por e-mail enviado.' : 'Nenhum alerta enviado (sem problema critico, sem destinatarios ou em cooldown).');
+            $hasProblem = $hasProblem || $monitor->hasCriticalIssues();
+        }
+
+        Log::info('pu:queue-health executado', [
+            'pending_jobs' => $pendingJobs,
+            'failed_jobs' => $failedJobs,
+            'stale_versions' => $staleVersions->count(),
+            'has_problem' => $hasProblem,
+        ]);
 
         if ($hasProblem) {
             $this->newLine();

@@ -204,6 +204,34 @@ class ObligationHistoryRecorder
     }
 
     /**
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
+     * @param  array<string, mixed>|null  $metadata
+     */
+    public function recordWorkflowTransition(
+        Obligation $obligation,
+        string $eventType,
+        string $title,
+        string $description,
+        array $oldValues,
+        array $newValues,
+        ?array $metadata = null,
+        ?int $userId = null,
+    ): ObligationHistoryEntry {
+        return $this->record(
+            $obligation,
+            $eventType,
+            ObligationHistoryEntry::SOURCE_WORKFLOW,
+            $title,
+            $description,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            metadata: $metadata,
+            userId: $userId,
+        );
+    }
+
+    /**
      * Low-level, standardized entry point used by all helpers above.
      *
      * @param  array<string, mixed>|null  $oldValues
@@ -245,7 +273,10 @@ class ObligationHistoryRecorder
 
     protected function resolveUserId(string $source): ?int
     {
-        return $source === ObligationHistoryEntry::SOURCE_MANUAL ? auth()->id() : null;
+        return in_array($source, [
+            ObligationHistoryEntry::SOURCE_MANUAL,
+            ObligationHistoryEntry::SOURCE_WORKFLOW,
+        ], true) ? auth()->id() : null;
     }
 
     /**

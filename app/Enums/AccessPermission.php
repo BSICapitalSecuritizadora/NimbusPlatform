@@ -118,6 +118,7 @@ enum AccessPermission: string
     case PuCurveReprocess = 'pu.curve.reprocess';
     case PuCurveHomologate = 'pu.curve.homologate';
     case PuCurveInvalidate = 'pu.curve.invalidate';
+    case PuDashboardView = 'pu.dashboard.view';
     case AuditActivitiesView = 'audit.activities.view';
     case AuditDocumentDownloadsView = 'audit.document-downloads.view';
     case ReportsView = 'reports.view';
@@ -278,6 +279,7 @@ enum AccessPermission: string
             self::PuCurveReprocess => 'Curva de PU: reprocessar',
             self::PuCurveHomologate => 'Curva de PU: homologar',
             self::PuCurveInvalidate => 'Curva de PU: invalidar',
+            self::PuDashboardView => 'Curva de PU: painel operacional',
             self::AuditActivitiesView => 'Auditoria logs do sistema: visualizar',
             self::AuditDocumentDownloadsView => 'Auditoria downloads do portal: visualizar',
             self::ReportsView => 'Relatórios: visualizar',

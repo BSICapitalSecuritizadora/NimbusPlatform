@@ -4,14 +4,19 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
+use App\Services\Obligations\ObligationWorkflowService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -102,6 +107,10 @@ class ObligationsRelationManager extends RelationManager
             ])
             ->actions([
                 $this->makeHistoryAction(),
+                $this->makeSubmitForReviewAction(),
+                $this->makeCompleteAction(),
+                $this->makeMarkNotApplicableAction(),
+                $this->makeReopenAction(),
                 EditAction::make()
                     ->authorize(fn (): bool => $this->canManage()),
                 DeleteAction::make()
@@ -141,5 +150,155 @@ class ObligationsRelationManager extends RelationManager
     protected function canManage(): bool
     {
         return auth()->user()?->can('obligations.update') ?? false;
+    }
+
+    protected function makeSubmitForReviewAction(): Action
+    {
+        return Action::make('submit_for_review')
+            ->label('Enviar para análise')
+            ->icon('heroicon-o-eye')
+            ->color('warning')
+            ->modalWidth(Width::Large)
+            ->modalHeading('Enviar obrigação para análise')
+            ->modalSubmitActionLabel('Enviar para análise')
+            ->form([
+                Textarea::make('note')
+                    ->label('Observação')
+                    ->rows(4)
+                    ->required()
+                    ->maxLength(2000)
+                    ->placeholder('Descreva o contexto do envio para análise.'),
+            ])
+            ->visible(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_SUBMIT_FOR_REVIEW))
+            ->authorize(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_SUBMIT_FOR_REVIEW))
+            ->action(function (Obligation $record, array $data): void {
+                $this->workflow()->submitForReview($record, auth()->user(), $data['note'] ?? null);
+            })
+            ->successNotificationTitle('Obrigação enviada para análise.');
+    }
+
+    protected function makeCompleteAction(): Action
+    {
+        return Action::make('complete_obligation')
+            ->label('Concluir obrigação')
+            ->icon('heroicon-o-check-badge')
+            ->color('success')
+            ->modalWidth(Width::Large)
+            ->modalHeading('Concluir obrigação')
+            ->modalSubmitActionLabel('Concluir obrigação')
+            ->form(fn (Obligation $record): array => $this->completeActionForm($record))
+            ->visible(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_COMPLETE))
+            ->authorize(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_COMPLETE))
+            ->action(function (Obligation $record, array $data): void {
+                $this->workflow()->complete(
+                    $record,
+                    auth()->user(),
+                    $data['completion_notes'] ?? null,
+                    (bool) ($data['confirm_without_evidence'] ?? false),
+                );
+            })
+            ->successNotificationTitle('Obrigação concluída com sucesso.');
+    }
+
+    protected function makeMarkNotApplicableAction(): Action
+    {
+        return Action::make('mark_not_applicable')
+            ->label('Marcar como não aplicável')
+            ->icon('heroicon-o-no-symbol')
+            ->color('gray')
+            ->modalWidth(Width::Large)
+            ->modalHeading('Marcar obrigação como não aplicável')
+            ->modalSubmitActionLabel('Marcar como não aplicável')
+            ->form([
+                Textarea::make('reason')
+                    ->label('Motivo')
+                    ->rows(4)
+                    ->required()
+                    ->maxLength(2000)
+                    ->placeholder('Explique por que esta obrigação não se aplica.'),
+            ])
+            ->visible(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE))
+            ->authorize(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE))
+            ->action(function (Obligation $record, array $data): void {
+                $this->workflow()->markNotApplicable($record, auth()->user(), $data['reason'] ?? null);
+            })
+            ->successNotificationTitle('Obrigação marcada como não aplicável.');
+    }
+
+    protected function makeReopenAction(): Action
+    {
+        return Action::make('reopen_obligation')
+            ->label('Reabrir obrigação')
+            ->icon('heroicon-o-arrow-path')
+            ->color('info')
+            ->modalWidth(Width::Large)
+            ->modalHeading('Reabrir obrigação')
+            ->modalSubmitActionLabel('Reabrir obrigação')
+            ->form([
+                Textarea::make('reason')
+                    ->label('Motivo da reabertura')
+                    ->rows(4)
+                    ->required()
+                    ->maxLength(2000)
+                    ->placeholder('Explique o motivo da reabertura.'),
+            ])
+            ->visible(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_REOPEN))
+            ->authorize(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_REOPEN))
+            ->action(function (Obligation $record, array $data): void {
+                $this->workflow()->reopen($record, auth()->user(), $data['reason'] ?? null);
+            })
+            ->successNotificationTitle('Obrigação reaberta com sucesso.');
+    }
+
+    /**
+     * @return array<int, \Filament\Forms\Components\Component>
+     */
+    protected function completeActionForm(Obligation $record): array
+    {
+        $evidenceCount = $record->evidences()->count();
+        $hasEvidence = $evidenceCount > 0;
+        $withoutEvidenceCheckbox = Checkbox::make('confirm_without_evidence')
+            ->label('Confirmo a conclusão sem evidência anexada.')
+            ->helperText('Use esta opção apenas quando o cumprimento não gerar comprovação formal ou quando a justificativa operacional for suficiente.')
+            ->visible(! $hasEvidence);
+
+        if (! $hasEvidence) {
+            $withoutEvidenceCheckbox->accepted()->required();
+        }
+
+        return [
+            Placeholder::make('evidence_summary')
+                ->label('Evidências anexadas')
+                ->content($hasEvidence
+                    ? sprintf('%d evidência(s) vinculada(s) à obrigação.', $evidenceCount)
+                    : 'Nenhuma evidência anexada até o momento.'),
+            Textarea::make('completion_notes')
+                ->label('Justificativa de conclusão')
+                ->rows(4)
+                ->required()
+                ->maxLength(2000)
+                ->placeholder('Descreva como a obrigação foi cumprida.'),
+            $withoutEvidenceCheckbox,
+        ];
+    }
+
+    protected function canRunWorkflowAction(Obligation $record, string $transition): bool
+    {
+        if (! $this->workflow()->canUserRunWorkflow(auth()->user())) {
+            return false;
+        }
+
+        return match ($transition) {
+            ObligationWorkflowService::TRANSITION_SUBMIT_FOR_REVIEW => $this->workflow()->canSubmitForReview($record),
+            ObligationWorkflowService::TRANSITION_COMPLETE => $this->workflow()->canComplete($record),
+            ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE => $this->workflow()->canMarkNotApplicable($record),
+            ObligationWorkflowService::TRANSITION_REOPEN => $this->workflow()->canReopen($record),
+            default => false,
+        };
+    }
+
+    protected function workflow(): ObligationWorkflowService
+    {
+        return app(ObligationWorkflowService::class);
     }
 }

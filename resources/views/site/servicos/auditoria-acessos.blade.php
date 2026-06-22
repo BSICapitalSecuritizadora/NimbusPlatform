@@ -15,11 +15,11 @@
                     Rastreabilidade e <br><span style="color: var(--gold);">Trilha de Auditoria</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Trilha de auditoria com validade jurídica irrefutável. Monitoramos acessos, downloads e mudanças de perfil em tempo real, gerando provas imutáveis para processos de compliance, CVM e ANBIMA.
+                    Registre acessos, downloads e alterações de perfil em trilhas estruturadas, com logs operacionais, evidências de integridade e relatórios exportáveis para apoiar compliance, auditoria, agente fiduciário e governança documental.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Consultar Especialista
+                        Solicitar auditoria de acessos
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -38,8 +38,71 @@
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">Trilha imutável</div>
+                            <div class="text-muted small fw-medium">Evidências operacionais</div>
                             <div class="fw-bold fs-5" style="color: #0b1220;">Log por operação</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Público-alvo Section -->
+<section class="py-5 bg-white">
+    <div class="container py-4">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <h2 class="h3 fw-bold text-dark mb-4">Para quem a auditoria de acessos é indicada</h2>
+                <p class="text-muted mb-4">
+                    A geração de evidências estruturadas e logs operacionais atende aos requisitos de controle de diversos stakeholders da operação.
+                </p>
+                <a href="{{ route('site.contact') }}" class="btn btn-outline-brand px-4 py-2">Solicitar relatório de acessos</a>
+            </div>
+            <div class="col-lg-7">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-gold mt-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            </div>
+                            <div>
+                                <h4 class="h6 fw-bold mb-1">Agentes fiduciários e Investidores</h4>
+                                <p class="text-muted small mb-0">Verificação de acessos aos documentos restritos da operação.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-gold mt-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            </div>
+                            <div>
+                                <h4 class="h6 fw-bold mb-1">Compliance e Privacidade</h4>
+                                <p class="text-muted small mb-0">Trilha de eventos para apoio a DPOs, LGPD e exigências de controles internos.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-gold mt-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            </div>
+                            <div>
+                                <h4 class="h6 fw-bold mb-1">Auditoria interna e externa</h4>
+                                <p class="text-muted small mb-0">Logs operacionais e relatórios exportáveis para suporte em verificações.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="text-gold mt-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            </div>
+                            <div>
+                                <h4 class="h6 fw-bold mb-1">Equipes operacionais e Emissores</h4>
+                                <p class="text-muted small mb-0">Rastreabilidade em alterações de perfis e gestão do ambiente documental.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -52,8 +115,8 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Governança e evidência de acesso</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Logs técnicos convertidos em provas auditáveis. Cada interação é selada criptograficamente, garantindo integridade total para o compliance e o agente fiduciário.</p>
+            <h2 class="h3 fw-bold text-dark mb-3">Governança, logs e evidências operacionais</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Registros técnicos compõem trilhas estruturadas. Interações operacionais são apoiadas por controle de integridade para dar suporte documental ao compliance e ao agente fiduciário.</p>
         </div>
 
         <div class="row g-4">
@@ -62,8 +125,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Validade Jurídica</h3>
-                    <p class="text-muted mb-0">Registros selados com SHA-256. A prova de imutabilidade impede qualquer alteração retroativa, fornecendo sustentação jurídica plena para a securitizadora em fiscalizações ou litígios.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Integridade verificável dos registros</h3>
+                    <p class="text-muted mb-0">Registros com hash criptográfico (SHA-256) podem apoiar a verificação de integridade dos eventos registrados, compondo a trilha de evidências da operação conforme a governança e os controles aplicáveis.</p>
                 </div>
             </div>
 
@@ -72,8 +135,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Prontidão para Auditoria</h3>
-                    <p class="text-muted mb-0">Relatórios estruturados e exportáveis eliminam semanas de trabalho manual em <em>due diligences</em>. Auditores externos validam a conformidade da operação em minutos, com acesso autônomo.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Relatórios para auditoria e compliance</h3>
+                    <p class="text-muted mb-0">Relatórios estruturados e exportáveis facilitam a rotina em verificações de due diligence. Auditores externos consultam dados de acessos conforme permissão e escopo.</p>
                 </div>
             </div>
 
@@ -82,8 +145,8 @@
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 60px; height: 60px; color: var(--brand);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-5.607-7.928c.43.393.944.607 1.525.607h1.411c.581 0 1.095-.214 1.525-.607m-5.607 0C2.909 11.201 2 8.517 2 5a5 5 0 0 1 5-5c2.753 0 5.174 1.838 6.03 4.417M2 5h10M2 5v10m10 0c0 3.517 1.009 6.799 2.753 9.571m5.607-7.928c-.43.393-.944.607-1.525.607h-1.411c-.581 0-1.095-.214-1.525-.607m5.607 0C21.091 11.201 22 8.517 22 5a5 5 0 0 1-5-5c-2.753 0-5.174 1.838-6.03 4.417M22 5h-10M22 5v10"></path></svg>
                     </div>
-                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Blindagem de Dados</h3>
-                    <p class="text-muted mb-0">Monitoramento rigoroso do acesso a CPFs e dados de sacados no lastro. A trilha atua como o registro oficial de privacidade exigido pela LGPD e pelos DPOs.</p>
+                    <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Governança de dados sensíveis</h3>
+                    <p class="text-muted mb-0">Controles e logs alinhados à LGPD, políticas internas e normas aplicáveis para apoiar análises de acesso indevido e auditoria a dados pessoais, quando necessário.</p>
                 </div>
             </div>
         </div>
@@ -186,22 +249,25 @@
                         <div class="smaller opacity-75">Hash: 8f2d...b18a</div>
                     </div>
                 </div>
+                <div class="text-center mt-3">
+                    <span class="small text-muted" style="font-size: 0.75rem; opacity: 0.8;">Exemplo ilustrativo de painel de auditoria. Dados reais variam conforme a operação, usuários autorizados, documentos cadastrados e permissões de acesso.</span>
+                </div>
             </div>
             
             <div class="col-lg-5">
                 <h2 class="h4 fw-bold text-dark mb-4">Monitoramento Fiduciário</h2>
                 <div class="d-flex flex-column gap-3">
                     <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
-                        <div class="fw-bold text-dark small mb-1">Proteção do Lastro (Sacados)</div>
-                        <div class="text-muted smaller">Monitoramento específico para acesso a dados de pessoas físicas, garantindo evidências para relatórios de conformidade com a LGPD.</div>
+                        <div class="fw-bold text-dark small mb-1">Controle de acesso a dados do lastro</div>
+                        <div class="text-muted smaller">Registros de acesso para apoiar rotinas de privacidade, governança e prestação de contas sobre dados sensíveis.</div>
                     </div>
                     <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
                         <div class="fw-bold text-dark small mb-1">Notificação de Anomalias</div>
-                        <div class="text-muted smaller">Alertas automáticos para o compliance em caso de múltiplos downloads ou acessos fora do padrão geográfico/horário.</div>
+                        <div class="text-muted smaller">Alertas configuráveis para eventos fora do padrão, permitindo análises estruturadas pela equipe de compliance.</div>
                     </div>
                     <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
                         <div class="fw-bold text-dark small mb-1">Exportação Digital Auditada</div>
-                        <div class="text-muted smaller">Geração de PDFs assinados digitalmente que servem como prova jurídica de que a trilha não foi manipulada.</div>
+                        <div class="text-muted smaller">Relatórios exportáveis para análise e documentação, gerando evidências operacionais de verificação estruturada.</div>
                     </div>
                 </div>
             </div>
@@ -214,26 +280,26 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Eficiência na ponta do compliance</h2>
+                <h2 class="h3 fw-bold text-dark mb-4">Evidências estruturadas para compliance e auditoria</h2>
                 <p class="text-muted mb-4 lead">
-                    A trilha de auditoria é o pilar da segurança jurídica operacional. Facilitamos o trabalho de reguladores e auditores com evidências diretas e incontestáveis, removendo a fricção dos processos de controle.
+                    A trilha de auditoria apoia a governança corporativa. Oferecemos ferramentas e evidências operacionais que facilitam o trabalho de reguladores e auditores na verificação de conformidade.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium"><strong>Filtros Avançados:</strong> Localização instantânea de eventos por ativo, usuário ou intervalo de tempo.</span>
+                        <span class="text-dark fw-medium"><strong>Filtros Avançados:</strong> Facilita a localização de eventos por usuário, documento, operação ou período.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium"><strong>Arquivos Assinados:</strong> Exportação de evidências com assinatura digital para validação externa imediata.</span>
+                        <span class="text-dark fw-medium"><strong>Arquivos Assinados:</strong> Exportação de relatórios para apoio à revisão externa.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium"><strong>Acesso Direto:</strong> Auditores independentes validam a conformidade sem sobrecarregar seu time de TI.</span>
+                        <span class="text-dark fw-medium"><strong>Acesso Direto:</strong> Acessos controlados para auditorias, conforme permissão e escopo.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium"><strong>Registro LGPD:</strong> Monitoramento compulsório de acessos a dados sensíveis, pronto para o reporte de privacidade.</span>
+                        <span class="text-dark fw-medium"><strong>Registros de acesso a dados pessoais:</strong> Registros para apoiar rotinas de privacidade e prestação de contas.</span>
                     </li>
                 </ul>
             </div>
@@ -259,7 +325,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Documentos com ACL</h3>
-                    <p class="text-muted mb-3">A base do controle: defina quem pode ver o quê. Cada acesso registrado na trilha nasce das permissões configuradas no sistema de ACL.</p>
+                    <p class="text-muted mb-3">A base do controle documental. Configure permissões por perfil, operação e documento, assegurando as diretrizes que originam a trilha de evidências.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>
@@ -270,7 +336,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Monitoramento regulatório</h3>
-                    <p class="text-muted mb-3">Vigilância contínua para sua operação. O monitoramento regulatório utiliza as trilhas para identificar desvios e suportar decisões estratégicas de risco.</p>
+                    <p class="text-muted mb-3">Monitoramento de obrigações, alertas e exceções. Utilizamos a trilha operacional para apoiar as verificações fiduciárias de rotina e a identificação de pendências.</p>
                     <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
                 </a>
             </div>

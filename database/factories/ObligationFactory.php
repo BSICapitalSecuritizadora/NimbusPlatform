@@ -37,6 +37,18 @@ class ObligationFactory extends Factory
             'source_page' => fake()->numberBetween(1, 50),
             'source_excerpt' => fake()->sentence(10),
             'notes' => null,
+            'completed_at' => null,
+            'completed_by' => null,
+            'completion_notes' => null,
+            'submitted_for_review_at' => null,
+            'submitted_for_review_by' => null,
+            'review_submission_notes' => null,
+            'not_applicable_at' => null,
+            'not_applicable_by' => null,
+            'not_applicable_reason' => null,
+            'reopened_at' => null,
+            'reopened_by' => null,
+            'reopen_reason' => null,
         ];
     }
 }

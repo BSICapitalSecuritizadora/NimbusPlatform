@@ -50,3 +50,8 @@ Artisan::command('inspire', function () {
     ->dailyAt('06:15')
     ->name('obligations-send-due-notifications')
     ->withoutOverlapping();
+
+\Illuminate\Support\Facades\Schedule::command('pu:queue-health --alert')
+    ->everyTenMinutes()
+    ->name('pu-queue-health')
+    ->withoutOverlapping();

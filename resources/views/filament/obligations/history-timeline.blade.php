@@ -12,6 +12,9 @@
         'recalculated_status' => 'warning',
         'completed' => 'success',
         'waived' => 'gray',
+        'submitted_for_review' => 'warning',
+        'marked_not_applicable' => 'gray',
+        'reopened' => 'info',
         'notification_sent' => 'success',
         'notification_failed' => 'danger',
     ];

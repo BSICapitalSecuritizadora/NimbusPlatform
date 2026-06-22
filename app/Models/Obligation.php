@@ -53,6 +53,18 @@ class Obligation extends Model
         'source_page',
         'source_excerpt',
         'notes',
+        'completed_at',
+        'completed_by',
+        'completion_notes',
+        'submitted_for_review_at',
+        'submitted_for_review_by',
+        'review_submission_notes',
+        'not_applicable_at',
+        'not_applicable_by',
+        'not_applicable_reason',
+        'reopened_at',
+        'reopened_by',
+        'reopen_reason',
     ];
 
     protected function casts(): array
@@ -60,6 +72,10 @@ class Obligation extends Model
         return [
             'due_date' => 'date',
             'source_page' => 'integer',
+            'completed_at' => 'datetime',
+            'submitted_for_review_at' => 'datetime',
+            'not_applicable_at' => 'datetime',
+            'reopened_at' => 'datetime',
         ];
     }
 
@@ -103,6 +119,11 @@ class Obligation extends Model
     public function notifications(): HasMany
     {
         return $this->hasMany(ObligationNotification::class);
+    }
+
+    public function evidences(): HasMany
+    {
+        return $this->hasMany(ObligationEvidence::class);
     }
 
     public function historyEntries(): HasMany
