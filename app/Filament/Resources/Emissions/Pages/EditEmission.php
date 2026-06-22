@@ -2,23 +2,28 @@
 
 namespace App\Filament\Resources\Emissions\Pages;
 
-use App\Actions\Emissions\ValidatePuDailyCurve;
+use App\Actions\Emissions\HomologatePuCurve;
+use App\Actions\Emissions\InvalidatePuCurve;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveExportService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
+use App\Domain\PuCalculator\Services\PuCurveVersionService;
+use App\Domain\PuCalculator\Services\PuIndexCoverageService;
 use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use App\Jobs\GeneratePuDailyCurveJob;
+use App\Jobs\ValidatePuCurveJob;
 use App\Models\EmissionPuDailyCurve;
-use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -42,6 +47,8 @@ class EditEmission extends EditRecord
 
     public bool $isGeneratingPuCurve = false;
 
+    public bool $isValidatingPuCurve = false;
+
     public function mount(int|string $record): void
     {
         parent::mount($record);
@@ -53,25 +60,52 @@ class EditEmission extends EditRecord
         if (Cache::get($this->puCurveGenerationStatusCacheKey()) === 'processing') {
             $this->isGeneratingPuCurve = true;
         }
+
+        if (Cache::get($this->puCurveValidationStatusCacheKey()) === 'processing') {
+            $this->isValidatingPuCurve = true;
+        }
     }
 
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('puCurvePanel')
+                ->label('Painel da Curva PU')
+                ->icon('heroicon-o-presentation-chart-line')
+                ->color('gray')
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                ->modalWidth(Width::FiveExtraLarge)
+                ->modalHeading('Painel da Curva PU')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Fechar')
+                ->modalContent(fn () => view('filament.emissions.pu-curve-panel', [
+                    'emission' => $this->getRecord(),
+                    'version' => $this->getRecord()->currentPuCurveVersion(),
+                    'coverage' => app(PuIndexCoverageService::class)->report($this->getRecord()),
+                ])),
             Action::make('configurePuCalculation')
                 ->label('Configurar Calculo de PU')
                 ->icon('heroicon-o-calculator')
                 ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('emissions.update') ?? false)
+                ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
                 ->modalWidth(Width::ThreeExtraLarge)
                 ->modalHeading('Configurar Calculo de PU')
                 ->fillForm(fn (): array => $this->getPuCalculationDefaults())
                 ->form($this->getPuCalculationForm())
                 ->action(function (array $data): void {
+                    $before = $this->getRecord()->puParameter?->only(array_keys($data)) ?? [];
+
                     $this->getRecord()->puParameter()->updateOrCreate([], $data);
 
                     $this->getRecord()->unsetRelation('puParameter');
                     $this->getRecord()->load('puParameter');
+
+                    app(PuAuditLogService::class)->logParametersUpdated(
+                        $this->getRecord(),
+                        $before,
+                        $data,
+                        auth()->id(),
+                    );
 
                     Notification::make()
                         ->title('Parametros do calculo de PU atualizados.')
@@ -79,15 +113,16 @@ class EditEmission extends EditRecord
                         ->send();
                 }),
             Action::make('generatePuDailyCurve')
-                ->label(fn (): string => $this->isGeneratingPuCurve ? 'Gerando Curva PU...' : 'Gerar Curva PU')
+                ->label(fn (): string => $this->generatePuCurveLabel())
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
-                ->visible(fn (): bool => auth()->user()?->can('emissions.update') ?? false)
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.generate') ?? false)
                 ->disabled(fn (): bool => $this->isGeneratingPuCurve)
                 ->requiresConfirmation()
-                ->modalHeading('Gerar Curva PU')
-                ->modalDescription('A curva diaria sera recalculada em segundo plano e persistida como uma nova versao.')
-                ->action(function (): void {
+                ->modalHeading(fn (): string => $this->generatePuCurveLabel())
+                ->modalDescription('A curva diaria sera recalculada em segundo plano e persistida como uma nova versao. O historico anterior e preservado.')
+                ->form(fn (): array => $this->getGeneratePuCurveForm())
+                ->action(function (array $data): void {
                     if ($this->isGeneratingPuCurve || Cache::get($this->puCurveGenerationStatusCacheKey()) === 'processing') {
                         Notification::make()
                             ->title('Geracao ja em andamento.')
@@ -99,6 +134,30 @@ class EditEmission extends EditRecord
                     }
 
                     $emission = $this->getRecord()->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
+                    $hasHomologated = app(PuCurveVersionService::class)->hasHomologatedVersion($emission);
+
+                    if ($hasHomologated && ! (auth()->user()?->can('pu.curve.reprocess') ?? false)) {
+                        Notification::make()
+                            ->title('Reprocessamento nao autorizado.')
+                            ->body('Existe uma curva homologada. Voce nao possui permissao para reprocessar.')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
+                    if ($hasHomologated && ($data['confirm_reprocess'] ?? false) !== true) {
+                        Notification::make()
+                            ->title('Confirmacao necessaria.')
+                            ->body('Marque a confirmacao para reprocessar uma curva homologada.')
+                            ->warning()
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
                     $prerequisiteCheck = app(PuCurvePrerequisiteService::class)->handle($emission);
 
                     if (! $prerequisiteCheck->passes()) {
@@ -124,7 +183,7 @@ class EditEmission extends EditRecord
                     Cache::put($this->puCurveGenerationStatusCacheKey(), 'processing', 1800);
                     $this->isGeneratingPuCurve = true;
 
-                    GeneratePuDailyCurveJob::dispatch($emission->id, auth()->id());
+                    GeneratePuDailyCurveJob::dispatch($emission->id, auth()->id(), $hasHomologated);
 
                     Notification::make()
                         ->title('Geracao da curva iniciada.')
@@ -132,11 +191,57 @@ class EditEmission extends EditRecord
                         ->info()
                         ->send();
                 }),
+            Action::make('homologatePuCurve')
+                ->label('Homologar Curva')
+                ->icon('heroicon-o-check-badge')
+                ->color('success')
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.homologate') ?? false)
+                ->requiresConfirmation()
+                ->modalHeading('Homologar Curva PU')
+                ->modalDescription('A versao corrente sera marcada como homologada e protegida contra sobrescrita.')
+                ->action(function (): void {
+                    try {
+                        $version = app(HomologatePuCurve::class)->handle($this->getRecord(), null, auth()->id());
+                    } catch (\InvalidArgumentException $exception) {
+                        Notification::make()->title('Nao foi possivel homologar.')->body($exception->getMessage())->danger()->send();
+
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title('Curva homologada.')
+                        ->body(sprintf('Versao %s homologada com sucesso.', $version->calculation_version))
+                        ->success()
+                        ->send();
+                }),
+            Action::make('invalidatePuCurve')
+                ->label('Invalidar Curva')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.invalidate') ?? false)
+                ->requiresConfirmation()
+                ->modalHeading('Invalidar Curva PU')
+                ->modalDescription('A versao corrente sera marcada como obsoleta. O historico e preservado.')
+                ->action(function (): void {
+                    try {
+                        $version = app(InvalidatePuCurve::class)->handle($this->getRecord(), null, auth()->id());
+                    } catch (\InvalidArgumentException $exception) {
+                        Notification::make()->title('Nao foi possivel invalidar.')->body($exception->getMessage())->danger()->send();
+
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title('Curva invalidada.')
+                        ->body(sprintf('Versao %s marcada como obsoleta.', $version->calculation_version))
+                        ->success()
+                        ->send();
+                }),
             Action::make('viewPuDailyCurve')
                 ->label('Visualizar Curva PU Diario')
                 ->icon('heroicon-o-chart-bar-square')
                 ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('emissions.view') ?? false)
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
                 ->modalWidth(Width::SevenExtraLarge)
                 ->modalHeading('Curva PU Diario')
                 ->modalSubmitAction(false)
@@ -147,10 +252,11 @@ class EditEmission extends EditRecord
                     'rows' => app(PuCurveExportService::class)->rows($this->getRecord())->take(30),
                 ])),
             Action::make('validatePuDailyCurve')
-                ->label('Validar contra Planilha')
+                ->label(fn (): string => $this->isValidatingPuCurve ? 'Validando...' : 'Validar contra Planilha')
                 ->icon('heroicon-o-clipboard-document-check')
                 ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('emissions.view') ?? false)
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.validate') ?? false)
+                ->disabled(fn (): bool => $this->isValidatingPuCurve)
                 ->modalWidth(Width::ThreeExtraLarge)
                 ->modalHeading('Validar Curva PU')
                 ->fillForm(fn (): array => [
@@ -186,6 +292,16 @@ class EditEmission extends EditRecord
                         ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
                 ])
                 ->action(function (array $data): void {
+                    if ($this->isValidatingPuCurve || Cache::get($this->puCurveValidationStatusCacheKey()) === 'processing') {
+                        Notification::make()
+                            ->title('Validacao ja em andamento.')
+                            ->body('Aguarde a conclusao da validacao atual.')
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
+
                     $spreadsheetPath = $this->resolveValidationSpreadsheetPath($data);
 
                     if ($spreadsheetPath === null) {
@@ -200,63 +316,31 @@ class EditEmission extends EditRecord
                     }
 
                     $mode = PuValidationMode::from((string) ($data['validation_mode'] ?? PuValidationMode::DisplayScale->value));
-                    $rangeStart = filled($data['range_start'] ?? null) ? CarbonImmutable::parse((string) $data['range_start']) : null;
-                    $rangeEnd = filled($data['range_end'] ?? null) ? CarbonImmutable::parse((string) $data['range_end']) : null;
 
-                    $report = app(ValidatePuDailyCurve::class)->handle(
-                        $this->getRecord(),
+                    Cache::put($this->puCurveValidationStatusCacheKey(), 'processing', 1800);
+                    $this->isValidatingPuCurve = true;
+
+                    ValidatePuCurveJob::dispatch(
+                        $this->getRecord()->id,
                         $spreadsheetPath,
                         $data['calculation_version'] ?? null,
-                        $mode,
-                        $rangeStart,
-                        $rangeEnd,
+                        $mode->value,
+                        filled($data['range_start'] ?? null) ? (string) $data['range_start'] : null,
+                        filled($data['range_end'] ?? null) ? (string) $data['range_end'] : null,
                         auth()->id(),
                     );
 
-                    $summaryLines = [
-                        sprintf('Modo: %s', $report->mode->value),
-                        sprintf('Linhas comparadas: %d', $report->totalRowsCompared),
-                        sprintf('Linhas divergentes: %d', $report->totalDivergences),
-                        sprintf('Campos divergentes: %d', $report->totalFieldDivergences),
-                        sprintf('Primeira divergencia: %s', $report->firstDivergenceDate?->toDateString() ?? '-'),
-                        sprintf('Maior diferenca de PU: %s', $report->largestPuDifference),
-                        sprintf('Maior diferenca de valor total: %s', $report->largestTotalValueDifference),
-                        sprintf('Maior diferenca de pagamento: %s', $report->largestPaymentDifference),
-                    ];
-
-                    $detailedLines = collect($report->divergentRows(3))
-                        ->flatMap(function ($row): array {
-                            return collect($row->differences)
-                                ->take(2)
-                                ->map(fn ($difference): string => sprintf(
-                                    '%s | %s | dif=%s | severidade=%s',
-                                    $row->date->format('d/m/Y'),
-                                    $difference->label,
-                                    $difference->absoluteDifference ?? '-',
-                                    $difference->severity?->value ?? 'alta',
-                                ))
-                                ->all();
-                        })
-                        ->all();
-
-                    $notification = Notification::make()
-                        ->title($report->status->value === 'approved' ? 'Validacao aprovada.' : 'Validacao reprovada.')
-                        ->body(implode("\n", array_merge($summaryLines, $detailedLines)))
-                        ->persistent();
-
-                    if ($report->status->value === 'approved') {
-                        $notification->success();
-                    } else {
-                        $notification->danger();
-                    }
-
-                    $notification->send();
+                    Notification::make()
+                        ->title('Validacao iniciada.')
+                        ->body('A validacao foi enviada para a fila e a pagina sera atualizada ao concluir.')
+                        ->info()
+                        ->send();
                 }),
             Action::make('viewPuValidationReport')
                 ->label('Ver Relatorio de Divergencias')
                 ->icon('heroicon-o-exclamation-triangle')
                 ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('emissions.view') ?? false)
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
                 ->modalWidth(Width::SevenExtraLarge)
                 ->modalHeading('Ultimo Relatorio de Validacao')
                 ->modalSubmitAction(false)
@@ -268,7 +352,7 @@ class EditEmission extends EditRecord
                 ->label('Exportar Curva PU')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('emissions.view') ?? false)
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.export') ?? false)
                 ->modalHeading('Exportar Curva PU')
                 ->fillForm(fn (): array => [
                     'calculation_version' => EmissionPuDailyCurve::latestCalculationVersionForEmission($this->getRecord()->id),
@@ -395,6 +479,52 @@ class EditEmission extends EditRecord
         }
     }
 
+    public function checkPuCurveValidationStatus(): void
+    {
+        $status = Cache::get($this->puCurveValidationStatusCacheKey());
+
+        if ($status === 'processing') {
+            return;
+        }
+
+        if ($status === null) {
+            $this->isValidatingPuCurve = false;
+
+            return;
+        }
+
+        $this->isValidatingPuCurve = false;
+        Cache::forget($this->puCurveValidationStatusCacheKey());
+
+        if (is_array($status) && (($status['status'] ?? null) === 'completed')) {
+            $approved = ($status['validation_status'] ?? null) === 'approved';
+
+            Notification::make()
+                ->title($approved ? 'Validacao aprovada.' : 'Validacao reprovada.')
+                ->body(sprintf(
+                    'Versao %s | Linhas comparadas: %d | Linhas divergentes: %d | Campos divergentes: %d',
+                    $status['calculation_version'] ?? '-',
+                    (int) ($status['total_rows_compared'] ?? 0),
+                    (int) ($status['total_divergences'] ?? 0),
+                    (int) ($status['total_field_divergences'] ?? 0),
+                ))
+                ->persistent()
+                ->{$approved ? 'success' : 'danger'}()
+                ->send();
+
+            return;
+        }
+
+        if (is_array($status) && isset($status['error'])) {
+            Notification::make()
+                ->title('Falha ao validar a curva de PU.')
+                ->body((string) $status['error'])
+                ->danger()
+                ->persistent()
+                ->send();
+        }
+    }
+
     #[On('integralization-histories-updated')]
     public function refreshIntegralizedQuantity(): void
     {
@@ -411,6 +541,40 @@ class EditEmission extends EditRecord
     private function puCurveGenerationStatusCacheKey(): string
     {
         return sprintf('pu_curve_generation_%d_status', $this->getRecord()->id);
+    }
+
+    private function puCurveValidationStatusCacheKey(): string
+    {
+        return sprintf('pu_curve_validation_%d_status', $this->getRecord()->id);
+    }
+
+    private function generatePuCurveLabel(): string
+    {
+        if ($this->isGeneratingPuCurve) {
+            return 'Gerando Curva PU...';
+        }
+
+        return $this->getRecord()->currentPuCurveVersion() !== null ? 'Reprocessar Curva PU' : 'Gerar Curva PU';
+    }
+
+    /**
+     * @return array<int, \Filament\Forms\Components\Component>
+     */
+    private function getGeneratePuCurveForm(): array
+    {
+        if (! app(PuCurveVersionService::class)->hasHomologatedVersion($this->getRecord())) {
+            return [];
+        }
+
+        return [
+            Placeholder::make('homologated_warning')
+                ->label('')
+                ->content('Existe uma curva homologada para esta emissao. O reprocessamento criara uma nova versao sem apagar o historico homologado.'),
+            Checkbox::make('confirm_reprocess')
+                ->label('Confirmo o reprocessamento de uma curva homologada.')
+                ->accepted()
+                ->required(),
+        ];
     }
 
     /**

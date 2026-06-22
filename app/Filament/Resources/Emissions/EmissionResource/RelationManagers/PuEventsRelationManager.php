@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
+use App\Domain\PuCalculator\Services\PuAuditLogService;
+use App\Models\Emission;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -105,17 +107,35 @@ class PuEventsRelationManager extends RelationManager
             ->defaultSort('effective_date')
             ->headerActions([
                 \Filament\Actions\CreateAction::make()
-                    ->label('Novo Evento PU'),
+                    ->label('Novo Evento PU')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
+                    ->after(fn (): null => $this->logEventChange('created')),
             ])
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                \Filament\Actions\EditAction::make()
+                    ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
+                    ->after(fn (): null => $this->logEventChange('updated')),
+                \Filament\Actions\DeleteAction::make()
+                    ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
+                    ->after(fn (): null => $this->logEventChange('deleted')),
             ])
             ->bulkActions([
                 \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
+                    \Filament\Actions\DeleteBulkAction::make()
+                        ->after(fn (): null => $this->logEventChange('deleted')),
                 ]),
             ])
             ->emptyStateHeading('Nenhum evento de PU cadastrado');
+    }
+
+    private function logEventChange(string $action): null
+    {
+        $emission = $this->getOwnerRecord();
+
+        if ($emission instanceof Emission) {
+            app(PuAuditLogService::class)->logEventChange($emission, $action, auth()->id());
+        }
+
+        return null;
     }
 }

@@ -42,6 +42,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'operations.view', 'operations.create', 'operations.update',
             'measurements.view', 'measurements.create', 'measurements.update',
             'measurements.review', 'measurements.pay', 'measurements.finalize',
+            'pu.curve.view', 'pu.parameters.configure', 'pu.curve.generate',
+            'pu.curve.validate', 'pu.curve.export', 'pu.curve.reprocess',
         ]);
 
         $commercialRepresentative->syncPermissions([

@@ -110,6 +110,14 @@ enum AccessPermission: string
     case NimbusNotificationOutboxesView = 'nimbus.notification-outboxes.view';
     case NimbusNotificationSettingsView = 'nimbus.notification-settings.view';
     case NimbusNotificationSettingsUpdate = 'nimbus.notification-settings.update';
+    case PuCurveView = 'pu.curve.view';
+    case PuParametersConfigure = 'pu.parameters.configure';
+    case PuCurveGenerate = 'pu.curve.generate';
+    case PuCurveValidate = 'pu.curve.validate';
+    case PuCurveExport = 'pu.curve.export';
+    case PuCurveReprocess = 'pu.curve.reprocess';
+    case PuCurveHomologate = 'pu.curve.homologate';
+    case PuCurveInvalidate = 'pu.curve.invalidate';
     case AuditActivitiesView = 'audit.activities.view';
     case AuditDocumentDownloadsView = 'audit.document-downloads.view';
     case ReportsView = 'reports.view';
@@ -262,6 +270,14 @@ enum AccessPermission: string
             self::NimbusNotificationOutboxesView => 'Gestão Documental Externa auditoria de envios: visualizar',
             self::NimbusNotificationSettingsView => 'Gestão Documental Externa notificações: visualizar',
             self::NimbusNotificationSettingsUpdate => 'Gestão Documental Externa notificações: editar',
+            self::PuCurveView => 'Curva de PU: visualizar',
+            self::PuParametersConfigure => 'Curva de PU: configurar parâmetros',
+            self::PuCurveGenerate => 'Curva de PU: gerar',
+            self::PuCurveValidate => 'Curva de PU: validar',
+            self::PuCurveExport => 'Curva de PU: exportar',
+            self::PuCurveReprocess => 'Curva de PU: reprocessar',
+            self::PuCurveHomologate => 'Curva de PU: homologar',
+            self::PuCurveInvalidate => 'Curva de PU: invalidar',
             self::AuditActivitiesView => 'Auditoria logs do sistema: visualizar',
             self::AuditDocumentDownloadsView => 'Auditoria downloads do portal: visualizar',
             self::ReportsView => 'Relatórios: visualizar',
@@ -277,6 +293,7 @@ enum AccessPermission: string
             str_starts_with($this->value, 'invitations.') => 'Acessos Externos',
             str_starts_with($this->value, 'nimbus.') => 'Gestão Documental Externa',
             str_starts_with($this->value, 'recruitment.') => 'Recrutamento',
+            str_starts_with($this->value, 'pu.') => 'Curva de PU',
             str_starts_with($this->value, 'audit.') => 'Auditoria',
             str_starts_with($this->value, 'proposal') => 'Comercial',
             in_array($this, [

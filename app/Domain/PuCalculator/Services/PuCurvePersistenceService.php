@@ -13,12 +13,16 @@ class PuCurvePersistenceService
         private readonly LegacyProjectionService $legacyProjectionService,
     ) {}
 
-    public function handle(Emission $emission, PuCurveGenerationResult $result, bool $syncLegacyProjections = true): PuCurveGenerationResult
-    {
+    public function handle(
+        Emission $emission,
+        PuCurveGenerationResult $result,
+        bool $syncLegacyProjections = true,
+        ?string $calculationVersion = null,
+    ): PuCurveGenerationResult {
         $persistedResult = $result;
 
-        DB::transaction(function () use ($emission, $result, $syncLegacyProjections, &$persistedResult): void {
-            $calculationVersion = $result->calculationVersion ?? $this->nextCalculationVersion($emission);
+        DB::transaction(function () use ($emission, $result, $syncLegacyProjections, $calculationVersion, &$persistedResult): void {
+            $calculationVersion = $calculationVersion ?? $result->calculationVersion ?? $this->nextCalculationVersion($emission);
             $persistedResult = $result->withCalculationVersion($calculationVersion);
             $timestamp = now();
             $rows = array_map(function ($row) use ($emission, $timestamp, $calculationVersion): array {

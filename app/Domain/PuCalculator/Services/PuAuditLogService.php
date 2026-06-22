@@ -27,6 +27,7 @@ class PuAuditLogService
         ?int $requestedByUserId,
         PuCurvePrerequisiteCheckResult $prerequisiteCheck,
         bool $syncLegacyProjections,
+        bool $reprocessed = false,
     ): void {
         $logger = activity(self::LOG_NAME)
             ->performedOn($emission)
@@ -35,6 +36,7 @@ class PuAuditLogService
                 'calculation_version' => $result->calculationVersion,
                 'rows_count' => count($result->rows),
                 'sync_legacy_projections' => $syncLegacyProjections,
+                'reprocessed' => $reprocessed,
                 'parameter_snapshot' => $this->parameterSnapshot($emission),
                 'prerequisites' => $prerequisiteCheck->toArray(),
             ]);
@@ -43,7 +45,7 @@ class PuAuditLogService
             $logger->causedBy($causer);
         }
 
-        $logger->event('generated')->log('pu_curve_generated');
+        $logger->event($reprocessed ? 'reprocessed' : 'generated')->log($reprocessed ? 'pu_curve_reprocessed' : 'pu_curve_generated');
     }
 
     public function logGenerationFailed(
@@ -103,6 +105,107 @@ class PuAuditLogService
         }
 
         $logger->event('validated')->log('pu_curve_validated');
+    }
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     */
+    public function logParametersUpdated(Emission $emission, array $before, array $after, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'before' => $before,
+                'after' => $after,
+                'changed_keys' => $this->changedKeys($before, $after),
+            ]);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('parameters_updated')->log('pu_parameters_updated');
+    }
+
+    public function logEventChange(Emission $emission, string $action, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'action' => $action,
+            ]);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('event_changed')->log('pu_event_changed');
+    }
+
+    public function logExport(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'calculation_version' => $calculationVersion,
+            ]);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('exported')->log('pu_curve_exported');
+    }
+
+    public function logHomologation(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'calculation_version' => $calculationVersion,
+            ]);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('homologated')->log('pu_curve_homologated');
+    }
+
+    public function logInvalidation(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'calculation_version' => $calculationVersion,
+            ]);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('invalidated')->log('pu_curve_invalidated');
+    }
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     * @return list<string>
+     */
+    private function changedKeys(array $before, array $after): array
+    {
+        $keys = array_unique(array_merge(array_keys($before), array_keys($after)));
+
+        return array_values(array_filter(
+            $keys,
+            static fn (string $key): bool => ($before[$key] ?? null) !== ($after[$key] ?? null),
+        ));
     }
 
     public function latestValidationActivity(Emission $emission): ?Activity

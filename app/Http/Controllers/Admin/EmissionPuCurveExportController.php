@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveExportService;
 use App\Http\Controllers\Controller;
 use App\Models\Emission;
@@ -12,19 +13,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EmissionPuCurveExportController extends Controller
 {
-    public function __invoke(Request $request, Emission $emission, PuCurveExportService $exportService): StreamedResponse
-    {
-        abort_unless(auth()->user()?->can('emissions.view') ?? false, Response::HTTP_FORBIDDEN);
+    public function __invoke(
+        Request $request,
+        Emission $emission,
+        PuCurveExportService $exportService,
+        PuAuditLogService $auditLogService,
+    ): StreamedResponse {
+        abort_unless(auth()->user()?->can('pu.curve.export') ?? false, Response::HTTP_FORBIDDEN);
 
         $calculationVersion = $request->string('calculation_version')->toString();
+        $resolvedVersion = filled($calculationVersion) ? $calculationVersion : null;
 
         try {
-            return $exportService->download(
-                $emission,
-                filled($calculationVersion) ? $calculationVersion : null,
-            );
+            $response = $exportService->download($emission, $resolvedVersion);
         } catch (InvalidArgumentException $exception) {
             abort(Response::HTTP_NOT_FOUND, $exception->getMessage());
         }
+
+        $auditLogService->logExport($emission, $resolvedVersion, auth()->id());
+
+        return $response;
     }
 }

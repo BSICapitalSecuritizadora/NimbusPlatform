@@ -17,8 +17,11 @@ class GeneratePuDailyCurve
         private readonly PuCurvePrerequisiteService $prerequisiteService,
     ) {}
 
-    public function handle(Emission $emission, bool $syncLegacyProjections = true): PuCurveGenerationResult
-    {
+    public function handle(
+        Emission $emission,
+        bool $syncLegacyProjections = true,
+        ?string $calculationVersion = null,
+    ): PuCurveGenerationResult {
         $prerequisiteCheck = $this->prerequisiteService->handle($emission);
 
         if (! $prerequisiteCheck->passes()) {
@@ -27,6 +30,6 @@ class GeneratePuDailyCurve
 
         $result = $this->generationService->handle($emission);
 
-        return $this->persistenceService->handle($emission, $result, $syncLegacyProjections);
+        return $this->persistenceService->handle($emission, $result, $syncLegacyProjections, $calculationVersion);
     }
 }
