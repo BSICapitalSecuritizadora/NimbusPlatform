@@ -95,8 +95,63 @@ Trilha registrada via Spatie Activitylog (`log_name = pu-calculation`) para:
 configuração de parâmetros (`pu_parameters_updated`, com diff), alteração de eventos (`pu_event_changed`),
 geração (`pu_curve_generated`) e reprocessamento (`pu_curve_reprocessed`), falha de geração
 (`pu_curve_generation_failed`), validação (`pu_curve_validated`), exportação (`pu_curve_exported`),
-homologação (`pu_curve_homologated`) e invalidação (`pu_curve_invalidated`). Cada entrada registra o
-usuário responsável (`causer`).
+homologação (`pu_curve_homologated`), invalidação (`pu_curve_invalidated`) e download do PDF de homologação
+(`pu_homologation_report_downloaded`). Cada entrada registra o usuário responsável (`causer`).
+
+## Histórico / Auditoria por emissão (timeline)
+
+Acesse **Gestão > Emissões > [emissão] > Editar > "Histórico / Auditoria"**, ou diretamente a URL
+`/admin/emissions/{id}/pu-history` (permissão `pu.curve.view`). A tela mostra:
+
+- **Timeline de versões** (mais recente primeiro): versão, status (badge), responsáveis e datas de
+  geração/validação/homologação, total de linhas, parâmetros principais, resumo da validação com as maiores
+  divergências, motivo de obsolescência e erros de job. Cada versão tem botões para o relatório de
+  divergências e para baixar o **PDF de homologação**.
+- **Auditoria das ações**: lista cronológica de todas as ações da calculadora (geração, validação,
+  homologação, exportação, reprocessamento, invalidação, alteração de parâmetros/eventos), com responsável.
+- Aviso automático quando há versão em "processando" há mais de 30 min (possível worker parado).
+
+## PDF de homologação
+
+Na timeline ou no Painel da Curva PU, clique em **"Baixar PDF de homologação"** (permissão `pu.curve.export`;
+rota `admin.emissions.pu-homologation.pdf`). O documento traz identificação da emissão, dados da versão,
+parâmetros, resumo da validação (com indicação de display-scale/raw-scale) e um bloco simples de aprovação
+interna. Os valores são apenas leitura dos dados persistidos — não há recálculo.
+
+## Worker de fila em produção (obrigatório)
+
+Geração (`GeneratePuDailyCurveJob`) e validação (`ValidatePuCurveJob`) rodam na **fila** (driver `database`).
+Sem um worker ativo, os jobs ficam **pendentes** e a curva nunca sai de "processando". Em produção mantenha
+um worker supervisionado:
+
+```bash
+# Opção simples (supervisionada por Supervisor/systemd):
+php artisan queue:work --queue=default --tries=1 --timeout=900
+
+# Ou Laravel Horizon (se/quando adotado), gerenciado por Supervisor.
+```
+
+Exemplo de programa no Supervisor:
+
+```
+[program:nimbus-queue]
+command=php /var/www/html/artisan queue:work --tries=1 --timeout=900
+autostart=true
+autorestart=true
+numprocs=1
+stopwaitsecs=920
+```
+
+### Health-check da fila
+
+```bash
+php artisan pu:queue-health           # exit != 0 se houver jobs falhos ou versões travadas
+php artisan pu:queue-health --stale-minutes=15
+```
+
+Reporta jobs pendentes, jobs falhos (`failed_jobs`) e versões `processing` há muito tempo. Útil para
+monitoramento/alertas. Observação: os contadores assumem o driver `database`; com Horizon/Redis as métricas
+de pendência vêm do próprio Horizon.
 
 ## Troubleshooting
 

@@ -12,18 +12,18 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Estrutura <span style="color: var(--gold);">Jurídica</span>
+                    Estrutura Jurídica para <br><span style="color: var(--gold);">Operações de Securitização</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Elaboramos escrituras de emissão, termos de cessão fiduciária e contratos de garantia com precisão técnica e aderência regulatória — garantindo que cada documento reflita com exatidão o lastro, a estrutura econômica e os mecanismos de proteção da operação.
+                    Estruturamos os instrumentos jurídicos que sustentam operações de CRI, CRA e CR, alinhando lastro, garantias, regime fiduciário, documentos de oferta e governança contratual às exigências regulatórias aplicáveis.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
-                    <a href="{{ route('site.contact') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Consultar Especialista
+                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
+                        Solicitar análise jurídica da operação
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                        Ver emissões
+                        Ver emissões estruturadas
                     </a>
                 </div>
             </div>
@@ -48,6 +48,72 @@
     </div>
 </section>
 
+<!-- Para quem a estrutura jurídica é indicada -->
+<section class="py-5 bg-white border-bottom">
+    <div class="container py-5">
+        <div class="text-center mb-5 pb-3">
+            <h2 class="h3 fw-bold text-dark mb-3">Para quem a estrutura jurídica é indicada</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Apoiamos diversos perfis do mercado, garantindo a solidez documental da operação e o cumprimento das normativas vigentes.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Emissores em Estruturação</h4>
+                        <p class="text-muted small mb-0">Emissores com operação em fase de estruturação inicial.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Originadores de Recebíveis</h4>
+                        <p class="text-muted small mb-0">Empresas e fundos estruturando a cessão de carteiras de crédito.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Coordenadores e Assessores</h4>
+                        <p class="text-muted small mb-0">Coordenadores e assessores financeiros estruturando ofertas públicas.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Garantias Complexas</h4>
+                        <p class="text-muted small mb-0">Empresas com garantias complexas, múltiplos devedores, cedentes ou garantidores.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Reestruturação e Waivers</h4>
+                        <p class="text-muted small mb-0">Operações com necessidade de aditamento, waiver ou reestruturação de garantias.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Parceiros Jurídicos</h4>
+                        <p class="text-muted small mb-0">Escritórios e parceiros que precisam coordenar a documentação final de CRI, CRA ou CR.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Benefícios Section -->
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
@@ -63,7 +129,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Engenharia Documental</h3>
-                    <p class="text-muted mb-0">Estruturamos escrituras de emissão, contratos de cessão e termos de garantia com foco em clareza, alocação estratégica de riscos e proteção efetiva dos investidores ao longo de toda a vigência da operação.</p>
+                    <p class="text-muted mb-0">Estruturamos o termo de securitização/escritura de emissão, contratos de cessão e instrumentos de garantia, buscando consistência entre a estrutura econômica e a documentação jurídica.</p>
                 </div>
             </div>
 
@@ -73,7 +139,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Validação de Lastro e Garantias</h3>
-                    <p class="text-muted mb-0">Conduzimos a due diligence técnica de ativos e garantias — cessão fiduciária, alienação fiduciária e penhor — para assegurar a robustez jurídica do lastro e a exequibilidade das garantias constituídas.</p>
+                    <p class="text-muted mb-0">Avaliamos os critérios de elegibilidade do lastro e a regularidade das garantias, focando na alocação de riscos e na formalização jurídica exigida para os instrumentos correspondentes.</p>
                 </div>
             </div>
 
@@ -83,7 +149,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Rigor Regulatório</h3>
-                    <p class="text-muted mb-0">Gerimos o protocolo junto à CVM, B3 e ANBIMA — prospecto, lâmina, Fato Relevante e demais materiais de oferta —, assegurando que cada documento esteja em conformidade com as normas vigentes aplicáveis ao instrumento.</p>
+                    <p class="text-muted mb-0">Revisamos os documentos de oferta e mantemos interface ativa com CVM, B3, ANBIMA e agente fiduciário, adequando os normativos às exigências do regulador para cada tipo de emissão.</p>
                 </div>
             </div>
         </div>
@@ -93,14 +159,18 @@
 <!-- Engenharia de Segregação -->
 <section class="py-5" style="background-color: #f8fafc; border-top: 1px solid var(--border);">
     <div class="container py-5">
-        <div class="row align-items-center g-5">
-            <div class="col-lg-12 text-center mb-5">
-                <h2 class="h3 fw-bold text-dark">Engenharia de Segregação: O Patrimônio de Afetação</h2>
-                <p class="text-muted mx-auto" style="max-width: 700px;">
-                    A base da segurança no mercado de securitização é a blindagem dos ativos. Entenda como a BSI Capital estrutura a segregação jurídica para proteger investidores e emissores.
+        <div class="row align-items-center mb-5 pb-3">
+            <div class="col-lg-5">
+                <h2 class="h3 fw-bold text-dark mb-lg-0">Engenharia de Segregação: Patrimônio Separado e Regime Fiduciário</h2>
+            </div>
+            <div class="col-lg-7">
+                <p class="text-muted mb-0" style="font-size: 1.05rem;">
+                    A base da estruturação fiduciária é o patrimônio separado. Entenda como estruturamos a segregação patrimonial conforme o regime fiduciário e os documentos da operação.
                 </p>
             </div>
-            
+        </div>
+        
+        <div class="row align-items-center g-5">
             <div class="col-lg-7">
                 <!-- Visual Flow Diagram -->
                 <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-4 p-4 bg-white rounded-4 shadow-sm border">
@@ -118,10 +188,10 @@
                     <!-- Securitizadora (Container) -->
                     <div class="p-1 rounded-4 border-dashed border-gold border-2 position-relative w-100" style="max-width: 280px; background: rgba(212,175,55, 0.05);">
                          <div class="text-center p-3 bg-white rounded-3 shadow-sm">
-                            <div class="fw-bold text-dark mb-1" style="font-size: 0.9rem;">Patrimônio de Afetação</div>
-                            <div class="smaller text-muted" style="font-size: 0.75rem;">Lastro Segregado (CRI/CRA)</div>
+                            <div class="fw-bold text-dark mb-1" style="font-size: 0.9rem;">Patrimônio Separado</div>
+                            <div class="smaller text-muted" style="font-size: 0.75rem;">Lastro e Regime Fiduciário</div>
                             <hr class="my-2" style="opacity: 0.1;">
-                            <div class="fw-bold" style="color: var(--gold); font-size: 0.7rem; letter-spacing: 0.05em;">BLINDAGEM JURÍDICA</div>
+                            <div class="fw-bold" style="color: var(--gold); font-size: 0.7rem; letter-spacing: 0.05em;">SEGREGAÇÃO PATRIMONIAL</div>
                          </div>
                          <div class="position-absolute top-0 start-50 translate-middle badge bg-gold text-white px-2 py-1" style="font-size: 0.6rem; background-color: var(--gold) !important;">BSI CAPITAL</div>
                     </div>
@@ -145,10 +215,10 @@
                         <div class="p-2 rounded bg-gold shadow-sm">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                         </div>
-                        <h3 class="h5 fw-bold mb-0 text-white">Segurança de Nível Institucional</h3>
+                        <h3 class="h5 fw-bold mb-0 text-white">Mecanismos de Proteção</h3>
                     </div>
                     <p class="small opacity-90 mb-0" style="line-height: 1.6;">
-                        O <strong>Patrimônio Separado</strong> garante que os ativos da operação não se confundam com o balanço da securitizadora. Em caso de insolvência da BSI, o fluxo de pagamentos é intocado e pertence exclusivamente aos investidores, sob gestão de um agente fiduciário.
+                        O <strong>Regime Fiduciário</strong> institui o patrimônio separado, definindo que os ativos da operação e o fluxo de pagamentos se destinem ao cumprimento das obrigações daquela emissão, sujeitos à legislação aplicável e à alocação de riscos conforme os instrumentos jurídicos. Esse patrimônio pertence exclusivamente aos investidores, sob gestão de um agente fiduciário.
                     </p>
                 </div>
             </div>
@@ -161,38 +231,42 @@
     <div class="container py-4">
         <div class="row g-5">
             <div class="col-lg-6">
-                <h2 class="h4 fw-bold text-dark mb-4">Documentos Essenciais</h2>
+                <h2 class="h4 fw-bold text-dark mb-4">Documentos da Emissão</h2>
                 <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
-                                <li class="small d-flex align-items-center gap-2 text-muted">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    Escritura de Emissão
+                            <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                                <li>
+                                    <span class="fw-bold d-block small mb-1" style="color: var(--brand);">Instrumentos da emissão</span>
+                                    <div class="small d-flex align-items-start gap-2 text-muted">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <span>Termo de Securitização / Escritura de Emissão</span>
+                                    </div>
                                 </li>
-                                <li class="small d-flex align-items-center gap-2 text-muted">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    Contrato de Cessão
-                                </li>
-                                <li class="small d-flex align-items-center gap-2 text-muted">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    Termo de Garantias
+                                <li>
+                                    <span class="fw-bold d-block small mb-1" style="color: var(--brand);">Lastro e Cessão</span>
+                                    <div class="small d-flex align-items-start gap-2 text-muted">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <span>Contratos de Cessão e Aquisição de Direitos Creditórios</span>
+                                    </div>
                                 </li>
                             </ul>
                         </div>
                         <div class="col-md-6">
-                            <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
-                                <li class="small d-flex align-items-center gap-2 text-muted">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    Prospecto e Lâmina
+                            <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                                <li>
+                                    <span class="fw-bold d-block small mb-1" style="color: var(--brand);">Garantias</span>
+                                    <div class="small d-flex align-items-start gap-2 text-muted">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <span>Alienação Fiduciária, Cessão Fiduciária e Fiança/Aval</span>
+                                    </div>
                                 </li>
-                                <li class="small d-flex align-items-center gap-2 text-muted">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    Regulamento do Fundo
-                                </li>
-                                <li class="small d-flex align-items-center gap-2 text-muted">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                    Acordos de Investimento
+                                <li>
+                                    <span class="fw-bold d-block small mb-1" style="color: var(--brand);">Oferta e Regulatórios</span>
+                                    <div class="small d-flex align-items-start gap-2 text-muted">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="3" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <span>Prospecto, Lâmina e Contratos de Distribuição</span>
+                                    </div>
                                 </li>
                             </ul>
                         </div>
@@ -205,19 +279,19 @@
                     <div class="col-12">
                         <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-xs card-hover transition-all border-start border-4 border-gold">
                             <div class="fw-bold text-dark small" style="min-width: 100px;">Imobiliário</div>
-                            <div class="text-muted smaller">Lei 9.514/97 (CRI) e Lei 14.430/22 (Marco Legal)</div>
+                            <div class="text-muted smaller">Lei 9.514/97 (CRI) e Marco Legal da Securitização (Lei 14.430/22)</div>
                         </div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-xs card-hover transition-all border-start border-4 border-gold">
                             <div class="fw-bold text-dark small" style="min-width: 100px;">Agronegócio</div>
-                            <div class="text-muted smaller">Lei 11.076/04 (CRA) e Lei do Agro (13.986/20)</div>
+                            <div class="text-muted smaller">Lei 11.076/04 (CRA) e legislação agro aplicável</div>
                         </div>
                     </div>
                     <div class="col-12">
                         <div class="d-flex align-items-center gap-3 p-3 bg-white rounded-3 shadow-xs card-hover transition-all border-start border-4 border-gold">
-                            <div class="fw-bold text-dark small" style="min-width: 100px;">Comercial</div>
-                            <div class="text-muted smaller">Cessão de Créditos e Estruturas de FIDC</div>
+                            <div class="fw-bold text-dark small" style="min-width: 100px;">Empresarial</div>
+                            <div class="text-muted smaller">CR, Certificado de Recebíveis, cessão de direitos creditórios e estruturas aplicáveis</div>
                         </div>
                     </div>
                 </div>
@@ -233,24 +307,24 @@
             <div class="col-lg-6 order-lg-2">
                 <h2 class="h3 fw-bold text-dark mb-4">Acompanhamento Jurídico ao Longo da Vida da Operação</h2>
                 <p class="text-muted mb-4 lead">
-                    A documentação não encerra no closing. Aditamentos, eventos de crédito, reestruturações contratuais e alterações regulatórias exigem suporte jurídico contínuo — e a BSI Capital permanece ativa em cada uma dessas frentes durante toda a vigência da emissão.
+                    A documentação e governança contratual não se encerram no closing. Aditamentos, eventos de crédito, reestruturações contratuais e alterações regulatórias exigem suporte contínuo durante toda a vigência da emissão.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Coordenação de aditamentos à escritura em eventos de crédito, waiver de covenant ou necessidade de reestruturação contratual.</span>
+                        <span class="text-dark fw-medium">Coordenação de aditamentos em eventos de crédito, solicitações de waivers ou necessidade de reestruturação das garantias e fluxo.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Suporte jurídico em assembleias de debenturistas e titulares — elaboração de convocações, atas e deliberações com aderência às exigências do agente fiduciário.</span>
+                        <span class="text-dark fw-medium">Suporte jurídico em assembleias de titulares, elaborando convocações, atas e deliberações em conjunto com o agente fiduciário.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Atualização contínua da documentação conforme novos normativos da CVM e alterações regulatórias que impactem a estrutura da emissão em vigor.</span>
+                        <span class="text-dark fw-medium">Atualização documental conforme as regulamentações aplicáveis da CVM e interface proativa com agentes da operação.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Formalização digital ponta a ponta, integrando assinaturas eletrônicas e custódia digital para conferir agilidade ao closing sem abrir mão do rigor jurídico.</span>
+                        <span class="text-dark fw-medium">Formalização digital ponta a ponta, agilizando assinaturas eletrônicas com validade legal e adequação para o registro na B3.</span>
                     </li>
                 </ul>
             </div>
@@ -271,10 +345,10 @@
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                     </div>
                     <div>
-                        <span class="badge bg-success-subtle text-success mb-2 px-3 py-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">Eficiência Jurídica em Prática</span>
-                        <h3 class="h4 fw-bold text-dark mb-2">Estruturação de CRA em tempo recorde</h3>
+                        <span class="badge bg-success-subtle text-success mb-2 px-3 py-1 text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.05em;">Exemplo de Atuação</span>
+                        <h3 class="h4 fw-bold text-dark mb-2">Eficiência jurídica na estruturação de CRA</h3>
                         <p class="text-muted mb-0" style="font-size: 0.95rem;">
-                            Fomos desafiados a estruturar uma operação de CRA com múltiplas garantias reais (imóveis rurais e penhor de safra) em apenas <strong>15 dias úteis</strong>. Graças à nossa "Engenharia Documental" pré-formatada e due diligence integrada, o fechamento ocorreu sem pendências jurídicas, garantindo o custo de oportunidade para o emissor.
+                            Ao estruturar operações com múltiplas garantias reais (imóveis rurais e penhor de safra), aplicamos nossa "Engenharia Documental" e due diligence integrada. Isso visa conferir celeridade à modelagem da operação, mitigando riscos documentais e preparando a estruturação com alto padrão de diligência para a avaliação do mercado.
                         </p>
                     </div>
                 </div>

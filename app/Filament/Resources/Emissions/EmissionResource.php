@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Emissions;
 use App\Filament\Resources\Emissions\Pages\CreateEmission;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Resources\Emissions\Pages\ListEmissions;
+use App\Filament\Resources\Emissions\Pages\PuCurveHistory;
 use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use App\Filament\Resources\Emissions\Tables\EmissionsTable;
 use App\Models\Emission;
@@ -80,6 +81,7 @@ class EmissionResource extends Resource
             'index' => ListEmissions::route('/'),
             'create' => CreateEmission::route('/create'),
             'edit' => EditEmission::route('/{record}/edit'),
+            'pu-history' => PuCurveHistory::route('/{record}/pu-history'),
         ];
     }
 }

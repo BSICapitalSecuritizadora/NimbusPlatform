@@ -29,6 +29,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+// Filament v5: closures de schema recebem Filament\Schemas\Components\Utilities\Get (NAO Filament\Forms\Get).
+// Usar o import errado quebra o mount do formulario configurePuCalculation (campo CDI com Select->live()).
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Cache;
@@ -83,6 +85,12 @@ class EditEmission extends EditRecord
                     'version' => $this->getRecord()->currentPuCurveVersion(),
                     'coverage' => app(PuIndexCoverageService::class)->report($this->getRecord()),
                 ])),
+            Action::make('puCurveHistory')
+                ->label('Historico / Auditoria')
+                ->icon('heroicon-o-clock')
+                ->color('gray')
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                ->url(fn (): string => EmissionResource::getUrl('pu-history', ['record' => $this->getRecord()])),
             Action::make('configurePuCalculation')
                 ->label('Configurar Calculo de PU')
                 ->icon('heroicon-o-calculator')
@@ -120,7 +128,7 @@ class EditEmission extends EditRecord
                 ->disabled(fn (): bool => $this->isGeneratingPuCurve)
                 ->requiresConfirmation()
                 ->modalHeading(fn (): string => $this->generatePuCurveLabel())
-                ->modalDescription('A curva diaria sera recalculada em segundo plano e persistida como uma nova versao. O historico anterior e preservado.')
+                ->modalDescription('O calculo roda em segundo plano (fila) e cria uma NOVA versao da curva. As versoes anteriores nao-homologadas viram "obsoletas" e o historico e sempre preservado. Acompanhe o andamento no Painel da Curva PU.')
                 ->form(fn (): array => $this->getGeneratePuCurveForm())
                 ->action(function (array $data): void {
                     if ($this->isGeneratingPuCurve || Cache::get($this->puCurveGenerationStatusCacheKey()) === 'processing') {
@@ -569,9 +577,9 @@ class EditEmission extends EditRecord
         return [
             Placeholder::make('homologated_warning')
                 ->label('')
-                ->content('Existe uma curva homologada para esta emissao. O reprocessamento criara uma nova versao sem apagar o historico homologado.'),
+                ->content('Esta emissao possui uma curva HOMOLOGADA. O reprocessamento ira: (1) criar uma NOVA versao da curva; (2) executar o calculo em segundo plano (fila); (3) PRESERVAR integralmente a curva homologada anterior, que permanece como registro historico. Nenhum dado e apagado.'),
             Checkbox::make('confirm_reprocess')
-                ->label('Confirmo o reprocessamento de uma curva homologada.')
+                ->label('Confirmo que entendo que uma nova versao sera criada e que a curva homologada anterior sera preservada.')
                 ->accepted()
                 ->required(),
         ];

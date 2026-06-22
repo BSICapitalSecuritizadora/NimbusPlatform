@@ -193,6 +193,56 @@ class PuAuditLogService
         $logger->event('invalidated')->log('pu_curve_invalidated');
     }
 
+    public function logHomologationReportDownloaded(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+                'calculation_version' => $calculationVersion,
+            ]);
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('homologation_report_downloaded')->log('pu_homologation_report_downloaded');
+    }
+
+    /**
+     * Atividades da calculadora de PU de uma emissao, mais recentes primeiro.
+     *
+     * @return \Illuminate\Support\Collection<int, Activity>
+     */
+    public function activitiesFor(Emission $emission, int $limit = 50): \Illuminate\Support\Collection
+    {
+        return Activity::query()
+            ->where('log_name', self::LOG_NAME)
+            ->where('subject_type', $emission::class)
+            ->where('subject_id', $emission->id)
+            ->with('causer')
+            ->latest('id')
+            ->limit($limit)
+            ->get();
+    }
+
+    public function describeEvent(string $description): string
+    {
+        return match ($description) {
+            'pu_curve_generated' => 'Curva gerada',
+            'pu_curve_reprocessed' => 'Curva reprocessada',
+            'pu_curve_generation_failed' => 'Falha na geracao',
+            'pu_curve_validated' => 'Curva validada',
+            'pu_curve_exported' => 'Curva exportada',
+            'pu_curve_homologated' => 'Curva homologada',
+            'pu_curve_invalidated' => 'Curva invalidada',
+            'pu_homologation_report_downloaded' => 'PDF de homologacao baixado',
+            'pu_parameters_updated' => 'Parametros atualizados',
+            'pu_event_changed' => 'Evento de PU alterado',
+            default => $description,
+        };
+    }
+
     /**
      * @param  array<string, mixed>  $before
      * @param  array<string, mixed>  $after

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Support\PuVersionNumber;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
@@ -100,6 +101,7 @@ class PuCurveVersionService
     {
         $version->forceFill([
             'status' => PuCurveStatus::Obsolete,
+            'obsolete_reason' => 'invalidated',
             'invalidated_at' => now(),
             'invalidated_by' => $invalidatedByUserId,
         ])->save();
@@ -141,18 +143,7 @@ class PuCurveVersionService
             ->where('emission_id', $emission->id)
             ->pluck('calculation_version');
 
-        $highest = $fromCurves->merge($fromVersions)
-            ->filter()
-            ->map(static function (string $version): int {
-                if (preg_match('/^v(?P<number>\d+)$/', $version, $matches) === 1) {
-                    return (int) $matches['number'];
-                }
-
-                return 0;
-            })
-            ->max() ?? 0;
-
-        return 'v'.($highest + 1);
+        return PuVersionNumber::formatNext($fromCurves->merge($fromVersions)->all());
     }
 
     private function markPreviousVersionsObsolete(EmissionPuCurveVersion $version): void
@@ -161,6 +152,9 @@ class PuCurveVersionService
             ->where('emission_id', $version->emission_id)
             ->where('id', '!=', $version->id)
             ->whereNotIn('status', [PuCurveStatus::Homologated->value, PuCurveStatus::Obsolete->value])
-            ->update(['status' => PuCurveStatus::Obsolete->value]);
+            ->update([
+                'status' => PuCurveStatus::Obsolete->value,
+                'obsolete_reason' => 'superseded',
+            ]);
     }
 }

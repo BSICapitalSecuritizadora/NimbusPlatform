@@ -170,6 +170,9 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(fu
     Route::get('/admin/emissions/{emission}/pu-curves/export', App\Http\Controllers\Admin\EmissionPuCurveExportController::class)
         ->name('admin.emissions.pu-curves.export')
         ->middleware('throttle:30,1');
+    Route::get('/admin/emissions/{emission}/pu-curves/{version}/homologacao', App\Http\Controllers\Admin\EmissionPuHomologationReportController::class)
+        ->name('admin.emissions.pu-homologation.pdf')
+        ->middleware('throttle:30,1');
 });
 
 Route::redirect('/admin/nimbus-dashboard', '/admin/gestao-documental-externa-dashboard');

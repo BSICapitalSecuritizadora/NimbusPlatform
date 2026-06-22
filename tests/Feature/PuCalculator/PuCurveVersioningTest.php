@@ -2,9 +2,11 @@
 
 use App\Actions\Emissions\HomologatePuCurve;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
+use App\Models\EmissionPuDailyCurve;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -76,6 +78,30 @@ it('preserves a homologated version when reprocessing with confirmation', functi
 
     expect($v1->status)->toBe(PuCurveStatus::Homologated)
         ->and($v2->status)->toBe(PuCurveStatus::Generated);
+});
+
+it('records the obsolete reason when superseding a previous version', function () {
+    $user = User::factory()->create();
+    $emission = seedReadyEmissionForVersioning();
+
+    app()->call([new GeneratePuDailyCurveJob($emission->id, $user->id), 'handle']);
+    app()->call([new GeneratePuDailyCurveJob($emission->id, $user->id), 'handle']);
+
+    $v1 = EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->where('calculation_version', 'v1')->first();
+
+    expect($v1->status)->toBe(PuCurveStatus::Obsolete)
+        ->and($v1->obsolete_reason)->toBe('superseded');
+});
+
+it('derives the next version even when existing versions are not in the canonical vN pattern', function () {
+    $emission = Emission::factory()->create(['type' => 'CRI', 'status' => 'active']);
+
+    EmissionPuDailyCurve::factory()->create([
+        'emission_id' => $emission->id,
+        'calculation_version' => 'rev_5',
+    ]);
+
+    expect(app(PuCurveVersionService::class)->nextCalculationVersion($emission))->toBe('v6');
 });
 
 it('blocks reprocessing a homologated curve without explicit confirmation', function () {

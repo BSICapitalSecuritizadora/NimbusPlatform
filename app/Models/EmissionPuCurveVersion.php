@@ -18,6 +18,7 @@ class EmissionPuCurveVersion extends Model
         'calculation_version',
         'batch_id',
         'status',
+        'obsolete_reason',
         'engine_version',
         'parameters_snapshot',
         'rows_count',

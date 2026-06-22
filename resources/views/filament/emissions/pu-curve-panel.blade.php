@@ -3,9 +3,28 @@
     /** @var \App\Models\EmissionPuCurveVersion|null $version */
     /** @var \App\Domain\PuCalculator\DTOs\PuIndexCoverageReport $coverage */
     $status = $version?->status;
+    $canExport = auth()->user()?->can('pu.curve.export') ?? false;
 @endphp
 
 <div class="space-y-6">
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+        Geração e validação da curva rodam em segundo plano (fila). O status abaixo é atualizado
+        automaticamente conforme os jobs concluem.
+    </p>
+
+    @if ($version !== null && $canExport)
+        <div>
+            <x-filament::button
+                tag="a"
+                size="sm"
+                color="gray"
+                icon="heroicon-o-document-arrow-down"
+                href="{{ route('admin.emissions.pu-homologation.pdf', ['emission' => $emission, 'version' => $version]) }}"
+            >
+                Baixar PDF de homologação ({{ $version->calculation_version }})
+            </x-filament::button>
+        </div>
+    @endif
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
             <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</p>
