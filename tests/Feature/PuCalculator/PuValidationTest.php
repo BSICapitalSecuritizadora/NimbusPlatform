@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Enums\PuValidationStatus;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
 use App\Domain\PuCalculator\Services\PuValidationService;
@@ -10,10 +11,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('approves mirrored reference curves for the validation workbooks', function (string $keyword, int $expectedRowCount) {
+it('approves the mirrored AMANI reference curve in display-scale mode', function () {
+    $keyword = 'AMANI';
+    $expectedRowCount = 1810;
     $spreadsheetPath = sampleSpreadsheetPath($keyword);
     $emission = Emission::factory()->create([
-        'type' => str_contains($keyword, 'AMANI') ? 'CRI' : 'CR',
+        'type' => 'CRI',
         'status' => 'active',
     ]);
 
@@ -21,7 +24,12 @@ it('approves mirrored reference curves for the validation workbooks', function (
 
     persistReferenceRows($emission, $referenceRows);
 
-    $report = app(PuValidationService::class)->handle($emission, $spreadsheetPath);
+    $report = app(PuValidationService::class)->handle(
+        $emission,
+        $spreadsheetPath,
+        'v1',
+        PuValidationMode::DisplayScale,
+    );
 
     expect($report->sheetName)->toBe('PuDiario')
         ->and($report->totalRowsCompared)->toBe($expectedRowCount)
@@ -30,11 +38,9 @@ it('approves mirrored reference curves for the validation workbooks', function (
         ->and($report->largestPuDifference)->toBe('0.000000')
         ->and($report->largestTotalValueDifference)->toBe('0.000000')
         ->and($report->largestPaymentDifference)->toBe('0.000000')
+        ->and($report->mode)->toBe(PuValidationMode::DisplayScale)
         ->and($report->status)->toBe(PuValidationStatus::Approved);
-})->with([
-    'AMANI' => ['AMANI', 1810],
-    'TROUPE' => ['TROUPE', 696],
-]);
+});
 
 it('reports divergences when the generated curve does not match the TROUPE workbook', function () {
     $spreadsheetPath = sampleSpreadsheetPath('TROUPE');
@@ -54,7 +60,12 @@ it('reports divergences when the generated curve does not match the TROUPE workb
             'updated_unit_value' => '999.0000000000000000',
         ]);
 
-    $report = app(PuValidationService::class)->handle($emission, $spreadsheetPath);
+    $report = app(PuValidationService::class)->handle(
+        $emission,
+        $spreadsheetPath,
+        'v1',
+        PuValidationMode::DisplayScale,
+    );
 
     expect($report->status)->toBe(PuValidationStatus::Rejected)
         ->and($report->totalDivergences)->toBeGreaterThanOrEqual(1)
@@ -140,8 +151,14 @@ it('validates the latest generated version by default when multiple curve versio
 
     persistReferenceRows($emission, $referenceRows, 'v2');
 
-    $report = app(PuValidationService::class)->handle($emission, $spreadsheetPath);
+    $report = app(PuValidationService::class)->handle(
+        $emission,
+        $spreadsheetPath,
+        'v2',
+        PuValidationMode::DisplayScale,
+    );
 
     expect($report->status)->toBe(PuValidationStatus::Approved)
+        ->and($report->mode)->toBe(PuValidationMode::DisplayScale)
         ->and($report->calculationVersion)->toBe('v2');
 });

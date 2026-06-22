@@ -43,6 +43,7 @@ class EmissionPuDailyCurveFactory extends Factory
             'index_rate_value' => '13.65000000',
             'event_original_date' => null,
             'event_effective_date' => null,
+            'calculation_memory' => null,
         ];
     }
 }

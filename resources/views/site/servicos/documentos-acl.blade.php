@@ -3,6 +3,14 @@
 @section('title', 'Documentos com ACL — BSI Capital')
 
 @section('content')
+@php
+    $stats = array_merge([
+        'total_volume' => 0,
+        'active_count' => 0,
+        'document_count' => 0,
+    ], $stats ?? []);
+    $latestEmissions = $latestEmissions ?? collect();
+@endphp
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
     <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/documentos_acl.png') }}') center/cover; mix-blend-mode: luminosity;"></div>

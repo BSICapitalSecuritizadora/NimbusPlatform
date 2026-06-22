@@ -8,6 +8,8 @@ class DecimalRounder
 {
     public const INTERNAL_SCALE = 16;
 
+    public const CALCULATION_SCALE = 24;
+
     public const FACTOR_SCALE = 16;
 
     public const RATE_SCALE = 8;

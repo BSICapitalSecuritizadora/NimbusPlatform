@@ -5,12 +5,14 @@ use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
 use App\Domain\PuCalculator\Services\IndexRateService;
+use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\RoundingService;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -132,4 +134,64 @@ it('stores lookup mode defaults on PU parameters', function () {
 
     expect($parameter->index_rate_lookup_mode_enum)->toBe(PuIndexRateLookupMode::BusinessDayLagExact)
         ->and($parameter->index_rate_lag_business_days)->toBe(5);
+});
+
+it('validates long prerequisite ranges without per-day database queries', function () {
+    $calendar = app(BusinessDayCalendarService::class);
+    $calendar->flushCache();
+    app(IndexRateService::class)->flushCache();
+
+    $emission = Emission::factory()->create([
+        'issued_quantity' => 1000,
+    ]);
+
+    for ($date = CarbonImmutable::parse('2026-01-01'); $date->lte(CarbonImmutable::parse('2026-12-31')); $date = $date->addDay()) {
+        BusinessCalendarDate::query()->create([
+            'calendar_code' => 'B3',
+            'calendar_date' => $date->toDateString(),
+            'is_business_day' => ! $date->isWeekend(),
+        ]);
+
+        if (! $date->isWeekend()) {
+            IndexRate::query()->create([
+                'indexer' => PuIndexer::Cdi->value,
+                'rate_date' => $date->toDateString(),
+                'rate_value' => '13.65000000',
+                'source' => 'testing',
+            ]);
+        }
+    }
+
+    $emission->integralizationHistories()->create([
+        'date' => '2026-01-01',
+        'quantity' => '1000.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '1000000.00',
+        'investor_fund' => 'Head Invest',
+    ]);
+
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-01-01',
+        'curve_end_date' => '2026-12-31',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.50000000',
+        'indexer' => PuIndexer::Cdi->value,
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'legacy_projection_enabled' => false,
+    ]);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $result = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
+
+    $selectQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $query): bool => str_starts_with(strtolower((string) $query['query']), 'select'))
+        ->count();
+
+    DB::disableQueryLog();
+
+    expect($result->passes())->toBeTrue()
+        ->and($selectQueries)->toBeLessThan(20);
 });

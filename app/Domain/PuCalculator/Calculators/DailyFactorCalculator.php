@@ -15,7 +15,7 @@ class DailyFactorCalculator
         private readonly DecimalRounder $rounder,
     ) {}
 
-    public function factorDiForDay(?string $annualRate, bool $isBusinessDay, int $businessDayBasis): string
+    public function factorDiForDay(?string $annualRate, bool $isBusinessDay, int $businessDayBasis, int $scale = DecimalRounder::FACTOR_SCALE): string
     {
         if (! $isBusinessDay || $annualRate === null) {
             return '1.0000000000000000';
@@ -25,10 +25,10 @@ class DailyFactorCalculator
             ->add(Decimal::of($annualRate)->divide(Decimal::of(100), DecimalRounder::INTERNAL_SCALE), DecimalRounder::INTERNAL_SCALE)
             ->value();
 
-        return $this->powRatio($base, 1, $businessDayBasis, DecimalRounder::FACTOR_SCALE);
+        return $this->powRatio($base, 1, $businessDayBasis, $scale);
     }
 
-    public function factorSpreadForBusinessDays(string $spreadRate, int $businessDays, int $businessDayBasis): string
+    public function factorSpreadForBusinessDays(string $spreadRate, int $businessDays, int $businessDayBasis, int $scale = DecimalRounder::FACTOR_SCALE): string
     {
         if ($businessDays <= 0) {
             return '1.0000000000000000';
@@ -38,7 +38,7 @@ class DailyFactorCalculator
             ->add(Decimal::of($spreadRate)->divide(Decimal::of(100), DecimalRounder::INTERNAL_SCALE), DecimalRounder::INTERNAL_SCALE)
             ->value();
 
-        return $this->powRatio($base, $businessDays, $businessDayBasis, DecimalRounder::FACTOR_SCALE);
+        return $this->powRatio($base, $businessDays, $businessDayBasis, $scale);
     }
 
     public function powRatio(string $base, int $numerator, int $denominator, int $scale = DecimalRounder::FACTOR_SCALE): string

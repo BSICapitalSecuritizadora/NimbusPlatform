@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\DTOs;
 
+use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Enums\PuValidationStatus;
 use Carbon\CarbonImmutable;
 
@@ -30,6 +31,9 @@ final readonly class PuValidationReport
         public array $divergenceCountByField = [],
         public array $divergenceCountByCause = [],
         public ?string $calculationVersion = null,
+        public PuValidationMode $mode = PuValidationMode::RawScale,
+        public ?CarbonImmutable $rangeStart = null,
+        public ?CarbonImmutable $rangeEnd = null,
     ) {}
 
     /**

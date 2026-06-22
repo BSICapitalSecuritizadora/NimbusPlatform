@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Enums\PuValidationStatus;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
 use App\Domain\PuCalculator\Services\PuValidationService;
@@ -28,7 +29,12 @@ it('builds a grouped validation report with first divergence and largest differe
             'factor_di' => '1.1111111111111111',
         ]);
 
-    $report = app(PuValidationService::class)->handle($emission, $spreadsheetPath);
+    $report = app(PuValidationService::class)->handle(
+        $emission,
+        $spreadsheetPath,
+        'v1',
+        PuValidationMode::DisplayScale,
+    );
 
     expect($report->status)->toBe(PuValidationStatus::Rejected)
         ->and($report->totalDivergences)->toBeGreaterThanOrEqual(1)
@@ -36,6 +42,7 @@ it('builds a grouped validation report with first divergence and largest differe
         ->and($report->firstDivergenceDate?->toDateString())->toBe($referenceRows[0]->date->toDateString())
         ->and($report->largestDifferencesByField)->toHaveKeys(['pu_updated', 'factor_di'])
         ->and(($report->divergenceCountByField['pu_updated'] ?? 0))->toBeGreaterThanOrEqual(1)
+        ->and($report->mode)->toBe(PuValidationMode::DisplayScale)
         ->and($report->largestDifferencesByField['pu_updated']->possibleCause)->not()->toBeNull();
 });
 

@@ -167,6 +167,9 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(fu
     Route::get('/admin/integralization-histories/template/download', App\Http\Controllers\Admin\IntegralizationHistoryTemplateDownloadController::class)
         ->name('admin.integralization-histories.template.download')
         ->middleware('throttle:60,1');
+    Route::get('/admin/emissions/{emission}/pu-curves/export', App\Http\Controllers\Admin\EmissionPuCurveExportController::class)
+        ->name('admin.emissions.pu-curves.export')
+        ->middleware('throttle:30,1');
 });
 
 Route::redirect('/admin/nimbus-dashboard', '/admin/gestao-documental-externa-dashboard');

@@ -4,12 +4,15 @@ use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\IndexRate;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Spatie\Activitylog\Models\Activity;
 
 uses(RefreshDatabase::class);
 
 it('generates the PU curve in the queued job and stores the completion payload in cache', function () {
+    $user = User::factory()->create();
     $emission = Emission::factory()->create([
         'type' => 'CRI',
         'status' => 'active',
@@ -37,7 +40,7 @@ it('generates the PU curve in the queued job and stores the completion payload i
         'legacy_projection_enabled' => true,
     ]);
 
-    $job = new GeneratePuDailyCurveJob($emission->id);
+    $job = new GeneratePuDailyCurveJob($emission->id, $user->id);
 
     app()->call([$job, 'handle']);
 
@@ -46,7 +49,12 @@ it('generates the PU curve in the queued job and stores the completion payload i
             'status' => 'completed',
             'calculation_version' => 'v1',
             'rows_count' => 4,
-        ]);
+        ])
+        ->and(Activity::query()
+            ->where('log_name', 'pu-calculation')
+            ->where('description', 'pu_curve_generated')
+            ->where('subject_id', $emission->id)
+            ->exists())->toBeTrue();
 });
 
 it('stores the failure payload in cache when the queued job fails', function () {

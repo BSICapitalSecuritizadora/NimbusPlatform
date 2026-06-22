@@ -12,27 +12,31 @@ class BusinessCalendarService implements BusinessDayCalendar
     /** @var array<string, bool> */
     private array $cache = [];
 
+    /** @var array<string, array<int, bool>> */
+    private array $loadedYears = [];
+
     public function flushCache(): void
     {
         $this->cache = [];
+        $this->loadedYears = [];
     }
 
     public function isBusinessDay(CarbonImmutable $date, ?string $calendarCode = null): bool
     {
-        $calendarKey = sprintf('%s|%s', $calendarCode ?? 'B3', $date->toDateString());
+        $resolvedCalendarCode = $calendarCode ?? 'B3';
+        $calendarKey = sprintf('%s|%s', $resolvedCalendarCode, $date->toDateString());
 
         if (array_key_exists($calendarKey, $this->cache)) {
             return $this->cache[$calendarKey];
         }
 
-        $storedValue = BusinessCalendarDate::query()
-            ->where('calendar_code', $calendarCode ?? 'B3')
-            ->whereDate('calendar_date', $date)
-            ->value('is_business_day');
+        $this->loadYearIntoCache($resolvedCalendarCode, (int) $date->format('Y'));
 
-        return $this->cache[$calendarKey] = $storedValue !== null
-            ? (bool) $storedValue
-            : ! $date->isWeekend();
+        if (array_key_exists($calendarKey, $this->cache)) {
+            return $this->cache[$calendarKey];
+        }
+
+        return $this->cache[$calendarKey] = ! $date->isWeekend();
     }
 
     public function nextBusinessDay(CarbonImmutable $date, ?string $calendarCode = null): CarbonImmutable
@@ -75,5 +79,33 @@ class BusinessCalendarService implements BusinessDayCalendar
         }
 
         throw new RuntimeException('Unable to shift the requested number of business days.');
+    }
+
+    private function loadYearIntoCache(string $calendarCode, int $year): void
+    {
+        if (($this->loadedYears[$calendarCode][$year] ?? false) === true) {
+            return;
+        }
+
+        $startOfYear = CarbonImmutable::create($year, 1, 1, 0, 0, 0);
+        $endOfYear = $startOfYear->endOfYear();
+
+        BusinessCalendarDate::query()
+            ->where('calendar_code', $calendarCode)
+            ->whereBetween('calendar_date', [$startOfYear->toDateString(), $endOfYear->toDateString()])
+            ->get(['calendar_date', 'is_business_day'])
+            ->each(function (BusinessCalendarDate $calendarDate) use ($calendarCode): void {
+                if ($calendarDate->calendar_date === null) {
+                    return;
+                }
+
+                $this->cache[sprintf(
+                    '%s|%s',
+                    $calendarCode,
+                    CarbonImmutable::instance($calendarDate->calendar_date)->toDateString(),
+                )] = (bool) $calendarDate->is_business_day;
+            });
+
+        $this->loadedYears[$calendarCode][$year] = true;
     }
 }

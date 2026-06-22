@@ -380,6 +380,21 @@
 
     $hasPayments = $emission->payments->count() > 0;
     $hasPuHistory = $emission->puHistories->count() > 0;
+    $indexer = $emission->remuneration_indexer;
+    $spreadRate = is_numeric($emission->remuneration_rate) ? (float) $emission->remuneration_rate : null;
+    $isIndexed = in_array($indexer, ['CDI', 'IPCA'], true);
+    $hasSimulatorData = $hasPuHistory && ($spreadRate !== null) && ($emission->maturity_date !== null);
+    $publicDocuments = $emission->documents
+        ->unique('id')
+        ->sortByDesc('published_at')
+        ->values();
+    $documentCategories = $publicDocuments
+        ->pluck('category')
+        ->filter()
+        ->unique()
+        ->values();
+    $publicDocumentCount = $publicDocuments->count();
+    $publicDocumentCountLabel = $publicDocumentCount.' '.($publicDocumentCount === 1 ? 'documento público' : 'documentos públicos');
 
 @endphp
 
@@ -673,13 +688,7 @@
                         </div>
                     </div>
 
-                    @if($hasPuHistory)
-                        @php
-                            $indexer = $emission->remuneration_indexer;
-                            $spreadRate = (float) $emission->remuneration_rate;
-                            $isIndexed = in_array($indexer, ['CDI', 'IPCA']);
-                        @endphp
-
+                    @if($hasSimulatorData)
                         <div class="alert alert-info border-0 shadow-sm rounded-4 p-4 mb-5" style="background: rgba(9,27,35,0.03);">
                             <div class="d-flex gap-3">
                                 <i class="bi bi-info-circle-fill text-brand" style="font-size: 1.5rem;"></i>
@@ -758,7 +767,7 @@
                     @else
                         <div class="p-5 bg-light rounded-4 text-center text-muted border border-dashed">
                             <i class="bi bi-calculator display-4 mb-3 d-block"></i>
-                            <p class="mb-0">A simulação de fluxo do investidor ficará disponível quando houver histórico suficiente de PU e eventos de pagamento para esta operação.</p>
+                            <p class="mb-0">A simulação de fluxo do investidor ficará disponível quando houver histórico suficiente de PU e dados completos de remuneração e vencimento para esta operação.</p>
                         </div>
                     @endif
                 </div>
@@ -773,20 +782,27 @@
                             <h2 class="h3 fw-bold text-brand mb-2">Documentos da Operação</h2>
                             <p class="section-copy mb-0">Acesso integral a todos os arquivos vinculados a esta emissão.</p>
                         </div>
-                        @if($emission->documents->count() > 0)
-                            <div class="col-lg-4">
-                                <label for="docCategoryFilter" class="form-label tech-data-label">Filtrar por Categoria</label>
-                                <select id="docCategoryFilter" class="form-select shadow-none doc-filter-select">
-                                    <option value="">Todos os Documentos</option>
-                                    @foreach($emission->documents->pluck('category')->unique() as $cat)
-                                        <option value="{{ $cat }}">{{ \App\Models\Document::CATEGORY_OPTIONS[$cat] ?? ucfirst($cat) }}</option>
-                                    @endforeach
-                                </select>
+                        <div class="col-lg-4">
+                            <div class="d-flex flex-column gap-3">
+                                <div class="text-lg-end">
+                                    <span class="badge badge-premium px-3 py-2">{{ $publicDocumentCountLabel }}</span>
+                                </div>
+                                @if($documentCategories->isNotEmpty())
+                                    <div>
+                                        <label for="docCategoryFilter" class="form-label tech-data-label">Filtrar por Categoria</label>
+                                        <select id="docCategoryFilter" class="form-select shadow-none doc-filter-select">
+                                            <option value="">Todos os Documentos</option>
+                                            @foreach($documentCategories as $cat)
+                                                <option value="{{ $cat }}">{{ \App\Models\Document::CATEGORY_OPTIONS[$cat] ?? ucfirst($cat) }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @endif
                             </div>
-                        @endif
+                        </div>
                     </div>
 
-                    @if($emission->documents->count() > 0)
+                    @if($publicDocuments->isNotEmpty())
                         <div class="document-table-container">
                             <table class="table align-middle mb-0 border-0">
                                 <thead>
@@ -798,7 +814,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="documentsTableBody">
-                                    @foreach($emission->documents->sortByDesc('published_at') as $doc)
+                                    @foreach($publicDocuments as $doc)
                                         <tr class="doc-row" data-category="{{ $doc->category }}">
                                             <td class="text-muted">{{ optional($doc->published_at)->format('d/m/Y') ?? '—' }}</td>
                                             <td>
@@ -818,7 +834,7 @@
                         </div>
                     @else
                         <div class="p-5 bg-light rounded-4 text-center text-muted">
-                            Documentos serão disponibilizados conforme publicação oficial da operação.
+                            Documentos públicos serão disponibilizados conforme publicação oficial da operação.
                         </div>
                     @endif
                 </div>
@@ -994,13 +1010,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const detailProjectedValue = document.getElementById('detail_projected_value');
     const detailRemainingTerm = document.getElementById('detail_remaining_term');
 
-    const spreadRate = {{ $spreadRate }};
-    const maturityDate = '{{ $emission->maturity_date?->format('Y-m-d') }}';
+    const spreadRate = @json($spreadRate);
+    const maturityDate = @json($emission->maturity_date?->format('Y-m-d'));
 
     const currencyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
     function calculate() {
-        if (!calcDateStart || !calcQty || !maturityDate) return;
+        if (!calcDateStart || !calcQty || !maturityDate || spreadRate === null) return;
 
         const puStart = parseFloat(calcDateStart.value);
         const qty = parseFloat(calcQty.value) || 0;
@@ -1042,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', function() {
         calcPerc.style.color = variation >= 0 ? '#ffffff' : '#ffc107';
     }
 
-    if (calcDateStart) {
+    if (calcDateStart && calcQty) {
         calcDateStart.addEventListener('change', calculate);
         calcQty.addEventListener('input', calculate);
         calculate();

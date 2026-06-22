@@ -12,18 +12,18 @@
             <div class="col-lg-6">
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    <span style="color: var(--gold);">Originação:</span> o início <br>de tudo
+                    Originação Estratégica <br><span style="color: var(--gold);">de Operações</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Analisamos seu projeto de perto para garantir que ele esteja pronto para o mercado. Na BSI Capital, validamos o lastro e a viabilidade da sua tese, garantindo que a operação seja segura para quem investe e eficiente para quem capta.
+                    Avaliamos ativos, recebíveis e teses de crédito para identificar operações com potencial de estruturação via mercado de capitais. Combinamos análise de lastro, viabilidade financeira e aderência regulatória desde o nosso diagnóstico inicial.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Falar com Especialista
+                        Solicitar análise de originação
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                        Ver Emissões
+                        Ver emissões estruturadas
                     </a>
                 </div>
             </div>
@@ -54,26 +54,92 @@
         <div class="row g-4 text-center">
             <div class="col-6 col-md-3">
                 <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">200+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Projetos Analisados / Ano</div>
+                    <div class="display-5 fw-bold text-white mb-1">[X]+</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Projetos analisados</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">R$ 15Bi+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Em nossa mesa de originação</div>
+                    <div class="display-5 fw-bold text-white mb-1">R$ [X]</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Em operações avaliadas</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">40+</div>
+                    <div class="display-5 fw-bold text-white mb-1">[X]+</div>
                     <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Parceiros estratégicos</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
                 <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">48h</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Resposta de elegibilidade</div>
+                    <div class="display-5 fw-bold text-white mb-1">Até [X]h</div>
+                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Resposta preliminar</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Para quem a originação é indicada -->
+<section class="py-5 bg-white border-bottom">
+    <div class="container py-5">
+        <div class="text-center mb-5 pb-3">
+            <h2 class="h3 fw-bold text-dark mb-3">Para quem a originação é indicada</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Avaliamos diferentes perfis e estruturas, indicando caminhos possíveis para acessar o mercado de capitais.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Novos Emissores</h4>
+                        <p class="text-muted small mb-0">Empresas buscando a primeira operação no mercado de capitais.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Mercado Imobiliário</h4>
+                        <p class="text-muted small mb-0">Incorporadoras, loteadoras e empresas com recebíveis imobiliários.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Agronegócio</h4>
+                        <p class="text-muted small mb-0">Agroindústrias, cooperativas e originadores agro.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Crédito Corporativo</h4>
+                        <p class="text-muted small mb-0">Empresas com contratos recorrentes ou recebíveis corporativos futuros.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Parceiros Estratégicos</h4>
+                        <p class="text-muted small mb-0">Originadores, assessorias, Investment banks e boutiques de M&A.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="d-flex align-items-start gap-3 p-4 rounded-4 h-100" style="background: var(--surface-alt); border: 1px solid var(--border);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" class="flex-shrink-0 mt-1"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <div>
+                        <h4 class="h6 fw-bold mb-2">Instrumentos Estruturados</h4>
+                        <p class="text-muted small mb-0">Empresas avaliando acesso a CRI, CRA, CR ou estruturas de securitização sob medida.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -85,7 +151,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Sua operação começa aqui</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">A fase inicial é a mais importante. Analisamos cada detalhe do seu ativo para que a estrutura avance com segurança e transparência.</p>
+            <p class="text-muted mx-auto" style="max-width: 600px;">A fase inicial é o alicerce da estruturação. Analisamos a documentação inicial e o lastro para que a operação avance com previsibilidade técnica e institucional.</p>
         </div>
 
         <div class="row g-4">
@@ -95,7 +161,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Validação de Teses</h3>
-                    <p class="text-muted mb-0">Olhamos de perto para a qualidade dos recebíveis e o histórico de pagamento, filtrando o que realmente tem viabilidade antes de seguir adiante.</p>
+                    <p class="text-muted mb-0">Avaliamos a qualidade dos recebíveis e critérios de elegibilidade, realizando uma análise de lastro profunda para identificar viabilidade e riscos estruturais antes de seguir adiante.</p>
                 </div>
             </div>
 
@@ -105,7 +171,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Fluxo de Caixa Real</h3>
-                    <p class="text-muted mb-0">Testamos cenários e estressamos os números para garantir que o serviço da dívida esteja alinhado com o que a empresa pode pagar de verdade.</p>
+                    <p class="text-muted mb-0">Avaliamos a capacidade de pagamento, testamos cenários de estresse e dimensionamos a estrutura de garantias para adequar a operação à realidade financeira do emissor.</p>
                 </div>
             </div>
 
@@ -115,7 +181,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Posicionamento de Mercado</h3>
-                    <p class="text-muted mb-0">Preparamos o material de apresentação focado no que o mercado quer ver hoje, destacando os pontos fortes e mitigando os riscos da tese.</p>
+                    <p class="text-muted mb-0">Apoiamos na definição de mitigadores de riscos e preparamos a tese com foco na aderência ao investidor, alinhando as expectativas regulatórias e comerciais.</p>
                 </div>
             </div>
         </div>
@@ -131,28 +197,31 @@
         </div>
 
         <div class="row g-4 text-center justify-content-center">
-            <div class="col-6 col-md-4">
-                <div class="p-3 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
+            <div class="col-md-4">
+                <div class="p-4 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
                     <div class="mb-3 text-gold">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     </div>
-                    <h4 class="h6 fw-bold mb-0">Imobiliário</h4>
+                    <h4 class="h5 fw-bold mb-3">Imobiliário</h4>
+                    <p class="text-muted small mb-0">Estruturação de recebíveis imobiliários, análise aprofundada de lastro, constituição de garantias hipotecárias/alienação fiduciária e estudo de viabilidade do empreendimento.</p>
                 </div>
             </div>
-            <div class="col-6 col-md-4">
-                <div class="p-3 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
+            <div class="col-md-4">
+                <div class="p-4 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
                     <div class="mb-3 text-gold">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
                     </div>
-                    <h4 class="h6 fw-bold mb-0">Agronegócio</h4>
+                    <h4 class="h5 fw-bold mb-3">Agronegócio</h4>
+                    <p class="text-muted small mb-0">Mapeamento do ciclo de caixa, avaliação de safra, cadeia produtiva e estruturação baseada em CPRs com foco em garantias rurais (CRA, CDCA, etc).</p>
                 </div>
             </div>
-            <div class="col-6 col-md-4">
-                <div class="p-3 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
+            <div class="col-md-4">
+                <div class="p-4 bg-white rounded-4 shadow-sm h-100 d-flex flex-column align-items-center justify-content-center card-hover transition-all">
                     <div class="mb-3 text-gold">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
                     </div>
-                    <h4 class="h6 fw-bold mb-0">Infraestrutura</h4>
+                    <h4 class="h5 fw-bold mb-3">Infra & Empresas</h4>
+                    <p class="text-muted small mb-0">Desconto de recebíveis futuros, monetização de contratos recorrentes, financiamento de CAPEX e originação de crédito corporativo para diversos setores.</p>
                 </div>
             </div>
         </div>
@@ -198,20 +267,20 @@
             <div class="col-lg-6 order-lg-2">
                 <h2 class="h3 fw-bold text-dark mb-4">Do Diagnóstico ao Mandato</h2>
                 <p class="text-muted mb-4 lead">
-                    Nossa originação prepara o terreno para que a operação aconteça sem surpresas. Trabalhamos em frentes paralelas para garantir velocidade e segurança.
+                    Nossa originação prepara o terreno para avaliar o potencial de estruturação. Trabalhamos para indicar caminhos possíveis com viabilidade técnica e regulatória.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Entendemos o ativo e mapeamos os riscos logo de cara, sugerindo o melhor caminho regulatório.</span>
+                        <span class="text-dark fw-medium">Realizamos um diagnóstico inicial rigoroso e a pré-validação de riscos para sugerir o enquadramento regulatório adequado.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Unimos as frentes financeira e jurídica para que tudo caminhe junto, sem retrabalho.</span>
+                        <span class="text-dark fw-medium">Unimos as frentes de análise financeira e análise jurídica preliminar para fundamentar a tese de mercado.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Consultamos o mercado previamente para ajustar taxas e prazos antes do lançamento oficial.</span>
+                        <span class="text-dark fw-medium">Finalizamos com a preparação para mandato, desenhando uma estruturação sujeita à validação jurídica, financeira e regulatória.</span>
                     </li>
                 </ul>
             </div>

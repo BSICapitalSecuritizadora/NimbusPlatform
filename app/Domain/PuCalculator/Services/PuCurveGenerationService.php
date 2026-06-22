@@ -42,18 +42,18 @@ class PuCurveGenerationService
         $eventGroups = $this->groupEventsByDate($emission->puEvents);
         $quantityTimeline = $this->buildQuantityTimeline($emission->integralizationHistories);
 
-        $baseUnitValue = $this->rounder->round((string) $parameter->initial_unit_value, DecimalRounder::UNIT_SCALE);
+        $baseUnitValue = $this->rounder->normalize((string) $parameter->initial_unit_value, DecimalRounder::CALCULATION_SCALE);
         $lastResidualUnitValue = $baseUnitValue;
-        $factorDiAccumulated = '1.0000000000000000';
-        $factorSpread = '1.0000000000000000';
+        $factorDiAccumulated = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
+        $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
         $businessDaysSinceReset = 0;
         $rows = [];
 
         for ($currentDate = $startDate; $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
             if ($currentDate->isAfter($startDate) && $this->shouldResetAfterPreviousRow($rows)) {
                 $baseUnitValue = $lastResidualUnitValue;
-                $factorDiAccumulated = '1.0000000000000000';
-                $factorSpread = '1.0000000000000000';
+                $factorDiAccumulated = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
+                $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 $businessDaysSinceReset = 0;
             }
 
@@ -62,10 +62,10 @@ class PuCurveGenerationService
             $rateSnapshot = $this->resolveRateSnapshot($parameter, $currentDate, $isBusinessDay);
 
             if ($currentDate->equalTo($startDate)) {
-                $factorDi = '1.0000000000000000';
-                $factorSpread = '0.0000000000000000';
-                $factorSpreadDi = '0.0000000000000000';
-                $interestRealUnitValue = '0.000000000000';
+                $factorDi = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
+                $factorSpread = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
+                $factorSpreadDi = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
+                $interestRealUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
                 $updatedUnitValue = $baseUnitValue;
                 $dupInterest = 0;
                 $dutInterest = 0;
@@ -76,6 +76,7 @@ class PuCurveGenerationService
                         (string) $parameter->spread_rate,
                         $businessDaysSinceReset,
                         (int) $parameter->business_day_basis,
+                        DecimalRounder::CALCULATION_SCALE,
                     );
                 }
 
@@ -89,61 +90,62 @@ class PuCurveGenerationService
                     $rateSnapshot?->value,
                     $shouldApplyDi,
                     (int) $parameter->business_day_basis,
+                    DecimalRounder::CALCULATION_SCALE,
                 );
 
                 if ($parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact) {
                     $factorDi = $this->rounder->normalize(
                         $this->rounder->round($factorDi, 8),
-                        DecimalRounder::FACTOR_SCALE,
+                        DecimalRounder::CALCULATION_SCALE,
                     );
                 }
 
                 $factorDiAccumulated = $this->rounder->round(
-                    bcmul($factorDiAccumulated, $factorDi, DecimalRounder::INTERNAL_SCALE),
-                    DecimalRounder::FACTOR_SCALE,
+                    bcmul($factorDiAccumulated, $factorDi, DecimalRounder::CALCULATION_SCALE + 4),
+                    DecimalRounder::CALCULATION_SCALE,
                 );
 
                 if ($businessDaysSinceReset === 0) {
-                    $factorSpread = '1.0000000000000000';
+                    $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 }
 
                 if ($parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact) {
                     $factorSpread = $this->rounder->normalize(
                         $this->rounder->round($factorSpread, 9),
-                        DecimalRounder::FACTOR_SCALE,
+                        DecimalRounder::CALCULATION_SCALE,
                     );
                 }
 
                 $factorSpreadDiBase = $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
                     ? $this->rounder->normalize(
                         $this->rounder->round($factorDiAccumulated, 8),
-                        DecimalRounder::FACTOR_SCALE,
+                        DecimalRounder::CALCULATION_SCALE,
                     )
                     : $factorDiAccumulated;
 
                 $factorSpreadDi = $this->rounder->round(
-                    bcmul($factorSpreadDiBase, $factorSpread, DecimalRounder::INTERNAL_SCALE),
-                    DecimalRounder::FACTOR_SCALE,
+                    bcmul($factorSpreadDiBase, $factorSpread, DecimalRounder::CALCULATION_SCALE + 4),
+                    DecimalRounder::CALCULATION_SCALE,
                 );
                 $interestRealUnitValue = $this->rounder->round(
                     bcmul(
                         $baseUnitValue,
-                        bcsub($factorSpreadDi, '1', DecimalRounder::INTERNAL_SCALE),
-                        DecimalRounder::INTERNAL_SCALE,
+                        bcsub($factorSpreadDi, '1', DecimalRounder::CALCULATION_SCALE + 4),
+                        DecimalRounder::CALCULATION_SCALE + 4,
                     ),
-                    DecimalRounder::UNIT_SCALE,
+                    DecimalRounder::CALCULATION_SCALE,
                 );
                 $updatedUnitValue = $this->rounder->round(
-                    bcadd($baseUnitValue, $interestRealUnitValue, DecimalRounder::INTERNAL_SCALE),
-                    DecimalRounder::UNIT_SCALE,
+                    bcadd($baseUnitValue, $interestRealUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                    DecimalRounder::CALCULATION_SCALE,
                 );
                 $dupInterest = $businessDaysSinceReset;
                 $dutInterest = (int) $parameter->business_day_basis;
             }
 
-            $interestPaymentUnitValue = '0.000000000000';
-            $amortizationUnitValue = '0.000000000000';
-            $amortizationRatio = '0.000000000000';
+            $interestPaymentUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
+            $amortizationUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
+            $amortizationRatio = $this->rounder->normalize('0', DecimalRounder::UNIT_SCALE);
             $eventOriginalDate = null;
             $eventEffectiveDate = null;
             $groupedEvents = $eventGroups[$currentDate->toDateString()] ?? collect();
@@ -152,11 +154,11 @@ class PuCurveGenerationService
                 $interestPaymentUnitValue = $groupedEvents
                     ->contains(fn (EmissionPuEvent $event): bool => $event->event_type_enum === PuEventType::InterestPayment)
                     ? $interestRealUnitValue
-                    : '0.000000000000';
+                    : $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
 
                 $remainingAfterInterest = $this->rounder->round(
-                    bcsub($updatedUnitValue, $interestPaymentUnitValue, DecimalRounder::INTERNAL_SCALE),
-                    DecimalRounder::UNIT_SCALE,
+                    bcsub($updatedUnitValue, $interestPaymentUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                    DecimalRounder::CALCULATION_SCALE,
                 );
 
                 /** @var EmissionPuEvent $event */
@@ -169,14 +171,14 @@ class PuCurveGenerationService
                         event: $event,
                         baseUnitValue: $baseUnitValue,
                         remainingResidualUnitValue: $this->rounder->round(
-                            bcsub($remainingAfterInterest, $amortizationUnitValue, DecimalRounder::INTERNAL_SCALE),
-                            DecimalRounder::UNIT_SCALE,
+                            bcsub($remainingAfterInterest, $amortizationUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                            DecimalRounder::CALCULATION_SCALE,
                         ),
                     );
 
                     $amortizationUnitValue = $this->rounder->round(
-                        bcadd($amortizationUnitValue, $resolvedAmortization, DecimalRounder::INTERNAL_SCALE),
-                        DecimalRounder::UNIT_SCALE,
+                        bcadd($amortizationUnitValue, $resolvedAmortization, DecimalRounder::CALCULATION_SCALE + 4),
+                        DecimalRounder::CALCULATION_SCALE,
                     );
 
                     if ($event->amortization_type_enum === PuAmortizationType::Percentage && $event->amortization_value !== null) {
@@ -186,7 +188,7 @@ class PuCurveGenerationService
 
                 if (bccomp($baseUnitValue, '0', DecimalRounder::UNIT_SCALE) === 1 && bccomp($amortizationUnitValue, '0', DecimalRounder::UNIT_SCALE) === 1 && bccomp($amortizationRatio, '0', DecimalRounder::UNIT_SCALE) === 0) {
                     $amortizationRatio = $this->rounder->round(
-                        bcdiv($amortizationUnitValue, $baseUnitValue, DecimalRounder::INTERNAL_SCALE),
+                        bcdiv($amortizationUnitValue, $baseUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
                         DecimalRounder::UNIT_SCALE,
                     );
                 }
@@ -201,61 +203,83 @@ class PuCurveGenerationService
             }
 
             $paymentTotalUnitValue = $this->rounder->round(
-                bcadd($interestPaymentUnitValue, $amortizationUnitValue, DecimalRounder::INTERNAL_SCALE),
-                DecimalRounder::UNIT_SCALE,
+                bcadd($interestPaymentUnitValue, $amortizationUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                DecimalRounder::CALCULATION_SCALE,
             );
             $residualUnitValue = $this->rounder->round(
-                bcsub($updatedUnitValue, $paymentTotalUnitValue, DecimalRounder::INTERNAL_SCALE),
-                DecimalRounder::UNIT_SCALE,
+                bcsub($updatedUnitValue, $paymentTotalUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                DecimalRounder::CALCULATION_SCALE,
             );
 
             if (bccomp($residualUnitValue, '0', DecimalRounder::UNIT_SCALE) < 0) {
-                $residualUnitValue = '0.000000000000';
+                $residualUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
             }
-            $residualUnitValueForTotals = $this->rounder->round($residualUnitValue, DecimalRounder::VALIDATION_SCALE);
-            $interestPaymentUnitValueForTotals = $this->rounder->round($interestPaymentUnitValue, DecimalRounder::VALIDATION_SCALE);
-            $amortizationUnitValueForTotals = $this->rounder->round($amortizationUnitValue, DecimalRounder::VALIDATION_SCALE);
-            $paymentTotalUnitValueForTotals = $this->rounder->round(
-                bcadd($interestPaymentUnitValueForTotals, $amortizationUnitValueForTotals, DecimalRounder::INTERNAL_SCALE),
-                DecimalRounder::VALIDATION_SCALE,
-            );
             $totalValue = $this->rounder->round(
-                bcmul($residualUnitValueForTotals, $quantity, DecimalRounder::INTERNAL_SCALE),
+                bcmul($residualUnitValue, $quantity, DecimalRounder::CALCULATION_SCALE + 4),
                 DecimalRounder::TOTAL_SCALE,
             );
             $interestPaymentValue = $this->rounder->round(
-                bcmul($interestPaymentUnitValueForTotals, $quantity, DecimalRounder::INTERNAL_SCALE),
+                bcmul($interestPaymentUnitValue, $quantity, DecimalRounder::CALCULATION_SCALE + 4),
                 DecimalRounder::TOTAL_SCALE,
             );
             $amortizationValue = $this->rounder->round(
-                bcmul($amortizationUnitValueForTotals, $quantity, DecimalRounder::INTERNAL_SCALE),
+                bcmul($amortizationUnitValue, $quantity, DecimalRounder::CALCULATION_SCALE + 4),
                 DecimalRounder::TOTAL_SCALE,
             );
             $paymentTotalValue = $this->rounder->round(
-                bcmul($paymentTotalUnitValueForTotals, $quantity, DecimalRounder::INTERNAL_SCALE),
+                bcmul($paymentTotalUnitValue, $quantity, DecimalRounder::CALCULATION_SCALE + 4),
                 DecimalRounder::TOTAL_SCALE,
             );
+            $calculationMemory = [
+                'engine_version' => PuAuditLogService::ENGINE_VERSION,
+                'is_business_day' => $isBusinessDay,
+                'calendar_code' => $parameter->calendar_code,
+                'index_rate_lookup_mode' => $parameter->index_rate_lookup_mode,
+                'base_unit_value_raw' => $baseUnitValue,
+                'factor_di_raw' => $factorDi,
+                'factor_di_accumulated_raw' => $factorDiAccumulated,
+                'factor_spread_raw' => $factorSpread,
+                'factor_spread_di_raw' => $factorSpreadDi,
+                'interest_real_unit_value_raw' => $interestRealUnitValue,
+                'updated_unit_value_raw' => $updatedUnitValue,
+                'interest_payment_unit_value_raw' => $interestPaymentUnitValue,
+                'amortization_unit_value_raw' => $amortizationUnitValue,
+                'payment_total_unit_value_raw' => $paymentTotalUnitValue,
+                'residual_unit_value_raw' => $residualUnitValue,
+                'quantity_raw' => $quantity,
+                'total_value_raw' => $totalValue,
+                'payment_total_value_raw' => $paymentTotalValue,
+                'index_rate_date' => $rateSnapshot?->reportedDate(),
+                'index_rate_value' => $rateSnapshot?->reportedValue(),
+                'dup_interest' => $dupInterest,
+                'dut_interest' => $dutInterest,
+                'reset_after_payment' => bccomp($paymentTotalUnitValue, '0', DecimalRounder::UNIT_SCALE) === 1,
+                'event_types' => $groupedEvents
+                    ->map(fn (EmissionPuEvent $event): string => $event->event_type)
+                    ->values()
+                    ->all(),
+            ];
 
             $rows[] = new PuDailyCurveRowData(
                 date: $currentDate,
                 isBusinessDay: $isBusinessDay,
-                unitBaseValue: $baseUnitValue,
-                unitCorrectedValue: $baseUnitValue,
-                factorDi: $factorDi,
-                factorDiAccumulated: $factorDiAccumulated,
-                factorSpread: $factorSpread,
-                factorSpreadDi: $factorSpreadDi,
-                interestRealUnitValue: $interestRealUnitValue,
-                updatedUnitValue: $updatedUnitValue,
+                unitBaseValue: $this->rounder->round($baseUnitValue, DecimalRounder::UNIT_SCALE),
+                unitCorrectedValue: $this->rounder->round($baseUnitValue, DecimalRounder::UNIT_SCALE),
+                factorDi: $this->rounder->round($factorDi, DecimalRounder::FACTOR_SCALE),
+                factorDiAccumulated: $this->rounder->round($factorDiAccumulated, DecimalRounder::FACTOR_SCALE),
+                factorSpread: $this->rounder->round($factorSpread, DecimalRounder::FACTOR_SCALE),
+                factorSpreadDi: $this->rounder->round($factorSpreadDi, DecimalRounder::FACTOR_SCALE),
+                interestRealUnitValue: $this->rounder->round($interestRealUnitValue, DecimalRounder::UNIT_SCALE),
+                updatedUnitValue: $this->rounder->round($updatedUnitValue, DecimalRounder::UNIT_SCALE),
                 amortizationRatio: $amortizationRatio,
-                amortizationUnitValue: $amortizationUnitValue,
+                amortizationUnitValue: $this->rounder->round($amortizationUnitValue, DecimalRounder::UNIT_SCALE),
                 amortizationValue: $amortizationValue,
-                residualUnitValue: $residualUnitValue,
+                residualUnitValue: $this->rounder->round($residualUnitValue, DecimalRounder::UNIT_SCALE),
                 quantity: $quantity,
                 totalValue: $totalValue,
-                interestPaymentUnitValue: $interestPaymentUnitValue,
+                interestPaymentUnitValue: $this->rounder->round($interestPaymentUnitValue, DecimalRounder::UNIT_SCALE),
                 interestPaymentValue: $interestPaymentValue,
-                paymentTotalUnitValue: $paymentTotalUnitValue,
+                paymentTotalUnitValue: $this->rounder->round($paymentTotalUnitValue, DecimalRounder::UNIT_SCALE),
                 paymentTotalValue: $paymentTotalValue,
                 dupCorrection: 0,
                 dutCorrection: 0,
@@ -265,6 +289,7 @@ class PuCurveGenerationService
                 indexRateValue: $rateSnapshot?->reportedValue(),
                 eventOriginalDate: $eventOriginalDate,
                 eventEffectiveDate: $eventEffectiveDate,
+                calculationMemory: $calculationMemory,
             );
 
             $lastResidualUnitValue = $residualUnitValue;
@@ -355,23 +380,23 @@ class PuCurveGenerationService
         string $remainingResidualUnitValue,
     ): string {
         $resolvedValue = match ($event->amortization_type_enum) {
-            PuAmortizationType::None => '0.000000000000',
+            PuAmortizationType::None => $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE),
             PuAmortizationType::Residual => $remainingResidualUnitValue,
             PuAmortizationType::Percentage => $this->rounder->round(
                 bcmul(
                     $baseUnitValue,
                     (string) ($event->amortization_value ?? '0'),
-                    DecimalRounder::INTERNAL_SCALE,
+                    DecimalRounder::CALCULATION_SCALE + 4,
                 ),
-                DecimalRounder::UNIT_SCALE,
+                DecimalRounder::CALCULATION_SCALE,
             ),
-            PuAmortizationType::UnitValue => $this->rounder->round(
+            PuAmortizationType::UnitValue => $this->rounder->normalize(
                 (string) ($event->amortization_value ?? '0'),
-                DecimalRounder::UNIT_SCALE,
+                DecimalRounder::CALCULATION_SCALE,
             ),
         };
 
-        if (bccomp($resolvedValue, $remainingResidualUnitValue, DecimalRounder::UNIT_SCALE) === 1) {
+        if (bccomp($resolvedValue, $remainingResidualUnitValue, DecimalRounder::CALCULATION_SCALE) === 1) {
             return $remainingResidualUnitValue;
         }
 

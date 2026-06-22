@@ -24,6 +24,6 @@ it('renders the revised incorporacao copy on the real estate area page', functio
     $this->get(route('site.imobiliario.incorporacao'))
         ->assertSuccessful()
         ->assertSee('Incorporação')
-        ->assertSee('Ciclo de crédito inteligente')
-        ->assertSee('Governança Fiduciária');
+        ->assertSee('Ciclo de Crédito Inteligente')
+        ->assertSee('Governança do Lastro');
 });

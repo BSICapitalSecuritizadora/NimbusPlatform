@@ -42,6 +42,7 @@ class EmissionPuDailyCurve extends Model
         'index_rate_value',
         'event_original_date',
         'event_effective_date',
+        'calculation_memory',
     ];
 
     protected function casts(): array
@@ -76,6 +77,7 @@ class EmissionPuDailyCurve extends Model
             'index_rate_value' => 'decimal:8',
             'event_original_date' => 'date',
             'event_effective_date' => 'date',
+            'calculation_memory' => 'array',
         ];
     }
 

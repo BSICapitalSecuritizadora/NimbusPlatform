@@ -68,7 +68,6 @@
                                 <div class="mega-title">Gestão</div>
                                 <div class="mega-kicker">Transparência e acompanhamento ao investidor.</div>
                                 <a class="mega-link" href="{{ route('site.servicos.portal-investidor') }}">Portal do investidor</a>
-                                <a class="mega-link" href="{{ route('site.servicos.servicer') }}">Servicer / Administração</a>
                                 <a class="mega-link" href="{{ route('site.servicos.relatorios') }}">Relatórios fiduciários</a>
                                 <a class="mega-link" href="{{ route('site.servicos.monitoramento-regulatorio') }}">Monitoramento regulatório</a>
                             </div>

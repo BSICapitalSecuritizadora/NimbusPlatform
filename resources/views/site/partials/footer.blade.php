@@ -34,7 +34,6 @@
                             <a href="{{ route('site.emissions') }}" class="footer-link">Ver Emissões</a>
                             <a href="{{ route('site.ri') }}" class="footer-link">Rel. com Investidores</a>
                             <a href="{{ route('site.intelligence') }}" class="footer-link">BSI Intelligence</a>
-                            <a href="{{ route('site.servicos.servicer') }}" class="footer-link">Servicer</a>
                             <a href="{{ route('proposal.create') }}" class="footer-link">Envie sua proposta</a>
                         </div>
                     </div>

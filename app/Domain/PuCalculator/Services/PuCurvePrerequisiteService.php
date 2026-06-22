@@ -1,0 +1,268 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\PuCalculator\Services;
+
+use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
+use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteIssue;
+use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Models\BusinessCalendarDate;
+use App\Models\Emission;
+use App\Models\EmissionPuParameter;
+use Carbon\CarbonImmutable;
+
+class PuCurvePrerequisiteService
+{
+    public function __construct(
+        private readonly BusinessDayCalendarService $businessDayCalendar,
+        private readonly IndexRateService $indexRateService,
+    ) {}
+
+    public function handle(Emission $emission): PuCurvePrerequisiteCheckResult
+    {
+        $emission->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
+
+        $issues = [];
+        $parameter = $emission->puParameter;
+
+        if ($parameter === null) {
+            return new PuCurvePrerequisiteCheckResult([
+                PuCurvePrerequisiteIssue::blocking(
+                    'pu_parameter',
+                    'Configure os parametros do calculo de PU antes de gerar a curva.',
+                ),
+            ]);
+        }
+
+        $startDate = $parameter->curve_start_date !== null
+            ? CarbonImmutable::instance($parameter->curve_start_date)
+            : null;
+        $endDate = $parameter->curve_end_date !== null
+            ? CarbonImmutable::instance($parameter->curve_end_date)
+            : null;
+
+        if ($startDate === null) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking('curve_start_date', 'Defina a data inicial da curva de PU.');
+        }
+
+        if ($endDate === null) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking('curve_end_date', 'Defina a data final ou vencimento da curva de PU.');
+        }
+
+        if ($startDate !== null && $endDate !== null && $endDate->lt($startDate)) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'curve_range',
+                'A data final da curva nao pode ser anterior a data inicial.',
+            );
+        }
+
+        if (bccomp((string) ($parameter->initial_unit_value ?? '0'), '0', DecimalRounder::UNIT_SCALE) <= 0) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'initial_unit_value',
+                'Informe um PU inicial maior que zero.',
+            );
+        }
+
+        if ($parameter->spread_rate === null) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'spread_rate',
+                'Informe o spread anual da operacao.',
+            );
+        }
+
+        if ((string) $parameter->indexer !== 'CDI') {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'indexer',
+                'A fase atual da calculadora suporta apenas operacoes indexadas ao CDI.',
+            );
+        }
+
+        if ((int) $parameter->business_day_basis <= 0) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'business_day_basis',
+                'Informe uma base valida de dias uteis para o calculo.',
+            );
+        }
+
+        if (! filled($parameter->calendar_code)) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'calendar_code',
+                'Informe o calendario de dias uteis utilizado na curva.',
+            );
+        }
+
+        if (
+            $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
+            && (int) $parameter->index_rate_lag_business_days < 1
+        ) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'index_rate_lag_business_days',
+                'Informe uma defasagem util positiva para o CDI.',
+            );
+        }
+
+        if ($startDate !== null && $endDate !== null && $endDate->gte($startDate)) {
+            $this->validateIntegralizationTimeline($issues, $emission, $endDate);
+            $this->validateCalendarCoverage($issues, $startDate, $endDate, (string) $parameter->calendar_code);
+            $this->validateIndexCoverage($issues, $parameter, $startDate, $endDate);
+        }
+
+        if ($emission->puEvents->isEmpty()) {
+            $issues[] = PuCurvePrerequisiteIssue::warning(
+                'pu_events',
+                'Nenhum evento de juros ou amortizacao foi cadastrado. A curva sera gerada sem pagamentos.',
+            );
+        }
+
+        return new PuCurvePrerequisiteCheckResult($issues);
+    }
+
+    /**
+     * @param  list<PuCurvePrerequisiteIssue>  $issues
+     */
+    private function validateIntegralizationTimeline(array &$issues, Emission $emission, CarbonImmutable $endDate): void
+    {
+        $integralizations = $emission->integralizationHistories
+            ->filter(fn ($history): bool => $history->date !== null)
+            ->filter(fn ($history): bool => CarbonImmutable::instance($history->date)->lte($endDate));
+
+        if ($integralizations->isEmpty()) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'integralization_histories',
+                'Cadastre ao menos uma integralizacao valida para definir a quantidade vigente da curva.',
+            );
+
+            return;
+        }
+
+        $quantity = $integralizations
+            ->reduce(
+                fn (string $carry, $history): string => bcadd($carry, (string) $history->quantity, DecimalRounder::QUANTITY_SCALE),
+                '0.0000',
+            );
+
+        if (bccomp($quantity, '0', DecimalRounder::QUANTITY_SCALE) <= 0) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'quantity',
+                'A quantidade integralizada acumulada precisa ser maior que zero.',
+            );
+        }
+    }
+
+    /**
+     * @param  list<PuCurvePrerequisiteIssue>  $issues
+     */
+    private function validateCalendarCoverage(
+        array &$issues,
+        CarbonImmutable $startDate,
+        CarbonImmutable $endDate,
+        string $calendarCode,
+    ): void {
+        $availableDates = BusinessCalendarDate::query()
+            ->where('calendar_code', $calendarCode)
+            ->whereDate('calendar_date', '>=', $startDate->toDateString())
+            ->whereDate('calendar_date', '<=', $endDate->toDateString())
+            ->pluck('calendar_date')
+            ->mapWithKeys(fn ($calendarDate): array => [CarbonImmutable::parse((string) $calendarDate)->toDateString() => true])
+            ->all();
+
+        $missingDates = [];
+        for ($currentDate = $startDate; $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
+            if (! isset($availableDates[$currentDate->toDateString()])) {
+                $missingDates[] = $currentDate->toDateString();
+            }
+        }
+
+        if ($missingDates === []) {
+            return;
+        }
+
+        $issues[] = PuCurvePrerequisiteIssue::blocking(
+            'business_calendar_dates',
+            sprintf(
+                'O calendario %s nao cobre todo o periodo da curva. Faltam %d data(s), a primeira em %s.',
+                $calendarCode,
+                count($missingDates),
+                $missingDates[0],
+            ),
+        );
+    }
+
+    /**
+     * @param  list<PuCurvePrerequisiteIssue>  $issues
+     */
+    private function validateIndexCoverage(
+        array &$issues,
+        EmissionPuParameter $parameter,
+        CarbonImmutable $startDate,
+        CarbonImmutable $endDate,
+    ): void {
+        for ($currentDate = $startDate->addDay(); $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
+            try {
+                $lookupDate = $this->requiredIndexLookupDate($parameter, $currentDate);
+            } catch (\Throwable) {
+                $issues[] = PuCurvePrerequisiteIssue::blocking(
+                    'index_rates',
+                    sprintf(
+                        'Nao foi possivel resolver a defasagem do CDI para a data %s. Revise o calendario e as taxas disponiveis.',
+                        $currentDate->toDateString(),
+                    ),
+                );
+
+                return;
+            }
+
+            if ($lookupDate === null) {
+                continue;
+            }
+
+            $snapshot = match ($parameter->index_rate_lookup_mode_enum) {
+                PuIndexRateLookupMode::PreviousAvailableBusinessDay => $this->indexRateService->rateForDate(
+                    $parameter->indexer_enum,
+                    $currentDate,
+                ),
+                PuIndexRateLookupMode::PreviousCalendarDayExact,
+                PuIndexRateLookupMode::BusinessDayLagExact => $this->indexRateService->exactRateForDate(
+                    $parameter->indexer_enum,
+                    $lookupDate,
+                ),
+            };
+
+            if ($snapshot !== null) {
+                continue;
+            }
+
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'index_rates',
+                sprintf(
+                    'Nao existe CDI suficiente para o periodo. Primeira data sem indice resolvido: %s (lookup em %s).',
+                    $currentDate->toDateString(),
+                    $lookupDate->toDateString(),
+                ),
+            );
+
+            return;
+        }
+    }
+
+    private function requiredIndexLookupDate(EmissionPuParameter $parameter, CarbonImmutable $currentDate): ?CarbonImmutable
+    {
+        $calendarCode = (string) $parameter->calendar_code;
+        $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $calendarCode);
+
+        return match ($parameter->index_rate_lookup_mode_enum) {
+            PuIndexRateLookupMode::PreviousAvailableBusinessDay => $isBusinessDay ? $currentDate : null,
+            PuIndexRateLookupMode::PreviousCalendarDayExact => $this->businessDayCalendar->isBusinessDay($currentDate->subDay(), $calendarCode)
+                ? $currentDate->subDay()
+                : null,
+            PuIndexRateLookupMode::BusinessDayLagExact => $isBusinessDay
+                ? $this->businessDayCalendar->shiftBusinessDays(
+                    $currentDate,
+                    -((int) $parameter->index_rate_lag_business_days),
+                    $calendarCode,
+                )
+                : null,
+        };
+    }
+}

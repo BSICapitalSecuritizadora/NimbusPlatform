@@ -8,6 +8,9 @@ use Carbon\CarbonImmutable;
 
 final readonly class SpreadsheetReferenceRowData
 {
+    /**
+     * @param  array<string, SpreadsheetReferenceFieldData>  $fieldMetadata
+     */
     public function __construct(
         public CarbonImmutable $date,
         public ?string $unitBaseValue,
@@ -34,6 +37,7 @@ final readonly class SpreadsheetReferenceRowData
         public ?int $dutCorrection,
         public ?int $dupInterest,
         public ?int $dutInterest,
+        public array $fieldMetadata = [],
     ) {}
 
     public function hasPayment(): bool
@@ -52,5 +56,10 @@ final readonly class SpreadsheetReferenceRowData
     {
         return $this->amortizationUnitValue !== null
             && bccomp($this->amortizationUnitValue, '0', 6) === 1;
+    }
+
+    public function metadataFor(string $field): ?SpreadsheetReferenceFieldData
+    {
+        return $this->fieldMetadata[$field] ?? null;
     }
 }

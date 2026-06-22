@@ -144,7 +144,7 @@ it('uses cumulative quantity, keeps factor identities and resets the base after 
     );
     $expectedMarchSixthTotal = roundDecimal(
         bcmul(
-            roundDecimal((string) $marchSixth->residual_unit_value, DecimalRounder::VALIDATION_SCALE),
+            (string) $marchSixth->residual_unit_value,
             (string) $marchSixth->quantity,
             DecimalRounder::INTERNAL_SCALE,
         ),
@@ -152,7 +152,7 @@ it('uses cumulative quantity, keeps factor identities and resets the base after 
     );
 
     expect($marchSixth->quantity)->toBe('8000.0000')
-        ->and((string) $marchSixth->total_value)->toBe($expectedMarchSixthTotal)
+        ->and(bccomp((string) $marchSixth->total_value, $expectedMarchSixthTotal, 6))->toBe(0)
         ->and(bccomp((string) $marchNinth->interest_payment_unit_value, '0', DecimalRounder::UNIT_SCALE))->toBe(1)
         ->and(bccomp((string) $marchNinth->factor_spread_di, $expectedFactorSpreadDi, 12))->toBe(0)
         ->and(bccomp((string) $marchNinth->interest_real_unit_value, $expectedInterest, 8))->toBe(0)

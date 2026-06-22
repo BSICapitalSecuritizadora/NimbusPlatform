@@ -37,6 +37,7 @@ final readonly class PuDailyCurveRowData
         public ?string $indexRateValue,
         public ?CarbonImmutable $eventOriginalDate,
         public ?CarbonImmutable $eventEffectiveDate,
+        public array $calculationMemory = [],
     ) {}
 
     /**
@@ -75,6 +76,9 @@ final readonly class PuDailyCurveRowData
             'index_rate_value' => $this->indexRateValue,
             'event_original_date' => $this->eventOriginalDate?->toDateString(),
             'event_effective_date' => $this->eventEffectiveDate?->toDateString(),
+            'calculation_memory' => $this->calculationMemory === []
+                ? null
+                : json_encode($this->calculationMemory, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
     }
 

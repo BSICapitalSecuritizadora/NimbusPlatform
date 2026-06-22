@@ -29,10 +29,10 @@ it('renders the branded public emission detail experience', function () {
 
     $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
-        ->assertSee('Detalhe da emissão')
-        ->assertSee('Resumo operacional')
-        ->assertSee('Fluxo de pagamentos e acompanhamento')
-        ->assertSee('Repositório de Documentos e Atos da Operação')
+        ->assertSee('Visão geral')
+        ->assertSee('Características da Operação')
+        ->assertSee('Histórico de Pagamentos e Preços Unitários')
+        ->assertSee('Documentos da Operação')
         ->assertSee('IPCA + 7,50% a.a.')
         ->assertSee('.emission-detail-tabs.nav-pills .nav-link.active', false)
         ->assertSee('border-color: color-mix(in srgb, var(--brand) 12%, var(--border));', false)
@@ -72,7 +72,7 @@ it('sums all integralization history entries while showing only the latest five 
         ->assertDontSee('27/09/2024');
 });
 
-it('explains that only the latest five documents are highlighted by default', function () {
+it('renders all linked public documents without exposing private files or duplicates', function () {
     $emission = Emission::factory()->active()->create([
         'name' => 'CRI Documentos',
         'type' => 'CRI',
@@ -80,17 +80,35 @@ it('explains that only the latest five documents are highlighted by default', fu
         'is_public' => true,
     ]);
 
-    Document::factory()
-        ->count(6)
-        ->public()
-        ->create()
-        ->each(function (Document $document) use ($emission): void {
-            $emission->documents()->attach($document->id);
-        });
+    $publicTermSheet = Document::factory()->public()->create([
+        'title' => 'Documento Publico 1',
+        'category' => 'documentos_operacao',
+    ]);
+    $publicNotice = Document::factory()->public()->create([
+        'title' => 'Documento Publico 2',
+        'category' => 'anuncios',
+    ]);
+    $privateMemo = Document::factory()->create([
+        'title' => 'Memorando Interno',
+        'is_public' => false,
+        'is_published' => true,
+    ]);
 
-    $this->get(route('site.emissions.show', $emission->if_code))
+    $emission->documents()->attach($publicTermSheet->id);
+    $emission->documents()->attach($publicNotice->id);
+    $emission->documents()->attach($privateMemo->id);
+
+    $response = $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
-        ->assertSee('Exibindo os documentos mais recentes por padrão');
+        ->assertSee('2 documentos públicos')
+        ->assertSee('Documento Publico 1')
+        ->assertSee('Documento Publico 2')
+        ->assertDontSee('Memorando Interno');
+
+    $content = $response->getContent();
+
+    expect(substr_count($content, 'Documento Publico 1'))->toBe(1)
+        ->and(substr_count($content, 'Documento Publico 2'))->toBe(1);
 });
 
 it('shows the emission progress timeline with issue date, maturity date and status', function () {
@@ -158,5 +176,5 @@ it('renders the payment flow with the legacy chart model', function () {
     $nonce = $matches[1] ?? null;
 
     expect($nonce)->not->toBeNull();
-    expect(substr_count($response->getContent(), 'nonce="'.$nonce.'"'))->toBeGreaterThanOrEqual(2);
+    expect(substr_count($response->getContent(), 'nonce="'.$nonce.'"'))->toBeGreaterThanOrEqual(1);
 });

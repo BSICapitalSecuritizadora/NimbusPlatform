@@ -18,7 +18,7 @@ dataset('public-layout-routes', [
         'site.services',
         [
             'Uma plataforma de serviços para cada etapa da operação',
-            'Converse com a BSI',
+            'Converse com a BSI sobre o desenho da sua operação',
         ],
     ],
     'contact' => [
@@ -40,8 +40,9 @@ dataset('public-layout-routes', [
     'emissions' => [
         'site.emissions',
         [
-            'Mercado primário',
-            'Tipo de emissão',
+            'Emissões e Track Record',
+            'Track Record Institucional',
+            'Em Distribuição',
         ],
     ],
     'investor-relations' => [

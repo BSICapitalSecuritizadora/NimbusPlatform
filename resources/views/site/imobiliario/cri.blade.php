@@ -506,7 +506,7 @@
 
     /* Flow Diagram Arrows */
     @media (min-width: 768px) {
-        .flow-container .flow-item:not(:last-child)::after {
+        .flow-container .flow-item::after {
             content: "→";
             position: absolute;
             right: -10px;
@@ -516,6 +516,10 @@
             color: var(--brand-strong);
             opacity: 0.2;
             z-index: 0;
+        }
+        .flow-container .flow-item:last-of-type::after {
+            content: none;
+            display: none;
         }
     }
 </style>

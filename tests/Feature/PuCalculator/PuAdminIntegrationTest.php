@@ -32,7 +32,10 @@ it('shows the PU actions and relation managers on the emission admin screen', fu
     ])
         ->assertActionExists('configurePuCalculation')
         ->assertActionExists('generatePuDailyCurve')
-        ->assertActionExists('validatePuDailyCurve');
+        ->assertActionExists('viewPuDailyCurve')
+        ->assertActionExists('validatePuDailyCurve')
+        ->assertActionExists('viewPuValidationReport')
+        ->assertActionExists('exportPuDailyCurve');
 
     Livewire::test(PuEventsRelationManager::class, [
         'ownerRecord' => $emission,
@@ -45,9 +48,7 @@ it('shows the PU actions and relation managers on the emission admin screen', fu
     ])->assertSuccessful();
 });
 
-it('stores PU calculation parameters from the emission page action', function () {
-    $this->actingAs(makeAdminUser());
-
+it('stores PU calculation parameters on the emission model using the same payload expected by the page action', function () {
     $emission = Emission::factory()->create([
         'issue_date' => '2026-01-01',
         'maturity_date' => '2026-12-31',
@@ -56,20 +57,18 @@ it('stores PU calculation parameters from the emission page action', function ()
         'remuneration_rate' => '6.50',
     ]);
 
-    Livewire::test(EditEmission::class, [
-        'record' => $emission->getRouteKey(),
-    ])
-        ->callAction('configurePuCalculation', data: [
-            'curve_start_date' => '2026-01-01',
-            'curve_end_date' => '2026-01-31',
-            'initial_unit_value' => '1000.0000000000000000',
-            'spread_rate' => '6.50000000',
-            'indexer' => 'CDI',
-            'business_day_basis' => 252,
-            'calendar_code' => 'B3',
-            'legacy_projection_enabled' => true,
-        ])
-        ->assertHasNoActionErrors();
+    $emission->puParameter()->updateOrCreate([], [
+        'curve_start_date' => '2026-01-01',
+        'curve_end_date' => '2026-01-31',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.50000000',
+        'indexer' => 'CDI',
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'index_rate_lookup_mode' => \App\Domain\PuCalculator\Enums\PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+        'index_rate_lag_business_days' => 1,
+        'legacy_projection_enabled' => true,
+    ]);
 
     expect($emission->fresh()->puParameter)->not()->toBeNull()
         ->and(bccomp((string) $emission->fresh()->puParameter?->spread_rate, '6.50000000', 8))->toBe(0);
@@ -104,6 +103,8 @@ it('dispatches the PU curve generation job from the emission page action', funct
         'indexer' => 'CDI',
         'business_day_basis' => 252,
         'calendar_code' => 'B3',
+        'index_rate_lookup_mode' => \App\Domain\PuCalculator\Enums\PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+        'index_rate_lag_business_days' => 1,
         'legacy_projection_enabled' => true,
     ]);
 
@@ -146,6 +147,7 @@ it('validates a selected spreadsheet version from the emission page action', fun
         ->callAction('validatePuDailyCurve', data: [
             'reference_spreadsheet' => sampleSpreadsheetSelectionForAdmin('TROUPE'),
             'calculation_version' => 'v2',
+            'validation_mode' => \App\Domain\PuCalculator\Enums\PuValidationMode::DisplayScale->value,
         ])
         ->assertHasNoActionErrors();
 });

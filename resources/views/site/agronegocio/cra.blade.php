@@ -1,6 +1,6 @@
 @extends('site.layout')
 
-@section('title', 'CRA | Crédito para o Agronegócio | BSI Capital')
+@section('title', 'CRA e Securitização para o Agronegócio | BSI Capital')
 
 @section('content')
 <!-- Hero Section -->
@@ -10,20 +10,20 @@
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Agronegócio</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Mercado de Capitais</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    Securitização do <br><span style="color: var(--gold);">Agronegócio</span>
+                    CRA e Securitização <br><span style="color: var(--gold);">para o Agronegócio</span>
                 </h1>
-                <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Estruturamos CRAs sob medida para a agroindústria, garantindo conformidade com as novas normas regulatórias e total integração ao ciclo do campo.
+                <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%; line-height: 1.6;">
+                    Estruturamos CRAs para agroindústrias, cooperativas, produtores e originadores que buscam funding via mercado de capitais, com governança do lastro, aderência ao ciclo de safra e monitoramento ativo da operação.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Simular Operação
+                        Solicitar análise de CRA
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.emissions') }}?type=CRA" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                        Portfólio de CRA
+                        Consultar emissões agro
                     </a>
                 </div>
             </div>
@@ -80,12 +80,77 @@
     </div>
 </section>
 
+<!-- Gargalos e Desafios Resolvidos -->
+<section class="py-5 bg-white border-bottom">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Desafios de Capital</span>
+            <h2 class="h3 fw-bold text-dark mb-3">Eficiência Financeira nas Cadeias do Agro</h2>
+            <p class="text-muted mx-auto" style="max-width: 650px;">A dinâmica do agronegócio exige soluções que integrem o mercado de capitais diretamente às sazonalidades produtivas rurais.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="p-4 rounded-4 bg-light h-100 border">
+                    <h4 class="h5 fw-bold text-dark mb-3">Sazonalidade e Caixa</h4>
+                    <p class="text-muted small mb-0">Solucionamos o descasamento temporal crônico entre o ciclo de insumos/plantio e a efetiva comercialização da safra, estruturando amortizações customizadas.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-4 rounded-4 bg-light h-100 border">
+                    <h4 class="h5 fw-bold text-dark mb-3">Dependência Bancária</h4>
+                    <p class="text-muted small mb-0">Acessamos liquidez complementar e desbancarizada via mercado de capitais para financiar custeio, expansão e infraestrutura logística sem travar limites operacionais tradicionais.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-4 rounded-4 bg-light h-100 border">
+                    <h4 class="h5 fw-bold text-dark mb-3">Mitigação de Riscos</h4>
+                    <p class="text-muted small mb-0">Mitigamos os impactos causados por riscos climáticos e volatilidade de preços de commodities com modelagem inteligente e monitoramento dinâmico de garantias reais.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Para quem o CRA é indicado -->
+<section class="py-5" style="background-color: var(--bg);">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Elegibilidade Corporativa</span>
+            <h2 class="h3 fw-bold text-dark mb-3">Alinhamento Comercial: Para quem a estrutura é indicada</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Nossas estruturas de CRA atendem aos principais players corporativos integrados ao agronegócio nacional.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="p-4 bg-white rounded-4 border h-100 shadow-sm">
+                    <h4 class="h6 fw-bold text-brand text-uppercase mb-2">Agroindústrias & Cooperativas</h4>
+                    <p class="text-muted small mb-0">Indústrias de processamento, usinas sucroenergéticas e cooperativas de produção que demandam funding de escala.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-4 bg-white rounded-4 border h-100 shadow-sm">
+                    <h4 class="h6 fw-bold text-brand text-uppercase mb-2">Grandes Produtores Rurais</h4>
+                    <p class="text-muted small mb-0">Produtores rurais com escala comercial e track record produtivo que visam alavancar investimentos em infraestrutura.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-4 bg-white rounded-4 border h-100 shadow-sm">
+                    <h4 class="h6 fw-bold text-brand text-uppercase mb-2">Cadeia de Insumos & Exportadores</h4>
+                    <p class="text-muted small mb-0">Distribuidores de insumos agrícolas e exportadores de commodities que detêm carteiras estruturadas de CPRs.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Culturas Atendidas -->
 <section class="py-5 bg-white">
     <div class="container py-5">
         <div class="text-center mb-5">
-            <h2 class="h3 fw-bold text-dark mb-2">Presença em toda a cadeia produtiva</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Atuamos em diversos segmentos, adaptando a estrutura de garantias à realidade biológica de cada cultura.</p>
+            <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Escopo Produtivo</span>
+            <h2 class="h3 fw-bold text-dark mb-2">Presença em toda a cadeia de valor</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Atuamos em diversos segmentos, adaptando a estrutura de garantias e covenants à realidade biológica de cada cultura.</p>
         </div>
         <div class="row g-4 justify-content-center">
             @php
@@ -115,8 +180,9 @@
 <section class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold text-dark mb-3">Inteligência técnica aplicada ao Agro</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Estruturamos o crédito respeitando as janelas de safra e os marcos reais de produção.</p>
+            <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Diferenciais Estruturais</span>
+            <h2 class="h3 fw-bold text-dark mb-3">Inteligência Técnica Aplicada ao Agro</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">Estruturamos operações de crédito respeitando as janelas de safra e os marcos reais de produção do campo.</p>
         </div>
 
         <div class="row g-4">
@@ -136,7 +202,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Diversificação de Funding</h3>
-                    <p class="text-muted mb-0">Reduza a dependência bancária. O mercado de capitais oferece taxas competitivas e prazos longos para projetos de expansão.</p>
+                    <p class="text-muted mb-0">Acesso qualificado a canais de desbancarização financeira. O mercado de capitais viabiliza prazos longos para projetos de expansão rural.</p>
                 </div>
             </div>
 
@@ -146,45 +212,45 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Controle de CPR</h3>
-                    <p class="text-muted mb-0">Gestão rigorosa de Cédulas de Produto Rural e colaterais agrícolas. Garantimos que o lastro esteja seguro e transparente.</p>
+                    <p class="text-muted mb-0">Gestão rigorosa de Cédulas de Produto Rural e colaterais agrícolas. Garantimos que o lastro fiduciário esteja protegido e monitorado.</p>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Perfil de Atuação e Tíquetes -->
-<section class="py-5" style="background-color: #f8f9fa;">
+<!-- Diretrizes Gerais de Crédito -->
+<section class="py-5 bg-light border-top">
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Operações Agro</span>
+                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Parâmetros Operacionais</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Diretrizes para Estruturação</h2>
-                <p class="text-muted mb-4">Atendemos agroindústrias, cooperativas e grandes produtores que buscam escala e eficiência financeira.</p>
+                <p class="text-muted mb-4">Atendemos agroindústrias, cooperativas e emissores corporativos com estruturas desenhadas sob medida para cada tese de crédito.</p>
                 
                 <div class="row g-4">
                     <div class="col-sm-6">
                         <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
-                            <div class="fw-bold text-brand h5 mb-1">R$ 10MM a R$ 200MM</div>
-                            <div class="small text-muted">Tíquete médio por emissão de CRA.</div>
+                            <div class="fw-bold text-brand h5 mb-1">Volumetria Estruturada</div>
+                            <div class="small text-muted">Operações com volumetria adaptada à tese de investimento da empresa.</div>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
-                            <div class="fw-bold text-brand h5 mb-1">Prazos até 10 anos</div>
-                            <div class="small text-muted">Estruturas de longo prazo para investimento e infraestrutura.</div>
+                            <div class="fw-bold text-brand h5 mb-1">Prazos customizados</div>
+                            <div class="small text-muted">Estruturas de longo prazo para investimento, armazenagem e logística.</div>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
-                            <div class="fw-bold text-brand h5 mb-1">Garantias Reais</div>
-                            <div class="small text-muted">CPR-F/F, penhor de safra, gado ou hipoteca rural.</div>
+                            <div class="fw-bold text-brand h5 mb-1">Colaterais Agrícolas</div>
+                            <div class="small text-muted">CPR-F/F, penhor de safra, estoques e garantias reais.</div>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
-                            <div class="fw-bold text-brand h5 mb-1">Rating Agro</div>
-                            <div class="small text-muted">Avaliação focada na solidez produtiva e comercial.</div>
+                            <div class="fw-bold text-brand h5 mb-1">Análise Multicritério</div>
+                            <div class="small text-muted">Avaliação focada na governança e solidez comercial corporativa.</div>
                         </div>
                     </div>
                 </div>
@@ -192,23 +258,16 @@
             <div class="col-lg-6">
                 <div class="card border-0 shadow-lg overflow-hidden" style="border-radius: 24px;">
                     <div class="card-body p-5" style="background: var(--brand);">
-                        <h4 class="text-white fw-bold mb-4">Público Atendido</h4>
+                        <h4 class="text-white fw-bold mb-4">Lastro e Mitigação Fiduciária</h4>
+                        <p class="text-white opacity-75 small mb-4">Atuamos no mapeamento de fluxos fiduciários integrados para conferir máxima robustez aos emissores.</p>
                         <div class="d-flex flex-column gap-3">
                             <div class="d-flex align-items-center gap-3 text-white">
                                 <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
-                                <span>Agroindústrias com faturamento consolidado.</span>
+                                <span class="small">Isolamento patrimonial via regime de afetação aplicável.</span>
                             </div>
                             <div class="d-flex align-items-center gap-3 text-white">
                                 <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
-                                <span>Cooperativas de produção e crédito.</span>
-                            </div>
-                            <div class="col-lg-12 text-white">
-                                <div class="bg-gold p-2 rounded-circle d-inline-block" style="width: 10px; height: 10px;"></div>
-                                <span class="ms-2">Distribuidores de insumos com carteira de recebíveis.</span>
-                            </div>
-                            <div class="d-flex align-items-center gap-3 text-white">
-                                <div class="bg-gold p-2 rounded-circle" style="width: 10px; height: 10px;"></div>
-                                <span>Exportadores de commodities agrícolas.</span>
+                                <span class="small">Monitoramento de derivativos e travas de commodities, se aplicável.</span>
                             </div>
                         </div>
                     </div>
@@ -223,22 +282,23 @@
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
-                <h2 class="h3 fw-bold text-dark mb-4">Gestão ativa da safra</h2>
+                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Gestão do Lastro</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Gestão Ativa do Ciclo de Safra</h2>
                 <p class="text-muted mb-4 lead">
-                    No CRA, o lastro evolui com o campo. Monitoramos cada etapa, garantindo que os eventos de colheita e liquidação sejam refletidos com precisão para os investidores.
+                    No CRA, o lastro evolui em simbiose com o campo. Monitoramos cada etapa técnica, garantindo que os eventos de colheita e liquidação financeira sejam consolidados com transparência.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Verificação contínua da entrega física e liquidação de CPRs.</span>
+                        <span class="text-dark fw-medium">Verificação regular da conformidade documental e liquidação de CPRs.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Acompanhamento de preços e covenants contra oscilações do mercado.</span>
+                        <span class="text-dark fw-medium">Acompanhamento ativo de covenants comerciais contra oscilações severas.</span>
                     </li>
                     <li class="d-flex align-items-start gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        <span class="text-dark fw-medium">Relatórios periódicos sobre a evolução do lastro e posição das garantias.</span>
+                        <span class="text-dark fw-medium">Reportes periódicos detalhando a evolução do lastro e posição de colaterais.</span>
                     </li>
                 </ul>
             </div>
@@ -259,13 +319,10 @@
                         <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
                     </div>
                     <div class="row align-items-center g-4 position-relative z-1">
-                        <div class="col-md-3 text-center">
-                            <div class="rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; background: url('{{ asset('images/avatar-placeholder.png') }}') center/cover; border: 4px solid var(--gold-soft);"></div>
-                        </div>
-                        <div class="col-md-9">
-                            <blockquote class="blockquote mb-0">
-                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6;">
-                                    "No Agro, crédito não é apenas sobre números, é sobre tempo. Entendemos que uma CPR mal estruturada pode travar o fluxo de uma usina ou cooperativa. Nosso papel é colocar o mercado de capitais a serviço da agroindústria real, com a agilidade que a janela de safra exige."
+                        <div class="col-md-12">
+                            <blockquote class="blockquote mb-0 text-center">
+                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6; font-style: italic;">
+                                    "No agronegócio, estruturação financeira qualificada baseia-se na sincronização temporal. Entendemos que um título corporativo deve estar acoplado à sazonalidade e à dinâmica operacional do campo. Nosso papel é aproximar o mercado de capitais das grandes cadeias agroindustriais com governança fiduciária rígida."
                                 </p>
                                 <footer class="blockquote-footer mt-2">
                                     <span class="fw-bold text-brand fs-5 d-block">Diretoria de Agronegócio</span>
@@ -280,13 +337,14 @@
     </div>
 </section>
 
-<!-- Monitoramento e Tecnologia de Campo -->
+<!-- Monitoramento e Tecnologia de Campo / Regulatório -->
 <section class="py-5 bg-light border-top">
     <div class="container py-5">
         <div class="row align-items-center g-5">
             <div class="col-lg-5">
-                <h2 class="h3 fw-bold text-dark mb-4">Inteligência geográfica no monitoramento</h2>
-                <p class="text-muted mb-4">O monitoramento do Agro não é só financeiro. Validamos a saúde do lastro com ferramentas de precisão no campo.</p>
+                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Garantia Tecnológica</span>
+                <h2 class="h3 fw-bold text-dark mb-4">Inteligência Geográfica no Monitoramento</h2>
+                <p class="text-muted mb-4">Mitigamos riscos mitigáveis com ferramentas técnicas que validam as condições reais e o desenvolvimento do lastro fiduciário.</p>
                 
                 <div class="d-flex flex-column gap-4">
                     <div class="d-flex gap-3">
@@ -295,7 +353,7 @@
                         </div>
                         <div>
                             <h5 class="h6 fw-bold mb-1">Sensoriamento Remoto</h5>
-                            <p class="small text-muted mb-0">Acompanhamento via satélite do desenvolvimento vegetativo para identificar anomalias precoces.</p>
+                            <p class="small text-muted mb-0">Acompanhamento geoespacial do desenvolvimento vegetativo das áreas produtivas coligadas.</p>
                         </div>
                     </div>
                     <div class="d-flex gap-3">
@@ -303,28 +361,19 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                         </div>
                         <div>
-                            <h5 class="h6 fw-bold mb-1">Auditoria de Campo</h5>
-                            <p class="small text-muted mb-0">Verificação presencial e documental de estoques em cooperativas e terminais.</p>
-                        </div>
-                    </div>
-                    <div class="d-flex gap-3">
-                        <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        </div>
-                        <div>
-                            <h5 class="h6 fw-bold mb-1">Conformidade ESG</h5>
-                            <p class="small text-muted mb-0">Monitoramento de embargos ambientais e diretrizes do CRA Verde.</p>
+                            <h5 class="h6 fw-bold mb-1">Auditoria de Lastro</h5>
+                            <p class="small text-muted mb-0">Roteiro técnico e documental para checagem de posições de estoques e armazéns.</p>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-7">
                 <div class="position-relative p-4 bg-white shadow-sm rounded-4 border">
-                    <div class="text-brand fw-bold small text-uppercase mb-3" style="letter-spacing: 0.05em;">Foco Regulatório</div>
-                    <h3 class="h4 fw-bold mb-3">CMN 5.118 e a Agroindústria Real</h3>
-                    <p class="text-muted">Atuamos estritamente nas novas diretrizes do CMN, focando em operações onde o lastro advém da cadeia produtiva rural efetiva. Estruturamos CRAs para quem forma a base da economia do campo.</p>
-                    <div style="height: 2px; width: 60px; background: var(--gold);" class="my-4"></div>
-                    <p class="small text-muted mb-0 font-italic">*Suporte na transição para o novo marco regulatório do CRA.</p>
+                    <div class="text-brand fw-bold small text-uppercase mb-3" style="letter-spacing: 0.05em;">Adequação Normativa</div>
+                    <h3 class="h4 fw-bold mb-3">CMN 5.118 e a Elegibilidade do Lastro</h3>
+                    <p class="text-muted small">Atuamos em estrita observância às normativas do Conselho Monetário Nacional (CMN), aplicando os critérios vigentes relativos às restrições de lastro e elegibilidade de emissores corporativos no âmbito dos Certificados de Recebíveis do Agronegócio (CRA).</p>
+                    <div style="height: 2px; width: 60px; background: var(--gold);" class="my-3"></div>
+                    <p class="small text-muted mb-0 font-italic">*Oferecemos suporte consultivo na análise de aderência de cadeias de recebíveis agroindustriais.</p>
                 </div>
             </div>
         </div>
@@ -337,9 +386,9 @@
         <div class="row g-5">
             <div class="col-lg-4">
                 <div class="pe-lg-4">
-                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Dúvidas do Agro</span>
+                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Diretrizes de Inteligência</span>
                     <h2 class="h3 fw-bold text-dark mb-4">Inteligência Financeira no Campo</h2>
-                    <p class="text-muted mb-4">Esclarecemos os principais pontos sobre estruturação de títulos e gestão de riscos no Agro.</p>
+                    <p class="text-muted mb-4">Apresentamos respostas estratégicas acerca dos mecanismos corporativos de securitização e controle de riscos de CRA.</p>
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Consultar Estruturação</a>
                 </div>
             </div>
@@ -354,7 +403,7 @@
                         </h2>
                         <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqCRA">
                             <div class="accordion-body px-0 text-muted">
-                                O lastro pode ser composto por Cédulas de Produto Rural (CPR), Certificados de Direitos Creditórios do Agronegócio (CDCA), Duplicatas e Notas Promissórias vinculadas a transações comerciais do setor.
+                                O lastro fiduciário pode ser integrado por Cédulas de Produto Rural (CPR), Certificados de Direitos Creditórios do Agronegócio (CDCA), contratos comerciais de compra e venda e duplicatas comerciais originadas de transações legítimas do agronegócio.
                             </div>
                         </div>
                     </div>
@@ -367,7 +416,7 @@
                         </h2>
                         <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqCRA">
                             <div class="accordion-body px-0 text-muted">
-                                O CRA Verde vincula a emissão a projetos com impacto ambiental positivo. Ele atrai investidores institucionais com mandatos ESG, muitas vezes oferecendo melhores taxas e liquidez.
+                                O CRA Verde associa a captação financeira a projetos agrícolas auditados com impacto socioambiental rastreável. Esse mecanismo qualifica o papel junto a fundos de investimento com mandatos rígidos de critérios ESG.
                             </div>
                         </div>
                     </div>
@@ -375,12 +424,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
-                                03. Qual o papel da BSI na quebra de safra?
+                                03. Qual a atuação preventiva em cenários de quebra de safra?
                             </button>
                         </h2>
                         <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqCRA">
                             <div class="accordion-body px-0 text-muted">
-                                Atuamos preventivamente via satélite. Em caso de quebra, nossa governança trabalha na repactuação de prazos e acionamento de garantias para preservar o fluxo de pagamento do título.
+                                Realizamos monitoramento preventivo geoespacial. Havendo desvios críticos, os agentes avaliam tempestivamente o redimensionamento de colaterais ou o acionamento de garantias líquidas para mitigar o impacto no fluxo fiduciário.
                             </div>
                         </div>
                     </div>
@@ -388,12 +437,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
-                                04. Quem pode emitir um CRA após a CMN 5.118?
+                                04. Quem se enquadra para emissões de CRA pós CMN 5.118?
                             </button>
                         </h2>
                         <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqCRA">
                             <div class="accordion-body px-0 text-muted">
-                                A regra restringiu o lastro a empresas cuja receita principal venha efetivamente do agronegócio, direcionando os recursos para a agroindústria real.
+                                As diretrizes vigentes alinharam os critérios de elegibilidade de lastro a emissores cuja atividade e destinação dos fundos guardem relação essencial e direta com a cadeia produtiva rural do agronegócio.
                             </div>
                         </div>
                     </div>
@@ -419,7 +468,7 @@
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Cooperativas</h3>
                     <p class="text-muted mb-3">Estruturas adaptadas ao modelo cooperativista e às particularidades do associativismo rural.</p>
-                    <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
+                    <span class="small fw-semibold" style="color: var(--brand);">Acessar soluções para cooperativas →</span>
                 </a>
             </div>
 
@@ -430,7 +479,7 @@
                     </div>
                     <h3 class="h5 fw-bold mb-2" style="color: #0b1220;">Projetos Agro</h3>
                     <p class="text-muted mb-3">Financiamento para expansão rural, armazenagem e logística com lastro em recebíveis.</p>
-                    <span class="small fw-semibold" style="color: var(--brand);">Saiba mais →</span>
+                    <span class="small fw-semibold" style="color: var(--brand);">Conhecer estruturas de projetos →</span>
                 </a>
             </div>
         </div>

@@ -44,6 +44,11 @@ it('synchronizes the TROUPE workbook scenario with exact previous-calendar-day C
     $summary = app(PuReferenceWorkbookScenarioService::class)->sync($emission, $spreadsheetPath);
 
     $parameter = $emission->fresh()->puParameter;
+    $precisionSensitiveAmortizationEvent = $emission->fresh()
+        ->puEvents()
+        ->where('event_type', 'amortization')
+        ->whereDate('effective_date', '2025-07-30')
+        ->first();
 
     expect($summary['row_count'])->toBe(696)
         ->and($summary['spread_rate'])->toBe('6.50000000')
@@ -52,5 +57,6 @@ it('synchronizes the TROUPE workbook scenario with exact previous-calendar-day C
         ->and($parameter?->index_rate_lookup_mode_enum)->toBe(PuIndexRateLookupMode::PreviousCalendarDayExact)
         ->and($parameter?->index_rate_lag_business_days)->toBe(1)
         ->and($emission->puEvents()->count())->toBe(46)
-        ->and($emission->integralizationHistories()->count())->toBe(1);
+        ->and($emission->integralizationHistories()->count())->toBe(1)
+        ->and($precisionSensitiveAmortizationEvent?->amortization_value)->toBe('43.4787075100000000');
 });

@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Site\ContactFormRequest;
+use App\Mail\ContactFormMail;
+use App\Models\ContactMessage;
 use App\Models\Document;
 use App\Models\Emission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
 class SiteController extends Controller
@@ -100,18 +104,24 @@ class SiteController extends Controller
 
     public function emissionShow(string $if_code)
     {
-        $emission = Emission::where('if_code', $if_code)
+        $emission = Emission::query()
             ->where('is_public', true)
+            ->where('if_code', $if_code)
+            ->with([
+                'documents' => function ($query) {
+                    $query->visibleOnPublicSite()->orderByDesc('published_at');
+                },
+                'payments' => function ($query) {
+                    $query->where('payment_date', '<=', today())->orderBy('payment_date');
+                },
+                'puHistories' => function ($query) {
+                    $query->orderByDesc('date');
+                },
+                'integralizationHistories' => function ($query) {
+                    $query->orderByDesc('date');
+                },
+            ])
             ->firstOrFail();
-
-        $emission->load([
-            'documents' => function ($q) {
-                $q->where('is_public', true)->orderByDesc('published_at');
-            },
-            'payments' => function ($q) {
-                $q->where('payment_date', '<=', today())->orderBy('payment_date');
-            },
-        ]);
 
         return view('site.emission-detail', compact('emission'));
     }
@@ -143,18 +153,47 @@ class SiteController extends Controller
 
     public function documentosAcl(): \Illuminate\View\View
     {
-        $featuredEmissions = Emission::query()
+        $latestEmissions = Emission::query()
             ->where('is_public', true)
             ->whereNotNull('if_code')
             ->orderByDesc('issue_date')
             ->limit(3)
             ->get();
 
-        return view('site.servicos.documentos-acl', compact('featuredEmissions'));
+        $stats = [
+            'total_volume' => (float) Emission::query()
+                ->where('is_public', true)
+                ->whereNotNull('if_code')
+                ->sum('issued_volume'),
+            'active_count' => Emission::query()
+                ->where('is_public', true)
+                ->whereNotNull('if_code')
+                ->where('status', 'active')
+                ->count(),
+            'document_count' => Document::query()
+                ->visibleOnPublicSite()
+                ->count(),
+        ];
+
+        return view('site.servicos.documentos-acl', compact('latestEmissions', 'stats'));
     }
 
-    public function submitContact(Request $request): \Illuminate\Http\RedirectResponse
+    public function submitContact(ContactFormRequest $request): \Illuminate\Http\RedirectResponse
     {
-        return redirect()->back()->with('success', 'Mensagem enviada com sucesso!');
+        $validated = $request->validated();
+
+        ContactMessage::query()->create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'subject' => $validated['subject'],
+            'message' => $validated['message'],
+            'status' => ContactMessage::STATUS_NEW,
+        ]);
+
+        Mail::to((string) config('services.contact.email'))
+            ->send(new ContactFormMail($validated));
+
+        return redirect()->back()->with('contact_success', true);
     }
 }
