@@ -2,12 +2,15 @@
 
 namespace App\Services\Obligations;
 
+use App\Enums\AccessPermission;
 use App\Models\Obligation;
 use App\Models\ObligationHistoryEntry;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class ObligationWorkflowService
 {
@@ -42,9 +45,35 @@ class ObligationWorkflowService
         protected ObligationHistoryRecorder $historyRecorder,
     ) {}
 
-    public function canUserRunWorkflow(?User $user): bool
+    public function canUserRunWorkflow(?User $user, string $transition): bool
     {
-        return $user?->can('obligations.update') ?? false;
+        return $user?->can($this->permissionForTransition($transition)->value) ?? false;
+    }
+
+    public function canRunTransition(?User $user, Obligation $obligation, string $transition): bool
+    {
+        if (! $this->canUserRunWorkflow($user, $transition)) {
+            return false;
+        }
+
+        return match ($transition) {
+            self::TRANSITION_SUBMIT_FOR_REVIEW => $this->canSubmitForReview($obligation),
+            self::TRANSITION_COMPLETE => $this->canComplete($obligation),
+            self::TRANSITION_MARK_NOT_APPLICABLE => $this->canMarkNotApplicable($obligation),
+            self::TRANSITION_REOPEN => $this->canReopen($obligation),
+            default => false,
+        };
+    }
+
+    public function permissionForTransition(string $transition): AccessPermission
+    {
+        return match ($transition) {
+            self::TRANSITION_SUBMIT_FOR_REVIEW => AccessPermission::ObligationsSubmitForReview,
+            self::TRANSITION_COMPLETE => AccessPermission::ObligationsComplete,
+            self::TRANSITION_MARK_NOT_APPLICABLE => AccessPermission::ObligationsMarkNotApplicable,
+            self::TRANSITION_REOPEN => AccessPermission::ObligationsReopen,
+            default => throw new InvalidArgumentException("Unsupported workflow transition [{$transition}]."),
+        };
     }
 
     public function canSubmitForReview(Obligation $obligation): bool
@@ -69,6 +98,8 @@ class ObligationWorkflowService
 
     public function submitForReview(Obligation $obligation, User $actor, ?string $note): Obligation
     {
+        $this->authorizeTransition($actor, self::TRANSITION_SUBMIT_FOR_REVIEW);
+
         $normalizedNote = $this->normalizeText($note);
 
         if (! $this->canSubmitForReview($obligation)) {
@@ -120,6 +151,8 @@ class ObligationWorkflowService
         ?string $completionNotes,
         bool $confirmWithoutEvidence = false,
     ): Obligation {
+        $this->authorizeTransition($actor, self::TRANSITION_COMPLETE);
+
         $normalizedNotes = $this->normalizeText($completionNotes);
 
         if (! $this->canComplete($obligation)) {
@@ -182,6 +215,8 @@ class ObligationWorkflowService
 
     public function markNotApplicable(Obligation $obligation, User $actor, ?string $reason): Obligation
     {
+        $this->authorizeTransition($actor, self::TRANSITION_MARK_NOT_APPLICABLE);
+
         $normalizedReason = $this->normalizeText($reason);
 
         if (! $this->canMarkNotApplicable($obligation)) {
@@ -230,6 +265,8 @@ class ObligationWorkflowService
 
     public function reopen(Obligation $obligation, User $actor, ?string $reason): Obligation
     {
+        $this->authorizeTransition($actor, self::TRANSITION_REOPEN);
+
         $normalizedReason = $this->normalizeText($reason);
 
         if (! $this->canReopen($obligation)) {
@@ -350,6 +387,17 @@ class ObligationWorkflowService
         throw ValidationException::withMessages([
             'workflow' => $message,
         ]);
+    }
+
+    protected function authorizeTransition(User $actor, string $transition): void
+    {
+        if ($this->canUserRunWorkflow($actor, $transition)) {
+            return;
+        }
+
+        throw new AuthorizationException(
+            'Você não tem permissão para executar esta ação operacional da obrigação.'
+        );
     }
 
     protected function formatDateTime(CarbonInterface $value): string

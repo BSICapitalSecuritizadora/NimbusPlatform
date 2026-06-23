@@ -2,6 +2,7 @@
 
 use App\Actions\Emissions\RecalculateObligationStatusesAction;
 use App\Actions\Emissions\SendObligationDueNotificationsAction;
+use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
@@ -36,6 +37,14 @@ function historyEntriesFor(Obligation $obligation, ?string $eventType = null): I
     }
 
     return $query->get();
+}
+
+function makeHistoryUserWithPermissions(array $permissions): User
+{
+    $user = User::factory()->create();
+    $user->givePermissionTo($permissions);
+
+    return $user;
 }
 
 it('records a created entry when an obligation is created manually', function () {
@@ -163,7 +172,10 @@ it('exposes the read-only history action to authorized users', function () {
     $obligation = Obligation::factory()->for($emission)->create(['status' => 'a_vencer']);
     $obligation->update(['status' => 'concluida']);
 
-    $this->actingAs(makeAdminUser());
+    $this->actingAs(makeHistoryUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsViewHistory->value,
+    ]));
 
     Livewire::test(ObligationsRelationManager::class, [
         'ownerRecord' => $emission,
@@ -173,6 +185,22 @@ it('exposes the read-only history action to authorized users', function () {
         ->assertTableActionVisible('history', $obligation)
         ->mountTableAction('history', $obligation)
         ->assertHasNoErrors();
+});
+
+it('hides the history action when the user lacks the view history permission', function () {
+    $emission = Emission::factory()->create();
+    $obligation = Obligation::factory()->for($emission)->create(['status' => 'a_vencer']);
+
+    $this->actingAs(makeHistoryUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+    ]));
+
+    Livewire::test(ObligationsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSuccessful()
+        ->assertTableActionHidden('history', $obligation);
 });
 
 it('renders the timeline view with the obligation events', function () {

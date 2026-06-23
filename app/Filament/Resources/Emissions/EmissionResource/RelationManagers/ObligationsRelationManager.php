@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
+use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationWorkflowService;
@@ -34,7 +35,7 @@ class ObligationsRelationManager extends RelationManager
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return auth()->user()?->can('obligations.view') ?? false;
+        return auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false;
     }
 
     public function form(Schema $schema): Schema
@@ -103,7 +104,7 @@ class ObligationsRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('Cadastrar obrigação')
-                    ->authorize(fn (): bool => $this->canManage()),
+                    ->authorize(fn (): bool => $this->canCreateObligations()),
             ])
             ->actions([
                 $this->makeHistoryAction(),
@@ -112,14 +113,14 @@ class ObligationsRelationManager extends RelationManager
                 $this->makeMarkNotApplicableAction(),
                 $this->makeReopenAction(),
                 EditAction::make()
-                    ->authorize(fn (): bool => $this->canManage()),
+                    ->authorize(fn (): bool => $this->canEditObligations()),
                 DeleteAction::make()
-                    ->authorize(fn (): bool => auth()->user()?->can('obligations.delete') ?? false),
+                    ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsDelete->value) ?? false),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->authorize(fn (): bool => auth()->user()?->can('obligations.delete') ?? false),
+                        ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsDelete->value) ?? false),
                 ]),
             ])
             ->emptyStateHeading('Nenhuma obrigação consolidada')
@@ -135,7 +136,7 @@ class ObligationsRelationManager extends RelationManager
             ->modalHeading('Histórico da Obrigação')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Fechar')
-            ->authorize(fn (): bool => auth()->user()?->can('obligations.view') ?? false)
+            ->authorize(fn (): bool => $this->canViewHistory())
             ->modalContent(fn (Obligation $record) => view('filament.obligations.history-timeline', [
                 'obligation' => $record,
                 'entries' => $record->historyEntries()
@@ -147,9 +148,19 @@ class ObligationsRelationManager extends RelationManager
             ]));
     }
 
-    protected function canManage(): bool
+    protected function canCreateObligations(): bool
     {
-        return auth()->user()?->can('obligations.update') ?? false;
+        return auth()->user()?->can(AccessPermission::ObligationsCreate->value) ?? false;
+    }
+
+    protected function canEditObligations(): bool
+    {
+        return auth()->user()?->can(AccessPermission::ObligationsUpdate->value) ?? false;
+    }
+
+    protected function canViewHistory(): bool
+    {
+        return auth()->user()?->can(AccessPermission::ObligationsViewHistory->value) ?? false;
     }
 
     protected function makeSubmitForReviewAction(): Action
@@ -284,17 +295,7 @@ class ObligationsRelationManager extends RelationManager
 
     protected function canRunWorkflowAction(Obligation $record, string $transition): bool
     {
-        if (! $this->workflow()->canUserRunWorkflow(auth()->user())) {
-            return false;
-        }
-
-        return match ($transition) {
-            ObligationWorkflowService::TRANSITION_SUBMIT_FOR_REVIEW => $this->workflow()->canSubmitForReview($record),
-            ObligationWorkflowService::TRANSITION_COMPLETE => $this->workflow()->canComplete($record),
-            ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE => $this->workflow()->canMarkNotApplicable($record),
-            ObligationWorkflowService::TRANSITION_REOPEN => $this->workflow()->canReopen($record),
-            default => false,
-        };
+        return $this->workflow()->canRunTransition(auth()->user(), $record, $transition);
     }
 
     protected function workflow(): ObligationWorkflowService

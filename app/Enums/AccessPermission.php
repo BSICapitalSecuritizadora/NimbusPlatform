@@ -36,6 +36,19 @@ enum AccessPermission: string
     case ObligationsCreate = 'obligations.create';
     case ObligationsUpdate = 'obligations.update';
     case ObligationsDelete = 'obligations.delete';
+    case ObligationsGenerate = 'obligations.generate';
+    case ObligationsViewDashboard = 'obligations.view_dashboard';
+    case ObligationsSubmitForReview = 'obligations.submit_for_review';
+    case ObligationsComplete = 'obligations.complete';
+    case ObligationsMarkNotApplicable = 'obligations.mark_not_applicable';
+    case ObligationsReopen = 'obligations.reopen';
+    case ObligationsUploadEvidence = 'obligations.upload_evidence';
+    case ObligationsViewEvidence = 'obligations.view_evidence';
+    case ObligationsDownloadEvidence = 'obligations.download_evidence';
+    case ObligationsDeleteEvidence = 'obligations.delete_evidence';
+    case ObligationsViewHistory = 'obligations.view_history';
+    case ObligationsSendNotifications = 'obligations.send_notifications';
+    case ObligationsExport = 'obligations.export';
     case DocumentsView = 'documents.view';
     case DocumentsCreate = 'documents.create';
     case DocumentsUpdate = 'documents.update';
@@ -197,6 +210,19 @@ enum AccessPermission: string
             self::ObligationsCreate => 'Obrigações: criar',
             self::ObligationsUpdate => 'Obrigações: editar',
             self::ObligationsDelete => 'Obrigações: excluir',
+            self::ObligationsGenerate => 'Obrigações: gerar do Termo',
+            self::ObligationsViewDashboard => 'Obrigações: visualizar painel operacional',
+            self::ObligationsSubmitForReview => 'Obrigações: enviar para análise',
+            self::ObligationsComplete => 'Obrigações: concluir',
+            self::ObligationsMarkNotApplicable => 'Obrigações: marcar como não aplicável',
+            self::ObligationsReopen => 'Obrigações: reabrir',
+            self::ObligationsUploadEvidence => 'Obrigações: anexar evidências',
+            self::ObligationsViewEvidence => 'Obrigações: visualizar evidências',
+            self::ObligationsDownloadEvidence => 'Obrigações: baixar evidências',
+            self::ObligationsDeleteEvidence => 'Obrigações: remover evidências',
+            self::ObligationsViewHistory => 'Obrigações: visualizar histórico',
+            self::ObligationsSendNotifications => 'Obrigações: enviar notificações',
+            self::ObligationsExport => 'Obrigações: exportar',
             self::DocumentsView => 'Documentos: visualizar',
             self::DocumentsCreate => 'Documentos: criar',
             self::DocumentsUpdate => 'Documentos: editar',
@@ -325,6 +351,19 @@ enum AccessPermission: string
                 self::ObligationsCreate,
                 self::ObligationsUpdate,
                 self::ObligationsDelete,
+                self::ObligationsGenerate,
+                self::ObligationsViewDashboard,
+                self::ObligationsSubmitForReview,
+                self::ObligationsComplete,
+                self::ObligationsMarkNotApplicable,
+                self::ObligationsReopen,
+                self::ObligationsUploadEvidence,
+                self::ObligationsViewEvidence,
+                self::ObligationsDownloadEvidence,
+                self::ObligationsDeleteEvidence,
+                self::ObligationsViewHistory,
+                self::ObligationsSendNotifications,
+                self::ObligationsExport,
                 self::ExpensesView,
                 self::ExpensesCreate,
                 self::ExpensesUpdate,

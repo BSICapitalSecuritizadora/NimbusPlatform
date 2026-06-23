@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationEvidencesRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
@@ -28,6 +29,14 @@ beforeEach(function () {
 function evidenceService(): ObligationEvidenceService
 {
     return app(ObligationEvidenceService::class);
+}
+
+function makeEvidenceUserWithPermissions(array $permissions): User
+{
+    $user = User::factory()->create();
+    $user->givePermissionTo($permissions);
+
+    return $user;
 }
 
 it('stores an evidence file linked to the obligation and emission', function () {
@@ -160,7 +169,9 @@ it('allows an authorized user to download an evidence', function () {
     ]);
     Storage::disk('local')->put($evidence->path, 'conteudo-do-arquivo');
 
-    $this->actingAs(makeAdminUser())
+    $this->actingAs(makeEvidenceUserWithPermissions([
+        AccessPermission::ObligationsDownloadEvidence->value,
+    ]))
         ->get(route('admin.obligations.evidences.download', $evidence))
         ->assertOk();
 });
@@ -176,14 +187,16 @@ it('returns 404 when the physical evidence file is missing', function () {
         ->assertNotFound();
 });
 
-it('forbids download for users without the obligations permission', function () {
+it('forbids download for users without the download evidence permission', function () {
     $evidence = ObligationEvidence::factory()->create([
         'path' => 'nimbus_docs/obligation-evidences/secret.pdf',
         'disk' => 'local',
     ]);
     Storage::disk('local')->put($evidence->path, 'conteudo');
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(makeEvidenceUserWithPermissions([
+        AccessPermission::ObligationsViewEvidence->value,
+    ]))
         ->get(route('admin.obligations.evidences.download', $evidence))
         ->assertForbidden();
 });
@@ -196,7 +209,7 @@ it('hides the evidences relation manager from users without permission', functio
     expect(ObligationEvidencesRelationManager::canViewForRecord($emission, EditEmission::class))->toBeFalse();
 });
 
-it('lists the emission evidences for authorized users', function () {
+it('lists the emission evidences for users with the view evidence permission', function () {
     $emission = Emission::factory()->create();
     $obligation = Obligation::factory()->for($emission)->create();
     $evidence = ObligationEvidence::factory()->create([
@@ -205,7 +218,9 @@ it('lists the emission evidences for authorized users', function () {
         'original_name' => 'evidencia-visivel.pdf',
     ]);
 
-    $this->actingAs(makeAdminUser());
+    $this->actingAs(makeEvidenceUserWithPermissions([
+        AccessPermission::ObligationsViewEvidence->value,
+    ]));
 
     Livewire::test(ObligationEvidencesRelationManager::class, [
         'ownerRecord' => $emission,
@@ -213,5 +228,22 @@ it('lists the emission evidences for authorized users', function () {
     ])
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$evidence])
+        ->assertTableActionHidden('create');
+});
+
+it('shows the attach evidence action to users with the upload evidence permission', function () {
+    $emission = Emission::factory()->create();
+    $user = makeEvidenceUserWithPermissions([
+        AccessPermission::ObligationsViewEvidence->value,
+        AccessPermission::ObligationsUploadEvidence->value,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test(ObligationEvidencesRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSuccessful()
         ->assertTableActionVisible('create');
 });

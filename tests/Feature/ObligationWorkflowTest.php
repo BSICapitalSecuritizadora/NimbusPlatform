@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Emissions\RecalculateObligationStatusesAction;
+use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
@@ -10,6 +11,7 @@ use App\Models\ObligationHistoryEntry;
 use App\Models\User;
 use App\Services\Obligations\ObligationWorkflowService;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -39,6 +41,14 @@ function workflowHistoryEntry(Obligation $obligation, string $eventType): ?Oblig
         ->first();
 }
 
+function makeWorkflowUserWithPermissions(array $permissions): User
+{
+    $user = User::factory()->create();
+    $user->givePermissionTo($permissions);
+
+    return $user;
+}
+
 it('no longer allows freely editing the obligation status from the main form', function () {
     $this->actingAs(makeAdminUser());
 
@@ -62,7 +72,11 @@ it('no longer allows freely editing the obligation status from the main form', f
 });
 
 it('submits an eligible obligation for review through the guided action and records history', function () {
-    $this->actingAs(makeAdminUser());
+    $user = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsSubmitForReview->value,
+    ]);
+    $this->actingAs($user);
 
     $emission = Emission::factory()->create();
     $obligation = Obligation::factory()->for($emission)->create([
@@ -81,7 +95,7 @@ it('submits an eligible obligation for review through the guided action and reco
 
     expect($obligation->status)->toBe('em_analise')
         ->and($obligation->submitted_for_review_at)->not->toBeNull()
-        ->and($obligation->submitted_for_review_by)->toBe(auth()->id())
+        ->and($obligation->submitted_for_review_by)->toBe($user->id)
         ->and($obligation->review_submission_notes)->toBe('Encaminhada para validação operacional.')
         ->and($history)->not->toBeNull()
         ->and($history->source)->toBe(ObligationHistoryEntry::SOURCE_WORKFLOW)
@@ -90,7 +104,11 @@ it('submits an eligible obligation for review through the guided action and reco
 });
 
 it('concludes an obligation with evidence and stores completion metadata', function () {
-    $this->actingAs(makeAdminUser());
+    $user = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsComplete->value,
+    ]);
+    $this->actingAs($user);
 
     $emission = Emission::factory()->create();
     $obligation = Obligation::factory()->for($emission)->create([
@@ -112,7 +130,7 @@ it('concludes an obligation with evidence and stores completion metadata', funct
 
     expect($obligation->status)->toBe('concluida')
         ->and($obligation->completed_at)->not->toBeNull()
-        ->and($obligation->completed_by)->toBe(auth()->id())
+        ->and($obligation->completed_by)->toBe($user->id)
         ->and($obligation->completion_notes)->toBe('Comprovante anexado e obrigação encerrada.')
         ->and($history)->not->toBeNull()
         ->and($history->metadata['completed_without_evidence'])->toBeFalse()
@@ -121,7 +139,9 @@ it('concludes an obligation with evidence and stores completion metadata', funct
 
 it('allows concluding without evidence only when explicitly confirmed', function () {
     $workflow = app(ObligationWorkflowService::class);
-    $actor = User::factory()->create();
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsComplete->value,
+    ]);
     $obligation = Obligation::factory()->create([
         'status' => 'a_vencer',
     ]);
@@ -143,7 +163,9 @@ it('allows concluding without evidence only when explicitly confirmed', function
 
 it('marks an obligation as not applicable with a required reason', function () {
     $workflow = app(ObligationWorkflowService::class);
-    $actor = User::factory()->create();
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsMarkNotApplicable->value,
+    ]);
     $obligation = Obligation::factory()->create([
         'status' => 'vencida',
     ]);
@@ -163,7 +185,9 @@ it('marks an obligation as not applicable with a required reason', function () {
 
 it('reopens a completed obligation and recalculates the operational status from the due date', function () {
     $workflow = app(ObligationWorkflowService::class);
-    $actor = User::factory()->create();
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsReopen->value,
+    ]);
     $obligation = Obligation::factory()->create([
         'status' => 'concluida',
         'due_date' => now()->subDays(2),
@@ -186,7 +210,9 @@ it('reopens a completed obligation and recalculates the operational status from 
 
 it('reopens a not-applicable obligation to a vencer when the due date is today or in the future', function () {
     $workflow = app(ObligationWorkflowService::class);
-    $actor = User::factory()->create();
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsReopen->value,
+    ]);
     $obligation = Obligation::factory()->create([
         'status' => 'nao_aplicavel',
         'due_date' => now()->addDay(),
@@ -199,7 +225,9 @@ it('reopens a not-applicable obligation to a vencer when the due date is today o
 
 it('reopens a terminal obligation to em_dia when no due date exists', function () {
     $workflow = app(ObligationWorkflowService::class);
-    $actor = User::factory()->create();
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsReopen->value,
+    ]);
     $obligation = Obligation::factory()->create([
         'status' => 'concluida',
         'due_date' => null,
@@ -212,7 +240,10 @@ it('reopens a terminal obligation to em_dia when no due date exists', function (
 
 it('blocks invalid workflow transitions', function () {
     $workflow = app(ObligationWorkflowService::class);
-    $actor = User::factory()->create();
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsSubmitForReview->value,
+        AccessPermission::ObligationsComplete->value,
+    ]);
     $concluded = Obligation::factory()->create(['status' => 'concluida']);
     $notApplicable = Obligation::factory()->create(['status' => 'nao_aplicavel']);
 
@@ -223,9 +254,43 @@ it('blocks invalid workflow transitions', function () {
         ->toThrow(ValidationException::class);
 });
 
-it('keeps workflow-managed statuses protected from automatic recalculation', function () {
+it('blocks workflow transitions when the actor lacks the required granular permission', function () {
     $workflow = app(ObligationWorkflowService::class);
     $actor = User::factory()->create();
+
+    expect(fn () => $workflow->submitForReview(
+        Obligation::factory()->create(['status' => 'a_vencer']),
+        $actor,
+        'Sem permissão específica.',
+    ))->toThrow(AuthorizationException::class);
+
+    expect(fn () => $workflow->complete(
+        Obligation::factory()->create(['status' => 'em_analise']),
+        $actor,
+        'Sem permissão específica.',
+        true,
+    ))->toThrow(AuthorizationException::class);
+
+    expect(fn () => $workflow->markNotApplicable(
+        Obligation::factory()->create(['status' => 'vencida']),
+        $actor,
+        'Sem permissão específica.',
+    ))->toThrow(AuthorizationException::class);
+
+    expect(fn () => $workflow->reopen(
+        Obligation::factory()->create(['status' => 'concluida']),
+        $actor,
+        'Sem permissão específica.',
+    ))->toThrow(AuthorizationException::class);
+});
+
+it('keeps workflow-managed statuses protected from automatic recalculation', function () {
+    $workflow = app(ObligationWorkflowService::class);
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsSubmitForReview->value,
+        AccessPermission::ObligationsComplete->value,
+        AccessPermission::ObligationsMarkNotApplicable->value,
+    ]);
 
     $completed = Obligation::factory()->create([
         'status' => 'a_vencer',

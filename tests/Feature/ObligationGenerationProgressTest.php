@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSuggestionsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Jobs\GenerateEmissionObligationsJob;
@@ -51,6 +52,14 @@ function fakeProgressGeminiResponse(array $obligations): void
     ]);
 }
 
+function makeGenerationUserWithPermissions(array $permissions): User
+{
+    $user = User::factory()->create();
+    $user->givePermissionTo($permissions);
+
+    return $user;
+}
+
 it('marks the run as running and then completed while persisting counts', function () {
     $emission = Emission::factory()->create();
     $document = makeProgressTermDocument($emission);
@@ -100,7 +109,10 @@ it('marks the run as failed and records a safe error when extraction throws', fu
 
 it('creates a pending run and dispatches the job when generation starts', function () {
     Queue::fake();
-    $this->actingAs(makeAdminUser());
+    $this->actingAs(makeGenerationUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsGenerate->value,
+    ]));
 
     $emission = Emission::factory()->create();
     $document = makeProgressTermDocument($emission);
@@ -117,6 +129,19 @@ it('creates a pending run and dispatches the job when generation starts', functi
         ->and($run->document_id)->toBe($document->id);
 
     Queue::assertPushed(GenerateEmissionObligationsJob::class);
+});
+
+it('hides the generate action from users without the generate permission', function () {
+    $this->actingAs(makeGenerationUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+    ]));
+
+    $emission = Emission::factory()->create();
+
+    Livewire::test(ObligationSuggestionsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])->assertTableActionHidden('generate_obligations');
 });
 
 it('disables the generate action while a generation is in progress', function () {

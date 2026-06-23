@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AccessPermission;
 use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
 use App\Filament\Widgets\Obligations\ObligationOverviewStatsWidget;
 use App\Filament\Widgets\Obligations\ObligationsByEmissionChartWidget;
@@ -26,7 +27,7 @@ class ObligationDashboard extends Dashboard
 
     public static function canAccess(): bool
     {
-        return (bool) Filament::auth()->user()?->can('obligations.view');
+        return (bool) Filament::auth()->user()?->can(AccessPermission::ObligationsViewDashboard->value);
     }
 
     public function getColumns(): int|array

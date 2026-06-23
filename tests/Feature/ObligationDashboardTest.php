@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccessPermission;
 use App\Filament\Pages\ObligationDashboard;
 use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
 use App\Models\Emission;
@@ -37,6 +38,14 @@ function makeDashboardObligation(string $status, ?string $dueDate, ?Emission $em
 function dashboardData(): ObligationDashboardData
 {
     return app(ObligationDashboardData::class);
+}
+
+function makeDashboardUserWithPermissions(array $permissions): User
+{
+    $user = User::factory()->create();
+    $user->givePermissionTo($permissions);
+
+    return $user;
 }
 
 it('consolidates the main KPIs across emissions', function () {
@@ -122,16 +131,21 @@ it('keeps finalized obligations out of the operational query', function () {
     expect(dashboardData()->operationalQuery()->count())->toBe(1);
 });
 
-it('allows users with the obligations permission to access the dashboard', function () {
+it('allows users with the view dashboard permission to access the dashboard', function () {
     expect(ObligationDashboard::canAccess())->toBeFalse();
 
-    $this->actingAs(makeAdminUser());
+    $this->actingAs(makeDashboardUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsViewDashboard->value,
+    ]));
 
     expect(ObligationDashboard::canAccess())->toBeTrue();
 });
 
-it('denies access to users without the obligations permission', function () {
-    $this->actingAs(User::factory()->create());
+it('denies access to users without the view dashboard permission', function () {
+    $this->actingAs(makeDashboardUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+    ]));
 
     expect(ObligationDashboard::canAccess())->toBeFalse();
 });
@@ -139,9 +153,21 @@ it('denies access to users without the obligations permission', function () {
 it('renders the dashboard page for an authorized user', function () {
     makeDashboardObligation('vencida', '2026-06-10');
 
-    $this->actingAs(makeAdminUser());
+    $this->actingAs(makeDashboardUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsViewDashboard->value,
+    ]));
 
     Livewire::test(ObligationDashboard::class)->assertSuccessful();
+});
+
+it('keeps dashboard access available for super admins', function () {
+    $user = User::factory()->create();
+    $user->assignRole('super-admin');
+
+    $this->actingAs($user);
+
+    expect(ObligationDashboard::canAccess())->toBeTrue();
 });
 
 it('lists pending obligations and filters them by emission in the operational widget', function () {

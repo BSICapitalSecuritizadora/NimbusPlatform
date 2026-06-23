@@ -8,6 +8,7 @@ use App\Models\Document;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
 use App\Models\Obligation;
+use App\Models\User;
 use App\Services\GeminiService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,6 +62,19 @@ it('registers the obligations permissions in the access enum', function () {
         'obligations.create',
         'obligations.update',
         'obligations.delete',
+        'obligations.generate',
+        'obligations.view_dashboard',
+        'obligations.submit_for_review',
+        'obligations.complete',
+        'obligations.mark_not_applicable',
+        'obligations.reopen',
+        'obligations.upload_evidence',
+        'obligations.view_evidence',
+        'obligations.download_evidence',
+        'obligations.delete_evidence',
+        'obligations.view_history',
+        'obligations.send_notifications',
+        'obligations.export',
     );
 });
 
@@ -255,7 +269,12 @@ it('consolidates an approved suggestion into an obligation', function () {
 });
 
 it('shows the generate obligations action on the suggestions tab', function () {
-    $this->actingAs(makeAdminUser());
+    $user = User::factory()->create();
+    $user->givePermissionTo([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsGenerate->value,
+    ]);
+    $this->actingAs($user);
 
     $emission = Emission::factory()->create();
 

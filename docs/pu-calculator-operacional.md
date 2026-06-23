@@ -228,3 +228,76 @@ Horizon completa não faz parte desta fase.
 - **Status `error`** — veja `error_message` na versão (painel) e os logs (`GeneratePuDailyCurveJob failed`).
 - **Geração travada** — há um lock por emissão (`pu_curve_generation_{id}_lock`, TTL 30 min); aguarde ou
   verifique a fila.
+
+## Indexadores e status de homologação
+
+A calculadora é multi-indexador. O status operacional de cada indexador é a fonte única
+`PuIndexer::isHomologated()` (consumida pelo PDF de homologação e pela UI):
+
+| Indexador | Método | Status | Observação |
+| --- | --- | --- | --- |
+| **CDI + spread** | `cdi_spread` | **Homologado** | Calibrado contra os gabaritos AMANI (CDI defasado, dia útil) e TROUPE (CDI do dia de calendário anterior, exato). |
+| **Prefixado** | `fixed_rate` (`phase3-fixed-v1`) | **Homologado** (determinístico) | Gera curva sem depender de série de índices. Ainda **não validado contra gabarito de mercado**; é determinístico e coberto por testes de não regressão. |
+| **IPCA** | — | **Em preparação (bloqueado)** | Não gera curva: depende de gabarito real. Ver abaixo. |
+
+### IPCA — por que ainda está bloqueado
+
+O IPCA permanece **bloqueado** nesta fase porque **não há planilha/gabarito de validação IPCA**
+no projeto (`docs/samples/pu-validation/` contém apenas os gabaritos CDI AMANI e TROUPE). Sem gabarito
+real não é possível homologar a fórmula de correção, a defasagem de índice nem a política de projeção,
+e a fórmula final **não deve ser inventada**.
+
+O bloqueio é aplicado em três camadas, todas cobertas por testes:
+
+1. `PuIndexer::Ipca->isHomologated()` retorna `false`.
+2. `PuCurvePrerequisiteService` adiciona issue bloqueante com a mensagem
+   "A curva IPCA está em preparação e não pode ser gerada nesta versão da calculadora.".
+3. `IpcaCurveCalculator::calculate()` lança `IndexerNotSupportedException` (esqueleto preparatório).
+
+Na UI, a opção IPCA aparece com o rótulo `IPCA (em preparação)` e a geração é negada.
+
+### Parâmetros IPCA já disponíveis (preparatórios)
+
+A migration `add_multi_indexer_fields_to_emission_pu_parameters_table` já criou os campos que a
+engine IPCA usará quando houver gabarito (todos `nullable`, sem efeito operacional enquanto bloqueado):
+
+- `index_lag_months` — defasagem do índice IPCA em meses.
+- `base_index_date` — data-base do número-índice de partida.
+- `correction_frequency` — frequência de correção monetária (ex.: mensal).
+- `index_projection_policy` — política de projeção do índice quando não há valor publicado.
+
+### Como destravar o IPCA (fases futuras)
+
+Somente com gabarito real:
+
+1. Adicionar a planilha IPCA em `docs/samples/pu-validation/`.
+2. Analisar abas/colunas/datas: número-índice, defasagem, projeção, PU, juros, amortização e eventos.
+3. Identificar `index_lag_months`, `base_index_date`, `correction_frequency`,
+   `index_projection_policy`, fórmula de correção e arredondamentos.
+4. Evoluir `IpcaCurveCalculator` com precisão decimal segura (sem `float`), reaproveitando os
+   serviços de eventos/pagamentos/quantidade já usados por CDI/Prefixado.
+5. Criar validação contra a planilha (à semelhança de AMANI/TROUPE) e só então virar
+   `isHomologated()` para `true`, remover o bloqueio do prerequisite e habilitar a UI.
+
+## Migrations no ambiente real (MySQL)
+
+As migrations desta fase e das anteriores precisam ser aplicadas no **MySQL real**:
+
+```bash
+php artisan migrate
+```
+
+Migrations relevantes desta fase e da anterior:
+
+- `add_obsolete_reason_to_emission_pu_curve_versions_table` — `obsolete_reason` (timeline/PDF).
+- `seed_pu_dashboard_permission` — permissão `pu.dashboard.view` (painel operacional).
+- `add_multi_indexer_fields_to_emission_pu_parameters_table` — `annual_rate`, `calculation_method`,
+  `method_version`, `rounding_policy` e os campos preparatórios de IPCA; torna `spread_rate` nullable
+  (Prefixado/IPCA não usam spread).
+
+Todas são reversíveis (`down()`). O `down()` da multi-indexador repõe `spread_rate = 0` onde for nulo
+antes de voltar a coluna para `NOT NULL`.
+
+> **Nota:** em ambientes de desenvolvimento sem acesso ao host `mysql`, a suíte de testes valida o
+> schema em SQLite em memória. Isso confirma a reversibilidade e a integridade das migrations, mas o
+> ambiente de produção/staging **deve** rodar `php artisan migrate` no MySQL real.

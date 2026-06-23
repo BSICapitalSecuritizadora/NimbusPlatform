@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
+use App\Enums\AccessPermission;
 use App\Models\ObligationEvidence;
 use App\Services\Obligations\ObligationEvidenceService;
 use Filament\Actions\Action;
@@ -33,7 +34,7 @@ class ObligationEvidencesRelationManager extends RelationManager
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return auth()->user()?->can('obligations.view') ?? false;
+        return auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value) ?? false;
     }
 
     public function table(Table $table): Table
@@ -85,7 +86,8 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->label('Anexar Evidência')
                     ->modalHeading('Anexar evidência')
                     ->icon('heroicon-o-paper-clip')
-                    ->visible(fn (): bool => $this->canManage())
+                    ->visible(fn (): bool => $this->canUploadEvidence())
+                    ->authorize(fn (): bool => $this->canUploadEvidence())
                     ->schema([
                         Select::make('obligation_id')
                             ->label('Obrigação')
@@ -127,11 +129,11 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->color('gray')
                     ->url(fn (ObligationEvidence $record): string => route('admin.obligations.evidences.download', $record))
                     ->openUrlInNewTab()
-                    ->authorize(fn (): bool => auth()->user()?->can('obligations.view') ?? false),
+                    ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsDownloadEvidence->value) ?? false),
                 DeleteAction::make()
                     ->label('Remover')
                     ->modalHeading('Remover evidência')
-                    ->authorize(fn (): bool => auth()->user()?->can('obligations.delete') ?? false)
+                    ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsDeleteEvidence->value) ?? false)
                     ->action(function (ObligationEvidence $record): void {
                         app(ObligationEvidenceService::class)->delete($record);
 
@@ -145,8 +147,8 @@ class ObligationEvidencesRelationManager extends RelationManager
             ->emptyStateDescription('Anexe comprovantes e documentos de suporte às obrigações desta emissão.');
     }
 
-    protected function canManage(): bool
+    protected function canUploadEvidence(): bool
     {
-        return auth()->user()?->can('obligations.update') ?? false;
+        return auth()->user()?->can(AccessPermission::ObligationsUploadEvidence->value) ?? false;
     }
 }

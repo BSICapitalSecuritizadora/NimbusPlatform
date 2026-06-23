@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
+use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Jobs\GenerateEmissionObligationsJob;
 use App\Models\Emission;
@@ -38,7 +39,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        return auth()->user()?->can('obligations.view') ?? false;
+        return auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false;
     }
 
     public static function getBadge(Model $ownerRecord, string $pageClass): ?string
@@ -144,7 +145,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->label('Gerar obrigações do Termo')
             ->icon('heroicon-o-sparkles')
             ->color('warning')
-            ->authorize(fn (): bool => $this->canManage())
+            ->authorize(fn (): bool => $this->canGenerateObligations())
             ->disabled(fn (): bool => $this->hasActiveGenerationRun())
             ->requiresConfirmation()
             ->modalHeading('Gerar obrigações do Termo de Securitização')
@@ -304,6 +305,11 @@ class ObligationSuggestionsRelationManager extends RelationManager
 
     protected function canManage(): bool
     {
-        return auth()->user()?->can('obligations.create') ?? false;
+        return auth()->user()?->can(AccessPermission::ObligationsCreate->value) ?? false;
+    }
+
+    protected function canGenerateObligations(): bool
+    {
+        return auth()->user()?->can(AccessPermission::ObligationsGenerate->value) ?? false;
     }
 }

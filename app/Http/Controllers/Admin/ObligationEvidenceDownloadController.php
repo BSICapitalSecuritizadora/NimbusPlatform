@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AccessPermission;
 use App\Http\Controllers\Controller;
 use App\Models\ObligationEvidence;
 use App\Services\DocumentStorageService;
@@ -15,7 +16,7 @@ class ObligationEvidenceDownloadController extends Controller
         ObligationEvidence $evidence,
         DocumentStorageService $documentStorageService,
     ): StreamedResponse {
-        Gate::authorize('obligations.view');
+        Gate::authorize(AccessPermission::ObligationsDownloadEvidence->value);
 
         if (! $documentStorageService->exists($evidence->path, $evidence->disk)) {
             abort(Response::HTTP_NOT_FOUND);

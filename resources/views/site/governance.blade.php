@@ -14,7 +14,7 @@
                     Governança Corporativa com <br><span style="color: var(--gold);">transparência, controles e responsabilidade fiduciária</span>
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
-                    Nossa estrutura de governança é orientada por transparência, controles internos, segregação de funções e disciplina regulatória, apoiando decisões técnicas, rastreáveis e alinhadas às responsabilidades da BSI no mercado de capitais.
+                    Nossa estrutura de governança corporativa é orientada por transparência, controles internos, segregação de funções e disciplina regulatória, apoiando decisões técnicas, rastreáveis e alinhadas às responsabilidades da BSI Securitizadora no mercado de capitais, com atuação em operações de securitização como CRI, CRA e CR.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="#documentacao" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
@@ -153,7 +153,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 id="documentacao" class="h3 fw-bold mb-3" style="color: #ffffff;">Documentação Corporativa</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Documentos institucionais, societários e normativos disponíveis para consulta pública.</p>
+            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Documentos institucionais, societários e normativos disponíveis para consulta.</p>
         </div>
 
         <div class="row g-4 mb-5">
@@ -195,7 +195,7 @@
                         </div>
                         <div>
                             <div class="fw-bold" style="color: #ffffff; font-size: 0.95rem;">Políticas e Normativos Internos</div>
-                            <div style="color: #8892b0; font-size: 0.9rem;">Diretrizes aplicáveis a colaboradores e prestadores de serviços, alinhadas aos valores da companhia.</div>
+                            <div style="color: #8892b0; font-size: 0.9rem;">Diretrizes e políticas corporativas aplicáveis a colaboradores e prestadores de serviços, alinhadas aos valores da companhia.</div>
                         </div>
                     </div>
                     <div class="d-flex align-items-start gap-3">
@@ -271,7 +271,7 @@
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Manuais & Políticas Regulatórias</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Referenciais Normativos: Documentos que consolidam nossa cultura fiduciária e estabelecem padrões éticos e operacionais em prol da segurança dos investidores.</p>
+            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Referenciais Normativos: Documentos que consolidam nossa governança fiduciária e estabelecem padrões éticos e operacionais.</p>
         </div>
 
         <div class="row g-4">
@@ -321,7 +321,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Análise de Crédito</h3>
-                    <p class="text-muted mb-0">Avaliamos a qualidade dos recebíveis, garantias e lastro, buscando assegurar a robustez da estrutura conforme normas aplicáveis.</p>
+                    <p class="text-muted mb-0">Avaliamos a qualidade dos recebíveis, garantias e lastro, apoiando a tomada de decisão e a estrutura da operação conforme normas aplicáveis.</p>
 
                 </div>
             </div>
