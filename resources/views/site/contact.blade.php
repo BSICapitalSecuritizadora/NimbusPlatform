@@ -522,15 +522,15 @@
                 <div class="col-lg-7">
                     <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid #A06E28; color: #A06E28; background: rgba(160, 110, 40, 0.1); letter-spacing: 0.1em; font-weight: 600;">Atendimento institucional</span>
                     <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.04em; font-size: clamp(2.5rem, 5.5vw, 4.5rem); line-height: 1.05;">
-                        Entre em contato com a <span style="color: #A06E28;">BSI Capital</span>
+                        Contato <span style="color: #A06E28;">Institucional</span>
                     </h1>
                     <p class="lead mb-0" style="color: #E6E4E4; max-width: 760px;">
-                        Estamos à disposição para avaliar novas teses de operação ou suportar demandas institucionais. Nosso atendimento prioriza o rigor técnico e a viabilidade fiduciária exigidos pelo mercado.
+                        Entre em contato com a BSI Capital para demandas institucionais, relacionamento com investidores, apresentação de operações, documentos públicos, compliance ou parcerias estratégicas.
                     </p>
 
                     <div class="d-grid gap-3 d-sm-flex justify-content-sm-start mt-4 pt-2">
                         <a href="#form-contato" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg">
-                            Iniciar atendimento
+                            Enviar mensagem institucional
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                         </a>
                         <a href="mailto:contato@bsicapital.com.br" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -541,47 +541,47 @@
 
                 <div class="col-lg-5">
                     <div class="contact-hero-panel p-4 p-xl-5">
-                        <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Primeiro retorno estruturado</div>
-                        <h2 class="h4 fw-bold text-white mb-3">Canal direto para a frente certa</h2>
+                        <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Encaminhamento dedicado</div>
+                        <h2 class="h4 fw-bold text-white mb-3">Direcionamento institucional da sua demanda</h2>
                         <p class="mb-4" style="color: #E6E4E4; opacity: 0.85; line-height: 1.75;">
-                            Consolidamos o contexto inicial e direcionamos sua mensagem para o núcleo responsável sem perder tempo com repasses internos desnecessários.
+                            Sua mensagem é encaminhada à área responsável conforme a natureza do contato, preservando contexto, confidencialidade e clareza nos próximos passos.
                         </p>
 
                         <div class="row g-3 mb-4">
                             <div class="col-sm-6">
                                 <div class="contact-hero-stat h-100">
-                                    <span class="contact-hero-stat-value">24h úteis</span>
-                                    <span class="contact-hero-stat-label">Retorno inicial</span>
+                                    <span class="contact-hero-stat-value" style="font-size: 1.2rem;">Dias úteis</span>
+                                    <span class="contact-hero-stat-label">Triagem e retorno</span>
                                 </div>
                             </div>
                             <div class="col-sm-6">
                                 <div class="contact-hero-stat h-100">
-                                    <span class="contact-hero-stat-value">3 frentes</span>
-                                    <span class="contact-hero-stat-label">Triagem prioritária</span>
+                                    <span class="contact-hero-stat-value" style="font-size: 1.2rem;">Área foco</span>
+                                    <span class="contact-hero-stat-label">Direcionamento adequado</span>
                                 </div>
                             </div>
                         </div>
 
                         <ul class="list-unstyled contact-hero-list mb-0">
                             <li>
-                                <span class="contact-hero-marker">01</span>
+                                <span class="contact-hero-marker"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg></span>
                                 <div>
                                     <div class="fw-semibold text-white">Comercial e novos negócios</div>
                                     <div class="small" style="color: #E6E4E4; opacity: 0.75;">Estruturação, viabilidade preliminar e novas teses de operação.</div>
                                 </div>
                             </li>
                             <li>
-                                <span class="contact-hero-marker">02</span>
+                                <span class="contact-hero-marker"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg></span>
                                 <div>
-                                    <div class="fw-semibold text-white">Relacionamento institucional</div>
-                                    <div class="small" style="color: #E6E4E4; opacity: 0.75;">Investidores, documentos públicos e comunicações corporativas.</div>
+                                    <div class="fw-semibold text-white">Relações com investidores</div>
+                                    <div class="small" style="color: #E6E4E4; opacity: 0.75;">Documentos públicos e comunicações institucionais da securitizadora.</div>
                                 </div>
                             </li>
                             <li>
-                                <span class="contact-hero-marker">03</span>
+                                <span class="contact-hero-marker"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
                                 <div>
                                     <div class="fw-semibold text-white">Compliance e ética</div>
-                                    <div class="small" style="color: #E6E4E4; opacity: 0.75;">Conformidade, governança, proteção de dados e canais sensíveis.</div>
+                                    <div class="small" style="color: #E6E4E4; opacity: 0.75;">Conformidade, governança, proteção de dados e temas sensíveis.</div>
                                 </div>
                             </li>
                         </ul>
@@ -601,8 +601,8 @@
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"></path><path d="m22 6-10 7L2 6"></path></svg>
                             </div>
                             <div>
-                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Canal institucional</div>
-                                <h2 class="h4 fw-bold text-white mb-2">E-mail</h2>
+                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">E-mail institucional</div>
+                                <h2 class="h4 fw-bold text-white mb-2">Contato</h2>
                                 <p class="mb-3" style="color: #E6E4E4; opacity: 0.8; font-size: 0.9rem;">Para demandas institucionais, comerciais, operacionais e documentação pública.</p>
                                 <a href="mailto:contato@bsicapital.com.br" class="fw-semibold text-decoration-none" style="color: #A06E28; transition: all 0.3s ease;">contato@bsicapital.com.br</a>
                             </div>
@@ -616,8 +616,8 @@
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72l.38 2.65a2 2 0 0 1-.57 1.72L7.2 9.8a16 16 0 0 0 7 7l1.71-1.72a2 2 0 0 1 1.72-.57l2.65.38A2 2 0 0 1 22 16.92z"></path></svg>
                             </div>
                             <div>
-                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Atendimento</div>
-                                <h2 class="h4 fw-bold text-white mb-2">Telefone</h2>
+                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Atendimento telefônico</div>
+                                <h2 class="h4 fw-bold text-white mb-2">Corporativo</h2>
                                 <p class="mb-3" style="color: #E6E4E4; opacity: 0.8; font-size: 0.9rem;">Suporte corporativo em dias úteis, das 09h às 18h, para alinhamentos rápidos.</p>
                                 <a href="tel:+551123678793" class="fw-semibold text-decoration-none" style="color: #A06E28; transition: all 0.3s ease;">+55 (11) 2367-8793</a>
                             </div>
@@ -631,7 +631,7 @@
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10z"></path><circle cx="12" cy="11" r="2.5"></circle></svg>
                             </div>
                             <div>
-                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Base operacional</div>
+                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Sede institucional</div>
                                 <h2 class="h4 fw-bold text-white mb-2">São Paulo</h2>
                                 <p class="mb-3" style="color: #E6E4E4; opacity: 0.8; font-size: 0.9rem;">
                                     Avenida das Nações Unidas, 14.401<br>
@@ -648,44 +648,39 @@
             <div class="row g-4 align-items-stretch">
                 <div class="col-lg-5">
                     <div class="surface-card h-100 p-4 p-lg-5" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 24px;">
-                        <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Primeiro retorno</div>
+                        <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Fluxo interno</div>
                         <h2 class="h3 fw-bold text-white mb-3">O que acontece após o envio</h2>
                         <p class="mb-4" style="color: #E6E4E4; opacity: 0.8; font-size: 0.95rem; line-height: 1.6;">
-                            Cada mensagem entra em uma triagem objetiva para que o primeiro retorno já traga direção, contexto e próximos passos compatíveis com a natureza da demanda.
+                            Após o envio, sua solicitação é registrada e direcionada à área responsável conforme o assunto informado. O retorno considera a natureza da demanda, a disponibilidade da equipe e os procedimentos internos aplicáveis.
                         </p>
 
                         <div class="d-flex flex-column gap-3 mb-4">
                             <div class="contact-process-step">
-                                <span class="contact-step-index">01</span>
                                 <div>
-                                    <div class="fw-semibold text-white mb-1">Recebimento com contexto</div>
-                                    <div class="mb-0" style="color: #E6E4E4; opacity: 0.75; font-size: 0.88rem;">Lemos o assunto, a mensagem e os dados de contato para registrar corretamente o escopo inicial.</div>
+                                    <div class="fw-semibold text-white mb-1">1. Recebimento da solicitação</div>
                                 </div>
                             </div>
                             <div class="contact-process-step">
-                                <span class="contact-step-index">02</span>
                                 <div>
-                                    <div class="fw-semibold text-white mb-1">Triagem por área responsável</div>
-                                    <div class="mb-0" style="color: #E6E4E4; opacity: 0.75; font-size: 0.88rem;">Direcionamos o conteúdo para o núcleo comercial, institucional ou de compliance conforme a natureza da solicitação.</div>
+                                    <div class="fw-semibold text-white mb-1">2. Direcionamento à área responsável</div>
                                 </div>
                             </div>
                             <div class="contact-process-step">
-                                <span class="contact-step-index">03</span>
                                 <div>
-                                    <div class="fw-semibold text-white mb-1">Resposta e próximos passos</div>
-                                    <div class="mb-0" style="color: #E6E4E4; opacity: 0.75; font-size: 0.88rem;">O retorno inicial prioriza clareza técnica, proteção informacional e encaminhamento objetivo da conversa.</div>
+                                    <div class="fw-semibold text-white mb-1">3. Retorno com próximos passos</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="p-4" style="border-radius: 18px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05);">
-                            <div class="small text-uppercase fw-semibold mb-3" style="color: #A06E28; letter-spacing: 0.1em; font-size: 0.75rem;">Frentes mais recorrentes</div>
-                            <div class="d-flex flex-wrap gap-2">
-                                <span class="contact-chip">Operações estruturadas</span>
-                                <span class="contact-chip">Documentos públicos</span>
-                                <span class="contact-chip">Compliance e ética</span>
-                                <span class="contact-chip">Relações com investidores</span>
-                                <span class="contact-chip">Parcerias e novos negócios</span>
+                        <div class="pt-4 mt-2" style="border-top: 1px solid rgba(255, 255, 255, 0.08);">
+                            <div class="small text-uppercase fw-semibold mb-3" style="color: #A06E28; letter-spacing: 0.1em; font-size: 0.75rem;">Frentes de atuação</div>
+                            <div class="d-flex flex-wrap gap-4 gap-y-2">
+                                <span class="small" style="color: #E6E4E4;">&bull; Operações estruturadas</span>
+                                <span class="small" style="color: #E6E4E4;">&bull; Relações com investidores</span>
+                                <span class="small" style="color: #E6E4E4;">&bull; Documentos públicos</span>
+                                <span class="small" style="color: #E6E4E4;">&bull; Compliance e ética</span>
+                                <span class="small" style="color: #E6E4E4;">&bull; Parcerias estratégicas</span>
+                                <span class="small" style="color: #E6E4E4;">&bull; Carreiras</span>
                             </div>
                         </div>
                     </div>
@@ -696,20 +691,14 @@
                         @if(session('contact_success'))
                             <div class="alert d-flex align-items-center gap-3 mb-4" role="alert" style="background: rgba(160, 110, 40, 0.15); border: 1px solid #A06E28; color: #E6E4E4;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                <span>Mensagem enviada com sucesso. Nossa equipe retornará em até 24 horas úteis.</span>
+                                <span>Mensagem enviada com sucesso. Nossa equipe retornará conforme a natureza da solicitação.</span>
                             </div>
                         @endif
 
-                        <div class="mb-4">
+                        <div class="mb-4 pb-2">
                             <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Formulário</div>
-                            <h2 class="h3 fw-bold text-white mb-2">Envie sua mensagem</h2>
-                            <p class="mb-0" style="color: #E6E4E4; opacity: 0.8;">As informações abaixo permitem um direcionamento técnico e seguro da sua demanda para a área responsável.</p>
-                        </div>
-
-                        <div class="d-flex flex-wrap gap-2 mb-4">
-                            <span class="contact-chip">Retorno inicial em até 24h úteis</span>
-                            <span class="contact-chip">Triagem por núcleo responsável</span>
-                            <span class="contact-chip">Tratamento sigiloso</span>
+                            <h2 class="h3 fw-bold text-white mb-2">Envie sua solicitação</h2>
+                            <p class="mb-0" style="color: #E6E4E4; opacity: 0.8;">As informações preenchidas permitem o direcionamento técnico para a área responsável.</p>
                         </div>
 
                         <form action="{{ route('site.contact.submit') }}" method="POST" class="row g-3">
@@ -766,9 +755,9 @@
                                 @error('message')<div class="invalid-feedback" style="color: #ff6b6b;">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12 pt-2">
-                                <button type="submit" class="btn btn-brand btn-lg px-5 mb-3">Iniciar atendimento</button>
+                                <button type="submit" class="btn btn-brand btn-lg px-5 mb-3">Enviar mensagem institucional</button>
                                 <p class="small mb-0" style="font-size: 0.75rem; line-height: 1.4; color: #E6E4E4; opacity: 0.6;">
-                                    As informações fornecidas são protegidas por protocolos de sigilo em conformidade com a LGPD e nossa política de integridade corporativa.
+                                    As informações enviadas serão tratadas conforme a Política de Privacidade da BSI Capital, as normas aplicáveis e as rotinas internas de confidencialidade e governança da informação.
                                 </p>
                             </div>
                         </form>
@@ -780,10 +769,10 @@
 
     <section class="immersive-map-section">
         <div class="immersive-map-floating-card">
-            <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Localização</div>
-            <h2 class="h3 fw-bold mb-3 text-white">Sede institucional</h2>
+            <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Sede institucional</div>
+            <h2 class="h3 fw-bold mb-3 text-white">BSI Capital</h2>
             <p class="mb-4" style="color: #E6E4E4; opacity: 0.85; font-size: 0.95rem; line-height: 1.6;">
-                Nossa base em São Paulo concentra a inteligência estratégica, operacional e fiduciária da BSI Capital.
+                Nossa sede em São Paulo concentra as frentes estratégicas, operacionais e institucionais da securitizadora.
             </p>
 
             <div class="p-4 mb-4" style="border-radius: 18px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06);">

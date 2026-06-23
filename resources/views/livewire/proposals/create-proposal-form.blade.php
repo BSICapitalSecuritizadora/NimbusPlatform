@@ -14,23 +14,34 @@
                 <div class="col-lg-7">
                     <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Oportunidade</span>
                     <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                        Envie sua <span style="color: var(--gold);">Proposta</span>
+                        Solicitar Análise de <span style="color: var(--gold);">Operação</span>
                     </h1>
                     <p class="lead mb-0" style="color: #E6E4E4; max-width: 600px;">
-                        Seja para securitização, estruturação ou novos negócios, preencha o formulário abaixo para iniciarmos uma análise preliminar.
+                        Preencha as informações iniciais da empresa e da oportunidade para que a BSI Capital avalie o enquadramento preliminar da operação. Após o envio, você receberá um link seguro para complementar os dados e anexar documentos, quando aplicável.
                     </p>
                 </div>
                 <div class="col-lg-5">
                     <div class="d-flex flex-column gap-3">
                         <div class="p-4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;">
-                            <div class="section-kicker mb-2">Fluxo</div>
-                            <div class="fs-5 fw-bold mb-1">Cadastro inicial</div>
-                            <div class="small" style="color: #E6E4E4;">Os dados da empresa e do contato são registrados nesta primeira etapa.</div>
-                        </div>
-                        <div class="p-4" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;">
-                            <div class="section-kicker mb-2">Continuação</div>
-                            <div class="fs-5 fw-bold mb-1">Link seguro por e-mail</div>
-                            <div class="small" style="color: #E6E4E4;">Depois do envio, você recebe um acesso protegido para complementar as informações.</div>
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <div class="badge bg-gold text-brand-strong rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">1</div>
+                                <div class="fs-6 fw-bold">Cadastro inicial da empresa</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <div class="badge bg-gold text-brand-strong rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">2</div>
+                                <div class="fs-6 fw-bold">Triagem preliminar</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <div class="badge bg-gold text-brand-strong rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">3</div>
+                                <div class="fs-6 fw-bold">Complementação por link seguro</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="badge bg-gold text-brand-strong rounded-circle p-0 d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">4</div>
+                                <div class="fs-6 fw-bold">Avaliação técnica da operação</div>
+                            </div>
+                            <div class="small" style="color: #E6E4E4;">
+                                O envio inicial permite registrar a empresa e direcionar a oportunidade para triagem. A continuidade da análise dependerá do enquadramento preliminar, das informações complementares e dos documentos enviados.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -58,15 +69,22 @@
 
         <!-- FORM -->
         <form wire:submit="save">
+            <!-- ANTES DE ENVIAR -->
+            <div class="surface-card p-4 p-lg-4 mb-4 border-0 shadow-sm" style="background: rgba(0, 32, 91, 0.03); border-left: 4px solid var(--brand) !important;">
+                <h2 class="h5 fw-bold text-brand mb-2">Antes de enviar sua operação</h2>
+                <p class="small text-muted mb-0">
+                    Este formulário é destinado à apresentação inicial de oportunidades relacionadas a securitização, crédito estruturado, CRI, CRA, CR, recebíveis, operações imobiliárias, agronegócio, infraestrutura, empresas ou parcerias estratégicas. O envio não representa aprovação, compromisso de estruturação ou garantia de continuidade da operação.
+                </p>
+            </div>
             <!-- SECTION 1: DADOS DA EMPRESA -->
             <div class="surface-card p-4 p-lg-5 mb-4 border-0">
                 <div class="mb-4 pb-4 border-bottom border-brand-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
                     <div>
                         <div class="section-kicker mb-2">Etapa 1</div>
-                        <h2 class="h3 fw-bold text-brand mb-0">Dados da Empresa</h2>
+                        <h2 class="h3 fw-bold text-brand mb-0">Dados iniciais da empresa</h2>
                     </div>
                     <p class="text-muted mb-0" style="max-width: 400px; font-size: 0.9rem;">
-                        Informe o CNPJ para preencher a base inicial e ajuste os dados manualmente se necessário.
+                        Informe o CNPJ para apoiar o preenchimento inicial dos dados cadastrais. As informações poderão ser revisadas antes do envio.
                     </p>
                 </div>
 
@@ -122,7 +140,7 @@
                         <h2 class="h3 fw-bold text-brand mb-0">Localização</h2>
                     </div>
                     <p class="text-muted mb-0" style="max-width: 400px; font-size: 0.9rem;">
-                        Ao informar o CEP, o endereço é completado automaticamente e pode ser ajustado antes do envio.
+                        Informe o CEP para apoiar o preenchimento do endereço da empresa. Os dados poderão ser ajustados manualmente antes do envio.
                     </p>
                 </div>
 
@@ -177,10 +195,10 @@
                 <div class="mb-4 pb-4 border-bottom border-brand-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
                     <div>
                         <div class="section-kicker mb-2">Etapa 3</div>
-                        <h2 class="h3 fw-bold text-brand mb-0">Dados de Contato</h2>
+                        <h2 class="h3 fw-bold text-brand mb-0">Contato responsável pela proposta</h2>
                     </div>
                     <p class="text-muted mb-0" style="max-width: 400px; font-size: 0.9rem;">
-                        Este contato receberá o link seguro para continuar o preenchimento da proposta.
+                        Este contato será utilizado para o envio do link seguro e para eventuais comunicações relacionadas à análise preliminar.
                     </p>
                 </div>
 
@@ -198,7 +216,7 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label">Telefone Pessoal / Celular</label>
+                        <label class="form-label">Celular para contato</label>
                         <input type="tel" class="form-control" wire:model.blur="form.personalPhone" x-mask:dynamic="$input.replace(/\D/g, '').length > 10 ? '(99) 99999-9999' : '(99) 9999-9999'" inputmode="tel" placeholder="(00) 00000-0000">
                         @error('form.personalPhone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
@@ -222,8 +240,8 @@
                                     <input class="form-check-input" type="checkbox" role="switch" id="hasWhatsappCheck" wire:model.live="form.hasWhatsapp">
                                 </div>
                                 <label class="form-check-label ms-1" for="hasWhatsappCheck" style="cursor: pointer;">
-                                    <div class="fw-bold text-text mb-0" style="line-height:1.2;">Este contato recebe mensagens por WhatsApp</div>
-                                    <div class="text-muted small mt-1">Use esta opção para facilitar o retorno do time comercial.</div>
+                                    <div class="fw-bold text-text mb-0" style="line-height:1.2;">Autorizo que a BSI Capital utilize este número para contato relacionado à proposta enviada.</div>
+                                    <div class="text-muted small mt-1">Essa autorização é opcional e poderá ser utilizada apenas para comunicações relacionadas à oportunidade apresentada.</div>
                                 </label>
                             </div>
                         </div>
@@ -236,13 +254,13 @@
                 <div class="mb-4 pb-4 border-bottom border-brand-subtle d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
                     <div>
                         <div class="section-kicker mb-2">Etapa 4</div>
-                        <h2 class="h3 fw-bold text-brand mb-0">Assunto e Observações</h2>
+                        <h2 class="h3 fw-bold text-brand mb-0">Informações iniciais da oportunidade</h2>
                     </div>
                 </div>
 
                 <div>
-                    <label class="form-label">Descreva brevemente sua proposta ou dúvida</label>
-                    <textarea class="form-control" wire:model.blur="form.observations" rows="5" placeholder="Mais detalhes sobre o empreendimento ou operação..."></textarea>
+                    <label class="form-label">Descreva brevemente a operação, o ativo ou a oportunidade apresentada</label>
+                    <textarea class="form-control" wire:model.blur="form.observations" rows="5" placeholder="Informe o tipo de operação, setor, valor estimado, estágio atual, lastro ou recebíveis envolvidos e principais pontos que devem ser avaliados. Ex: Existe originador envolvido? Há documentos preliminares?"></textarea>
                     @error('form.observations') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
             </div>
@@ -252,15 +270,18 @@
                 <div class="row align-items-center g-4">
                     <div class="col-lg-8">
                         <div class="section-kicker mb-2">Próximo passo</div>
-                        <h2 class="h3 fw-bold text-white mb-3">Pronto para avançar com sua proposta?</h2>
-                        <p class="mb-0" style="color: #E6E4E4; font-size: 1.05rem;">
-                            Após o envio, você receberá um link seguro para complementar os dados do empreendimento e anexar os documentos necessários.
+                        <h2 class="h3 fw-bold text-white mb-3">Enviar para análise preliminar</h2>
+                        <p class="mb-3" style="color: #E6E4E4; font-size: 1.05rem;">
+                            Após o envio, você receberá um link seguro para complementar as informações da oportunidade e anexar documentos, quando aplicável. A continuidade da análise dependerá do enquadramento preliminar e da documentação disponibilizada.
+                        </p>
+                        <p class="small text-white-50 mb-0" style="font-size: 0.8rem; line-height: 1.4;">
+                            As informações enviadas serão tratadas conforme a Política de Privacidade da BSI Capital, as normas aplicáveis e as rotinas internas de confidencialidade e governança da informação.
                         </p>
                     </div>
-                    <div class="col-lg-4 text-lg-end">
-                        <button type="submit" class="btn px-4 py-2 w-100 w-lg-auto" wire:loading.attr="disabled" wire:target="save" style="background: var(--gold); border-color: var(--gold); color: var(--brand-strong); font-weight: 700; border-radius: 999px;">
-                            <span wire:loading.remove wire:target="save">Enviar Proposta</span>
-                            <span wire:loading wire:target="save">Enviando...</span>
+                    <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                        <button type="submit" class="btn px-4 py-3 w-100 w-lg-auto" wire:loading.attr="disabled" wire:target="save" style="background: var(--gold); border-color: var(--brand-strong); color: var(--brand-strong); font-weight: 700; border-radius: 999px;">
+                            <span wire:loading.remove wire:target="save">Enviar para análise preliminar</span>
+                            <span wire:loading wire:target="save">Registrando solicitação...</span>
                         </button>
                     </div>
                 </div>

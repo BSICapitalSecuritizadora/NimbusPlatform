@@ -55,14 +55,14 @@ class CreateProposalForm extends Component
                 'message' => $exception->getMessage(),
             ]);
 
-            $this->addError('submission', 'Ocorreu um erro ao enviar sua proposta. Por favor, tente novamente mais tarde.');
+            $this->addError('submission', 'Não foi possível enviar sua solicitação agora. Tente novamente em alguns instantes ou entre em contato com a BSI Capital.');
 
             return;
         }
 
         session()->flash(
             'success',
-            'Sua proposta foi enviada com sucesso. Enviamos um link seguro para o e-mail informado para continuar o preenchimento.',
+            'Solicitação registrada com sucesso. Enviamos um link seguro para o e-mail informado para que você possa complementar as informações da oportunidade, quando aplicável.',
         );
 
         $this->redirect(route('proposal.create'), navigate: true);

@@ -2,8 +2,8 @@
 
 use App\Domain\PuCalculator\Calculators\CdiSpreadCurveCalculator;
 use App\Domain\PuCalculator\Calculators\FixedRateCurveCalculator;
+use App\Domain\PuCalculator\Calculators\IpcaCurveCalculator;
 use App\Domain\PuCalculator\Enums\PuIndexer;
-use App\Domain\PuCalculator\Exceptions\IndexerNotSupportedException;
 use App\Domain\PuCalculator\Factories\PuCalculatorFactory;
 use App\Models\Emission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,10 +40,9 @@ it('resolves the fixed-rate calculator for prefixed emissions', function () {
     expect($calculator)->toBeInstanceOf(FixedRateCurveCalculator::class);
 });
 
-it('blocks IPCA generation as experimental', function () {
-    $emission = emissionWithIndexer('IPCA');
+it('resolves the IPCA calculator while IPCA stays unhomologated', function () {
     $calculator = app(PuCalculatorFactory::class)->forIndexer(PuIndexer::Ipca);
 
-    expect(fn () => $calculator->calculate($emission))
-        ->toThrow(IndexerNotSupportedException::class);
+    expect($calculator)->toBeInstanceOf(IpcaCurveCalculator::class)
+        ->and(PuIndexer::Ipca->isHomologated())->toBeFalse();
 });

@@ -24,15 +24,18 @@ class ObligationOverviewStatsWidget extends StatsOverviewWidget
             Stat::make('Total de Obrigações', $this->format($summary['total']))
                 ->color('primary')
                 ->description('Obrigações cadastradas em todas as emissões'),
-            Stat::make('A Vencer', $this->format($summary['a_vencer']))
-                ->color('info')
-                ->description('Dentro do prazo'),
             Stat::make('Vencidas', $this->format($summary['vencida']))
                 ->color('danger')
                 ->description('Prazo expirado — atenção imediata'),
+            Stat::make('Em Análise', $this->format($summary['em_analise']))
+                ->color('warning')
+                ->description('Aguardando validação operacional'),
             Stat::make('Concluídas', $this->format($summary['concluida']))
                 ->color('success')
                 ->description('Obrigações cumpridas'),
+            Stat::make('Não Aplicáveis', $this->format($summary['nao_aplicavel']))
+                ->color('gray')
+                ->description('Encerradas por não se aplicarem'),
             Stat::make('Vencem Hoje', $this->format($summary['vence_hoje']))
                 ->color('warning')
                 ->description('Vencimento no dia de hoje'),
@@ -42,6 +45,9 @@ class ObligationOverviewStatsWidget extends StatsOverviewWidget
             Stat::make('Próximos 30 Dias', $this->format($summary['proximos_30_dias']))
                 ->color('info')
                 ->description('Vencendo no próximo mês'),
+            Stat::make('Sem Responsável', $this->format($summary['sem_responsavel']))
+                ->color('danger')
+                ->description('Ainda sem dono operacional definido'),
             Stat::make('Sem Data de Vencimento', $this->format($summary['sem_data']))
                 ->color('gray')
                 ->description('Requerem definição de prazo'),

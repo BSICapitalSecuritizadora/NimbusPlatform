@@ -238,24 +238,52 @@ A calculadora é multi-indexador. O status operacional de cada indexador é a fo
 | --- | --- | --- | --- |
 | **CDI + spread** | `cdi_spread` | **Homologado** | Calibrado contra os gabaritos AMANI (CDI defasado, dia útil) e TROUPE (CDI do dia de calendário anterior, exato). |
 | **Prefixado** | `fixed_rate` (`phase3-fixed-v1`) | **Homologado** (determinístico) | Gera curva sem depender de série de índices. Ainda **não validado contra gabarito de mercado**; é determinístico e coberto por testes de não regressão. |
-| **IPCA** | `ipca_corrected` (`phase3-ipca-experimental`) | **Em preparação (bloqueado)** | Gabarito real **disponível** (CRI RIO BRANCO 15ª série). Engine em homologação: não gera curva até a homologação ser concluída e aprovada. Ver abaixo. |
+| **IPCA** | `ipca_corrected` (`phase3-ipca-experimental`) | **Em preparação (bloqueado)** | Engine **implementada e validada** contra o gabarito real (CRI RIO BRANCO 15ª série) na **janela pré-amortização** (~3 anos, a 12 casas). Ainda **bloqueada para geração** (a interação das amortizações intermediárias não está homologada). Ver abaixo. |
 
 ### IPCA — por que ainda está bloqueado
 
-> **Atualização (2026-06-23):** já existe um gabarito IPCA real no projeto
-> (`docs/samples/pu-validation/15ª SÉRIE - CRI RIO BRANCO_*.xlsx`). A mecânica foi **analisada**
-> (ver "Análise do gabarito" e "Plano de homologação" abaixo), mas a engine **continua bloqueada**:
-> a `IpcaCurveCalculator` ainda é esqueleto e só será destravada após a homologação ser implementada,
-> validada linha-a-linha contra o gabarito e **aprovada**. A fórmula final **não deve ser inventada**;
-> em especial a **política de projeção** para meses sem IPCA publicado não é derivável de um gabarito
-> histórico e foi definida por decisão de negócio (ver abaixo).
+> **Atualização (2026-06-23):** a `IpcaCurveCalculator` deixou de ser esqueleto e agora **implementa o
+> núcleo IPCA** (correção monetária + cupom real), com precisão decimal (`bcmath`/`Decimal`, sem `float`).
+> Ela é **validada por teste** contra o gabarito real na janela **2021-09-30 → 2024-09-16** (véspera da
+> primeira amortização intermediária): `factor_spread` (cupom) bate à precisão publicada do gabarito
+> (~10 casas) e o PU corrigido/atualizado fica dentro de tolerância < R$ 0,001 por cota.
+>
+> Mesmo assim a geração **continua bloqueada**: o gabarito tem **9 amortizações intermediárias** cuja
+> interação com aniversário/deflação **ainda não é reproduzida**. Portanto `PuIndexer::Ipca->isHomologated()`
+> permanece `false` e o `PuCurvePrerequisiteService` segue bloqueando a geração. A fórmula final **não é
+> inventada**; a política de projeção (meses sem IPCA publicado) é decisão de negócio (ver abaixo).
 
-O bloqueio é aplicado em três camadas, todas cobertas por testes:
+### Mecânica homologada da engine IPCA (janela pré-amortização)
 
-1. `PuIndexer::Ipca->isHomologated()` retorna `false`.
+Decodificada e validada a 12 casas contra o gabarito (engine em `IpcaCurveCalculator`):
+
+- **Aniversário mensal** no dia `base_index_date->day` (no gabarito, **dia 23**). Períodos vão de um
+  aniversário ao próximo; `dup/dut` em **dias corridos** (30/31).
+- **Correção monetária (pró-rata, com piso de deflação)**:
+  `corrigido = base_corrigido × max(NI_ref / NI_prev, 1) ^ (dup/dut)`, onde `NI_ref` é o número-índice do
+  mês de referência (1º do mês do aniversário de abertura, defasado de `index_lag_months`; no gabarito
+  `lag = 0`) e `NI_prev` é o do mês anterior. O **piso `max(…, 1)`** reproduz a regra observada: nos
+  **5 meses deflacionários** do gabarito (2022-07/08/09, 2023-06, 2024-08) a correção **não decresce**.
+- **Cupom real** (`annual_rate`, no gabarito **10,5%**) em base **30/360 mensal**:
+  `fator = (1 + taxa/100) ^ (dup/(dut×12))`; `juros = corrigido × (fator − 1)`;
+  `PU atualizado = corrigido + juros`. Exposto na coluna `factor_spread`. Juros **pagos mensalmente** no
+  aniversário (evento de juros); o fator reinicia no período seguinte.
+- **Número-índice IPCA** carregado em `index_rates` (`indexer = IPCA`, `rate_date` = 1º do mês). O número
+  de Ago/2021 (denominador da 1ª variação) não é publicado no gabarito e é **recuperado** do próprio
+  corrigido em 2021-10-23.
+
+**Pendente (não homologado):** interação das **9 amortizações intermediárias** com aniversário/deflação
+(salto observado no reinício pós-amortização). A engine produz curva após a 1ª amortização, mas esse
+trecho **não é validado** e a geração operacional permanece bloqueada até essa decodificação + aprovação.
+
+O bloqueio operacional é aplicado em duas camadas, cobertas por testes:
+
+1. `PuIndexer::Ipca->isHomologated()` retorna `false` (consumido por UI/PDF).
 2. `PuCurvePrerequisiteService` adiciona issue bloqueante com a mensagem
    "A curva IPCA está em preparação e não pode ser gerada nesta versão da calculadora.".
-3. `IpcaCurveCalculator::calculate()` lança `IndexerNotSupportedException` (esqueleto preparatório).
+
+Além disso, `IpcaCurveCalculator::calculate()` lança `IndexerNotSupportedException` quando faltar
+número-índice para o período (a política de **projeção de mercado** ainda não foi implementada).
 
 Na UI, a opção IPCA aparece com o rótulo `IPCA (em preparação)` e a geração é negada.
 
@@ -282,16 +310,18 @@ decodificada a partir dos valores (a planilha é export de valores, sem fórmula
   do período aniversário-a-aniversário (30/31).
 - **Correção monetária (pró-rata em dias corridos)**:
   `corrigido = corrigido_aniversário × (NI_mês / NI_mês-1) ^ (dupCorrecao / dutCorrecao)`.
-- **Defasagem (`index_lag_months`)**: a curva de cada período aplica a variação do número-índice
-  cujo `datadoindiceutilizado` é o 1º do mês de referência (defasagem efetiva ~0–1 mês conforme o
-  aniversário). Confirmar o valor exato (`0`, `1` ou `2`) durante a homologação.
-- **Juros (cupom real)**: base **30/360** (`dupJuros/dutJuros`, com `dut = 360` anualizado e 30/31 no mês),
-  acrescidos sobre o valor **corrigido**; `PU atualizado = corrigido + juros`. Cupom real ≈ 10,5% a.a.
-  (a confirmar contra o parâmetro cadastrado na homologação).
-- **Amortização**: **bullet** — pagamento único de principal no vencimento (2028-08-23).
+- **Defasagem (`index_lag_months`)**: **confirmada = 0** — cada período aplica a variação do número-índice
+  do 1º do mês do aniversário de abertura (`NI_ref/NI_prev`).
+- **Juros (cupom real)**: **confirmado 10,5% a.a.**, base **30/360 mensal** — `fator = (1+0,105)^(dup/(dut×12))`,
+  acrescido sobre o **corrigido**; `PU atualizado = corrigido + juros`; juros **pagos mensalmente** no aniversário.
+- **Deflação**: **confirmado piso `max(ratio, 1)`** — meses de IPCA negativo não corrigem para baixo
+  (5 ocorrências no gabarito).
+- **Amortização**: **9 amortizações** — 8 intermediárias a partir de **2024-09-17** + bullet final no
+  vencimento (2028-08-23). A interação das amortizações intermediárias com aniversário/deflação **ainda
+  não foi homologada** (fora da janela validada).
 - **Cauda sem índice publicado**: no gabarito histórico a curva fica **flat e com juros zerados** após o
-  último número-índice. Isso reflete o recorte do gabarito, **não** a política de projeção de produção
-  (ver decisão abaixo).
+  último número-índice (Jun/2025). Isso reflete o recorte do gabarito, **não** a política de projeção de
+  produção (ver decisão abaixo).
 
 ### Política de projeção (decisão de negócio)
 
@@ -342,6 +372,9 @@ Migrations relevantes desta fase e da anterior:
 - `add_multi_indexer_fields_to_emission_pu_parameters_table` — `annual_rate`, `calculation_method`,
   `method_version`, `rounding_policy` e os campos preparatórios de IPCA; torna `spread_rate` nullable
   (Prefixado/IPCA não usam spread).
+- `widen_index_rates_rate_value_for_ipca` — amplia `index_rates.rate_value` de `decimal(12,8)` para
+  `decimal(20,8)`. O número-índice IPCA é de magnitude muito maior que as taxas CDI/prefixada (milhares,
+  crescente no tempo) e não cabe em `decimal(12,8)` no longo prazo. Valores CDI existentes não mudam.
 
 Todas são reversíveis (`down()`). O `down()` da multi-indexador repõe `spread_rate = 0` onde for nulo
 antes de voltar a coluna para `NOT NULL`.

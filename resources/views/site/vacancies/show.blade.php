@@ -108,9 +108,15 @@
                             <label class="form-label small fw-semibold text-muted">Mensagem / Observação (opcional)</label>
                             <textarea name="message" rows="3" class="form-control bg-light border-0 shadow-none ps-3 py-2" placeholder="Destaque brevemente sua experiência mais relevante ou motivação para integrar o time..."></textarea>
                         </div>
+                        <div class="mb-4 form-check">
+                            <input type="checkbox" class="form-check-input" id="lgpd_consent" name="lgpd_consent" required>
+                            <label class="form-check-label small text-muted" for="lgpd_consent" style="font-size: 0.75rem; line-height: 1.4;">
+                                Li e concordo com o tratamento dos meus dados para fins de recrutamento e seleção, conforme a Política de Privacidade.
+                            </label>
+                        </div>
                         <button type="submit" class="btn btn-brand w-100 btn-lg shadow-sm fw-bold mb-3">Enviar Candidatura</button>
                         <p class="small text-muted mb-0" style="font-size: 0.72rem; line-height: 1.4;">
-                            Os dados e arquivos enviados são tratados exclusivamente para fins de recrutamento, sob protocolos de sigilo em conformidade com a LGPD.
+                            Os dados enviados serão tratados conforme a Política de Privacidade da BSI Capital, as normas aplicáveis e as rotinas internas de recrutamento e seleção.
                         </p>
                     </form>
                 </div>

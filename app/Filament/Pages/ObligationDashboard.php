@@ -3,9 +3,14 @@
 namespace App\Filament\Pages;
 
 use App\Enums\AccessPermission;
+use App\Filament\Widgets\Obligations\ObligationEvidenceOverviewStatsWidget;
 use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
+use App\Filament\Widgets\Obligations\ObligationOverdueAgingChartWidget;
 use App\Filament\Widgets\Obligations\ObligationOverviewStatsWidget;
+use App\Filament\Widgets\Obligations\ObligationPriorityDistributionChartWidget;
+use App\Filament\Widgets\Obligations\ObligationsByAreaChartWidget;
 use App\Filament\Widgets\Obligations\ObligationsByEmissionChartWidget;
+use App\Filament\Widgets\Obligations\ObligationsByResponsibleChartWidget;
 use App\Filament\Widgets\Obligations\ObligationStatusDistributionChartWidget;
 use Filament\Facades\Filament;
 use Filament\Pages\Dashboard;
@@ -27,7 +32,10 @@ class ObligationDashboard extends Dashboard
 
     public static function canAccess(): bool
     {
-        return (bool) Filament::auth()->user()?->can(AccessPermission::ObligationsViewDashboard->value);
+        $user = Filament::auth()->user();
+
+        return (bool) $user?->can(AccessPermission::ObligationsViewDashboard->value)
+            && (bool) $user?->can(AccessPermission::ObligationsView->value);
     }
 
     public function getColumns(): int|array
@@ -42,14 +50,19 @@ class ObligationDashboard extends Dashboard
     {
         return [
             ObligationOverviewStatsWidget::class,
+            ObligationEvidenceOverviewStatsWidget::class,
             ObligationStatusDistributionChartWidget::class,
+            ObligationPriorityDistributionChartWidget::class,
             ObligationsByEmissionChartWidget::class,
+            ObligationOverdueAgingChartWidget::class,
+            ObligationsByResponsibleChartWidget::class,
+            ObligationsByAreaChartWidget::class,
             ObligationOperationalTableWidget::class,
         ];
     }
 
     public function getSubheading(): ?string
     {
-        return 'Visão consolidada das obrigações de todas as emissões: vencimentos, pendências críticas e distribuição por emissão.';
+        return 'Visão operacional das obrigações de todas as emissões: vencimentos, responsáveis, prioridades, áreas e situação documental.';
     }
 }

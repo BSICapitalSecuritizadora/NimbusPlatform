@@ -3,8 +3,6 @@
 use App\Domain\PuCalculator\Calculators\IpcaCurveCalculator;
 use App\Domain\PuCalculator\Enums\PuCalculationMethod;
 use App\Domain\PuCalculator\Enums\PuIndexer;
-use App\Domain\PuCalculator\Exceptions\IndexerNotSupportedException;
-use App\Models\Emission;
 
 it('keeps CDI and Prefixado homologated while IPCA stays experimental', function () {
     expect(PuIndexer::Cdi->isHomologated())->toBeTrue()
@@ -16,11 +14,11 @@ it('labels IPCA as in preparation', function () {
     expect(PuIndexer::Ipca->label())->toContain('preparação');
 });
 
-it('blocks the IPCA calculator with a clear in-preparation message', function () {
-    $calculator = new IpcaCurveCalculator;
+it('exposes an implemented IPCA calculator instead of a blocking skeleton', function () {
+    $constructor = (new ReflectionClass(IpcaCurveCalculator::class))->getConstructor();
 
-    expect(fn () => $calculator->calculate(new Emission))
-        ->toThrow(IndexerNotSupportedException::class, 'A curva IPCA ainda está em preparação');
+    expect($constructor)->not->toBeNull()
+        ->and($constructor->getNumberOfParameters())->toBeGreaterThan(0);
 });
 
 it('keeps the IPCA calculation method flagged as experimental', function () {
