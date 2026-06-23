@@ -238,14 +238,17 @@ A calculadora é multi-indexador. O status operacional de cada indexador é a fo
 | --- | --- | --- | --- |
 | **CDI + spread** | `cdi_spread` | **Homologado** | Calibrado contra os gabaritos AMANI (CDI defasado, dia útil) e TROUPE (CDI do dia de calendário anterior, exato). |
 | **Prefixado** | `fixed_rate` (`phase3-fixed-v1`) | **Homologado** (determinístico) | Gera curva sem depender de série de índices. Ainda **não validado contra gabarito de mercado**; é determinístico e coberto por testes de não regressão. |
-| **IPCA** | — | **Em preparação (bloqueado)** | Não gera curva: depende de gabarito real. Ver abaixo. |
+| **IPCA** | `ipca_corrected` (`phase3-ipca-experimental`) | **Em preparação (bloqueado)** | Gabarito real **disponível** (CRI RIO BRANCO 15ª série). Engine em homologação: não gera curva até a homologação ser concluída e aprovada. Ver abaixo. |
 
 ### IPCA — por que ainda está bloqueado
 
-O IPCA permanece **bloqueado** nesta fase porque **não há planilha/gabarito de validação IPCA**
-no projeto (`docs/samples/pu-validation/` contém apenas os gabaritos CDI AMANI e TROUPE). Sem gabarito
-real não é possível homologar a fórmula de correção, a defasagem de índice nem a política de projeção,
-e a fórmula final **não deve ser inventada**.
+> **Atualização (2026-06-23):** já existe um gabarito IPCA real no projeto
+> (`docs/samples/pu-validation/15ª SÉRIE - CRI RIO BRANCO_*.xlsx`). A mecânica foi **analisada**
+> (ver "Análise do gabarito" e "Plano de homologação" abaixo), mas a engine **continua bloqueada**:
+> a `IpcaCurveCalculator` ainda é esqueleto e só será destravada após a homologação ser implementada,
+> validada linha-a-linha contra o gabarito e **aprovada**. A fórmula final **não deve ser inventada**;
+> em especial a **política de projeção** para meses sem IPCA publicado não é derivável de um gabarito
+> histórico e foi definida por decisão de negócio (ver abaixo).
 
 O bloqueio é aplicado em três camadas, todas cobertas por testes:
 
@@ -266,18 +269,63 @@ engine IPCA usará quando houver gabarito (todos `nullable`, sem efeito operacio
 - `correction_frequency` — frequência de correção monetária (ex.: mensal).
 - `index_projection_policy` — política de projeção do índice quando não há valor publicado.
 
-### Como destravar o IPCA (fases futuras)
+### Análise do gabarito IPCA (CRI RIO BRANCO 15ª série)
 
-Somente com gabarito real:
+Gabarito: `docs/samples/pu-validation/15ª SÉRIE - CRI RIO BRANCO_*.xlsx`, aba `PuDiario`, 2520 linhas
+diárias de **2021-09-30** a **2028-08-23** (mesmo layout de colunas dos gabaritos CDI). Mecânica
+decodificada a partir dos valores (a planilha é export de valores, sem fórmulas embutidas):
 
-1. Adicionar a planilha IPCA em `docs/samples/pu-validation/`.
-2. Analisar abas/colunas/datas: número-índice, defasagem, projeção, PU, juros, amortização e eventos.
-3. Identificar `index_lag_months`, `base_index_date`, `correction_frequency`,
-   `index_projection_policy`, fórmula de correção e arredondamentos.
-4. Evoluir `IpcaCurveCalculator` com precisão decimal segura (sem `float`), reaproveitando os
-   serviços de eventos/pagamentos/quantidade já usados por CDI/Prefixado.
-5. Criar validação contra a planilha (à semelhança de AMANI/TROUPE) e só então virar
-   `isHomologated()` para `true`, remover o bloqueio do prerequisite e habilitar a UI.
+- **Número-índice IPCA** na coluna do índice utilizado (`valordoindiceutilizado`), datado no **1º do mês**
+  de referência (`datadoindiceutilizado`). Ex.: Set/21 = `5944,21`; Out/21 = `6018,51` ⇒ variação
+  `+1,2499%`, que confere com o IPCA real de outubro/2021.
+- **Aniversário mensal no dia 23**: `dup/dut` da correção zeram a cada dia 23; `dut` = dias **corridos**
+  do período aniversário-a-aniversário (30/31).
+- **Correção monetária (pró-rata em dias corridos)**:
+  `corrigido = corrigido_aniversário × (NI_mês / NI_mês-1) ^ (dupCorrecao / dutCorrecao)`.
+- **Defasagem (`index_lag_months`)**: a curva de cada período aplica a variação do número-índice
+  cujo `datadoindiceutilizado` é o 1º do mês de referência (defasagem efetiva ~0–1 mês conforme o
+  aniversário). Confirmar o valor exato (`0`, `1` ou `2`) durante a homologação.
+- **Juros (cupom real)**: base **30/360** (`dupJuros/dutJuros`, com `dut = 360` anualizado e 30/31 no mês),
+  acrescidos sobre o valor **corrigido**; `PU atualizado = corrigido + juros`. Cupom real ≈ 10,5% a.a.
+  (a confirmar contra o parâmetro cadastrado na homologação).
+- **Amortização**: **bullet** — pagamento único de principal no vencimento (2028-08-23).
+- **Cauda sem índice publicado**: no gabarito histórico a curva fica **flat e com juros zerados** após o
+  último número-índice. Isso reflete o recorte do gabarito, **não** a política de projeção de produção
+  (ver decisão abaixo).
+
+### Política de projeção (decisão de negócio)
+
+Para meses **sem IPCA publicado** (cauda/futuro), a política adotada é **projeção de mercado
+(ANBIMA/curva)**: a engine usará uma série de número-índice **projetada** cadastrada em `index_rates`
+para os meses futuros (`index_projection_policy` correspondente). Consequências:
+
+- O gabarito histórico valida **apenas o núcleo determinístico** (correção + juros + amortização) nos
+  meses com número-índice conhecido.
+- A projeção de mercado **não é validável** por este gabarito histórico e exige um cenário separado com
+  série projetada. A **integração automática ANBIMA/B3 está fora de escopo** — a série projetada é
+  alimentada manualmente em `index_rates`.
+
+### Plano de homologação IPCA (antes de alterar a engine)
+
+1. **Travar o estado atual** (feito): testes garantem IPCA bloqueado/experimental e CDI/Prefixado sem
+   regressão; persistência/cast dos parâmetros IPCA cobertos.
+2. **Semear a série de número-índice IPCA** (`index_rates`) cobrindo o período do gabarito, derivando os
+   NI consecutivos da própria planilha (cada período expõe `NI_mês`); incluir o mês anterior ao início
+   para a primeira variação.
+3. **Evoluir `IpcaCurveCalculator`** com `Decimal`/precisão segura (sem `float`):
+   correção pró-rata dia-23 + juros 30/360 + amortização bullet, **reaproveitando** os serviços de
+   eventos/pagamentos/quantidade/`total_value` já usados por CDI/Prefixado (sem tocar nas fórmulas
+   específicas de CDI/Prefixado).
+4. **Validação contra o gabarito** (à semelhança de AMANI/TROUPE), comparando **fatores em até 12 casas**
+   (cast `decimal:16` formata via float) e os PUs/juros/amortização nas escalas de exibição.
+5. **Só então**: virar `PuIndexer::Ipca->isHomologated()` para `true`, remover o bloqueio do
+   `PuCurvePrerequisiteService`, habilitar a geração na UI e ajustar o rótulo. **Mediante aprovação.**
+
+### Como destravar o IPCA (resumo)
+
+Somente após o plano acima ser implementado, a validação passar e a homologação ser **aprovada**:
+virar `isHomologated()` para `true`, remover o bloqueio do prerequisite e habilitar a UI. Enquanto isso,
+a opção IPCA permanece visível como `IPCA (em preparação)` e a geração é negada.
 
 ## Migrations no ambiente real (MySQL)
 
@@ -301,3 +349,20 @@ antes de voltar a coluna para `NOT NULL`.
 > **Nota:** em ambientes de desenvolvimento sem acesso ao host `mysql`, a suíte de testes valida o
 > schema em SQLite em memória. Isso confirma a reversibilidade e a integridade das migrations, mas o
 > ambiente de produção/staging **deve** rodar `php artisan migrate` no MySQL real.
+
+## Isolamento das mudanças de PU antes do commit
+
+Há trabalho concorrente no repositório em **site** e **Obrigações**. As mudanças da Calculadora de PU
+**não devem ser misturadas** com esses arquivos no mesmo commit. Antes de commitar:
+
+1. `git status` e separe os arquivos por escopo. Escopo **PU** (commitável junto): `app/Domain/PuCalculator/**`,
+   `app/Models/EmissionPuParameter.php` e demais models `EmissionPu*`, migrations `*_pu_*`/`*multi_indexer*`/
+   `*obsolete_reason*`/`*dashboard*`, `tests/**/PuCalculator/**` e `tests/Unit/PuCalculator/**`,
+   `docs/pu-calculator-operacional.md`, `docs/samples/pu-validation/**`.
+2. Fora do escopo PU (**não** incluir): qualquer coisa em `site`/landing, `Obligation*`/Obrigações,
+   migrations `*obligation*`/`*evidence*`.
+3. Faça **stage seletivo** (`git add <arquivos-de-PU>`), nunca `git add -A`/`git add .`.
+4. **Nenhum commit sem aprovação.**
+
+> **Nota:** quando esta fase foi preparada, o working tree estava limpo, exceto pelo gabarito IPCA
+> `docs/samples/pu-validation/15ª SÉRIE - CRI RIO BRANCO_*.xlsx` (untracked) — esse arquivo é escopo PU.

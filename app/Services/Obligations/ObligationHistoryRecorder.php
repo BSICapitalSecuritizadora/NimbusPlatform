@@ -180,6 +180,7 @@ class ObligationHistoryRecorder
             $description,
             metadata: [
                 'evidence_id' => $evidence->id,
+                'status' => $evidence->status,
                 'original_name' => $evidence->original_name,
                 'mime_type' => $evidence->mime_type,
                 'size' => $evidence->size,
@@ -200,6 +201,34 @@ class ObligationHistoryRecorder
                 'evidence_id' => $evidence->id,
                 'original_name' => $evidence->original_name,
             ],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
+     * @param  array<string, mixed>|null  $metadata
+     */
+    public function recordEvidenceReview(
+        Obligation $obligation,
+        string $eventType,
+        string $title,
+        string $description,
+        array $oldValues,
+        array $newValues,
+        ?array $metadata = null,
+        ?int $userId = null,
+    ): ObligationHistoryEntry {
+        return $this->record(
+            $obligation,
+            $eventType,
+            ObligationHistoryEntry::SOURCE_EVIDENCE_REVIEW,
+            $title,
+            $description,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            metadata: $metadata,
+            userId: $userId,
         );
     }
 

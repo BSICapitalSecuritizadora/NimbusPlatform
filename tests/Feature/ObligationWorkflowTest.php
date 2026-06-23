@@ -103,7 +103,7 @@ it('submits an eligible obligation for review through the guided action and reco
         ->and($history->new_values['status'])->toBe('em_analise');
 });
 
-it('concludes an obligation with evidence and stores completion metadata', function () {
+it('concludes an obligation with approved evidence and stores completion metadata', function () {
     $user = makeWorkflowUserWithPermissions([
         AccessPermission::ObligationsView->value,
         AccessPermission::ObligationsComplete->value,
@@ -114,7 +114,7 @@ it('concludes an obligation with evidence and stores completion metadata', funct
     $obligation = Obligation::factory()->for($emission)->create([
         'status' => 'em_analise',
     ]);
-    ObligationEvidence::factory()->create([
+    ObligationEvidence::factory()->approved()->create([
         'obligation_id' => $obligation->id,
         'emission_id' => $emission->id,
     ]);
@@ -133,8 +133,8 @@ it('concludes an obligation with evidence and stores completion metadata', funct
         ->and($obligation->completed_by)->toBe($user->id)
         ->and($obligation->completion_notes)->toBe('Comprovante anexado e obrigação encerrada.')
         ->and($history)->not->toBeNull()
-        ->and($history->metadata['completed_without_evidence'])->toBeFalse()
-        ->and($history->metadata['evidence_count'])->toBe(1);
+        ->and($history->metadata['completed_without_approved_evidence'])->toBeFalse()
+        ->and($history->metadata['approved_evidence_count'])->toBe(1);
 });
 
 it('allows concluding without evidence only when explicitly confirmed', function () {
@@ -158,7 +158,42 @@ it('allows concluding without evidence only when explicitly confirmed', function
 
     expect($obligation->fresh()->status)->toBe('concluida')
         ->and($history)->not->toBeNull()
-        ->and($history->metadata['completed_without_evidence'])->toBeTrue();
+        ->and($history->metadata['completed_without_approved_evidence'])->toBeTrue();
+});
+
+it('does not count pending evidence as valid for conclusion', function () {
+    $workflow = app(ObligationWorkflowService::class);
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsComplete->value,
+    ]);
+    $obligation = Obligation::factory()->create([
+        'status' => 'em_analise',
+    ]);
+    ObligationEvidence::factory()->create([
+        'obligation_id' => $obligation->id,
+        'emission_id' => $obligation->emission_id,
+        'status' => ObligationEvidence::STATUS_PENDING,
+    ]);
+
+    expect(fn () => $workflow->complete($obligation, $actor, 'Há apenas evidência pendente.', false))
+        ->toThrow(ValidationException::class);
+});
+
+it('does not count rejected evidence as valid for conclusion', function () {
+    $workflow = app(ObligationWorkflowService::class);
+    $actor = makeWorkflowUserWithPermissions([
+        AccessPermission::ObligationsComplete->value,
+    ]);
+    $obligation = Obligation::factory()->create([
+        'status' => 'em_analise',
+    ]);
+    ObligationEvidence::factory()->rejected()->create([
+        'obligation_id' => $obligation->id,
+        'emission_id' => $obligation->emission_id,
+    ]);
+
+    expect(fn () => $workflow->complete($obligation, $actor, 'Há apenas evidência rejeitada.', false))
+        ->toThrow(ValidationException::class);
 });
 
 it('marks an obligation as not applicable with a required reason', function () {
@@ -296,7 +331,7 @@ it('keeps workflow-managed statuses protected from automatic recalculation', fun
         'status' => 'a_vencer',
         'due_date' => now()->subDays(5),
     ]);
-    ObligationEvidence::factory()->create([
+    ObligationEvidence::factory()->approved()->create([
         'obligation_id' => $completed->id,
         'emission_id' => $completed->emission_id,
     ]);

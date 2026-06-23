@@ -43,6 +43,12 @@ class ObligationHistoryEntry extends Model
 
     public const EVENT_EVIDENCE_REMOVED = 'evidence_removed';
 
+    public const EVENT_EVIDENCE_APPROVED = 'evidence_approved';
+
+    public const EVENT_EVIDENCE_REJECTED = 'evidence_rejected';
+
+    public const EVENT_EVIDENCE_REVIEW_UPDATED = 'evidence_review_updated';
+
     public const SOURCE_MANUAL = 'manual';
 
     public const SOURCE_TERM_EXTRACTION = 'term_extraction';
@@ -54,6 +60,8 @@ class ObligationHistoryEntry extends Model
     public const SOURCE_NOTIFICATION = 'notification';
 
     public const SOURCE_WORKFLOW = 'workflow';
+
+    public const SOURCE_EVIDENCE_REVIEW = 'evidence_review';
 
     /**
      * Friendly, business-facing labels for each event type.
@@ -77,6 +85,9 @@ class ObligationHistoryEntry extends Model
         self::EVENT_NOTIFICATION_FAILED => 'Falha na notificação',
         self::EVENT_EVIDENCE_UPLOADED => 'Evidência anexada',
         self::EVENT_EVIDENCE_REMOVED => 'Evidência removida',
+        self::EVENT_EVIDENCE_APPROVED => 'Evidência aprovada',
+        self::EVENT_EVIDENCE_REJECTED => 'Evidência rejeitada',
+        self::EVENT_EVIDENCE_REVIEW_UPDATED => 'Revisão da evidência atualizada',
     ];
 
     /**
@@ -91,6 +102,7 @@ class ObligationHistoryEntry extends Model
         self::SOURCE_SYSTEM => 'Sistema',
         self::SOURCE_NOTIFICATION => 'Notificação automática',
         self::SOURCE_WORKFLOW => 'Workflow operacional',
+        self::SOURCE_EVIDENCE_REVIEW => 'Revisão de evidência',
     ];
 
     protected $fillable = [

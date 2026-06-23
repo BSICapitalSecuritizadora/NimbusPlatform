@@ -141,11 +141,11 @@
                 <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Institucional</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">Relações com <span style="color: var(--gold);">Investidores</span></h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 760px;">
-                    Seja bem-vindo à nossa Central de Transparência. Aqui você acessa documentos e comunicados oficiais em tempo real, com a fidelidade informacional necessária para sua tomada de decisão.
+                    Central pública de documentos, comunicados e informações institucionais da BSI Capital, organizada para apoiar investidores, agentes da operação e demais stakeholders no acompanhamento das emissões e da companhia.
                 </p>
                 <div class="d-grid gap-3 d-sm-flex justify-content-sm-start">
                     <a href="{{ config('services.portal.url') }}" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg" style="transition: all 0.3s ease;">
-                        Acessar o Portal
+                        Acessar Portal do Investidor
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                     </a>
                     <a href="{{ route('site.contact') }}" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
@@ -159,13 +159,42 @@
                     <div class="d-flex justify-content-between align-items-end mb-3">
                         <div>
                             <div class="fs-2 fw-bold text-white">{{ $docs->total() }}</div>
-                            <div class="small text-white-50">documento(s) disponível(is)</div>
+                            <div class="small text-white-50">documentos disponíveis</div>
                         </div>
                         <div class="badge badge-soft px-3 py-2">{{ count($categories) }} categorias</div>
                     </div>
-                    <div class="small text-white-50">Fatos Relevantes, atas de assembleia, demonstrações financeiras e documentos de operação — histórico documental público da BSI Capital com busca e filtros por emissão.</div>
+                    <div class="small text-white-50">Fatos relevantes, atas de assembleias, demonstrações financeiras e documentos societários — histórico documental da BSI Capital.</div>
                 </div>
             </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-5" style="background: rgba(9,27,35,0.02);">
+    <div class="container py-lg-4">
+        <div class="text-center mb-5">
+            <h2 class="h3 fw-bold text-brand">O que você encontra nesta central</h2>
+        </div>
+        <div class="row g-3">
+            @php
+                $features = [
+                    'Comunicados e fatos relevantes',
+                    'Anúncios de início e encerramento',
+                    'Atas e convocações de assembleias',
+                    'Demonstrações financeiras',
+                    'Relatórios anuais',
+                    'Documentos das operações',
+                    'Documentos societários',
+                    'Publicações institucionais'
+                ];
+            @endphp
+            @foreach($features as $feature)
+                <div class="col-6 col-md-3">
+                    <div class="card h-100 border-0 shadow-sm p-4 text-center d-flex align-items-center justify-content-center" style="border-radius: 16px; background: #ffffff;">
+                        <span class="fw-semibold" style="color: var(--brand); font-size: 0.95rem; line-height: 1.4;">{{ $feature }}</span>
+                    </div>
+                </div>
+            @endforeach
         </div>
     </div>
 </section>
@@ -176,9 +205,9 @@
             <div class="row g-4 align-items-end">
                 <div class="col-lg-7">
                     <div class="small text-uppercase fw-bold mb-2" style="color: var(--gold); letter-spacing: 0.15em;">Consulta pública</div>
-                    <h2 class="h3 fw-bold text-brand mb-3">Repositório de Documentos Públicos: Navegação estruturada</h2>
+                    <h2 class="h3 fw-bold text-brand mb-3">Repositório de Documentos Públicos</h2>
                     <p class="mb-0" style="color: #5d687b;">
-                        Localize publicações oficiais por categoria ou palavra-chave, assegurando o acesso direto ao histórico documental da BSI Capital com precisão e clareza.
+                        Consulte documentos por categoria, emissão (CRI, CRA, CR), data ou palavra-chave, com acesso estruturado às publicações públicas da nossa securitizadora.
                     </p>
                 </div>
                 <div class="col-lg-5">
@@ -219,7 +248,7 @@
 
         <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center mb-4">
             <div class="section-copy">
-                <strong>{{ $docs->total() }}</strong> documento(s) disponível(is)
+                <strong>{{ $docs->total() }}</strong> documentos disponíveis
                 @if($category)
                     na categoria <strong>{{ $categories[$category] ?? $category }}</strong>
                 @endif
@@ -231,7 +260,7 @@
                 @if($activeFilters !== [])
                     <a href="{{ route('site.ri') }}" class="btn btn-outline-brand btn-sm px-4">Limpar filtros</a>
                 @endif
-                <span class="result-chip">{{ $docs->currentPage() }} / {{ $docs->lastPage() }} página(s)</span>
+                <span class="result-chip">Página {{ $docs->currentPage() }} de {{ $docs->lastPage() }}</span>
             </div>
         </div>
 
@@ -274,7 +303,7 @@
                         </div>
                         <div class="col-12 col-lg-auto px-3 px-lg-4 pb-3 pb-lg-0 d-grid">
                             <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-brand btn-sm px-4 d-block text-center" download>
-                                Acessar
+                                Abrir documento
                             </a>
                         </div>
                     </div>

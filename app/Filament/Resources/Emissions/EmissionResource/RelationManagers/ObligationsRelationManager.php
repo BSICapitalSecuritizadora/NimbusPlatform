@@ -266,23 +266,33 @@ class ObligationsRelationManager extends RelationManager
      */
     protected function completeActionForm(Obligation $record): array
     {
-        $evidenceCount = $record->evidences()->count();
-        $hasEvidence = $evidenceCount > 0;
+        $totalEvidenceCount = $record->evidences()->count();
+        $approvedEvidenceCount = $record->evidences()->approved()->count();
+        $hasApprovedEvidence = $approvedEvidenceCount > 0;
         $withoutEvidenceCheckbox = Checkbox::make('confirm_without_evidence')
-            ->label('Confirmo a conclusão sem evidência anexada.')
-            ->helperText('Use esta opção apenas quando o cumprimento não gerar comprovação formal ou quando a justificativa operacional for suficiente.')
-            ->visible(! $hasEvidence);
+            ->label('Confirmo a conclusão sem evidência aprovada.')
+            ->helperText('Use esta opção apenas quando o cumprimento não gerar comprovação formal válida ou quando a justificativa operacional for suficiente.')
+            ->visible(! $hasApprovedEvidence);
 
-        if (! $hasEvidence) {
+        if (! $hasApprovedEvidence) {
             $withoutEvidenceCheckbox->accepted()->required();
         }
 
         return [
             Placeholder::make('evidence_summary')
                 ->label('Evidências anexadas')
-                ->content($hasEvidence
-                    ? sprintf('%d evidência(s) vinculada(s) à obrigação.', $evidenceCount)
-                    : 'Nenhuma evidência anexada até o momento.'),
+                ->content(match (true) {
+                    $approvedEvidenceCount > 0 => sprintf(
+                        '%d evidência(s) aprovada(s) de %d anexada(s) à obrigação.',
+                        $approvedEvidenceCount,
+                        $totalEvidenceCount,
+                    ),
+                    $totalEvidenceCount > 0 => sprintf(
+                        '%d evidência(s) anexada(s), mas nenhuma aprovada até o momento.',
+                        $totalEvidenceCount,
+                    ),
+                    default => 'Nenhuma evidência anexada até o momento.',
+                }),
             Textarea::make('completion_notes')
                 ->label('Justificativa de conclusão')
                 ->rows(4)

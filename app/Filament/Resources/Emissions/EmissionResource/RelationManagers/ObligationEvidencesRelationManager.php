@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
 use App\Models\ObligationEvidence;
+use App\Services\Obligations\ObligationEvidenceReviewService;
 use App\Services\Obligations\ObligationEvidenceService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -42,7 +43,7 @@ class ObligationEvidencesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('original_name')
             ->description('Evidências e comprovantes anexados às obrigações desta emissão.')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['uploader', 'obligation']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['uploader', 'obligation', 'reviewer']))
             ->columns([
                 TextColumn::make('obligation.title')
                     ->label('Obrigação')
@@ -53,6 +54,15 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->label('Arquivo')
                     ->searchable()
                     ->wrap(),
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => ObligationEvidence::STATUS_OPTIONS[$state] ?? (string) $state)
+                    ->color(fn (?string $state): string => match ($state) {
+                        ObligationEvidence::STATUS_APPROVED => 'success',
+                        ObligationEvidence::STATUS_REJECTED => 'danger',
+                        default => 'warning',
+                    }),
                 TextColumn::make('mime_type')
                     ->label('Tipo')
                     ->placeholder('—')
@@ -68,11 +78,31 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->label('Data de envio')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+                TextColumn::make('reviewer.name')
+                    ->label('Revisado por')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('reviewed_at')
+                    ->label('Revisado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->placeholder('—')
                     ->limit(40)
                     ->toggleable(),
+                TextColumn::make('review_notes')
+                    ->label('Observação da aprovação')
+                    ->placeholder('—')
+                    ->limit(40)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('rejection_reason')
+                    ->label('Motivo da rejeição')
+                    ->placeholder('—')
+                    ->limit(40)
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('uploaded_at', 'desc')
             ->filters([
@@ -80,6 +110,9 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->label('Obrigação')
                     ->options(fn (): array => $this->getOwnerRecord()->obligations()->orderBy('title')->pluck('title', 'id')->all())
                     ->searchable(),
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options(ObligationEvidence::STATUS_OPTIONS),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -123,6 +156,8 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->successNotificationTitle('Evidência anexada com sucesso.'),
             ])
             ->actions([
+                $this->makeApproveAction(),
+                $this->makeRejectAction(),
                 Action::make('download')
                     ->label('Baixar')
                     ->icon('heroicon-o-arrow-down-tray')
@@ -147,8 +182,65 @@ class ObligationEvidencesRelationManager extends RelationManager
             ->emptyStateDescription('Anexe comprovantes e documentos de suporte às obrigações desta emissão.');
     }
 
+    protected function makeApproveAction(): Action
+    {
+        return Action::make('approve_evidence')
+            ->label('Aprovar evidência')
+            ->icon('heroicon-o-check-badge')
+            ->color('success')
+            ->modalHeading('Aprovar evidência')
+            ->modalSubmitActionLabel('Aprovar evidência')
+            ->form([
+                Textarea::make('review_notes')
+                    ->label('Observação da aprovação')
+                    ->rows(4)
+                    ->maxLength(2000)
+                    ->placeholder('Observação opcional sobre a aprovação da evidência.'),
+            ])
+            ->visible(fn (ObligationEvidence $record): bool => $this->canReviewEvidence($record, ObligationEvidenceReviewService::TRANSITION_APPROVE))
+            ->authorize(fn (ObligationEvidence $record): bool => $this->canReviewEvidence($record, ObligationEvidenceReviewService::TRANSITION_APPROVE))
+            ->action(function (ObligationEvidence $record, array $data): void {
+                $this->reviewService()->approve($record, auth()->user(), $data['review_notes'] ?? null);
+            })
+            ->successNotificationTitle('Evidência aprovada com sucesso.');
+    }
+
+    protected function makeRejectAction(): Action
+    {
+        return Action::make('reject_evidence')
+            ->label('Rejeitar evidência')
+            ->icon('heroicon-o-x-circle')
+            ->color('danger')
+            ->modalHeading('Rejeitar evidência')
+            ->modalSubmitActionLabel('Rejeitar evidência')
+            ->form([
+                Textarea::make('rejection_reason')
+                    ->label('Motivo da rejeição')
+                    ->rows(4)
+                    ->required()
+                    ->maxLength(2000)
+                    ->placeholder('Informe por que a evidência foi rejeitada.'),
+            ])
+            ->visible(fn (ObligationEvidence $record): bool => $this->canReviewEvidence($record, ObligationEvidenceReviewService::TRANSITION_REJECT))
+            ->authorize(fn (ObligationEvidence $record): bool => $this->canReviewEvidence($record, ObligationEvidenceReviewService::TRANSITION_REJECT))
+            ->action(function (ObligationEvidence $record, array $data): void {
+                $this->reviewService()->reject($record, auth()->user(), $data['rejection_reason'] ?? null);
+            })
+            ->successNotificationTitle('Evidência rejeitada com sucesso.');
+    }
+
     protected function canUploadEvidence(): bool
     {
         return auth()->user()?->can(AccessPermission::ObligationsUploadEvidence->value) ?? false;
+    }
+
+    protected function canReviewEvidence(ObligationEvidence $record, string $transition): bool
+    {
+        return $this->reviewService()->canRunTransition(auth()->user(), $record, $transition);
+    }
+
+    protected function reviewService(): ObligationEvidenceReviewService
+    {
+        return app(ObligationEvidenceReviewService::class);
     }
 }

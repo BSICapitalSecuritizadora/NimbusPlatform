@@ -165,20 +165,21 @@ class ObligationWorkflowService
             ]);
         }
 
-        $evidenceCount = $obligation->evidences()->count();
-        $hasEvidence = $evidenceCount > 0;
+        $approvedEvidenceCount = $obligation->evidences()->approved()->count();
+        $totalEvidenceCount = $obligation->evidences()->count();
+        $hasApprovedEvidence = $approvedEvidenceCount > 0;
 
-        if (! $hasEvidence && ! $confirmWithoutEvidence) {
+        if (! $hasApprovedEvidence && ! $confirmWithoutEvidence) {
             throw ValidationException::withMessages([
-                'confirm_without_evidence' => 'Confirme explicitamente a conclusão sem evidência anexada.',
+                'confirm_without_evidence' => 'Confirme explicitamente a conclusão sem evidência aprovada.',
             ]);
         }
 
         $occurredAt = now();
         $oldStatus = $obligation->status;
-        $description = $hasEvidence
+        $description = $hasApprovedEvidence
             ? 'Obrigação concluída. Justificativa: '.$normalizedNotes
-            : 'Obrigação concluída sem evidência anexada. Justificativa: '.$normalizedNotes;
+            : 'Obrigação concluída sem evidência aprovada. Justificativa: '.$normalizedNotes;
 
         return $this->persistTransition(
             $obligation,
@@ -205,8 +206,9 @@ class ObligationWorkflowService
             ],
             [
                 'completion_notes' => $normalizedNotes,
-                'evidence_count' => $evidenceCount,
-                'completed_without_evidence' => ! $hasEvidence,
+                'approved_evidence_count' => $approvedEvidenceCount,
+                'total_evidence_count' => $totalEvidenceCount,
+                'completed_without_approved_evidence' => ! $hasApprovedEvidence,
                 'transition' => self::TRANSITION_COMPLETE,
             ],
             $actor,

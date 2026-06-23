@@ -103,7 +103,6 @@
                                 <div class="mega-kicker">Documentos públicos e comunicados.</div>
                                 <a class="mega-link" href="{{ route('site.ri') }}">R.I</a>
                                 <a class="mega-link" href="{{ route('site.intelligence') }}">Intelligence (Análises)</a>
-                                <a class="mega-link" href="{{ route('site.ri', ['category' => 'fatos_relevantes']) }}">Fatos relevantes</a>
                                 <a class="mega-link" href="{{ route('site.ri', ['category' => 'assembleias']) }}">Assembleias</a>
                             </div>
 

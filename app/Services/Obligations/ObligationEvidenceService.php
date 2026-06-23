@@ -49,6 +49,11 @@ class ObligationEvidenceService
             'mime_type' => $stored['mime_type'],
             'size' => $stored['size_bytes'],
             'description' => filled($description) ? Str::limit($description, 1000, '') : null,
+            'status' => ObligationEvidence::STATUS_PENDING,
+            'reviewed_by' => null,
+            'reviewed_at' => null,
+            'review_notes' => null,
+            'rejection_reason' => null,
             'uploaded_at' => now(),
         ]);
 

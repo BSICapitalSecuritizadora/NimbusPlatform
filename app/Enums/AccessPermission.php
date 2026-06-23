@@ -46,6 +46,8 @@ enum AccessPermission: string
     case ObligationsViewEvidence = 'obligations.view_evidence';
     case ObligationsDownloadEvidence = 'obligations.download_evidence';
     case ObligationsDeleteEvidence = 'obligations.delete_evidence';
+    case ObligationsApproveEvidence = 'obligations.approve_evidence';
+    case ObligationsRejectEvidence = 'obligations.reject_evidence';
     case ObligationsViewHistory = 'obligations.view_history';
     case ObligationsSendNotifications = 'obligations.send_notifications';
     case ObligationsExport = 'obligations.export';
@@ -220,6 +222,8 @@ enum AccessPermission: string
             self::ObligationsViewEvidence => 'Obrigações: visualizar evidências',
             self::ObligationsDownloadEvidence => 'Obrigações: baixar evidências',
             self::ObligationsDeleteEvidence => 'Obrigações: remover evidências',
+            self::ObligationsApproveEvidence => 'Obrigações: aprovar evidências',
+            self::ObligationsRejectEvidence => 'Obrigações: rejeitar evidências',
             self::ObligationsViewHistory => 'Obrigações: visualizar histórico',
             self::ObligationsSendNotifications => 'Obrigações: enviar notificações',
             self::ObligationsExport => 'Obrigações: exportar',
@@ -361,6 +365,8 @@ enum AccessPermission: string
                 self::ObligationsViewEvidence,
                 self::ObligationsDownloadEvidence,
                 self::ObligationsDeleteEvidence,
+                self::ObligationsApproveEvidence,
+                self::ObligationsRejectEvidence,
                 self::ObligationsViewHistory,
                 self::ObligationsSendNotifications,
                 self::ObligationsExport,

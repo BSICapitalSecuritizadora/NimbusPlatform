@@ -72,6 +72,8 @@ it('registers the obligations permissions in the access enum', function () {
         'obligations.view_evidence',
         'obligations.download_evidence',
         'obligations.delete_evidence',
+        'obligations.approve_evidence',
+        'obligations.reject_evidence',
         'obligations.view_history',
         'obligations.send_notifications',
         'obligations.export',
