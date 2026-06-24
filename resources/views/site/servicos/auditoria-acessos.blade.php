@@ -275,7 +275,7 @@
     </div>
 </section>
 
-<!-- Evidência em tempo real -->
+<!-- Evidência em acompanhamento contínuo -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
         <div class="row align-items-center g-5">

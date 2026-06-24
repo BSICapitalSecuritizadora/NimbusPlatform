@@ -39,7 +39,7 @@
                         </div>
                         <div>
                             <div class="text-muted small fw-medium">Patrimônio de Afetação</div>
-                            <div class="fw-bold fs-5" style="color: #0b1220;">Segregação garantida</div>
+                            <div class="fw-bold fs-5" style="color: #0b1220;">Segregação apoiada</div>
                         </div>
                     </div>
                 </div>

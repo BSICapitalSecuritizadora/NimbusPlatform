@@ -183,11 +183,11 @@
                     <div class="row g-4 mb-4">
                         <div class="col-sm-6">
                             <h4 class="h6 fw-bold text-brand mb-2">Monitoramento de Inadimplência</h4>
-                            <p class="small text-muted mb-0">Alertas automáticos e dashboards em tempo real para controle da saúde da carteira.</p>
+                            <p class="small text-muted mb-0">Alertas automáticos e dashboards em acompanhamento contínuo para controle da saúde da carteira.</p>
                         </div>
                         <div class="col-sm-6">
                             <h4 class="h6 fw-bold text-brand mb-2">Conta Centralizadora</h4>
-                            <p class="small text-muted mb-0">Segregação total dos fluxos, garantindo que o repasse aos investidores seja a prioridade absoluta.</p>
+                            <p class="small text-muted mb-0">Segregação total dos fluxos, garantindo que o repasse aos investidores seja a prioridade institucional.</p>
                         </div>
                     </div>
                     <p class="text-muted small">Mesmo em cenários de inadimplência pontual, nossa estrutura de **Série Subordinada** e **Fundo de Reserva** garante a continuidade dos pagamentos sem interrupções.</p>

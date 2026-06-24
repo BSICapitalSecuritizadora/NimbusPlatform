@@ -426,7 +426,17 @@
         .navbar-brand {
             color: var(--surface) !important;
             letter-spacing: -0.03em;
-            filter: invert(1) brightness(2); /* Se for logo escura, invertemos pra ficar clara */
+        }
+
+        .site-logo {
+            display: block;
+            width: auto;
+            height: auto;
+            max-height: 44px;
+            object-fit: contain;
+            filter: none !important;
+            mix-blend-mode: normal !important;
+            opacity: 1;
         }
 
         .navbar-brand img {
@@ -610,57 +620,7 @@
             color: #bcc9cd !important;
         }
 
-        .emission-detail-tabs {
-            display: inline-flex;
-            flex-wrap: nowrap;
-            gap: 0.35rem;
-            width: fit-content;
-            max-width: 100%;
-            overflow-x: auto;
-            padding: 0.35rem;
-            padding-bottom: 0.35rem;
-            border: 1px solid color-mix(in srgb, var(--brand) 8%, var(--border));
-            border-radius: 14px;
-            background: color-mix(in srgb, #fff 38%, var(--surface-alt));
-            scrollbar-width: none;
-        }
 
-        .emission-detail-tabs::-webkit-scrollbar {
-            display: none;
-        }
-
-        .emission-detail-tabs .nav-item {
-            flex: 0 0 auto;
-        }
-
-        .emission-detail-tabs .nav-link {
-            white-space: nowrap;
-            border: 1px solid transparent;
-            background: transparent;
-            color: color-mix(in srgb, var(--text) 76%, transparent) !important;
-            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
-        }
-
-        .emission-detail-tabs .nav-link:hover {
-            color: var(--brand) !important;
-            background: color-mix(in srgb, var(--brand) 4%, #fff);
-        }
-
-        .emission-detail-tabs.nav-pills .nav-link.active,
-        .emission-detail-tabs.nav-pills .show > .nav-link {
-            color: var(--brand) !important;
-            background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--surface) 88%, #fff 12%));
-            border-color: color-mix(in srgb, var(--brand) 12%, var(--border));
-            box-shadow: 0 10px 22px rgba(9, 27, 35, 0.08);
-        }
-
-        .emission-detail-tabs .nav-link.active::after,
-        .emission-detail-tabs .show > .nav-link::after {
-            left: 0.9rem;
-            right: 0.9rem;
-            bottom: 0.38rem;
-            background: linear-gradient(90deg, color-mix(in srgb, var(--gold) 82%, #fff), var(--brand-soft));
-        }
 
         .emission-doc-card {
             border-radius: var(--radius-card);
@@ -740,40 +700,83 @@
             color: var(--gold);
         }
 
-        .footer-seal {
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-            min-width: 220px;
-            padding: 1.25rem 1.5rem;
-            border: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
-            border-radius: var(--radius-card);
-            background: var(--surface);
-            box-shadow: 0 10px 30px rgba(9, 27, 35, 0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        .footer-anbima-card {
+            max-width: 210px;
+            padding: 18px 20px;
+            border: 1px solid rgba(160, 110, 40, 0.35);
+            border-radius: 14px;
+            background: rgba(230, 228, 228, 0.04);
+            margin: 0 auto;
         }
 
-        .footer-seal:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 15px 40px rgba(9, 27, 35, 0.08);
+        @media (min-width: 768px) {
+            .footer-anbima-card {
+                margin: 0 0 0 auto;
+            }
         }
 
-        .footer-seal-label {
-            font-size: 0.75rem;
-            font-weight: 800;
-            letter-spacing: 0.15em;
+        .footer-anbima-title {
+            margin-bottom: 14px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
-            color: var(--brand);
+            color: #E6E4E4;
+            text-align: center;
         }
 
-        .footer .d-flex.gap-3 a {
-            transition: all 0.2s ease;
+        .footer-anbima-seal {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            margin: 0 auto;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #E6E4E4;
         }
 
-        .footer .d-flex.gap-3 a:hover {
-            color: var(--brand) !important;
-            transform: translateY(-3px);
+        .footer-anbima-seal img {
+            display: block;
+            max-width: 120px;
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            filter: none !important;
+            mix-blend-mode: normal !important;
+            opacity: 1;
+        }
+
+        .footer-social-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            color: rgba(230, 228, 228, 0.62);
+            background: rgba(230, 228, 228, 0.06);
+            border: 1px solid rgba(230, 228, 228, 0.08);
+            transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
+        }
+
+        .footer-social-link svg,
+        .footer-social-link i {
+            color: currentColor;
+            fill: currentColor;
+        }
+
+        .footer-social-link:hover,
+        .footer-social-link:focus-visible {
+            color: #E6E4E4;
+            background: rgba(160, 110, 40, 0.18);
+            border-color: rgba(160, 110, 40, 0.45);
+            transform: translateY(-1px);
+        }
+
+        .footer-social-link:focus-visible {
+            outline: 2px solid rgba(160, 110, 40, 0.75);
+            outline-offset: 3px;
         }
 
         .site-pagination-mobile {

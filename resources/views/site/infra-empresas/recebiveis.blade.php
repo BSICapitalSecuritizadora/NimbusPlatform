@@ -194,7 +194,7 @@
             <div class="col-lg-6 order-lg-2">
                 <h2 class="h3 fw-bold text-dark mb-4">Gestão ativa da carteira</h2>
                 <p class="text-muted mb-4 lead">
-                    Nossa entrega não para no fechamento. Gerimos a inadimplência e a concentração de devedores em tempo real, garantindo que o lastro permaneça saudável durante todo o programa.
+                    Nossa entrega não para no fechamento. Gerimos a inadimplência e a concentração de devedores em acompanhamento contínuo, garantindo que o lastro permaneça saudável durante todo o programa.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
                     <li class="d-flex align-items-start gap-3">

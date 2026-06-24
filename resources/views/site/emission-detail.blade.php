@@ -112,32 +112,42 @@
         line-height: 1.55;
     }
 
-    .emission-detail-tabs-container {
+    .emission-tabs {
         display: inline-flex;
-        background: rgba(9,27,35,0.03);
-        padding: 0.35rem;
-        border-radius: 50rem;
-        border: 1px solid rgba(9,27,35,0.06);
+        background: rgba(9, 27, 35, 0.04);
+        padding: 4px;
+        border-radius: 999px;
+        border: 1px solid rgba(9, 27, 35, 0.10);
         flex-wrap: wrap;
         justify-content: center;
     }
-    .emission-detail-tabs-container .nav-link {
-        color: #5d687b;
+
+    .emission-tab {
+        color: rgba(9, 27, 35, 0.68) !important;
         font-weight: 600;
         font-size: 0.95rem;
-        padding: 0.6rem 1.75rem;
-        border-radius: 50rem;
-        transition: all 0.3s ease;
-        border: none;
-        background: transparent;
+        padding: 0.6rem 1.75rem !important;
+        border-radius: 999px !important;
+        transition: color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+        border: none !important;
+        background: transparent !important;
     }
-    .emission-detail-tabs-container .nav-link:hover {
-        color: var(--brand);
+
+    .emission-tab:hover {
+        color: #091B23 !important;
+        background: rgba(160, 110, 40, 0.08) !important;
     }
-    .emission-detail-tabs-container .nav-link.active {
-        color: var(--brand);
-        background: #ffffff;
-        box-shadow: 0 2px 10px rgba(9,27,35,0.08);
+
+    .emission-tab[aria-selected="true"],
+    .emission-tab.active {
+        color: #A06E28 !important;
+        background: #ffffff !important;
+        box-shadow: 0 8px 22px rgba(9, 27, 35, 0.10) !important;
+    }
+
+    .emission-tab:focus-visible {
+        outline: 2px solid rgba(160, 110, 40, 0.65);
+        outline-offset: 3px;
     }
 
     .liquid-glass-logo {
@@ -525,13 +535,13 @@
         </div>
 
         <div class="mb-5 d-flex justify-content-center">
-            <ul class="nav nav-pills gap-1 emission-detail-tabs-container" id="emissionTabs" role="tablist">
-                <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#caracteristicas">Características</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#pagamentos">Pagamentos & PU</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#documentos">Documentos</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#simulador">Simulador de Fluxo</a></li>
-                {{-- <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#fluxograma">Fluxograma</a></li> --}}
-                {{-- <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#comunicados">Comunicados</a></li> --}}
+            <ul class="nav nav-pills gap-1 emission-tabs" id="emissionTabs" role="tablist">
+                <li class="nav-item"><a class="nav-link emission-tab active" data-bs-toggle="pill" href="#caracteristicas" aria-selected="true">Características</a></li>
+                <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#pagamentos" aria-selected="false">Pagamentos & PU</a></li>
+                <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#documentos" aria-selected="false">Documentos</a></li>
+                <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#simulador" aria-selected="false">Simulador de Fluxo</a></li>
+                {{-- <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#fluxograma" aria-selected="false">Fluxograma</a></li> --}}
+                {{-- <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#comunicados" aria-selected="false">Comunicados</a></li> --}}
             </ul>
         </div>
 

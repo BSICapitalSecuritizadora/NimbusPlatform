@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg sticky-top">
     <div class="container py-2">
         <a class="navbar-brand fw-bold" href="{{ route('site.home') }}">
-            <img src="{{ asset('images/logo-mob.png') }}" alt="BSI Capital">
+            <img src="{{ asset('images/brand/bsi-capital-logo.png') }}" alt="BSI Capital Securitizadora" class="site-logo">
         </a>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Alternar navegação">

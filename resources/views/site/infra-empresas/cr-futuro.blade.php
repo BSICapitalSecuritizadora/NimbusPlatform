@@ -307,7 +307,7 @@
                         </li>
                         <li class="d-flex align-items-start gap-2">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" class="mt-1 flex-shrink-0"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <span class="small text-dark fw-medium">Monitoramento via API: Visibilidade em tempo real do faturamento do emissor.</span>
+                            <span class="small text-dark fw-medium">Monitoramento via API: Visibilidade em acompanhamento contínuo do faturamento do emissor.</span>
                         </li>
                     </ul>
                 </div>

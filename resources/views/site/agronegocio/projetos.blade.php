@@ -105,7 +105,7 @@
             <div class="col-md-4">
                 <div class="p-4 rounded-4 bg-light h-100 border">
                     <h4 class="h5 fw-bold text-dark mb-3">Modelagem de Garantias</h4>
-                    <p class="text-muted small mb-0">Reunimos expertise técnica para organizar colaterais complexos, penhor de benfeitorias e alienações rurais com segurança jurídica absoluta para os stakeholders.</p>
+                    <p class="text-muted small mb-0">Reunimos expertise técnica para organizar colaterais complexos, penhor de benfeitorias e alienações rurais com segurança jurídica institucional para os stakeholders.</p>
                 </div>
             </div>
         </div>

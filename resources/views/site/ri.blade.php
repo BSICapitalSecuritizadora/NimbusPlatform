@@ -83,16 +83,16 @@
     }
 
     .search-input-group {
-        background: #ffffff;
-        border: 1px solid rgba(9,27,35,0.1);
-        border-radius: 12px;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(9,27,35,0.1);
+        border-radius: 0;
         overflow: hidden;
         transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(9,27,35,0.02);
     }
     .search-input-group:focus-within {
         border-color: var(--gold);
-        box-shadow: 0 0 0 3px rgba(212,175,55,0.15);
+        box-shadow: none;
     }
 
     /* Mobile horizontal scroll for filters */
@@ -201,7 +201,7 @@
 
 <section class="py-5">
     <div class="container py-lg-4">
-        <div class="bg-white rounded-4 shadow-sm p-4 p-lg-5 mb-4" style="border: 1px solid rgba(9,27,35,0.05);">
+        <div class="bg-white p-4 p-lg-5 mb-4" style="border: 1px solid rgba(9,27,35,0.05);">
             <div class="row g-4 align-items-end">
                 <div class="col-lg-7">
                     <div class="small text-uppercase fw-bold mb-2" style="color: var(--gold); letter-spacing: 0.15em;">Consulta pública</div>
@@ -260,7 +260,7 @@
                 @if($activeFilters !== [])
                     <a href="{{ route('site.ri') }}" class="btn btn-outline-brand btn-sm px-4">Limpar filtros</a>
                 @endif
-                <span class="result-chip">Página {{ $docs->currentPage() }} de {{ $docs->lastPage() }}</span>
+                <span class="result-chip" style="border-radius: 0px;">Página {{ $docs->currentPage() }} de {{ $docs->lastPage() }}</span>
             </div>
         </div>
 
@@ -309,9 +309,13 @@
                     </div>
                 </div>
             @empty
-                <div class="card p-5 text-center border-0 shadow-sm">
-                    <div class="fw-semibold text-muted mb-2">Nenhum documento foi localizado para os critérios aplicados.</div>
-                    <div class="small text-muted mb-4">Caso não encontre o que procura, nossa equipe de RI está à disposição para auxiliá-lo.</div>
+                <div class="card p-5 text-center text-muted" style="border: 1px solid rgba(9,27,35,0.05); background: #fdfdfd; border-radius: 0px;">
+                    <svg class="mb-3 mx-auto" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="color: var(--gold);">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <div class="fw-semibold mb-2" style="color: var(--brand); font-size: 1.1rem;">Nenhum documento foi localizado para os critérios aplicados.</div>
+                    <div class="small mb-4">Caso não encontre o que procura, nossa equipe de RI está à disposição para auxiliá-lo.</div>
                     <div class="d-flex justify-content-center">
                         <a href="{{ route('site.contact') }}" class="btn btn-outline-brand btn-sm px-4">Solicitar documento específico</a>
                     </div>

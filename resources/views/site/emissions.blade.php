@@ -115,31 +115,32 @@
     }
 
     .search-input-group {
-        background: #ffffff;
-        border: 1px solid rgba(9,27,35,0.1);
-        border-radius: 12px;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(9,27,35,0.1);
+        border-radius: 0;
         overflow: hidden;
         transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(9,27,35,0.02);
     }
     .search-input-group:focus-within {
         border-color: var(--gold) !important;
-        box-shadow: 0 0 0 3px rgba(212,175,55,0.15) !important;
+        box-shadow: none !important;
     }
 
     .filter-select {
-        background-color: rgba(9,27,35,0.03);
-        border-radius: 10px;
-        padding: 0.75rem 1rem;
+        background-color: transparent;
+        border-radius: 0;
+        padding: 0.5rem 0;
         color: var(--brand);
         font-weight: 500;
-        border: 1px solid transparent;
+        border: none;
+        border-bottom: 1px solid rgba(9,27,35,0.1);
         transition: all 0.2s ease;
     }
     .filter-select:focus {
-        background-color: #ffffff;
-        border-color: rgba(9,27,35,0.15);
-        box-shadow: 0 0 0 3px rgba(9,27,35,0.05);
+        background-color: transparent;
+        border-color: var(--gold);
+        box-shadow: none;
     }
     .filter-label {
         font-size: 0.7rem;
@@ -264,7 +265,7 @@
 
 <section class="py-5">
     <div class="container py-lg-4">
-        <div class="bg-white rounded-4 shadow-sm p-4 p-lg-5 mb-4" style="border: 1px solid rgba(9,27,35,0.05);">
+        <div class="bg-white p-4 p-lg-5 mb-4" style="border: 1px solid rgba(9,27,35,0.05);">
             <form method="GET" class="row g-4 align-items-end">
                 <div class="col-lg-12">
                     <div class="input-group search-input-group">
@@ -325,7 +326,7 @@
                 @if($activeFilters !== [])
                     <a href="{{ route('site.emissions') }}" class="btn btn-outline-brand btn-sm px-4">Limpar filtros</a>
                 @endif
-                <span class="result-chip">{{ $emissions->currentPage() }} / {{ $emissions->lastPage() }} página(s)</span>
+                <span class="result-chip" style="border-radius: 0px;">Página {{ $emissions->currentPage() }} de {{ $emissions->lastPage() }}</span>
             </div>
         </div>
 
@@ -392,8 +393,12 @@
                 </div>
             @empty
                 <div class="col-12">
-                    <div class="card p-5 text-center text-muted">
-                        <div class="fw-semibold mb-2">Nenhuma operação corresponde aos critérios selecionados.</div>
+                    <div class="card p-5 text-center text-muted" style="border: 1px solid rgba(9,27,35,0.05); background: #fdfdfd; border-radius: 0px;">
+                        <svg class="mb-3 mx-auto" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="color: var(--gold);">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <div class="fw-semibold mb-2" style="color: var(--brand); font-size: 1.1rem;">Nenhuma operação corresponde aos critérios selecionados.</div>
                         <div class="small">Tente ajustar seus filtros ou realize uma busca por outros termos.</div>
                     </div>
                 </div>

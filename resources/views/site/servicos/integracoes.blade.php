@@ -234,7 +234,7 @@
     <div class="container py-4">
         <div class="text-center mb-5">
             <h2 class="h3 fw-bold text-dark mb-2">Serviços relacionados</h2>
-            <p class="text-muted mx-auto" style="max-width: 560px;">Nossas integrações trabalham em conjunto com ferramentas de auditoria e controle de acesso, garantindo segurança máxima em cada etapa.</p>
+            <p class="text-muted mx-auto" style="max-width: 560px;">Nossas integrações trabalham em conjunto com ferramentas de auditoria e controle de acesso, garantindo controles internos em cada etapa.</p>
         </div>
 
         <div class="row g-4 justify-content-center">

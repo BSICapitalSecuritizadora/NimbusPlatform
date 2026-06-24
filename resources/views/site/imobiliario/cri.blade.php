@@ -102,7 +102,7 @@
                     <div class="col-sm-6">
                         <div class="p-4 rounded-4 shadow-sm border h-100" style="background: #f8f9fa;">
                             <h3 class="h6 fw-bold text-brand mb-3">Governança e Solidez</h3>
-                            <p class="small text-muted mb-0">Estruturas com Patrimônio Separado e monitoramento ativo, garantindo segurança jurídica absoluta.</p>
+                            <p class="small text-muted mb-0">Estruturas com Patrimônio Separado e monitoramento ativo, garantindo segurança jurídica institucional.</p>
                         </div>
                     </div>
                 </div>
@@ -127,7 +127,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Segurança Jurídica e Colaterais</h3>
-                    <p class="text-muted mb-0">Rigor na formalização de garantias reais e cessão fiduciária, desenhando veículos de securitização com conformidade normativa absoluta.</p>
+                    <p class="text-muted mb-0">Rigor na formalização de garantias reais e cessão fiduciária, desenhando veículos de securitização com conformidade normativa institucional.</p>
                 </div>
             </div>
             
@@ -323,7 +323,7 @@
                     <h2 class="h3 fw-bold text-dark mb-4">Gestão Digital e Transparência Pós-Fechamento</h2>
                 </div>
                 <p class="text-muted mb-4 lead">
-                    Asseguramos a perenidade da operação através de uma gestão ativa apoiada por tecnologia. Nossa plataforma integra o controle de fluxos de caixa e o monitoramento em tempo real.
+                    Asseguramos a perenidade da operação através de uma gestão ativa apoiada por tecnologia. Nossa plataforma integra o controle de fluxos de caixa e o monitoramento em acompanhamento contínuo.
                 </p>
                 <ul class="list-unstyled d-flex flex-column gap-3 mb-5">
                     <li class="d-flex align-items-start gap-3">
@@ -412,7 +412,7 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
-                                03. Como é garantida a segurança do lastro na BSI Capital?
+                                03. Como é apoiada a segurança do lastro na BSI Capital?
                             </button>
                         </h2>
                         <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqCRI">
@@ -430,7 +430,7 @@
                         </h2>
                         <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#faqCRI">
                             <div class="accordion-body px-0 text-muted">
-                                É um mecanismo legal que isola os ativos que lastreiam o CRI do patrimônio da securitizadora. Isso significa que os recebíveis e garantias da operação não respondem por dívidas da BSI Capital, conferindo segurança jurídica absoluta para os investidores em caso de qualquer eventualidade com a instituição.
+                                É um mecanismo legal que isola os ativos que lastreiam o CRI do patrimônio da securitizadora. Isso significa que os recebíveis e garantias da operação não respondem por dívidas da BSI Capital, conferindo segurança jurídica institucional para os investidores em caso de qualquer eventualidade com a instituição.
                             </div>
                         </div>
                     </div>
@@ -506,7 +506,7 @@
 
     /* Flow Diagram Arrows */
     @media (min-width: 768px) {
-        .flow-container .flow-item::after {
+        .flow-container .flow-item:not(:last-child)::after {
             content: "→";
             position: absolute;
             right: -10px;
@@ -516,10 +516,6 @@
             color: var(--brand-strong);
             opacity: 0.2;
             z-index: 0;
-        }
-        .flow-container .flow-item:last-of-type::after {
-            content: none;
-            display: none;
         }
     }
 </style>

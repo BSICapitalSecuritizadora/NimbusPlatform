@@ -74,7 +74,7 @@
             <div class="col-md-4">
                 <div class="card h-100 border-0 p-4">
                     <h4 class="h5 fw-bold mb-3">Transparência Total</h4>
-                    <p class="small text-muted mb-0">Acessos dedicados para emissores, investidores e auditores com visibilidade em tempo real.</p>
+                    <p class="small text-muted mb-0">Acessos dedicados para emissores, investidores e auditores com visibilidade em acompanhamento contínuo.</p>
                 </div>
             </div>
             <div class="col-md-4">

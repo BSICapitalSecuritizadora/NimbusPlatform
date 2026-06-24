@@ -220,7 +220,7 @@
                 </p>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="result-chip">Governança corporativa</span>
-                    <span class="result-chip">Transparência absoluta</span>
+                    <span class="result-chip">governança documental</span>
                     <span class="result-chip">Diligência fiduciária</span>
                     <span class="result-chip">Parcerias sólidas</span>
                 </div>
