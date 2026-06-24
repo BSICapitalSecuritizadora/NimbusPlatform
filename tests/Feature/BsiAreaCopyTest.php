@@ -45,7 +45,7 @@ it('renders the revised governance copy on the bsi area page', function () {
 it('renders the revised compliance copy on the bsi area page', function () {
     $this->get(route('site.compliance'))
         ->assertSuccessful()
-        ->assertSee('Pilares do Nosso Compliance')
+        ->assertSee('Frentes de atuação do Compliance')
         ->assertSee('Protocolo de Sigilo')
         ->assertSee('Canal de Denúncia');
 });

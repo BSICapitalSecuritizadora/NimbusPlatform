@@ -25,14 +25,14 @@ dataset('public-layout-routes', [
         'site.contact',
         [
             'Atendimento institucional',
-            'Canal direto para a frente certa',
+            'Direcionamento institucional da sua demanda',
             'São Paulo',
         ],
     ],
     'partnerships' => [
         'site.partnerships',
         [
-            'Parcerias estruturadas para ampliar',
+            'Parcerias estratégicas para',
             'Modelos de parceria',
             'Vamos estruturar uma parceria com critério técnico e alinhamento comercial?',
         ],
@@ -56,8 +56,8 @@ dataset('public-layout-routes', [
     'careers' => [
         'site.vacancies.index',
         [
-            'Integre o time da',
-            'Nossas vagas são abertas sob demanda técnica pontual.',
+            'Carreiras na',
+            'Oportunidades abertas',
         ],
     ],
 ]);
