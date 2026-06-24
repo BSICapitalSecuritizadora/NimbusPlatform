@@ -2,16 +2,20 @@
 
 namespace App\Filament\Widgets\Obligations;
 
+use App\Enums\AccessPermission;
 use App\Services\Obligations\ObligationDashboardData;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 class ObligationsByResponsibleChartWidget extends ChartWidget
 {
+    use InteractsWithPageFilters;
+
     protected static bool $isDiscovered = false;
 
     protected ?string $heading = 'Pendências por Responsável';
 
-    protected ?string $description = 'Responsáveis que concentram mais obrigações em aberto e atrasos.';
+    protected ?string $description = 'Responsáveis com maior concentração de obrigações em aberto e atrasos.';
 
     protected function getType(): string
     {
@@ -20,7 +24,9 @@ class ObligationsByResponsibleChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $responsibles = app(ObligationDashboardData::class)->topResponsiblesByPending();
+        $canViewEvidence = (bool) auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value);
+        $filters = app(ObligationDashboardData::class)->sanitizeFilters($this->pageFilters, $canViewEvidence);
+        $responsibles = app(ObligationDashboardData::class)->topResponsiblesByPending(filters: $filters);
 
         return [
             'labels' => $responsibles->pluck('name')->all(),
@@ -28,7 +34,10 @@ class ObligationsByResponsibleChartWidget extends ChartWidget
                 [
                     'label' => 'Em aberto',
                     'data' => $responsibles
-                        ->map(fn (object $item): int => (int) $item->pending_obligations_count - (int) $item->overdue_obligations_count)
+                        ->map(fn (object $item): int => max(
+                            0,
+                            (int) $item->pending_obligations_count - (int) $item->overdue_obligations_count
+                        ))
                         ->all(),
                     'backgroundColor' => '#3b82f6',
                 ],

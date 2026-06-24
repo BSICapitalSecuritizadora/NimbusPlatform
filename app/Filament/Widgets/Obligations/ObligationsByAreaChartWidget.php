@@ -2,11 +2,15 @@
 
 namespace App\Filament\Widgets\Obligations;
 
+use App\Enums\AccessPermission;
 use App\Services\Obligations\ObligationDashboardData;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 class ObligationsByAreaChartWidget extends ChartWidget
 {
+    use InteractsWithPageFilters;
+
     protected static bool $isDiscovered = false;
 
     protected ?string $heading = 'Pendências por Área';
@@ -20,7 +24,9 @@ class ObligationsByAreaChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $areas = app(ObligationDashboardData::class)->topAreasByPending();
+        $canViewEvidence = (bool) auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value);
+        $filters = app(ObligationDashboardData::class)->sanitizeFilters($this->pageFilters, $canViewEvidence);
+        $areas = app(ObligationDashboardData::class)->topAreasByPending(filters: $filters);
 
         return [
             'labels' => $areas->pluck('label')->all(),
@@ -28,7 +34,10 @@ class ObligationsByAreaChartWidget extends ChartWidget
                 [
                     'label' => 'Em aberto',
                     'data' => $areas
-                        ->map(fn (object $item): int => (int) $item->pending_obligations_count - (int) $item->overdue_obligations_count)
+                        ->map(fn (object $item): int => max(
+                            0,
+                            (int) $item->pending_obligations_count - (int) $item->overdue_obligations_count
+                        ))
                         ->all(),
                     'backgroundColor' => '#0f766e',
                 ],

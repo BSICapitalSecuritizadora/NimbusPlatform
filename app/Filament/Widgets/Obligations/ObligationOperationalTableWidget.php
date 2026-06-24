@@ -3,6 +3,8 @@
 namespace App\Filament\Widgets\Obligations;
 
 use App\Enums\AccessPermission;
+use App\Filament\Resources\Emissions\EmissionResource;
+use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
@@ -10,11 +12,14 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 
 class ObligationOperationalTableWidget extends TableWidget
 {
+    use InteractsWithPageFilters;
+
     protected static bool $isDiscovered = false;
 
     protected int|string|array $columnSpan = 'full';
@@ -24,8 +29,20 @@ class ObligationOperationalTableWidget extends TableWidget
     public function table(Table $table): Table
     {
         $data = app(ObligationDashboardData::class);
-        $canViewEvidence = auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value) ?? false;
-        $emissionUrl = static fn (Obligation $record): string => route('filament.admin.resources.emissions.edit', ['record' => $record->emission_id]);
+        $canViewEvidence = (bool) auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value);
+        $canOpenEmission = (bool) auth()->user()?->can(AccessPermission::EmissionsView->value);
+        $pageFilters = $data->sanitizeFilters($this->pageFilters, $canViewEvidence);
+
+        $emissionUrl = static fn (Obligation $record): ?string => $canOpenEmission
+            ? EmissionResource::getUrl('edit', ['record' => $record->emission_id])
+            : null;
+
+        $obligationUrl = static fn (Obligation $record): ?string => $canOpenEmission
+            ? EmissionResource::getUrl('edit', [
+                'record' => $record->emission_id,
+                'relation' => ObligationsRelationManager::class,
+            ])
+            : null;
 
         $columns = [
             TextColumn::make('emission.name')
@@ -37,8 +54,14 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->label('Obrigação')
                 ->searchable()
                 ->wrap()
-                ->limit(60)
-                ->url($emissionUrl),
+                ->limit(70)
+                ->url($obligationUrl),
+            TextColumn::make('operational_focus')
+                ->label('Foco Operacional')
+                ->state(fn (Obligation $record): string => $data->operationalFocusLabelFor($record))
+                ->badge()
+                ->color(fn (Obligation $record): string => $data->operationalFocusColorFor($record))
+                ->wrap(),
             TextColumn::make('status')
                 ->label('Status')
                 ->badge()
@@ -48,16 +71,6 @@ class ObligationOperationalTableWidget extends TableWidget
                     'a_vencer' => 'info',
                     'vencida' => 'danger',
                     'em_analise' => 'warning',
-                    default => 'gray',
-                }),
-            TextColumn::make('priority')
-                ->label('Prioridade')
-                ->badge()
-                ->formatStateUsing(fn (?string $state): string => Obligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
-                ->color(fn (?string $state): string => match ($state) {
-                    'critical' => 'danger',
-                    'high' => 'warning',
-                    'medium' => 'info',
                     default => 'gray',
                 }),
             TextColumn::make('due_date')
@@ -71,10 +84,8 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->placeholder('—')
                 ->badge()
                 ->color(fn (?string $state): string => match ($state) {
-                    'Mais de 30 dias' => 'danger',
-                    '16 a 30 dias' => 'danger',
-                    '8 a 15 dias' => 'warning',
-                    '1 a 7 dias' => 'warning',
+                    'Mais de 30 dias', '16 a 30 dias' => 'danger',
+                    '8 a 15 dias', '1 a 7 dias' => 'warning',
                     default => 'gray',
                 }),
             TextColumn::make('responsibleUser.name')
@@ -85,27 +96,36 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->label('Área')
                 ->placeholder('Sem área')
                 ->toggleable(),
+            TextColumn::make('priority')
+                ->label('Prioridade')
+                ->badge()
+                ->formatStateUsing(fn (?string $state): string => Obligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
+                ->color(fn (?string $state): string => match ($state) {
+                    'critical' => 'danger',
+                    'high' => 'warning',
+                    'medium' => 'info',
+                    default => 'gray',
+                }),
         ];
 
         if ($canViewEvidence) {
             $columns[] = TextColumn::make('document_status')
-                ->label('Situação documental')
+                ->label('Status das Evidências')
                 ->state(fn (Obligation $record): string => $data->documentStatusFor($record))
                 ->badge()
                 ->color(fn (Obligation $record): string => $data->documentStatusColorFor($record))
                 ->wrap();
             $columns[] = TextColumn::make('evidences_count')
-                ->label('Evidências')
-                ->badge()
+                ->label('Qtd. Evidências')
                 ->state(fn (Obligation $record): int => (int) ($record->evidences_count ?? 0))
-                ->color('gray')
-                ->toggleable();
+                ->badge()
+                ->color('gray');
         }
 
         $columns[] = TextColumn::make('source')
             ->label('Origem')
             ->badge()
-            ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Termo (IA)' : 'Manual')
+            ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual')
             ->color(fn (string $state): string => $state === 'Manual' ? 'gray' : 'info')
             ->toggleable();
 
@@ -125,7 +145,11 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->preload(),
             SelectFilter::make('responsible_area')
                 ->label('Área responsável')
-                ->options(ObligationFormFields::AREA_OPTIONS),
+                ->options(fn (): array => collect(Obligation::query()
+                    ->whereNotNull('responsible_area')
+                    ->orderBy('responsible_area')
+                    ->pluck('responsible_area', 'responsible_area')
+                    ->all())->union(ObligationFormFields::AREA_OPTIONS)->all()),
             SelectFilter::make('priority')
                 ->label('Prioridade')
                 ->options(Obligation::PRIORITY_OPTIONS),
@@ -133,6 +157,10 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->label('Vencimento')
                 ->options(ObligationDashboardData::DUE_WINDOW_OPTIONS)
                 ->query(fn (Builder $query, array $data): Builder => app(ObligationDashboardData::class)->applyDueWindowFilter($query, $data['value'] ?? null)),
+            SelectFilter::make('operational_focus')
+                ->label('Visão operacional')
+                ->options($data->operationalFocusOptions($canViewEvidence))
+                ->query(fn (Builder $query, array $data): Builder => app(ObligationDashboardData::class)->applyOperationalFocusFilter($query, $data['value'] ?? null)),
             TernaryFilter::make('has_responsible')
                 ->label('Responsável definido')
                 ->placeholder('Todos')
@@ -145,10 +173,7 @@ class ObligationOperationalTableWidget extends TableWidget
                 ),
             SelectFilter::make('source')
                 ->label('Origem')
-                ->options([
-                    'term' => 'Gerada pelo Termo',
-                    'manual' => 'Manual',
-                ])
+                ->options(ObligationDashboardData::SOURCE_FILTER_OPTIONS)
                 ->query(function (Builder $query, array $data): Builder {
                     return match ($data['value'] ?? null) {
                         'term' => $query->whereNotNull('extracted_obligation_id'),
@@ -160,15 +185,18 @@ class ObligationOperationalTableWidget extends TableWidget
 
         if ($canViewEvidence) {
             $filters[] = SelectFilter::make('evidence_state')
-                ->label('Situação documental')
+                ->label('Status das evidências')
                 ->options(ObligationDashboardData::EVIDENCE_FILTER_OPTIONS)
                 ->query(fn (Builder $query, array $data): Builder => app(ObligationDashboardData::class)->applyEvidenceFilter($query, $data['value'] ?? null));
         }
 
         return $table
-            ->query($data->operationalQuery())
+            ->query($data->operationalQuery(
+                filters: $pageFilters,
+                includeConcludedWithoutApprovedEvidence: $canViewEvidence,
+            ))
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['emission', 'responsibleUser']))
-            ->recordUrl($emissionUrl)
+            ->recordUrl($obligationUrl)
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
             ->columns($columns)

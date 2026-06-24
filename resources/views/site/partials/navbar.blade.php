@@ -120,8 +120,8 @@
 
             </ul>
 
-            <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0 ps-lg-3" style="border-left: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border));">
-                <a href="{{ $portalUrl }}" class="btn btn-outline-brand btn-sm">Portal do Investidor</a>
+            <div class="d-flex ms-lg-3 gap-2 align-items-center mt-3 mt-lg-0 ps-lg-3" style="border-left: 1px solid color-mix(in srgb, var(--gold) 18%, transparent);">
+                <a href="{{ $portalUrl }}" class="btn btn-outline-gold btn-sm">Portal do Investidor</a>
                 <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-sm">Solicitar Análise</a>
             </div>
         </div>

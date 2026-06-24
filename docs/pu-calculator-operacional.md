@@ -238,43 +238,70 @@ A calculadora é multi-indexador. O status operacional de cada indexador é a fo
 | --- | --- | --- | --- |
 | **CDI + spread** | `cdi_spread` | **Homologado** | Calibrado contra os gabaritos AMANI (CDI defasado, dia útil) e TROUPE (CDI do dia de calendário anterior, exato). |
 | **Prefixado** | `fixed_rate` (`phase3-fixed-v1`) | **Homologado** (determinístico) | Gera curva sem depender de série de índices. Ainda **não validado contra gabarito de mercado**; é determinístico e coberto por testes de não regressão. |
-| **IPCA** | `ipca_corrected` (`phase3-ipca-experimental`) | **Em preparação (bloqueado)** | Engine **implementada e validada** contra o gabarito real (CRI RIO BRANCO 15ª série) na **janela pré-amortização** (~3 anos, a 12 casas). Ainda **bloqueada para geração** (a interação das amortizações intermediárias não está homologada). Ver abaixo. |
+| **IPCA** | `ipca_corrected` (`phase3-ipca-experimental`) | **Em preparação (bloqueado)** | Engine **implementada e validada** contra o gabarito real (CRI RIO BRANCO 15ª série) em **toda a janela com IPCA publicado** (2021-09-30 → 2025-07-23, ~3,8 anos), **incluindo as 9 amortizações**. Ainda **bloqueada para geração**: homologação total depende da política de projeção até o vencimento (ver abaixo). |
 
 ### IPCA — por que ainda está bloqueado
 
-> **Atualização (2026-06-23):** a `IpcaCurveCalculator` deixou de ser esqueleto e agora **implementa o
-> núcleo IPCA** (correção monetária + cupom real), com precisão decimal (`bcmath`/`Decimal`, sem `float`).
-> Ela é **validada por teste** contra o gabarito real na janela **2021-09-30 → 2024-09-16** (véspera da
-> primeira amortização intermediária): `factor_spread` (cupom) bate à precisão publicada do gabarito
-> (~10 casas) e o PU corrigido/atualizado fica dentro de tolerância < R$ 0,001 por cota.
+> **Atualização (2026-06-24):** a interação das **amortizações intermediárias** foi **decodificada e
+> validada**. A `IpcaCurveCalculator` agora reproduz o gabarito real em **toda a janela com IPCA
+> publicado** (2021-09-30 → 2025-07-23), **incluindo as 8 amortizações intermediárias** e a
+> reconciliação pós-evento, sempre em precisão decimal (`bcmath`/`Decimal`, sem `float`).
 >
-> Mesmo assim a geração **continua bloqueada**: o gabarito tem **9 amortizações intermediárias** cuja
-> interação com aniversário/deflação **ainda não é reproduzida**. Portanto `PuIndexer::Ipca->isHomologated()`
-> permanece `false` e o `PuCurvePrerequisiteService` segue bloqueando a geração. A fórmula final **não é
-> inventada**; a política de projeção (meses sem IPCA publicado) é decisão de negócio (ver abaixo).
+> Tolerâncias observadas (documentadas no teste `IpcaHomologationCurveTest`): `factor_spread` (cupom)
+> **< 5,1e-10** (12 casas); PU corrigido/atualizado/residual e juros **< R$ 0,001 por cota**;
+> amortizações **exatas**; `dup/dut` da correção e índice utilizado **batem 100%**. Os **totais
+> financeiros** herdam o arredondamento por cota amplificado pelas **8.000 cotas** (total < R$ 2,12;
+> pgto de juros < R$ 0,015) — *drift* de arredondamento ao longo de 3,8 anos, não divergência de lógica.
+>
+> **Por que ainda não é homologado:** o gabarito **congela** o PU após a última NI publicada
+> (2025-07-23) e **não projeta IPCA** até o vencimento (2028-08-23). A **política de projeção de mercado**
+> para meses sem IPCA publicado **ainda não foi implementada** — é decisão de negócio. Enquanto ela não
+> existir e for aprovada, `PuIndexer::Ipca->isHomologated()` permanece `false` e o
+> `PuCurvePrerequisiteService` segue bloqueando a geração. A virada para `true` está **preparada** mas só
+> deve ocorrer quando a validação **até o vencimento** passar (o que exige a projeção).
 
-### Mecânica homologada da engine IPCA (janela pré-amortização)
+### Mecânica decodificada da engine IPCA — DOIS RELÓGIOS
 
-Decodificada e validada a 12 casas contra o gabarito (engine em `IpcaCurveCalculator`):
+Validada a 12 casas contra o gabarito (engine em `IpcaCurveCalculator`). O ponto central é que a
+operação tem **dois relógios independentes**:
 
-- **Aniversário mensal** no dia `base_index_date->day` (no gabarito, **dia 23**). Períodos vão de um
-  aniversário ao próximo; `dup/dut` em **dias corridos** (30/31).
-- **Correção monetária (pró-rata, com piso de deflação)**:
-  `corrigido = base_corrigido × max(NI_ref / NI_prev, 1) ^ (dup/dut)`, onde `NI_ref` é o número-índice do
-  mês de referência (1º do mês do aniversário de abertura, defasado de `index_lag_months`; no gabarito
-  `lag = 0`) e `NI_prev` é o do mês anterior. O **piso `max(…, 1)`** reproduz a regra observada: nos
-  **5 meses deflacionários** do gabarito (2022-07/08/09, 2023-06, 2024-08) a correção **não decresce**.
-- **Cupom real** (`annual_rate`, no gabarito **10,5%**) em base **30/360 mensal**:
-  `fator = (1 + taxa/100) ^ (dup/(dut×12))`; `juros = corrigido × (fator − 1)`;
-  `PU atualizado = corrigido + juros`. Exposto na coluna `factor_spread`. Juros **pagos mensalmente** no
-  aniversário (evento de juros); o fator reinicia no período seguinte.
+**1. Relógio de correção (IPCA)** — `dupCorrecao/dutCorrecao`:
+
+- **Aniversário mensal** no dia `base_index_date->day` (no gabarito, **dia 23**); `dut` = dias **corridos**
+  do período aniversário-a-aniversário (30/31).
+- **Correção pró-rata, com piso de deflação**:
+  `corrigido = base_corrigido × max(NI_ref / NI_prev, 1) ^ (dupCorr/dut)`, com `NI_ref` = número-índice do
+  1º do mês do aniversário de abertura (defasado de `index_lag_months`; no gabarito `lag = 0`). O **piso
+  `max(…, 1)`** reproduz a regra dos **meses deflacionários** (2022-07/08/09, 2023-06, 2024-08): não decresce.
+- **Reinício da base e do `dupCorr`** em **dois gatilhos**: (a) no aniversário e (b) em **cada
+  amortização**, quando a base passa a ser o **residual pós-evento**. Âncora de correção =
+  `max(emissão, abertura do aniversário, última amortização)`. Entre eventos, `NI_ref` e `dut`
+  permanecem os do período de aniversário.
+
+**2. Relógio de cupom (juros reais)** — fator em `factor_spread`:
+
+- **Acumulação diária**: a cada dia multiplica-se por `(1 + taxa/100) ^ (1/(dut×12))` usando o `dut`
+  do dia. O fator **atravessa o aniversário sem reiniciar** (o `dut` muda, o fator não zera).
+  `juros = corrigido × (fator − 1)`; `PU atualizado = corrigido + juros`.
+- **Reinício do fator** (volta a 1) **apenas em eventos** de pagamento de juros **ou** de amortização —
+  **nunca** num aniversário sem evento. Num aniversário **sem evento**, os juros acumulados
+  **CAPITALIZAM** na base do período seguinte (residual = atualizado, sem subtrair juros).
+
+**Residual** = atualizado − pagamentos do dia, com pagamentos = (juros, se houver evento de juros) +
+amortização. Logo: com pagamento de juros, `residual = corrigido − amortização`; numa **amortização sem
+pagar juros** (ex.: 2025-03-26 no gabarito), `residual = atualizado − amortização` (os juros capitalizam).
+
+Esse desacoplamento explica o **salto observado no reinício pós-amortização**: a correção reinicia no
+evento/aniversário, mas o cupom continua acumulando entre pagamentos (atravessando o aniversário), e a
+capitalização dos juros não pagos é incorporada à base de correção.
+
 - **Número-índice IPCA** carregado em `index_rates` (`indexer = IPCA`, `rate_date` = 1º do mês). O número
-  de Ago/2021 (denominador da 1ª variação) não é publicado no gabarito e é **recuperado** do próprio
-  corrigido em 2021-10-23.
+  de **Ago/2021** (denominador da 1ª variação) **não é publicado** no gabarito e é **recuperado** do
+  próprio corrigido em 2021-10-23 (somente para o teste de homologação).
 
-**Pendente (não homologado):** interação das **9 amortizações intermediárias** com aniversário/deflação
-(salto observado no reinício pós-amortização). A engine produz curva após a 1ª amortização, mas esse
-trecho **não é validado** e a geração operacional permanece bloqueada até essa decodificação + aprovação.
+**Pendente (mantém bloqueio):** a **política de projeção de mercado** para meses sem IPCA publicado. O
+gabarito não projeta além de 2025-07-23; a validação **até o vencimento** (2028-08-23) só é possível
+após implementar e aprovar essa política. Até lá a homologação permanece bloqueada.
 
 O bloqueio operacional é aplicado em duas camadas, cobertas por testes:
 
@@ -283,7 +310,8 @@ O bloqueio operacional é aplicado em duas camadas, cobertas por testes:
    "A curva IPCA está em preparação e não pode ser gerada nesta versão da calculadora.".
 
 Além disso, `IpcaCurveCalculator::calculate()` lança `IndexerNotSupportedException` quando faltar
-número-índice para o período (a política de **projeção de mercado** ainda não foi implementada).
+número-índice para o período — a mensagem nomeia o **mês/data** sem IPCA e avisa que a **política de
+projeção de mercado ainda não foi implementada** e que a homologação depende desse dado/política.
 
 Na UI, a opção IPCA aparece com o rótulo `IPCA (em preparação)` e a geração é negada.
 
@@ -316,12 +344,19 @@ decodificada a partir dos valores (a planilha é export de valores, sem fórmula
   acrescido sobre o **corrigido**; `PU atualizado = corrigido + juros`; juros **pagos mensalmente** no aniversário.
 - **Deflação**: **confirmado piso `max(ratio, 1)`** — meses de IPCA negativo não corrigem para baixo
   (5 ocorrências no gabarito).
-- **Amortização**: **9 amortizações** — 8 intermediárias a partir de **2024-09-17** + bullet final no
-  vencimento (2028-08-23). A interação das amortizações intermediárias com aniversário/deflação **ainda
-  não foi homologada** (fora da janela validada).
-- **Cauda sem índice publicado**: no gabarito histórico a curva fica **flat e com juros zerados** após o
-  último número-índice (Jun/2025). Isso reflete o recorte do gabarito, **não** a política de projeção de
-  produção (ver decisão abaixo).
+- **Amortização**: **9 amortizações** — 8 intermediárias (2024-09-17, 11-23, 11-29, 12-06, 12-13, 12-27,
+  2025-01-23, 2025-03-26) + bullet final no vencimento (2028-08-23). A interação com aniversário/deflação
+  foi **decodificada e validada** (dois relógios — ver "Mecânica decodificada"): a amortização reinicia a
+  **base de correção** (para o residual pós-evento) e o **fator de cupom**; o residual é
+  `corrigido − amortização` quando há pagamento de juros, e `atualizado − amortização` quando não há
+  (juros capitalizam — caso 2025-03-26). As **8 amortizações intermediárias** estão dentro da janela
+  validada (2025-03-26 é a última com IPCA publicado).
+- **Cauda sem índice publicado**: após o último número-índice (**Jun/2025**, usado até **2025-07-23**) o
+  gabarito **congela** o PU (corr = atualizado = residual, juros zerados, `fator = 1`) e mantém-o flat até
+  o bullet de **2028-08-23**. Ou seja, **o emissor não projeta IPCA** até o vencimento. A engine, por
+  outro lado, **lança exceção clara** (`IndexerNotSupportedException`) ao exigir NI não cadastrada — a
+  política de projeção de produção ainda não foi implementada (ver decisão abaixo). Por isso a validação
+  cobre a janela publicada (até 2025-07-23) e a validação **até o vencimento** depende dessa política.
 
 ### Política de projeção (decisão de negócio)
 
@@ -342,13 +377,16 @@ para os meses futuros (`index_projection_policy` correspondente). Consequências
 2. **Semear a série de número-índice IPCA** (`index_rates`) cobrindo o período do gabarito, derivando os
    NI consecutivos da própria planilha (cada período expõe `NI_mês`); incluir o mês anterior ao início
    para a primeira variação.
-3. **Evoluir `IpcaCurveCalculator`** com `Decimal`/precisão segura (sem `float`):
-   correção pró-rata dia-23 + juros 30/360 + amortização bullet, **reaproveitando** os serviços de
-   eventos/pagamentos/quantidade/`total_value` já usados por CDI/Prefixado (sem tocar nas fórmulas
-   específicas de CDI/Prefixado).
-4. **Validação contra o gabarito** (à semelhança de AMANI/TROUPE), comparando **fatores em até 12 casas**
-   (cast `decimal:16` formata via float) e os PUs/juros/amortização nas escalas de exibição.
-5. **Só então**: virar `PuIndexer::Ipca->isHomologated()` para `true`, remover o bloqueio do
+3. **Evoluir `IpcaCurveCalculator`** com `Decimal`/precisão segura (sem `float`) — **FEITO**:
+   correção pró-rata dia-23 + juros 30/360 + **dois relógios** (correção × cupom) + amortizações
+   intermediárias, **reaproveitando** os serviços de eventos/pagamentos/quantidade/`total_value` já
+   usados por CDI/Prefixado (sem tocar nas fórmulas específicas de CDI/Prefixado).
+4. **Validação contra o gabarito** — **FEITA** em toda a janela publicada (2021-09-30 → 2025-07-23,
+   incluindo as 9 amortizações), comparando **fatores em até 12 casas** e os PUs/juros/amortização nas
+   escalas de exibição com tolerâncias documentadas (ver `IpcaHomologationCurveTest`).
+5. **Implementar a política de projeção de mercado** (meses sem IPCA publicado) — **PENDENTE**. Sem ela a
+   validação **até o vencimento** (2028-08-23) não é possível e a homologação fica bloqueada.
+6. **Só então**: virar `PuIndexer::Ipca->isHomologated()` para `true`, remover o bloqueio do
    `PuCurvePrerequisiteService`, habilitar a geração na UI e ajustar o rótulo. **Mediante aprovação.**
 
 ### Como destravar o IPCA (resumo)
@@ -397,5 +435,8 @@ Há trabalho concorrente no repositório em **site** e **Obrigações**. As muda
 3. Faça **stage seletivo** (`git add <arquivos-de-PU>`), nunca `git add -A`/`git add .`.
 4. **Nenhum commit sem aprovação.**
 
-> **Nota:** quando esta fase foi preparada, o working tree estava limpo, exceto pelo gabarito IPCA
-> `docs/samples/pu-validation/15ª SÉRIE - CRI RIO BRANCO_*.xlsx` (untracked) — esse arquivo é escopo PU.
+> **Nota (2026-06-24):** nesta fase o working tree continha **uma mudança concorrente fora de escopo** —
+> `app/Services/Obligations/ObligationDashboardData.php` (deletado, Obrigações). Ela **não foi tocada**.
+> O stage seletivo desta fase deve incluir apenas os arquivos PU: `IpcaCurveCalculator.php`,
+> `IpcaHomologationCurveTest.php` e `docs/pu-calculator-operacional.md` (a migration
+> `widen_index_rates_rate_value_for_ipca` já está commitada). **Nunca** `git add -A`/`git add .`.

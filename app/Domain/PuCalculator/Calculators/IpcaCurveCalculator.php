@@ -22,23 +22,37 @@ use InvalidArgumentException;
 /**
  * Engine de curva diária para operações IPCA + cupom real.
  *
- * Mecânica homologada a partir do gabarito real (CRI RIO BRANCO 15ª série) na janela
- * pré-amortização (correção monetária + cupom mensal):
+ * Mecânica decodificada do gabarito real (CRI RIO BRANCO 15ª série), incluindo as amortizações
+ * intermediárias. O ponto central é que a operação tem DOIS RELÓGIOS independentes:
  *
- *  - Aniversário mensal no dia `base_index_date->day`; períodos vão do aniversário ao próximo.
- *  - Correção pró-rata em DIAS CORRIDOS: corrigido = base_corrigido × max(NI_ref/NI_prev, 1)^(dup/dut),
- *    onde NI_ref é o número-índice do mês de referência (1º do mês do aniversário de abertura, defasado
- *    de `index_lag_months`) e NI_prev é o do mês anterior. O piso `max(..., 1)` aplica a regra de
- *    deflação observada no gabarito (meses de IPCA negativo não corrigem para baixo).
- *  - Cupom real (`annual_rate`) em base 30/360 mensal: fator = (1 + taxa/100)^(dup/(dut×12));
- *    juros = corrigido × (fator − 1); PU atualizado = corrigido + juros. Juros são pagos no aniversário
- *    (evento de juros) e o fator reinicia no período seguinte.
+ *  1. RELÓGIO DE CORREÇÃO (correção monetária pelo IPCA)
+ *     - Aniversário mensal no dia `base_index_date->day`; o período de correção vai do aniversário ao
+ *       próximo (dut = dias corridos do período) e usa o número-índice do mês de referência (1º do mês
+ *       do aniversário de abertura, defasado de `index_lag_months`).
+ *     - corrigido = base_corrigido × max(NI_ref/NI_prev, 1)^(dupCorr/dut). O piso `max(..., 1)` aplica a
+ *       regra de deflação do gabarito (meses de IPCA negativo não corrigem para baixo).
+ *     - A BASE de correção e o `dupCorr` REINICIAM em DOIS gatilhos: (a) no aniversário mensal e (b) em
+ *       cada AMORTIZAÇÃO (a base passa a ser o residual pós-evento). A âncora de correção é, portanto,
+ *       max(emissão, abertura do aniversário, última amortização). Entre eventos, a referência NI e o
+ *       dut permanecem os do período de aniversário.
  *
- * IMPORTANTE: a interação das amortizações intermediárias com aniversário/deflação ainda NÃO está
- * homologada. Por isso a geração operacional permanece bloqueada (`PuIndexer::Ipca::isHomologated()`
- * = false e bloqueio no `PuCurvePrerequisiteService`). Esta engine é validada por teste apenas na
- * janela sem amortização intermediária. Datas sem número-índice cadastrado lançam exceção (a política
- * de projeção de mercado ainda não foi implementada).
+ *  2. RELÓGIO DE CUPOM (juros reais `annual_rate`, base 30/360)
+ *     - O fator de cupom acumula DIARIAMENTE: a cada dia multiplica-se por (1 + taxa/100)^(1/(dut×12)),
+ *       usando o `dut` do dia. Logo o fator atravessa o aniversário sem reiniciar (o `dut` muda, o fator
+ *       não zera). juros = corrigido × (fator − 1); PU atualizado = corrigido + juros.
+ *     - O fator de cupom REINICIA (volta a 1) apenas em EVENTOS de pagamento de juros OU de amortização
+ *       — nunca num aniversário sem evento. Se um aniversário não tem evento, os juros acumulados
+ *       CAPITALIZAM na base de correção do período seguinte (residual = atualizado, sem subtrair juros).
+ *
+ * Residual = atualizado − pagamentos do dia, onde pagamentos = (juros, se houver evento de juros) +
+ * amortização. Assim, quando há pagamento de juros, residual = corrigido − amortização; quando a
+ * amortização ocorre sem pagar juros, residual = atualizado − amortização (os juros capitalizam).
+ *
+ * IMPORTANTE: a homologação total ainda depende da POLÍTICA DE PROJEÇÃO DE MERCADO para meses sem IPCA
+ * publicado — o gabarito congela o PU após a última NI publicada (no exemplar, 2025-07-23) e NÃO projeta
+ * o IPCA até o vencimento (2028-08-23). Como essa política ainda não foi implementada, a curva lança
+ * exceção clara quando exige NI não cadastrada, e `PuIndexer::Ipca::isHomologated()` permanece false.
+ * A validação automatizada cobre toda a janela com IPCA publicado (incluindo as 9 amortizações).
  *
  * O bloco de eventos/pagamentos/total replica conscientemente o do Prefixado (FixedRateCurveCalculator)
  * para não tocar no CDI calibrado nesta fase.
@@ -88,61 +102,79 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
         $baseUnitValue = $this->rounder->normalize((string) $parameter->initial_unit_value, DecimalRounder::CALCULATION_SCALE);
         $correctionBase = $baseUnitValue;
         $lastResidualUnitValue = $baseUnitValue;
-        $lastPeriodKey = null;
+        $correctionAnchorKey = null;
+        $lastAmortizationDate = null;
+        $couponFactor = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
+        $couponAccrualDays = 0;
         $rows = [];
 
         for ($currentDate = $startDate; $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
-            [$closingAnniversary, $openingAnniversary, $dut, $dup] = $this->periodBounds($currentDate, $anniversaryDay, $startDate);
-            $periodKey = $openingAnniversary->toDateString();
+            [$closingAnniversary, $openingAnniversary, $dut] = $this->periodBounds($currentDate, $anniversaryDay);
 
-            if ($lastPeriodKey !== null && $periodKey !== $lastPeriodKey) {
+            $correctionAnchor = $this->correctionAnchor($startDate, $openingAnniversary, $lastAmortizationDate);
+            $dupCorrection = (int) $correctionAnchor->diffInDays($currentDate);
+            $anchorKey = $correctionAnchor->toDateString();
+
+            if ($correctionAnchorKey !== null && $anchorKey !== $correctionAnchorKey) {
                 $correctionBase = $lastResidualUnitValue;
             }
 
             $referenceMonth = $openingAnniversary->startOfMonth()->subMonthsNoOverflow($lagMonths);
-            $correctionRatio = $this->correctionRatio($referenceMonth, $currentDate);
 
             $isBusinessDay = ! $currentDate->isWeekend();
             $quantity = $this->eventSupport->quantityForDate($quantityTimeline, $currentDate);
 
-            if ($dup === 0) {
-                $correctionFactor = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
+            if ($currentDate->equalTo($startDate)) {
                 $couponFactor = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
-                $correctedUnitValue = $correctionBase;
-                $interestRealUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
-                $updatedUnitValue = $correctedUnitValue;
+                $couponAccrualDays = 0;
             } else {
-                $correctionFactor = $this->dailyFactorCalculator->powRatio($correctionRatio, $dup, $dut, DecimalRounder::CALCULATION_SCALE);
+                $dailyCouponIncrement = $this->dailyFactorCalculator->powRatio($couponBase, 1, $dut * 12, DecimalRounder::CALCULATION_SCALE);
+                $couponFactor = $this->rounder->round(
+                    bcmul($couponFactor, $dailyCouponIncrement, DecimalRounder::CALCULATION_SCALE + 4),
+                    DecimalRounder::CALCULATION_SCALE,
+                );
+                $couponAccrualDays++;
+            }
+
+            if ($dupCorrection === 0) {
+                $correctionRatio = $this->rounder->normalize('1', self::RATIO_SCALE);
+                $correctionFactor = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
+                $correctedUnitValue = $correctionBase;
+            } else {
+                $correctionRatio = $this->correctionRatio($referenceMonth, $currentDate);
+                $correctionFactor = $this->dailyFactorCalculator->powRatio($correctionRatio, $dupCorrection, $dut, DecimalRounder::CALCULATION_SCALE);
                 $correctedUnitValue = $this->rounder->round(
                     bcmul($correctionBase, $correctionFactor, DecimalRounder::CALCULATION_SCALE + 4),
                     DecimalRounder::CALCULATION_SCALE,
                 );
-
-                $couponFactor = $this->dailyFactorCalculator->powRatio($couponBase, $dup, $dut * 12, DecimalRounder::CALCULATION_SCALE);
-                $interestRealUnitValue = $this->rounder->round(
-                    bcmul(
-                        $correctedUnitValue,
-                        bcsub($couponFactor, '1', DecimalRounder::CALCULATION_SCALE + 4),
-                        DecimalRounder::CALCULATION_SCALE + 4,
-                    ),
-                    DecimalRounder::CALCULATION_SCALE,
-                );
-                $updatedUnitValue = $this->rounder->round(
-                    bcadd($correctedUnitValue, $interestRealUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
-                    DecimalRounder::CALCULATION_SCALE,
-                );
             }
+
+            $interestRealUnitValue = $this->rounder->round(
+                bcmul(
+                    $correctedUnitValue,
+                    bcsub($couponFactor, '1', DecimalRounder::CALCULATION_SCALE + 4),
+                    DecimalRounder::CALCULATION_SCALE + 4,
+                ),
+                DecimalRounder::CALCULATION_SCALE,
+            );
+            $updatedUnitValue = $this->rounder->round(
+                bcadd($correctedUnitValue, $interestRealUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                DecimalRounder::CALCULATION_SCALE,
+            );
 
             $interestPaymentUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
             $amortizationUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
             $amortizationRatio = $this->rounder->normalize('0', DecimalRounder::UNIT_SCALE);
+            $hadInterestPaymentEvent = false;
+            $hadAmortizationEvent = false;
             $eventOriginalDate = null;
             $eventEffectiveDate = null;
             $groupedEvents = $eventGroups[$currentDate->toDateString()] ?? collect();
 
             if ($groupedEvents->isNotEmpty()) {
-                $interestPaymentUnitValue = $groupedEvents
-                    ->contains(fn (EmissionPuEvent $event): bool => $event->event_type_enum === PuEventType::InterestPayment)
+                $hadInterestPaymentEvent = $groupedEvents
+                    ->contains(fn (EmissionPuEvent $event): bool => $event->event_type_enum === PuEventType::InterestPayment);
+                $interestPaymentUnitValue = $hadInterestPaymentEvent
                     ? $interestRealUnitValue
                     : $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
 
@@ -157,6 +189,7 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
                         continue;
                     }
 
+                    $hadAmortizationEvent = true;
                     $resolvedAmortization = $this->eventSupport->resolveAmortizationUnitValue(
                         event: $event,
                         baseUnitValue: $correctionBase,
@@ -238,8 +271,11 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
                 'total_value_raw' => $totalValue,
                 'index_rate_date' => $referenceMonth->toDateString(),
                 'index_rate_value' => $this->indexRateProvider->exactRateForDate(PuIndexer::Ipca, $referenceMonth)?->value,
-                'dup_correction' => $dup,
+                'dup_correction' => $dupCorrection,
                 'dut_correction' => $dut,
+                'dup_interest' => $couponAccrualDays,
+                'dut_interest' => $dut,
+                'correction_anchor' => $anchorKey,
                 'event_types' => $groupedEvents
                     ->map(fn (EmissionPuEvent $event): string => $event->event_type)
                     ->values()
@@ -267,9 +303,9 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
                 interestPaymentValue: $interestPaymentValue,
                 paymentTotalUnitValue: $this->rounder->round($paymentTotalUnitValue, DecimalRounder::UNIT_SCALE),
                 paymentTotalValue: $paymentTotalValue,
-                dupCorrection: $dup,
+                dupCorrection: $dupCorrection,
                 dutCorrection: $dut,
-                dupInterest: $dup,
+                dupInterest: $couponAccrualDays,
                 dutInterest: $dut,
                 indexRateDate: $referenceMonth,
                 indexRateValue: $this->indexRateProvider->exactRateForDate(PuIndexer::Ipca, $referenceMonth)?->value,
@@ -279,7 +315,16 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
             );
 
             $lastResidualUnitValue = $residualUnitValue;
-            $lastPeriodKey = $periodKey;
+            $correctionAnchorKey = $anchorKey;
+
+            if ($hadAmortizationEvent) {
+                $lastAmortizationDate = $currentDate;
+            }
+
+            if ($hadInterestPaymentEvent || $hadAmortizationEvent) {
+                $couponFactor = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
+                $couponAccrualDays = 0;
+            }
         }
 
         return new PuCurveGenerationResult($rows);
@@ -311,11 +356,11 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
     }
 
     /**
-     * Bordas do período de correção (aniversário no dia configurado, em dias corridos).
+     * Bordas do período de correção mensal (aniversário no dia configurado, em dias corridos).
      *
-     * @return array{0: CarbonImmutable, 1: CarbonImmutable, 2: int, 3: int}
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable, 2: int}
      */
-    private function periodBounds(CarbonImmutable $date, int $anniversaryDay, CarbonImmutable $emissionDate): array
+    private function periodBounds(CarbonImmutable $date, int $anniversaryDay): array
     {
         $closing = $date->day <= $anniversaryDay
             ? $date->day($anniversaryDay)
@@ -323,9 +368,27 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
         $opening = $closing->subMonthNoOverflow()->day($anniversaryDay);
 
         $dut = (int) $opening->diffInDays($closing);
-        $anchor = $emissionDate->greaterThan($opening) ? $emissionDate : $opening;
-        $dup = (int) $anchor->diffInDays($date);
 
-        return [$closing, $opening, $dut, $dup];
+        return [$closing, $opening, $dut];
+    }
+
+    /**
+     * Âncora do relógio de correção: a base e o `dupCorr` reiniciam no maior entre a emissão, a
+     * abertura do aniversário mensal e a última amortização. Assim a correção zera tanto no
+     * aniversário (nova NI) quanto a cada amortização (nova base = residual pós-evento), mantendo
+     * a referência NI/dut do período de aniversário entre os eventos.
+     */
+    private function correctionAnchor(
+        CarbonImmutable $emissionDate,
+        CarbonImmutable $openingAnniversary,
+        ?CarbonImmutable $lastAmortizationDate,
+    ): CarbonImmutable {
+        $anchor = $emissionDate->greaterThan($openingAnniversary) ? $emissionDate : $openingAnniversary;
+
+        if ($lastAmortizationDate !== null && $lastAmortizationDate->greaterThan($anchor)) {
+            return $lastAmortizationDate;
+        }
+
+        return $anchor;
     }
 }

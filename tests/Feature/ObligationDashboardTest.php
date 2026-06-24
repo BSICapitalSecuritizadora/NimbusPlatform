@@ -2,13 +2,18 @@
 
 use App\Enums\AccessPermission;
 use App\Filament\Pages\ObligationDashboard;
+use App\Filament\Resources\Emissions\EmissionResource;
+use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
 use App\Models\Emission;
+use App\Models\ExtractedObligation;
 use App\Models\Obligation;
 use App\Models\ObligationEvidence;
 use App\Models\User;
 use App\Services\Obligations\ObligationDashboardData;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -62,13 +67,31 @@ function makeDashboardUserWithPermissions(array $permissions): User
     return $user;
 }
 
-it('consolidates the main KPIs across emissions', function () {
-    makeDashboardObligation('a_vencer', '2026-06-25');
+function obligationDashboardTableQuery(object $component): Builder
+{
+    if (function_exists('invade')) {
+        /** @var Table $table */
+        $table = invade($component)->getTable();
+
+        return $table->getQuery();
+    }
+
+    $method = new ReflectionMethod($component, 'getTable');
+    $method->setAccessible(true);
+
+    /** @var Table $table */
+    $table = $method->invoke($component);
+
+    return $table->getQuery();
+}
+
+it('consolidates the main operational KPIs across emissions', function () {
+    makeDashboardObligation('a_vencer', '2026-06-25', null, ['priority' => 'high']);
     makeDashboardObligation('a_vencer', '2026-06-18');
-    makeDashboardObligation('vencida', '2026-06-10');
+    makeDashboardObligation('vencida', '2026-06-10', null, ['priority' => 'critical']);
     makeDashboardObligation('concluida', '2026-06-12');
     makeDashboardObligation('a_vencer', null);
-    makeDashboardObligation('a_vencer', '2026-07-15');
+    makeDashboardObligation('a_vencer', '2026-07-15', null, ['priority' => 'critical']);
 
     $summary = dashboardData()->summary();
 
@@ -79,10 +102,11 @@ it('consolidates the main KPIs across emissions', function () {
         'concluida' => 1,
         'sem_data' => 1,
         'vence_hoje' => 1,
+        'proximos_7_dias' => 1,
+        'proximos_30_dias' => 2,
+        'vencidas_criticas' => 1,
+        'alta_prioridade_proximos_7_dias' => 1,
     ]);
-
-    expect($summary['proximos_7_dias'])->toBe(2)
-        ->and($summary['proximos_30_dias'])->toBe(3);
 });
 
 it('excludes finalized obligations from the pending date windows', function () {
@@ -92,7 +116,8 @@ it('excludes finalized obligations from the pending date windows', function () {
     $summary = dashboardData()->summary();
 
     expect($summary['vence_hoje'])->toBe(0)
-        ->and($summary['proximos_7_dias'])->toBe(0);
+        ->and($summary['proximos_7_dias'])->toBe(0)
+        ->and($summary['proximos_30_dias'])->toBe(0);
 });
 
 it('builds the status distribution with every status present', function () {
@@ -108,10 +133,11 @@ it('builds the status distribution with every status present', function () {
         ->and($distribution['concluida'])->toBe(0);
 });
 
-it('ranks emissions by pending obligations', function () {
+it('ranks emissions by pending obligations and documentary backlog', function () {
     $busy = Emission::factory()->create(['name' => 'Emissão Movimentada']);
     makeDashboardObligation('vencida', '2026-06-10', $busy);
-    makeDashboardObligation('a_vencer', '2026-06-30', $busy);
+    $busyPendingEvidence = makeDashboardObligation('a_vencer', '2026-06-30', $busy);
+    makeDashboardEvidence($busyPendingEvidence, ObligationEvidence::STATUS_PENDING);
 
     $quiet = Emission::factory()->create(['name' => 'Emissão Tranquila']);
     makeDashboardObligation('a_vencer', '2026-06-30', $quiet);
@@ -124,7 +150,8 @@ it('ranks emissions by pending obligations', function () {
     expect($top)->toHaveCount(2)
         ->and($top->first()->name)->toBe('Emissão Movimentada')
         ->and($top->first()->pending_obligations_count)->toBe(2)
-        ->and($top->first()->overdue_obligations_count)->toBe(1);
+        ->and($top->first()->overdue_obligations_count)->toBe(1)
+        ->and($top->first()->pending_evidence_obligations_count)->toBe(1);
 });
 
 it('exposes operational and documentary KPIs in the summary', function () {
@@ -140,27 +167,67 @@ it('exposes operational and documentary KPIs in the summary', function () {
     ]);
     makeDashboardEvidence($pendingReview, ObligationEvidence::STATUS_PENDING);
 
-    $rejected = makeDashboardObligation('vencida', '2026-06-10');
+    $rejected = makeDashboardObligation('vencida', '2026-06-10', null, [
+        'responsible_user_id' => $responsible->id,
+    ]);
     makeDashboardEvidence($rejected, ObligationEvidence::STATUS_REJECTED);
 
     makeDashboardObligation('a_vencer', null, null, [
         'responsible_user_id' => null,
     ]);
 
-    makeDashboardObligation('concluida', '2026-06-12');
+    $concludedApproved = makeDashboardObligation('concluida', '2026-06-12', null, [
+        'responsible_user_id' => $responsible->id,
+    ]);
+    makeDashboardEvidence($concludedApproved, ObligationEvidence::STATUS_APPROVED);
+
+    makeDashboardObligation('concluida', '2026-06-14', null, [
+        'responsible_user_id' => $responsible->id,
+    ]);
 
     $summary = dashboardData()->summary();
 
     expect($summary)->toMatchArray([
         'em_analise' => 1,
-        'sem_responsavel' => 3,
+        'sem_responsavel' => 2,
         'sem_data' => 1,
-        'com_evidencia_aprovada' => 1,
+        'com_evidencia_aprovada' => 2,
         'com_evidencia_pendente' => 1,
         'com_evidencia_rejeitada' => 1,
         'sem_evidencia' => 2,
+        'concluidas_com_evidencia_aprovada' => 1,
+        'em_analise_com_evidencia_pendente' => 1,
         'concluidas_sem_evidencia_aprovada' => 1,
     ]);
+});
+
+it('applies shared dashboard filters to the summary and rankings', function () {
+    $alpha = Emission::factory()->create(['name' => 'Emissão Alpha']);
+    $beta = Emission::factory()->create(['name' => 'Emissão Beta']);
+
+    makeDashboardObligation('vencida', '2026-06-10', $alpha, [
+        'priority' => 'critical',
+        'responsible_area' => 'Compliance',
+    ]);
+    makeDashboardObligation('a_vencer', '2026-06-25', $beta, [
+        'priority' => 'high',
+        'responsible_area' => 'Gestão',
+    ]);
+
+    $summary = dashboardData()->summary([
+        'emission_id' => $alpha->id,
+        'operational_focus' => 'critical_overdue',
+    ]);
+
+    $areas = dashboardData()->topAreasByPending(filters: [
+        'operational_focus' => 'critical_overdue',
+    ]);
+
+    expect($summary)->toMatchArray([
+        'total' => 1,
+        'vencida' => 1,
+        'vencidas_criticas' => 1,
+    ])->and($areas->first()->label)->toBe('Compliance');
 });
 
 it('builds priority, responsible and area breakdowns for open obligations', function () {
@@ -233,12 +300,25 @@ it('classifies urgency from the due date', function () {
         ->and($data->urgencyFor(makeDashboardObligation('a_vencer', null)))->toBe('undefined');
 });
 
-it('keeps finalized obligations out of the operational query', function () {
+it('keeps finalized obligations out of the default operational query', function () {
     makeDashboardObligation('vencida', '2026-06-10');
     makeDashboardObligation('concluida', '2026-06-10');
     makeDashboardObligation('nao_aplicavel', '2026-06-10');
 
     expect(dashboardData()->operationalQuery()->count())->toBe(1);
+});
+
+it('configures eager loading on the obligation operational table widget', function () {
+    $this->actingAs(makeAdminUser());
+
+    $query = obligationDashboardTableQuery(
+        Livewire::test(ObligationOperationalTableWidget::class)->instance(),
+    );
+
+    expect(array_keys($query->getEagerLoads()))->toContain(
+        'emission',
+        'responsibleUser',
+    );
 });
 
 it('allows users with the view dashboard permission to access the dashboard', function () {
@@ -288,13 +368,37 @@ it('keeps dashboard access available for super admins', function () {
     expect(ObligationDashboard::canAccess())->toBeTrue();
 });
 
-it('lists pending obligations and filters them by emission in the operational widget', function () {
+it('hides documentary widgets and concluded-without-approved rows from users without evidence permission', function () {
+    $open = makeDashboardObligation('vencida', '2026-06-10');
+    $concludedWithoutApproved = makeDashboardObligation('concluida', '2026-06-11');
+
+    $user = makeDashboardUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsViewDashboard->value,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test(ObligationDashboard::class)
+        ->assertSuccessful()
+        ->assertDontSee('Situação Documental')
+        ->assertDontSee('Evidência Aprovada');
+
+    Livewire::test(ObligationOperationalTableWidget::class)
+        ->assertCanSeeTableRecords([$open])
+        ->assertCanNotSeeTableRecords([$concludedWithoutApproved])
+        ->assertDontSee('Status das Evidências')
+        ->assertDontSee('Qtd. Evidências');
+});
+
+it('lists operational obligations and filters them by emission', function () {
     $alpha = Emission::factory()->create(['name' => 'Emissão Alpha']);
     $beta = Emission::factory()->create(['name' => 'Emissão Beta']);
 
     $alphaObligation = makeDashboardObligation('vencida', '2026-06-10', $alpha);
     $betaObligation = makeDashboardObligation('a_vencer', '2026-06-30', $beta);
     $done = makeDashboardObligation('concluida', '2026-06-10', $alpha);
+    makeDashboardEvidence($done, ObligationEvidence::STATUS_APPROVED);
 
     $this->actingAs(makeAdminUser());
 
@@ -306,9 +410,9 @@ it('lists pending obligations and filters them by emission in the operational wi
         ->assertCanNotSeeTableRecords([$betaObligation]);
 });
 
-it('filters the operational widget by responsible, area and priority', function () {
+it('filters the operational widget by status, responsible, area and priority', function () {
     $responsible = User::factory()->create(['name' => 'Fernanda']);
-    $match = makeDashboardObligation('a_vencer', '2026-06-25', null, [
+    $match = makeDashboardObligation('em_analise', '2026-06-25', null, [
         'responsible_user_id' => $responsible->id,
         'responsible_area' => 'Compliance',
         'priority' => 'critical',
@@ -321,6 +425,7 @@ it('filters the operational widget by responsible, area and priority', function 
     $this->actingAs(makeAdminUser());
 
     Livewire::test(ObligationOperationalTableWidget::class)
+        ->filterTable('status', 'em_analise')
         ->filterTable('responsible_user_id', $responsible->id)
         ->filterTable('responsible_area', 'Compliance')
         ->filterTable('priority', 'critical')
@@ -329,35 +434,126 @@ it('filters the operational widget by responsible, area and priority', function 
 });
 
 it('filters the operational widget by documentary state and due window', function () {
-    $rejected = makeDashboardObligation('a_vencer', '2026-06-25');
+    $approved = makeDashboardObligation('a_vencer', '2026-06-30');
+    makeDashboardEvidence($approved, ObligationEvidence::STATUS_APPROVED);
+
+    $pending = makeDashboardObligation('em_analise', '2026-06-25');
+    makeDashboardEvidence($pending, ObligationEvidence::STATUS_PENDING);
+
+    $rejected = makeDashboardObligation('a_vencer', '2026-06-26');
     makeDashboardEvidence($rejected, ObligationEvidence::STATUS_REJECTED);
 
     $withoutEvidence = makeDashboardObligation('vencida', '2026-06-10');
-    $approved = makeDashboardObligation('a_vencer', '2026-06-30');
-    makeDashboardEvidence($approved, ObligationEvidence::STATUS_APPROVED);
 
     $this->actingAs(makeAdminUser());
 
     Livewire::test(ObligationOperationalTableWidget::class)
+        ->filterTable('evidence_state', ObligationEvidence::STATUS_APPROVED)
+        ->assertCanSeeTableRecords([$approved])
+        ->assertCanNotSeeTableRecords([$pending, $rejected, $withoutEvidence]);
+
+    Livewire::test(ObligationOperationalTableWidget::class)
+        ->filterTable('evidence_state', ObligationEvidence::STATUS_PENDING)
+        ->assertCanSeeTableRecords([$pending])
+        ->assertCanNotSeeTableRecords([$approved, $rejected, $withoutEvidence]);
+
+    Livewire::test(ObligationOperationalTableWidget::class)
         ->filterTable('evidence_state', ObligationEvidence::STATUS_REJECTED)
         ->assertCanSeeTableRecords([$rejected])
-        ->assertCanNotSeeTableRecords([$withoutEvidence, $approved]);
+        ->assertCanNotSeeTableRecords([$approved, $pending, $withoutEvidence]);
+
+    Livewire::test(ObligationOperationalTableWidget::class)
+        ->filterTable('evidence_state', 'without_evidence')
+        ->assertCanSeeTableRecords([$withoutEvidence])
+        ->assertCanNotSeeTableRecords([$approved, $pending, $rejected]);
 
     Livewire::test(ObligationOperationalTableWidget::class)
         ->filterTable('due_window', 'overdue')
         ->assertCanSeeTableRecords([$withoutEvidence])
-        ->assertCanNotSeeTableRecords([$rejected, $approved]);
+        ->assertCanNotSeeTableRecords([$approved, $pending, $rejected]);
 });
 
-it('prioritizes critical overdue items in the operational query ordering', function () {
+it('filters the operational widget by source and quick operational focus', function () {
+    $emission = Emission::factory()->create();
+    $suggestion = ExtractedObligation::factory()->for($emission)->create();
+
+    $termGenerated = makeDashboardObligation('a_vencer', '2026-06-25', $emission, [
+        'extracted_obligation_id' => $suggestion->id,
+        'title' => 'Gerada pelo termo',
+    ]);
     $criticalOverdue = makeDashboardObligation('vencida', '2026-06-10', null, [
         'priority' => 'critical',
         'title' => 'Critica vencida',
     ]);
+
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(ObligationOperationalTableWidget::class)
+        ->filterTable('source', 'term')
+        ->assertCanSeeTableRecords([$termGenerated])
+        ->assertCanNotSeeTableRecords([$criticalOverdue]);
+
+    Livewire::test(ObligationOperationalTableWidget::class)
+        ->filterTable('operational_focus', 'critical_overdue')
+        ->assertCanSeeTableRecords([$criticalOverdue])
+        ->assertCanNotSeeTableRecords([$termGenerated]);
+});
+
+it('renders emission and obligation links in the operational widget', function () {
+    $emission = Emission::factory()->create(['name' => 'Emissão Navegável']);
+    $obligation = makeDashboardObligation('vencida', '2026-06-10', $emission, [
+        'title' => 'Obrigação com link',
+    ]);
+
+    $this->actingAs(makeAdminUser());
+
+    $component = Livewire::test(ObligationOperationalTableWidget::class);
+
+    $component
+        ->assertSee(EmissionResource::getUrl('edit', ['record' => $emission]))
+        ->assertSee(EmissionResource::getUrl('edit', [
+            'record' => $emission,
+            'relation' => ObligationsRelationManager::class,
+        ]))
+        ->assertCanSeeTableRecords([$obligation]);
+});
+
+it('surfaces concluded obligations without approved evidence for evidence viewers', function () {
+    $concludedWithoutApproved = makeDashboardObligation('concluida', '2026-06-14', null, [
+        'title' => 'Concluída sem aprovada',
+    ]);
+    $concludedWithApproved = makeDashboardObligation('concluida', '2026-06-15', null, [
+        'title' => 'Concluída com aprovada',
+    ]);
+    makeDashboardEvidence($concludedWithApproved, ObligationEvidence::STATUS_APPROVED);
+    $open = makeDashboardObligation('a_vencer', '2026-06-25', null, [
+        'title' => 'Aberta',
+    ]);
+
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(ObligationOperationalTableWidget::class)
+        ->assertCanSeeTableRecords([$open, $concludedWithoutApproved])
+        ->assertCanNotSeeTableRecords([$concludedWithApproved])
+        ->filterTable('operational_focus', 'completed_without_approved_evidence')
+        ->assertCanSeeTableRecords([$concludedWithoutApproved])
+        ->assertCanNotSeeTableRecords([$open, $concludedWithApproved]);
+});
+
+it('prioritizes the main operational queues in the table ordering', function () {
+    $responsible = User::factory()->create();
+
+    $criticalOverdue = makeDashboardObligation('vencida', '2026-06-10', null, [
+        'priority' => 'critical',
+        'title' => 'Critica vencida',
+        'responsible_user_id' => $responsible->id,
+    ]);
     $regularOverdue = makeDashboardObligation('vencida', '2026-06-11', null, [
         'priority' => 'medium',
         'title' => 'Media vencida',
+        'responsible_user_id' => $responsible->id,
     ]);
+    makeDashboardEvidence($regularOverdue, ObligationEvidence::STATUS_APPROVED);
     $dueToday = makeDashboardObligation('a_vencer', '2026-06-18', null, [
         'priority' => 'high',
         'title' => 'Vence hoje',
@@ -373,6 +569,9 @@ it('prioritizes critical overdue items in the operational query ordering', funct
         'title' => 'Rejeitada',
     ]);
     makeDashboardEvidence($rejected, ObligationEvidence::STATUS_REJECTED);
+    $concludedWithoutApproved = makeDashboardObligation('concluida', '2026-07-11', null, [
+        'title' => 'Concluida sem aprovada',
+    ]);
     $withoutEvidence = makeDashboardObligation('a_vencer', '2026-07-13', null, [
         'title' => 'Sem evidencia',
     ]);
@@ -382,16 +581,20 @@ it('prioritizes critical overdue items in the operational query ordering', funct
     ]);
     makeDashboardEvidence($withoutResponsible, ObligationEvidence::STATUS_APPROVED);
 
-    $orderedIds = dashboardData()->operationalQuery()->pluck('id')->all();
+    $orderedIds = dashboardData()
+        ->operationalQuery(includeConcludedWithoutApprovedEvidence: true)
+        ->pluck('id')
+        ->all();
 
-    expect(array_slice($orderedIds, 0, 8))->toBe([
+    expect(array_slice($orderedIds, 0, 9))->toBe([
         $criticalOverdue->id,
-        $regularOverdue->id,
         $dueToday->id,
         $nextWeek->id,
         $review->id,
         $rejected->id,
+        $concludedWithoutApproved->id,
         $withoutEvidence->id,
         $withoutResponsible->id,
+        $regularOverdue->id,
     ]);
 });

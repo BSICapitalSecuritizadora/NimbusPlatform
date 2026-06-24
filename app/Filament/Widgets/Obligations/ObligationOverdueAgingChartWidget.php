@@ -2,11 +2,15 @@
 
 namespace App\Filament\Widgets\Obligations;
 
+use App\Enums\AccessPermission;
 use App\Services\Obligations\ObligationDashboardData;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 class ObligationOverdueAgingChartWidget extends ChartWidget
 {
+    use InteractsWithPageFilters;
+
     protected static bool $isDiscovered = false;
 
     protected ?string $heading = 'Aging de Vencidas';
@@ -20,7 +24,9 @@ class ObligationOverdueAgingChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $aging = app(ObligationDashboardData::class)->overdueAging();
+        $canViewEvidence = (bool) auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value);
+        $filters = app(ObligationDashboardData::class)->sanitizeFilters($this->pageFilters, $canViewEvidence);
+        $aging = app(ObligationDashboardData::class)->overdueAging($filters);
 
         return [
             'labels' => [

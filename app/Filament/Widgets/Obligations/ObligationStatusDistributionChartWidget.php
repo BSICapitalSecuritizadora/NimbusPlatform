@@ -2,17 +2,21 @@
 
 namespace App\Filament\Widgets\Obligations;
 
+use App\Enums\AccessPermission;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 class ObligationStatusDistributionChartWidget extends ChartWidget
 {
+    use InteractsWithPageFilters;
+
     protected static bool $isDiscovered = false;
 
     protected ?string $heading = 'Obrigações por Status';
 
-    protected ?string $description = 'Distribuição das obrigações por situação em todas as emissões.';
+    protected ?string $description = 'Distribuição do recorte atual por situação operacional.';
 
     protected function getType(): string
     {
@@ -21,7 +25,9 @@ class ObligationStatusDistributionChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $distribution = app(ObligationDashboardData::class)->statusDistribution();
+        $canViewEvidence = (bool) auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value);
+        $filters = app(ObligationDashboardData::class)->sanitizeFilters($this->pageFilters, $canViewEvidence);
+        $distribution = app(ObligationDashboardData::class)->statusDistribution($filters);
 
         return [
             'labels' => array_map(
@@ -31,12 +37,12 @@ class ObligationStatusDistributionChartWidget extends ChartWidget
             'datasets' => [[
                 'data' => array_values($distribution),
                 'backgroundColor' => [
-                    '#10b981', // em_dia
-                    '#3b82f6', // a_vencer
-                    '#ef4444', // vencida
-                    '#22c55e', // concluida
-                    '#f59e0b', // em_analise
-                    '#64748b', // nao_aplicavel
+                    '#10b981',
+                    '#3b82f6',
+                    '#ef4444',
+                    '#22c55e',
+                    '#f59e0b',
+                    '#64748b',
                 ],
             ]],
         ];

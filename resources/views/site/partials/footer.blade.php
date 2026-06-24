@@ -3,7 +3,7 @@
         <div class="row gy-4 align-items-center">
             <div class="col-md-4 text-center text-md-start">
                 <a class="navbar-brand fw-bold mb-3 d-inline-block" href="{{ route('site.home') }}">
-                    <img src="{{ asset('images/logo-mob.png') }}" alt="BSI Capital" style="max-height: 48px;">
+                    <img src="{{ asset('images/logo-mob.png') }}" alt="BSI Capital" style="max-height: 48px; filter: invert(1) brightness(2);">
                 </a>
                 <p class="section-copy small mb-3">
                     Securitizadora registrada na CVM. Estruturamos e gerimos operações de crédito (CRI, CRA e CR) com rigor técnico, controle documental e reporte contínuo aos investidores.
@@ -32,7 +32,7 @@
                         <div class="footer-heading">Atalhos</div>
                         <div class="d-flex flex-column gap-2 fw-medium">
                             <a href="{{ route('site.emissions') }}" class="footer-link">Ver Emissões</a>
-                            <a href="{{ route('site.ri') }}" class="footer-link">Rel. com Investidores</a>
+                            <a href="{{ route('site.ri') }}" class="footer-link">Relações com Investidores</a>
                             <a href="{{ route('site.intelligence') }}" class="footer-link">BSI Intelligence</a>
                             <a href="{{ route('proposal.create') }}" class="footer-link">Envie sua proposta</a>
                         </div>

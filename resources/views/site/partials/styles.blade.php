@@ -11,14 +11,14 @@
             --text: #091b23;
             --muted: #4d5b60;
             --border: #c5cacb;
-            --shadow-soft: 0 14px 32px rgba(9, 27, 35, 0.07);
-            --shadow-hover: 0 18px 38px rgba(9, 27, 35, 0.1);
-            --nav-bg: rgba(230, 228, 228, 0.95);
+            --shadow-soft: 0 4px 12px rgba(9, 27, 35, 0.04);
+            --shadow-hover: 0 8px 24px rgba(9, 27, 35, 0.08);
+            --nav-bg: var(--brand);
             --brand-outline: var(--brand);
             --brand-outline-border: color-mix(in srgb, var(--brand) 18%, var(--border));
-            --radius-shell: 18px;
-            --radius-card: 16px;
-            --radius-control: 12px;
+            --radius-shell: 0px;
+            --radius-card: 0px;
+            --radius-control: 0px;
         }
 
         html {
@@ -27,10 +27,7 @@
 
         body {
             font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background:
-                radial-gradient(880px 380px at 0% 0%, rgba(9, 27, 35, 0.08), transparent 58%),
-                radial-gradient(620px 300px at 100% 4%, rgba(160, 110, 40, 0.08), transparent 58%),
-                var(--bg);
+            background: var(--bg);
             color: var(--text);
             min-height: 100vh;
             display: flex;
@@ -211,10 +208,12 @@
         }
 
         .btn {
-            border-radius: 14px;
-            padding: 0.72rem 1.2rem;
+            border-radius: var(--radius-control);
+            padding: 0.72rem 1.5rem;
             font-weight: 600;
-            letter-spacing: -0.01em;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            font-size: 0.8rem;
             transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, border-color 0.2s ease, background 0.2s ease;
         }
 
@@ -223,17 +222,16 @@
         }
 
         .btn-brand {
-            background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 88%, var(--gold) 12%));
-            border-color: var(--brand);
-            border-bottom: 1.5px solid color-mix(in srgb, var(--gold) 40%, var(--brand));
+            background: var(--brand);
+            border: 1px solid var(--brand);
             color: #e6e4e4;
-            box-shadow: 0 10px 24px rgba(9, 27, 35, 0.16);
+            box-shadow: 0 4px 12px rgba(9, 27, 35, 0.08);
         }
 
         .btn-brand:hover,
         .btn-brand:focus {
             color: #fff;
-            background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 88%, black), var(--brand-strong));
+            background: var(--brand-strong);
             border-color: var(--brand-strong);
         }
 
@@ -411,58 +409,58 @@
 
         .navbar {
             background: var(--nav-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid color-mix(in srgb, var(--border) 92%, white 8%);
-            border-bottom: 1.5px solid color-mix(in srgb, var(--gold) 28%, var(--border));
-            box-shadow: 0 14px 36px rgba(9, 27, 35, 0.08), 0 2px 8px rgba(9, 27, 35, 0.04);
-            border-radius: var(--radius-shell);
-            max-width: 1220px;
-            margin: 1rem auto 0;
-            top: 0.85rem;
-            padding: 0.45rem 0.85rem;
+            border: none;
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 60%, transparent);
+            box-shadow: 0 4px 16px rgba(9, 27, 35, 0.1);
+            border-radius: 0;
+            max-width: 100%;
+            margin: 0;
+            top: 0;
+            padding: 0.5rem 1rem;
         }
 
         .navbar .container {
-            max-width: 1160px;
+            max-width: 1200px;
         }
 
         .navbar-brand {
-            color: var(--brand) !important;
+            color: var(--surface) !important;
             letter-spacing: -0.03em;
+            filter: invert(1) brightness(2); /* Se for logo escura, invertemos pra ficar clara */
         }
 
         .navbar-brand img {
-            max-height: 44px;
+            max-height: 40px;
             width: auto;
         }
 
         .navbar-toggler {
-            border: 1px solid color-mix(in srgb, var(--border) 88%, var(--brand) 12%);
-            border-radius: 16px;
+            border: 1px solid color-mix(in srgb, var(--surface) 20%, transparent);
+            border-radius: var(--radius-control);
             padding: 0.45rem 0.65rem;
         }
 
         .navbar-toggler:focus {
-            box-shadow: 0 0 0 0.2rem rgba(9, 27, 35, 0.08);
+            box-shadow: 0 0 0 0.2rem rgba(230, 228, 228, 0.1);
         }
 
         .navbar-toggler-icon {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath stroke='rgba(9, 27, 35, 0.85)' stroke-width='2' stroke-linecap='round' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3E%3Cpath stroke='rgba(230, 228, 228, 0.85)' stroke-width='2' stroke-linecap='round' d='M4 7h22M4 15h22M4 23h22'/%3E%3C/svg%3E");
         }
 
         .nav-link {
             position: relative;
-            color: color-mix(in srgb, var(--text) 86%, transparent) !important;
-            font-weight: 600;
+            color: color-mix(in srgb, var(--surface) 86%, transparent) !important;
+            font-weight: 500;
             padding: 0.7rem 0.85rem !important;
-            border-radius: 10px;
+            border-radius: 0px;
             transition: color 0.2s ease, background 0.22s ease, transform 0.18s ease;
         }
 
         .nav-link:hover,
         .nav-link.active {
-            color: var(--brand) !important;
-            background: color-mix(in srgb, var(--brand) 7%, transparent);
+            color: var(--gold) !important;
+            background: transparent;
             transform: translateY(-1px);
         }
 
@@ -471,10 +469,9 @@
             position: absolute;
             left: 0.85rem;
             right: 0.85rem;
-            bottom: 0.45rem;
-            height: 2px;
-            border-radius: 999px;
-            background: linear-gradient(90deg, var(--gold), var(--brand));
+            bottom: 0.2rem;
+            height: 1px;
+            background: var(--gold);
         }
 
         .dropdown-mega {
@@ -569,32 +566,19 @@
         .hero {
             position: relative;
             overflow: hidden;
-            background:
-                radial-gradient(1200px 520px at 8% 10%, rgba(160, 110, 40, 0.16), transparent 60%),
-                radial-gradient(950px 460px at 95% 0%, rgba(230, 228, 228, 0.08), transparent 58%),
-                linear-gradient(145deg, var(--brand-strong), var(--brand) 58%, var(--brand-soft) 100%) !important;
+            background: var(--brand) !important;
             color: #e6e4e4;
-            border-bottom: 0;
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 20%, var(--brand));
             padding-top: 6rem;
             padding-bottom: 6rem;
         }
 
         .hero::before {
-            content: "";
-            position: absolute;
-            inset: auto -12% -22% auto;
-            width: 360px;
-            height: 360px;
-            background: radial-gradient(circle, rgba(160, 110, 40, 0.2), transparent 68%);
-            pointer-events: none;
+            display: none;
         }
 
         .hero::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 35%, rgba(0, 0, 0, 0.1));
-            pointer-events: none;
+            display: none;
         }
 
         .hero > .container,
@@ -604,10 +588,11 @@
         }
 
         .hero .badge {
-            border: 1px solid rgba(212, 175, 55, 0.4);
+            border: 1px solid var(--gold);
             color: var(--gold);
-            background: rgba(212, 175, 55, 0.1);
+            background: transparent;
             letter-spacing: 0.12em;
+            border-radius: 0px;
         }
 
         .hero .display-3,
@@ -702,30 +687,22 @@
             position: relative;
             overflow: hidden;
             margin-top: 5rem;
-            border-top: 2px solid var(--gold);
-            background: var(--surface);
-            color: var(--muted);
-            box-shadow: 0 -10px 40px rgba(9, 27, 35, 0.03);
+            border-top: 1px solid var(--gold);
+            background: var(--brand);
+            color: color-mix(in srgb, var(--surface) 70%, transparent);
         }
 
         .footer::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 70%);
-            pointer-events: none;
+            display: none;
         }
 
         .footer-heading {
             margin-bottom: 1.25rem;
             font-size: 0.85rem;
-            font-weight: 800;
+            font-weight: 600;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: var(--brand);
+            color: var(--surface);
             display: flex;
             align-items: center;
             gap: 0.6rem;
@@ -742,26 +719,25 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            color: var(--muted);
+            color: color-mix(in srgb, var(--surface) 70%, transparent);
             text-decoration: none;
             padding: 0.25rem 0;
             transition: all 0.2s ease;
-            font-weight: 500;
+            font-weight: 400;
         }
 
         .footer-link:hover {
-            color: var(--brand);
-            transform: translateX(5px);
+            color: var(--gold);
         }
 
         .footer-legal-link {
-            color: var(--muted);
+            color: color-mix(in srgb, var(--surface) 70%, transparent);
             text-decoration: none;
             transition: color 0.2s ease;
         }
 
         .footer-legal-link:hover {
-            color: var(--brand);
+            color: var(--gold);
         }
 
         .footer-seal {
