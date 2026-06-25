@@ -19,14 +19,14 @@ class ListProposals extends ListRecords
     public function getTabs(): array
     {
         return [
-            'all' => \Filament\Resources\Components\Tab::make('Todas'),
-            'new' => \Filament\Resources\Components\Tab::make('Aguardando')
+            'all' => \Filament\Schemas\Components\Tabs\Tab::make('Todas'),
+            'new' => \Filament\Schemas\Components\Tabs\Tab::make('Aguardando')
                 ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->whereIn('status', [\App\Enums\ProposalStatus::AwaitingCompletion, \App\Enums\ProposalStatus::AwaitingInformation])),
-            'review' => \Filament\Resources\Components\Tab::make('Em Análise')
+            'review' => \Filament\Schemas\Components\Tabs\Tab::make('Em Análise')
                 ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', \App\Enums\ProposalStatus::InReview)),
-            'approved' => \Filament\Resources\Components\Tab::make('Aprovadas')
+            'approved' => \Filament\Schemas\Components\Tabs\Tab::make('Aprovadas')
                 ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', \App\Enums\ProposalStatus::Approved)),
-            'rejected' => \Filament\Resources\Components\Tab::make('Recusadas')
+            'rejected' => \Filament\Schemas\Components\Tabs\Tab::make('Recusadas')
                 ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', \App\Enums\ProposalStatus::Rejected)),
         ];
     }

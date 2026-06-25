@@ -22,14 +22,14 @@ class ListEmissions extends ListRecords
     public function getTabs(): array
     {
         return [
-            'all' => \Filament\Resources\Components\Tab::make('Todas'),
-            'draft' => \Filament\Resources\Components\Tab::make('Em Elaboração')
+            'all' => \Filament\Schemas\Components\Tabs\Tab::make('Todas'),
+            'draft' => \Filament\Schemas\Components\Tabs\Tab::make('Em Elaboração')
                 ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'draft')),
-            'active' => \Filament\Resources\Components\Tab::make('Em Distribuição')
+            'active' => \Filament\Schemas\Components\Tabs\Tab::make('Em Distribuição')
                 ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'active')),
-            'closed' => \Filament\Resources\Components\Tab::make('Liquidada')
+            'closed' => \Filament\Schemas\Components\Tabs\Tab::make('Liquidada')
                 ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'closed')),
-            'default' => \Filament\Resources\Components\Tab::make('Default')
+            'default' => \Filament\Schemas\Components\Tabs\Tab::make('Default')
                 ->modifyQueryUsing(fn (\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'default')),
         ];
     }

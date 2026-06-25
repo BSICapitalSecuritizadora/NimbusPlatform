@@ -13,10 +13,12 @@ use App\Models\ProposalContact;
 use App\Models\ProposalRepresentative;
 use App\Models\ProposalStatusHistory;
 use App\Models\User;
+use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -65,6 +67,25 @@ it('limits the commercial representative to proposals assigned to their queue re
 
     expect(ProposalResource::getEloquentQuery()->pluck('id')->all())
         ->toBe([$assignedProposal->id, $otherProposal->id]);
+});
+
+it('builds schema tabs for the proposals list page', function () {
+    $this->actingAs(makeAdminUser());
+
+    $tabs = Livewire::test(ListProposals::class)->instance()->getTabs();
+
+    expect($tabs)->toHaveKeys([
+        'all',
+        'new',
+        'review',
+        'approved',
+        'rejected',
+    ])
+        ->and($tabs['all'])->toBeInstanceOf(Tab::class)
+        ->and($tabs['new'])->toBeInstanceOf(Tab::class)
+        ->and($tabs['review'])->toBeInstanceOf(Tab::class)
+        ->and($tabs['approved'])->toBeInstanceOf(Tab::class)
+        ->and($tabs['rejected'])->toBeInstanceOf(Tab::class);
 });
 
 it('renders the proposals list page for admin users with legacy proposal statuses', function () {

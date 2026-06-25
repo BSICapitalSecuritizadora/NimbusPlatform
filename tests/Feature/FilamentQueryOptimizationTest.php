@@ -2,6 +2,7 @@
 
 use App\Enums\ProposalStatus;
 use App\Filament\NimbusWidgets\NimbusRecentSubmissions;
+use App\Filament\Resources\Emissions\Pages\ListEmissions;
 use App\Filament\Resources\Nimbus\Submissions\Pages\ListSubmissions;
 use App\Filament\Resources\Proposals\Pages\ListProposals;
 use App\Filament\Resources\Proposals\Pages\ViewProposal;
@@ -15,6 +16,7 @@ use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
 use App\Models\ProposalRepresentative;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,6 +43,25 @@ it('configures eager loading on the proposals list table', function () {
         'latestContinuationAccess',
         'latestStatusHistory.changedByUser',
     );
+});
+
+it('builds schema tabs for the emissions list page', function () {
+    $this->actingAs(makeAdminUser());
+
+    $tabs = Livewire::test(ListEmissions::class)->instance()->getTabs();
+
+    expect($tabs)->toHaveKeys([
+        'all',
+        'draft',
+        'active',
+        'closed',
+        'default',
+    ])
+        ->and($tabs['all'])->toBeInstanceOf(Tab::class)
+        ->and($tabs['draft'])->toBeInstanceOf(Tab::class)
+        ->and($tabs['active'])->toBeInstanceOf(Tab::class)
+        ->and($tabs['closed'])->toBeInstanceOf(Tab::class)
+        ->and($tabs['default'])->toBeInstanceOf(Tab::class);
 });
 
 it('configures eager loading on proposal relation managers that render nested relations', function () {
