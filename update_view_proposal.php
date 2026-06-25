@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\Proposals\Pages;
+$content = file_get_contents('app/Filament/Resources/Proposals/Pages/ViewProposal.php');
 
+$newImports = <<<PHP
 use App\Actions\Proposals\SendProposalContinuationLink;
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\DTOs\Proposals\UpdateProposalStatusDTO;
@@ -12,11 +13,11 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\RateLimiter;
+PHP;
 
-class ViewProposal extends ViewRecord
-{
-    protected static string $resource = ProposalResource::class;
+$content = preg_replace('/use App\\\\Actions\\\\Proposals\\\\SendProposalContinuationLink;.*?use Illuminate\\\\Support\\\\Facades\\\\RateLimiter;/s', $newImports, $content);
 
+$newActions = <<<'PHP'
     protected function getHeaderActions(): array
     {
         return [
@@ -124,4 +125,9 @@ class ViewProposal extends ViewRecord
             ->success()
             ->send();
     }
-}
+PHP;
+
+$content = preg_replace('/protected function getHeaderActions\(\): array\s*\{.*?\n    \}/s', $newActions, $content);
+
+file_put_contents('app/Filament/Resources/Proposals/Pages/ViewProposal.php', $content);
+echo "ViewProposal updated successfully.\n";

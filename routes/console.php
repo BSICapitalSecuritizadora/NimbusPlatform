@@ -55,3 +55,16 @@ Artisan::command('inspire', function () {
     ->everyTenMinutes()
     ->name('pu-queue-health')
     ->withoutOverlapping();
+
+// CDI publicado (BCB/SGS): em dias úteis (CDI só é divulgado em dia útil). Idempotente; enfileirado.
+\Illuminate\Support\Facades\Schedule::command('pu:index-rates:sync --indexer=cdi --queue')
+    ->weekdays()
+    ->dailyAt('06:30')
+    ->name('pu-index-sync-cdi')
+    ->withoutOverlapping();
+
+// IPCA publicado (BCB/SGS): diário com tolerância (só há dado novo mensal). Idempotente; enfileirado.
+\Illuminate\Support\Facades\Schedule::command('pu:index-rates:sync --indexer=ipca --queue')
+    ->dailyAt('06:45')
+    ->name('pu-index-sync-ipca')
+    ->withoutOverlapping();

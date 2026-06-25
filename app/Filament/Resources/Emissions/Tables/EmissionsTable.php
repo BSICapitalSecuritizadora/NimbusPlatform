@@ -73,6 +73,11 @@ class EmissionsTable
                 //
             ])
             ->actions([
+                \Filament\Actions\ViewAction::make()
+                    ->label('Acessar Dossiê')
+                    ->color('info')
+                    ->visible(fn (): bool => auth()->user()->can('emissions.view')),
+
                 EditAction::make()
                     ->label('Editar Emissão')
                     ->visible(fn (): bool => auth()->user()->can('emissions.update')),

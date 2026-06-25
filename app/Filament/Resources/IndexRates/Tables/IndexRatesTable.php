@@ -39,8 +39,28 @@ class IndexRatesTable
                     ->placeholder('—'),
                 TextColumn::make('source')
                     ->label('Fonte')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'bcb_sgs' => 'Banco Central',
+                        'manual_import' => 'Importação manual',
+                        default => (string) ($state ?? '—'),
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        'bcb_sgs' => 'info',
+                        'manual_import' => 'gray',
+                        default => 'gray',
+                    })
                     ->toggleable()
                     ->searchable(),
+                TextColumn::make('external_series_code')
+                    ->label('Série SGS')
+                    ->placeholder('—')
+                    ->toggleable(),
+                TextColumn::make('fetched_at')
+                    ->label('Sincronizado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('projection_source')
                     ->label('Fonte projeção')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -52,6 +72,12 @@ class IndexRatesTable
                         PuIndexer::Cdi->value => PuIndexer::Cdi->value,
                         PuIndexer::Ipca->value => PuIndexer::Ipca->value,
                         PuIndexer::Prefixed->value => PuIndexer::Prefixed->value,
+                    ]),
+                SelectFilter::make('source')
+                    ->label('Fonte')
+                    ->options([
+                        'bcb_sgs' => 'Banco Central (SGS)',
+                        'manual_import' => 'Importação manual',
                     ]),
                 Filter::make('is_projected')
                     ->label('Somente projetados')

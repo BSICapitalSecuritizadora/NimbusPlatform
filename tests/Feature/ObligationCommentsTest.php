@@ -16,6 +16,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -74,6 +75,34 @@ it('allows a user with the view comments permission to visualize comments', func
         ->assertSee('Comentários internos')
         ->assertSee('Primeiro comentário operacional.')
         ->assertSee($comment->author?->name ?? $user->name);
+});
+
+it('renders only internal comments in the dedicated obligation channel', function () {
+    $user = makeCommentUserWithPermissions([]);
+    $this->actingAs($user);
+
+    $emission = Emission::factory()->create();
+    $obligation = Obligation::factory()->for($emission)->create();
+
+    ObligationComment::factory()->for($obligation)->for($emission)->create([
+        'user_id' => $user->id,
+        'body' => 'Comentario interno visivel.',
+        'is_internal' => true,
+    ]);
+
+    ObligationComment::factory()->for($obligation)->for($emission)->create([
+        'user_id' => $user->id,
+        'body' => 'Comentario externo nao deve aparecer.',
+        'is_internal' => false,
+    ]);
+
+    $this->get(EmissionResource::getUrl('obligation-comments', [
+        'record' => $emission,
+        'obligation' => $obligation,
+    ]))
+        ->assertSuccessful()
+        ->assertSee('Comentario interno visivel.')
+        ->assertDontSee('Comentario externo nao deve aparecer.');
 });
 
 it('blocks the comments page for users without the view comments permission', function () {
@@ -165,6 +194,7 @@ it('updates a comment and tracks edited metadata', function () {
     expect($comment->body)->toBe('Comentário revisado pela operação.')
         ->and($comment->edited_at)->not->toBeNull()
         ->and($comment->edited_by)->toBe($user->id)
+        ->and($obligation->fresh()->status)->toBe('em_dia')
         ->and($history)->not->toBeNull()
         ->and($history->description)->toBe('Comentário interno editado.')
         ->and($history->description)->not->toContain('Comentário revisado pela operação.');
@@ -258,6 +288,25 @@ it('keeps comment access available to super admins', function () {
     ]))
         ->assertSuccessful()
         ->assertSee('Comentário do super admin.');
+});
+
+it('assigns the obligation comment permissions to the standard operational roles', function () {
+    $commentPermissions = [
+        AccessPermission::ObligationsViewComments->value,
+        AccessPermission::ObligationsCreateComment->value,
+        AccessPermission::ObligationsUpdateComment->value,
+        AccessPermission::ObligationsDeleteComment->value,
+    ];
+
+    $admin = Role::findByName('admin');
+    $editor = Role::findByName('editor');
+    $superAdmin = Role::findByName('super-admin');
+
+    foreach ($commentPermissions as $permission) {
+        expect($admin->hasPermissionTo($permission))->toBeTrue()
+            ->and($editor->hasPermissionTo($permission))->toBeTrue()
+            ->and($superAdmin->hasPermissionTo($permission))->toBeTrue();
+    }
 });
 
 it('renders comments safely without interpreting html', function () {

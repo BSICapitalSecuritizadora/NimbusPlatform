@@ -193,6 +193,20 @@ class PuAuditLogService
         $logger->event('invalidated')->log('pu_curve_invalidated');
     }
 
+    public function logIndexSync(\App\Domain\PuCalculator\DTOs\IndexRateSyncResult $result, ?int $requestedByUserId): void
+    {
+        $logger = activity(self::LOG_NAME)
+            ->withProperties([
+                'engine_version' => self::ENGINE_VERSION,
+            ] + $result->toArray());
+
+        if (($causer = $this->causer($requestedByUserId)) !== null) {
+            $logger->causedBy($causer);
+        }
+
+        $logger->event('index_synced')->log('pu_index_synced');
+    }
+
     public function logHomologationReportDownloaded(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
     {
         $logger = activity(self::LOG_NAME)
@@ -237,6 +251,7 @@ class PuAuditLogService
             'pu_curve_homologated' => 'Curva homologada',
             'pu_curve_invalidated' => 'Curva invalidada',
             'pu_homologation_report_downloaded' => 'PDF de homologacao baixado',
+            'pu_index_synced' => 'Indices sincronizados (Banco Central)',
             'pu_parameters_updated' => 'Parametros atualizados',
             'pu_event_changed' => 'Evento de PU alterado',
             default => $description,

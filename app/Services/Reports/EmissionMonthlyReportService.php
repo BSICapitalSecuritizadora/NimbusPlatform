@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Reports;
 
+use App\DTOs\ConstructionProgressData;
+use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\EmissionMonthlyReportNote;
 use App\Models\EmissionPuEvent;
@@ -12,6 +14,7 @@ use App\Models\Negotiation;
 use App\Models\Payment;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
+use App\Services\ConstructionProgressProvider;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -33,6 +36,12 @@ class EmissionMonthlyReportService
     private const NOT_AVAILABLE = 'Não disponível';
 
     private const NO_DATA = 'Sem informações cadastradas para o período.';
+
+    private const NOT_CONSOLIDATED = 'Dados ainda não consolidados para este período.';
+
+    public function __construct(
+        private readonly ConstructionProgressProvider $constructionProgressProvider,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -68,6 +77,8 @@ class EmissionMonthlyReportService
             'receivables' => $this->buildReceivablesSummary($receivable),
             'units' => $this->buildUnits($salesBoard),
             'negotiations' => $this->buildNegotiations($negotiation),
+            'analise_mes' => $this->buildAnaliseMes($receivable),
+            'construction' => $this->buildConstructionProgress($emission, $monthStart),
             'notes' => $this->buildNotes($emission, $monthStart, $monthEnd),
         ];
     }
@@ -391,6 +402,143 @@ class EmissionMonthlyReportService
                 ['label' => 'Vendas (mês)', 'value' => $this->integer($negotiation->sales)],
             ],
         ];
+    }
+
+    /**
+     * Análise do Mês — Recebíveis (Previsto × Recebido, "pago × não pago").
+     * Derivada de Receivable: previsto = juros + amortização esperados; recebido =
+     * juros + amortização de parcelas efetivamente recebidos no mês. Representação
+     * compatível com DomPDF (cards + barra HTML/CSS), sem Chart.js.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildAnaliseMes(?Receivable $receivable): array
+    {
+        if (! $receivable instanceof Receivable) {
+            return ['has_data' => false, 'empty_message' => self::NOT_CONSOLIDATED];
+        }
+
+        $expected = (float) $receivable->expected_interest_amount + (float) $receivable->expected_amortization_amount;
+        $received = (float) $receivable->received_installment_interest_amount + (float) $receivable->received_installment_amortization_amount;
+        $prepayments = (float) $receivable->received_prepayment_interest_amount + (float) $receivable->received_prepayment_amortization_amount;
+
+        if ($expected <= 0.0 && $received <= 0.0) {
+            return ['has_data' => false, 'empty_message' => self::NOT_CONSOLIDATED];
+        }
+
+        $unpaid = max(0.0, $expected - $received);
+
+        if ($expected > 0.0) {
+            $paidPercent = min(100.0, $received / $expected * 100);
+        } else {
+            $paidPercent = $received > 0.0 ? 100.0 : 0.0;
+        }
+
+        $unpaidPercent = max(0.0, 100.0 - $paidPercent);
+
+        return [
+            'has_data' => true,
+            'cards' => [
+                ['label' => 'Total previsto', 'value' => $this->money($expected)],
+                ['label' => 'Recebido (pago)', 'value' => $this->money($received)],
+                ['label' => 'Em aberto (não pago)', 'value' => $this->money($unpaid)],
+                ['label' => 'Antecipações', 'value' => $this->money($prepayments)],
+            ],
+            'paid_percent' => round($paidPercent, 2),
+            'unpaid_percent' => round($unpaidPercent, 2),
+            'paid_percent_label' => $this->percent($paidPercent),
+            'unpaid_percent_label' => $this->percent($unpaidPercent),
+        ];
+    }
+
+    /**
+     * Evolução da Obra — previsto × realizado (mensal e acumulado) por empreendimento,
+     * a partir do provider de progresso (medições). Sem dados de progresso, mantém a
+     * relação dos empreendimentos vinculados como contexto e mensagem amigável.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildConstructionProgress(Emission $emission, CarbonImmutable $monthStart): array
+    {
+        $constructions = $emission->constructions()->orderBy('development_name')->get();
+
+        $progress = [];
+        $registry = [];
+
+        foreach ($constructions as $construction) {
+            $registry[] = [
+                'name' => $this->text($construction->development_name),
+                'location' => $this->locationLabel($construction),
+                'period' => $this->constructionPeriod($construction),
+                'estimated_value' => $construction->estimated_value !== null
+                    ? $this->money((float) $construction->estimated_value)
+                    : self::NOT_INFORMED,
+            ];
+
+            $data = $this->constructionProgressProvider->forEmission($emission, $monthStart, $construction);
+
+            if ($data === null) {
+                continue;
+            }
+
+            $progress[] = $this->mapProgressRow(
+                $construction->development_name ?? $data->planName ?? 'Empreendimento',
+                $data,
+            );
+        }
+
+        if ($constructions->isEmpty()) {
+            $data = $this->constructionProgressProvider->forEmission($emission, $monthStart, null);
+
+            if ($data !== null) {
+                $progress[] = $this->mapProgressRow($data->planName ?? 'Cronograma da emissão', $data);
+            }
+        }
+
+        return [
+            'has_progress' => $progress !== [],
+            'progress' => $progress,
+            'has_constructions' => $registry !== [],
+            'constructions' => $registry,
+            'empty_message' => 'Dados de evolução da obra ainda não consolidados para este período.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapProgressRow(string $name, ConstructionProgressData $data): array
+    {
+        return [
+            'name' => $name,
+            'planned_cumulative' => $this->percent($data->plannedCumulativePercent),
+            'realized_cumulative' => $this->percent($data->realizedCumulativePercent),
+            'planned_monthly' => $this->percent($data->plannedMonthlyPercent),
+            'realized_monthly' => $this->percent($data->realizedMonthlyPercent),
+            'diff' => $this->percent($data->diffPercent),
+            'trend' => $data->trend ?? '—',
+            'measurement_date' => $data->measurementDate?->format('d/m/Y') ?? self::NOT_INFORMED,
+            'bar_percent' => round(max(0.0, min(100.0, $data->realizedCumulativePercent)), 2),
+        ];
+    }
+
+    private function locationLabel(Construction $construction): string
+    {
+        $parts = array_filter([$construction->city, $construction->state]);
+
+        return $parts !== [] ? implode(' / ', $parts) : self::NOT_INFORMED;
+    }
+
+    private function constructionPeriod(Construction $construction): string
+    {
+        $start = $construction->construction_start_date?->format('d/m/Y');
+        $end = $construction->construction_end_date?->format('d/m/Y');
+
+        if ($start === null && $end === null) {
+            return self::NOT_INFORMED;
+        }
+
+        return sprintf('%s — %s', $start ?? '—', $end ?? '—');
     }
 
     /**

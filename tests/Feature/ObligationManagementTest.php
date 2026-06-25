@@ -93,6 +93,10 @@ it('registers the obligations permissions in the access enum', function () {
         'obligations.approve_evidence',
         'obligations.reject_evidence',
         'obligations.view_history',
+        'obligations.view_comments',
+        'obligations.create_comment',
+        'obligations.update_comment',
+        'obligations.delete_comment',
         'obligations.send_notifications',
         'obligations.export',
     );

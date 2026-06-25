@@ -3,23 +3,55 @@
 namespace App\Filament\Resources\IndexRates\Pages;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Exceptions\BcbSgsException;
 use App\Domain\PuCalculator\Services\IndexRateImportService;
+use App\Domain\PuCalculator\Services\IndexRateSyncService;
 use App\Filament\Resources\IndexRates\IndexRateResource;
+use App\Models\IndexRate;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 class ListIndexRates extends ListRecords
 {
     protected static string $resource = IndexRateResource::class;
 
+    public function getSubheading(): ?string
+    {
+        $parts = [];
+
+        foreach (['cdi' => 'CDI', 'ipca' => 'IPCA'] as $key => $label) {
+            $status = Cache::get(sprintf('pu_index_sync_%s_status', $key));
+            $lastFetched = IndexRate::query()
+                ->where('source', 'bcb_sgs')
+                ->where('indexer', strtoupper($key))
+                ->max('fetched_at');
+
+            if (is_array($status) && ($status['status'] ?? null) === 'failed') {
+                $parts[] = sprintf('%s: última sincronização FALHOU (%s)', $label, $status['error'] ?? 'erro');
+            } elseif ($lastFetched !== null) {
+                $parts[] = sprintf('%s: sincronizado em %s', $label, CarbonImmutable::parse($lastFetched)->format('d/m/Y H:i'));
+            } else {
+                $parts[] = sprintf('%s: nunca sincronizado pelo Banco Central', $label);
+            }
+        }
+
+        return implode(' • ', $parts);
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            $this->buildSyncAction('syncCdi', 'Sincronizar CDI (BCB)', PuIndexer::Cdi),
+            $this->buildSyncAction('syncIpca', 'Sincronizar IPCA (BCB)', PuIndexer::Ipca),
             Action::make('importPublished')
                 ->label('Importar índices publicados')
                 ->icon('heroicon-o-arrow-up-tray')
@@ -126,5 +158,64 @@ class ListIndexRates extends ListRecords
                         ->send();
                 }),
         ];
+    }
+
+    private function buildSyncAction(string $name, string $label, PuIndexer $indexer): Action
+    {
+        return Action::make($name)
+            ->label($label)
+            ->icon('heroicon-o-arrow-path')
+            ->color('info')
+            ->visible(fn (): bool => auth()->user()?->can('pu.index.sync') ?? false)
+            ->modalHeading($label)
+            ->modalDescription('Sincroniza o índice PUBLICADO a partir da API do Banco Central (SGS). Idempotente: não duplica nem sobrescreve dados de outra origem. Projeção IPCA de mercado NÃO vem daqui.')
+            ->form([
+                DatePicker::make('from')->label('De (opcional)'),
+                DatePicker::make('to')->label('Até (opcional)'),
+                Toggle::make('dry_run')->label('Dry-run (simular, sem persistir)')->default(false),
+            ])
+            ->action(function (array $data) use ($indexer): void {
+                $to = filled($data['to'] ?? null) ? CarbonImmutable::parse((string) $data['to']) : CarbonImmutable::now();
+                $from = filled($data['from'] ?? null)
+                    ? CarbonImmutable::parse((string) $data['from'])
+                    : $to->subDays((int) config('pu_indexes.bcb.default_window_days', 45));
+
+                try {
+                    $result = app(IndexRateSyncService::class)->sync(
+                        $indexer,
+                        $from,
+                        $to,
+                        (bool) ($data['dry_run'] ?? false),
+                        auth()->id(),
+                    );
+                } catch (BcbSgsException $exception) {
+                    Notification::make()
+                        ->title('Falha na sincronização com o Banco Central.')
+                        ->body($exception->getMessage())
+                        ->danger()
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
+
+                $notification = Notification::make()
+                    ->title($result->dryRun ? 'Dry-run concluído (nada persistido).' : 'Sincronização concluída.')
+                    ->body(sprintf(
+                        'Consultados: %d | Criados: %d | Atualizados: %d | Ignorados: %d',
+                        $result->fetched,
+                        $result->created,
+                        $result->updated,
+                        $result->skipped,
+                    ));
+
+                if ($result->hasErrors()) {
+                    $notification->warning()->body($notification->getBody()."\n".implode("\n", $result->errors))->persistent();
+                } else {
+                    $notification->success();
+                }
+
+                $notification->send();
+            });
     }
 }

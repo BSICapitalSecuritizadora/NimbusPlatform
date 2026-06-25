@@ -29,6 +29,17 @@
         .note-badge { display: inline-block; background: #091b23; color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: .3px; padding: 1px 6px; border-radius: 8px; margin-right: 6px; }
         .note-body { margin: 0; font-size: 11px; color: #333; }
         .note-meta { margin: 6px 0 0; font-size: 9px; color: #999; }
+        .cards { width: 100%; margin-bottom: 8px; }
+        .cards td { width: 25%; border: 1px solid #eee; border-top: 3px solid #a06e28; background: #fcfbf9; padding: 8px 10px; vertical-align: top; }
+        .card-label { font-size: 9px; color: #666; text-transform: uppercase; letter-spacing: .3px; }
+        .card-value { font-size: 13px; font-weight: bold; color: #091b23; margin-top: 3px; }
+        .bar { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 2px 0; }
+        .bar td { height: 20px; font-size: 9px; color: #fff; text-align: center; vertical-align: middle; }
+        .c-paid { background: #a06e28; }
+        .c-unpaid { background: #091b23; }
+        .bar-legend { font-size: 9px; color: #666; margin: 2px 0 8px; }
+        .mini-bar-wrap { width: 100%; height: 7px; background: #eee; margin-top: 3px; }
+        .mini-fill { height: 7px; background: #a06e28; }
         .footer { margin-top: 22px; padding: 10px 30px; font-size: 9px; color: #aaa; text-align: center; border-top: 1px solid #eee; }
     </style>
 </head>
@@ -230,16 +241,96 @@
         <p class="empty">{{ $negotiations['empty_message'] }}</p>
     @endif
 
-    {{-- Seções gráficas: DomPDF não executa Chart.js (JavaScript), portanto as
-         visualizações gráficas não são renderizáveis nesta engine. Mantemos um aviso
-         corporativo simples (sem jargão técnico no PDF). Previstos para a V2 (ver
-         análise/planejamento): Análise do Mês (pago × não pago, R$ e %) e Evolução
-         da Obra (%). --}}
-    <div class="section-title">Análise do Mês &amp; Evolução da Obra</div>
-    <div class="placeholder">
-        As visualizações gráficas de Análise do Mês e Evolução da Obra serão
-        disponibilizadas em uma próxima versão deste relatório.
-    </div>
+    {{-- Análise do Mês e Evolução da Obra: representações compatíveis com DomPDF
+         (cards + barras HTML/CSS), sem Chart.js/JavaScript. Caso futuramente se queira
+         um visual idêntico ao do PDF de referência (gráficos de navegador), será
+         necessário avaliar Browsershot em uma fase própria (muda a arquitetura de
+         geração do PDF). --}}
+
+    {{-- ===== Análise do Mês — Recebíveis (Previsto × Recebido) ===== --}}
+    <div class="section-title">Análise do Mês — Recebíveis (Previsto × Recebido)</div>
+    @if ($analise_mes['has_data'])
+        <table class="cards" cellspacing="4">
+            <tr>
+                @foreach ($analise_mes['cards'] as $card)
+                    <td>
+                        <div class="card-label">{{ $card['label'] }}</div>
+                        <div class="card-value">{{ $card['value'] }}</div>
+                    </td>
+                @endforeach
+            </tr>
+        </table>
+        <table class="bar">
+            <tr>
+                @if ($analise_mes['paid_percent'] > 0)
+                    <td class="c-paid" style="width: {{ $analise_mes['paid_percent'] }}%;">{{ $analise_mes['paid_percent_label'] }}</td>
+                @endif
+                @if ($analise_mes['unpaid_percent'] > 0)
+                    <td class="c-unpaid" style="width: {{ $analise_mes['unpaid_percent'] }}%;">{{ $analise_mes['unpaid_percent_label'] }}</td>
+                @endif
+            </tr>
+        </table>
+        <p class="bar-legend">Dourado: recebido (pago) &nbsp;·&nbsp; Escuro: em aberto (não pago).</p>
+    @else
+        <div class="placeholder">{{ $analise_mes['empty_message'] }}</div>
+    @endif
+
+    {{-- ===== Evolução da Obra (%) ===== --}}
+    <div class="section-title">Evolução da Obra (%)</div>
+    @if ($construction['has_progress'])
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Empreendimento</th>
+                    <th class="num">Prev. acum.</th>
+                    <th class="num">Real. acum.</th>
+                    <th class="num">Prev. mês</th>
+                    <th class="num">Real. mês</th>
+                    <th class="num">Dif.</th>
+                    <th>Tendência</th>
+                    <th>Medição</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($construction['progress'] as $row)
+                    <tr>
+                        <td>
+                            {{ $row['name'] }}
+                            <div class="mini-bar-wrap"><div class="mini-fill" style="width: {{ $row['bar_percent'] }}%;"></div></div>
+                        </td>
+                        <td class="num">{{ $row['planned_cumulative'] }}</td>
+                        <td class="num">{{ $row['realized_cumulative'] }}</td>
+                        <td class="num">{{ $row['planned_monthly'] }}</td>
+                        <td class="num">{{ $row['realized_monthly'] }}</td>
+                        <td class="num">{{ $row['diff'] }}</td>
+                        <td>{{ $row['trend'] }}</td>
+                        <td>{{ $row['measurement_date'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @else
+        <div class="placeholder">{{ $construction['empty_message'] }}</div>
+    @endif
+
+    @if ($construction['has_constructions'])
+        <p class="note"><strong>Empreendimentos vinculados</strong></p>
+        <table class="data">
+            <thead>
+                <tr><th>Empreendimento</th><th>Local</th><th>Período</th><th class="num">Valor estimado</th></tr>
+            </thead>
+            <tbody>
+                @foreach ($construction['constructions'] as $row)
+                    <tr>
+                        <td>{{ $row['name'] }}</td>
+                        <td>{{ $row['location'] }}</td>
+                        <td>{{ $row['period'] }}</td>
+                        <td class="num">{{ $row['estimated_value'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 
     {{-- ===== Comentários e notas explicativas (módulo administrativo) ===== --}}
     <div class="section-title">Comentários e Notas Explicativas</div>

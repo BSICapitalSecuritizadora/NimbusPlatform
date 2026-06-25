@@ -136,6 +136,121 @@ arquivos de PU.** **Nunca** `git add -A` nem `git add .`. **Nenhum commit sem ap
 
 ---
 
+## Sincronização automática de índices (Banco Central / SGS) — 2026-06-25
+
+Fase de sincronização dos índices **PUBLICADOS** CDI e IPCA a partir da API pública do Banco Central
+(SGS), com scheduler, fila, idempotência, auditoria e UI. **Import manual continua como fallback.** A
+**projeção IPCA de mercado (ANBIMA/B3) NÃO vem daqui** — continua sendo cadastrada/importada e **aprovada
+internamente** (maker/checker), pois o BCB só publica índices realizados, não projeção.
+
+### Séries SGS usadas (config/pu_indexes.php)
+
+| Indexador | Série SGS | Conteúdo | Tratamento |
+| --- | --- | --- | --- |
+| **CDI** | **4389** | CDI **anualizada base 252** (% a.a.) | Persistido **direto** em `rate_value` (mesma semântica da engine CDI). |
+| **IPCA** | **433** | **Variação mensal** (%) | **Transformado** em **número-índice** encadeando sobre o último NI persistido (âncora), em `bcmath`. |
+
+> **Semântica de `rate_value` preservada.** A engine CDI usa taxa anual base 252 e a engine IPCA usa
+> **número-índice**. O SGS entrega o CDI já anualizado (4389 → direto), mas o IPCA apenas como **variação
+> mensal** (433). Por isso o IPCA passa por uma **transformação explícita e testada** (variação → NI):
+> `NI_mês = NI_anterior × (1 + variação/100)`. Os códigos ficam em `config/pu_indexes.php` (env
+> `PU_BCB_SGS_CDI_CODE` / `PU_BCB_SGS_IPCA_CODE`), **nunca hardcoded na engine**.
+
+### Como sincronizar CDI
+
+```bash
+php artisan pu:index-rates:sync --indexer=cdi --from=2024-01-01 --to=2024-12-31
+php artisan pu:index-rates:sync --indexer=cdi --queue     # assíncrono (fila)
+php artisan pu:index-rates:sync --indexer=cdi --dry-run    # simula, não persiste
+```
+
+Pela UI: **Cadastros Base → Índices (CDI/IPCA) → "Sincronizar CDI (BCB)"** (permissão `pu.index.sync`),
+com janela opcional e *dry-run*.
+
+### Como sincronizar IPCA publicado
+
+```bash
+php artisan pu:index-rates:sync --indexer=ipca --from=2021-01-01 --to=2026-12-31
+```
+
+> **Pré-requisito do IPCA:** como o SGS publica **variação**, é preciso existir um **número-índice IPCA
+> âncora** anterior ao 1º mês sincronizado (importe/cadastre um NI base uma vez). Sem âncora, a sync do
+> IPCA é **bloqueada com mensagem clara** (não inventa NI). Em produção use um NI base oficial — **nunca**
+> o NI de Ago/2021 recuperado do gabarito (esse é apenas para teste).
+
+### Opções do command
+
+`--indexer=cdi|ipca` (vazio = ambos), `--from`, `--to` (default: hoje − janela configurada a hoje),
+`--source=bcb` (única fonte nesta fase), `--dry-run`, `--force` (política `overwrite`), `--queue`.
+
+### Idempotência
+
+A chave lógica é **(indexer, rate_date)**. Como o cast `date` do `IndexRate` persiste `Y-m-d H:i:s`, a
+busca usa **`whereDate`** (nunca `where('rate_date','YYYY-MM-DD')`). Políticas de sobrescrita
+(`PU_BCB_SGS_OVERWRITE_POLICY`):
+
+- `skip_existing` — não altera linhas existentes;
+- `update_if_changed` (**default**) — atualiza só quando o valor muda (audita);
+- `overwrite` (`--force`) — força atualização.
+
+**Linhas de outra origem (manual/projetada) NUNCA são sobrescritas** pela sync — ela só gerencia as
+linhas que ela mesma criou (`source = bcb_sgs`). Reexecutar a sync é seguro (não duplica).
+
+### Fonte `bcb_sgs`
+
+Linhas sincronizadas gravam `source = bcb_sgs`, `external_series_code` (4389/433) e `fetched_at`. Na
+tabela de Índices a coluna **Fonte** mostra *Banco Central* (badge azul), *Importação manual* (cinza) ou a
+série projetada. O subtítulo da tela mostra a **última sincronização** de cada indexador.
+
+### Scheduler
+
+```php
+// routes/console.php
+Schedule::command('pu:index-rates:sync --indexer=cdi --queue')->weekdays()->dailyAt('06:30')->name('pu-index-sync-cdi');
+Schedule::command('pu:index-rates:sync --indexer=ipca --queue')->dailyAt('06:45')->name('pu-index-sync-ipca');
+```
+
+- **CDI**: dias úteis (só há divulgação em dia útil).
+- **IPCA**: diário com tolerância (só há dado novo mensal; idempotente, então repetir é inócuo).
+
+Garanta o cron do scheduler em produção: `* * * * * cd /var/www/html && php artisan schedule:run`.
+
+### Queue worker
+
+Sync assíncrona (`--queue`) e o scheduler usam a **fila**. Mantenha um worker supervisionado:
+
+```bash
+php artisan queue:work --tries=3 --timeout=300
+```
+
+### Retry / falha da API (não quebra a engine)
+
+- O cliente (`BcbSgsClient`) aplica **timeout** e **retry** (config) e lança `BcbSgsException` em
+  timeout/erro HTTP/resposta inválida.
+- O job (`SyncIndexRatesFromBcbJob`) tem `tries=3` com **backoff** (30/120/300s), registra o estado em
+  cache (visível na UI) e **loga** sucesso/aviso/falha.
+- **A engine de cálculo NUNCA chama o Banco Central** em tempo de cálculo — usa apenas `index_rates`
+  persistido. Uma indisponibilidade do BCB **não quebra** a geração da curva; apenas o dado novo não chega
+  até a próxima sync.
+- **Alertas**: falha de sincronização, resposta vazia e CDI/IPCA faltante são registrados em **log**
+  (`Log::error`/`warning`) e o status fica em cache (subtítulo da tela de Índices). O envio por e-mail
+  reaproveita `PU_CALCULATOR_ALERT_RECIPIENTS` (próximo incremento).
+
+### Índice CDI/IPCA faltante na geração
+
+Os pré-requisitos (`PuCurvePrerequisiteService`) **bloqueiam** a geração quando falta CDI/IPCA, e a
+mensagem agora **orienta a rodar a sync** (`pu:index-rates:sync`) ou importar manualmente. A engine
+permanece desacoplada da API.
+
+### Isolamento (atenção)
+
+Os arquivos compartilhados de permissão (`app/Enums/AccessPermission.php`,
+`database/seeders/RolesAndPermissionsSeeder.php`) podem conter hunks concorrentes; use **`git add -p`** e
+stage **apenas** os hunks PU (`PuIndexSync`/`PuIndexImport`/`PuProjectionApprove`, labels PU, linhas
+`pu.index.sync`/`pu.index.import`). **Nunca** `git add -A` nem `git add .`. **Nenhum commit sem aprovação.**
+
+---
+
 ## Permissões
 
 As ações críticas são controladas por permissões granulares (grupo **"Curva de PU"** em Perfis):

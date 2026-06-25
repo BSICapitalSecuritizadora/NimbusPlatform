@@ -18,6 +18,8 @@ class IndexRate extends Model
         'rate_value',
         'source',
         'source_reference',
+        'external_series_code',
+        'fetched_at',
         'is_projected',
         'projection_source',
         'projection_reference_date',
@@ -33,6 +35,7 @@ class IndexRate extends Model
             'rate_value' => 'decimal:8',
             'is_projected' => 'boolean',
             'projection_reference_date' => 'date',
+            'fetched_at' => 'datetime',
         ];
     }
 

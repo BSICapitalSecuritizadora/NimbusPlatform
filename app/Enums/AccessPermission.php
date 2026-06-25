@@ -142,6 +142,7 @@ enum AccessPermission: string
     case PuCurveInvalidate = 'pu.curve.invalidate';
     case PuDashboardView = 'pu.dashboard.view';
     case PuIndexImport = 'pu.index.import';
+    case PuIndexSync = 'pu.index.sync';
     case PuProjectionApprove = 'pu.projection.approve';
     case AuditActivitiesView = 'audit.activities.view';
     case AuditDocumentDownloadsView = 'audit.document-downloads.view';
@@ -331,6 +332,7 @@ enum AccessPermission: string
             self::PuCurveInvalidate => 'Curva de PU: invalidar',
             self::PuDashboardView => 'Curva de PU: painel operacional',
             self::PuIndexImport => 'Curva de PU: importar índices',
+            self::PuIndexSync => 'Curva de PU: sincronizar índices (Banco Central)',
             self::PuProjectionApprove => 'Curva de PU: aprovar série projetada',
             self::AuditActivitiesView => 'Auditoria logs do sistema: visualizar',
             self::AuditDocumentDownloadsView => 'Auditoria downloads do portal: visualizar',

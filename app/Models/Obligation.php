@@ -139,6 +139,8 @@ class Obligation extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(ObligationComment::class)
-            ->latest('created_at');
+            ->where('is_internal', true)
+            ->latest('created_at')
+            ->latest('id');
     }
 }

@@ -41,6 +41,91 @@ class EmissionResource extends Resource
         return EmissionForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            \Filament\Schemas\Components\Section::make('Dossiê Operacional')
+                ->schema([
+                    \Filament\Schemas\Components\Grid::make(4)->schema([
+                        \Filament\Infolists\Components\TextEntry::make('name')
+                            ->label('Denominação da Operação')
+                            ->weight('bold')
+                            ->size('lg'),
+                        \Filament\Infolists\Components\TextEntry::make('type')
+                            ->label('Tipo')
+                            ->badge()
+                            ->color(fn (?string $state): string|array => match ($state) {
+                                'CRI' => \Filament\Support\Colors\Color::hex('#D4AF37'),
+                                'CRA' => \Filament\Support\Colors\Color::hex('#0D9488'),
+                                'CR' => \Filament\Support\Colors\Color::hex('#4F46E5'),
+                                default => 'gray',
+                            }),
+                        \Filament\Infolists\Components\TextEntry::make('status')
+                            ->label('Status da Operação')
+                            ->badge()
+                            ->formatStateUsing(fn (?string $state): string => Emission::STATUS_OPTIONS[$state] ?? (string) $state)
+                            ->color(fn (?string $state): string => match ($state) {
+                                'draft' => 'gray',
+                                'default' => 'danger',
+                                'active' => 'success',
+                                'closed' => 'danger',
+                                default => 'gray',
+                            }),
+                        \Filament\Infolists\Components\TextEntry::make('issuer')
+                            ->label('Emissor')
+                            ->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('issue_date')
+                            ->label('Data de Emissão')
+                            ->date('d/m/Y')
+                            ->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('maturity_date')
+                            ->label('Data de Vencimento')
+                            ->date('d/m/Y')
+                            ->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('series')
+                            ->label('Série / Número')
+                            ->state(fn (Emission $record) => trim("{$record->emission_number} / {$record->series}", ' /'))
+                            ->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('issued_volume')
+                            ->label('Volume Total Emitido')
+                            ->formatStateUsing(fn ($state) => $state !== null ? 'R$ '.number_format((float) $state, 2, ',', '.') : '—'),
+                        \Filament\Infolists\Components\TextEntry::make('next_action')
+                            ->label('Próxima Ação Recomendada')
+                            ->state(fn (Emission $record): string => match ($record->status) {
+                                'draft' => 'Concluir o preenchimento dos dados da emissão e ativar a operação.',
+                                'active' => 'Monitorar obrigações e eventos de PU.',
+                                'default' => 'Acompanhar inadimplência e notificar responsáveis.',
+                                'closed' => 'Nenhuma ação. Operação encerrada.',
+                                default => 'Aguardando atualização de status.',
+                            })
+                            ->color('primary')
+                            ->weight('bold')
+                            ->columnSpan(4),
+                    ]),
+                ]),
+
+            \Filament\Schemas\Components\Grid::make(2)->schema([
+                \Filament\Schemas\Components\Section::make('Participantes')
+                    ->schema([
+                        \Filament\Infolists\Components\TextEntry::make('lead_coordinator')->label('Coordenador Líder')->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('settlement_bank')->label('Banco Liquidante')->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('registrar')->label('Escriturador')->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('distributor')->label('Distribuidor')->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('trustee_agent')->label('Agente Fiduciário')->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('debtor')->label('Devedor')->placeholder('—'),
+                    ])->columns(2),
+
+                \Filament\Schemas\Components\Section::make('Estrutura e Taxas')
+                    ->schema([
+                        \Filament\Infolists\Components\TextEntry::make('remuneration_indexer')->label('Indexador')->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('remuneration_rate')->label('Taxa de Remuneração')->suffix('%')->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('interest_payment_frequency')->label('Pagamento de Juros')->placeholder('—'),
+                        \Filament\Infolists\Components\TextEntry::make('amortization_frequency')->label('Amortização')->placeholder('—'),
+                    ])->columns(2),
+            ]),
+        ]);
+    }
+
     public static function table(Table $table): Table
     {
         return EmissionsTable::configure($table);
@@ -81,6 +166,7 @@ class EmissionResource extends Resource
         return [
             'index' => ListEmissions::route('/'),
             'create' => CreateEmission::route('/create'),
+            'view' => \App\Filament\Resources\Emissions\Pages\ViewEmission::route('/{record}'),
             'edit' => EditEmission::route('/{record}/edit'),
             'obligation-comments' => ObligationComments::route('/{record}/obligations/{obligation}/comments'),
             'pu-history' => PuCurveHistory::route('/{record}/pu-history'),

@@ -1,7 +1,9 @@
 <?php
 
+use App\DTOs\ConstructionProgressData;
 use App\Filament\Resources\EmissionMonthlyReportNotes\EmissionMonthlyReportNoteResource;
 use App\Filament\Resources\EmissionMonthlyReportNotes\Pages\ListEmissionMonthlyReportNotes;
+use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\EmissionMonthlyReportNote;
 use App\Models\EmissionPuEvent;
@@ -11,8 +13,10 @@ use App\Models\Negotiation;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Models\User;
+use App\Services\ConstructionProgressProvider;
 use App\Services\Reports\EmissionMonthlyReportService;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -217,6 +221,137 @@ it('lets admins manage report notes through the Filament resource', function () 
         ->and(EmissionMonthlyReportNoteResource::canCreate())->toBeTrue();
 
     Livewire::test(ListEmissionMonthlyReportNotes::class)->assertOk();
+});
+
+it('builds the monthly analysis (paid vs unpaid) from receivable data', function () {
+    $emission = Emission::factory()->create();
+
+    Receivable::factory()->for($emission)->create([
+        'reference_month' => '2026-05-01',
+        'expected_interest_amount' => 1000,
+        'expected_amortization_amount' => 0,
+        'received_installment_interest_amount' => 600,
+        'received_installment_amortization_amount' => 0,
+        'received_prepayment_interest_amount' => 50,
+        'received_prepayment_amortization_amount' => 0,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['analise_mes']['has_data'])->toBeTrue()
+        ->and($data['analise_mes']['paid_percent'])->toBe(60.0)
+        ->and($data['analise_mes']['unpaid_percent'])->toBe(40.0)
+        ->and($data['analise_mes']['paid_percent_label'])->toBe('60,00%');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Análise do Mês — Recebíveis')
+        ->and($html)->toContain('60,00%')
+        ->and($html)->toContain('R$ 600,00');
+});
+
+it('shows a friendly message in the analysis section when receivables are missing', function () {
+    $emission = Emission::factory()->create();
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['analise_mes']['has_data'])->toBeFalse()
+        ->and($data['analise_mes']['empty_message'])->toBe('Dados ainda não consolidados para este período.');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Dados ainda não consolidados para este período.');
+});
+
+it('builds construction progress when measurement data is available', function () {
+    $this->app->bind(ConstructionProgressProvider::class, fn (): ConstructionProgressProvider => new class implements ConstructionProgressProvider
+    {
+        public function forEmission(Emission $emission, CarbonInterface $referenceMonth, ?Construction $construction = null): ?ConstructionProgressData
+        {
+            return new ConstructionProgressData(
+                planName: 'Plano Padrão',
+                plannedMonthlyPercent: 5.0,
+                plannedCumulativePercent: 40.0,
+                realizedMonthlyPercent: 4.5,
+                realizedCumulativePercent: 38.0,
+                diffPercent: -2.0,
+                trend: 'Abaixo',
+                measurementDate: CarbonImmutable::parse('2026-05-20'),
+            );
+        }
+    });
+
+    $emission = Emission::factory()->create();
+    Construction::factory()->for($emission)->create(['development_name' => 'Residencial Aurora']);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['construction']['has_progress'])->toBeTrue()
+        ->and($data['construction']['progress'][0]['realized_cumulative'])->toBe('38,00%')
+        ->and($data['construction']['progress'][0]['bar_percent'])->toBe(38.0)
+        ->and($data['construction']['progress'][0]['trend'])->toBe('Abaixo');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Evolução da Obra (%)')
+        ->and($html)->toContain('Residencial Aurora')
+        ->and($html)->toContain('38,00%');
+});
+
+it('renders the PDF without breaking when construction progress bars are present', function () {
+    $this->actingAs(makeAdminUser());
+
+    $this->app->bind(ConstructionProgressProvider::class, fn (): ConstructionProgressProvider => new class implements ConstructionProgressProvider
+    {
+        public function forEmission(Emission $emission, CarbonInterface $referenceMonth, ?Construction $construction = null): ?ConstructionProgressData
+        {
+            return new ConstructionProgressData(
+                planName: 'Plano Padrão',
+                plannedMonthlyPercent: 5.0,
+                plannedCumulativePercent: 40.0,
+                realizedMonthlyPercent: 4.5,
+                realizedCumulativePercent: 38.0,
+                diffPercent: -2.0,
+                trend: 'Abaixo',
+                measurementDate: CarbonImmutable::parse('2026-05-20'),
+            );
+        }
+    });
+
+    $emission = Emission::factory()->create();
+    Construction::factory()->for($emission)->create(['development_name' => 'Residencial Aurora']);
+
+    $response = $this->get(route('admin.emissions.monthly-report.pdf', [
+        'emission' => $emission->id,
+        'reference_month' => '2026-05',
+    ]));
+
+    $response->assertOk();
+    expect($response->headers->get('content-type'))->toContain('application/pdf');
+});
+
+it('keeps construction section graceful and lists linked developments without progress', function () {
+    $emission = Emission::factory()->create();
+    Construction::factory()->for($emission)->create([
+        'development_name' => 'Residencial Sem Medição',
+        'city' => 'São Paulo',
+        'state' => 'SP',
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['construction']['has_progress'])->toBeFalse()
+        ->and($data['construction']['has_constructions'])->toBeTrue()
+        ->and($data['construction']['constructions'][0]['name'])->toBe('Residencial Sem Medição');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Dados de evolução da obra ainda não consolidados para este período.')
+        ->and($html)->toContain('Residencial Sem Medição');
 });
 
 it('renders the reports page with the generation form', function () {

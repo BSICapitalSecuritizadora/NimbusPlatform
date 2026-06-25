@@ -264,7 +264,7 @@ class PuCurvePrerequisiteService
             $issues[] = PuCurvePrerequisiteIssue::blocking(
                 'index_rates',
                 sprintf(
-                    'Nao existe CDI suficiente para o periodo. Primeira data sem indice resolvido: %s (lookup em %s).',
+                    'Nao existe CDI suficiente para o periodo. Primeira data sem indice resolvido: %s (lookup em %s). Sincronize o CDI publicado (pu:index-rates:sync --indexer=cdi) ou importe-o manualmente.',
                     $currentDate->toDateString(),
                     $lookupDate->toDateString(),
                 ),
@@ -297,7 +297,7 @@ class PuCurvePrerequisiteService
                 $issues[] = PuCurvePrerequisiteIssue::blocking(
                     'index_rates',
                     sprintf(
-                        'Não há número-índice IPCA (publicado ou projetado) cadastrado para o mês de referência %s. Importe o IPCA publicado ou cadastre/aprove a série projetada.',
+                        'Não há número-índice IPCA (publicado ou projetado) cadastrado para o mês de referência %s. Sincronize o IPCA publicado (pu:index-rates:sync --indexer=ipca) ou importe-o; para meses futuros, cadastre/aprove a série projetada.',
                         $monthKey,
                     ),
                 );
