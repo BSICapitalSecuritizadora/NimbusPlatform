@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Emissions;
 use App\Filament\Resources\Emissions\Pages\CreateEmission;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Resources\Emissions\Pages\ListEmissions;
+use App\Filament\Resources\Emissions\Pages\ObligationComments;
 use App\Filament\Resources\Emissions\Pages\PuCurveHistory;
 use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use App\Filament\Resources\Emissions\Tables\EmissionsTable;
@@ -31,7 +32,7 @@ class EmissionResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
     protected static ?int $navigationSort = 20;
 
@@ -81,6 +82,7 @@ class EmissionResource extends Resource
             'index' => ListEmissions::route('/'),
             'create' => CreateEmission::route('/create'),
             'edit' => EditEmission::route('/{record}/edit'),
+            'obligation-comments' => ObligationComments::route('/{record}/obligations/{obligation}/comments'),
             'pu-history' => PuCurveHistory::route('/{record}/pu-history'),
         ];
     }

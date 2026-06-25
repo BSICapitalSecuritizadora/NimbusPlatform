@@ -6,6 +6,7 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteIssue;
+use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\BusinessCalendarDate;
@@ -68,10 +69,19 @@ class PuCurvePrerequisiteService
         $indexer = $parameter->indexer_enum;
 
         if ($indexer === PuIndexer::Ipca) {
-            $issues[] = PuCurvePrerequisiteIssue::blocking(
-                'indexer',
-                'A curva IPCA esta em preparacao e nao pode ser gerada nesta versao da calculadora.',
-            );
+            if ($parameter->base_index_date === null) {
+                $issues[] = PuCurvePrerequisiteIssue::blocking(
+                    'base_index_date',
+                    'Informe a data-base do índice (base_index_date) usada no aniversário de correção do IPCA.',
+                );
+            }
+
+            if (bccomp((string) ($parameter->annual_rate ?? '0'), '0', DecimalRounder::RATE_SCALE) <= 0) {
+                $issues[] = PuCurvePrerequisiteIssue::blocking(
+                    'annual_rate',
+                    'Informe a taxa real anual (cupom) maior que zero para a operação IPCA.',
+                );
+            }
         }
 
         if ($indexer->usesSpread() && $parameter->spread_rate === null) {
@@ -119,6 +129,10 @@ class PuCurvePrerequisiteService
 
             if ($indexer === PuIndexer::Cdi) {
                 $this->validateIndexCoverage($issues, $parameter, $startDate, $endDate);
+            }
+
+            if ($indexer === PuIndexer::Ipca && $parameter->base_index_date !== null) {
+                $this->validateIpcaIndexCoverage($issues, $parameter, $startDate, $endDate);
             }
         }
 
@@ -258,6 +272,105 @@ class PuCurvePrerequisiteService
 
             return;
         }
+    }
+
+    /**
+     * Cobertura de número-índice IPCA até o vencimento: para cada mês de referência exigido pela curva,
+     * precisa existir IPCA PUBLICADO ou, sob a política de mercado, IPCA PROJETADO de uma SÉRIE APROVADA.
+     * Mês ausente, projeção não permitida pela política ou série projetada não aprovada bloqueiam a geração
+     * com mensagem clara (a curva nunca projeta silenciosamente nem usa projeção não aprovada).
+     *
+     * @param  list<PuCurvePrerequisiteIssue>  $issues
+     */
+    private function validateIpcaIndexCoverage(
+        array &$issues,
+        EmissionPuParameter $parameter,
+        CarbonImmutable $startDate,
+        CarbonImmutable $endDate,
+    ): void {
+        $policy = IpcaProjectionPolicy::fromParameter($parameter->index_projection_policy);
+
+        foreach ($this->requiredIpcaReferenceMonths($parameter, $startDate, $endDate) as $monthKey => $referenceMonth) {
+            $rate = $this->indexRateService->exactRateForDate(PuIndexer::Ipca, $referenceMonth);
+
+            if ($rate === null) {
+                $issues[] = PuCurvePrerequisiteIssue::blocking(
+                    'index_rates',
+                    sprintf(
+                        'Não há número-índice IPCA (publicado ou projetado) cadastrado para o mês de referência %s. Importe o IPCA publicado ou cadastre/aprove a série projetada.',
+                        $monthKey,
+                    ),
+                );
+
+                return;
+            }
+
+            if (! $rate->isProjected) {
+                continue;
+            }
+
+            if (! $policy->allowsProjection()) {
+                $issues[] = PuCurvePrerequisiteIssue::blocking(
+                    'index_projection_policy',
+                    sprintf(
+                        'O mês de referência %s só possui IPCA PROJETADO, mas a política de projeção atual (%s) não permite projeção. Configure "market" e aprove a série projetada.',
+                        $monthKey,
+                        $policy->label(),
+                    ),
+                );
+
+                return;
+            }
+
+            if (! $rate->isApprovedForOperationalUse()) {
+                $issues[] = PuCurvePrerequisiteIssue::blocking(
+                    'index_projection_series',
+                    sprintf(
+                        'O IPCA projetado do mês de referência %s não pertence a uma série projetada APROVADA (status: %s). Aprove a série projetada via maker/checker antes de gerar a curva.',
+                        $monthKey,
+                        $rate->projectionSeriesStatus ?? 'sem série vinculada',
+                    ),
+                );
+
+                return;
+            }
+        }
+    }
+
+    /**
+     * Conjunto distinto de meses de referência exigidos pela curva IPCA. Espelha a mecânica do
+     * {@see \App\Domain\PuCalculator\Calculators\IpcaCurveCalculator}: para cada data, o mês de
+     * referência é o 1º dia do mês da abertura do aniversário, defasado de `index_lag_months`; a razão
+     * de correção também exige o mês imediatamente anterior.
+     *
+     * @return array<string, CarbonImmutable> indexado pelo `YYYY-MM-DD` do 1º dia do mês
+     */
+    private function requiredIpcaReferenceMonths(
+        EmissionPuParameter $parameter,
+        CarbonImmutable $startDate,
+        CarbonImmutable $endDate,
+    ): array {
+        $anniversaryDay = (int) CarbonImmutable::instance($parameter->base_index_date)->day;
+        $lagMonths = (int) ($parameter->index_lag_months ?? 0);
+
+        $months = [];
+
+        for ($currentDate = $startDate; $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
+            $closing = $currentDate->day <= $anniversaryDay
+                ? $currentDate->day($anniversaryDay)
+                : $currentDate->addMonthNoOverflow()->day($anniversaryDay);
+            $openingAnniversary = $closing->subMonthNoOverflow()->day($anniversaryDay);
+
+            $referenceMonth = $openingAnniversary->startOfMonth()->subMonthsNoOverflow($lagMonths);
+            $previousMonth = $referenceMonth->subMonthNoOverflow();
+
+            $months[$referenceMonth->toDateString()] = $referenceMonth;
+            $months[$previousMonth->toDateString()] = $previousMonth;
+        }
+
+        ksort($months);
+
+        return $months;
     }
 
     private function requiredIndexLookupDate(EmissionPuParameter $parameter, CarbonImmutable $currentDate): ?CarbonImmutable

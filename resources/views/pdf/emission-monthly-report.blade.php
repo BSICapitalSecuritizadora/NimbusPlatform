@@ -24,6 +24,11 @@
         .empty { font-size: 11px; color: #999; font-style: italic; padding: 6px 0; }
         .note { font-size: 10px; color: #888; margin-top: 6px; }
         .placeholder { border: 1px dashed #cfcfcf; background: #fafafa; color: #888; font-size: 11px; padding: 14px; text-align: center; border-radius: 4px; }
+        .note-card { border: 1px solid #eee; border-left: 3px solid #a06e28; padding: 8px 12px; margin-bottom: 8px; background: #fcfbf9; }
+        .note-head { margin: 0 0 4px; color: #091b23; font-size: 12px; }
+        .note-badge { display: inline-block; background: #091b23; color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: .3px; padding: 1px 6px; border-radius: 8px; margin-right: 6px; }
+        .note-body { margin: 0; font-size: 11px; color: #333; }
+        .note-meta { margin: 6px 0 0; font-size: 9px; color: #999; }
         .footer { margin-top: 22px; padding: 10px 30px; font-size: 9px; color: #aaa; text-align: center; border-top: 1px solid #eee; }
     </style>
 </head>
@@ -80,7 +85,6 @@
                 @endforeach
             </tbody>
         </table>
-        <p class="note">{{ $payment['note'] }}</p>
     @else
         <p class="empty">{{ $payment['empty_message'] }}</p>
     @endif
@@ -89,10 +93,26 @@
     <div class="section-title">Calendário de Eventos</div>
     @if ($calendar['has_data'])
         <table class="kv">
-            @foreach ($calendar['rows'] as $row)
+            @foreach ($calendar['highlight'] as $row)
                 <tr><td class="label">{{ $row['label'] }}</td><td class="value">{{ $row['value'] }}</td></tr>
             @endforeach
         </table>
+        @if ($calendar['has_upcoming'])
+            <p class="note"><strong>Próximos eventos</strong></p>
+            <table class="data">
+                <thead><tr><th>Seq.</th><th>Data</th><th>Tipo</th><th class="num">Amortização</th></tr></thead>
+                <tbody>
+                    @foreach ($calendar['upcoming'] as $row)
+                        <tr>
+                            <td>{{ $row['sequence'] }}</td>
+                            <td>{{ $row['date'] }}</td>
+                            <td>{{ $row['type'] }}</td>
+                            <td class="num">{{ $row['amortization'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
     @else
         <p class="empty">{{ $calendar['empty_message'] }}</p>
     @endif
@@ -210,22 +230,37 @@
         <p class="empty">{{ $negotiations['empty_message'] }}</p>
     @endif
 
-    {{-- ===== Itens previstos para a V2 =====
-         DomPDF não renderiza Chart.js (JavaScript). As seções abaixo dependem de
-         gráficos / módulos ainda não estruturados e serão tratadas na V2:
-         - Análise do Mês (pago x não pago, R$ e %)
-         - Evolução da Obra (%)
-         - Comentários e Notas Explicativas --}}
+    {{-- Seções gráficas: DomPDF não executa Chart.js (JavaScript), portanto as
+         visualizações gráficas não são renderizáveis nesta engine. Mantemos um aviso
+         corporativo simples (sem jargão técnico no PDF). Previstos para a V2 (ver
+         análise/planejamento): Análise do Mês (pago × não pago, R$ e %) e Evolução
+         da Obra (%). --}}
     <div class="section-title">Análise do Mês &amp; Evolução da Obra</div>
     <div class="placeholder">
-        Visualizações gráficas (Análise do Mês — pago × não pago, Evolução da Obra) previstas para a V2.<br>
-        Nesta versão o relatório prioriza dados textuais e tabelas.
+        As visualizações gráficas de Análise do Mês e Evolução da Obra serão
+        disponibilizadas em uma próxima versão deste relatório.
     </div>
 
+    {{-- ===== Comentários e notas explicativas (módulo administrativo) ===== --}}
     <div class="section-title">Comentários e Notas Explicativas</div>
-    <div class="placeholder">
-        Módulo de Comentários e Notas previsto para a V2.
-    </div>
+    @if ($notes['has_data'])
+        @foreach ($notes['rows'] as $note)
+            <div class="note-card">
+                @if ($note['title'] || $note['category'])
+                    <p class="note-head">
+                        @if ($note['category'])<span class="note-badge">{{ $note['category'] }}</span>@endif
+                        @if ($note['title'])<strong>{{ $note['title'] }}</strong>@endif
+                    </p>
+                @endif
+                <p class="note-body">{{ $note['content'] }}</p>
+                @if ($note['author'] || $note['date'])
+                    <p class="note-meta">{{ $note['author'] ?? 'Autor não informado' }}@if ($note['date']) — {{ $note['date'] }}@endif</p>
+                @endif
+            </div>
+        @endforeach
+    @else
+        <div class="placeholder">{{ $notes['empty_message'] }}</div>
+    @endif
 
 </div>
 

@@ -60,33 +60,31 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->navigationGroups([
-                NavigationGroup::make('Gestão Documental Externa'),
-                NavigationGroup::make('Auditoria'),
-                NavigationGroup::make('Comercial'),
-                NavigationGroup::make('Cadastro'),
+                NavigationGroup::make('Operações'),
+                NavigationGroup::make('Governança & Risco'),
                 NavigationGroup::make('Gestão'),
+                NavigationGroup::make('Comercial'),
+                NavigationGroup::make('Cadastros Base'),
+                NavigationGroup::make('Administração'),
                 NavigationGroup::make('Acessos Externos'),
-                NavigationGroup::make('Recrutamento'),
-                NavigationGroup::make('Relatórios'),
-                NavigationGroup::make('Configurações'),
             ])
             ->navigationItems([
                 NavigationItem::make('Visão Geral')
-                    ->group('Gestão Documental Externa')
+                    ->group('Acessos Externos')
                     ->icon(Heroicon::OutlinedSquares2x2)
                     ->sort(-20)
                     ->visible(fn (): bool => auth()->user()?->can('nimbus.submissions.view') ?? false)
                     ->url(fn (): string => NimbusDashboard::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(NimbusDashboard::getNavigationItemActiveRoutePattern()) || request()->routeIs(SubmissionResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Administração')
-                    ->group('Gestão Documental Externa')
+                    ->group('Acessos Externos')
                     ->icon(Heroicon::OutlinedCog6Tooth)
                     ->sort(-10)
                     ->visible(fn (): bool => auth()->user()?->can('nimbus.portal-users.view') ?? false)
                     ->url(fn (): string => PortalUserResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(PortalUserResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(AccessTokenResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Gestão Documental')
-                    ->group('Gestão Documental Externa')
+                    ->group('Acessos Externos')
                     ->icon(Heroicon::OutlinedFolder)
                     ->sort(0)
                     ->visible(fn (): bool => auth()->user()?->canAny([
@@ -97,7 +95,7 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn (): string => DocumentCategoryResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(DocumentCategoryResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(GeneralDocumentResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(PortalDocumentResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Comunicação')
-                    ->group('Gestão Documental Externa')
+                    ->group('Acessos Externos')
                     ->icon(Heroicon::OutlinedMegaphone)
                     ->sort(10)
                     ->visible(fn (): bool => auth()->user()?->canAny([
@@ -108,7 +106,7 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn (): string => AnnouncementResource::getUrl(panel: 'admin'))
                     ->isActiveWhen(fn (): bool => request()->routeIs(AnnouncementResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationOutboxResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationSettings::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Fundos')
-                    ->group('Cadastro')
+                    ->group('Gestão')
                     ->icon(Heroicon::OutlinedRectangleStack)
                     ->sort(20)
                     ->visible(fn (): bool => auth()->user()?->can('funds.view') ?? false)

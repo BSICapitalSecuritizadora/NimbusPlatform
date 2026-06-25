@@ -36,7 +36,7 @@ class ObligationDashboard extends Dashboard
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|\UnitEnum|null $navigationGroup = 'Governança & Risco';
 
     protected static ?int $navigationSort = 25;
 

@@ -70,6 +70,7 @@ class IndexRateLookupService implements IndexRateProvider
 
         IndexRate::query()
             ->forIndexer($indexer)
+            ->with('projectionSeries:id,status')
             ->orderBy('rate_date')
             ->get()
             ->each(function (IndexRate $rate) use (&$timeline, &$dates): void {
@@ -87,6 +88,8 @@ class IndexRateLookupService implements IndexRateProvider
                     projectionReferenceDate: $rate->projection_reference_date !== null
                         ? CarbonImmutable::instance($rate->projection_reference_date)
                         : null,
+                    projectionSeriesId: $rate->index_projection_series_id,
+                    projectionSeriesStatus: $rate->projectionSeries?->status?->value,
                 );
                 $dates[] = $dateKey;
             });

@@ -49,6 +49,12 @@ class ObligationHistoryEntry extends Model
 
     public const EVENT_EVIDENCE_REVIEW_UPDATED = 'evidence_review_updated';
 
+    public const EVENT_COMMENT_ADDED = 'comment_added';
+
+    public const EVENT_COMMENT_UPDATED = 'comment_updated';
+
+    public const EVENT_COMMENT_REMOVED = 'comment_removed';
+
     public const SOURCE_MANUAL = 'manual';
 
     public const SOURCE_TERM_EXTRACTION = 'term_extraction';
@@ -62,6 +68,8 @@ class ObligationHistoryEntry extends Model
     public const SOURCE_WORKFLOW = 'workflow';
 
     public const SOURCE_EVIDENCE_REVIEW = 'evidence_review';
+
+    public const SOURCE_COMMENT = 'comment';
 
     /**
      * Friendly, business-facing labels for each event type.
@@ -88,6 +96,9 @@ class ObligationHistoryEntry extends Model
         self::EVENT_EVIDENCE_APPROVED => 'Evidência aprovada',
         self::EVENT_EVIDENCE_REJECTED => 'Evidência rejeitada',
         self::EVENT_EVIDENCE_REVIEW_UPDATED => 'Revisão da evidência atualizada',
+        self::EVENT_COMMENT_ADDED => 'Comentário interno adicionado',
+        self::EVENT_COMMENT_UPDATED => 'Comentário interno editado',
+        self::EVENT_COMMENT_REMOVED => 'Comentário interno removido',
     ];
 
     /**
@@ -103,6 +114,7 @@ class ObligationHistoryEntry extends Model
         self::SOURCE_NOTIFICATION => 'Notificação automática',
         self::SOURCE_WORKFLOW => 'Workflow operacional',
         self::SOURCE_EVIDENCE_REVIEW => 'Revisão de evidência',
+        self::SOURCE_COMMENT => 'Comentário interno',
     ];
 
     protected $fillable = [

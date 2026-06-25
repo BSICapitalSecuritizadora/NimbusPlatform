@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Reports;
 
 use App\Models\Emission;
+use App\Models\EmissionMonthlyReportNote;
 use App\Models\EmissionPuEvent;
 use App\Models\Expense;
 use App\Models\Negotiation;
@@ -13,6 +14,7 @@ use App\Models\Receivable;
 use App\Models\SalesBoard;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 
 /**
  * Consolida (apenas leitura) os dados do relatório mensal de uma emissão.
@@ -30,7 +32,7 @@ class EmissionMonthlyReportService
 
     private const NOT_AVAILABLE = 'Não disponível';
 
-    private const NO_DATA = 'Dados ainda não cadastrados';
+    private const NO_DATA = 'Sem informações cadastradas para o período.';
 
     /**
      * @return array<string, mixed>
@@ -46,7 +48,8 @@ class EmissionMonthlyReportService
         $salesBoard = $this->latestSalesBoard($emission, $monthStart, $monthEnd);
         $negotiation = $this->latestNegotiation($emission, $monthStart, $monthEnd);
         $payment = $this->lastPaymentUntil($emission, $monthEnd);
-        $nextEvent = $this->nextEventFrom($emission, $monthStart);
+        $upcomingEvents = $this->upcomingEventsFrom($emission, $monthStart);
+        $nextEvent = $upcomingEvents->first();
 
         return [
             'meta' => [
@@ -57,7 +60,7 @@ class EmissionMonthlyReportService
             'header' => $this->buildHeader($emission, $monthEnd, $nextEvent),
             'characteristics' => $this->buildCharacteristics($emission),
             'payment' => $this->buildPayment($payment),
-            'calendar' => $this->buildCalendar($nextEvent),
+            'calendar' => $this->buildCalendar($upcomingEvents),
             'debt_balance' => $this->buildDebtBalance($emission, $monthEnd),
             'accounts' => $this->buildAccounts($emission),
             'expenses' => $this->buildExpenses($emission, $monthStart, $monthEnd),
@@ -65,6 +68,7 @@ class EmissionMonthlyReportService
             'receivables' => $this->buildReceivablesSummary($receivable),
             'units' => $this->buildUnits($salesBoard),
             'negotiations' => $this->buildNegotiations($negotiation),
+            'notes' => $this->buildNotes($emission, $monthStart, $monthEnd),
         ];
     }
 
@@ -140,6 +144,12 @@ class EmissionMonthlyReportService
             return ['has_data' => false, 'empty_message' => self::NO_DATA];
         }
 
+        // A tabela `payments` (decimal 15,2) só possui: premium_value, interest_value,
+        // amortization_value e extra_amortization_value. NÃO existe coluna para o
+        // desdobramento ordinário x extraordinário em PU nem para "juros extraordinários".
+        // Exibir esse detalhamento (como no relatório de referência) exigiria novas
+        // colunas em `payments` ou uma fonte consolidada — avaliar em V2. Por ora
+        // mantemos os valores disponíveis em R$, sem quebrar relatórios já gerados.
         return [
             'has_data' => true,
             'payment_date' => $this->date($payment->payment_date),
@@ -149,28 +159,53 @@ class EmissionMonthlyReportService
                 ['label' => 'Amortização', 'value' => $this->money((float) $payment->amortization_value)],
                 ['label' => 'Amortização Extraordinária', 'value' => $this->money((float) $payment->extra_amortization_value)],
             ],
-            // V2: desdobramento Ordinário x Extraordinário em PU e "Juros Extraordinários" (campos ainda inexistentes no model Payment).
-            'note' => 'Desdobramento completo (ordinário/extraordinário em PU) previsto para a V2.',
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function buildCalendar(?EmissionPuEvent $nextEvent): array
+    /**
+     * @param  Collection<int, EmissionPuEvent>  $events
+     * @return array<string, mixed>
+     */
+    private function buildCalendar(Collection $events): array
     {
-        if ($nextEvent === null) {
+        $next = $events->first();
+
+        if (! $next instanceof EmissionPuEvent) {
             return ['has_data' => false, 'empty_message' => self::NO_DATA];
         }
 
+        $rescheduled = $next->original_date !== null
+            && $next->effective_date !== null
+            && ! $next->original_date->isSameDay($next->effective_date);
+
+        $highlight = [
+            ['label' => 'Próximo evento', 'value' => $this->date($next->effective_date)],
+            ['label' => 'Tipo de evento', 'value' => $this->eventTypeLabel($next->event_type)],
+            ['label' => 'Amortização', 'value' => $this->amortizationLabel($next)],
+            ['label' => 'Situação', 'value' => $rescheduled
+                ? 'Reagendado (data original: '.$this->date($next->original_date).')'
+                : 'Conforme cronograma'],
+        ];
+
+        if ($next->description !== null && $next->description !== '') {
+            $highlight[] = ['label' => 'Descrição', 'value' => (string) $next->description];
+        }
+
+        $upcoming = $events->map(fn (EmissionPuEvent $event): array => [
+            'sequence' => $event->sequence !== null ? (string) $event->sequence : '—',
+            'date' => $this->date($event->effective_date),
+            'type' => $this->eventTypeLabel($event->event_type),
+            'amortization' => $this->amortizationLabel($event),
+        ])->all();
+
         return [
             'has_data' => true,
-            'rows' => [
-                ['label' => 'Próximo evento', 'value' => $this->date($nextEvent->effective_date)],
-                ['label' => 'Tipo de evento', 'value' => $this->text($nextEvent->event_type)],
-                ['label' => 'Valor de amortização (PU)', 'value' => $nextEvent->amortization_value !== null ? $this->pu((float) $nextEvent->amortization_value) : self::NOT_INFORMED],
-                ['label' => 'Descrição', 'value' => $this->text($nextEvent->description)],
-            ],
+            'highlight' => $highlight,
+            'upcoming' => $upcoming,
+            'has_upcoming' => count($upcoming) > 1,
         ];
     }
 
@@ -358,6 +393,37 @@ class EmissionMonthlyReportService
         ];
     }
 
+    /**
+     * Comentários/notas internos visíveis no relatório para a emissão e competência.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildNotes(Emission $emission, CarbonImmutable $monthStart, CarbonImmutable $monthEnd): array
+    {
+        $notes = EmissionMonthlyReportNote::query()
+            ->with('createdBy')
+            ->where('emission_id', $emission->id)
+            ->where('is_visible_on_report', true)
+            ->whereBetween('reference_month', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $rows = $notes->map(fn (EmissionMonthlyReportNote $note): array => [
+            'category' => ($note->category !== null && $note->category !== '') ? $note->category : null,
+            'title' => ($note->title !== null && $note->title !== '') ? $note->title : null,
+            'content' => (string) $note->content,
+            'author' => $note->createdBy?->name,
+            'date' => $note->created_at?->format('d/m/Y'),
+        ])->all();
+
+        return [
+            'has_data' => $rows !== [],
+            'empty_message' => 'Nenhum comentário cadastrado para este período.',
+            'rows' => $rows,
+        ];
+    }
+
     private function latestReceivable(Emission $emission, CarbonImmutable $start, CarbonImmutable $end): ?Receivable
     {
         return Receivable::query()
@@ -397,14 +463,50 @@ class EmissionMonthlyReportService
             ->first();
     }
 
-    private function nextEventFrom(Emission $emission, CarbonImmutable $monthStart): ?EmissionPuEvent
+    /**
+     * Próximos eventos a partir do início do mês de referência (cronograma da curva PU).
+     *
+     * @return Collection<int, EmissionPuEvent>
+     */
+    private function upcomingEventsFrom(Emission $emission, CarbonImmutable $monthStart, int $limit = 6): Collection
     {
         return $emission->puEvents()
             ->whereNotNull('effective_date')
             ->where('effective_date', '>=', $monthStart->toDateString())
             ->orderBy('effective_date')
             ->orderBy('sequence')
-            ->first();
+            ->limit($limit)
+            ->get();
+    }
+
+    private function eventTypeLabel(?string $type): string
+    {
+        return match ($type) {
+            'interest_payment' => 'Pagamento de Juros',
+            'amortization' => 'Amortização',
+            null, '' => self::NOT_INFORMED,
+            default => $type,
+        };
+    }
+
+    /**
+     * Formata a amortização conforme o tipo registrado no evento:
+     * percentage = fração aplicada ao PU (exibida como %); unit_value = PU em R$;
+     * residual = saldo residual; none = sem amortização.
+     */
+    private function amortizationLabel(EmissionPuEvent $event): string
+    {
+        return match ($event->amortization_type) {
+            'percentage' => $event->amortization_value !== null
+                ? $this->percent((float) $event->amortization_value * 100)
+                : self::NOT_INFORMED,
+            'unit_value' => $event->amortization_value !== null
+                ? $this->pu((float) $event->amortization_value)
+                : self::NOT_INFORMED,
+            'residual' => 'Saldo residual',
+            'none', null, '' => '—',
+            default => $event->amortization_value !== null ? (string) $event->amortization_value : '—',
+        };
     }
 
     private function debtBalanceValue(Emission $emission): ?float

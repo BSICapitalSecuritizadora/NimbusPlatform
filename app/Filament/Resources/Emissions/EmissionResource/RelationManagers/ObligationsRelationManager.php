@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
 use App\Filament\Exports\ObligationExporter;
+use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
@@ -201,6 +202,7 @@ class ObligationsRelationManager extends RelationManager
                     ->exporter(ObligationExporter::class),
             ])
             ->actions([
+                $this->makeCommentsAction(),
                 $this->makeHistoryAction(),
                 $this->makeSubmitForReviewAction(),
                 $this->makeCompleteAction(),
@@ -242,6 +244,19 @@ class ObligationsRelationManager extends RelationManager
             ]));
     }
 
+    protected function makeCommentsAction(): Action
+    {
+        return Action::make('comments')
+            ->label('Comentários internos')
+            ->icon('heroicon-o-chat-bubble-left-right')
+            ->color('gray')
+            ->url(fn (Obligation $record): string => EmissionResource::getUrl('obligation-comments', [
+                'record' => $record->emission_id,
+                'obligation' => $record->id,
+            ]))
+            ->authorize(fn (): bool => $this->canViewComments());
+    }
+
     protected function canCreateObligations(): bool
     {
         return auth()->user()?->can(AccessPermission::ObligationsCreate->value) ?? false;
@@ -261,6 +276,13 @@ class ObligationsRelationManager extends RelationManager
     protected function canViewHistory(): bool
     {
         return auth()->user()?->can(AccessPermission::ObligationsViewHistory->value) ?? false;
+    }
+
+    protected function canViewComments(): bool
+    {
+        return (auth()->user()?->can(AccessPermission::EmissionsView->value) ?? false)
+            && (auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false)
+            && (auth()->user()?->can(AccessPermission::ObligationsViewComments->value) ?? false);
     }
 
     protected function makeSubmitForReviewAction(): Action

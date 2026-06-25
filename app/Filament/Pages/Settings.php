@@ -23,7 +23,7 @@ class Settings extends Page
 
     protected string $view = 'filament.pages.settings';
 
-    protected static string|UnitEnum|null $navigationGroup = "Configura\u{00E7}\u{00F5}es";
+    protected static string|UnitEnum|null $navigationGroup = 'Administração';
 
     protected static ?int $navigationSort = 90;
 

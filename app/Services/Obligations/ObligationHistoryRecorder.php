@@ -3,6 +3,7 @@
 namespace App\Services\Obligations;
 
 use App\Models\Obligation;
+use App\Models\ObligationComment;
 use App\Models\ObligationEvidence;
 use App\Models\ObligationHistoryEntry;
 use App\Models\User;
@@ -260,6 +261,61 @@ class ObligationHistoryRecorder
         );
     }
 
+    public function recordCommentAdded(
+        Obligation $obligation,
+        ObligationComment $comment,
+        ?int $userId = null,
+    ): ObligationHistoryEntry {
+        return $this->record(
+            $obligation,
+            ObligationHistoryEntry::EVENT_COMMENT_ADDED,
+            ObligationHistoryEntry::SOURCE_COMMENT,
+            'Comentário interno adicionado',
+            'Comentário interno adicionado.',
+            metadata: [
+                'comment_id' => $comment->id,
+            ],
+            userId: $userId,
+        );
+    }
+
+    public function recordCommentUpdated(
+        Obligation $obligation,
+        ObligationComment $comment,
+        ?int $userId = null,
+    ): ObligationHistoryEntry {
+        return $this->record(
+            $obligation,
+            ObligationHistoryEntry::EVENT_COMMENT_UPDATED,
+            ObligationHistoryEntry::SOURCE_COMMENT,
+            'Comentário interno editado',
+            'Comentário interno editado.',
+            metadata: [
+                'comment_id' => $comment->id,
+                'edited_at' => $comment->edited_at?->toDateTimeString(),
+            ],
+            userId: $userId,
+        );
+    }
+
+    public function recordCommentRemoved(
+        Obligation $obligation,
+        int $commentId,
+        ?int $userId = null,
+    ): ObligationHistoryEntry {
+        return $this->record(
+            $obligation,
+            ObligationHistoryEntry::EVENT_COMMENT_REMOVED,
+            ObligationHistoryEntry::SOURCE_COMMENT,
+            'Comentário interno removido',
+            'Comentário interno removido.',
+            metadata: [
+                'comment_id' => $commentId,
+            ],
+            userId: $userId,
+        );
+    }
+
     /**
      * Low-level, standardized entry point used by all helpers above.
      *
@@ -305,6 +361,7 @@ class ObligationHistoryRecorder
         return in_array($source, [
             ObligationHistoryEntry::SOURCE_MANUAL,
             ObligationHistoryEntry::SOURCE_WORKFLOW,
+            ObligationHistoryEntry::SOURCE_COMMENT,
         ], true) ? auth()->id() : null;
     }
 

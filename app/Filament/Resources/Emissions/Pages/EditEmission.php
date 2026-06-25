@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Emissions\Pages;
 
 use App\Actions\Emissions\HomologatePuCurve;
 use App\Actions\Emissions\InvalidatePuCurve;
+use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
@@ -210,8 +211,8 @@ class EditEmission extends EditRecord
                 ->action(function (): void {
                     try {
                         $version = app(HomologatePuCurve::class)->handle($this->getRecord(), null, auth()->id());
-                    } catch (\InvalidArgumentException $exception) {
-                        Notification::make()->title('Nao foi possivel homologar.')->body($exception->getMessage())->danger()->send();
+                    } catch (\InvalidArgumentException|\App\Domain\PuCalculator\Exceptions\PuMakerCheckerException $exception) {
+                        Notification::make()->title('Nao foi possivel homologar.')->body($exception->getMessage())->danger()->persistent()->send();
 
                         return;
                     }
@@ -613,7 +614,7 @@ class EditEmission extends EditRecord
                 ->required(),
             Placeholder::make('ipca_notice')
                 ->label('')
-                ->content('O indexador IPCA esta EM PREPARACAO: os parametros podem ser cadastrados, mas a geracao da curva permanece bloqueada nesta versao.')
+                ->content('Operacao IPCA: a geracao exige IPCA publicado cobrindo o periodo e, para meses futuros sob politica de mercado, uma SERIE PROJETADA APROVADA (maker/checker). A homologacao tambem exige maker/checker. Importe indices e aprove a serie em "Indices & Series Projetadas".')
                 ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Ipca->value),
             TextInput::make('spread_rate')
                 ->label('Spread (% a.a.)')
@@ -621,10 +622,39 @@ class EditEmission extends EditRecord
                 ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value)
                 ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value),
             TextInput::make('annual_rate')
-                ->label('Taxa prefixada (% a.a.)')
+                ->label(fn (Get $get): string => $get('indexer') === PuIndexer::Ipca->value
+                    ? 'Taxa real / cupom (% a.a.)'
+                    : 'Taxa prefixada (% a.a.)')
                 ->inputMode('decimal')
-                ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Prefixed->value)
-                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Prefixed->value),
+                ->required(fn (Get $get): bool => in_array($get('indexer'), [PuIndexer::Prefixed->value, PuIndexer::Ipca->value], true))
+                ->visible(fn (Get $get): bool => in_array($get('indexer'), [PuIndexer::Prefixed->value, PuIndexer::Ipca->value], true)),
+            DatePicker::make('base_index_date')
+                ->label('Data-base do indice (aniversario de correcao)')
+                ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Ipca->value)
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Ipca->value),
+            TextInput::make('index_lag_months')
+                ->label('Defasagem do indice (meses)')
+                ->numeric()
+                ->default(2)
+                ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Ipca->value)
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Ipca->value),
+            Select::make('correction_frequency')
+                ->label('Frequencia de correcao')
+                ->options([
+                    'monthly' => 'Mensal',
+                    'annual' => 'Anual',
+                ])
+                ->default('monthly')
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Ipca->value),
+            Select::make('index_projection_policy')
+                ->label('Politica de projecao do IPCA')
+                ->options([
+                    IpcaProjectionPolicy::PublishedOnly->value => IpcaProjectionPolicy::PublishedOnly->label(),
+                    IpcaProjectionPolicy::Market->value => IpcaProjectionPolicy::Market->label(),
+                ])
+                ->default(IpcaProjectionPolicy::PublishedOnly->value)
+                ->helperText('"Somente publicado" bloqueia meses sem IPCA publicado. "Mercado" permite projecao de uma serie APROVADA.')
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Ipca->value),
             TextInput::make('business_day_basis')
                 ->label('Base de dias uteis')
                 ->numeric()
@@ -670,6 +700,10 @@ class EditEmission extends EditRecord
             'spread_rate' => $parameter?->getRawOriginal('spread_rate') ?? $this->getRecord()->getRawOriginal('remuneration_rate') ?? '0.00000000',
             'annual_rate' => $parameter?->getRawOriginal('annual_rate'),
             'indexer' => $parameter?->indexer ?? PuIndexer::Cdi->value,
+            'base_index_date' => $parameter?->base_index_date?->toDateString(),
+            'index_lag_months' => $parameter?->index_lag_months ?? 2,
+            'correction_frequency' => $parameter?->correction_frequency ?? 'monthly',
+            'index_projection_policy' => $parameter?->index_projection_policy ?? IpcaProjectionPolicy::PublishedOnly->value,
             'business_day_basis' => $parameter?->business_day_basis ?? 252,
             'calendar_code' => $parameter?->calendar_code ?? 'B3',
             'index_rate_lookup_mode' => $parameter?->index_rate_lookup_mode ?? PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,

@@ -33,7 +33,7 @@ class MeasurementResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'filename';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
     protected static ?int $navigationSort = 60;
 

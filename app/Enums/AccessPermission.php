@@ -52,6 +52,10 @@ enum AccessPermission: string
     case ObligationsApproveEvidence = 'obligations.approve_evidence';
     case ObligationsRejectEvidence = 'obligations.reject_evidence';
     case ObligationsViewHistory = 'obligations.view_history';
+    case ObligationsViewComments = 'obligations.view_comments';
+    case ObligationsCreateComment = 'obligations.create_comment';
+    case ObligationsUpdateComment = 'obligations.update_comment';
+    case ObligationsDeleteComment = 'obligations.delete_comment';
     case ObligationsSendNotifications = 'obligations.send_notifications';
     case ObligationsExport = 'obligations.export';
     case DocumentsView = 'documents.view';
@@ -137,9 +141,15 @@ enum AccessPermission: string
     case PuCurveHomologate = 'pu.curve.homologate';
     case PuCurveInvalidate = 'pu.curve.invalidate';
     case PuDashboardView = 'pu.dashboard.view';
+    case PuIndexImport = 'pu.index.import';
+    case PuProjectionApprove = 'pu.projection.approve';
     case AuditActivitiesView = 'audit.activities.view';
     case AuditDocumentDownloadsView = 'audit.document-downloads.view';
     case ReportsView = 'reports.view';
+    case ReportsCommentsView = 'reports.comments.view';
+    case ReportsCommentsCreate = 'reports.comments.create';
+    case ReportsCommentsUpdate = 'reports.comments.update';
+    case ReportsCommentsDelete = 'reports.comments.delete';
     case SettingsView = 'settings.view';
 
     /**
@@ -231,6 +241,10 @@ enum AccessPermission: string
             self::ObligationsApproveEvidence => 'Obrigações: aprovar evidências',
             self::ObligationsRejectEvidence => 'Obrigações: rejeitar evidências',
             self::ObligationsViewHistory => 'Obrigações: visualizar histórico',
+            self::ObligationsViewComments => 'Obrigações: visualizar comentários internos',
+            self::ObligationsCreateComment => 'Obrigações: criar comentários internos',
+            self::ObligationsUpdateComment => 'Obrigações: editar comentários internos',
+            self::ObligationsDeleteComment => 'Obrigações: remover comentários internos',
             self::ObligationsSendNotifications => 'Obrigações: enviar notificações',
             self::ObligationsExport => 'Obrigações: exportar',
             self::DocumentsView => 'Documentos: visualizar',
@@ -316,9 +330,15 @@ enum AccessPermission: string
             self::PuCurveHomologate => 'Curva de PU: homologar',
             self::PuCurveInvalidate => 'Curva de PU: invalidar',
             self::PuDashboardView => 'Curva de PU: painel operacional',
+            self::PuIndexImport => 'Curva de PU: importar índices',
+            self::PuProjectionApprove => 'Curva de PU: aprovar série projetada',
             self::AuditActivitiesView => 'Auditoria logs do sistema: visualizar',
             self::AuditDocumentDownloadsView => 'Auditoria downloads do portal: visualizar',
             self::ReportsView => 'Relatórios: visualizar',
+            self::ReportsCommentsView => 'Relatórios — comentários: visualizar',
+            self::ReportsCommentsCreate => 'Relatórios — comentários: criar',
+            self::ReportsCommentsUpdate => 'Relatórios — comentários: editar',
+            self::ReportsCommentsDelete => 'Relatórios — comentários: excluir',
             self::SettingsView => 'Configurações: visualizar',
         };
     }
@@ -333,6 +353,7 @@ enum AccessPermission: string
             str_starts_with($this->value, 'recruitment.') => 'Recrutamento',
             str_starts_with($this->value, 'pu.') => 'Curva de PU',
             str_starts_with($this->value, 'audit.') => 'Auditoria',
+            str_starts_with($this->value, 'reports.') => 'Relatórios',
             str_starts_with($this->value, 'proposal') => 'Comercial',
             in_array($this, [
                 self::InvestorsView,
@@ -377,6 +398,10 @@ enum AccessPermission: string
                 self::ObligationsApproveEvidence,
                 self::ObligationsRejectEvidence,
                 self::ObligationsViewHistory,
+                self::ObligationsViewComments,
+                self::ObligationsCreateComment,
+                self::ObligationsUpdateComment,
+                self::ObligationsDeleteComment,
                 self::ObligationsSendNotifications,
                 self::ObligationsExport,
                 self::ExpensesView,

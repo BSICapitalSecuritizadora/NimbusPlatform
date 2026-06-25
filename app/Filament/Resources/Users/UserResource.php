@@ -30,7 +30,7 @@ class UserResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Usuários';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurações';
+    protected static string|\UnitEnum|null $navigationGroup = 'Administração';
 
     protected static ?string $navigationParentItem = 'Configurações';
 

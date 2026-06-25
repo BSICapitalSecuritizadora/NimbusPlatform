@@ -33,7 +33,7 @@ class JobApplicationResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Candidaturas';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Recrutamento';
+    protected static string|\UnitEnum|null $navigationGroup = 'Administração';
 
     protected static ?int $navigationSort = 20;
 

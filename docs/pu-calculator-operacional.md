@@ -5,6 +5,137 @@ permissões, estados da curva, geração/validação em fila, reprocessamento se
 de dados faltantes. A engine de cálculo permanece isolada em `app/Domain/PuCalculator` e não deve ser
 alterada por este fluxo.
 
+---
+
+## Fase operacional CDI e IPCA (2026-06-25)
+
+Esta fase tornou a calculadora **operacional de verdade** para **CDI** e **IPCA**: configurar a operação,
+importar/cadastrar índices, cadastrar e **aprovar série projetada IPCA**, gerar e validar a curva, homologar
+via **maker/checker** e usar a curva homologada. O CDI e o Prefixado **não mudaram** (sem regressão).
+
+> **Importante (governança):** o flag estático `PuIndexer::Ipca->isHomologated()` **permanece `false`** por
+> decisão de governança (a engine, como um todo, não é declarada homologada por default e há *guard test*
+> protegendo isso). A homologação do IPCA é **contextual por emissão** e medida por
+> `PuIpcaHomologationStatusService::isOperationallyHomologated($emission)` — ver abaixo.
+
+### 1. Calculadora CDI (operacional)
+
+Fluxo inalterado (engine calibrada). Em **Editar Emissão**:
+
+1. **Configurar Cálculo de PU** → indexador **CDI**, período, PU inicial, **spread**, calendário e modo de
+   consulta do CDI.
+2. **Importar CDI** (ver seção 3) cobrindo todo o período da curva.
+3. **Gerar Curva PU** → fila; cria nova versão. Pré-requisitos bloqueiam se faltar CDI/calendário.
+4. **Validar contra Planilha** → status `validated`/`divergent`.
+5. **Homologar** (maker/checker — ver seção 5) → versão `homologated`.
+6. **Exportar Curva PU** (CSV) e **PDF de homologação**.
+
+### 2. Calculadora IPCA (operacional, controlada)
+
+Em **Editar Emissão → Configurar Cálculo de PU**, escolha indexador **IPCA**. Campos exigidos:
+
+- **Taxa real / cupom (% a.a.)** (`annual_rate`);
+- **Data-base do índice** (`base_index_date`) — define o dia do aniversário de correção;
+- **Defasagem do índice (meses)** (`index_lag_months`);
+- **Frequência de correção** (`correction_frequency`, ex.: mensal);
+- **Política de projeção do IPCA** (`index_projection_policy`): `published_only` (default) ou `market`.
+
+Depois:
+
+1. **Importar IPCA publicado** (seção 3) cobrindo os meses de referência exigidos (1º de cada mês).
+2. Se houver meses futuros sob política `market`: **importar série projetada** e **aprová-la** (seções 3 e 4).
+3. **Gerar Curva PU** → o `PuCurvePrerequisiteService` só libera quando **todos** os meses de referência
+   tiverem IPCA **publicado** ou **projetado de uma série APROVADA**. Caso contrário, bloqueia com mensagem
+   clara (nomeando o mês ou a falta de aprovação).
+4. **Validar até o vencimento** (seção 6), **homologar** (maker/checker) e **exportar**.
+
+A **memória de cálculo** de cada linha registra a proveniência do índice (`index_rate_type`,
+`index_is_projected`, `index_source`, `index_projection_source`, `index_projection_reference_date`,
+`index_projection_policy`).
+
+### 3. Importar / cadastrar índices (CDI / IPCA publicado / IPCA projetado)
+
+UI: **Gestão → Índices (CDI/IPCA)** (permissão `pu.index.import`). Duas ações de importação por CSV
+(cabeçalho `rate_date,rate_value[,notes]`; data `YYYY-MM-DD` para CDI ou `YYYY-MM` para IPCA mensal):
+
+- **Importar índices publicados** — escolha o indexador (CDI/IPCA) e a fonte; linhas entram como
+  **publicadas** (`is_projected = false`). Para IPCA a data é normalizada para o **1º do mês**.
+- **Importar série projetada** — cria uma **série projetada** (`IndexProjectionSeries`) em estado
+  **importada** e vincula cada linha (`is_projected = true`, `index_projection_series_id`).
+
+Por trás: `IndexRateImportService` (parsing/upsert) e `IndexProjectionSeriesService` (ciclo de vida).
+`reportedDate`/`reportedValue` continuam preservados para linhas publicadas (o CDI calibrado não muda).
+
+### 4. Aprovar série projetada IPCA (maker/checker)
+
+UI: **Gestão → Séries Projetadas IPCA** (permissão `pu.projection.approve`). A série tem ciclo de vida
+`IndexProjectionSeriesStatus`: **rascunho → importada → aprovada / rejeitada → obsoleta**. Ações na tabela:
+**Aprovar**, **Rejeitar** (com motivo) e **Obsoletar**.
+
+- A curva **só usa projeção de série APROVADA**. Série não aprovada **bloqueia** a geração com mensagem clara.
+- **Maker/checker:** quem **importou** a série **não pode aprová-la/rejeitá-la** (exceto **super-admin**).
+
+### 5. Maker/checker (homologação)
+
+- **Maker** gera/valida a curva (`generated_by`/`validated_by`).
+- **Checker** homologa (`pu.curve.homologate`); o checker **não pode** ser o maker (gerou/validou), **exceto
+  super-admin** (`Gate::before` + `hasRole('super-admin')`). Violação lança `PuMakerCheckerException` com
+  mensagem clara (sem alterar a versão).
+- A versão registra usuário/data de geração/validação/homologação, `engine_version`, política e resumo de
+  validação (`parameters_snapshot`/`validation_summary`).
+
+### 6. Validação operacional (publicado × projetado)
+
+- **CDI:** validação atual mantida (comparação contra gabarito/planilha).
+- **IPCA:** o trecho com **IPCA publicado** é comparável ao gabarito; o trecho **projetado** **não tem
+  referência externa** (o gabarito congela o PU após a última publicação). A validação operacional do trecho
+  projetado é **decisão de negócio** — exige **série projetada aprovada internamente**, não comparação contra
+  gabarito externo. A memória de cálculo deixa explícito, por linha, se o índice é publicado ou projetado.
+
+### 7. Quando `isHomologated()` pode virar `true`
+
+- `PuIndexer::Ipca->isHomologated()` **continua `false`** (governança + *guard test*) — **não** vira
+  automaticamente.
+- A elegibilidade operacional é dada por `PuIpcaHomologationStatusService::isOperationallyHomologated()`,
+  que retorna `true` **apenas** quando: (a) existe **versão de curva homologada** (maker/checker) para a
+  emissão; e (b) sob política `market`, existe **série projetada aprovada**. Sem isso, `false`.
+
+### 8. Índice publicado × projetado
+
+A distinção vem da linha de `index_rates` (`is_projected`) e, para projeção, do **status da série** vinculada
+(`index_projection_series_id`). A **política** do parâmetro decide se projeção é permitida; a **aprovação da
+série** decide se é utilizável. Projeção nunca é silenciosa nem mascarada de publicada.
+
+### 9. Risco de drift de arredondamento (amplificado pela quantidade)
+
+O drift por cota (~2e-4) é amplificado pela quantidade no total. Em **CDI** está dentro das tolerâncias
+documentadas. Em **IPCA**, ao adotar série projetada real e estender a curva até o vencimento, **revisite a
+escala de arredondamento do total** antes de homologar.
+
+### 10. Nota: número-índice de Ago/2021
+
+O NI de **Ago/2021** (denominador da 1ª variação no gabarito Rio Branco) **não é publicado** e é
+**recuperado do próprio gabarito apenas para o teste de homologação** — **não** deve ser usado em produção.
+
+### 11. Migrations no MySQL real
+
+O ambiente de dev valida o schema em **SQLite em memória**. Em produção/staging **rode**:
+
+```bash
+php artisan migrate
+```
+
+Novas migrations desta fase: `create_index_projection_series_table`,
+`add_index_projection_series_id_to_index_rates_table`, `seed_pu_operational_permissions`
+(`pu.index.import`, `pu.projection.approve`).
+
+### 12. Isolamento (nunca `git add -A` / `git add .`)
+
+O working tree pode ter trabalho concorrente (site/Obrigações/proposals). **Faça stage seletivo apenas dos
+arquivos de PU.** **Nunca** `git add -A` nem `git add .`. **Nenhum commit sem aprovação.**
+
+---
+
 ## Permissões
 
 As ações críticas são controladas por permissões granulares (grupo **"Curva de PU"** em Perfis):
@@ -17,8 +148,10 @@ As ações críticas são controladas por permissões granulares (grupo **"Curva
 | `pu.curve.validate` | Validar contra planilha |
 | `pu.curve.export` | Exportar curva (CSV) |
 | `pu.curve.reprocess` | Reprocessar curva quando já existe versão **homologada** |
-| `pu.curve.homologate` | Homologar curva |
+| `pu.curve.homologate` | Homologar curva (checker — ver maker/checker) |
 | `pu.curve.invalidate` | Invalidar curva |
+| `pu.index.import` | Importar/cadastrar índices (CDI/IPCA, publicado/projetado) |
+| `pu.projection.approve` | Aprovar/rejeitar/obsoletar série projetada IPCA (checker) |
 
 **Distribuição padrão por perfil** (seeder `RolesAndPermissionsSeeder`):
 - **super-admin / admin**: todas.
@@ -309,11 +442,18 @@ capitalização dos juros não pagos é incorporada à base de correção.
 **Pendente (mantém bloqueio):** **aprovação maker/checker** de uma série projetada de mercado. A política
 de projeção já existe; falta o dado aprovado e a homologação formal. Até lá a geração permanece bloqueada.
 
-O bloqueio operacional é aplicado em duas camadas, cobertas por testes:
+> **Atualização (2026-06-25 — fase operacional):** o **bloqueio total** do IPCA no
+> `PuCurvePrerequisiteService` foi **removido**. A geração IPCA agora é **liberada por pré-requisitos
+> reais** (cobertura de IPCA publicado + série projetada **aprovada** até o vencimento) e a homologação é
+> controlada por **maker/checker**. Ver a seção **"Fase operacional CDI e IPCA (2026-06-25)"** no topo deste
+> documento. O `isHomologated()` do enum permanece `false` (governança); a elegibilidade operacional é
+> medida por `PuIpcaHomologationStatusService`.
 
-1. `PuIndexer::Ipca->isHomologated()` retorna `false` (consumido por UI/PDF).
-2. `PuCurvePrerequisiteService` adiciona issue bloqueante com a mensagem
-   "A curva IPCA está em preparação e não pode ser gerada nesta versão da calculadora.".
+Historicamente (antes desta fase) o bloqueio era aplicado em duas camadas:
+
+1. `PuIndexer::Ipca->isHomologated()` retorna `false` (consumido por UI/PDF) — **mantido**.
+2. `PuCurvePrerequisiteService` adicionava issue bloqueante "A curva IPCA está em preparação..." —
+   **substituído** por checagem de cobertura publicado/projetado-aprovado.
 
 ### Política de projeção IPCA (implementada)
 

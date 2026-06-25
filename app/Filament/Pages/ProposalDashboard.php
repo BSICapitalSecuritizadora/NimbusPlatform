@@ -22,7 +22,7 @@ class ProposalDashboard extends Dashboard
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Comercial';
+    protected static string|\UnitEnum|null $navigationGroup = 'Operações';
 
     protected static ?int $navigationSort = 5;
 

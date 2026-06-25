@@ -23,9 +23,8 @@ enum ProposalStatus: string
         return match ($this) {
             self::AwaitingCompletion, self::AwaitingInformation => 'warning',
             self::InReview => 'info',
-            self::Approved => 'success',
+            self::Approved, self::Completed => 'success',
             self::Rejected => 'danger',
-            self::Completed => 'gray',
         };
     }
 

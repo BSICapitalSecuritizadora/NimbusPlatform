@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class IndexRate extends Model
 {
@@ -21,6 +22,7 @@ class IndexRate extends Model
         'projection_source',
         'projection_reference_date',
         'projection_policy',
+        'index_projection_series_id',
         'notes',
     ];
 
@@ -39,6 +41,17 @@ class IndexRate extends Model
         $indexerValue = $indexer instanceof PuIndexer ? $indexer->value : $indexer;
 
         return $query->where('indexer', $indexerValue);
+    }
+
+    /**
+     * Série projetada (maker/checker) à qual esta linha projetada pertence. Linhas publicadas
+     * mantêm a relação nula.
+     *
+     * @return BelongsTo<IndexProjectionSeries, $this>
+     */
+    public function projectionSeries(): BelongsTo
+    {
+        return $this->belongsTo(IndexProjectionSeries::class, 'index_projection_series_id');
     }
 
     /**

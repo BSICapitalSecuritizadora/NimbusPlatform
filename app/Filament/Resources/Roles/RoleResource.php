@@ -28,7 +28,7 @@ class RoleResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Perfis de acesso';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Configurações';
+    protected static string|\UnitEnum|null $navigationGroup = 'Administração';
 
     protected static ?string $navigationParentItem = 'Configurações';
 

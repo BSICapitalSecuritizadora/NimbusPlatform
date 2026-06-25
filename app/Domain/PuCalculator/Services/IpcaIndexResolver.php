@@ -59,6 +59,15 @@ class IpcaIndexResolver
             ));
         }
 
+        if ($rate->isProjected && $rate->projectionSeriesId !== null && ! $rate->isApprovedForOperationalUse()) {
+            throw new IndexerNotSupportedException(sprintf(
+                'O número-índice IPCA projetado de %s pertence a uma série projetada que NÃO está aprovada (status: %s). A curva só pode usar projeção de uma série aprovada via maker/checker (curva em %s).',
+                $referenceMonth->toDateString(),
+                $rate->projectionSeriesStatus ?? 'desconhecido',
+                $contextDate->toDateString(),
+            ));
+        }
+
         return new IpcaIndexResolution(
             referenceDate: $referenceMonth,
             value: $rate->value,

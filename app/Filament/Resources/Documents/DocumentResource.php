@@ -30,7 +30,7 @@ class DocumentResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'title';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastro';
+    protected static string|UnitEnum|null $navigationGroup = 'Governança & Risco';
 
     protected static ?int $navigationSort = 30;
 

@@ -66,10 +66,11 @@ it('increments versions and marks the previous one obsolete on reprocess', funct
 
 it('preserves a homologated version when reprocessing with confirmation', function () {
     $user = User::factory()->create();
+    $checker = User::factory()->create();
     $emission = seedReadyEmissionForVersioning();
 
     app()->call([new GeneratePuDailyCurveJob($emission->id, $user->id), 'handle']);
-    app(HomologatePuCurve::class)->handle($emission, 'v1', $user->id);
+    app(HomologatePuCurve::class)->handle($emission, 'v1', $checker->id);
 
     app()->call([new GeneratePuDailyCurveJob($emission->id, $user->id, true), 'handle']);
 
@@ -106,10 +107,11 @@ it('derives the next version even when existing versions are not in the canonica
 
 it('blocks reprocessing a homologated curve without explicit confirmation', function () {
     $user = User::factory()->create();
+    $checker = User::factory()->create();
     $emission = seedReadyEmissionForVersioning();
 
     app()->call([new GeneratePuDailyCurveJob($emission->id, $user->id), 'handle']);
-    app(HomologatePuCurve::class)->handle($emission, 'v1', $user->id);
+    app(HomologatePuCurve::class)->handle($emission, 'v1', $checker->id);
 
     app()->call([new GeneratePuDailyCurveJob($emission->id, $user->id, false), 'handle']);
 

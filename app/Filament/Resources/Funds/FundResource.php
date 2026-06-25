@@ -34,7 +34,7 @@ class FundResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'account';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastro';
+    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
 
     public static function form(Schema $schema): Schema
     {

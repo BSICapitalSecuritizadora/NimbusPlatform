@@ -17,6 +17,9 @@
         'reopened' => 'info',
         'notification_sent' => 'success',
         'notification_failed' => 'danger',
+        'comment_added' => 'info',
+        'comment_updated' => 'gray',
+        'comment_removed' => 'warning',
     ];
 @endphp
 

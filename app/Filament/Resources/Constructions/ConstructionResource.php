@@ -31,7 +31,7 @@ class ConstructionResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'development_name';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastro';
+    protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
     protected static ?int $navigationSort = 30;
 

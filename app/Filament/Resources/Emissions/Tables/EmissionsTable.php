@@ -44,7 +44,7 @@ class EmissionsTable
                     ->formatStateUsing(fn (?string $state): string => Emission::STATUS_OPTIONS[$state] ?? (string) $state)
                     ->color(fn (?string $state): string => match ($state) {
                         'draft' => 'gray',
-                        'default' => 'warning',
+                        'default' => 'danger',
                         'active' => 'success',
                         'closed' => 'danger',
                         default => 'gray',
@@ -74,11 +74,15 @@ class EmissionsTable
             ])
             ->actions([
                 EditAction::make()
+                    ->label('Editar Emissão')
                     ->visible(fn (): bool => auth()->user()->can('emissions.update')),
 
                 DeleteAction::make()
+                    ->label('Excluir')
                     ->visible(fn (): bool => auth()->user()->can('emissions.delete')),
             ])
-            ->defaultSort('name');
+            ->defaultSort('name')
+            ->emptyStateHeading('Nenhuma emissão encontrada')
+            ->emptyStateDescription('Ainda não existem emissões cadastradas no sistema ou elas não correspondem aos filtros.');
     }
 }

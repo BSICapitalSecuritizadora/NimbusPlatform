@@ -32,7 +32,7 @@ class ReceivableResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'reference_month';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|UnitEnum|null $navigationGroup = 'Governança & Risco';
 
     protected static ?int $navigationSort = 40;
 

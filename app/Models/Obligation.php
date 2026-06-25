@@ -135,4 +135,10 @@ class Obligation extends Model
     {
         return $this->hasMany(ObligationHistoryEntry::class);
     }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ObligationComment::class)
+            ->latest('created_at');
+    }
 }

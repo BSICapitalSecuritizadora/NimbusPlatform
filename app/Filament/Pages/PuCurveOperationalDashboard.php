@@ -18,7 +18,7 @@ class PuCurveOperationalDashboard extends Dashboard
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBarSquare;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|\UnitEnum|null $navigationGroup = 'Operações';
 
     protected static ?int $navigationSort = 26;
 

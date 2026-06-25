@@ -92,11 +92,14 @@ class ProposalsTable
                             ->send();
                     }),
                 ViewAction::make()
+                    ->label('Ver Detalhes')
                     ->visible(fn (Proposal $record): bool => ProposalResource::canView($record)),
                 EditAction::make()
                     ->visible(fn (Proposal $record): bool => ProposalResource::canEdit($record)),
             ])
 
-            ->defaultSort('distribution_sequence', 'desc');
+            ->defaultSort('distribution_sequence', 'desc')
+            ->emptyStateHeading('Nenhuma proposta encontrada')
+            ->emptyStateDescription('Ainda não existem propostas cadastradas no sistema ou elas não correspondem aos filtros.');
     }
 }

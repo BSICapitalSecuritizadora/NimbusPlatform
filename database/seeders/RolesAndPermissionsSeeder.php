@@ -42,7 +42,9 @@ class RolesAndPermissionsSeeder extends Seeder
             'obligations.upload_evidence', 'obligations.view_evidence',
             'obligations.download_evidence',
             'obligations.approve_evidence', 'obligations.reject_evidence',
-            'obligations.view_history',
+            'obligations.view_history', 'obligations.view_comments',
+            'obligations.create_comment', 'obligations.update_comment',
+            'obligations.delete_comment',
             'documents.view', 'documents.create', 'documents.update',
             'constructions.view', 'constructions.create', 'constructions.update',
             'sales-boards.view', 'sales-boards.create', 'sales-boards.update',
@@ -53,7 +55,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'measurements.review', 'measurements.pay', 'measurements.finalize',
             'pu.curve.view', 'pu.parameters.configure', 'pu.curve.generate',
             'pu.curve.validate', 'pu.curve.export', 'pu.curve.reprocess',
-            'pu.dashboard.view',
+            'pu.dashboard.view', 'pu.index.import',
         ]);
 
         $commercialRepresentative->syncPermissions([

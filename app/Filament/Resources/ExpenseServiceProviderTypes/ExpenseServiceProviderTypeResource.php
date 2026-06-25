@@ -33,7 +33,7 @@ class ExpenseServiceProviderTypeResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastro';
+    protected static string|UnitEnum|null $navigationGroup = 'Cadastros Base';
 
     protected static ?int $navigationSort = 41;
 

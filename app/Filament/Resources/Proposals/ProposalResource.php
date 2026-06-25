@@ -43,7 +43,7 @@ class ProposalResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Propostas';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Comercial';
+    protected static string|\UnitEnum|null $navigationGroup = 'Operações';
 
     protected static ?int $navigationSort = 10;
 
