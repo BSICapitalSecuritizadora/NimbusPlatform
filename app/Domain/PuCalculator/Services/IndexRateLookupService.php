@@ -81,7 +81,12 @@ class IndexRateLookupService implements IndexRateProvider
                 $timeline[$dateKey] = new IndexRateData(
                     date: CarbonImmutable::instance($rate->rate_date),
                     value: (string) $rate->rate_value,
-                    isProjected: (string) $rate->source_reference === 'forward_projection',
+                    isProjected: $rate->isProjectedRate(),
+                    source: $rate->source,
+                    projectionSource: $rate->projection_source,
+                    projectionReferenceDate: $rate->projection_reference_date !== null
+                        ? CarbonImmutable::instance($rate->projection_reference_date)
+                        : null,
                 );
                 $dates[] = $dateKey;
             });

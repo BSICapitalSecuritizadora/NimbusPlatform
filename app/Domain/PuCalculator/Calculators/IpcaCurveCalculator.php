@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Calculators;
 
-use App\Domain\PuCalculator\Contracts\IndexRateProvider;
 use App\Domain\PuCalculator\Contracts\PuIndexCalculatorInterface;
+use App\Domain\PuCalculator\DTOs\IpcaIndexResolution;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
-use App\Domain\PuCalculator\Enums\PuIndexer;
-use App\Domain\PuCalculator\Exceptions\IndexerNotSupportedException;
 use App\Domain\PuCalculator\Services\DecimalRounder;
+use App\Domain\PuCalculator\Services\IpcaIndexResolver;
 use App\Domain\PuCalculator\Services\PuCurveEventSupport;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
@@ -48,11 +47,17 @@ use InvalidArgumentException;
  * amortização. Assim, quando há pagamento de juros, residual = corrigido − amortização; quando a
  * amortização ocorre sem pagar juros, residual = atualizado − amortização (os juros capitalizam).
  *
- * IMPORTANTE: a homologação total ainda depende da POLÍTICA DE PROJEÇÃO DE MERCADO para meses sem IPCA
- * publicado — o gabarito congela o PU após a última NI publicada (no exemplar, 2025-07-23) e NÃO projeta
- * o IPCA até o vencimento (2028-08-23). Como essa política ainda não foi implementada, a curva lança
- * exceção clara quando exige NI não cadastrada, e `PuIndexer::Ipca::isHomologated()` permanece false.
- * A validação automatizada cobre toda a janela com IPCA publicado (incluindo as 9 amortizações).
+ * POLÍTICA DE PROJEÇÃO: para meses sem IPCA publicado a engine delega ao `IpcaIndexResolver`, que aplica
+ * o `index_projection_policy` do parâmetro. Com a política `market`, número-índice PROJETADO (cadastrado
+ * em `index_rates` com `is_projected = true`) é aceito e fica MARCADO como projetado na memória de cálculo
+ * (`index_rate_type`, `index_is_projected`, `index_source`, `index_projection_source/_reference_date`).
+ * Com `published_only` (default), qualquer mês sem publicação — ou um NI projetado — BLOQUEIA com exceção
+ * clara: a curva nunca projeta silenciosamente nem mascara projeção de publicado.
+ *
+ * IMPORTANTE: `PuIndexer::Ipca::isHomologated()` permanece false. A virada para true continua gated no
+ * fluxo maker/checker (homologação da versão da curva) + validação até o vencimento com série projetada
+ * APROVADA. A validação automatizada cobre toda a janela com IPCA publicado (incluindo as 9 amortizações)
+ * e o trecho projetado até o vencimento (cenário de mercado determinístico).
  *
  * O bloco de eventos/pagamentos/total replica conscientemente o do Prefixado (FixedRateCurveCalculator)
  * para não tocar no CDI calibrado nesta fase.
@@ -65,7 +70,7 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
         private readonly DailyFactorCalculator $dailyFactorCalculator,
         private readonly DecimalRounder $rounder,
         private readonly PuCurveEventSupport $eventSupport,
-        private readonly IndexRateProvider $indexRateProvider,
+        private readonly IpcaIndexResolver $indexResolver,
     ) {}
 
     public function calculate(Emission $emission): PuCurveGenerationResult
@@ -90,6 +95,7 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
         $endDate = CarbonImmutable::instance($parameter->curve_end_date);
         $anniversaryDay = (int) CarbonImmutable::instance($parameter->base_index_date)->day;
         $lagMonths = (int) ($parameter->index_lag_months ?? 0);
+        $projectionPolicy = $parameter->index_projection_policy;
         $couponBase = $this->rounder->round(
             bcadd('1', bcdiv((string) $parameter->annual_rate, '100', self::RATIO_SCALE + 4), self::RATIO_SCALE + 4),
             self::RATIO_SCALE,
@@ -120,6 +126,7 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
             }
 
             $referenceMonth = $openingAnniversary->startOfMonth()->subMonthsNoOverflow($lagMonths);
+            $indexResolution = $this->indexResolver->resolve($referenceMonth, $projectionPolicy, $currentDate);
 
             $isBusinessDay = ! $currentDate->isWeekend();
             $quantity = $this->eventSupport->quantityForDate($quantityTimeline, $currentDate);
@@ -141,7 +148,7 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
                 $correctionFactor = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 $correctedUnitValue = $correctionBase;
             } else {
-                $correctionRatio = $this->correctionRatio($referenceMonth, $currentDate);
+                $correctionRatio = $this->correctionRatio($indexResolution, $referenceMonth, $projectionPolicy, $currentDate);
                 $correctionFactor = $this->dailyFactorCalculator->powRatio($correctionRatio, $dupCorrection, $dut, DecimalRounder::CALCULATION_SCALE);
                 $correctedUnitValue = $this->rounder->round(
                     bcmul($correctionBase, $correctionFactor, DecimalRounder::CALCULATION_SCALE + 4),
@@ -270,7 +277,13 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
                 'quantity_raw' => $quantity,
                 'total_value_raw' => $totalValue,
                 'index_rate_date' => $referenceMonth->toDateString(),
-                'index_rate_value' => $this->indexRateProvider->exactRateForDate(PuIndexer::Ipca, $referenceMonth)?->value,
+                'index_rate_value' => $indexResolution->value,
+                'index_rate_type' => $indexResolution->type(),
+                'index_is_projected' => $indexResolution->isProjected,
+                'index_source' => $indexResolution->source,
+                'index_projection_source' => $indexResolution->projectionSource,
+                'index_projection_reference_date' => $indexResolution->projectionReferenceDate?->toDateString(),
+                'index_projection_policy' => $indexResolution->policy->value,
                 'dup_correction' => $dupCorrection,
                 'dut_correction' => $dut,
                 'dup_interest' => $couponAccrualDays,
@@ -308,7 +321,7 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
                 dupInterest: $couponAccrualDays,
                 dutInterest: $dut,
                 indexRateDate: $referenceMonth,
-                indexRateValue: $this->indexRateProvider->exactRateForDate(PuIndexer::Ipca, $referenceMonth)?->value,
+                indexRateValue: $indexResolution->value,
                 eventOriginalDate: $eventOriginalDate,
                 eventEffectiveDate: $eventEffectiveDate,
                 calculationMemory: $calculationMemory,
@@ -332,21 +345,24 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
 
     /**
      * Resolve a razão de correção do período, com piso de deflação (fator >= 1).
+     *
+     * Tanto o número-índice de referência (numerador) quanto o do mês anterior (denominador) passam pela
+     * política de projeção: meses sem IPCA publicado só são aceitos como PROJETADOS quando a política
+     * permite; caso contrário o resolver lança exceção clara (a curva nunca projeta silenciosamente).
      */
-    private function correctionRatio(CarbonImmutable $referenceMonth, CarbonImmutable $currentDate): string
-    {
-        $referenceRate = $this->indexRateProvider->exactRateForDate(PuIndexer::Ipca, $referenceMonth);
-        $previousRate = $this->indexRateProvider->exactRateForDate(PuIndexer::Ipca, $referenceMonth->subMonthNoOverflow());
+    private function correctionRatio(
+        IpcaIndexResolution $reference,
+        CarbonImmutable $referenceMonth,
+        ?string $projectionPolicy,
+        CarbonImmutable $currentDate,
+    ): string {
+        $previous = $this->indexResolver->resolve(
+            $referenceMonth->subMonthNoOverflow(),
+            $projectionPolicy,
+            $currentDate,
+        );
 
-        if ($referenceRate === null || $previousRate === null) {
-            throw new IndexerNotSupportedException(sprintf(
-                'Não há número-índice IPCA cadastrado para %s (curva em %s). A política de projeção de mercado ainda não foi implementada.',
-                $referenceMonth->toDateString(),
-                $currentDate->toDateString(),
-            ));
-        }
-
-        $ratio = bcdiv($referenceRate->value, $previousRate->value, self::RATIO_SCALE);
+        $ratio = bcdiv($reference->value, $previous->value, self::RATIO_SCALE);
 
         if (bccomp($ratio, '1', self::RATIO_SCALE) < 0) {
             return $this->rounder->normalize('1', self::RATIO_SCALE);

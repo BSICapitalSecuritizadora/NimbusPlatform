@@ -10,11 +10,15 @@ use App\Models\ExtractedObligation;
 use App\Models\Obligation;
 use App\Models\User;
 use App\Services\GeminiService;
+use App\Services\Obligations\ObligationSuggestionReviewService;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -56,6 +60,17 @@ function makeTermDocument(Emission $emission): Document
     return $document;
 }
 
+function makeSuggestionReviewer(array $permissions): User
+{
+    $user = User::factory()->create();
+    $user->givePermissionTo(array_merge([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsReviewSuggestions->value,
+    ], $permissions));
+
+    return $user;
+}
+
 it('registers the obligations permissions in the access enum', function () {
     expect(AccessPermission::values())->toContain(
         'obligations.view',
@@ -63,6 +78,9 @@ it('registers the obligations permissions in the access enum', function () {
         'obligations.update',
         'obligations.delete',
         'obligations.generate',
+        'obligations.review_suggestions',
+        'obligations.approve_suggestion',
+        'obligations.reject_suggestion',
         'obligations.view_dashboard',
         'obligations.submit_for_review',
         'obligations.complete',
@@ -126,7 +144,9 @@ it('stores suggestions and replaces previous pending ones when the job runs', fu
     $emission = Emission::factory()->create();
     $document = makeTermDocument($emission);
 
-    $stalePending = ExtractedObligation::factory()->for($emission)->create(['status' => 'suggested']);
+    $stalePending = ExtractedObligation::factory()->for($emission)->create([
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
+    ]);
     $approved = ExtractedObligation::factory()->for($emission)->approved()->create();
 
     fakeGeminiObligations([
@@ -144,7 +164,7 @@ it('stores suggestions and replaces previous pending ones when the job runs', fu
     expect(ExtractedObligation::find($stalePending->id))->toBeNull()
         ->and(ExtractedObligation::find($approved->id))->not->toBeNull();
 
-    $created = $emission->extractedObligations()->where('status', 'suggested')->get();
+    $created = $emission->extractedObligations()->where('status', ExtractedObligation::STATUS_SUGGESTED)->get();
 
     expect($created)->toHaveCount(1);
     expect($created->first()->title)->toBe('Nova obrigação sugerida')
@@ -235,7 +255,7 @@ it('persists obligations with long clause text without truncation errors', funct
     (new GenerateEmissionObligationsJob($emission->id, $document->id))
         ->handle(app(GeminiService::class));
 
-    $created = $emission->extractedObligations()->where('status', 'suggested')->first();
+    $created = $emission->extractedObligations()->where('status', ExtractedObligation::STATUS_SUGGESTED)->first();
 
     expect($created)->not->toBeNull()
         ->and($created->due_rule)->toBe(trim($longDueRule))
@@ -248,19 +268,31 @@ it('consolidates an approved suggestion into an obligation', function () {
 
     $emission = Emission::factory()->create();
     $suggestion = ExtractedObligation::factory()->for($emission)->create([
-        'status' => 'suggested',
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
         'title' => 'Comprovar destinação de recursos',
     ]);
 
     Livewire::test(ObligationSuggestionsRelationManager::class, [
         'ownerRecord' => $emission,
         'pageClass' => EditEmission::class,
-    ])->callTableAction('approve', $suggestion);
+    ])->callTableAction('approve', $suggestion, data: [
+        'review_notes' => 'Sugestão compatível com o Termo.',
+    ]);
 
     $suggestion->refresh();
+    $activity = Activity::query()
+        ->where('log_name', ObligationSuggestionReviewService::LOG_NAME)
+        ->where('event', ObligationSuggestionReviewService::EVENT_APPROVED)
+        ->latest('id')
+        ->first();
 
-    expect($suggestion->status)->toBe('approved')
-        ->and($suggestion->reviewed_at)->not->toBeNull();
+    expect($suggestion->status)->toBe(ExtractedObligation::STATUS_APPROVED)
+        ->and($suggestion->reviewed_by)->toBe(auth()->id())
+        ->and($suggestion->reviewed_at)->not->toBeNull()
+        ->and($suggestion->review_notes)->toBe('Sugestão compatível com o Termo.')
+        ->and($activity)->not->toBeNull()
+        ->and($activity->subject_id)->toBe($suggestion->id)
+        ->and($activity->properties['obligation_id'])->not->toBeNull();
 
     $obligation = $emission->obligations()->first();
 
@@ -268,6 +300,102 @@ it('consolidates an approved suggestion into an obligation', function () {
         ->and($obligation->title)->toBe('Comprovar destinação de recursos')
         ->and($obligation->extracted_obligation_id)->toBe($suggestion->id)
         ->and($obligation->status)->toBe('em_dia');
+});
+
+it('blocks suggestion approval for users without the specific permission', function () {
+    $reviewer = User::factory()->create();
+    $suggestion = ExtractedObligation::factory()->create([
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
+    ]);
+
+    expect(fn () => app(ObligationSuggestionReviewService::class)->approve($suggestion, $reviewer, null))
+        ->toThrow(AuthorizationException::class);
+});
+
+it('rejects a suggestion with a mandatory reason and records the audit', function () {
+    $reviewer = makeSuggestionReviewer([
+        AccessPermission::ObligationsRejectSuggestion->value,
+    ]);
+    $suggestion = ExtractedObligation::factory()->create([
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
+    ]);
+
+    app(ObligationSuggestionReviewService::class)->reject($suggestion, $reviewer, 'Trecho não configura obrigação operacional.');
+
+    $suggestion->refresh();
+    $activity = Activity::query()
+        ->where('log_name', ObligationSuggestionReviewService::LOG_NAME)
+        ->where('event', ObligationSuggestionReviewService::EVENT_REJECTED)
+        ->latest('id')
+        ->first();
+
+    expect($suggestion->status)->toBe(ExtractedObligation::STATUS_REJECTED)
+        ->and($suggestion->reviewed_by)->toBe($reviewer->id)
+        ->and($suggestion->reviewed_at)->not->toBeNull()
+        ->and($suggestion->review_notes)->toBe('Trecho não configura obrigação operacional.')
+        ->and($suggestion->obligation()->exists())->toBeFalse()
+        ->and($activity)->not->toBeNull()
+        ->and($activity->subject_id)->toBe($suggestion->id)
+        ->and($activity->properties['review_notes'])->toBe('Trecho não configura obrigação operacional.');
+});
+
+it('requires a rejection reason when rejecting a suggestion', function () {
+    $reviewer = makeSuggestionReviewer([
+        AccessPermission::ObligationsRejectSuggestion->value,
+    ]);
+    $suggestion = ExtractedObligation::factory()->create([
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
+    ]);
+
+    expect(fn () => app(ObligationSuggestionReviewService::class)->reject($suggestion, $reviewer, null))
+        ->toThrow(ValidationException::class);
+});
+
+it('prevents duplicate obligations when the same suggestion is approved twice', function () {
+    $reviewer = makeSuggestionReviewer([
+        AccessPermission::ObligationsApproveSuggestion->value,
+    ]);
+    $suggestion = ExtractedObligation::factory()->create([
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
+    ]);
+
+    app(ObligationSuggestionReviewService::class)->approve($suggestion, $reviewer, null);
+
+    expect(fn () => app(ObligationSuggestionReviewService::class)->approve($suggestion->fresh(), $reviewer, null))
+        ->toThrow(ValidationException::class);
+
+    expect(Obligation::query()->where('extracted_obligation_id', $suggestion->id)->count())->toBe(1);
+});
+
+it('shows approve and reject actions only to users with the matching suggestion review permissions', function () {
+    $emission = Emission::factory()->create();
+    $suggestion = ExtractedObligation::factory()->for($emission)->create([
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
+    ]);
+
+    $this->actingAs(makeSuggestionReviewer([
+        AccessPermission::ObligationsApproveSuggestion->value,
+    ]));
+
+    Livewire::test(ObligationSuggestionsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSuccessful()
+        ->assertTableActionVisible('approve', $suggestion)
+        ->assertTableActionHidden('reject', $suggestion);
+});
+
+it('keeps suggestion review available to super admins', function () {
+    $reviewer = User::factory()->create();
+    $reviewer->assignRole('super-admin');
+    $suggestion = ExtractedObligation::factory()->create([
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
+    ]);
+
+    app(ObligationSuggestionReviewService::class)->approve($suggestion, $reviewer, null);
+
+    expect($suggestion->fresh()->status)->toBe(ExtractedObligation::STATUS_APPROVED);
 });
 
 it('shows the generate obligations action on the suggestions tab', function () {

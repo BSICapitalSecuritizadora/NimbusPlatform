@@ -112,40 +112,41 @@
         line-height: 1.55;
     }
 
-    .emission-tabs {
+    .emission-detail-tabs.nav-pills {
         display: inline-flex;
         background: rgba(9, 27, 35, 0.04);
         padding: 4px;
         border-radius: 999px;
-        border: 1px solid rgba(9, 27, 35, 0.10);
+        border: 1px solid color-mix(in srgb, var(--brand) 12%, var(--border));
         flex-wrap: wrap;
         justify-content: center;
     }
 
-    .emission-tab {
+    .emission-detail-tabs.nav-pills .nav-link {
         color: rgba(9, 27, 35, 0.68) !important;
         font-weight: 600;
         font-size: 0.95rem;
         padding: 0.6rem 1.75rem !important;
         border-radius: 999px !important;
         transition: color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-        border: none !important;
+        border: 1px solid transparent !important;
         background: transparent !important;
     }
 
-    .emission-tab:hover {
+    .emission-detail-tabs.nav-pills .nav-link:hover {
         color: #091B23 !important;
         background: rgba(160, 110, 40, 0.08) !important;
     }
 
-    .emission-tab[aria-selected="true"],
-    .emission-tab.active {
+    .emission-detail-tabs.nav-pills .nav-link[aria-selected="true"],
+    .emission-detail-tabs.nav-pills .nav-link.active {
         color: #A06E28 !important;
         background: #ffffff !important;
+        border-color: color-mix(in srgb, var(--brand) 12%, var(--border));
         box-shadow: 0 8px 22px rgba(9, 27, 35, 0.10) !important;
     }
 
-    .emission-tab:focus-visible {
+    .emission-detail-tabs.nav-pills .nav-link:focus-visible {
         outline: 2px solid rgba(160, 110, 40, 0.65);
         outline-offset: 3px;
     }
@@ -535,13 +536,13 @@
         </div>
 
         <div class="mb-5 d-flex justify-content-center">
-            <ul class="nav nav-pills gap-1 emission-tabs" id="emissionTabs" role="tablist">
-                <li class="nav-item"><a class="nav-link emission-tab active" data-bs-toggle="pill" href="#caracteristicas" aria-selected="true">Características</a></li>
-                <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#pagamentos" aria-selected="false">Pagamentos & PU</a></li>
-                <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#documentos" aria-selected="false">Documentos</a></li>
-                <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#simulador" aria-selected="false">Simulador de Fluxo</a></li>
-                {{-- <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#fluxograma" aria-selected="false">Fluxograma</a></li> --}}
-                {{-- <li class="nav-item"><a class="nav-link emission-tab" data-bs-toggle="pill" href="#comunicados" aria-selected="false">Comunicados</a></li> --}}
+            <ul class="nav nav-pills gap-1 emission-detail-tabs" id="emissionTabs" role="tablist">
+                <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#caracteristicas" aria-selected="true">Características</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#pagamentos" aria-selected="false">Pagamentos & PU</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#documentos" aria-selected="false">Documentos</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#simulador" aria-selected="false">Simulador de Fluxo</a></li>
+                {{-- <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#fluxograma" aria-selected="false">Fluxograma</a></li> --}}
+                {{-- <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#comunicados" aria-selected="false">Comunicados</a></li> --}}
             </ul>
         </div>
 

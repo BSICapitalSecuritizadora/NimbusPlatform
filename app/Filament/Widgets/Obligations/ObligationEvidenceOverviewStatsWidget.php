@@ -43,6 +43,9 @@ class ObligationEvidenceOverviewStatsWidget extends StatsOverviewWidget
             Stat::make('Sem Evidência', $this->format($summary['sem_evidencia']))
                 ->color('gray')
                 ->description('Sem comprovação anexada'),
+            Stat::make('Em análise com Evidência Pendente', $this->format($summary['em_analise_com_evidencia_pendente']))
+                ->color('warning')
+                ->description('Fluxos em validação documental'),
             Stat::make('Concluídas com Aprovada', $this->format($summary['concluidas_com_evidencia_aprovada']))
                 ->color('success')
                 ->description('Concluídas com comprovação válida'),

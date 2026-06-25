@@ -12,6 +12,9 @@ final readonly class IndexRateData
         public CarbonImmutable $date,
         public string $value,
         public bool $isProjected = false,
+        public ?string $source = null,
+        public ?string $projectionSource = null,
+        public ?CarbonImmutable $projectionReferenceDate = null,
     ) {}
 
     public function reportedDate(): ?CarbonImmutable

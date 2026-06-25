@@ -3,11 +3,13 @@
 namespace App\Filament\Widgets\Obligations;
 
 use App\Enums\AccessPermission;
+use App\Filament\Exports\ObligationExporter;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
+use Filament\Actions\ExportAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -29,8 +31,12 @@ class ObligationOperationalTableWidget extends TableWidget
     public function table(Table $table): Table
     {
         $data = app(ObligationDashboardData::class);
-        $canViewEvidence = (bool) auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value);
-        $canOpenEmission = (bool) auth()->user()?->can(AccessPermission::EmissionsView->value);
+        $user = auth()->user();
+        $canViewEvidence = (bool) $user?->can(AccessPermission::ObligationsViewEvidence->value);
+        $canOpenEmission = (bool) $user?->can(AccessPermission::EmissionsView->value);
+        $canExport = (bool) $user?->can(AccessPermission::ObligationsView->value)
+            && (bool) $user?->can(AccessPermission::ObligationsViewDashboard->value)
+            && (bool) $user?->can(AccessPermission::ObligationsExport->value);
         $pageFilters = $data->sanitizeFilters($this->pageFilters, $canViewEvidence);
 
         $emissionUrl = static fn (Obligation $record): ?string => $canOpenEmission
@@ -201,6 +207,13 @@ class ObligationOperationalTableWidget extends TableWidget
             ->paginationPageOptions([10, 25, 50])
             ->columns($columns)
             ->filters($filters)
+            ->headerActions([
+                ExportAction::make()
+                    ->label('Exportar visão atual')
+                    ->authorize(fn (): bool => $canExport)
+                    ->columnMapping(false)
+                    ->exporter(ObligationExporter::class),
+            ])
             ->emptyStateHeading('Nenhuma obrigação pendente')
             ->emptyStateDescription('Não há obrigações em aberto que exijam atenção no momento.');
     }

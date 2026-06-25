@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
+use App\Filament\Exports\ObligationExporter;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
+use App\Services\Obligations\ObligationDashboardData;
 use App\Services\Obligations\ObligationWorkflowService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -12,6 +14,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
@@ -20,7 +23,9 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class ObligationsRelationManager extends RelationManager
@@ -45,66 +50,155 @@ class ObligationsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
+        $dashboardData = app(ObligationDashboardData::class);
+        $canViewEvidence = (bool) (auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value) ?? false);
+
+        $columns = [
+            TextColumn::make('title')
+                ->label('Título')
+                ->searchable()
+                ->wrap(),
+            TextColumn::make('obligation_category')
+                ->label('Categoria')
+                ->badge()
+                ->toggleable(),
+            TextColumn::make('responsibleUser.name')
+                ->label('Responsável')
+                ->placeholder('—')
+                ->toggleable(),
+            TextColumn::make('responsible_area')
+                ->label('Área')
+                ->placeholder('—')
+                ->toggleable(),
+            TextColumn::make('due_date')
+                ->label('Vencimento')
+                ->date('d/m/Y')
+                ->placeholder('—')
+                ->sortable(),
+            TextColumn::make('priority')
+                ->label('Prioridade')
+                ->badge()
+                ->formatStateUsing(fn (?string $state): string => Obligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
+                ->color(fn (?string $state): string => match ($state) {
+                    'critical' => 'danger',
+                    'high' => 'warning',
+                    'medium' => 'info',
+                    default => 'gray',
+                }),
+            TextColumn::make('status')
+                ->label('Status')
+                ->badge()
+                ->formatStateUsing(fn (?string $state): string => Obligation::STATUS_OPTIONS[$state] ?? (string) $state)
+                ->color(fn (?string $state): string => match ($state) {
+                    'em_dia', 'concluida' => 'success',
+                    'a_vencer' => 'info',
+                    'vencida' => 'danger',
+                    'em_analise' => 'warning',
+                    default => 'gray',
+                }),
+            TextColumn::make('source')
+                ->label('Origem')
+                ->badge()
+                ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual')
+                ->color(fn (string $state): string => $state === 'Manual' ? 'gray' : 'info')
+                ->toggleable(),
+        ];
+
+        if ($canViewEvidence) {
+            $columns[] = TextColumn::make('document_status')
+                ->label('Status das Evidências')
+                ->state(fn (Obligation $record): string => $dashboardData->documentStatusFor($record))
+                ->badge()
+                ->color(fn (Obligation $record): string => $dashboardData->documentStatusColorFor($record))
+                ->wrap();
+            $columns[] = TextColumn::make('evidences_count')
+                ->label('Qtd. Evidências')
+                ->state(fn (Obligation $record): int => (int) ($record->evidences_count ?? 0))
+                ->badge()
+                ->color('gray');
+        }
+
+        $filters = [
+            SelectFilter::make('status')
+                ->label('Status')
+                ->options(Obligation::STATUS_OPTIONS),
+            SelectFilter::make('responsible_user_id')
+                ->label('Responsável')
+                ->relationship('responsibleUser', 'name')
+                ->searchable()
+                ->preload(),
+            SelectFilter::make('responsible_area')
+                ->label('Área responsável')
+                ->options(fn (): array => collect(Obligation::query()
+                    ->whereNotNull('responsible_area')
+                    ->orderBy('responsible_area')
+                    ->pluck('responsible_area', 'responsible_area')
+                    ->all())->union(ObligationFormFields::AREA_OPTIONS)->all()),
+            SelectFilter::make('priority')
+                ->label('Prioridade')
+                ->options(Obligation::PRIORITY_OPTIONS),
+            SelectFilter::make('due_window')
+                ->label('Vencimento')
+                ->options(ObligationDashboardData::DUE_WINDOW_OPTIONS)
+                ->query(fn (Builder $query, array $data): Builder => $dashboardData->applyDueWindowFilter($query, $data['value'] ?? null)),
+            TernaryFilter::make('has_responsible')
+                ->label('Responsável definido')
+                ->placeholder('Todos')
+                ->trueLabel('Com responsável')
+                ->falseLabel('Sem responsável')
+                ->queries(
+                    true: fn (Builder $query): Builder => $query->whereNotNull('responsible_user_id'),
+                    false: fn (Builder $query): Builder => $query->whereNull('responsible_user_id'),
+                    blank: fn (Builder $query): Builder => $query,
+                ),
+            SelectFilter::make('source')
+                ->label('Origem')
+                ->options(ObligationDashboardData::SOURCE_FILTER_OPTIONS)
+                ->query(function (Builder $query, array $data): Builder {
+                    return match ($data['value'] ?? null) {
+                        'term' => $query->whereNotNull('extracted_obligation_id'),
+                        'manual' => $query->whereNull('extracted_obligation_id'),
+                        default => $query,
+                    };
+                }),
+        ];
+
+        if ($canViewEvidence) {
+            $filters[] = SelectFilter::make('evidence_state')
+                ->label('Status das evidências')
+                ->options(ObligationDashboardData::EVIDENCE_FILTER_OPTIONS)
+                ->query(fn (Builder $query, array $data): Builder => $dashboardData->applyEvidenceFilter($query, $data['value'] ?? null));
+        }
+
         return $table
             ->recordTitleAttribute('title')
             ->description('Obrigações consolidadas desta emissão.')
-            ->columns([
-                TextColumn::make('title')
-                    ->label('Título')
-                    ->searchable()
-                    ->wrap(),
-                TextColumn::make('obligation_category')
-                    ->label('Categoria')
-                    ->badge()
-                    ->toggleable(),
-                TextColumn::make('responsibleUser.name')
-                    ->label('Responsável')
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('responsible_area')
-                    ->label('Área')
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('due_date')
-                    ->label('Vencimento')
-                    ->date('d/m/Y')
-                    ->placeholder('—')
-                    ->sortable(),
-                TextColumn::make('priority')
-                    ->label('Prioridade')
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => Obligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
-                    ->color(fn (?string $state): string => match ($state) {
-                        'critical' => 'danger',
-                        'high' => 'warning',
-                        'medium' => 'info',
-                        default => 'gray',
-                    }),
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => Obligation::STATUS_OPTIONS[$state] ?? (string) $state)
-                    ->color(fn (?string $state): string => match ($state) {
-                        'em_dia', 'concluida' => 'success',
-                        'a_vencer' => 'info',
-                        'vencida' => 'danger',
-                        'em_analise' => 'warning',
-                        default => 'gray',
-                    }),
-            ])
+            ->modifyQueryUsing(function (Builder $query) use ($canViewEvidence): Builder {
+                $query->with('responsibleUser');
+
+                if (! $canViewEvidence) {
+                    return $query;
+                }
+
+                return $query->withCount([
+                    'evidences',
+                    'evidences as approved_evidences_count' => fn (Builder $evidenceQuery): Builder => $evidenceQuery->approved(),
+                    'evidences as pending_evidences_count' => fn (Builder $evidenceQuery): Builder => $evidenceQuery->pending(),
+                    'evidences as rejected_evidences_count' => fn (Builder $evidenceQuery): Builder => $evidenceQuery->rejected(),
+                ]);
+            })
+            ->columns($columns)
             ->defaultSort('due_date', 'asc')
-            ->filters([
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options(Obligation::STATUS_OPTIONS),
-                SelectFilter::make('priority')
-                    ->label('Prioridade')
-                    ->options(Obligation::PRIORITY_OPTIONS),
-            ])
+            ->filters($filters)
             ->headerActions([
                 CreateAction::make()
                     ->label('Cadastrar obrigação')
                     ->authorize(fn (): bool => $this->canCreateObligations()),
+                ExportAction::make()
+                    ->label('Exportar obrigações da emissão')
+                    ->authorize(fn (): bool => $this->canExportObligations())
+                    ->columnMapping(false)
+                    ->exporter(ObligationExporter::class),
             ])
             ->actions([
                 $this->makeHistoryAction(),
@@ -151,6 +245,12 @@ class ObligationsRelationManager extends RelationManager
     protected function canCreateObligations(): bool
     {
         return auth()->user()?->can(AccessPermission::ObligationsCreate->value) ?? false;
+    }
+
+    protected function canExportObligations(): bool
+    {
+        return (auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false)
+            && (auth()->user()?->can(AccessPermission::ObligationsExport->value) ?? false);
     }
 
     protected function canEditObligations(): bool

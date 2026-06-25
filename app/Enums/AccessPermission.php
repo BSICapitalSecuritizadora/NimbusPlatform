@@ -37,6 +37,9 @@ enum AccessPermission: string
     case ObligationsUpdate = 'obligations.update';
     case ObligationsDelete = 'obligations.delete';
     case ObligationsGenerate = 'obligations.generate';
+    case ObligationsReviewSuggestions = 'obligations.review_suggestions';
+    case ObligationsApproveSuggestion = 'obligations.approve_suggestion';
+    case ObligationsRejectSuggestion = 'obligations.reject_suggestion';
     case ObligationsViewDashboard = 'obligations.view_dashboard';
     case ObligationsSubmitForReview = 'obligations.submit_for_review';
     case ObligationsComplete = 'obligations.complete';
@@ -213,6 +216,9 @@ enum AccessPermission: string
             self::ObligationsUpdate => 'Obrigações: editar',
             self::ObligationsDelete => 'Obrigações: excluir',
             self::ObligationsGenerate => 'Obrigações: gerar do Termo',
+            self::ObligationsReviewSuggestions => 'Obrigações: revisar sugestões do Termo',
+            self::ObligationsApproveSuggestion => 'Obrigações: aprovar sugestões do Termo',
+            self::ObligationsRejectSuggestion => 'Obrigações: rejeitar sugestões do Termo',
             self::ObligationsViewDashboard => 'Obrigações: visualizar painel operacional',
             self::ObligationsSubmitForReview => 'Obrigações: enviar para análise',
             self::ObligationsComplete => 'Obrigações: concluir',
@@ -356,6 +362,9 @@ enum AccessPermission: string
                 self::ObligationsUpdate,
                 self::ObligationsDelete,
                 self::ObligationsGenerate,
+                self::ObligationsReviewSuggestions,
+                self::ObligationsApproveSuggestion,
+                self::ObligationsRejectSuggestion,
                 self::ObligationsViewDashboard,
                 self::ObligationsSubmitForReview,
                 self::ObligationsComplete,

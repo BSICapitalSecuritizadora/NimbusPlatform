@@ -17,6 +17,11 @@ class IndexRate extends Model
         'rate_value',
         'source',
         'source_reference',
+        'is_projected',
+        'projection_source',
+        'projection_reference_date',
+        'projection_policy',
+        'notes',
     ];
 
     protected function casts(): array
@@ -24,6 +29,8 @@ class IndexRate extends Model
         return [
             'rate_date' => 'date',
             'rate_value' => 'decimal:8',
+            'is_projected' => 'boolean',
+            'projection_reference_date' => 'date',
         ];
     }
 
@@ -32,5 +39,14 @@ class IndexRate extends Model
         $indexerValue = $indexer instanceof PuIndexer ? $indexer->value : $indexer;
 
         return $query->where('indexer', $indexerValue);
+    }
+
+    /**
+     * Número-índice projetado (política de projeção) versus publicado. A marcação explícita em
+     * `is_projected` tem precedência; mantém-se compatibilidade com o legado `forward_projection`.
+     */
+    public function isProjectedRate(): bool
+    {
+        return (bool) $this->is_projected || (string) $this->source_reference === 'forward_projection';
     }
 }

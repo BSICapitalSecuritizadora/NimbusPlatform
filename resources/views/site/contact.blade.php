@@ -6,584 +6,442 @@
 
 <div class="contact-page">
     <style>
-        .contact-page .hero {
-            overflow: hidden;
-            background: #091B23 !important;
-            padding: 10rem 0 8rem;
+        /* General */
+        .contact-page {
+            color: #091B23;
+        }
+
+        /* Hero Section */
+        .contact-hero {
+            background-color: #091B23;
+            color: #E6E4E4;
+            padding: 10rem 0 7rem;
             position: relative;
         }
 
-        .contact-page .contact-hero-panel {
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(135deg, rgba(9, 27, 35, 0.95), rgba(9, 27, 35, 0.85));
-            border: 1px solid rgba(160, 110, 40, 0.3);
-            border-radius: 24px;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(20px);
-            margin-bottom: -150px; /* Overlap effect */
-            z-index: 10;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .contact-page .contact-hero-panel:hover {
-            transform: translateY(-8px);
-            border-color: rgba(160, 110, 40, 0.5);
-            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
-        }
-
-        .contact-page .contact-hero-panel::before {
-            content: "";
-            position: absolute;
-            inset: auto -15% -35% auto;
-            width: 240px;
-            height: 240px;
-            background: radial-gradient(circle, rgba(160, 110, 40, 0.25), transparent 70%);
-            pointer-events: none;
-        }
-
-        .contact-page .contact-hero-stat {
-            padding: 1.2rem;
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-
-        .contact-page .contact-hero-stat:hover {
-            background: rgba(160, 110, 40, 0.05);
-            border-color: rgba(160, 110, 40, 0.25);
-        }
-
-        .contact-page .contact-hero-stat-value {
-            display: block;
+        .contact-hero h1 {
             color: #ffffff;
-            font-size: 1.4rem;
-            font-weight: 800;
-            line-height: 1.1;
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 400;
+            letter-spacing: -0.02em;
         }
 
-        .contact-page .contact-hero-stat-label {
-            display: block;
-            margin-top: 0.4rem;
-            color: #E6E4E4;
-            font-size: 0.75rem;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            opacity: 0.8;
-        }
-
-        .contact-page .contact-hero-list li {
-            display: flex;
-            gap: 1rem;
-            align-items: flex-start;
-            padding: 1.1rem 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .contact-page .contact-hero-list li:first-child {
-            padding-top: 0;
-            border-top: 0;
-        }
-
-        .contact-page .contact-hero-marker {
-            width: 2.5rem;
-            height: 2.5rem;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+        .contact-hero h1 span {
             color: #A06E28;
-            background: rgba(160, 110, 40, 0.15);
-            border: 1px solid rgba(160, 110, 40, 0.3);
-            font-size: 0.85rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            transition: all 0.3s ease;
-        }
-
-        .contact-page .contact-hero-list li:hover .contact-hero-marker {
-            background: #A06E28;
-            color: #091B23;
-            border-color: #A06E28;
-            box-shadow: 0 0 12px rgba(160, 110, 40, 0.4);
-            transform: scale(1.05);
-        }
-
-        .contact-page .contact-info-card {
-            position: relative;
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.02) !important;
-            border: 1px solid rgba(255, 255, 255, 0.06) !important;
-            border-radius: 20px;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .contact-page .contact-info-card:hover {
-            transform: translateY(-8px);
-            background: rgba(255, 255, 255, 0.04) !important;
-            border-color: rgba(160, 110, 40, 0.4) !important;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
-        }
-
-        .contact-page .contact-icon {
-            width: 3.5rem;
-            height: 3.5rem;
-            border-radius: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            color: #A06E28;
-            background: rgba(160, 110, 40, 0.1);
-            border: 1px solid rgba(160, 110, 40, 0.25);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .contact-page .contact-info-card:hover .contact-icon {
-            background: #A06E28;
-            color: #091B23;
-            transform: scale(1.1) rotate(5deg);
-            border-color: #A06E28;
-        }
-
-        .contact-page .contact-process-step {
-            display: flex;
-            gap: 1.2rem;
-            padding: 1.2rem 1.3rem;
-            border-radius: 18px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(255, 255, 255, 0.02);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .contact-page .contact-process-step:hover {
-            border-color: rgba(160, 110, 40, 0.3);
-            background: rgba(255, 255, 255, 0.04);
-            transform: translateX(6px);
-        }
-
-        .contact-page .contact-step-index {
-            width: 2.5rem;
-            height: 2.5rem;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            background: rgba(160, 110, 40, 0.15);
-            color: #A06E28;
-            font-size: 0.9rem;
-            font-weight: 700;
-            border: 1px solid rgba(160, 110, 40, 0.3);
-            transition: all 0.4s ease;
-        }
-
-        .contact-page .contact-process-step:hover .contact-step-index {
-            background: #A06E28;
-            color: #091B23;
-            border-color: #A06E28;
-            box-shadow: 0 0 15px rgba(160, 110, 40, 0.4);
-        }
-
-        .contact-page .contact-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.65rem 0.9rem;
-            border-radius: 999px;
-            border: 1px solid rgba(160, 110, 40, 0.25);
-            background: rgba(160, 110, 40, 0.06);
-            color: #E6E4E4;
-            font-size: 0.82rem;
             font-weight: 600;
-            line-height: 1;
+        }
+
+        .contact-hero .lead {
+            font-size: 1.15rem;
+            max-width: 800px;
+            font-weight: 300;
+            opacity: 0.9;
+        }
+
+        /* Buttons */
+        .btn-brand-primary {
+            background-color: #A06E28;
+            color: #091B23;
+            border: 1px solid #A06E28;
+            font-weight: 500;
+            padding: 0.85rem 2rem;
+            border-radius: 0;
             transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
         }
 
-        .contact-page .contact-chip:hover {
+        .btn-brand-primary:hover {
+            background-color: #be8637;
+            border-color: #be8637;
+            color: #091B23;
+        }
+
+        .btn-brand-outline {
+            background-color: transparent;
+            color: #E6E4E4;
+            border: 1px solid rgba(230, 228, 228, 0.4);
+            font-weight: 500;
+            padding: 0.85rem 2rem;
+            border-radius: 0;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-brand-outline:hover {
             border-color: #A06E28;
-            background: rgba(160, 110, 40, 0.15);
-            color: #ffffff;
-            transform: scale(1.05);
+            color: #A06E28;
+            background-color: transparent;
         }
 
-        .contact-page .contact-chip::before {
-            content: "";
-            width: 0.45rem;
-            height: 0.45rem;
-            border-radius: 999px;
-            background: #A06E28;
-            flex-shrink: 0;
+        /* Contact Channels */
+        .contact-channels {
+            padding: 6rem 0;
+            background-color: #ffffff;
         }
 
-        .contact-page .contact-form-shell {
-            background: linear-gradient(135deg, rgba(9, 27, 35, 0.95), rgba(9, 27, 35, 0.85)) !important;
-            border: 1px solid rgba(160, 110, 40, 0.2) !important;
-            border-radius: 24px;
-            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5) !important;
-            backdrop-filter: blur(20px);
+        .channel-card {
+            border: 1px solid rgba(9, 27, 35, 0.1);
+            padding: 3rem 2.5rem;
+            height: 100%;
+            transition: border-color 0.3s ease;
+            background: #ffffff;
+        }
+
+        .channel-card:hover {
+            border-color: #A06E28;
+        }
+
+        .channel-icon {
+            color: #A06E28;
+            margin-bottom: 1.5rem;
+        }
+
+        .channel-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #091B23;
+        }
+
+        .channel-text {
+            color: rgba(9, 27, 35, 0.7);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .channel-link {
+            color: #091B23;
+            font-weight: 500;
+            text-decoration: none;
+            border-bottom: 1px solid #A06E28;
+            padding-bottom: 0.2rem;
+            transition: color 0.3s ease;
+            font-size: 1.05rem;
+            display: inline-block;
+        }
+
+        .channel-link:hover {
+            color: #A06E28;
+        }
+
+        /* Form and Process Section */
+        .form-section {
+            background-color: #E6E4E4;
+            padding: 6rem 0;
+        }
+
+        .institutional-form {
+            background: #ffffff;
+            padding: 4rem;
+            border: 1px solid rgba(9, 27, 35, 0.08);
+        }
+
+        .institutional-form .form-label {
+            color: #091B23;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .institutional-form .form-control, 
+        .institutional-form .form-select {
+            border: 1px solid rgba(9, 27, 35, 0.2);
+            border-radius: 0;
+            padding: 0.9rem 1rem;
+            background-color: #ffffff;
+            color: #091B23;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .institutional-form .form-control:focus, 
+        .institutional-form .form-select:focus {
+            border-color: #A06E28;
+            box-shadow: none;
+            outline: none;
+        }
+
+        .institutional-form .form-control::placeholder {
+            color: rgba(9, 27, 35, 0.4);
+        }
+
+        .process-title {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #091B23;
+            margin-bottom: 1.5rem;
+        }
+
+        .process-text {
+            color: rgba(9, 27, 35, 0.75);
+            line-height: 1.7;
+            margin-bottom: 2rem;
+        }
+
+        .process-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .process-list li {
             position: relative;
-            scroll-margin-top: 9rem;
+            padding-left: 2rem;
+            margin-bottom: 1.2rem;
+            color: #091B23;
+            font-weight: 500;
         }
 
-        .contact-page .contact-form-shell::after {
+        .process-list li::before {
             content: "";
             position: absolute;
-            top: 0;
-            right: 0;
-            width: 150px;
-            height: 150px;
-            background: radial-gradient(circle, rgba(160, 110, 40, 0.15), transparent 70%);
-            pointer-events: none;
-            border-radius: 24px;
+            left: 0;
+            top: 0.5rem;
+            width: 6px;
+            height: 6px;
+            background-color: #A06E28;
         }
 
-        .contact-page .form-control,
-        .contact-page .form-select {
-            background: rgba(255, 255, 255, 0.03) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            color: #E6E4E4 !important;
-            border-radius: 12px;
-            padding: 0.85rem 1.1rem;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        .direction-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem 1rem;
         }
 
-        .contact-page .form-control::placeholder {
-            color: rgba(230, 228, 228, 0.4) !important;
-        }
-
-        .contact-page .form-control:focus,
-        .contact-page .form-select:focus {
-            background: rgba(255, 255, 255, 0.06) !important;
-            border-color: #A06E28 !important;
-            box-shadow: 0 0 0 4px rgba(160, 110, 40, 0.15) !important;
-            color: #ffffff !important;
-        }
-
-        .contact-page .form-label {
-            color: #E6E4E4;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            letter-spacing: 0.02em;
-        }
-
-        .contact-page .btn-brand {
-            background: #A06E28 !important;
-            border-color: #A06E28 !important;
-            color: #091B23 !important;
-            font-weight: 700;
-            letter-spacing: 0.03em;
-            border-radius: 12px;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .contact-page .btn-brand:hover {
-            background: #be8637 !important;
-            border-color: #be8637 !important;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(160, 110, 40, 0.25) !important;
-        }
-
-        .contact-page .immersive-map-section {
+        .direction-list li {
+            color: rgba(9, 27, 35, 0.8);
+            font-size: 0.95rem;
+            padding-left: 1.5rem;
             position: relative;
-            width: 100vw;
-            left: 50%;
-            right: 50%;
-            margin-left: -50vw;
-            margin-right: -50vw;
-            height: 650px;
-            background: #091B23;
-            overflow: hidden;
-            border-top: 1px solid rgba(160, 110, 40, 0.15);
-            border-bottom: 1px solid rgba(160, 110, 40, 0.15);
         }
 
-        .contact-page .immersive-map-iframe {
+        .direction-list li::before {
+            content: "—";
+            position: absolute;
+            left: 0;
+            color: #A06E28;
+        }
+
+        /* Location Section */
+        .location-section {
+            background-color: #ffffff;
+        }
+
+        .location-card {
+            background-color: #091B23;
+            color: #E6E4E4;
+            padding: 5rem 4rem;
+            height: 100%;
+        }
+
+        .location-card h2 {
+            color: #ffffff;
+            font-size: 2rem;
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .location-card .btn-brand-primary {
+            margin-top: 2rem;
+        }
+
+        .map-container {
+            height: 100%;
+            min-height: 400px;
+            position: relative;
+        }
+
+        .map-container iframe {
             width: 100%;
             height: 100%;
-            border: 0;
-            filter: grayscale(1) invert(0.92) contrast(1.25) hue-rotate(180deg) brightness(0.95);
-            opacity: 0.75;
-            transition: all 0.5s ease;
-        }
-
-        .contact-page .immersive-map-section:hover .immersive-map-iframe {
-            opacity: 0.9;
-            filter: grayscale(0.85) invert(0.92) contrast(1.15) hue-rotate(185deg) brightness(1);
-        }
-
-        .contact-page .immersive-map-floating-card {
-            position: absolute;
-            top: 60px;
-            left: 10%;
-            width: 420px;
-            max-width: 90%;
-            background: linear-gradient(135deg, rgba(9, 27, 35, 0.96), rgba(9, 27, 35, 0.88));
-            border: 1px solid rgba(160, 110, 40, 0.3);
-            border-radius: 24px;
-            box-shadow: 0 35px 70px rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(15px);
-            z-index: 5;
-            padding: 3rem;
-            color: #E6E4E4;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .contact-page .immersive-map-floating-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(160, 110, 40, 0.5);
-            box-shadow: 0 45px 90px rgba(0, 0, 0, 0.7);
-        }
-
-        .contact-page .contact-map-list li {
-            position: relative;
-            padding-left: 1.5rem;
-            color: #E6E4E4;
-            opacity: 0.85;
-        }
-
-        .contact-page .contact-map-list li + li {
-            margin-top: 1rem;
-        }
-
-        .contact-page .contact-map-list li::before {
-            content: "";
-            position: absolute;
-            top: 0.6rem;
-            left: 0;
-            width: 0.5rem;
-            height: 0.5rem;
-            border-radius: 50%;
-            background: #A06E28;
-            box-shadow: 0 0 8px rgba(160, 110, 40, 0.5);
+            border: none;
+            filter: grayscale(100%) contrast(1.1) brightness(0.9);
         }
 
         @media (max-width: 991.98px) {
-            .contact-page .hero {
-                min-height: auto !important;
-                padding: 8rem 0 4rem;
+            .contact-hero {
+                padding: 6rem 0 4rem;
             }
-
-            .contact-page .contact-hero-panel {
-                margin-bottom: 0;
-            }
-
-            .contact-page .immersive-map-section {
-                height: auto;
-                display: flex;
-                flex-direction: column;
-                margin-left: 0;
-                margin-right: 0;
-                width: 100%;
-                left: auto;
-                right: auto;
-                border-bottom: 0;
-            }
-
-            .contact-page .immersive-map-floating-card {
-                position: relative;
-                top: auto;
-                left: auto;
-                width: 100%;
-                max-width: 100%;
-                border-radius: 0;
-                border-left: 0;
-                border-right: 0;
-                border-bottom: 0;
-                box-shadow: none;
-                backdrop-filter: none;
-                background: #091B23;
+            
+            .institutional-form {
                 padding: 2.5rem 1.5rem;
             }
 
-            .contact-page .immersive-map-iframe {
-                height: 380px;
-                order: 2;
+            .location-card {
+                padding: 4rem 2rem;
             }
-        }
-
-        /* Custom Select Component Refinements */
-        .contact-page .custom-select-wrapper {
-            position: relative;
-            width: 100%;
-        }
-
-        .contact-page .custom-select-trigger {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.03) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            color: #E6E4E4 !important;
-            border-radius: 12px;
-            padding: 0.85rem 1.1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            text-align: left;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            outline: none;
-            box-shadow: none;
-        }
-
-        .contact-page .custom-select-trigger:focus,
-        .contact-page .custom-select-wrapper.open .custom-select-trigger {
-            background: rgba(255, 255, 255, 0.06) !important;
-            border-color: #A06E28 !important;
-            box-shadow: 0 0 0 4px rgba(160, 110, 40, 0.15) !important;
-            color: #ffffff !important;
-        }
-
-        .contact-page .custom-select-wrapper.is-invalid-custom .custom-select-trigger {
-            border-color: #ff6b6b !important;
-        }
-
-        .contact-page .custom-select-wrapper.is-invalid-custom .custom-select-trigger:focus {
-            box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.15) !important;
-        }
-
-        .contact-page .custom-select-trigger.placeholder-active .trigger-text {
-            color: rgba(230, 228, 228, 0.4) !important;
-        }
-
-        .contact-page .custom-select-trigger .chevron-icon {
-            color: #A06E28;
-            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-            flex-shrink: 0;
-            margin-left: 1rem;
-        }
-
-        .contact-page .custom-select-wrapper.open .custom-select-trigger .chevron-icon {
-            transform: rotate(180deg);
-        }
-
-        .contact-page .custom-select-options {
-            position: absolute;
-            top: calc(100% + 8px);
-            left: 0;
-            right: 0;
-            background: #091B23;
-            border: 1px solid rgba(160, 110, 40, 0.35);
-            border-radius: 12px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
-            padding: 0.5rem 0;
-            z-index: 100;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px) scale(0.98);
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            backdrop-filter: blur(20px);
-        }
-
-        .contact-page .custom-select-wrapper.open .custom-select-options {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0) scale(1);
-        }
-
-        .contact-page .custom-select-option {
-            padding: 0.8rem 1.25rem;
-            color: #E6E4E4;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            outline: none;
-        }
-
-        .contact-page .custom-select-option:hover {
-            background: #A06E28;
-            color: #091B23;
-        }
-
-        .contact-page .custom-select-option.active {
-            background: rgba(160, 110, 40, 0.12);
-            color: #ffffff;
-            font-weight: 600;
-            border-left: 3px solid #A06E28;
-            padding-left: calc(1.25rem - 3px);
-        }
-
-        .contact-page .custom-select-option.active:hover {
-            background: #A06E28;
-            color: #091B23;
+            
+            .direction-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .map-container {
+                height: 400px;
+            }
         }
     </style>
 
-    <section class="hero position-relative d-flex align-items-center">
-        <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.1; background: url('{{ asset('images/compliance.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
-        <div class="container position-relative z-1">
-            <div class="row align-items-center g-4 g-lg-5">
-                <div class="col-lg-7">
-                    <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid #A06E28; color: #A06E28; background: rgba(160, 110, 40, 0.1); letter-spacing: 0.1em; font-weight: 600;">Atendimento institucional</span>
-                    <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.04em; font-size: clamp(2.5rem, 5.5vw, 4.5rem); line-height: 1.05;">
-                        Contato <span style="color: #A06E28;">Institucional</span>
+    <!-- Hero Section -->
+    <section class="contact-hero">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8">
+                    <h1 class="mb-4">
+                        Contato <span>Institucional</span>
                     </h1>
-                    <p class="lead mb-0" style="color: #E6E4E4; max-width: 760px;">
+                    <p class="lead mb-5">
                         Entre em contato com a BSI Capital para demandas institucionais, relacionamento com investidores, apresentação de operações, documentos públicos, compliance ou parcerias estratégicas.
                     </p>
-
-                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-start mt-4 pt-2">
-                        <a href="#form-contato" class="btn btn-brand btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3 shadow-lg">
+                    <div class="d-flex flex-wrap gap-3">
+                        <a href="#formulario" class="btn-brand-primary">
                             Enviar mensagem institucional
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                         </a>
-                        <a href="mailto:contato@bsicapital.com.br" class="btn btn-lg d-inline-flex align-items-center justify-content-center gap-2 px-5 py-3" style="border: 1px solid rgba(230,228,228,0.35); color: #E6E4E4; background: rgba(230,228,228,0.08); transition: all 0.3s ease;">
-                            E-mail institucional
+                        <a href="mailto:contato@bsicapital.com.br" class="btn-brand-outline">
+                            Falar com RI
                         </a>
                     </div>
                 </div>
+            </div>
+        </div>
+    </section>
 
-                <div class="col-lg-5">
-                    <div class="contact-hero-panel p-4 p-xl-5">
-                        <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Encaminhamento dedicado</div>
-                        <h2 class="h4 fw-bold text-white mb-3">Direcionamento institucional da sua demanda</h2>
-                        <p class="mb-4" style="color: #E6E4E4; opacity: 0.85; line-height: 1.75;">
-                            Sua mensagem é encaminhada à área responsável conforme a natureza do contato, preservando contexto, confidencialidade e clareza nos próximos passos.
-                        </p>
+    <!-- Canais de Atendimento -->
+    <section class="contact-channels">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="channel-card">
+                        <div class="channel-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"></path><path d="m22 6-10 7L2 6"></path></svg>
+                        </div>
+                        <h3 class="channel-title">E-mail institucional</h3>
+                        <p class="channel-text">Para demandas institucionais, comerciais, operacionais e documentação pública.</p>
+                        <a href="mailto:contato@bsicapital.com.br" class="channel-link">contato@bsicapital.com.br</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="channel-card">
+                        <div class="channel-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72l.38 2.65a2 2 0 0 1-.57 1.72L7.2 9.8a16 16 0 0 0 7 7l1.71-1.72a2 2 0 0 1 1.72-.57l2.65.38A2 2 0 0 1 22 16.92z"></path></svg>
+                        </div>
+                        <h3 class="channel-title">Atendimento telefônico</h3>
+                        <p class="channel-text">Suporte corporativo em dias úteis, das 09h às 18h, para alinhamentos rápidos.</p>
+                        <a href="tel:+551123678793" class="channel-link">+55 (11) 2367-8793</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="channel-card">
+                        <div class="channel-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10z"></path><circle cx="12" cy="11" r="2.5"></circle></svg>
+                        </div>
+                        <h3 class="channel-title">Sede institucional</h3>
+                        <p class="channel-text">Avenida das Nações Unidas, 14.401<br>Tarumã Tower, Salas 712 e 713<br>São Paulo - SP</p>
+                        <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="channel-link">Abrir no Google Maps</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                        <div class="row g-3 mb-4">
-                            <div class="col-sm-6">
-                                <div class="contact-hero-stat h-100">
-                                    <span class="contact-hero-stat-value" style="font-size: 1.2rem;">Dias úteis</span>
-                                    <span class="contact-hero-stat-label">Triagem e retorno</span>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="contact-hero-stat h-100">
-                                    <span class="contact-hero-stat-value" style="font-size: 1.2rem;">Área foco</span>
-                                    <span class="contact-hero-stat-label">Direcionamento adequado</span>
-                                </div>
-                            </div>
+    <!-- Formulário e Fluxo -->
+    <section class="form-section" id="formulario">
+        <div class="container">
+            <div class="row g-5">
+                <!-- Coluna do Formulário -->
+                <div class="col-lg-7">
+                    <div class="institutional-form">
+                        <div class="mb-5">
+                            <h2 class="process-title">Envie sua mensagem</h2>
+                            <p class="process-text mb-0">Preencha os dados abaixo para que sua solicitação seja direcionada à área responsável.</p>
                         </div>
 
-                        <ul class="list-unstyled contact-hero-list mb-0">
-                            <li>
-                                <span class="contact-hero-marker"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg></span>
-                                <div>
-                                    <div class="fw-semibold text-white">Comercial e novos negócios</div>
-                                    <div class="small" style="color: #E6E4E4; opacity: 0.75;">Estruturação, viabilidade preliminar e novas teses de operação.</div>
+                        @if(session('contact_success'))
+                            <div class="alert mb-4" style="background-color: #ffffff; border: 1px solid #A06E28; color: #091B23; padding: 1rem 1.5rem;">
+                                <strong>Mensagem enviada com sucesso.</strong> Nossa equipe retornará conforme a natureza da solicitação.
+                            </div>
+                        @endif
+
+                        <form action="{{ route('site.contact.submit') }}" method="POST">
+                            @csrf
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Nome</label>
+                                    <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" placeholder="Informe seu nome completo" value="{{ old('name') }}" required>
+                                    @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
-                            </li>
-                            <li>
-                                <span class="contact-hero-marker"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5c-1.1 0-2 .9-2 2v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg></span>
-                                <div>
-                                    <div class="fw-semibold text-white">Relações com investidores</div>
-                                    <div class="small" style="color: #E6E4E4; opacity: 0.75;">Documentos públicos e comunicações institucionais da securitizadora.</div>
+                                <div class="col-md-6">
+                                    <label class="form-label">E-mail</label>
+                                    <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" placeholder="Informe seu e-mail corporativo" value="{{ old('email') }}" required>
+                                    @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
-                            </li>
-                            <li>
-                                <span class="contact-hero-marker"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
-                                <div>
-                                    <div class="fw-semibold text-white">Compliance e ética</div>
-                                    <div class="small" style="color: #E6E4E4; opacity: 0.75;">Conformidade, governança, proteção de dados e temas sensíveis.</div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Telefone</label>
+                                    <input type="tel" name="phone" id="phone" class="form-control" placeholder="(00) 00000-0000" value="{{ old('phone') }}">
                                 </div>
-                            </li>
+                                <div class="col-md-6">
+                                    <label class="form-label">Assunto</label>
+                                    <select name="subject" class="form-select @error('subject') is-invalid @enderror" required>
+                                        <option value="" selected disabled>Selecione a área de interesse</option>
+                                        <option value="Relações com investidores" @selected(old('subject') === 'Relações com investidores')>Relações com investidores</option>
+                                        <option value="Comercial e novos negócios" @selected(old('subject') === 'Comercial e novos negócios')>Comercial e novos negócios</option>
+                                        <option value="Compliance e ética" @selected(old('subject') === 'Compliance e ética')>Compliance e ética</option>
+                                        <option value="Documentos públicos" @selected(old('subject') === 'Documentos públicos')>Documentos públicos</option>
+                                        <option value="Parcerias estratégicas" @selected(old('subject') === 'Parcerias estratégicas')>Parcerias estratégicas</option>
+                                        <option value="Carreiras / Trabalhe conosco" @selected(old('subject') === 'Carreiras / Trabalhe conosco')>Carreiras</option>
+                                    </select>
+                                    @error('subject')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Mensagem</label>
+                                    <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="5" placeholder="Descreva sua demanda" required>{{ old('message') }}</textarea>
+                                    @error('message')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="col-12 mt-5">
+                                    <button type="submit" class="btn-brand-primary w-100 mb-4 border-0 py-3" style="font-size: 1.05rem;">Enviar mensagem institucional</button>
+                                    <p class="small text-muted" style="font-size: 0.8rem; line-height: 1.5; color: rgba(9, 27, 35, 0.6) !important;">
+                                        As informações enviadas serão tratadas conforme a Política de Privacidade da BSI Capital, as normas aplicáveis e as rotinas internas de confidencialidade e governança da informação.
+                                    </p>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Coluna de Direcionamento -->
+                <div class="col-lg-5">
+                    <div class="mb-5 pb-2">
+                        <h2 class="process-title">Direcionamento da demanda</h2>
+                        <p class="process-text">
+                            Sua mensagem será direcionada à área responsável conforme o assunto informado, preservando contexto, confidencialidade e clareza nos próximos passos.
+                        </p>
+                        
+                        <ul class="direction-list mt-4 pt-2">
+                            <li>Comercial e novos negócios</li>
+                            <li>Relações com investidores</li>
+                            <li>Compliance e ética</li>
+                            <li>Documentos públicos</li>
+                            <li>Parcerias estratégicas</li>
+                            <li>Carreiras</li>
+                        </ul>
+                    </div>
+
+                    <div class="pt-5" style="border-top: 1px solid rgba(9, 27, 35, 0.1);">
+                        <h2 class="process-title mb-4">O que acontece após o envio</h2>
+                        <p class="process-text mb-4">
+                            Após o envio, sua solicitação será registrada e encaminhada à área responsável. O retorno considera a natureza da demanda, a disponibilidade da equipe e os procedimentos internos aplicáveis.
+                        </p>
+                        <ul class="process-list">
+                            <li>Recebimento da solicitação</li>
+                            <li>Direcionamento à área responsável</li>
+                            <li>Retorno com próximos passos</li>
                         </ul>
                     </div>
                 </div>
@@ -591,215 +449,44 @@
         </div>
     </section>
 
-    <section class="py-5" style="background: #091B23;">
-        <div class="container py-lg-5">
-            <div class="row g-4 align-items-stretch mb-5">
-                <div class="col-md-4">
-                    <div class="surface-card contact-info-card h-100 p-4">
-                        <div class="d-flex align-items-start gap-3">
-                            <div class="contact-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"></path><path d="m22 6-10 7L2 6"></path></svg>
-                            </div>
-                            <div>
-                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">E-mail institucional</div>
-                                <h2 class="h4 fw-bold text-white mb-2">Contato</h2>
-                                <p class="mb-3" style="color: #E6E4E4; opacity: 0.8; font-size: 0.9rem;">Para demandas institucionais, comerciais, operacionais e documentação pública.</p>
-                                <a href="mailto:contato@bsicapital.com.br" class="fw-semibold text-decoration-none" style="color: #A06E28; transition: all 0.3s ease;">contato@bsicapital.com.br</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="surface-card contact-info-card h-100 p-4">
-                        <div class="d-flex align-items-start gap-3">
-                            <div class="contact-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72l.38 2.65a2 2 0 0 1-.57 1.72L7.2 9.8a16 16 0 0 0 7 7l1.71-1.72a2 2 0 0 1 1.72-.57l2.65.38A2 2 0 0 1 22 16.92z"></path></svg>
-                            </div>
-                            <div>
-                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Atendimento telefônico</div>
-                                <h2 class="h4 fw-bold text-white mb-2">Corporativo</h2>
-                                <p class="mb-3" style="color: #E6E4E4; opacity: 0.8; font-size: 0.9rem;">Suporte corporativo em dias úteis, das 09h às 18h, para alinhamentos rápidos.</p>
-                                <a href="tel:+551123678793" class="fw-semibold text-decoration-none" style="color: #A06E28; transition: all 0.3s ease;">+55 (11) 2367-8793</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="surface-card contact-info-card h-100 p-4">
-                        <div class="d-flex align-items-start gap-3">
-                            <div class="contact-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10z"></path><circle cx="12" cy="11" r="2.5"></circle></svg>
-                            </div>
-                            <div>
-                                <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Sede institucional</div>
-                                <h2 class="h4 fw-bold text-white mb-2">São Paulo</h2>
-                                <p class="mb-3" style="color: #E6E4E4; opacity: 0.8; font-size: 0.9rem;">
-                                    Avenida das Nações Unidas, 14.401<br>
-                                    Tarumã Tower, Salas 712 e 713<br>
-                                    Chácara Santo Antônio, São Paulo - SP
-                                </p>
-                                <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="fw-semibold text-decoration-none" style="color: #A06E28; transition: all 0.3s ease;">Abrir localização</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 align-items-stretch">
-                <div class="col-lg-5">
-                    <div class="surface-card h-100 p-4 p-lg-5" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 24px;">
-                        <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Fluxo interno</div>
-                        <h2 class="h3 fw-bold text-white mb-3">O que acontece após o envio</h2>
-                        <p class="mb-4" style="color: #E6E4E4; opacity: 0.8; font-size: 0.95rem; line-height: 1.6;">
-                            Após o envio, sua solicitação é registrada e direcionada à área responsável conforme o assunto informado. O retorno considera a natureza da demanda, a disponibilidade da equipe e os procedimentos internos aplicáveis.
+    <!-- Sede e Mapa -->
+    <section class="location-section p-0">
+        <div class="container-fluid p-0">
+            <div class="row g-0">
+                <div class="col-lg-5 col-xl-4 order-2 order-lg-1">
+                    <div class="location-card d-flex flex-column justify-content-center">
+                        <h2>Sede institucional</h2>
+                        <p style="font-size: 1.05rem; line-height: 1.6; margin-bottom: 2.5rem; opacity: 0.9;">
+                            Nossa sede em São Paulo concentra as frentes estratégicas, operacionais e institucionais da BSI Capital.
                         </p>
-
-                        <div class="d-flex flex-column gap-3 mb-4">
-                            <div class="contact-process-step">
-                                <div>
-                                    <div class="fw-semibold text-white mb-1">1. Recebimento da solicitação</div>
-                                </div>
-                            </div>
-                            <div class="contact-process-step">
-                                <div>
-                                    <div class="fw-semibold text-white mb-1">2. Direcionamento à área responsável</div>
-                                </div>
-                            </div>
-                            <div class="contact-process-step">
-                                <div>
-                                    <div class="fw-semibold text-white mb-1">3. Retorno com próximos passos</div>
-                                </div>
-                            </div>
+                        
+                        <div class="mb-4">
+                            <h4 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: #A06E28; margin-bottom: 1rem; font-weight: 600;">Endereço</h4>
+                            <p style="margin-bottom: 0.3rem; font-size: 1.1rem; color: #ffffff;">Avenida das Nações Unidas, 14.401</p>
+                            <p style="margin-bottom: 0.3rem; opacity: 0.8;">Tarumã Tower, Salas 712 e 713</p>
+                            <p style="opacity: 0.8;">Chácara Santo Antônio, São Paulo - SP</p>
                         </div>
 
-                        <div class="pt-4 mt-2" style="border-top: 1px solid rgba(255, 255, 255, 0.08);">
-                            <div class="small text-uppercase fw-semibold mb-3" style="color: #A06E28; letter-spacing: 0.1em; font-size: 0.75rem;">Frentes de atuação</div>
-                            <div class="d-flex flex-wrap gap-4 gap-y-2">
-                                <span class="small" style="color: #E6E4E4;">&bull; Operações estruturadas</span>
-                                <span class="small" style="color: #E6E4E4;">&bull; Relações com investidores</span>
-                                <span class="small" style="color: #E6E4E4;">&bull; Documentos públicos</span>
-                                <span class="small" style="color: #E6E4E4;">&bull; Compliance e ética</span>
-                                <span class="small" style="color: #E6E4E4;">&bull; Parcerias estratégicas</span>
-                                <span class="small" style="color: #E6E4E4;">&bull; Carreiras</span>
-                            </div>
+                        <div class="mt-4">
+                            <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="btn-brand-primary" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; width: fit-content;">
+                                Abrir no Google Maps
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7"></path><path d="M10 14 21 3"></path><path d="M21 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path></svg>
+                            </a>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-lg-7">
-                    <div class="surface-card contact-form-shell h-100 p-4 p-lg-5" id="form-contato">
-                        @if(session('contact_success'))
-                            <div class="alert d-flex align-items-center gap-3 mb-4" role="alert" style="background: rgba(160, 110, 40, 0.15); border: 1px solid #A06E28; color: #E6E4E4;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                <span>Mensagem enviada com sucesso. Nossa equipe retornará conforme a natureza da solicitação.</span>
-                            </div>
-                        @endif
-
-                        <div class="mb-4 pb-2">
-                            <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Formulário</div>
-                            <h2 class="h3 fw-bold text-white mb-2">Envie sua solicitação</h2>
-                            <p class="mb-0" style="color: #E6E4E4; opacity: 0.8;">As informações preenchidas permitem o direcionamento técnico para a área responsável.</p>
-                        </div>
-
-                        <form action="{{ route('site.contact.submit') }}" method="POST" class="row g-3">
-                            @csrf
-                            <div class="col-md-6">
-                                <label class="form-label">Nome</label>
-                                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" placeholder="Informe seu nome completo" value="{{ old('name') }}" required>
-                                @error('name')<div class="invalid-feedback" style="color: #ff6b6b;">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">E-mail</label>
-                                <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" placeholder="Informe seu e-mail corporativo" value="{{ old('email') }}" required>
-                                @error('email')<div class="invalid-feedback" style="color: #ff6b6b;">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Telefone</label>
-                                <input type="tel" name="phone" id="phone" class="form-control" placeholder="(00) 00000-0000" value="{{ old('phone') }}">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Assunto</label>
-                                <div class="custom-select-wrapper @error('subject') is-invalid-custom @enderror">
-                                    <!-- Native select hidden from view but focusable for native validation -->
-                                    <select name="subject" id="subject-native-select" required style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; z-index: -1;">
-                                        <option value="" selected disabled>Selecione a área de interesse</option>
-                                        <option value="Relações com investidores" @selected(old('subject') === 'Relações com investidores')>Relações com investidores</option>
-                                        <option value="Comercial e novos negócios" @selected(old('subject') === 'Comercial e novos negócios')>Comercial e novos negócios</option>
-                                        <option value="Compliance e canal de ética" @selected(old('subject') === 'Compliance e canal de ética')>Compliance e canal de ética</option>
-                                        <option value="Carreiras / Trabalhe conosco" @selected(old('subject') === 'Carreiras / Trabalhe conosco')>Carreiras / Trabalhe conosco</option>
-                                        <option value="Assuntos institucionais" @selected(old('subject') === 'Assuntos institucionais')>Assuntos institucionais</option>
-                                    </select>
-                                    
-                                    <!-- Custom Trigger Button -->
-                                    <button type="button" class="custom-select-trigger @if(!old('subject')) placeholder-active @endif" id="subject-custom-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="subject-custom-options">
-                                        <span class="trigger-text">{{ old('subject') ?: 'Selecione a área de interesse' }}</span>
-                                        <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                            <polyline points="6 9 12 15 18 9"></polyline>
-                                        </svg>
-                                    </button>
-                                    
-                                    <!-- Custom Options Menu -->
-                                    <div class="custom-select-options" id="subject-custom-options" role="listbox">
-                                        <div class="custom-select-option @if(old('subject') === 'Relações com investidores') active @endif" data-value="Relações com investidores" role="option">Relações com investidores</div>
-                                        <div class="custom-select-option @if(old('subject') === 'Comercial e novos negócios') active @endif" data-value="Comercial e novos negócios" role="option">Comercial e novos negócios</div>
-                                        <div class="custom-select-option @if(old('subject') === 'Compliance e canal de ética') active @endif" data-value="Compliance e canal de ética" role="option">Compliance e canal de ética</div>
-                                        <div class="custom-select-option @if(old('subject') === 'Carreiras / Trabalhe conosco') active @endif" data-value="Carreiras / Trabalhe conosco" role="option">Carreiras / Trabalhe conosco</div>
-                                        <div class="custom-select-option @if(old('subject') === 'Assuntos institucionais') active @endif" data-value="Assuntos institucionais" role="option">Assuntos institucionais</div>
-                                    </div>
-                                </div>
-                                @error('subject')<div class="invalid-feedback d-block" style="color: #ff6b6b; margin-top: 0.5rem;">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Mensagem</label>
-                                <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="5" placeholder="Descreva brevemente sua demanda ou tese de operação" required>{{ old('message') }}</textarea>
-                                @error('message')<div class="invalid-feedback" style="color: #ff6b6b;">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-12 pt-2">
-                                <button type="submit" class="btn btn-brand btn-lg px-5 mb-3">Enviar mensagem institucional</button>
-                                <p class="small mb-0" style="font-size: 0.75rem; line-height: 1.4; color: #E6E4E4; opacity: 0.6;">
-                                    As informações enviadas serão tratadas conforme a Política de Privacidade da BSI Capital, as normas aplicáveis e as rotinas internas de confidencialidade e governança da informação.
-                                </p>
-                            </div>
-                        </form>
+                <div class="col-lg-7 col-xl-8 order-1 order-lg-2">
+                    <div class="map-container">
+                        <iframe
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3655.4502951281343!2d-46.70595342358573!3d-23.624039663899975!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x94ce42360bb98d7f%3A0xa4ab8704821d7133!2sBSI%20Capital%20Securitizadora%20S%2FA!5e0!3m2!1spt-BR!2sbr!4v1774380432797!5m2!1spt-BR!2sbr"
+                            allowfullscreen=""
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade">
+                        </iframe>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
-
-    <section class="immersive-map-section">
-        <div class="immersive-map-floating-card">
-            <div class="section-kicker mb-2" style="color: #A06E28; font-weight: 600;">Sede institucional</div>
-            <h2 class="h3 fw-bold mb-3 text-white">BSI Capital</h2>
-            <p class="mb-4" style="color: #E6E4E4; opacity: 0.85; font-size: 0.95rem; line-height: 1.6;">
-                Nossa sede em São Paulo concentra as frentes estratégicas, operacionais e institucionais da securitizadora.
-            </p>
-
-            <div class="p-4 mb-4" style="border-radius: 18px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06);">
-                <div class="small text-uppercase fw-semibold mb-2" style="color: #A06E28; letter-spacing: 0.12em; font-size: 0.75rem;">Endereço</div>
-                <div class="fw-semibold mb-1" style="color: #ffffff;">Avenida das Nações Unidas, 14.401</div>
-                <div class="mb-1" style="color: #E6E4E4; opacity: 0.9; font-size: 0.9rem;">Tarumã Tower, Salas 712 e 713</div>
-                <div style="color: #E6E4E4; opacity: 0.9; font-size: 0.9rem;">Chácara Santo Antônio, São Paulo - SP</div>
-            </div>
-
-            <ul class="list-unstyled contact-map-list mb-4">
-                <li>Atendimento corporativo em dias úteis, das 09h às 18h.</li>
-                <li>Visitas institucionais mediante alinhamento prévio com a equipe.</li>
-                <li>Base próxima aos principais eixos empresariais da Zona Sul de São Paulo.</li>
-            </ul>
-
-            <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="btn btn-brand d-inline-flex align-items-center gap-2 px-4 py-3 w-100 justify-content-center">
-                Abrir no Google Maps
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7"></path><path d="M10 14 21 3"></path><path d="M21 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path></svg>
-            </a>
-        </div>
-        <iframe
-            class="immersive-map-iframe"
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3655.4502951281343!2d-46.70595342358573!3d-23.624039663899975!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x94ce42360bb98d7f%3A0xa4ab8704821d7133!2sBSI%20Capital%20Securitizadora%20S%2FA!5e0!3m2!1spt-BR!2sbr!4v1774380432797!5m2!1spt-BR!2sbr"
-            allowfullscreen=""
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade">
-        </iframe>
     </section>
 </div>
 
@@ -828,119 +515,9 @@
                 e.target.value = formatted;
             });
         }
-
-        // Custom Select Dropdown logic
-        const selectWrapper = document.querySelector('.custom-select-wrapper');
-        if (selectWrapper) {
-            const trigger = document.getElementById('subject-custom-trigger');
-            const optionsContainer = document.getElementById('subject-custom-options');
-            const options = optionsContainer.querySelectorAll('.custom-select-option');
-            const nativeSelect = document.getElementById('subject-native-select');
-            
-            // Toggle dropdown open/close
-            trigger.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const isOpen = selectWrapper.classList.contains('open');
-                closeAllSelects();
-                if (!isOpen) {
-                    selectWrapper.classList.add('open');
-                    trigger.setAttribute('aria-expanded', 'true');
-                    
-                    // Focus the active option if exists, otherwise first
-                    const activeOption = optionsContainer.querySelector('.custom-select-option.active');
-                    if (activeOption) {
-                        activeOption.focus();
-                    }
-                }
-            });
-            
-            // Select custom option
-            options.forEach(option => {
-                option.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const val = this.getAttribute('data-value');
-                    const text = this.textContent;
-                    
-                    // Update trigger text & placeholder color state
-                    trigger.querySelector('.trigger-text').textContent = text;
-                    trigger.classList.remove('placeholder-active');
-                    
-                    // Update native select
-                    nativeSelect.value = val;
-                    nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                    
-                    // Update active option styling
-                    options.forEach(opt => opt.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Close dropdown
-                    selectWrapper.classList.remove('open');
-                    trigger.setAttribute('aria-expanded', 'false');
-                    trigger.focus();
-                });
-            });
-            
-            // Close dropdown when clicking outside
-            document.addEventListener('click', function() {
-                closeAllSelects();
-            });
-            
-            // Close all select instances
-            function closeAllSelects() {
-                selectWrapper.classList.remove('open');
-                trigger.setAttribute('aria-expanded', 'false');
-            }
-            
-            // Form validation error triggers visual states
-            nativeSelect.addEventListener('invalid', function() {
-                selectWrapper.classList.add('is-invalid-custom');
-            });
-            
-            nativeSelect.addEventListener('change', function() {
-                if (this.value) {
-                    selectWrapper.classList.remove('is-invalid-custom');
-                }
-            });
-            
-            // Trigger Keyboard navigation
-            trigger.addEventListener('keydown', function(e) {
-                if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    if (!selectWrapper.classList.contains('open')) {
-                        trigger.click();
-                    } else {
-                        const activeOption = optionsContainer.querySelector('.custom-select-option.active') || options[0];
-                        activeOption.focus();
-                    }
-                }
-            });
-            
-            // Custom options Keyboard navigation
-            options.forEach((option, index) => {
-                option.setAttribute('tabindex', '-1');
-                
-                option.addEventListener('keydown', function(e) {
-                    if (e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        const nextOption = options[index + 1] || options[0];
-                        nextOption.focus();
-                    } else if (e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        const prevOption = options[index - 1] || options[options.length - 1];
-                        prevOption.focus();
-                    } else if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        this.click();
-                    } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        closeAllSelects();
-                        trigger.focus();
-                    }
-                });
-            });
-        }
     });
 </script>
 @endpush
 
 @endsection
+

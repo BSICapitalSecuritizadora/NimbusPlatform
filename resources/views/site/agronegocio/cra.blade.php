@@ -150,25 +150,51 @@
         <div class="text-center mb-5">
             <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Escopo Produtivo</span>
             <h2 class="h3 fw-bold text-dark mb-2">Presença em toda a cadeia de valor</h2>
-            <p class="text-muted mx-auto" style="max-width: 600px;">Atuamos em diversos segmentos, adaptando a estrutura de garantias e covenants à realidade biológica de cada cultura.</p>
+            <p class="text-muted mx-auto" style="max-width: 650px;">Atuamos em diferentes segmentos do agronegócio, considerando a natureza do ativo, a dinâmica de safra, as garantias e os covenants aplicáveis a cada operação.</p>
         </div>
         <div class="row g-4 justify-content-center">
             @php
                 $culturas = [
-                    ['icon' => '🌽', 'title' => 'Grãos', 'desc' => 'Soja, milho e trigo com foco em custeio e CPR.'],
-                    ['icon' => '🎋', 'title' => 'Sucroenergético', 'desc' => 'Antecipação de recebíveis para usinas e fornecedores.'],
-                    ['icon' => '🥩', 'title' => 'Pecuária', 'desc' => 'Operações para cria, recria e engorda com penhor de gado.'],
-                    ['icon' => '☕', 'title' => 'Café', 'desc' => 'Estruturas para cooperativas e exportadores.'],
-                    ['icon' => '🍊', 'title' => 'Citricultura', 'desc' => 'Financiamento para pomares e agroindústria de sucos.'],
-                    ['icon' => '🌲', 'title' => 'Silvicultura', 'desc' => 'Crédito de longo prazo para florestas plantadas.'],
+                    [
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>', 
+                        'title' => 'Grãos', 
+                        'desc' => 'Soja, milho e trigo com foco em custeio, CPR e recebíveis agrícolas.'
+                    ],
+                    [
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>', 
+                        'title' => 'Sucroenergético', 
+                        'desc' => 'Recebíveis, fornecedores e fluxos vinculados à cadeia sucroenergética.'
+                    ],
+                    [
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M4 4v16"/><path d="M20 4v16"/><path d="M4 10h16"/><path d="M4 16h16"/></svg>', 
+                        'title' => 'Pecuária', 
+                        'desc' => 'Operações com recebíveis, garantias e fluxos associados à cadeia pecuária.'
+                    ],
+                    [
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>', 
+                        'title' => 'Café', 
+                        'desc' => 'Estruturas para cooperativas, produtores e exportadores da cadeia cafeeira.'
+                    ],
+                    [
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="12" cy="13" r="8"/><path d="M12 5a4 4 0 0 1 4-4 4 4 0 0 1-4 4z"/></svg>', 
+                        'title' => 'Citricultura', 
+                        'desc' => 'Financiamento estruturado para pomares, indústria de sucos e recebíveis do setor.'
+                    ],
+                    [
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m8 14 4-4 4 4"/><path d="m4 10 8-8 8 8"/><path d="M12 22V14"/></svg>', 
+                        'title' => 'Silvicultura', 
+                        'desc' => 'Crédito de longo prazo para florestas plantadas, manejo e ativos florestais.'
+                    ],
                 ];
             @endphp
             @foreach($culturas as $cultura)
-            <div class="col-md-4 col-lg-2 text-center">
-                <div class="p-4 border rounded-4 h-100 card-hover bg-light">
-                    <div class="fs-1 mb-2">{{ $cultura['icon'] }}</div>
-                    <h4 class="h6 fw-bold mb-1">{{ $cultura['title'] }}</h4>
-                    <p class="small text-muted mb-0" style="line-height: 1.2;">{{ $cultura['desc'] }}</p>
+            <div class="col-12 col-md-6 col-lg-4 text-center">
+                <div class="p-4 p-lg-5 agro-chain-card h-100 d-flex flex-column align-items-center justify-content-center">
+                    <div class="agro-chain-icon">
+                        {!! $cultura['icon'] !!}
+                    </div>
+                    <h4 class="h6 fw-bold mb-3" style="color: #091B23;">{{ $cultura['title'] }}</h4>
+                    <p class="small mb-0" style="color: rgba(9, 27, 35, 0.70); line-height: 1.5;">{{ $cultura['desc'] }}</p>
                 </div>
             </div>
             @endforeach
@@ -510,6 +536,47 @@
     .card-hover:hover {
         transform: translateY(-5px);
         box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Agro Chain Cards Premium Style */
+    .agro-chain-card {
+        background: #ffffff;
+        border: 1px solid rgba(9, 27, 35, 0.10);
+        border-radius: 18px;
+        box-shadow: 0 12px 28px rgba(9, 27, 35, 0.05);
+        transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    }
+
+    .agro-chain-card:hover {
+        border-color: rgba(160, 110, 40, 0.40);
+        transform: translateY(-3px);
+        box-shadow: 0 16px 32px rgba(9, 27, 35, 0.08);
+    }
+
+    .agro-chain-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        margin-bottom: 20px;
+        border-radius: 999px;
+        color: #A06E28;
+        background: rgba(160, 110, 40, 0.08);
+        border: 1px solid rgba(160, 110, 40, 0.18);
+        transition: background 180ms ease, color 180ms ease;
+    }
+
+    .agro-chain-card:hover .agro-chain-icon {
+        background: #A06E28;
+        color: #ffffff;
+    }
+
+    .agro-chain-icon svg {
+        width: 24px;
+        height: 24px;
+        stroke: currentColor;
+        fill: none;
     }
 </style>
 @endpush

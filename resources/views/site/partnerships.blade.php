@@ -8,6 +8,89 @@
         50%       { transform: translateY(-10px); }
     }
     .float-card { animation: float 4s ease-in-out infinite; }
+
+    .partnership-section {
+        background: #E6E4E4;
+    }
+    .partnership-panel {
+        background: linear-gradient(135deg, #091B23 0%, #0B2029 60%, #091B23 100%);
+        border: 1px solid rgba(160, 110, 40, 0.24);
+        border-radius: 20px;
+        box-shadow: 0 24px 60px rgba(9, 27, 35, 0.18);
+    }
+    .partnership-eyebrow {
+        color: #A06E28;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-weight: 600;
+    }
+    .partnership-title {
+        color: #E6E4E4;
+    }
+    .partnership-description {
+        color: rgba(230, 228, 228, 0.78);
+    }
+    .partnership-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(160, 110, 40, 0.20);
+        border-radius: 16px;
+        transition: all 0.2s ease;
+    }
+    .partnership-item:hover {
+        border-color: rgba(160, 110, 40, 0.38);
+        transform: translateY(-2px);
+    }
+    .partnership-item-title {
+        color: #A06E28;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: 600;
+    }
+    .partnership-item-text {
+        color: rgba(230, 228, 228, 0.82);
+    }
+
+    .premium-card {
+        background: #ffffff;
+        border: 1px solid rgba(9, 27, 35, 0.10);
+        border-radius: 1.5rem;
+        transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(9, 27, 35, 0.04);
+    }
+    .premium-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(9, 27, 35, 0.08) !important;
+        border-color: rgba(160, 110, 40, 0.30);
+    }
+    .premium-kicker {
+        color: #091B23;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+    .premium-card-title {
+        color: #091B23;
+    }
+    .premium-card-text {
+        color: rgba(9, 27, 35, 0.75);
+    }
+    .premium-list-item {
+        position: relative;
+        padding-left: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    .premium-list-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.55rem;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #A06E28;
+    }
 </style>
 @endpush
 
@@ -52,106 +135,31 @@
     </div>
 </section>
 
-<section class="py-5" style="background-color: #f8f9fa;">
+<section class="py-5 partnership-section">
     <div class="container py-lg-5">
-        <style>
-            .premium-card {
-                background: #ffffff;
-                border: 1px solid rgba(5,26,61,0.06);
-                border-radius: 1.5rem;
-                transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-                position: relative;
-                overflow: hidden;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-            }
-            .premium-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 20px 40px rgba(5,26,61,0.08) !important;
-            }
-            .premium-card::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 4px;
-                background: linear-gradient(90deg, #d4af37, #f3e5ab);
-                opacity: 0;
-                transition: opacity 0.4s ease;
-            }
-            .premium-card:hover::before {
-                opacity: 1;
-            }
-            
-            .premium-card-dark {
-                background: linear-gradient(145deg, #020918 0%, #051a3d 100%);
-                border: 1px solid rgba(255,255,255,0.1);
-                border-radius: 1.5rem;
-                color: #ffffff;
-                box-shadow: 0 15px 35px rgba(2, 9, 24, 0.15);
-                position: relative;
-                overflow: hidden;
-            }
-            
-            .premium-soft-box {
-                background: rgba(255,255,255,0.03);
-                border: 1px solid rgba(255,255,255,0.08);
-                border-radius: 1rem;
-                transition: background 0.3s ease;
-            }
-            .premium-soft-box:hover {
-                background: rgba(255,255,255,0.06);
-            }
-            .premium-kicker {
-                font-size: 0.75rem;
-                font-weight: 700;
-                letter-spacing: 0.15em;
-                color: #d4af37;
-                text-transform: uppercase;
-            }
-            .premium-list-item {
-                position: relative;
-                padding-left: 1.25rem;
-                margin-bottom: 0.5rem;
-            }
-            .premium-list-item::before {
-                content: '';
-                position: absolute;
-                left: 0;
-                top: 0.55rem;
-                width: 6px;
-                height: 6px;
-                border-radius: 50%;
-                background: #d4af37;
-            }
-        </style>
-
         <div class="row g-4 align-items-stretch">
             <div class="col-lg-5">
-                <div class="premium-card-dark h-100 p-4 p-lg-5 d-flex flex-column">
-                    <!-- Decor element -->
-                    <div class="position-absolute" style="top: -50px; right: -50px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%;"></div>
-                    
+                <div class="partnership-panel h-100 p-4 p-lg-5 d-flex flex-column position-relative overflow-hidden">
                     <div class="position-relative z-1">
-                        <div class="premium-kicker mb-3">Modelos de parceria</div>
-                        <h2 class="h2 fw-bold text-white mb-4" style="line-height: 1.2;">Estruturas aderentes ao papel de cada parceiro</h2>
-                        <p class="mb-5" style="color: rgba(255,255,255,0.7); font-size: 1.05rem; line-height: 1.6;">
+                        <div class="partnership-eyebrow mb-3" style="font-size: 0.85rem;">Modelos de parceria</div>
+                        <h2 class="h2 fw-bold partnership-title mb-4" style="line-height: 1.2;">Estruturas aderentes ao papel de cada parceiro</h2>
+                        <p class="mb-5 partnership-description" style="font-size: 1.05rem; line-height: 1.6;">
                             Estruturamos relacionamentos que respeitam a origem da oportunidade, o fluxo comercial, a governança documental e a responsabilidade de cada parte ao longo da operação.
                         </p>
                     </div>
 
                     <div class="d-flex flex-column gap-3 mt-auto position-relative z-1">
-                        <div class="premium-soft-box p-4">
-                            <div class="premium-kicker mb-2">Originação</div>
-                            <div style="color: #f8f9fa; font-weight: 500; line-height: 1.5; font-size: 0.95rem;">Relacionamento com originadores, consultorias e assessorias que atuam na identificação de oportunidades aderentes a CRI, CRA, CR ou estruturas sob medida.</div>
+                        <div class="partnership-item p-4">
+                            <div class="partnership-item-title mb-2" style="font-size: 0.85rem;">Originação</div>
+                            <div class="partnership-item-text" style="font-weight: 500; line-height: 1.5; font-size: 0.95rem;">Relacionamento com originadores, consultorias e assessorias que atuam na identificação de oportunidades aderentes a CRI, CRA, CR ou estruturas sob medida.</div>
                         </div>
-                        <div class="premium-soft-box p-4">
-                            <div class="premium-kicker mb-2">Distribuição</div>
-                            <div style="color: #f8f9fa; font-weight: 500; line-height: 1.5; font-size: 0.95rem;">Interlocução com canais comerciais e parceiros de relacionamento, sempre conforme estratégia da oferta, perfil dos investidores e requisitos regulatórios.</div>
+                        <div class="partnership-item p-4">
+                            <div class="partnership-item-title mb-2" style="font-size: 0.85rem;">Distribuição</div>
+                            <div class="partnership-item-text" style="font-weight: 500; line-height: 1.5; font-size: 0.95rem;">Interlocução com canais comerciais e parceiros de relacionamento, sempre conforme estratégia da oferta, perfil dos investidores e requisitos regulatórios.</div>
                         </div>
-                        <div class="premium-soft-box p-4">
-                            <div class="premium-kicker mb-2">Execução</div>
-                            <div style="color: #f8f9fa; font-weight: 500; line-height: 1.5; font-size: 0.95rem;">Apoio técnico-operacional na organização da documentação, governança de informações e acompanhamento da estrutura ao longo do ciclo da operação.</div>
+                        <div class="partnership-item p-4">
+                            <div class="partnership-item-title mb-2" style="font-size: 0.85rem;">Execução</div>
+                            <div class="partnership-item-text" style="font-weight: 500; line-height: 1.5; font-size: 0.95rem;">Apoio técnico-operacional na organização da documentação, governança de informações e acompanhamento da estrutura ao longo do ciclo da operação.</div>
                         </div>
                     </div>
                 </div>
@@ -161,9 +169,9 @@
                 <div class="row g-4 h-100">
                     <div class="col-md-6">
                         <div class="premium-card h-100 p-4 p-lg-5 d-flex flex-column">
-                            <div class="premium-kicker mb-3" style="color: #051a3d;">Quem pode se conectar</div>
-                            <h3 class="h4 fw-bold mb-4" style="color: #020918;">Perfis de parceiros com aderência à BSI</h3>
-                            <ul class="list-unstyled mb-0 mt-auto text-muted" style="line-height: 1.6; font-size: 0.95rem;">
+                            <div class="premium-kicker mb-3" style="font-size: 0.85rem;">Quem pode se conectar</div>
+                            <h3 class="h4 fw-bold mb-4 premium-card-title">Perfis de parceiros com aderência à BSI</h3>
+                            <ul class="list-unstyled mb-0 mt-auto premium-card-text" style="line-height: 1.6; font-size: 0.95rem;">
                                 <li class="premium-list-item">Originadores setoriais</li>
                                 <li class="premium-list-item">Assessorias e consultorias</li>
                                 <li class="premium-list-item">Boutiques de M&amp;A</li>
@@ -175,12 +183,12 @@
                     </div>
                     <div class="col-md-6">
                         <div class="premium-card h-100 p-4 p-lg-5 d-flex flex-column">
-                            <div class="premium-kicker mb-3" style="color: #051a3d;">Avaliação</div>
-                            <h3 class="h4 fw-bold mb-4" style="color: #020918;">Critérios para avaliação de parcerias</h3>
-                            <p class="text-muted mb-4" style="line-height: 1.6; font-size: 0.95rem;">
+                            <div class="premium-kicker mb-3" style="font-size: 0.85rem;">Avaliação</div>
+                            <h3 class="h4 fw-bold mb-4 premium-card-title">Critérios para avaliação de parcerias</h3>
+                            <p class="premium-card-text mb-4" style="line-height: 1.6; font-size: 0.95rem;">
                                 Avaliações consideram a qualidade da oportunidade, maturidade, governança e aderência aos critérios da BSI Capital.
                             </p>
-                            <ul class="list-unstyled mb-0 mt-auto text-muted" style="line-height: 1.6; font-size: 0.95rem;">
+                            <ul class="list-unstyled mb-0 mt-auto premium-card-text" style="line-height: 1.6; font-size: 0.95rem;">
                                 <li class="premium-list-item">Aderência ao mercado de capitais</li>
                                 <li class="premium-list-item">Lastro e fluxo identificáveis</li>
                                 <li class="premium-list-item">Viabilidade de estruturação</li>
@@ -190,18 +198,18 @@
                     </div>
                     <div class="col-md-6">
                         <div class="premium-card h-100 p-4 p-lg-5 d-flex flex-column">
-                            <div class="premium-kicker mb-3" style="color: #051a3d;">Critérios de entrada</div>
-                            <h3 class="h4 fw-bold mb-4" style="color: #020918;">Clareza comercial e disciplina operacional</h3>
-                            <p class="text-muted mb-0 mt-auto" style="line-height: 1.6; font-size: 0.95rem;">
+                            <div class="premium-kicker mb-3" style="font-size: 0.85rem;">Critérios de entrada</div>
+                            <h3 class="h4 fw-bold mb-4 premium-card-title">Clareza comercial e disciplina operacional</h3>
+                            <p class="premium-card-text mb-0 mt-auto" style="line-height: 1.6; font-size: 0.95rem;">
                                 Avaliamos aderência da tese, qualidade das informações, contexto regulatório e viabilidade de estruturação antes de avançar para etapas comerciais.
                             </p>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="premium-card h-100 p-4 p-lg-5 d-flex flex-column">
-                            <div class="premium-kicker mb-3" style="color: #051a3d;">Relacionamento</div>
-                            <h3 class="h4 fw-bold mb-4" style="color: #020918;">Fluxo previsível e comunicação objetiva</h3>
-                            <p class="text-muted mb-0 mt-auto" style="line-height: 1.6; font-size: 0.95rem;">
+                            <div class="premium-kicker mb-3" style="font-size: 0.85rem;">Relacionamento</div>
+                            <h3 class="h4 fw-bold mb-4 premium-card-title">Fluxo previsível e comunicação objetiva</h3>
+                            <p class="premium-card-text mb-0 mt-auto" style="line-height: 1.6; font-size: 0.95rem;">
                                 Priorizamos alinhamento de expectativas, papéis bem definidos e comunicação contínua entre as partes desde a triagem até o acompanhamento.
                             </p>
                         </div>

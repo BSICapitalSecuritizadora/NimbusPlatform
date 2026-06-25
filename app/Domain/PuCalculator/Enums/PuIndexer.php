@@ -44,10 +44,11 @@ enum PuIndexer: string
      * Indexadores cuja engine está homologada para uso operacional.
      *
      * IPCA permanece `false`: a engine já reproduz toda a janela com IPCA publicado do gabarito real
-     * (CRI RIO BRANCO 15ª série), incluindo as 9 amortizações, mas a homologação total depende da
-     * POLÍTICA DE PROJEÇÃO DE MERCADO (meses sem IPCA publicado), ainda não implementada — sem ela a
-     * validação até o vencimento não é possível. Só virar para `true` quando essa política existir, a
-     * validação até o vencimento passar e houver aprovação (maker/checker).
+     * (CRI RIO BRANCO 15ª série), incluindo as 9 amortizações, e a POLÍTICA DE PROJEÇÃO DE MERCADO já
+     * está implementada (`IpcaIndexResolver` + `IpcaProjectionPolicyService`), permitindo validar a curva
+     * até o vencimento com série projetada marcada como tal. A virada para `true` continua gated no fluxo
+     * maker/checker (homologação da versão da curva) com uma série projetada APROVADA — não deve ser
+     * automática.
      */
     public function isHomologated(): bool
     {

@@ -181,40 +181,92 @@
 </section>
 
 <!-- Políticas Section -->
-<section class="py-5" style="background: #0b1220;">
-    <div class="container py-5">
-        <div class="text-center mb-5 pb-3">
-            <h2 id="politicas" class="h3 fw-bold mb-3" style="color: #ffffff;">Políticas e Documentos</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Consulte os normativos institucionais que regem nossas diretrizes de governança, conduta ética e conformidade regulatória.</p>
+<section class="compliance-documents-section">
+    <div class="compliance-documents-container">
+        <div class="compliance-documents-header">
+            <h2 id="politicas" class="compliance-documents-title h3 fw-bold mb-3">Políticas e Documentos</h2>
+            <p class="compliance-documents-description mb-0">Consulte políticas, manuais e documentos institucionais que sustentam as práticas de compliance, governança, segurança da informação e controles internos da BSI Capital.</p>
         </div>
 
-        <div class="row g-4 justify-content-center">
-            @forelse($documents as $document)
-            <div class="col-md-6 col-lg-4">
-                <a href="{{ route('site.documents.download', $document) }}" class="text-decoration-none" download>
-                    <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.05); border-radius: 16px; transition: .3s;">
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                            <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">{{ $document->title }}</h4>
+        <div class="compliance-documents-grid">
+            @php
+                $expectedDocs = [
+                    'Política de Privacidade de Dados',
+                    'Segurança da Informação e Cibersegurança',
+                    'Política de Suitability',
+                    'Manual de Controles Internos',
+                    'Código de Ética'
+                ];
+            @endphp
+
+            @foreach($expectedDocs as $docTitle)
+                @php
+                    $dbDoc = $documents->firstWhere('title', $docTitle);
+                @endphp
+                <div class="compliance-document-card">
+                    <div>
+                        <div class="compliance-document-card__header mb-3">
+                            <div class="compliance-document-card__icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            </div>
+                            <h4 class="compliance-document-card__title mb-0 fs-5">{{ $docTitle }}</h4>
                         </div>
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span style="color: #8892b0; font-size: 0.85rem;">
-                                {{ $document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y') }}
-                                @if($document->file_size)
-                                    · {{ number_format($document->file_size / 1024, 0) }} KB
-                                @endif
-                            </span>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        @if($dbDoc)
+                        <div class="compliance-document-card__meta">
+                            {{ $dbDoc->published_at?->format('d/m/Y') ?? $dbDoc->created_at->format('d/m/Y') }}
+                            @if($dbDoc->file_size)
+                                · {{ number_format($dbDoc->file_size / 1024, 0) }} KB
+                            @endif
+                        </div>
+                        @else
+                        <div class="compliance-document-card__meta">Em validação</div>
+                        @endif
+                    </div>
+                    
+                    <div class="compliance-document-card__footer">
+                        @if($dbDoc)
+                        <a href="{{ route('site.documents.download', $dbDoc) }}" class="compliance-document-card__link d-flex justify-content-between align-items-center w-100" download>
+                            <span>Acessar arquivo</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </a>
+                        @else
+                        <span class="compliance-document-card__link d-flex justify-content-between align-items-center w-100" style="color: rgba(9, 27, 35, 0.4); pointer-events: none;">
+                            <span>Indisponível</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </span>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+
+            {{-- Other published documents --}}
+            @foreach($documents as $document)
+                @if(!in_array($document->title, $expectedDocs))
+                <div class="compliance-document-card">
+                    <div>
+                        <div class="compliance-document-card__header mb-3">
+                            <div class="compliance-document-card__icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            </div>
+                            <h4 class="compliance-document-card__title mb-0 fs-5">{{ $document->title }}</h4>
+                        </div>
+                        <div class="compliance-document-card__meta">
+                            {{ $document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y') }}
+                            @if($document->file_size)
+                                · {{ number_format($document->file_size / 1024, 0) }} KB
+                            @endif
                         </div>
                     </div>
-                </a>
-            </div>
-            @empty
-            <div class="col-12 text-center py-4">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                <p class="mb-0" style="color: #8892b0;">Os documentos normativos de compliance estarão disponíveis nesta seção após sua publicação oficial.</p>
-            </div>
-            @endforelse
+                    
+                    <div class="compliance-document-card__footer">
+                        <a href="{{ route('site.documents.download', $document) }}" class="compliance-document-card__link d-flex justify-content-between align-items-center w-100" download>
+                            <span>Acessar arquivo</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </a>
+                    </div>
+                </div>
+                @endif
+            @endforeach
         </div>
     </div>
 </section>
@@ -267,6 +319,136 @@
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+    }
+
+    .compliance-documents-section {
+        background: #E6E4E4;
+        color: #091B23;
+        padding: 96px 0;
+    }
+
+    .compliance-documents-container {
+        width: min(1120px, calc(100% - 48px));
+        margin: 0 auto;
+    }
+
+    .compliance-documents-header {
+        max-width: 680px;
+        margin: 0 auto 48px;
+        text-align: center;
+    }
+
+    .compliance-documents-title {
+        color: #091B23;
+    }
+
+    .compliance-documents-description {
+        color: rgba(9, 27, 35, 0.72);
+        line-height: 1.6;
+    }
+
+    .compliance-documents-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 24px;
+        align-items: stretch;
+    }
+
+    .compliance-document-card {
+        min-width: 0;
+        min-height: 160px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: #FFFFFF;
+        border: 1px solid rgba(9, 27, 35, 0.10);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 16px 34px rgba(9, 27, 35, 0.06);
+        transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .compliance-document-card:hover {
+        border-color: rgba(160, 110, 40, 0.42);
+        transform: translateY(-2px);
+        box-shadow: 0 20px 42px rgba(9, 27, 35, 0.09);
+    }
+
+    .compliance-document-card__header {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .compliance-document-card__icon {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: #A06E28;
+        background: rgba(160, 110, 40, 0.08);
+        border: 1px solid rgba(160, 110, 40, 0.22);
+    }
+
+    .compliance-document-card__title {
+        color: #091B23;
+        font-weight: 700;
+        line-height: 1.25;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+    }
+
+    .compliance-document-card__meta {
+        margin-top: 18px;
+        color: rgba(9, 27, 35, 0.58);
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+
+    .compliance-document-card__footer {
+        margin-top: 22px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(9, 27, 35, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .compliance-document-card__link {
+        color: #A06E28;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .compliance-document-card__link:hover {
+        color: #091B23;
+    }
+
+    @media (max-width: 1024px) {
+        .compliance-documents-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 640px) {
+        .compliance-documents-container {
+            width: min(100% - 32px, 1120px);
+        }
+
+        .compliance-documents-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .compliance-document-card__meta,
+        .compliance-document-card__link {
+            white-space: normal;
+        }
     }
 </style>
 @endpush

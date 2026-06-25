@@ -116,6 +116,11 @@ class Obligation extends Model
         return $this->belongsTo(User::class, 'responsible_user_id');
     }
 
+    public function completedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completed_by');
+    }
+
     public function notifications(): HasMany
     {
         return $this->hasMany(ObligationNotification::class);

@@ -190,21 +190,28 @@
         }
 
         .badge-status-active {
+            color: #166534;
             background: rgba(34, 197, 94, 0.12);
-            border: 1px solid rgba(34, 197, 94, 0.28);
-            color: #15803d;
+            border: 1px solid rgba(34, 197, 94, 0.32);
         }
 
         .badge-status-closed {
-            background: rgba(100, 116, 139, 0.12);
-            border: 1px solid rgba(100, 116, 139, 0.28);
-            color: #475569;
+            color: #b91c1c;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.32);
         }
 
         .badge-status-default {
-            background: rgba(239, 68, 68, 0.12);
-            border: 1px solid rgba(239, 68, 68, 0.28);
-            color: #b91c1c;
+            color: #92400e;
+            background: rgba(245, 158, 11, 0.14);
+            border: 1px solid rgba(245, 158, 11, 0.36);
+        }
+
+        .badge-status-outros,
+        .badge-status-other {
+            color: #4b5563;
+            background: rgba(107, 114, 128, 0.12);
+            border: 1px solid rgba(107, 114, 128, 0.28);
         }
 
         .btn {
@@ -428,15 +435,30 @@
             letter-spacing: -0.03em;
         }
 
+        .site-brand {
+            display: inline-flex;
+            align-items: center;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+        }
+
         .site-logo {
             display: block;
             width: auto;
+            max-height: 42px;
             height: auto;
-            max-height: 44px;
             object-fit: contain;
+            background: transparent !important;
             filter: none !important;
             mix-blend-mode: normal !important;
-            opacity: 1;
+            opacity: 1 !important;
+        }
+
+        .site-logo-footer {
+            max-height: 52px;
         }
 
         .navbar-brand img {
@@ -716,12 +738,20 @@
         }
 
         .footer-anbima-title {
-            margin-bottom: 14px;
+            margin-bottom: 0.5rem;
             font-size: 0.72rem;
             font-weight: 700;
             letter-spacing: 0.14em;
             text-transform: uppercase;
             color: #E6E4E4;
+            text-align: center;
+        }
+
+        .footer-anbima-copy {
+            margin-bottom: 14px;
+            color: rgba(230, 228, 228, 0.72);
+            font-size: 0.8rem;
+            line-height: 1.55;
             text-align: center;
         }
 

@@ -85,26 +85,6 @@
     </div>
 </section>
 
-{{-- Trust Bar --}}
-<section class="py-4 border-bottom border-top" style="background: var(--surface-light);">
-    <div class="container">
-        <div class="row align-items-center justify-content-between g-4">
-            <div class="col-lg-3">
-                <div class="section-kicker mb-0">Conectados ao mercado</div>
-                <div class="small text-muted">Ecossistema de integração institucional</div>
-            </div>
-            <div class="col-lg-9">
-                <div class="d-flex flex-wrap justify-content-center justify-content-lg-end align-items-center gap-4 gap-lg-5 opacity-50 grayscale">
-                    {{-- Placeholders para logos de parceiros (Auditoria, Ratings, etc) --}}
-                    <div class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.1em;">Auditoria Big 4</div>
-                    <div class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.1em;">Agências de Rating</div>
-                    <div class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.1em;">Agentes Fiduciários</div>
-                    <div class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.1em;">Custodiantes</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 
 <section class="py-5">
     <div class="container py-4">
@@ -232,26 +212,74 @@
     </div>
 </section>
 
-<section class="py-5">
+<style>
+.home-institutional-cta {
+    background: linear-gradient(135deg, #091B23 0%, #0B2029 55%, #091B23 100%);
+    border-top: 1px solid rgba(160, 110, 40, 0.35);
+    border-bottom: 1px solid rgba(160, 110, 40, 0.35);
+}
+
+.home-institutional-cta__eyebrow {
+    color: #A06E28;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+
+.home-institutional-cta__title {
+    color: #E6E4E4;
+    letter-spacing: -0.02em;
+}
+
+.home-institutional-cta__text {
+    color: rgba(230, 228, 228, 0.72);
+}
+
+.home-institutional-cta__button {
+    background: #E6E4E4;
+    color: #091B23;
+    border: 1px solid #E6E4E4;
+    transition: all 0.3s ease;
+    border-radius: 4px; /* Slight rounding, not fully pill or sharp */
+}
+
+.home-institutional-cta__button:hover {
+    background: #A06E28;
+    border-color: #A06E28;
+    color: #091B23;
+}
+
+.home-institutional-cta__link {
+    color: rgba(230, 228, 228, 0.70);
+    transition: all 0.3s ease;
+}
+
+.home-institutional-cta__link:hover {
+    color: #A06E28;
+}
+</style>
+
+<section class="home-institutional-cta py-5 mt-4">
     <div class="container">
-        <div class="card border-0 overflow-hidden" style="background: linear-gradient(135deg, var(--brand-strong), #0b1f4f);">
-            <div class="row g-0 align-items-center">
-                <div class="col-lg-8">
-                    <div class="p-4 p-lg-5">
-                        <div class="section-kicker mb-2">Relacionamento institucional</div>
-                        <h2 class="h2 fw-bold text-white mb-3">Entre em contato com a BSI Capital</h2>
-                        <p class="text-white-50 mb-0" style="max-width: 640px;">
-                            Traga sua operação para a BSI Capital. Converse diretamente com nossos especialistas em estruturação e gestão de risco.
-                        </p>
-                    </div>
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="py-4 py-lg-5">
+                    <div class="home-institutional-cta__eyebrow mb-2">Relacionamento institucional</div>
+                    <h2 class="h2 fw-bold home-institutional-cta__title mb-3">Entre em contato com a BSI Capital</h2>
+                    <p class="home-institutional-cta__text mb-0" style="max-width: 640px; font-size: 1.1rem; line-height: 1.6;">
+                        Traga sua operação para a BSI Capital. Converse diretamente com nossos especialistas em estruturação e gestão de risco.
+                    </p>
                 </div>
-                <div class="col-lg-4">
-                    <div class="p-4 p-lg-5 d-flex flex-column gap-3 align-items-start align-items-lg-stretch">
-                        <a href="{{ route('proposal.create') }}" class="btn btn-light btn-lg">Solicitar Análise de Estruturação</a>
-                        <a href="{{ route('site.contact') }}" class="text-white-50 text-decoration-none small" style="padding: 0.25rem 0;">
-                            ou avaliar viabilidade →
-                        </a>
-                    </div>
+            </div>
+            <div class="col-lg-4 text-lg-end text-start">
+                <div class="py-4 py-lg-5 d-flex flex-column gap-3 align-items-start align-items-lg-end">
+                    <a href="{{ route('proposal.create') }}" class="btn home-institutional-cta__button text-uppercase fw-bold px-4 py-3">
+                        Solicitar Análise de Estruturação
+                    </a>
+                    <a href="{{ route('site.contact') }}" class="home-institutional-cta__link text-decoration-none" style="padding: 0.25rem 0; font-weight: 500;">
+                        ou avaliar viabilidade →
+                    </a>
                 </div>
             </div>
         </div>

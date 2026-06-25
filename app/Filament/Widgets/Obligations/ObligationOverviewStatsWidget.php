@@ -42,6 +42,9 @@ class ObligationOverviewStatsWidget extends StatsOverviewWidget
             Stat::make('Próximos 7 Dias', $this->format($summary['proximos_7_dias']))
                 ->color('warning')
                 ->description('Janela curta de vencimento'),
+            Stat::make('Próximos 30 Dias', $this->format($summary['proximos_30_dias']))
+                ->color('info')
+                ->description('Planejamento do próximo ciclo'),
             Stat::make('Alta Prioridade em 7 Dias', $this->format($summary['alta_prioridade_proximos_7_dias']))
                 ->color('warning')
                 ->description('Alta ou crítica em até 7 dias'),
@@ -51,6 +54,9 @@ class ObligationOverviewStatsWidget extends StatsOverviewWidget
             Stat::make('Concluídas', $this->format($summary['concluida']))
                 ->color('success')
                 ->description('Marcadas como cumpridas'),
+            Stat::make('Não Aplicáveis', $this->format($summary['nao_aplicavel']))
+                ->color('gray')
+                ->description('Encerradas fora do fluxo operacional'),
             Stat::make('Sem Responsável', $this->format($summary['sem_responsavel']))
                 ->color('danger')
                 ->description('Ainda sem dono operacional'),

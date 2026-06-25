@@ -148,161 +148,369 @@
     </div>
 </section>
 
-<!-- Documentação Corporativa e Regulatória -->
-<section class="py-5" style="background: #0b1220;">
-    <div class="container py-5">
+<style>
+.governance-docs-section {
+    background: #E6E4E4;
+    color: #091B23;
+    padding: 96px 0;
+}
+
+.governance-docs-eyebrow {
+    color: #A06E28;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.governance-docs-title {
+    color: #091B23;
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.governance-docs-description {
+    color: rgba(9, 27, 35, 0.72);
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.governance-doc-card {
+    background: #ffffff;
+    border: 1px solid rgba(9, 27, 35, 0.10);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(9, 27, 35, 0.04);
+    transition: all 0.2s ease;
+}
+
+.governance-doc-card:hover {
+    border-color: rgba(160, 110, 40, 0.35);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(9, 27, 35, 0.08);
+}
+
+.governance-doc-card__icon {
+    color: #A06E28;
+    background: rgba(160, 110, 40, 0.08);
+    border: 1px solid rgba(160, 110, 40, 0.18);
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.governance-doc-card__title {
+    color: #091B23;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.governance-doc-card__text {
+    color: rgba(9, 27, 35, 0.68);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.governance-doc-card__link {
+    color: #A06E28;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.governance-doc-card__link:hover {
+    color: #091B23;
+}
+
+.governance-doc-card__link--disabled {
+    color: rgba(9, 27, 35, 0.4);
+    pointer-events: none;
+}
+
+/* New classes for Manuais e Políticas Regulatórias */
+.governance-policies-section {
+    background: #E6E4E4;
+    padding: 88px 0;
+}
+
+.governance-policies-container {
+    width: min(1120px, calc(100% - 48px));
+    margin: 0 auto;
+}
+
+.governance-policies-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    margin-top: 40px;
+}
+
+@media (max-width: 1024px) {
+    .governance-policies-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .governance-policies-container {
+        width: min(100% - 32px, 1120px);
+    }
+
+    .governance-policies-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.governance-policy-card {
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: #FFFFFF;
+    border: 1px solid rgba(9, 27, 35, 0.10);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 14px 34px rgba(9, 27, 35, 0.06);
+    transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.governance-policy-card:hover {
+    border-color: rgba(160, 110, 40, 0.42);
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px rgba(9, 27, 35, 0.09);
+}
+
+.governance-policy-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.governance-policy-card__icon {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: #A06E28;
+    background: rgba(160, 110, 40, 0.08);
+    border: 1px solid rgba(160, 110, 40, 0.22);
+}
+
+.governance-policy-card__title {
+    color: #091B23;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.governance-policy-card__footer {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(9, 27, 35, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.governance-policy-card__link {
+    color: #A06E28;
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-decoration: none;
+}
+
+.governance-policy-card__link:hover {
+    color: #091B23;
+}
+</style>
+
+<!-- Central Institucional de Documentos -->
+<section class="governance-docs-section">
+    <div class="container" style="max-width: 1120px;">
         <div class="text-center mb-5 pb-3">
-            <h2 id="documentacao" class="h3 fw-bold mb-3" style="color: #ffffff;">Documentação Corporativa</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Documentos institucionais, societários e normativos disponíveis para consulta.</p>
+            <h2 id="documentacao" class="governance-docs-title mb-3">Documentação e políticas de governança</h2>
+            <p class="governance-docs-description mx-auto" style="max-width: 720px;">
+                Consulte documentos institucionais, societários e normativos que apoiam a estrutura de governança, controles internos e conformidade da BSI Capital.
+            </p>
         </div>
 
-        <div class="row g-4 mb-5">
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 p-4 border-0" style="background: rgba(212,175,55,0.08); border-radius: 16px; border: 1px solid var(--gold) !important;">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                        <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">Estatuto Social</h4>
+        <!-- Bloco 1: Documentação Corporativa -->
+        <div class="mb-5 pb-4">
+            <h3 class="fw-bold mb-2" style="color: #091B23; font-size: 1.5rem;">Documentação Corporativa</h3>
+            <p class="mb-4" style="color: rgba(9, 27, 35, 0.72);">Documentos institucionais, societários e normativos disponíveis para consulta.</p>
+
+            <div class="row g-4">
+                <div class="col-lg-8 d-flex flex-column">
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <div class="governance-doc-card h-100 p-4 d-flex flex-column">
+                                <div class="governance-doc-card__icon mb-3">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                                </div>
+                                <h4 class="governance-doc-card__title mb-2">Estatuto Social</h4>
+                                <p class="governance-doc-card__text mb-4">Documento fundamental que rege a organização e o funcionamento da companhia.</p>
+                                <a href="{{ route('public-documents') }}" class="governance-doc-card__link">
+                                    Consultar documento <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="governance-doc-card h-100 p-4 d-flex flex-column">
+                                <div class="governance-doc-card__icon mb-3">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                </div>
+                                <h4 class="governance-doc-card__title mb-2">Atas de Assembleia</h4>
+                                <p class="governance-doc-card__text mb-4">Registro das deliberações e decisões estratégicas tomadas em assembleias gerais.</p>
+                                <a href="{{ route('site.ri') }}" class="governance-doc-card__link">
+                                    Acessar arquivo <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <p class="small mb-3" style="color: #8892b0;">Documento fundamental que rege a organização e o funcionamento da BSI Capital Securitizadora S.A.</p>
-                    <a href="{{ route('public-documents') }}" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-2" style="border-color: rgba(255,255,255,0.2);">
-                        Consultar no RI
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
-                    </a>
+
+                    <div class="governance-doc-card p-4 flex-grow-1">
+                        <h4 class="fw-bold mb-4" style="color: #A06E28; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em;">Políticas e Normativos</h4>
+                        <div class="d-flex flex-column gap-3">
+                            <div class="d-flex align-items-start gap-3">
+                                <div style="color: #A06E28; margin-top: 2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                                <div>
+                                    <div class="fw-bold" style="color: #091B23; font-size: 0.95rem;">Políticas e Normativos Internos</div>
+                                    <div style="color: rgba(9, 27, 35, 0.68); font-size: 0.9rem;">Diretrizes e políticas corporativas aplicáveis a colaboradores e parceiros.</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start gap-3">
+                                <div style="color: #A06E28; margin-top: 2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                                <div>
+                                    <div class="fw-bold" style="color: #091B23; font-size: 0.95rem;">Vigilância Regulatória</div>
+                                    <div style="color: rgba(9, 27, 35, 0.68); font-size: 0.9rem;">Acompanhamento contínuo das exigências da CVM e órgãos do setor.</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-start gap-3">
+                                <div style="color: #A06E28; margin-top: 2px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                                <div>
+                                    <div class="fw-bold" style="color: #091B23; font-size: 0.95rem;">Gerenciamento de Riscos</div>
+                                    <div style="color: rgba(9, 27, 35, 0.68); font-size: 0.9rem;">Controles desenhados para mitigar exposição a riscos operacionais e de imagem.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.04); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06) !important;">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">Atas de Assembleia</h4>
+
+                <div class="col-lg-4">
+                    <div class="governance-doc-card h-100 p-4" style="background: rgba(255,255,255,0.95);">
+                        <h4 class="fw-bold mb-4" style="color: #091B23; font-size: 1.1rem;">Estrutura de Governança</h4>
+                        <div class="d-flex flex-column gap-4">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                                    <span class="fw-bold" style="color: #091B23; font-size: 0.95rem;">Diretoria Executiva</span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: rgba(9, 27, 35, 0.68); margin-left: 26px;">Gestão estratégica e supervisão das diretrizes corporativas.</div>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                    <span class="fw-bold" style="color: #091B23; font-size: 0.95rem;">Comitê de Compliance</span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: rgba(9, 27, 35, 0.68); margin-left: 26px;">Zelar por conformidade, conduta ética e controles internos.</div>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                                    <span class="fw-bold" style="color: #091B23; font-size: 0.95rem;">Comitê de Riscos</span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: rgba(9, 27, 35, 0.68); margin-left: 26px;">Monitoramento de riscos associados às operações.</div>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                                    <span class="fw-bold" style="color: #091B23; font-size: 0.95rem;">Auditoria Interna</span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: rgba(9, 27, 35, 0.68); margin-left: 26px;">Avaliação de controles e processos, conforme estrutura interna.</div>
+                            </div>
+                        </div>
                     </div>
-                    <p class="small mb-3" style="color: #8892b0;">Registro das deliberações e decisões estratégicas tomadas em assembleias gerais.</p>
-                    <a href="{{ route('site.ri') }}" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-2" style="border-color: rgba(255,255,255,0.2);">
-                        Acessar Atas
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
-                    </a>
                 </div>
             </div>
         </div>
 
-        <h5 class="fw-bold mb-4" style="color: var(--gold); font-size: 1rem;">Políticas e Manuais Regulatórios</h5>
-        <div class="row g-4">
-            <div class="col-lg-6">
-                <div class="d-flex flex-column gap-3">
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); color: var(--gold);">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        </div>
-                        <div>
-                            <div class="fw-bold" style="color: #ffffff; font-size: 0.95rem;">Políticas e Normativos Internos</div>
-                            <div style="color: #8892b0; font-size: 0.9rem;">Diretrizes e políticas corporativas aplicáveis a colaboradores e prestadores de serviços, alinhadas aos valores da companhia.</div>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); color: var(--gold);">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        </div>
-                        <div>
-                            <div class="fw-bold" style="color: #ffffff; font-size: 0.95rem;">Vigilância Regulatória</div>
-                            <div style="color: #8892b0; font-size: 0.9rem;">Acompanhamento contínuo das exigências da CVM e demais órgãos reguladores do setor.</div>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-start gap-3">
-                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); color: var(--gold);">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        </div>
-                        <div>
-                            <div class="fw-bold" style="color: #ffffff; font-size: 0.95rem;">Gerenciamento de Riscos</div>
-                            <div style="color: #8892b0; font-size: 0.9rem;">Controles desenhados para mitigar a exposição a riscos operacionais e de imagem institucional.</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-6">
-                <div class="card border-0 p-5" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05) !important; border-radius: 20px;">
-                    <h4 class="fw-bold mb-4" style="color: var(--gold); font-size: 1.1rem;">Estrutura de Governança</h4>
-                    <div class="d-flex flex-column gap-3">
-                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: rgba(255,255,255,0.05); color: #fff;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                            </div>
-                            <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Diretoria Executiva</div>
-                                <div style="font-size: 0.85rem; color: #8892b0;">Gestão estratégica e supervisão das diretrizes operacionais e estratégicas da companhia.</div>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: rgba(255,255,255,0.05); color: #fff;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                            </div>
-                            <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Comitê de Compliance</div>
-                                <div style="font-size: 0.85rem; color: #8892b0;">Zelar por conformidade, conduta ética e controles internos.</div>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: rgba(255,255,255,0.05); color: #fff;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                            </div>
-                            <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Comitê de Riscos</div>
-                                <div style="font-size: 0.85rem; color: #8892b0;">Monitoramento de riscos associados às operações.</div>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.04);">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 44px; height: 44px; background: rgba(255,255,255,0.05); color: #fff;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                            </div>
-                            <div>
-                                <div class="fw-bold" style="font-size: 0.95rem; color: #ffffff;">Auditoria Interna</div>
-                                <div style="font-size: 0.85rem; color: #8892b0;">Avaliação de controles e processos, conforme estrutura interna aplicável.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </section>
 
-<!-- Manuais Regulatórios -->
-<section class="py-5" style="background: #0b1220;">
-    <div class="container py-5">
-        <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Manuais & Políticas Regulatórias</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Referenciais Normativos: Documentos que consolidam nossa governança fiduciária e estabelecem padrões éticos e operacionais.</p>
-        </div>
+<!-- Bloco 2: Manuais & Políticas Regulatórias -->
+<section class="governance-policies-section">
+    <div class="governance-policies-container">
+        <h2 style="color: #091B23; font-weight: 700; margin-bottom: 8px; font-size: 1.5rem;">Manuais & Políticas Regulatórias</h2>
+        <p style="color: rgba(9, 27, 35, 0.70); margin-bottom: 0;">Políticas, manuais e documentos internos que sustentam nossa governança, controles e práticas institucionais.</p>
 
-        <div class="row g-4">
-            @forelse($documents as $document)
-            <div class="col-md-6 col-lg-4">
-                <a href="{{ route('site.documents.download', $document) }}" class="text-decoration-none" download>
-                    <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.04); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06) !important; transition: .3s;">
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                            <h4 class="fw-bold mb-0" style="color: #fff; font-size: 1rem;">{{ $document->title }}</h4>
+        <div class="governance-policies-grid">
+            @php
+                $expectedDocs = [
+                    'Política de Privacidade de Dados',
+                    'Segurança da Informação e Cibersegurança',
+                    'Política de Suitability',
+                    'Manual de Controles Internos',
+                    'Código de Ética'
+                ];
+            @endphp
+            
+            @foreach($expectedDocs as $docTitle)
+                @php
+                    $dbDoc = $documents->firstWhere('title', $docTitle);
+                @endphp
+                <div class="governance-policy-card">
+                    <div class="governance-policy-card__header">
+                        <div class="governance-policy-card__icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                         </div>
-                        <div class="d-flex align-items-center justify-content-between">
-                            <span style="color: #8892b0; font-size: 0.85rem;">
-                                {{ $document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y') }}
-                                @if($document->file_size)
-                                    · {{ number_format($document->file_size / 1024, 0) }} KB
-                                @endif
+                        <h4 class="governance-policy-card__title mb-0" style="font-size: 1.05rem;">{{ $docTitle }}</h4>
+                    </div>
+                    <div class="governance-policy-card__footer">
+                        @if($dbDoc)
+                            <a href="{{ route('site.documents.download', $dbDoc) }}" class="governance-policy-card__link w-100 d-flex justify-content-between align-items-center" download>
+                                <span>Acessar arquivo</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </a>
+                        @else
+                            <span class="governance-policy-card__link w-100 d-flex justify-content-between align-items-center" style="color: rgba(9, 27, 35, 0.4); pointer-events: none;">
+                                <span>Em validação</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                             </span>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+
+            {{-- Loop for any other published documents that were not explicitly listed above --}}
+            @foreach($documents as $otherDoc)
+                @if(!in_array($otherDoc->title, $expectedDocs))
+                    <div class="governance-policy-card">
+                        <div class="governance-policy-card__header">
+                            <div class="governance-policy-card__icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            </div>
+                            <h4 class="governance-policy-card__title mb-0" style="font-size: 1.05rem;">{{ $otherDoc->title }}</h4>
+                        </div>
+                        <div class="governance-policy-card__footer">
+                            <a href="{{ route('site.documents.download', $otherDoc) }}" class="governance-policy-card__link w-100 d-flex justify-content-between align-items-center" download>
+                                <span>Acessar arquivo</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </a>
                         </div>
                     </div>
-                </a>
-            </div>
-            @empty
-            <div class="col-12 text-center py-4">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mb-3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                <p class="mb-0" style="color: #8892b0;">Os documentos normativos de governança estarão disponíveis nesta seção após sua publicação oficial.</p>
-            </div>
-            @endforelse
+                @endif
+            @endforeach
         </div>
-
     </div>
 </section>
 

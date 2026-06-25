@@ -155,6 +155,9 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/admin/obligations/evidences/{evidence}/download', App\Http\Controllers\Admin\ObligationEvidenceDownloadController::class)
         ->name('admin.obligations.evidences.download')
         ->middleware('throttle:60,1');
+    Route::get('/admin/emissions/{emission}/relatorio-mensal', App\Http\Controllers\Admin\EmissionMonthlyReportController::class)
+        ->name('admin.emissions.monthly-report.pdf')
+        ->middleware('throttle:30,1');
 });
 
 Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(function () {

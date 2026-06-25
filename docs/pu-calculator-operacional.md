@@ -238,7 +238,7 @@ A calculadora é multi-indexador. O status operacional de cada indexador é a fo
 | --- | --- | --- | --- |
 | **CDI + spread** | `cdi_spread` | **Homologado** | Calibrado contra os gabaritos AMANI (CDI defasado, dia útil) e TROUPE (CDI do dia de calendário anterior, exato). |
 | **Prefixado** | `fixed_rate` (`phase3-fixed-v1`) | **Homologado** (determinístico) | Gera curva sem depender de série de índices. Ainda **não validado contra gabarito de mercado**; é determinístico e coberto por testes de não regressão. |
-| **IPCA** | `ipca_corrected` (`phase3-ipca-experimental`) | **Em preparação (bloqueado)** | Engine **implementada e validada** contra o gabarito real (CRI RIO BRANCO 15ª série) em **toda a janela com IPCA publicado** (2021-09-30 → 2025-07-23, ~3,8 anos), **incluindo as 9 amortizações**. Ainda **bloqueada para geração**: homologação total depende da política de projeção até o vencimento (ver abaixo). |
+| **IPCA** | `ipca_corrected` (`phase3-ipca-experimental`) | **Em preparação (bloqueado)** | Engine **implementada e validada** contra o gabarito real (CRI RIO BRANCO 15ª série) em **toda a janela com IPCA publicado** (2021-09-30 → 2025-07-23, ~3,8 anos), **incluindo as 9 amortizações**. A **política de projeção de mercado já está implementada** (`IpcaIndexResolver`), permitindo validar **até o vencimento** com NI projetado marcado como tal. Ainda **bloqueada para geração**: a virada de homologação é gated no **maker/checker** (ver abaixo). |
 
 ### IPCA — por que ainda está bloqueado
 
@@ -253,12 +253,19 @@ A calculadora é multi-indexador. O status operacional de cada indexador é a fo
 > financeiros** herdam o arredondamento por cota amplificado pelas **8.000 cotas** (total < R$ 2,12;
 > pgto de juros < R$ 0,015) — *drift* de arredondamento ao longo de 3,8 anos, não divergência de lógica.
 >
-> **Por que ainda não é homologado:** o gabarito **congela** o PU após a última NI publicada
-> (2025-07-23) e **não projeta IPCA** até o vencimento (2028-08-23). A **política de projeção de mercado**
-> para meses sem IPCA publicado **ainda não foi implementada** — é decisão de negócio. Enquanto ela não
-> existir e for aprovada, `PuIndexer::Ipca->isHomologated()` permanece `false` e o
-> `PuCurvePrerequisiteService` segue bloqueando a geração. A virada para `true` está **preparada** mas só
-> deve ocorrer quando a validação **até o vencimento** passar (o que exige a projeção).
+> **Atualização (2026-06-25):** a **política de projeção de mercado** foi **implementada**
+> (`IpcaProjectionPolicyService` + `IpcaIndexResolver`). A validação foi **estendida até o vencimento**
+> (2028-08-23) com um cenário de NI projetado (teste `extends the IPCA validation to maturity using a
+> projected market index series`). O trecho publicado continua batendo com o gabarito; o trecho projetado
+> é resolvido pela política e **marcado como projetado** na memória de cálculo.
+>
+> **Por que ainda não é homologado:** o gabarito **congela** o PU após a última NI publicada (2025-07-23)
+> e **não projeta IPCA** — logo a projeção **não é validável contra este gabarito histórico** e exige uma
+> **série projetada aprovada** (decisão de negócio). `PuIndexer::Ipca->isHomologated()` permanece `false`
+> e o `PuCurvePrerequisiteService` segue bloqueando a geração até que: (1) uma série projetada aprovada
+> esteja cadastrada; (2) a validação até o vencimento passe com essa série; e (3) haja **aprovação
+> maker/checker** (homologação da versão da curva). A virada para `true` está **preparada** mas **não é
+> automática**.
 
 ### Mecânica decodificada da engine IPCA — DOIS RELÓGIOS
 
@@ -299,15 +306,83 @@ capitalização dos juros não pagos é incorporada à base de correção.
   de **Ago/2021** (denominador da 1ª variação) **não é publicado** no gabarito e é **recuperado** do
   próprio corrigido em 2021-10-23 (somente para o teste de homologação).
 
-**Pendente (mantém bloqueio):** a **política de projeção de mercado** para meses sem IPCA publicado. O
-gabarito não projeta além de 2025-07-23; a validação **até o vencimento** (2028-08-23) só é possível
-após implementar e aprovar essa política. Até lá a homologação permanece bloqueada.
+**Pendente (mantém bloqueio):** **aprovação maker/checker** de uma série projetada de mercado. A política
+de projeção já existe; falta o dado aprovado e a homologação formal. Até lá a geração permanece bloqueada.
 
 O bloqueio operacional é aplicado em duas camadas, cobertas por testes:
 
 1. `PuIndexer::Ipca->isHomologated()` retorna `false` (consumido por UI/PDF).
 2. `PuCurvePrerequisiteService` adiciona issue bloqueante com a mensagem
    "A curva IPCA está em preparação e não pode ser gerada nesta versão da calculadora.".
+
+### Política de projeção IPCA (implementada)
+
+Para meses **sem IPCA publicado** a engine NÃO projeta sozinha: delega ao `IpcaIndexResolver`, que aplica
+o `index_projection_policy` do parâmetro (enum `IpcaProjectionPolicy`):
+
+| Política | Comportamento |
+| --- | --- |
+| `published_only` (**default**) | Só usa NI **publicado**. Mês sem publicação — ou um NI marcado como projetado — **bloqueia** com exceção clara. |
+| `market` | Aceita NI **projetado** (curva de mercado/ANBIMA) previamente cadastrado em `index_rates` com `is_projected = true`. A projeção **nunca é silenciosa** nem mascarada de publicada. |
+
+**Como cadastrar IPCA projetado** (em `index_rates`, um registro por mês, `rate_date` = 1º do mês):
+
+```php
+IndexRate::create([
+    'indexer' => 'IPCA',
+    'rate_date' => '2025-08-01',
+    'rate_value' => '7100.50000000',         // número-índice projetado
+    'source' => 'market_curve',
+    'source_reference' => 'forward_projection',
+    'is_projected' => true,                    // marcação explícita de projeção
+    'projection_source' => 'ANBIMA',           // origem da projeção
+    'projection_reference_date' => '2025-07-15', // data/validade da projeção
+    'projection_policy' => 'market',
+    'notes' => 'Curva ANBIMA fechamento 2025-07-15',
+]);
+```
+
+No parâmetro da emissão, defina `index_projection_policy = 'market'`.
+
+**Índice publicado vs projetado.** A distinção vem da própria linha de `index_rates`
+(`is_projected`/`forward_projection`); a **política** do parâmetro decide se um NI projetado é *permitido*.
+Cada linha da curva registra na **memória de cálculo** a proveniência do índice usado:
+`index_rate_type` (`published`/`projected`), `index_is_projected`, `index_source`,
+`index_projection_source`, `index_projection_reference_date` e `index_projection_policy`.
+
+**Como interpretar a validação com NI projetado.** O gabarito Rio Branco congela o PU após a última NI
+publicada, portanto **o trecho projetado não tem referência externa** — não é comparável ao gabarito. A
+validação até o vencimento (teste dedicado) usa uma **projeção FLAT determinística** (NI constante = último
+publicado ⇒ razão de correção neutra = 1) e verifica: (a) a curva alcança o vencimento sem exceção; (b) a
+proveniência publicado/projetado está correta em cada linha; (c) o trecho publicado continua batendo com o
+gabarito; (d) o residual no vencimento é não-negativo após o bullet. Uma projeção real (não-FLAT) seguiria
+a mesma mecânica de correção, apenas com razão ≠ 1.
+
+**Tolerâncias aplicadas.** Trecho publicado: `factor_spread` (cupom) **< 5,1e-10** (12 casas); PU
+corrigido/atualizado/residual e juros **< R$ 0,001/cota**; amortizações **exatas**; `dup/dut` e índice
+**100%**; totais financeiros < R$ 3 e pgto de juros < R$ 0,05 (drift de arredondamento ampliado por 8.000
+cotas). Trecho projetado: sem comparação externa (apenas consistência interna + proveniência).
+
+**Risco de drift de arredondamento.** O drift por cota (~2e-4) é amplificado pela quantidade no total. Ao
+adotar uma série projetada real e estender a curva, **revisitar a escala de arredondamento do total** antes
+de homologar.
+
+### Maker/checker para homologar IPCA
+
+A homologação do IPCA **reaproveita o fluxo existente** de versão de curva (sem novo mecanismo):
+`EmissionPuCurveVersion` registra `homologated_by`/`homologated_at`, a ação exige a permissão
+`pu.curve.homologate` (reservada a admin/super-admin — separação *maker/checker*) e fica auditada
+(`pu_curve_homologated`). Para o IPCA, a virada só é elegível quando **todos** os pré-requisitos forem
+satisfeitos:
+
+1. Série de NI projetada **aprovada** cadastrada em `index_rates` (`is_projected = true`, com fonte/data).
+2. Validação **até o vencimento** passando com essa série (relatório sem divergências relevantes).
+3. Política de projeção **documentada** e aprovada (decisão de negócio).
+4. **Maker/checker**: quem gera/valida (maker) é diferente de quem homologa (checker).
+5. Testes verdes.
+
+Só então: virar `PuIndexer::Ipca->isHomologated()` para `true`, remover o bloqueio do
+`PuCurvePrerequisiteService` e habilitar a UI. **Mediante aprovação explícita** — nunca automático.
 
 Além disso, `IpcaCurveCalculator::calculate()` lança `IndexerNotSupportedException` quando faltar
 número-índice para o período — a mensagem nomeia o **mês/data** sem IPCA e avisa que a **política de
@@ -353,22 +428,24 @@ decodificada a partir dos valores (a planilha é export de valores, sem fórmula
   validada (2025-03-26 é a última com IPCA publicado).
 - **Cauda sem índice publicado**: após o último número-índice (**Jun/2025**, usado até **2025-07-23**) o
   gabarito **congela** o PU (corr = atualizado = residual, juros zerados, `fator = 1`) e mantém-o flat até
-  o bullet de **2028-08-23**. Ou seja, **o emissor não projeta IPCA** até o vencimento. A engine, por
-  outro lado, **lança exceção clara** (`IndexerNotSupportedException`) ao exigir NI não cadastrada — a
-  política de projeção de produção ainda não foi implementada (ver decisão abaixo). Por isso a validação
-  cobre a janela publicada (até 2025-07-23) e a validação **até o vencimento** depende dessa política.
+  o bullet de **2028-08-23**. Ou seja, **o emissor não projeta IPCA** até o vencimento. A engine, com a
+  política de projeção **implementada**, resolve esse trecho via `IpcaIndexResolver`: com `published_only`
+  **lança exceção clara** (`IndexerNotSupportedException`) ao exigir NI não cadastrada; com `market`
+  consome o NI **projetado** cadastrado e o marca como tal. A validação cobre a janela publicada
+  (comparada ao gabarito) e o trecho projetado até o vencimento (consistência interna + proveniência).
 
 ### Política de projeção (decisão de negócio)
 
 Para meses **sem IPCA publicado** (cauda/futuro), a política adotada é **projeção de mercado
-(ANBIMA/curva)**: a engine usará uma série de número-índice **projetada** cadastrada em `index_rates`
-para os meses futuros (`index_projection_policy` correspondente). Consequências:
+(ANBIMA/curva)** — **implementada** via `IpcaProjectionPolicyService` + `IpcaIndexResolver`. A engine usa
+uma série de número-índice **projetada** cadastrada em `index_rates` (`is_projected = true`) para os meses
+futuros quando `index_projection_policy = 'market'`. Consequências:
 
 - O gabarito histórico valida **apenas o núcleo determinístico** (correção + juros + amortização) nos
   meses com número-índice conhecido.
 - A projeção de mercado **não é validável** por este gabarito histórico e exige um cenário separado com
-  série projetada. A **integração automática ANBIMA/B3 está fora de escopo** — a série projetada é
-  alimentada manualmente em `index_rates`.
+  série projetada (ver "Política de projeção IPCA (implementada)" acima). A **integração automática
+  ANBIMA/B3 está fora de escopo** — a série projetada é alimentada manualmente em `index_rates`.
 
 ### Plano de homologação IPCA (antes de alterar a engine)
 
@@ -384,8 +461,10 @@ para os meses futuros (`index_projection_policy` correspondente). Consequências
 4. **Validação contra o gabarito** — **FEITA** em toda a janela publicada (2021-09-30 → 2025-07-23,
    incluindo as 9 amortizações), comparando **fatores em até 12 casas** e os PUs/juros/amortização nas
    escalas de exibição com tolerâncias documentadas (ver `IpcaHomologationCurveTest`).
-5. **Implementar a política de projeção de mercado** (meses sem IPCA publicado) — **PENDENTE**. Sem ela a
-   validação **até o vencimento** (2028-08-23) não é possível e a homologação fica bloqueada.
+5. **Implementar a política de projeção de mercado** (meses sem IPCA publicado) — **FEITO**
+   (`IpcaProjectionPolicyService` + `IpcaIndexResolver`; campos de projeção em `index_rates`). A validação
+   **até o vencimento** (2028-08-23) roda com cenário de NI projetado marcado como tal. **Pendente** apenas
+   a **série projetada aprovada** + **homologação maker/checker**.
 6. **Só então**: virar `PuIndexer::Ipca->isHomologated()` para `true`, remover o bloqueio do
    `PuCurvePrerequisiteService`, habilitar a geração na UI e ajustar o rótulo. **Mediante aprovação.**
 
@@ -413,9 +492,12 @@ Migrations relevantes desta fase e da anterior:
 - `widen_index_rates_rate_value_for_ipca` — amplia `index_rates.rate_value` de `decimal(12,8)` para
   `decimal(20,8)`. O número-índice IPCA é de magnitude muito maior que as taxas CDI/prefixada (milhares,
   crescente no tempo) e não cabe em `decimal(12,8)` no longo prazo. Valores CDI existentes não mudam.
+- `add_projection_fields_to_index_rates_table` — adiciona `is_projected`, `projection_source`,
+  `projection_reference_date`, `projection_policy` e `notes` em `index_rates` (política de projeção IPCA).
+  O `up()` faz **backfill** de `is_projected = true` nas linhas legadas `source_reference = 'forward_projection'`.
 
 Todas são reversíveis (`down()`). O `down()` da multi-indexador repõe `spread_rate = 0` onde for nulo
-antes de voltar a coluna para `NOT NULL`.
+antes de voltar a coluna para `NOT NULL`; o `down()` da projeção remove as cinco colunas adicionadas.
 
 > **Nota:** em ambientes de desenvolvimento sem acesso ao host `mysql`, a suíte de testes valida o
 > schema em SQLite em memória. Isso confirma a reversibilidade e a integridade das migrations, mas o
@@ -435,8 +517,18 @@ Há trabalho concorrente no repositório em **site** e **Obrigações**. As muda
 3. Faça **stage seletivo** (`git add <arquivos-de-PU>`), nunca `git add -A`/`git add .`.
 4. **Nenhum commit sem aprovação.**
 
-> **Nota (2026-06-24):** nesta fase o working tree continha **uma mudança concorrente fora de escopo** —
-> `app/Services/Obligations/ObligationDashboardData.php` (deletado, Obrigações). Ela **não foi tocada**.
-> O stage seletivo desta fase deve incluir apenas os arquivos PU: `IpcaCurveCalculator.php`,
-> `IpcaHomologationCurveTest.php` e `docs/pu-calculator-operacional.md` (a migration
-> `widen_index_rates_rate_value_for_ipca` já está commitada). **Nunca** `git add -A`/`git add .`.
+> **Nota (2026-06-25):** nesta fase o working tree continha **mudanças concorrentes fora de escopo** —
+> site (várias views), Obrigações (`ObligationsRelationManager`, widgets de Obrigações e
+> `tests/Feature/ObligationDashboardTest.php`) e `public/images/selo-anbima.jpg` (untracked). **Nada disso
+> foi tocado.** O stage seletivo desta fase deve incluir apenas os arquivos PU criados/alterados:
+> `app/Domain/PuCalculator/Calculators/IpcaCurveCalculator.php`,
+> `app/Domain/PuCalculator/Services/IpcaIndexResolver.php`,
+> `app/Domain/PuCalculator/Services/IpcaProjectionPolicyService.php`,
+> `app/Domain/PuCalculator/Services/IndexRateLookupService.php`,
+> `app/Domain/PuCalculator/DTOs/IndexRateData.php`, `app/Domain/PuCalculator/DTOs/IpcaIndexResolution.php`,
+> `app/Domain/PuCalculator/Enums/IpcaProjectionPolicy.php`, `app/Domain/PuCalculator/Enums/PuIndexer.php`,
+> `app/Models/IndexRate.php`,
+> `database/migrations/2026_06_25_111723_add_projection_fields_to_index_rates_table.php`,
+> `tests/Feature/PuCalculator/IpcaHomologationCurveTest.php`,
+> `tests/Unit/PuCalculator/IpcaIndexResolverTest.php` e `docs/pu-calculator-operacional.md`.
+> **Nunca** `git add -A`/`git add .`.

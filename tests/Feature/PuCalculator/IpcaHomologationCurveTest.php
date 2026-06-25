@@ -9,6 +9,7 @@ use App\Domain\PuCalculator\Services\IndexRateService;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
 use App\Models\Emission;
 use App\Models\IndexRate;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -274,6 +275,198 @@ it('keeps IPCA blocked beyond the published number-index series (projection not 
 
     expect(fn () => app(IpcaCurveCalculator::class)->calculate($emission->fresh(['puParameter', 'puEvents', 'integralizationHistories'])))
         ->toThrow(\App\Domain\PuCalculator\Exceptions\IndexerNotSupportedException::class);
+});
+
+/** Vencimento da operação (bullet final). Reference month da projeção vai até o 1º deste mês. */
+const IPCA_MATURITY = '2028-08-23';
+
+/**
+ * Cenário de validação ATÉ O VENCIMENTO com número-índice PROJETADO. O trecho publicado
+ * (2021-09-30 → 2025-07-23) usa os NI reais do gabarito; o trecho posterior usa uma série de NI
+ * PROJETADA cadastrada em `index_rates` (is_projected = true). Usa-se projeção FLAT (NI constante =
+ * último NI publicado) de propósito: deixa a razão de correção = 1 no trecho projetado, tornando o
+ * comportamento determinístico e auditável (o gabarito não projeta IPCA, então não há comparação
+ * externa possível nesse trecho — apenas consistência interna + proveniência).
+ */
+function seedIpcaProjectedToMaturity(array $reference, string $projectionPolicy = 'market'): Emission
+{
+    $numberIndex = [];
+    foreach ($reference as $row) {
+        if ($row->indexRateDate !== null && $row->indexRateValue !== null) {
+            $numberIndex[$row->indexRateDate->toDateString()] = $row->indexRateValue;
+        }
+    }
+
+    $factor = app(DailyFactorCalculator::class);
+    $october23 = collect($reference)->firstWhere(fn ($r) => $r->date->toDateString() === '2021-10-23');
+    $augustRatio = $factor->powRatio(bcdiv($october23->correctedUnitValue, '1000', 24), 30, 23, 24);
+    $numberIndex['2021-08-01'] = bcdiv($numberIndex['2021-09-01'], $augustRatio, 8);
+    ksort($numberIndex);
+
+    foreach ($numberIndex as $date => $value) {
+        IndexRate::query()->create([
+            'indexer' => PuIndexer::Ipca->value,
+            'rate_date' => $date,
+            'rate_value' => $value,
+            'source' => 'reference_workbook',
+            'source_reference' => 'CRI RIO BRANCO 15a serie',
+            'is_projected' => false,
+        ]);
+    }
+
+    // Trecho projetado: do mês seguinte ao último NI publicado até o mês de referência do vencimento.
+    $lastPublishedMonth = array_key_last($numberIndex);
+    $lastPublishedValue = $numberIndex[$lastPublishedMonth];
+    $cursor = CarbonImmutable::parse($lastPublishedMonth)->addMonthNoOverflow()->startOfMonth();
+    $maturityReferenceMonth = CarbonImmutable::parse(IPCA_MATURITY)->startOfMonth();
+    while ($cursor->lte($maturityReferenceMonth)) {
+        IndexRate::query()->create([
+            'indexer' => PuIndexer::Ipca->value,
+            'rate_date' => $cursor->toDateString(),
+            'rate_value' => $lastPublishedValue,
+            'source' => 'market_curve',
+            'source_reference' => 'forward_projection',
+            'is_projected' => true,
+            'projection_source' => 'ANBIMA (cenário de teste)',
+            'projection_reference_date' => $lastPublishedMonth,
+            'projection_policy' => 'market',
+        ]);
+        $cursor = $cursor->addMonthNoOverflow()->startOfMonth();
+    }
+    app(IndexRateService::class)->flushCache();
+
+    $emission = Emission::factory()->create(['type' => 'CRI', 'status' => 'active', 'issued_quantity' => 8000]);
+    $emission->puParameter()->create([
+        'curve_start_date' => '2021-09-30',
+        'curve_end_date' => IPCA_MATURITY,
+        'initial_unit_value' => '1000.0000000000000000',
+        'annual_rate' => '10.50000000',
+        'indexer' => PuIndexer::Ipca->value,
+        'calculation_method' => 'ipca_corrected',
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'index_lag_months' => 0,
+        'base_index_date' => '2021-09-23',
+        'correction_frequency' => 'monthly',
+        'index_projection_policy' => $projectionPolicy,
+        'legacy_projection_enabled' => false,
+    ]);
+    $emission->integralizationHistories()->create([
+        'date' => '2021-09-30',
+        'quantity' => '8000.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '8000000.00',
+        'investor_fund' => 'IPCA Projection',
+    ]);
+
+    // Eventos do gabarito (toda a janela publicada + bullet final no vencimento) ...
+    $sequence = 1;
+    foreach ($reference as $row) {
+        $hasInterest = $row->paymentInterestTotal !== null && bccomp($row->paymentInterestTotal, '0', 2) === 1;
+        $hasAmortization = $row->amortizationUnitValue !== null && bccomp($row->amortizationUnitValue, '0', 8) === 1;
+
+        if ($hasInterest) {
+            $emission->puEvents()->create([
+                'event_type' => PuEventType::InterestPayment->value,
+                'original_date' => $row->date->toDateString(),
+                'effective_date' => $row->date->toDateString(),
+                'amortization_type' => PuAmortizationType::None->value,
+                'amortization_value' => null,
+                'sequence' => $sequence++,
+            ]);
+        }
+
+        if ($hasAmortization) {
+            $emission->puEvents()->create([
+                'event_type' => PuEventType::Amortization->value,
+                'original_date' => $row->date->toDateString(),
+                'effective_date' => $row->date->toDateString(),
+                'amortization_type' => PuAmortizationType::UnitValue->value,
+                'amortization_value' => $row->amortizationUnitValue,
+                'sequence' => $sequence++,
+            ]);
+        }
+    }
+
+    // ... mais cupom mensal sintético no aniversário (dia 23) ao longo do trecho projetado, já que o
+    // gabarito zera os juros nesse trecho (não projeta). Mantém o relógio de cupom realista (reset mensal).
+    $anniversary = CarbonImmutable::parse('2025-08-23');
+    $maturity = CarbonImmutable::parse(IPCA_MATURITY);
+    while ($anniversary->lt($maturity)) {
+        $emission->puEvents()->create([
+            'event_type' => PuEventType::InterestPayment->value,
+            'original_date' => $anniversary->toDateString(),
+            'effective_date' => $anniversary->toDateString(),
+            'amortization_type' => PuAmortizationType::None->value,
+            'amortization_value' => null,
+            'sequence' => $sequence++,
+        ]);
+        $anniversary = $anniversary->addMonthNoOverflow()->day(23);
+    }
+
+    return $emission;
+}
+
+it('tags the index provenance (published) in the calculation memory', function () {
+    $reference = ipcaReferenceRows();
+    $emission = seedIpcaIndexAndEmission($reference);
+
+    $result = app(IpcaCurveCalculator::class)->calculate($emission->fresh(['puParameter', 'puEvents', 'integralizationHistories']));
+
+    $row = collect($result->rows)->firstWhere(fn ($r) => $r->date->toDateString() === '2024-09-17');
+
+    expect($row->calculationMemory['index_rate_type'])->toBe('published')
+        ->and($row->calculationMemory['index_is_projected'])->toBeFalse()
+        ->and($row->calculationMemory['index_projection_policy'])->toBe('market')
+        ->and($row->calculationMemory['index_source'])->toBe('reference_workbook');
+});
+
+it('extends the IPCA validation to maturity using a projected market index series', function () {
+    $reference = ipcaReferenceRows();
+    $emission = seedIpcaProjectedToMaturity($reference);
+
+    $result = app(IpcaCurveCalculator::class)->calculate($emission->fresh(['puParameter', 'puEvents', 'integralizationHistories']));
+
+    $generated = [];
+    foreach ($result->rows as $row) {
+        $generated[$row->date->toDateString()] = $row;
+    }
+
+    // 1) A curva alcança o vencimento sem lançar exceção (trecho projetado resolvido pela política).
+    expect($generated)->toHaveKey(IPCA_MATURITY);
+
+    // 2) Proveniência: trecho publicado marcado como publicado; trecho projetado marcado como projetado.
+    $published = $generated['2024-09-17'];
+    expect($published->calculationMemory['index_is_projected'])->toBeFalse()
+        ->and($published->calculationMemory['index_rate_type'])->toBe('published');
+
+    $projected = $generated['2026-06-23'];
+    expect($projected->calculationMemory['index_is_projected'])->toBeTrue()
+        ->and($projected->calculationMemory['index_rate_type'])->toBe('projected')
+        ->and($projected->calculationMemory['index_source'])->toBe('market_curve')
+        ->and($projected->calculationMemory['index_projection_source'])->toBe('ANBIMA (cenário de teste)')
+        ->and($projected->calculationMemory['index_projection_policy'])->toBe('market')
+        // Projeção FLAT ⇒ razão de correção neutra (= 1) no trecho projetado.
+        ->and(bccomp($projected->calculationMemory['correction_ratio_raw'], '1', 12))->toBe(0);
+
+    // 3) Há um trecho projetado relevante (≈ 3 anos diários).
+    $projectedCount = collect($generated)->filter(fn ($r) => $r->calculationMemory['index_is_projected'] === true)->count();
+    expect($projectedCount)->toBeGreaterThan(900);
+
+    // 4) Trecho publicado preservado: o corrigido continua batendo com o gabarito (não foi perturbado).
+    $referenceSep17 = collect($reference)->firstWhere(fn ($r) => $r->date->toDateString() === '2024-09-17');
+    expect(bccomp(bcabs_diff($published->unitCorrectedValue, $referenceSep17->correctedUnitValue), '0.001', 16))->toBeLessThanOrEqual(0);
+
+    // 5) Liquidação no vencimento: residual não-negativo após o bullet final.
+    expect(bccomp($generated[IPCA_MATURITY]->residualUnitValue, '0', 8))->toBeGreaterThanOrEqual(0);
+});
+
+it('blocks the projected tail when the projection policy is published-only', function () {
+    $reference = ipcaReferenceRows();
+    $emission = seedIpcaProjectedToMaturity($reference, 'published_only');
+
+    expect(fn () => app(IpcaCurveCalculator::class)->calculate($emission->fresh(['puParameter', 'puEvents', 'integralizationHistories'])))
+        ->toThrow(\App\Domain\PuCalculator\Exceptions\IndexerNotSupportedException::class, 'PROJETADO');
 });
 
 function bcabs_diff(string $left, string $right): string

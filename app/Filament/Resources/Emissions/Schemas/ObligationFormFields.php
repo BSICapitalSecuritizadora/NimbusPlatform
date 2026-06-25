@@ -135,8 +135,9 @@ class ObligationFormFields
 
         if ($mode === 'suggestion') {
             $fields[] = Textarea::make('review_notes')
-                ->label('Notas de revisão')
+                ->label('Observação da revisão')
                 ->rows(2)
+                ->disabled()
                 ->columnSpanFull();
         }
 

@@ -2,8 +2,8 @@
     <div class="container">
         <div class="row gy-4 align-items-center">
             <div class="col-md-4 text-center text-md-start">
-                <a class="navbar-brand fw-bold mb-3 d-inline-block" href="{{ route('site.home') }}">
-                    <img src="{{ asset('images/brand/bsi-capital-logo.png') }}" alt="BSI Capital Securitizadora" class="site-logo">
+                <a href="{{ route('site.home') }}" class="site-brand mb-3" aria-label="BSI Capital">
+                    <img src="{{ asset('images/bsi-logo.png') }}" alt="BSI Capital Securitizadora" class="site-logo footer-logo">
                 </a>
                 <p class="section-copy small mb-3">
                     Securitizadora registrada na CVM. Estruturamos e gerimos operações de crédito (CRI, CRA e CR) com rigor técnico, controle documental e reporte contínuo aos investidores.
@@ -53,7 +53,7 @@
                 <div class="footer-anbima-card">
                     <div class="footer-anbima-title">Autorregulação</div>
                     <div class="footer-anbima-seal">
-                        <img src="{{ asset('images/brand/anbima-autorregulacao.jpg') }}" alt="Autorregulação ANBIMA - Adesão Provisória Securitizadoras">
+                        <img src="{{ asset('images/selo-anbima.jpg') }}" alt="Selo ANBIMA Securitizadora">
                     </div>
                 </div>
             </div>

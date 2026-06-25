@@ -4,7 +4,10 @@ use App\Enums\AccessPermission;
 use App\Filament\Pages\ObligationDashboard;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
+use App\Filament\Resources\Emissions\Pages\EditEmission;
+use App\Filament\Widgets\Obligations\ObligationEvidenceOverviewStatsWidget;
 use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
+use App\Filament\Widgets\Obligations\ObligationOverviewStatsWidget;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
 use App\Models\Obligation;
@@ -61,10 +64,21 @@ function dashboardData(): ObligationDashboardData
 
 function makeDashboardUserWithPermissions(array $permissions): User
 {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'approved_at' => now(),
+        'is_active' => true,
+    ]);
     $user->givePermissionTo($permissions);
 
     return $user;
+}
+
+function dashboardRelationManager(Emission $emission): \Livewire\Features\SupportTesting\Testable
+{
+    return Livewire::test(ObligationsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ]);
 }
 
 function obligationDashboardTableQuery(object $component): Builder
@@ -359,6 +373,19 @@ it('renders the dashboard page for an authorized user', function () {
     Livewire::test(ObligationDashboard::class)->assertSuccessful();
 });
 
+it('redirects the dashboard route for users without the dashboard permission', function () {
+    $user = makeDashboardUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+    ]);
+
+    $this->actingAs($user);
+
+    expect(ObligationDashboard::canAccess())->toBeFalse();
+
+    $this->get(ObligationDashboard::getUrl(panel: 'admin'))
+        ->assertRedirect();
+});
+
 it('keeps dashboard access available for super admins', function () {
     $user = User::factory()->create();
     $user->assignRole('super-admin');
@@ -389,6 +416,27 @@ it('hides documentary widgets and concluded-without-approved rows from users wit
         ->assertCanNotSeeTableRecords([$concludedWithoutApproved])
         ->assertDontSee('Status das Evidências')
         ->assertDontSee('Qtd. Evidências');
+});
+
+it('renders the expanded operational and documentary KPIs on the dashboard widgets', function () {
+    $concluded = makeDashboardObligation('concluida', '2026-06-12');
+    makeDashboardEvidence($concluded, ObligationEvidence::STATUS_APPROVED);
+
+    $pendingReview = makeDashboardObligation('em_analise', '2026-06-25');
+    makeDashboardEvidence($pendingReview, ObligationEvidence::STATUS_PENDING);
+
+    makeDashboardObligation('nao_aplicavel', '2026-06-26');
+    makeDashboardObligation('a_vencer', '2026-07-10');
+
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(ObligationOverviewStatsWidget::class)
+        ->assertSee('Próximos 30 Dias')
+        ->assertSee('Não Aplicáveis');
+
+    Livewire::test(ObligationEvidenceOverviewStatsWidget::class)
+        ->assertSee('Em análise com Evidência Pendente')
+        ->assertSee('Concluídas com Aprovada');
 });
 
 it('lists operational obligations and filters them by emission', function () {
@@ -538,6 +586,72 @@ it('surfaces concluded obligations without approved evidence for evidence viewer
         ->filterTable('operational_focus', 'completed_without_approved_evidence')
         ->assertCanSeeTableRecords([$concludedWithoutApproved])
         ->assertCanNotSeeTableRecords([$open, $concludedWithApproved]);
+});
+
+it('extends the emission obligations relation manager with operational filters and documentary columns', function () {
+    $responsible = User::factory()->create(['name' => 'Fernanda']);
+    $emission = Emission::factory()->create();
+    $suggestion = ExtractedObligation::factory()->for($emission)->create();
+
+    $matching = Obligation::factory()->for($emission)->create([
+        'title' => 'Obrigação filtrada',
+        'status' => 'a_vencer',
+        'due_date' => '2026-06-25',
+        'priority' => 'high',
+        'responsible_user_id' => $responsible->id,
+        'responsible_area' => 'Compliance',
+        'extracted_obligation_id' => $suggestion->id,
+    ]);
+    makeDashboardEvidence($matching, ObligationEvidence::STATUS_APPROVED);
+
+    $other = Obligation::factory()->for($emission)->create([
+        'title' => 'Outra obrigação',
+        'status' => 'vencida',
+        'due_date' => '2026-06-10',
+        'priority' => 'critical',
+        'responsible_area' => 'Gestão',
+    ]);
+
+    $this->actingAs(makeAdminUser());
+
+    dashboardRelationManager($emission)
+        ->assertSee('Status das Evidências')
+        ->assertSee('Qtd. Evidências')
+        ->filterTable('responsible_user_id', $responsible->id)
+        ->filterTable('responsible_area', 'Compliance')
+        ->filterTable('priority', 'high')
+        ->filterTable('due_window', 'next_7_days')
+        ->filterTable('source', 'term')
+        ->filterTable('evidence_state', ObligationEvidence::STATUS_APPROVED)
+        ->assertCanSeeTableRecords([$matching])
+        ->assertCanNotSeeTableRecords([$other]);
+});
+
+it('keeps documentary fields hidden on the emission obligations relation manager without evidence permission', function () {
+    $emission = Emission::factory()->create();
+    $withoutResponsible = Obligation::factory()->for($emission)->create([
+        'title' => 'Sem responsável',
+        'status' => 'a_vencer',
+        'responsible_user_id' => null,
+    ]);
+    $withResponsible = Obligation::factory()->for($emission)->create([
+        'title' => 'Com responsável',
+        'status' => 'a_vencer',
+        'responsible_user_id' => User::factory()->create()->id,
+    ]);
+
+    $user = makeDashboardUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+    ]);
+
+    $this->actingAs($user);
+
+    dashboardRelationManager($emission)
+        ->assertDontSee('Status das Evidências')
+        ->assertDontSee('Qtd. Evidências')
+        ->filterTable('has_responsible', false)
+        ->assertCanSeeTableRecords([$withoutResponsible])
+        ->assertCanNotSeeTableRecords([$withResponsible]);
 });
 
 it('prioritizes the main operational queues in the table ordering', function () {

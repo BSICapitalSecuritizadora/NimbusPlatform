@@ -12,10 +12,16 @@ class ExtractedObligation extends Model
     /** @use HasFactory<\Database\Factories\ExtractedObligationFactory> */
     use HasFactory;
 
+    public const STATUS_SUGGESTED = 'suggested';
+
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_REJECTED = 'rejected';
+
     public const STATUS_OPTIONS = [
-        'suggested' => 'Sugerida',
-        'approved' => 'Aprovada',
-        'rejected' => 'Rejeitada',
+        self::STATUS_SUGGESTED => 'Pendente de revisão',
+        self::STATUS_APPROVED => 'Aprovada',
+        self::STATUS_REJECTED => 'Rejeitada',
     ];
 
     public const PRIORITY_OPTIONS = [
@@ -92,6 +98,11 @@ class ExtractedObligation extends Model
     public function responsibleUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'responsible_user_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function obligation(): HasOne
