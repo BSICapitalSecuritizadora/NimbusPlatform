@@ -127,7 +127,7 @@ it('renders the Nimbus dashboard for authenticated admin users', function () {
         ->get(NimbusDashboard::getUrl(panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Visão Geral')
-        ->assertSee('Envios e Solicitações');
+        ->assertSee('BSI Capital');
 });
 
 it('renders the Nimbus dashboard widgets when recent submissions exist', function () {

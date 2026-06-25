@@ -24,9 +24,9 @@ dataset('public-layout-routes', [
     'contact' => [
         'site.contact',
         [
-            'Atendimento institucional',
-            'Direcionamento institucional da sua demanda',
-            'São Paulo',
+            'Contato Institucional',
+            'Direcionamento da demanda',
+            'São Paulo - SP',
         ],
     ],
     'partnerships' => [
