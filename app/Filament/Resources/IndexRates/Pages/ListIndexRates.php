@@ -35,10 +35,15 @@ class ListIndexRates extends ListRecords
                 ->where('indexer', strtoupper($key))
                 ->max('fetched_at');
 
+            $syncedAt = is_array($status) && ($status['status'] ?? null) === 'completed'
+                ? ($status['synced_at'] ?? null)
+                : null;
+            $lastSyncedAt = $syncedAt ?? $lastFetched;
+
             if (is_array($status) && ($status['status'] ?? null) === 'failed') {
                 $parts[] = sprintf('%s: última sincronização FALHOU (%s)', $label, $status['error'] ?? 'erro');
-            } elseif ($lastFetched !== null) {
-                $parts[] = sprintf('%s: sincronizado em %s', $label, CarbonImmutable::parse($lastFetched)->format('d/m/Y H:i'));
+            } elseif ($lastSyncedAt !== null) {
+                $parts[] = sprintf('%s: sincronizado em %s', $label, CarbonImmutable::parse($lastSyncedAt)->format('d/m/Y H:i'));
             } else {
                 $parts[] = sprintf('%s: nunca sincronizado pelo Banco Central', $label);
             }
@@ -203,18 +208,45 @@ class ListIndexRates extends ListRecords
                     return;
                 }
 
-                $notification = Notification::make()
-                    ->title($result->dryRun ? 'Dry-run concluído (nada persistido).' : 'Sincronização concluída.')
-                    ->body(sprintf(
-                        'Consultados: %d | Criados: %d | Atualizados: %d | Ignorados: %d',
-                        $result->fetched,
-                        $result->created,
-                        $result->updated,
-                        $result->skipped,
-                    ));
+                $seriesCode = (int) config(sprintf('pu_indexes.bcb.series.%s.code', strtolower($indexer->value)));
+                $counts = sprintf(
+                    'Consultados: %d | Criados: %d | Atualizados: %d | Ignorados: %d',
+                    $result->fetched,
+                    $result->created,
+                    $result->updated,
+                    $result->skipped,
+                );
+                $hasNew = $result->created > 0 || $result->updated > 0;
 
-                if ($result->hasErrors()) {
-                    $notification->warning()->body($notification->getBody()."\n".implode("\n", $result->errors))->persistent();
+                if ($result->dryRun) {
+                    $title = 'Dry-run concluído (nada persistido).';
+                    $body = $counts;
+                } elseif ($indexer === PuIndexer::Ipca) {
+                    if ($hasNew) {
+                        $title = 'Sincronização do IPCA concluída.';
+                        $body = $counts."\n".sprintf('Fonte: Banco Central do Brasil - SGS %d.', $seriesCode);
+                    } elseif ($result->fetched > 0) {
+                        $title = 'Sincronização do IPCA concluída — nenhum novo registro criado.';
+                        $body = $counts."\n".sprintf('Todos os registros retornados pela série SGS %d já estavam cadastrados.', $seriesCode);
+                    } else {
+                        $title = 'Sincronização do IPCA concluída — nenhum dado retornado.';
+                        $body = $counts."\n".sprintf('A série SGS %d não retornou dados no período consultado.', $seriesCode);
+                    }
+                } else {
+                    $title = $hasNew ? 'Sincronização concluída.' : 'Sincronização concluída — nenhum registro novo.';
+                    $body = sprintf('Blocos: %d/%d ok | ', $result->blocksSucceeded(), $result->blocksTotal).$counts;
+                }
+
+                if ($result->hasNotices()) {
+                    $body .= "\n".implode("\n", $result->notices);
+                }
+
+                $notification = Notification::make()->title($title)->body($body);
+
+                $problems = array_merge($result->blockFailures, $result->errors);
+
+                if ($problems !== []) {
+                    $notification->warning()->body($body."\n".implode("\n", $problems))->persistent();
                 } else {
                     $notification->success();
                 }

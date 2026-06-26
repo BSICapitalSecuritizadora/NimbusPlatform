@@ -155,7 +155,143 @@ it('transforms IPCA monthly variation into a chained number-index from an anchor
         ->and($row->source)->toBe('bcb_sgs');
 });
 
-it('blocks IPCA sync when there is no anchor number-index', function () {
+it('auto-seeds a base number-index and syncs when there is no IPCA anchor (no blocking)', function () {
+    Http::fake(['api.bcb.gov.br/*' => Http::response([
+        ['data' => '01/01/2024', 'valor' => '0.50'],
+        ['data' => '01/02/2024', 'valor' => '1.00'],
+    ], 200)]);
+
+    $result = app(IndexRateSyncService::class)->sync(
+        PuIndexer::Ipca,
+        CarbonImmutable::parse('2024-01-01'),
+        CarbonImmutable::parse('2024-02-29'),
+    );
+
+    // Não bloqueia: cria as 2 competências consultadas (base âncora não conta como "criado").
+    expect($result->created)->toBe(2)
+        ->and($result->fetched)->toBe(2)
+        ->and($result->hasErrors())->toBeFalse()
+        ->and($result->hasNotices())->toBeTrue()
+        ->and($result->notices[0])->toContain('criado automaticamente');
+
+    // Base 100 no mês anterior (2023-12) + encadeamento 100*(1,005)=100,5 e 100,5*(1,01)=101,505.
+    expect(IndexRate::query()->where('indexer', 'IPCA')->count())->toBe(3)
+        ->and(IndexRate::query()->where('indexer', 'IPCA')->whereDate('rate_date', '2023-12-01')->value('rate_value'))->toEqual('100.00000000')
+        ->and(IndexRate::query()->where('indexer', 'IPCA')->whereDate('rate_date', '2024-01-01')->value('rate_value'))->toEqual('100.50000000')
+        ->and(IndexRate::query()->where('indexer', 'IPCA')->whereDate('rate_date', '2024-02-01')->value('rate_value'))->toEqual('101.50500000');
+
+    // A base âncora fica identificável e marcada como publicada (não projetada).
+    $base = IndexRate::query()->where('indexer', 'IPCA')->whereDate('rate_date', '2023-12-01')->first();
+    expect($base->is_projected)->toBeFalse()
+        ->and($base->source)->toBe('bcb_sgs')
+        ->and($base->external_series_code)->toBe('433');
+});
+
+it('does not re-seed the base anchor on a repeated IPCA sync (idempotent)', function () {
+    Http::fake(['api.bcb.gov.br/*' => Http::response([
+        ['data' => '01/01/2024', 'valor' => '0.50'],
+    ], 200)]);
+
+    $first = app(IndexRateSyncService::class)->sync(PuIndexer::Ipca, CarbonImmutable::parse('2024-01-01'), CarbonImmutable::parse('2024-01-31'));
+    $second = app(IndexRateSyncService::class)->sync(PuIndexer::Ipca, CarbonImmutable::parse('2024-01-01'), CarbonImmutable::parse('2024-01-31'));
+
+    expect($first->created)->toBe(1)
+        ->and($second->created)->toBe(0)
+        ->and($second->skipped)->toBe(1)
+        ->and($second->hasNotices())->toBeFalse()
+        ->and(IndexRate::query()->where('indexer', 'IPCA')->count())->toBe(2);
+});
+
+it('records a completed last-sync status even when every IPCA record already exists', function () {
+    Http::fake(['api.bcb.gov.br/*' => Http::response([
+        ['data' => '01/01/2024', 'valor' => '0.50'],
+    ], 200)]);
+
+    app(IndexRateSyncService::class)->sync(PuIndexer::Ipca, CarbonImmutable::parse('2024-01-01'), CarbonImmutable::parse('2024-01-31'));
+    \Illuminate\Support\Facades\Cache::flush();
+    app(IndexRateSyncService::class)->sync(PuIndexer::Ipca, CarbonImmutable::parse('2024-01-01'), CarbonImmutable::parse('2024-01-31'));
+
+    $status = \Illuminate\Support\Facades\Cache::get('pu_index_sync_ipca_status');
+
+    expect($status)->toMatchArray(['status' => 'completed'])
+        ->and($status['synced_at'] ?? null)->not->toBeNull();
+});
+
+it('consolidates yearly blocks into a single sync run without duplicates', function () {
+    config(['pu_indexes.bcb.chunk_months' => 12, 'pu_indexes.bcb.retries' => 1, 'pu_indexes.bcb.retry_sleep_ms' => 0]);
+
+    Http::fakeSequence('api.bcb.gov.br/*')
+        ->push([['data' => '03/01/2022', 'valor' => '9.15']])
+        ->push([['data' => '02/01/2023', 'valor' => '13.65']])
+        ->push([['data' => '02/01/2024', 'valor' => '11.65']]);
+
+    $result = syncCdi('2022-01-01', '2024-01-31');
+
+    expect($result->created)->toBe(3)
+        ->and($result->fetched)->toBe(3)
+        ->and($result->blocksTotal)->toBe(3)
+        ->and($result->blocksSucceeded())->toBe(3)
+        ->and($result->hasBlockFailures())->toBeFalse()
+        ->and(IndexRate::query()->where('indexer', 'CDI')->count())->toBe(3);
+});
+
+it('does not duplicate rows across chunked blocks on a repeated sync (idempotent)', function () {
+    config(['pu_indexes.bcb.chunk_months' => 12, 'pu_indexes.bcb.retries' => 1, 'pu_indexes.bcb.retry_sleep_ms' => 0]);
+
+    // Cada bloco recebe o mesmo ponto único; a dedupe por data deixa apenas 1 registro.
+    Http::fake(['api.bcb.gov.br/*' => Http::response([['data' => '02/01/2024', 'valor' => '11.65']], 200)]);
+
+    $first = syncCdi('2022-01-01', '2024-01-31');
+    expect($first->created)->toBe(1)
+        ->and(IndexRate::query()->where('indexer', 'CDI')->count())->toBe(1);
+
+    $second = syncCdi('2022-01-01', '2024-01-31');
+    expect($second->created)->toBe(0)
+        ->and($second->skipped)->toBe(1)
+        ->and(IndexRate::query()->where('indexer', 'CDI')->count())->toBe(1);
+});
+
+it('persists the blocks that succeed and reports the failed block (partial sync)', function () {
+    config(['pu_indexes.bcb.chunk_months' => 12, 'pu_indexes.bcb.retries' => 1, 'pu_indexes.bcb.retry_sleep_ms' => 0]);
+
+    Http::fakeSequence('api.bcb.gov.br/*')
+        ->push('error', 500)
+        ->push([['data' => '02/01/2023', 'valor' => '13.65']])
+        ->push([['data' => '02/01/2024', 'valor' => '11.65']]);
+
+    $result = syncCdi('2022-01-01', '2024-01-31');
+
+    expect($result->created)->toBe(2)
+        ->and($result->blocksTotal)->toBe(3)
+        ->and($result->blocksFailed())->toBe(1)
+        ->and($result->hasBlockFailures())->toBeTrue()
+        ->and($result->hasErrors())->toBeTrue()
+        ->and($result->errors[0])->toContain('Sincronização parcial')
+        ->and(IndexRate::query()->where('indexer', 'CDI')->count())->toBe(2);
+});
+
+it('reports a clean "no new records" run when the API responds without data', function () {
+    Http::fake(['api.bcb.gov.br/*' => Http::response([], 200)]);
+
+    $result = syncCdi();
+
+    expect($result->fetched)->toBe(0)
+        ->and($result->created)->toBe(0)
+        ->and($result->hasBlockFailures())->toBeFalse()
+        ->and($result->errors[0])->toContain('respondeu sem dados');
+});
+
+it('uses the configured IPCA series code so it can target IPCA geral (433) or IPCA Serviços (10844)', function () {
+    config(['pu_indexes.bcb.series.ipca.code' => 10844]);
+
+    IndexRate::query()->create([
+        'indexer' => 'IPCA',
+        'rate_date' => CarbonImmutable::parse('2023-12-01')->startOfDay(),
+        'rate_value' => '100.00000000',
+        'source' => 'manual_import',
+        'is_projected' => false,
+    ]);
+
     Http::fake(['api.bcb.gov.br/*' => Http::response([
         ['data' => '01/01/2024', 'valor' => '0.50'],
     ], 200)]);
@@ -166,7 +302,12 @@ it('blocks IPCA sync when there is no anchor number-index', function () {
         CarbonImmutable::parse('2024-01-31'),
     );
 
-    expect($result->created)->toBe(0)
-        ->and($result->hasErrors())->toBeTrue()
-        ->and(IndexRate::query()->where('indexer', 'IPCA')->count())->toBe(0);
+    expect($result->externalSeriesCode)->toBe(10844)
+        ->and($result->created)->toBe(1);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'bcdata.sgs.10844'));
+
+    $row = IndexRate::query()->where('indexer', 'IPCA')->whereDate('rate_date', '2024-01-01')->first();
+    expect($row->external_series_code)->toBe('10844')
+        ->and($row->rate_value)->toEqual('100.50000000');
 });

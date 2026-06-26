@@ -86,6 +86,12 @@ class SyncPuIndexRatesCommand extends Command
 
             $this->renderSummary($result->toArray());
 
+            if ($result->hasBlockFailures()) {
+                foreach ($result->blockFailures as $failure) {
+                    $this->warn(sprintf('[%s] bloco com falha — %s', $indexer->value, $failure));
+                }
+            }
+
             if ($result->hasErrors()) {
                 foreach ($result->errors as $message) {
                     $this->warn(sprintf('[%s] %s', $indexer->value, $message));
@@ -120,12 +126,13 @@ class SyncPuIndexRatesCommand extends Command
     private function renderSummary(array $summary): void
     {
         $this->table(
-            ['indexer', 'fonte', 'serie', 'periodo', 'consultados', 'criados', 'atualizados', 'ignorados', 'dry-run'],
+            ['indexer', 'fonte', 'serie', 'periodo', 'blocos ok', 'consultados', 'criados', 'atualizados', 'ignorados', 'dry-run'],
             [[
                 $summary['indexer'],
                 $summary['source'],
                 $summary['external_series_code'],
                 sprintf('%s a %s', $summary['from'], $summary['to']),
+                sprintf('%d/%d', $summary['blocks_succeeded'], $summary['blocks_total']),
                 $summary['fetched'],
                 $summary['created'],
                 $summary['updated'],

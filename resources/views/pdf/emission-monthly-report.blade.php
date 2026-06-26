@@ -11,7 +11,8 @@
         .header p { margin: 4px 0 0; font-size: 11px; color: #c9c6c6; }
         .gold-bar { height: 5px; background-color: #a06e28; width: 100%; }
         .content { padding: 22px 30px 10px; }
-        .section-title { color: #091b23; border-bottom: 2px solid #a06e28; padding-bottom: 4px; margin: 22px 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: .5px; }
+        .section-title { color: #091b23; border-bottom: 2px solid #a06e28; padding-bottom: 4px; margin: 22px 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: .5px; page-break-after: avoid; }
+        .subsection { font-size: 11px; font-weight: bold; color: #091b23; margin: 12px 0 4px; }
         table { width: 100%; border-collapse: collapse; }
         table.kv td { padding: 5px 8px; vertical-align: top; border-bottom: 1px solid #eee; }
         table.kv td.label { width: 38%; color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
@@ -21,9 +22,10 @@
         table.data td { padding: 5px 8px; border-bottom: 1px solid #eee; color: #091b23; }
         table.data td.num, table.data th.num { text-align: right; }
         table.data tr.total td { font-weight: bold; border-top: 2px solid #a06e28; background: #faf6ef; }
-        .empty { font-size: 11px; color: #999; font-style: italic; padding: 6px 0; }
         .note { font-size: 10px; color: #888; margin-top: 6px; }
-        .placeholder { border: 1px dashed #cfcfcf; background: #fafafa; color: #888; font-size: 11px; padding: 14px; text-align: center; border-radius: 4px; }
+        .no-data { font-size: 11px; color: #777; background: #f7f7f5; border-left: 3px solid #cfcfcf; padding: 8px 12px; margin: 4px 0 8px; }
+        table.data tr, table.kv tr { page-break-inside: avoid; }
+        .note-card, .cards { page-break-inside: avoid; }
         .note-card { border: 1px solid #eee; border-left: 3px solid #a06e28; padding: 8px 12px; margin-bottom: 8px; background: #fcfbf9; }
         .note-head { margin: 0 0 4px; color: #091b23; font-size: 12px; }
         .note-badge { display: inline-block; background: #091b23; color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: .3px; padding: 1px 6px; border-radius: 8px; margin-right: 6px; }
@@ -97,7 +99,7 @@
             </tbody>
         </table>
     @else
-        <p class="empty">{{ $payment['empty_message'] }}</p>
+        <p class="no-data">{{ $payment['empty_message'] }}</p>
     @endif
 
     {{-- ===== Calendário de eventos ===== --}}
@@ -125,7 +127,7 @@
             </table>
         @endif
     @else
-        <p class="empty">{{ $calendar['empty_message'] }}</p>
+        <p class="no-data">{{ $calendar['empty_message'] }}</p>
     @endif
 
     {{-- ===== Saldo devedor ===== --}}
@@ -154,7 +156,7 @@
             </tbody>
         </table>
     @else
-        <p class="empty">{{ $accounts['empty_message'] }}</p>
+        <p class="no-data">{{ $accounts['empty_message'] }}</p>
     @endif
 
     {{-- ===== Despesas ===== --}}
@@ -185,7 +187,7 @@
             </table>
         @endif
     @else
-        <p class="empty">{{ $expenses['empty_message'] }}</p>
+        <p class="no-data">{{ $expenses['empty_message'] }}</p>
     @endif
 
     {{-- ===== Inadimplência ===== --}}
@@ -202,7 +204,7 @@
         </table>
         <p class="note">Os valores correspondem às parcelas em aberto, conforme a data de vencimento.</p>
     @else
-        <p class="empty">{{ $delinquency['empty_message'] }}</p>
+        <p class="no-data">{{ $delinquency['empty_message'] }}</p>
     @endif
 
     {{-- ===== Recebimentos (resumo) ===== --}}
@@ -214,7 +216,35 @@
             @endforeach
         </table>
     @else
-        <p class="empty">{{ $receivables['empty_message'] }}</p>
+        <p class="no-data">{{ $receivables['empty_message'] }}</p>
+    @endif
+
+    {{-- ===== Histórico de recebíveis e inadimplência (séries mensais) ===== --}}
+    @if ($receivables_history['has_data'])
+        <div class="section-title">Histórico de Recebíveis e Inadimplência</div>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Competência</th>
+                    <th class="num">Previsto</th>
+                    <th class="num">Recebido</th>
+                    <th class="num">% Recebido</th>
+                    <th class="num">Inadimplência</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($receivables_history['rows'] as $row)
+                    <tr>
+                        <td>{{ $row['competencia'] }}</td>
+                        <td class="num">{{ $row['expected'] }}</td>
+                        <td class="num">{{ $row['received'] }}</td>
+                        <td class="num">{{ $row['received_percent'] }}</td>
+                        <td class="num">{{ $row['delinquency'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        <p class="note">Série baseada nas competências de recebíveis cadastradas para a emissão.</p>
     @endif
 
     {{-- ===== Unidades / quadro de vendas ===== --}}
@@ -226,7 +256,7 @@
             @endforeach
         </table>
     @else
-        <p class="empty">{{ $units['empty_message'] }}</p>
+        <p class="no-data">{{ $units['empty_message'] }}</p>
     @endif
 
     {{-- ===== Negociações ===== --}}
@@ -238,7 +268,7 @@
             @endforeach
         </table>
     @else
-        <p class="empty">{{ $negotiations['empty_message'] }}</p>
+        <p class="no-data">{{ $negotiations['empty_message'] }}</p>
     @endif
 
     {{-- Análise do Mês e Evolução da Obra: representações compatíveis com DomPDF
@@ -272,7 +302,7 @@
         </table>
         <p class="bar-legend">Dourado: recebido (pago) &nbsp;·&nbsp; Escuro: em aberto (não pago).</p>
     @else
-        <div class="placeholder">{{ $analise_mes['empty_message'] }}</div>
+        <div class="no-data">{{ $analise_mes['empty_message'] }}</div>
     @endif
 
     {{-- ===== Evolução da Obra (%) ===== --}}
@@ -310,7 +340,7 @@
             </tbody>
         </table>
     @else
-        <div class="placeholder">{{ $construction['empty_message'] }}</div>
+        <div class="no-data">{{ $construction['empty_message'] }}</div>
     @endif
 
     @if ($construction['has_constructions'])
@@ -332,6 +362,35 @@
         </table>
     @endif
 
+    {{-- ===== Histórico de evolução da obra (séries mensais por empreendimento) ===== --}}
+    @if ($construction_history['has_data'])
+        <div class="section-title">Histórico de Evolução da Obra</div>
+        @foreach ($construction_history['series'] as $serie)
+            <p class="subsection">{{ $serie['name'] }}</p>
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Competência</th>
+                        <th class="num">Prev. acum.</th>
+                        <th class="num">Real. acum.</th>
+                        <th>Progresso (realizado acum.)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($serie['points'] as $point)
+                        <tr>
+                            <td>{{ $point['competencia'] }}</td>
+                            <td class="num">{{ $point['planned_cumulative'] }}</td>
+                            <td class="num">{{ $point['realized_cumulative'] }}</td>
+                            <td><div class="mini-bar-wrap"><div class="mini-fill" style="width: {{ $point['bar_percent'] }}%;"></div></div></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endforeach
+        <p class="note">Série baseada nas medições efetivas registradas por competência.</p>
+    @endif
+
     {{-- ===== Comentários e notas explicativas (módulo administrativo) ===== --}}
     <div class="section-title">Comentários e Notas Explicativas</div>
     @if ($notes['has_data'])
@@ -350,7 +409,7 @@
             </div>
         @endforeach
     @else
-        <div class="placeholder">{{ $notes['empty_message'] }}</div>
+        <div class="no-data">{{ $notes['empty_message'] }}</div>
     @endif
 
 </div>

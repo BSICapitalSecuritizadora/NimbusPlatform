@@ -59,6 +59,7 @@ class EmissionMonthlyReportService
         $payment = $this->lastPaymentUntil($emission, $monthEnd);
         $upcomingEvents = $this->upcomingEventsFrom($emission, $monthStart);
         $nextEvent = $upcomingEvents->first();
+        $constructions = $emission->constructions()->orderBy('development_name')->get();
 
         return [
             'meta' => [
@@ -78,7 +79,9 @@ class EmissionMonthlyReportService
             'units' => $this->buildUnits($salesBoard),
             'negotiations' => $this->buildNegotiations($negotiation),
             'analise_mes' => $this->buildAnaliseMes($receivable),
-            'construction' => $this->buildConstructionProgress($emission, $monthStart),
+            'receivables_history' => $this->buildReceivablesHistory($emission, $monthEnd),
+            'construction' => $this->buildConstructionProgress($emission, $monthStart, $constructions),
+            'construction_history' => $this->buildConstructionHistory($emission, $monthStart, $constructions),
             'notes' => $this->buildNotes($emission, $monthStart, $monthEnd),
         ];
     }
@@ -456,12 +459,11 @@ class EmissionMonthlyReportService
      * a partir do provider de progresso (medições). Sem dados de progresso, mantém a
      * relação dos empreendimentos vinculados como contexto e mensagem amigável.
      *
+     * @param  Collection<int, Construction>  $constructions
      * @return array<string, mixed>
      */
-    private function buildConstructionProgress(Emission $emission, CarbonImmutable $monthStart): array
+    private function buildConstructionProgress(Emission $emission, CarbonImmutable $monthStart, Collection $constructions): array
     {
-        $constructions = $emission->constructions()->orderBy('development_name')->get();
-
         $progress = [];
         $registry = [];
 
@@ -539,6 +541,122 @@ class EmissionMonthlyReportService
         }
 
         return sprintf('%s — %s', $start ?? '—', $end ?? '—');
+    }
+
+    /**
+     * Histórico de recebíveis e inadimplência (últimas competências) a partir dos
+     * snapshots mensais de Receivable. Cada linha é uma competência efetivamente
+     * cadastrada — nada é inferido. Exibido apenas quando há ao menos duas competências.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildReceivablesHistory(Emission $emission, CarbonImmutable $monthEnd, int $limit = 6): array
+    {
+        $receivables = Receivable::query()
+            ->where('emission_id', $emission->id)
+            ->where('reference_month', '<=', $monthEnd->toDateString())
+            ->orderByDesc('reference_month')
+            ->limit($limit)
+            ->get()
+            ->sortBy('reference_month')
+            ->values();
+
+        $rows = $receivables->map(function (Receivable $receivable): array {
+            $expected = (float) $receivable->expected_interest_amount + (float) $receivable->expected_amortization_amount;
+            $received = (float) $receivable->received_installment_interest_amount + (float) $receivable->received_installment_amortization_amount;
+
+            return [
+                'competencia' => $receivable->reference_month?->format('m/Y') ?? self::NOT_INFORMED,
+                'expected' => $this->money($expected),
+                'received' => $this->money($received),
+                'received_percent' => $expected > 0.0 ? $this->percent(min(100.0, $received / $expected * 100)) : '—',
+                'delinquency' => $this->money($this->overdueTotal($receivable)),
+            ];
+        })->all();
+
+        return [
+            'has_data' => count($rows) >= 2,
+            'rows' => $rows,
+            'empty_message' => self::NOT_CONSOLIDATED,
+        ];
+    }
+
+    /**
+     * Histórico de evolução da obra (últimas competências) por empreendimento, a partir
+     * do provider de progresso. Inclui somente competências com medição efetiva no mês
+     * (descarta carry-forward), evitando inferir evolução em meses sem medição.
+     *
+     * @param  Collection<int, Construction>  $constructions
+     * @return array<string, mixed>
+     */
+    private function buildConstructionHistory(Emission $emission, CarbonImmutable $monthStart, Collection $constructions, int $window = 4): array
+    {
+        $months = $this->monthsWindow($monthStart, $window);
+        $targets = $constructions->isNotEmpty() ? $constructions->all() : [null];
+        $series = [];
+
+        foreach ($targets as $construction) {
+            $points = [];
+
+            foreach ($months as $month) {
+                $data = $this->constructionProgressProvider->forEmission($emission, $month, $construction);
+
+                if ($data === null || $data->measurementDate === null) {
+                    continue;
+                }
+
+                $measuredAt = CarbonImmutable::parse($data->measurementDate->toDateString());
+
+                if ($measuredAt->lt($month) || $measuredAt->gt($month->endOfMonth())) {
+                    continue;
+                }
+
+                $points[] = [
+                    'competencia' => $month->format('m/Y'),
+                    'planned_cumulative' => $this->percent($data->plannedCumulativePercent),
+                    'realized_cumulative' => $this->percent($data->realizedCumulativePercent),
+                    'bar_percent' => round(max(0.0, min(100.0, $data->realizedCumulativePercent)), 2),
+                ];
+            }
+
+            if (count($points) >= 2) {
+                $series[] = [
+                    'name' => $construction?->development_name ?? 'Cronograma da emissão',
+                    'points' => $points,
+                ];
+            }
+        }
+
+        return [
+            'has_data' => $series !== [],
+            'series' => $series,
+        ];
+    }
+
+    /**
+     * @return list<CarbonImmutable>
+     */
+    private function monthsWindow(CarbonImmutable $monthStart, int $count): array
+    {
+        $months = [];
+
+        for ($i = $count - 1; $i >= 0; $i--) {
+            $months[] = $monthStart->subMonthsNoOverflow($i);
+        }
+
+        return $months;
+    }
+
+    private function overdueTotal(Receivable $receivable): float
+    {
+        return (float) $receivable->overdue_up_to_30_days_amount
+            + (float) $receivable->overdue_31_to_60_days_amount
+            + (float) $receivable->overdue_61_to_90_days_amount
+            + (float) $receivable->overdue_91_to_120_days_amount
+            + (float) $receivable->overdue_121_to_150_days_amount
+            + (float) $receivable->overdue_151_to_180_days_amount
+            + (float) $receivable->overdue_181_to_360_days_amount
+            + (float) $receivable->overdue_over_360_days_amount;
     }
 
     /**

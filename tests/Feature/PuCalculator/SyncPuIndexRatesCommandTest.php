@@ -68,6 +68,21 @@ it('registers the BCB sync schedules with the correct recurrence', function () {
         ->and($ipca->expression)->toBe('45 6 2 * *');       // todo dia 2 às 06:45
 });
 
+it('queries CDI in smaller blocks and surfaces a partial-block failure warning', function () {
+    config(['pu_indexes.bcb.chunk_months' => 12, 'pu_indexes.bcb.retries' => 1, 'pu_indexes.bcb.retry_sleep_ms' => 0]);
+
+    Http::fakeSequence('api.bcb.gov.br/*')
+        ->push('error', 500)
+        ->push([['data' => '02/01/2023', 'valor' => '13.65']])
+        ->push([['data' => '02/01/2024', 'valor' => '11.65']]);
+
+    $this->artisan('pu:index-rates:sync', ['--indexer' => 'cdi', '--from' => '2022-01-01', '--to' => '2024-01-31'])
+        ->expectsOutputToContain('bloco com falha')
+        ->assertSuccessful();
+
+    expect(IndexRate::query()->where('source', 'bcb_sgs')->count())->toBe(2);
+});
+
 it('caps the query window to the configured maximum (10 years)', function () {
     Http::fake(['api.bcb.gov.br/*' => Http::response([
         ['data' => '02/01/2024', 'valor' => '11.65'],

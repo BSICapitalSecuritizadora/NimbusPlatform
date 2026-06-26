@@ -369,6 +369,7 @@ class ObligationsRelationManager extends RelationManager
             ->color('warning')
             ->modalWidth(Width::Large)
             ->modalHeading('Enviar obrigação para análise')
+            ->modalDescription('As evidências anexadas serão enviadas para revisão. O status mudará para "Em análise".')
             ->modalSubmitActionLabel('Enviar para análise')
             ->form([
                 Textarea::make('note')
@@ -394,6 +395,7 @@ class ObligationsRelationManager extends RelationManager
             ->color('success')
             ->modalWidth(Width::Large)
             ->modalHeading('Concluir obrigação')
+            ->modalDescription('Esta ação encerrará a obrigação como concluída.')
             ->modalSubmitActionLabel('Concluir obrigação')
             ->form(fn (Obligation $record): array => $this->completeActionForm($record))
             ->visible(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_COMPLETE))
@@ -417,6 +419,7 @@ class ObligationsRelationManager extends RelationManager
             ->color('gray')
             ->modalWidth(Width::Large)
             ->modalHeading('Marcar obrigação como não aplicável')
+            ->modalDescription('Isto cancelará a necessidade de cumprimento desta obrigação.')
             ->modalSubmitActionLabel('Marcar como não aplicável')
             ->form([
                 Textarea::make('reason')
@@ -442,6 +445,7 @@ class ObligationsRelationManager extends RelationManager
             ->color('info')
             ->modalWidth(Width::Large)
             ->modalHeading('Reabrir obrigação')
+            ->modalDescription('A obrigação voltará ao status anterior para novos ajustes ou anexos de evidências.')
             ->modalSubmitActionLabel('Reabrir obrigação')
             ->form([
                 Textarea::make('reason')

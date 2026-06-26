@@ -9,6 +9,7 @@ use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
@@ -62,17 +63,35 @@ class IndexRateSyncService
             dryRun: $dryRun,
         );
 
-        $rates = $this->client->fetchSeries((int) $config['code'], $from, $to);
+        $fetch = $this->client->fetchSeries((int) $config['code'], $from, $to);
+        $rates = $fetch->rates;
         $result->fetched = count($rates);
+        $result->blocksTotal = $fetch->blocksTotal;
+
+        foreach ($fetch->blockFailures as $blockFailure) {
+            $result->addBlockFailure($blockFailure->describe());
+        }
+
+        if ($result->hasBlockFailures()) {
+            $result->addError(sprintf(
+                'Sincronização parcial: %d de %d bloco(s) falharam ao consultar o Banco Central (os demais foram processados).',
+                $result->blocksFailed(),
+                $result->blocksTotal,
+            ));
+        }
 
         if ($rates === []) {
-            $result->addError(sprintf(
-                'A série %d (%s) não retornou dados no período %s a %s.',
-                (int) $config['code'],
-                $indexer->value,
-                $from->toDateString(),
-                $to->toDateString(),
-            ));
+            $result->addError($result->hasBlockFailures()
+                ? sprintf('Nenhum dado pôde ser consultado na série %d (%s) — todos os blocos retornados falharam.', (int) $config['code'], $indexer->value)
+                : sprintf(
+                    'A API do Banco Central respondeu sem dados para a série %d (%s) no período %s a %s (nenhuma divulgação no intervalo).',
+                    (int) $config['code'],
+                    $indexer->value,
+                    $from->toDateString(),
+                    $to->toDateString(),
+                ));
+
+            $this->recordLastSyncStatus($result, $dryRun);
 
             return $result;
         }
@@ -90,14 +109,18 @@ class IndexRateSyncService
             $this->auditLogService->logIndexSync($result, $userId);
         }
 
+        $this->recordLastSyncStatus($result, $dryRun);
+
         Log::log(
             $result->hasErrors() ? 'warning' : 'info',
             sprintf(
-                'Sincronização de índices %s (%s): período %s a %s | retornados %d | inseridos %d | atualizados %d | ignorados %d%s',
+                'Sincronização de índices %s (%s): período %s a %s | blocos %d/%d ok | retornados %d | inseridos %d | atualizados %d | ignorados %d%s',
                 $result->indexer->value,
                 $result->source,
                 $result->from->toDateString(),
                 $result->to->toDateString(),
+                $result->blocksSucceeded(),
+                $result->blocksTotal,
                 $result->fetched,
                 $result->created,
                 $result->updated,
@@ -126,6 +149,11 @@ class IndexRateSyncService
     /**
      * IPCA: transforma variação mensal em número-índice encadeando sobre o último NI persistido (âncora).
      *
+     * A engine de curva IPCA usa apenas RAZÕES (NI_ref / NI_anterior), então a sincronização NUNCA
+     * bloqueia por ausência de âncora: quando não há nenhum número-índice anterior, uma base arbitrária
+     * (config `anchor_base`, default 100) é criada automaticamente no mês anterior à primeira competência
+     * e o encadeamento prossegue. Isso não afeta a correção monetária (razões idênticas).
+     *
      * @param  list<BcbSgsRateData>  $rates
      * @param  array<string, mixed>  $config
      */
@@ -135,12 +163,16 @@ class IndexRateSyncService
         $anchor = $this->latestIpcaIndexBefore($firstMonth);
 
         if ($anchor === null) {
-            $result->addError(sprintf(
-                'Não há número-índice IPCA âncora anterior a %s. Importe/cadastre um NI base de IPCA antes de sincronizar por variação (o SGS publica variação mensal, não número-índice).',
-                $firstMonth->toDateString(),
-            ));
+            $baseMonth = $firstMonth->subMonthNoOverflow();
+            $anchor = $this->round8((string) config('pu_indexes.bcb.series.ipca.anchor_base', '100'));
 
-            return;
+            $this->seedAnchorBase($baseMonth, $anchor, $config, $dryRun, $fetchedAt);
+
+            $result->addNotice(sprintf(
+                'Número-índice base de IPCA criado automaticamente (%s em %s) para permitir o encadeamento da variação mensal — a sincronização não foi bloqueada. A base é arbitrária e não afeta a correção monetária (a curva usa apenas razões NI_ref/NI_anterior).',
+                $anchor,
+                $baseMonth->toDateString(),
+            ));
         }
 
         $runningNi = (string) $anchor;
@@ -152,6 +184,34 @@ class IndexRateSyncService
 
             $runningNi = $this->applyRow($result->indexer, $month, $derivedNi, $config, $policy, $dryRun, $fetchedAt, $result);
         }
+    }
+
+    /**
+     * Cria a linha de número-índice base (âncora) que destrava o encadeamento do IPCA. Não entra na
+     * contagem de criados/ignorados (é plumbing interno, não uma competência consultada na API).
+     *
+     * @param  array<string, mixed>  $config
+     */
+    private function seedAnchorBase(CarbonImmutable $month, string $value, array $config, bool $dryRun, CarbonImmutable $fetchedAt): void
+    {
+        if ($dryRun) {
+            return;
+        }
+
+        IndexRate::query()->create([
+            'indexer' => PuIndexer::Ipca->value,
+            'rate_date' => $month->startOfDay(),
+            'rate_value' => $value,
+            'source' => (string) $config['source'],
+            'source_reference' => sprintf('%s:%d:base', $config['source'], $config['code']),
+            'external_series_code' => (string) $config['code'],
+            'fetched_at' => $fetchedAt,
+            'is_projected' => false,
+            'projection_source' => null,
+            'projection_reference_date' => null,
+            'projection_policy' => null,
+            'index_projection_series_id' => null,
+        ]);
     }
 
     /**
@@ -224,6 +284,24 @@ class IndexRateSyncService
         $result->updated++;
 
         return $value;
+    }
+
+    /**
+     * Registra o status da última sincronização (cache) para a UI mostrar "sincronizado em ...",
+     * mesmo quando a API respondeu corretamente porém todos os registros já existiam. Só marca
+     * "completed" quando a consulta à API foi integral (sem falha de bloco) e não é dry-run.
+     */
+    private function recordLastSyncStatus(IndexRateSyncResult $result, bool $dryRun): void
+    {
+        if ($dryRun || $result->hasBlockFailures()) {
+            return;
+        }
+
+        Cache::put(
+            sprintf('pu_index_sync_%s_status', strtolower($result->indexer->value)),
+            ['status' => 'completed'] + $result->toArray(),
+            86400,
+        );
     }
 
     private function latestIpcaIndexBefore(CarbonImmutable $month): ?string

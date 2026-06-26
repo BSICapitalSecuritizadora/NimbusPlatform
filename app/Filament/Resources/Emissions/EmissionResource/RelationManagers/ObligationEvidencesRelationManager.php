@@ -266,6 +266,7 @@ class ObligationEvidencesRelationManager extends RelationManager
             ->icon('heroicon-o-check-badge')
             ->color('success')
             ->modalHeading('Aprovar evidência')
+            ->modalDescription('Esta ação aprovará a evidência e atualizará o status da obrigação relacionada.')
             ->modalSubmitActionLabel('Aprovar evidência')
             ->form([
                 Textarea::make('review_notes')
@@ -289,6 +290,7 @@ class ObligationEvidencesRelationManager extends RelationManager
             ->icon('heroicon-o-x-circle')
             ->color('danger')
             ->modalHeading('Rejeitar evidência')
+            ->modalDescription('A evidência será rejeitada e o responsável deverá enviar um novo documento válido.')
             ->modalSubmitActionLabel('Rejeitar evidência')
             ->form([
                 Textarea::make('rejection_reason')

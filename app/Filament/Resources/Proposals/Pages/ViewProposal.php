@@ -26,6 +26,9 @@ class ViewProposal extends ViewRecord
                 ->color('info')
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::InReview->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
                 ->requiresConfirmation()
+                ->modalHeading('Marcar como em análise')
+                ->modalDescription('Esta ação mudará o status da proposta para "Em Análise". Deseja continuar?')
+                ->modalSubmitActionLabel('Marcar como em análise')
                 ->action(fn () => $this->changeStatus(ProposalStatus::InReview->value)),
 
             Action::make('request_info')
@@ -33,6 +36,9 @@ class ViewProposal extends ViewRecord
                 ->icon('heroicon-o-document-plus')
                 ->color('warning')
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::AwaitingInformation->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
+                ->modalHeading('Solicitar complemento')
+                ->modalDescription('O cliente será notificado para enviar informações adicionais. A proposta ficará com status "Aguardando informações".')
+                ->modalSubmitActionLabel('Solicitar complemento')
                 ->form([
                     Textarea::make('note')
                         ->label('Justificativa')
@@ -48,6 +54,9 @@ class ViewProposal extends ViewRecord
                 ->color('success')
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::Approved->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
                 ->requiresConfirmation()
+                ->modalHeading('Aprovar proposta')
+                ->modalDescription('A proposta será aprovada e encaminhada para a próxima fase (formalização). Confirma a aprovação?')
+                ->modalSubmitActionLabel('Aprovar proposta')
                 ->action(fn () => $this->changeStatus(ProposalStatus::Approved->value)),
 
             Action::make('reject')
@@ -55,6 +64,9 @@ class ViewProposal extends ViewRecord
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::Rejected->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
+                ->modalHeading('Recusar proposta')
+                ->modalDescription('A proposta será rejeitada e arquivada. Esta ação não pode ser desfeita facilmente.')
+                ->modalSubmitActionLabel('Recusar proposta')
                 ->form([
                     Textarea::make('note')
                         ->label('Justificativa')
@@ -70,6 +82,9 @@ class ViewProposal extends ViewRecord
                 ->color('success')
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::Completed->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
                 ->requiresConfirmation()
+                ->modalHeading('Formalizar proposta')
+                ->modalDescription('A proposta será marcada como formalizada/concluída. Confirma?')
+                ->modalSubmitActionLabel('Marcar como formalizada')
                 ->action(fn () => $this->changeStatus(ProposalStatus::Completed->value)),
 
             Action::make('resend_access')
@@ -77,6 +92,9 @@ class ViewProposal extends ViewRecord
                 ->icon('heroicon-o-paper-airplane')
                 ->color('gray')
                 ->requiresConfirmation()
+                ->modalHeading('Enviar link seguro')
+                ->modalDescription('Isto enviará um novo link de acesso seguro por e-mail para o contato principal da proposta. Deseja continuar?')
+                ->modalSubmitActionLabel('Enviar link')
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record))
                 ->action(function (): void {
                     $key = "resend-access:{$this->record->id}";

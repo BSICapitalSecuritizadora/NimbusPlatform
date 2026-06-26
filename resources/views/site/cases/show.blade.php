@@ -51,7 +51,7 @@
                         {!! $case->content !!}
                     </div>
                     <div class="col-lg-4">
-                        <div class="card border-0 p-4 sticky-top" style="top: 100px; border-radius: 24px; background: var(--bg);">
+                        <div class="card border-0 p-4 sticky-lg-top" style="top: 120px; z-index: 10; border-radius: 24px; background: var(--bg);">
                             <h4 class="fw-bold mb-3">Interessado nesta solução?</h4>
                             <p class="text-muted small mb-4">Nossa equipe especialista está pronta para ajudar na estruturação da sua operação.</p>
                             <a href="{{ route('site.contact') }}" class="btn btn-brand w-100 rounded-pill py-2">Fale conosco</a>
