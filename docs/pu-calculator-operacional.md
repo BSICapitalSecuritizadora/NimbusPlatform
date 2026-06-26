@@ -150,6 +150,12 @@ internamente** (maker/checker), pois o BCB só publica índices realizados, não
 | **CDI** | **4389** | CDI **anualizada base 252** (% a.a.) | Persistido **direto** em `rate_value` (mesma semântica da engine CDI). |
 | **IPCA** | **433** | **Variação mensal** (%) | **Transformado** em **número-índice** encadeando sobre o último NI persistido (âncora), em `bcmath`. |
 
+> **Por que NÃO usamos as séries 12 e 10844.** A série **12** é o CDI **diário** (% a.d.); a engine consome
+> CDI como **taxa anual base 252**, então usar 12 direto quebraria o cálculo (a 4389 já entrega anualizado).
+> A série **10844** é **"IPCA – Serviços"** (um **subíndice**), não o IPCA cheio usado na correção monetária
+> (série **433**). Os códigos ficam em `config/pu_indexes.php` (env `PU_BCB_SGS_CDI_CODE` /
+> `PU_BCB_SGS_IPCA_CODE`) — se o negócio exigir 12, é preciso adicionar conversão diário→anual explícita.
+
 > **Semântica de `rate_value` preservada.** A engine CDI usa taxa anual base 252 e a engine IPCA usa
 > **número-índice**. O SGS entrega o CDI já anualizado (4389 → direto), mas o IPCA apenas como **variação
 > mensal** (433). Por isso o IPCA passa por uma **transformação explícita e testada** (variação → NI):
@@ -189,9 +195,14 @@ A chave lógica é **(indexer, rate_date)**. Como o cast `date` do `IndexRate` p
 busca usa **`whereDate`** (nunca `where('rate_date','YYYY-MM-DD')`). Políticas de sobrescrita
 (`PU_BCB_SGS_OVERWRITE_POLICY`):
 
-- `skip_existing` — não altera linhas existentes;
-- `update_if_changed` (**default**) — atualiza só quando o valor muda (audita);
+- `skip_existing` (**default — insert-only**) — só salva se ainda não existir registro para a data; **não
+  duplica nem sobrescreve**;
+- `update_if_changed` — atualiza só quando o valor muda (regra específica de atualização; audita);
 - `overwrite` (`--force`) — força atualização.
+
+**Janela e período.** A rotina consulta **sempre os últimos 10 anos** (`PU_BCB_SGS_WINDOW_YEARS`, default 10)
+e qualquer intervalo informado é **limitado a no máximo 10 anos** — a API do SGS restringe séries diárias a
+~10 anos por requisição.
 
 **Linhas de outra origem (manual/projetada) NUNCA são sobrescritas** pela sync — ela só gerencia as
 linhas que ela mesma criou (`source = bcb_sgs`). Reexecutar a sync é seguro (não duplica).
@@ -206,12 +217,13 @@ série projetada. O subtítulo da tela mostra a **última sincronização** de c
 
 ```php
 // routes/console.php
-Schedule::command('pu:index-rates:sync --indexer=cdi --queue')->weekdays()->dailyAt('06:30')->name('pu-index-sync-cdi');
-Schedule::command('pu:index-rates:sync --indexer=ipca --queue')->dailyAt('06:45')->name('pu-index-sync-ipca');
+Schedule::command('pu:index-rates:sync --indexer=cdi --queue')->dailyAt('06:30')->name('pu-index-sync-cdi');
+Schedule::command('pu:index-rates:sync --indexer=ipca --queue')->monthlyOn(2, '06:45')->name('pu-index-sync-ipca');
 ```
 
-- **CDI**: dias úteis (só há divulgação em dia útil).
-- **IPCA**: diário com tolerância (só há dado novo mensal; idempotente, então repetir é inócuo).
+- **CDI**: **todos os dias** às 06:30, consultando sempre os últimos 10 anos (dias sem divulgação não
+  trazem dado novo; insert-only, então repetir é inócuo).
+- **IPCA**: **todo dia 2 de cada mês** às 06:45, consultando sempre os últimos 10 anos.
 
 Garanta o cron do scheduler em produção: `* * * * * cd /var/www/html && php artisan schedule:run`.
 

@@ -65,13 +65,8 @@ class SyncIndexRatesFromBcbJob implements ShouldQueue
                 $this->overwritePolicy,
             );
 
+            // O resumo de execução (período/inseridos/ignorados) é logado por IndexRateSyncService.
             Cache::put($this->statusKey(), ['status' => 'completed'] + $result->toArray(), 86400);
-
-            if ($result->hasErrors()) {
-                Log::warning('Sincronização de índices concluída com avisos.', $result->toArray());
-            } else {
-                Log::info('Sincronização de índices concluída.', $result->toArray());
-            }
         } catch (BcbSgsException $exception) {
             Cache::put($this->statusKey(), [
                 'status' => 'failed',

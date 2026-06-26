@@ -40,10 +40,19 @@ class SyncPuIndexRatesCommand extends Command
             return self::FAILURE;
         }
 
+        $windowYears = (int) config('pu_indexes.bcb.window_years', 10);
         $to = $this->option('to') ? CarbonImmutable::parse((string) $this->option('to')) : CarbonImmutable::now();
         $from = $this->option('from')
             ? CarbonImmutable::parse((string) $this->option('from'))
-            : $to->subDays((int) config('pu_indexes.bcb.default_window_days', 45));
+            : $to->subYears($windowYears);
+
+        // Cap rígido: a consulta nunca pode ultrapassar a janela máxima (limite da API do SGS).
+        $earliest = $to->subYears($windowYears);
+
+        if ($from->lessThan($earliest)) {
+            $this->warn(sprintf('Janela limitada a %d anos: ajustando a data inicial de %s para %s.', $windowYears, $from->toDateString(), $earliest->toDateString()));
+            $from = $earliest;
+        }
 
         $dryRun = (bool) $this->option('dry-run');
         $policy = (bool) $this->option('force') ? IndexRateSyncService::POLICY_OVERWRITE : null;

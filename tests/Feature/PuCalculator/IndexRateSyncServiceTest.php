@@ -56,6 +56,20 @@ it('is idempotent and respects the Y-m-d H:i:s date cast (no duplicates)', funct
         ->and(IndexRate::query()->where('indexer', 'CDI')->count())->toBe(1);
 });
 
+it('defaults to insert-only (does not overwrite an existing date)', function () {
+    Http::fakeSequence('api.bcb.gov.br/*')
+        ->push([['data' => '02/01/2024', 'valor' => '11.65']])
+        ->push([['data' => '02/01/2024', 'valor' => '11.90']]);
+
+    syncCdi();
+    $result = syncCdi(); // política default (skip_existing): não sobrescreve
+
+    expect($result->created)->toBe(0)
+        ->and($result->updated)->toBe(0)
+        ->and($result->skipped)->toBe(1)
+        ->and(IndexRate::query()->whereDate('rate_date', '2024-01-02')->value('rate_value'))->toEqual('11.65000000');
+});
+
 it('updates a bcb row only when the value changed (update_if_changed)', function () {
     Http::fakeSequence('api.bcb.gov.br/*')
         ->push([['data' => '02/01/2024', 'valor' => '11.65']])

@@ -9,6 +9,7 @@ use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /**
@@ -88,6 +89,23 @@ class IndexRateSyncService
             $this->lookupService->flushCache();
             $this->auditLogService->logIndexSync($result, $userId);
         }
+
+        Log::log(
+            $result->hasErrors() ? 'warning' : 'info',
+            sprintf(
+                'Sincronização de índices %s (%s): período %s a %s | retornados %d | inseridos %d | atualizados %d | ignorados %d%s',
+                $result->indexer->value,
+                $result->source,
+                $result->from->toDateString(),
+                $result->to->toDateString(),
+                $result->fetched,
+                $result->created,
+                $result->updated,
+                $result->skipped,
+                $result->dryRun ? ' | DRY-RUN' : '',
+            ),
+            $result->toArray(),
+        );
 
         return $result;
     }

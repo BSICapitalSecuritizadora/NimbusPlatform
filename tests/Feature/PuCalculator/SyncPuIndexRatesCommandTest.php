@@ -56,13 +56,24 @@ it('runs the async job idempotently and stores a status', function () {
         ->and(\Illuminate\Support\Facades\Cache::get('pu_index_sync_cdi_status'))->toMatchArray(['status' => 'completed']);
 });
 
-it('registers the BCB sync schedules', function () {
-    $events = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
-        ->map(fn ($event) => $event->description)
-        ->filter()
-        ->values()
-        ->all();
+it('registers the BCB sync schedules with the correct recurrence', function () {
+    $events = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events());
 
-    expect($events)->toContain('pu-index-sync-cdi')
-        ->and($events)->toContain('pu-index-sync-ipca');
+    $cdi = $events->first(fn ($event) => $event->description === 'pu-index-sync-cdi');
+    $ipca = $events->first(fn ($event) => $event->description === 'pu-index-sync-ipca');
+
+    expect($cdi)->not->toBeNull()
+        ->and($cdi->expression)->toBe('30 6 * * *')         // todos os dias 06:30
+        ->and($ipca)->not->toBeNull()
+        ->and($ipca->expression)->toBe('45 6 2 * *');       // todo dia 2 às 06:45
+});
+
+it('caps the query window to the configured maximum (10 years)', function () {
+    Http::fake(['api.bcb.gov.br/*' => Http::response([
+        ['data' => '02/01/2024', 'valor' => '11.65'],
+    ], 200)]);
+
+    $this->artisan('pu:index-rates:sync', ['--indexer' => 'cdi', '--from' => '2000-01-01', '--to' => '2024-01-01'])
+        ->expectsOutputToContain('Janela limitada')
+        ->assertSuccessful();
 });

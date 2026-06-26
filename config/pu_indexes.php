@@ -32,14 +32,21 @@ return [
         'retry_sleep_ms' => (int) env('PU_BCB_SGS_RETRY_SLEEP_MS', 500),
 
         /**
-         * Janela padrão (dias) usada quando --from/--to não são informados.
+         * Janela (anos) consultada por padrão e LIMITE MÁXIMO por requisição.
+         *
+         * A API do SGS limita séries diárias a ~10 anos por requisição; a rotina sempre consulta os
+         * últimos 10 anos e qualquer intervalo informado é "clampado" para no máximo esse limite.
          */
-        'default_window_days' => (int) env('PU_BCB_SGS_WINDOW_DAYS', 45),
+        'window_years' => (int) env('PU_BCB_SGS_WINDOW_YEARS', 10),
 
         /**
          * Política de sobrescrita ao sincronizar: skip_existing | update_if_changed | overwrite.
+         *
+         * Default `skip_existing` (insert-only): o valor só é salvo se ainda não existir registro para a
+         * data; nunca duplica nem sobrescreve. Para atualizar valores revisados, use `--force`
+         * (overwrite) ou configure `update_if_changed` via env (regra específica de atualização).
          */
-        'overwrite_policy' => env('PU_BCB_SGS_OVERWRITE_POLICY', 'update_if_changed'),
+        'overwrite_policy' => env('PU_BCB_SGS_OVERWRITE_POLICY', 'skip_existing'),
 
         'series' => [
             'cdi' => [

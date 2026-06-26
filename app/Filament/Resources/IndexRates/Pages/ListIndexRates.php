@@ -175,10 +175,14 @@ class ListIndexRates extends ListRecords
                 Toggle::make('dry_run')->label('Dry-run (simular, sem persistir)')->default(false),
             ])
             ->action(function (array $data) use ($indexer): void {
+                $windowYears = (int) config('pu_indexes.bcb.window_years', 10);
                 $to = filled($data['to'] ?? null) ? CarbonImmutable::parse((string) $data['to']) : CarbonImmutable::now();
                 $from = filled($data['from'] ?? null)
                     ? CarbonImmutable::parse((string) $data['from'])
-                    : $to->subDays((int) config('pu_indexes.bcb.default_window_days', 45));
+                    : $to->subYears($windowYears);
+
+                // Cap rígido na janela máxima (limite da API do SGS).
+                $from = $from->max($to->subYears($windowYears));
 
                 try {
                     $result = app(IndexRateSyncService::class)->sync(

@@ -113,7 +113,11 @@ it('stores the continuation payload through the livewire component', function ()
     $component
         ->set('form.uploads', [
             UploadedFile::fake()->create('memorial-descritivo.pdf', 128, 'application/pdf'),
-        ])
+        ]);
+
+    \Illuminate\Support\Facades\Date::setTestNow(now()->addSecond());
+
+    $component
         ->call('save')
         ->assertHasNoErrors()
         ->assertSet('successMessage', 'Empreendimento(s) salvo(s) com sucesso.');
