@@ -9,7 +9,6 @@ use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteIssue;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
-use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuParameter;
 use Carbon\CarbonImmutable;
@@ -19,6 +18,7 @@ class PuCurvePrerequisiteService
     public function __construct(
         private readonly BusinessDayCalendarService $businessDayCalendar,
         private readonly IndexRateService $indexRateService,
+        private readonly BusinessCalendarCoverageService $calendarCoverage,
     ) {}
 
     public function handle(Emission $emission): PuCurvePrerequisiteCheckResult
@@ -187,20 +187,11 @@ class PuCurvePrerequisiteService
         CarbonImmutable $endDate,
         string $calendarCode,
     ): void {
-        $availableDates = BusinessCalendarDate::query()
-            ->where('calendar_code', $calendarCode)
-            ->whereDate('calendar_date', '>=', $startDate->toDateString())
-            ->whereDate('calendar_date', '<=', $endDate->toDateString())
-            ->pluck('calendar_date')
-            ->mapWithKeys(fn ($calendarDate): array => [CarbonImmutable::parse((string) $calendarDate)->toDateString() => true])
-            ->all();
-
-        $missingDates = [];
-        for ($currentDate = $startDate; $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
-            if (! isset($availableDates[$currentDate->toDateString()])) {
-                $missingDates[] = $currentDate->toDateString();
-            }
+        if ($this->calendarCoverage->ensureCoverage($calendarCode, $startDate, $endDate)) {
+            $this->businessDayCalendar->flushCache();
         }
+
+        $missingDates = $this->calendarCoverage->missingDates($calendarCode, $startDate, $endDate);
 
         if ($missingDates === []) {
             return;
@@ -209,10 +200,13 @@ class PuCurvePrerequisiteService
         $issues[] = PuCurvePrerequisiteIssue::blocking(
             'business_calendar_dates',
             sprintf(
-                'O calendario %s nao cobre todo o periodo da curva. Faltam %d data(s), a primeira em %s.',
+                'O calendario %s nao cobre todo o periodo da curva (faltam %d data(s), a primeira em %s). Complete o calendario com "php artisan pu:business-calendar:seed --calendar=%s --from=%s --to=%s" ou importe/cadastre os dias e feriados manualmente.',
                 $calendarCode,
                 count($missingDates),
                 $missingDates[0],
+                $calendarCode,
+                $startDate->toDateString(),
+                $endDate->toDateString(),
             ),
         );
     }

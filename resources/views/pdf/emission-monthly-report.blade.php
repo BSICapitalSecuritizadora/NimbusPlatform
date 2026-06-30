@@ -42,6 +42,13 @@
         .bar-legend { font-size: 9px; color: #666; margin: 2px 0 8px; }
         .mini-bar-wrap { width: 100%; height: 7px; background: #eee; margin-top: 3px; }
         .mini-fill { height: 7px; background: #a06e28; }
+        .comp-bar { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4px 0 2px; }
+        .comp-bar td { height: 16px; font-size: 8px; color: #fff; text-align: center; vertical-align: middle; }
+        .seg-1 { background: #a06e28; }
+        .seg-2 { background: #1c5d7a; }
+        .seg-3 { background: #6b7280; }
+        .seg-4 { background: #c9b08a; }
+        .comp-legend { font-size: 9px; color: #666; margin: 2px 0 8px; }
         .footer { margin-top: 22px; padding: 10px 30px; font-size: 9px; color: #aaa; text-align: center; border-top: 1px solid #eee; }
     </style>
 </head>
@@ -194,12 +201,17 @@
     <div class="section-title">Inadimplência (R$)</div>
     @if ($delinquency['has_data'])
         <table class="data">
-            <thead><tr><th>Faixa de atraso</th><th class="num">Valor</th><th class="num">%</th></tr></thead>
+            <thead><tr><th>Faixa de atraso</th><th class="num">Valor</th><th class="num">%</th><th>Distribuição</th></tr></thead>
             <tbody>
                 @foreach ($delinquency['rows'] as $row)
-                    <tr><td>{{ $row['label'] }}</td><td class="num">{{ $row['value'] }}</td><td class="num">{{ $row['percent'] }}</td></tr>
+                    <tr>
+                        <td>{{ $row['label'] }}</td>
+                        <td class="num">{{ $row['value'] }}</td>
+                        <td class="num">{{ $row['percent'] }}</td>
+                        <td><div class="mini-bar-wrap"><div class="mini-fill" style="width: {{ $row['bar_percent'] }}%;"></div></div></td>
+                    </tr>
                 @endforeach
-                <tr class="total"><td>Total</td><td class="num">{{ $delinquency['total'] }}</td><td class="num">100,00%</td></tr>
+                <tr class="total"><td>Total</td><td class="num">{{ $delinquency['total'] }}</td><td class="num">100,00%</td><td></td></tr>
             </tbody>
         </table>
         <p class="note">Os valores correspondem às parcelas em aberto, conforme a data de vencimento.</p>
@@ -255,8 +267,50 @@
                 <tr><td class="label">{{ $row['label'] }}</td><td class="value">{{ $row['value'] }}</td></tr>
             @endforeach
         </table>
+        @if ($units['composition'] !== [])
+            <table class="comp-bar">
+                <tr>
+                    @foreach ($units['composition'] as $seg)
+                        @if ($seg['percent'] > 0)
+                            <td class="{{ $seg['class'] }}" style="width: {{ $seg['percent'] }}%;">{{ $seg['percent'] }}%</td>
+                        @endif
+                    @endforeach
+                </tr>
+            </table>
+            <p class="comp-legend">Dourado: quitadas &middot; Azul: financiadas/vendidas &middot; Cinza: permutadas &middot; Claro: estoque.</p>
+        @endif
     @else
         <p class="no-data">{{ $units['empty_message'] }}</p>
+    @endif
+
+    {{-- ===== Histórico de unidades (séries mensais) ===== --}}
+    @if ($units_history['has_data'])
+        <div class="section-title">Histórico de Unidades</div>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Competência</th>
+                    <th class="num">Estoque</th>
+                    <th class="num">Financ./Vend.</th>
+                    <th class="num">Quitadas</th>
+                    <th class="num">Permutadas</th>
+                    <th class="num">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($units_history['rows'] as $row)
+                    <tr>
+                        <td>{{ $row['competencia'] }}</td>
+                        <td class="num">{{ $row['stock'] }}</td>
+                        <td class="num">{{ $row['financed'] }}</td>
+                        <td class="num">{{ $row['paid'] }}</td>
+                        <td class="num">{{ $row['exchanged'] }}</td>
+                        <td class="num">{{ $row['total'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        <p class="note">Série baseada nas competências de quadro de vendas cadastradas.</p>
     @endif
 
     {{-- ===== Negociações ===== --}}
@@ -269,6 +323,27 @@
         </table>
     @else
         <p class="no-data">{{ $negotiations['empty_message'] }}</p>
+    @endif
+
+    {{-- ===== Histórico de negociações (séries mensais) ===== --}}
+    @if ($negotiations_history['has_data'])
+        <div class="section-title">Histórico de Negociações</div>
+        <table class="data">
+            <thead>
+                <tr><th>Competência</th><th class="num">Vendas</th><th class="num">Distratos</th><th class="num">Líquido</th></tr>
+            </thead>
+            <tbody>
+                @foreach ($negotiations_history['rows'] as $row)
+                    <tr>
+                        <td>{{ $row['competencia'] }}</td>
+                        <td class="num">{{ $row['sales'] }}</td>
+                        <td class="num">{{ $row['cancellations'] }}</td>
+                        <td class="num">{{ $row['net'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        <p class="note">Série de quantidades por competência. A base de negociações não possui valor monetário negociado.</p>
     @endif
 
     {{-- Análise do Mês e Evolução da Obra: representações compatíveis com DomPDF

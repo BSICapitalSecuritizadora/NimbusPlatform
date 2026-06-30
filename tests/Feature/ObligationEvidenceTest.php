@@ -282,6 +282,9 @@ it('allows an authorized user to download an evidence', function () {
     Storage::disk('local')->put($evidence->path, 'conteudo-do-arquivo');
 
     $this->actingAs(makeEvidenceUserWithPermissions([
+        AccessPermission::EmissionsView->value,
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsViewEvidence->value,
         AccessPermission::ObligationsDownloadEvidence->value,
     ]))
         ->get(route('admin.obligations.evidences.download', $evidence))
@@ -308,6 +311,22 @@ it('forbids download for users without the download evidence permission', functi
 
     $this->actingAs(makeEvidenceUserWithPermissions([
         AccessPermission::ObligationsViewEvidence->value,
+    ]))
+        ->get(route('admin.obligations.evidences.download', $evidence))
+        ->assertForbidden();
+});
+
+it('forbids direct evidence download for users without emission access', function () {
+    $evidence = ObligationEvidence::factory()->create([
+        'path' => 'nimbus_docs/obligation-evidences/secret.pdf',
+        'disk' => 'local',
+    ]);
+    Storage::disk('local')->put($evidence->path, 'conteudo');
+
+    $this->actingAs(makeEvidenceUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsViewEvidence->value,
+        AccessPermission::ObligationsDownloadEvidence->value,
     ]))
         ->get(route('admin.obligations.evidences.download', $evidence))
         ->assertForbidden();

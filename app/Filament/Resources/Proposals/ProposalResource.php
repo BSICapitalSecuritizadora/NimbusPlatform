@@ -94,17 +94,29 @@ class ProposalResource extends Resource
                             ->state('Captação via Site')
                             ->placeholder('—'),
                         TextEntry::make('next_action')
-                            ->label('Próxima Ação Recomendada')
+                            ->label('Próxima Ação / Criticidade')
                             ->state(fn (?Proposal $record): string => match ($record?->status) {
-                                'aguardando_complementacao' => 'Aguardar o cliente complementar as informações pendentes.',
-                                'em_analise' => 'Analisar a documentação e aprovar ou solicitar mais informações.',
-                                'aguardando_informacoes' => 'Aguardar o cliente enviar as informações adicionais solicitadas.',
-                                'aprovado' => 'Prosseguir com a emissão do contrato/formalização.',
-                                'rejeitado' => 'Nenhuma ação. Proposta arquivada.',
-                                'concluida' => 'Nenhuma ação. Processo de proposta concluído.',
-                                default => 'Definir responsável e iniciar análise.',
+                                'aguardando_complementacao', 'aguardando_informacoes' => 'Atenção: Aguardar o cliente complementar as informações.',
+                                'em_analise' => 'Alta: Analisar documentação e aprovar/solicitar.',
+                                'aprovado' => 'Concluída: Prosseguir com a emissão.',
+                                'rejeitado' => 'Sem Ação: Proposta arquivada.',
+                                'concluida' => 'Sem Ação: Processo de proposta concluído.',
+                                default => 'Atenção: Definir responsável e iniciar análise.',
                             })
-                            ->color('primary')
+                            ->color(fn (?Proposal $record): string => match ($record?->status) {
+                                'aguardando_complementacao', 'aguardando_informacoes' => 'warning',
+                                'em_analise' => 'primary',
+                                'rejeitado' => 'gray',
+                                'concluida', 'aprovado' => 'success',
+                                default => 'warning',
+                            })
+                            ->icon(fn (?Proposal $record): string => match ($record?->status) {
+                                'aguardando_complementacao', 'aguardando_informacoes' => 'heroicon-m-exclamation-triangle',
+                                'em_analise' => 'heroicon-m-information-circle',
+                                'rejeitado' => 'heroicon-m-archive-box',
+                                'aprovado', 'concluida' => 'heroicon-m-check-circle',
+                                default => 'heroicon-m-exclamation-circle',
+                            })
                             ->weight('bold'),
                     ]),
                 ]),
@@ -232,6 +244,7 @@ class ProposalResource extends Resource
             ProposalContinuationAccessRelationManager::class,
             ProposalStatusHistoryRelationManager::class,
             ProjectRelationManager::class,
+            \App\Filament\RelationManagers\ActivitiesRelationManager::class,
         ];
     }
 

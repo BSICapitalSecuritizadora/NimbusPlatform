@@ -443,6 +443,112 @@ it('builds a construction history series from monthly measurements', function ()
     expect($html)->toContain('Histórico de Evolução da Obra');
 });
 
+it('builds a units history series across competences', function () {
+    $emission = Emission::factory()->create();
+
+    foreach ([['2026-03-01', 10, 5, 3, 1], ['2026-04-01', 8, 6, 4, 1], ['2026-05-01', 6, 7, 5, 1]] as [$month, $stock, $financed, $paid, $exchanged]) {
+        SalesBoard::factory()->for($emission)->create([
+            'reference_month' => $month,
+            'stock_units' => $stock,
+            'financed_units' => $financed,
+            'paid_units' => $paid,
+            'exchanged_units' => $exchanged,
+        ]);
+    }
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['units_history']['has_data'])->toBeTrue()
+        ->and($data['units_history']['rows'])->toHaveCount(3)
+        ->and($data['units_history']['rows'][0]['competencia'])->toBe('03/2026')
+        ->and($data['units_history']['rows'][2]['total'])->toBe('19');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Histórico de Unidades')
+        ->and($html)->toContain('03/2026');
+});
+
+it('omits the units history when there is a single competence', function () {
+    $emission = Emission::factory()->create();
+    SalesBoard::factory()->for($emission)->create(['reference_month' => '2026-05-01']);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['units_history']['has_data'])->toBeFalse();
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->not->toContain('Histórico de Unidades');
+});
+
+it('builds a negotiations history series across competences', function () {
+    $emission = Emission::factory()->create();
+
+    foreach ([['2026-03-01', 5, 1], ['2026-04-01', 7, 2], ['2026-05-01', 4, 0]] as [$month, $sales, $cancellations]) {
+        Negotiation::factory()->for($emission)->create([
+            'reference_month' => $month,
+            'sales' => $sales,
+            'cancellations' => $cancellations,
+        ]);
+    }
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['negotiations_history']['has_data'])->toBeTrue()
+        ->and($data['negotiations_history']['rows'])->toHaveCount(3)
+        ->and($data['negotiations_history']['rows'][1]['net'])->toBe('5');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Histórico de Negociações');
+});
+
+it('omits the negotiations history when there is a single competence', function () {
+    $emission = Emission::factory()->create();
+    Negotiation::factory()->for($emission)->create(['reference_month' => '2026-05-01']);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['negotiations_history']['has_data'])->toBeFalse();
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->not->toContain('Histórico de Negociações');
+});
+
+it('adds proportional bars to the delinquency bands', function () {
+    $emission = Emission::factory()->create();
+
+    Receivable::factory()->for($emission)->create([
+        'reference_month' => '2026-05-01',
+        'overdue_up_to_30_days_amount' => 300,
+        'overdue_31_to_60_days_amount' => 100,
+        'overdue_61_to_90_days_amount' => 0,
+        'overdue_91_to_120_days_amount' => 0,
+        'overdue_121_to_150_days_amount' => 0,
+        'overdue_151_to_180_days_amount' => 0,
+        'overdue_181_to_360_days_amount' => 0,
+        'overdue_over_360_days_amount' => 0,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['delinquency']['has_data'])->toBeTrue()
+        ->and($data['delinquency']['rows'][0]['bar_percent'])->toBe(75.0)
+        ->and($data['delinquency']['rows'][1]['bar_percent'])->toBe(25.0);
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Distribuição')
+        ->and($html)->toContain('mini-fill');
+});
+
 it('renders the reports page with the generation form', function () {
     $this->actingAs(makeAdminUser());
 

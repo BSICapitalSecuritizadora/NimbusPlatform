@@ -166,7 +166,12 @@ class ObligationOperationalTableWidget extends TableWidget
             SelectFilter::make('operational_focus')
                 ->label('Visão operacional')
                 ->options($data->operationalFocusOptions($canViewEvidence))
-                ->query(fn (Builder $query, array $data): Builder => app(ObligationDashboardData::class)->applyOperationalFocusFilter($query, $data['value'] ?? null)),
+                ->query(fn (Builder $query, array $data): Builder => app(ObligationDashboardData::class)->applyOperationalFocusFilter(
+                    $query,
+                    $data['value'] ?? null,
+                    null,
+                    $canViewEvidence,
+                )),
             TernaryFilter::make('has_responsible')
                 ->label('Responsável definido')
                 ->placeholder('Todos')

@@ -19,6 +19,7 @@ class PuIndexCoverageService
     public function __construct(
         private readonly BusinessDayCalendarService $businessDayCalendar,
         private readonly IndexRateService $indexRateService,
+        private readonly BusinessCalendarCoverageService $calendarCoverage,
     ) {}
 
     public function report(Emission $emission): PuIndexCoverageReport
@@ -82,7 +83,9 @@ class PuIndexCoverageService
      */
     private function missingCalendarDates(CarbonImmutable $startDate, CarbonImmutable $endDate, string $calendarCode): array
     {
-        if ($calendarCode === '') {
+        // Calendarios auto-completaveis (B3) sao preenchidos automaticamente na geracao, logo nunca
+        // representam um bloqueio real de cobertura para o dashboard/comando de dados faltantes.
+        if ($calendarCode === '' || $this->calendarCoverage->willAutoComplete($calendarCode)) {
             return [];
         }
 

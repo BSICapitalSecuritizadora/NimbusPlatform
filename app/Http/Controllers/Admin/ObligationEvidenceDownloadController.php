@@ -16,6 +16,9 @@ class ObligationEvidenceDownloadController extends Controller
         ObligationEvidence $evidence,
         DocumentStorageService $documentStorageService,
     ): StreamedResponse {
+        Gate::authorize(AccessPermission::EmissionsView->value);
+        Gate::authorize(AccessPermission::ObligationsView->value);
+        Gate::authorize(AccessPermission::ObligationsViewEvidence->value);
         Gate::authorize(AccessPermission::ObligationsDownloadEvidence->value);
 
         if (! $documentStorageService->exists($evidence->path, $evidence->disk)) {

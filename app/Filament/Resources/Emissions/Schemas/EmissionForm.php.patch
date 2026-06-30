@@ -1,0 +1,167 @@
+--- app/Filament/Resources/Emissions/Schemas/EmissionForm.php
++++ app/Filament/Resources/Emissions/Schemas/EmissionForm.php
+@@ -16,8 +16,11 @@
+ use Filament\Forms\Components\TextInput;
+ use Filament\Forms\Components\Toggle;
++use Filament\Forms\Components\Wizard;
++use Filament\Forms\Components\Actions as FormActions;
++use Filament\Forms\Components\Actions\Action as FormAction;
+ use Filament\Notifications\Notification;
+ use Filament\Schemas\Components\Grid;
+ use Filament\Schemas\Components\Section;
+ use Filament\Schemas\Components\Utilities\Get;
+ use Filament\Schemas\Components\Utilities\Set;
+@@ -58,9 +61,9 @@
+     {
+         return $schema
+             ->components([
+-                Section::make('Dados da Operação')
+-                    ->columnSpanFull()
+-                    ->columns([
+-                        'default' => 1,
+-                        'xl' => 2,
+-                    ])
+-                    ->schema([
++                Wizard::make([
++                    Wizard\Step::make('Dados Básicos')
++                        ->columns([
++                            'default' => 1,
++                            'xl' => 2,
++                        ])
++                        ->schema([
+                             TextInput::make('name')
+                                 ->label('Denominação da Operação')
+@@ -121,9 +124,7 @@
+                         ]),
+ 
+-                Section::make('Participantes da Emissão')
+-                    ->columnSpanFull()
+-                    ->compact()
+-                    ->columns([
+-                        'default' => 1,
+-                        'xl' => 1,
+-                    ])
+-                    ->schema([
++                    Wizard\Step::make('Participantes')
++                        ->columns([
++                            'default' => 1,
++                            'xl' => 1,
++                        ])
++                        ->schema([
+                             self::serviceProviderField('issuer', 'Emissor', 'Emissor'),
+@@ -147,9 +148,7 @@
+                         ]),
+ 
+-                Section::make('Estrutura e Características')
+-                    ->columnSpanFull()
+-                    ->columns([
+-                        'default' => 1,
+-                        'xl' => 2,
+-                    ])
+-                    ->schema([
++                    Wizard\Step::make('Estrutura e Características')
++                        ->columns([
++                            'default' => 1,
++                            'xl' => 2,
++                        ])
++                        ->schema([
+                             DatePicker::make('issue_date')
+                                 ->label('Data de Emissão'),
+@@ -219,9 +218,7 @@
+                         ]),
+ 
+-                Section::make('Valores e Remuneração')
+-                    ->columnSpanFull()
+-                    ->columns([
+-                        'default' => 1,
+-                        'xl' => 2,
+-                    ])
+-                    ->schema([
++                    Wizard\Step::make('Características financeiras')
++                        ->columns([
++                            'default' => 1,
++                            'xl' => 2,
++                        ])
++                        ->schema([
+                             TextInput::make('offer_type')
+                                 ->label('Tipo de Oferta')
+@@ -307,13 +304,11 @@
+                         ]),
+ 
+-                Section::make('Cláusulas e Garantias')
+-                    ->columnSpanFull()
+-                    ->columns([
+-                        'default' => 1,
+-                        'xl' => 2,
+-                    ])
+-                    ->headerActions([
+-                        Action::make('extract_from_term')
+-                            ->label(fn (mixed $livewire): string => ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses) ? 'Extraindo cláusulas...' : 'Extrair do Termo')
++                    Wizard\Step::make('Lastro, garantias e operação')
++                        ->columns([
++                            'default' => 1,
++                            'xl' => 2,
++                        ])
++                        ->schema([
++                            FormActions::make([
++                                FormAction::make('extract_from_term')
++                                    ->label(fn (mixed $livewire): string => ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses) ? 'Extraindo cláusulas...' : 'Extrair do Termo')
+                                     ->icon('heroicon-o-sparkles')
+                                     ->color('warning')
+                                     ->disabled(fn (mixed $livewire): bool => $livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses)
+@@ -324,7 +319,7 @@
+                                     ->modalDescription('O processo de extração via inteligência artificial leva entre 3 e 5 minutos. A página será atualizada automaticamente ao concluir. Note que os campos preenchidos serão sobrescritos.')
+                                     ->modalSubmitActionLabel('Iniciar Extração')
+-                            ->mountUsing(function (Action $action, Emission $record): void {
++                                    ->mountUsing(function (FormAction $action, Emission $record): void {
+                                         $document = $record->documents()
+                                             ->where('category', 'documentos_operacao')
+                                             ->whereRaw('TRIM(title) = ?', ['Termo de Securitização'])
+@@ -367,5 +362,5 @@
+                                             ->send();
+                                     }),
+-                    ])
+-                    ->schema([
++                            ]),
++
+                             Placeholder::make('securitization_term_status')
+                                 ->label('Status do Termo de Securitização')
+@@ -567,9 +562,7 @@
+                         ]),
+ 
+-                Section::make('Divulgação Institucional')
+-                    ->columnSpanFull()
+-                    ->columns([
+-                        'default' => 1,
+-                        'xl' => 2,
+-                    ])
+-                    ->schema([
++                    Wizard\Step::make('Documentos e informações públicas')
++                        ->columns([
++                            'default' => 1,
++                            'xl' => 2,
++                        ])
++                        ->schema([
+                             Toggle::make('is_public')
+                                 ->label('Divulgação Pública (Portal e Site)')
+@@ -593,5 +586,19 @@
+                                 ->columnSpanFull(),
+                         ]),
+-            ]);
++
++                    Wizard\Step::make('Revisão')
++                        ->schema([
++                            Placeholder::make('resumo')
++                                ->label('Resumo dos Dados Preenchidos')
++                                ->content(fn (Get $get) => new HtmlString(
++                                    '<b>Denominação:</b> ' . ($get('name') ?: '<span class="text-danger-500">Não preenchido</span>') . '<br>' .
++                                    '<b>Tipo:</b> ' . ($get('type') ?: '<span class="text-danger-500">Não preenchido</span>') . '<br>' .
++                                    '<b>Volume Emitido:</b> R$ ' . ($get('issued_volume') ?: '0,00') . '<br>' .
++                                    '<b>Emissor:</b> ' . ($get('issuer') ?: '<span class="text-danger-500">Não preenchido</span>') . '<br><br>' .
++                                    '<span class="text-gray-500">Revise os campos acima e confirme a operação clicando em salvar.</span>'
++                                )),
++                        ]),
++                ])->columnSpanFull()
++                ->skippable(),
++            ]);
+     }

@@ -418,6 +418,28 @@ it('hides documentary widgets and concluded-without-approved rows from users wit
         ->assertDontSee('Qtd. Evidências');
 });
 
+it('ignores evidence-only operational focus filters forced by users without evidence permission', function () {
+    $rejected = makeDashboardObligation('vencida', '2026-06-10', null, [
+        'title' => 'Com rejeição',
+    ]);
+    makeDashboardEvidence($rejected, ObligationEvidence::STATUS_REJECTED);
+
+    $withoutEvidence = makeDashboardObligation('a_vencer', '2026-06-25', null, [
+        'title' => 'Sem evidência',
+    ]);
+
+    $user = makeDashboardUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+        AccessPermission::ObligationsViewDashboard->value,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test(ObligationOperationalTableWidget::class)
+        ->filterTable('operational_focus', 'rejected_evidence')
+        ->assertCanSeeTableRecords([$rejected, $withoutEvidence]);
+});
+
 it('renders the expanded operational and documentary KPIs on the dashboard widgets', function () {
     $concluded = makeDashboardObligation('concluida', '2026-06-12');
     makeDashboardEvidence($concluded, ObligationEvidence::STATUS_APPROVED);

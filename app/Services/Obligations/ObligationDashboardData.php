@@ -537,9 +537,17 @@ SQL,
         };
     }
 
-    public function applyOperationalFocusFilter(Builder $query, ?string $value, ?CarbonInterface $referenceDate = null): Builder
-    {
+    public function applyOperationalFocusFilter(
+        Builder $query,
+        ?string $value,
+        ?CarbonInterface $referenceDate = null,
+        bool $canUseEvidenceFilters = true,
+    ): Builder {
         if (blank($value)) {
+            return $query;
+        }
+
+        if (! $canUseEvidenceFilters && in_array($value, self::EVIDENCE_RELATED_OPERATIONAL_FOCUSES, true)) {
             return $query;
         }
 

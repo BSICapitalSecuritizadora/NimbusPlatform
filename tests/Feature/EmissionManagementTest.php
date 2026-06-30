@@ -10,7 +10,8 @@ use App\Models\ExpenseServiceProviderType;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,83 +26,66 @@ beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
 });
 
-it('organizes the emission form into dedicated layout sections', function () {
+it('organizes the emission form into dedicated wizard steps', function () {
     $schema = EmissionForm::configure(Schema::make(new CreateEmission));
-    $sections = collect($schema->getComponents())
-        ->filter(fn (mixed $component): bool => $component instanceof Section)
-        ->mapWithKeys(fn (Section $section): array => [$section->getHeading() => $section]);
+    $wizard = collect($schema->getComponents())
+        ->sole(fn (mixed $component): bool => $component instanceof Wizard);
+    $steps = collect($wizard->getChildSchema()->getComponents())
+        ->filter(fn (mixed $component): bool => $component instanceof Step)
+        ->values();
 
-    expect($sections->keys()->all())->toBe([
-        'Dados da Operação',
-        'Participantes da Emissão',
-        'Estrutura e Características',
-        'Valores e Remuneração',
-        'Cláusulas e Garantias',
-        'Divulgação Institucional',
-    ]);
-
-    expect($sections['Dados da Operação']->getColumns())->toMatchArray([
-        'default' => 1,
-        'xl' => 2,
-    ]);
-
-    expect($sections['Participantes da Emissão']->getColumns())->toMatchArray([
-        'default' => 1,
-        'xl' => 1,
-    ]);
-
-    expect($sections['Estrutura e Características']->getColumns())->toMatchArray([
-        'default' => 1,
-        'xl' => 2,
-    ]);
-
-    expect($sections['Valores e Remuneração']->getColumns())->toMatchArray([
-        'default' => 1,
-        'xl' => 2,
-    ]);
-
-    expect($sections['Cláusulas e Garantias']->getColumns())->toMatchArray([
-        'default' => 1,
-        'xl' => 2,
-    ]);
-
-    expect($sections['Dados da Operação']->getColumnSpan())->toMatchArray([
+    expect($wizard->getColumnSpan())->toMatchArray([
         'default' => 'full',
-    ]);
-
-    expect($sections['Participantes da Emissão']->getColumnSpan())->toMatchArray([
-        'default' => 'full',
-    ]);
-
-    expect($sections['Estrutura e Características']->getColumnSpan())->toMatchArray([
-        'default' => 'full',
-    ]);
-
-    expect($sections['Valores e Remuneração']->getColumnSpan())->toMatchArray([
-        'default' => 'full',
-    ]);
-
-    expect($sections['Cláusulas e Garantias']->getColumnSpan())->toMatchArray([
-        'default' => 'full',
-    ]);
-
-    expect($sections['Divulgação Institucional']->getColumnSpan())->toMatchArray([
-        'default' => 'full',
-    ]);
-
-    expect($sections['Participantes da Emissão']->getChildSchema()->getComponentByStatePath('issuer'))->not->toBeNull()
-        ->and($sections['Participantes da Emissão']->getChildSchema()->getComponentByStatePath('law_firm'))->not->toBeNull()
-        ->and($sections['Dados da Operação']->getChildSchema()->getComponentByStatePath('registered_with_cvm'))->not->toBeNull()
-        ->and($sections['Estrutura e Características']->getChildSchema()->getComponentByStatePath('prepayment_possibility'))->not->toBeNull()
-        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('offer_type')?->getLabel())->toBe('Tipo de Oferta')
-        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('offer_type')?->getColumnSpan())->toMatchArray([
+    ])
+        ->and($wizard->isSkippable())->toBeTrue()
+        ->and($steps)->toHaveCount(7)
+        ->and($steps->map(fn (Step $step): string => \Illuminate\Support\Str::of((string) $step->getLabel())->ascii()->lower()->toString())->all())->toBe([
+            'dados basicos',
+            'participantes',
+            'caracteristicas financeiras',
+            'valores e remuneracao',
+            'lastro, garantias e operacao',
+            'documentos e informacoes publicas',
+            'revisao',
+        ])
+        ->and($steps[0]->getColumns())->toMatchArray([
+            'default' => 1,
+            'xl' => 2,
+        ])
+        ->and($steps[1]->getColumns())->toMatchArray([
+            'default' => 1,
+            'xl' => 1,
+        ])
+        ->and($steps[2]->getColumns())->toMatchArray([
+            'default' => 1,
+            'xl' => 2,
+        ])
+        ->and($steps[3]->getColumns())->toMatchArray([
+            'default' => 1,
+            'xl' => 2,
+        ])
+        ->and($steps[4]->getColumns())->toMatchArray([
+            'default' => 1,
+            'xl' => 2,
+        ])
+        ->and($steps[5]->getColumns())->toMatchArray([
+            'default' => 1,
+            'xl' => 2,
+        ])
+        ->and($steps[1]->getChildSchema()->getComponentByStatePath('issuer'))->not->toBeNull()
+        ->and($steps[1]->getChildSchema()->getComponentByStatePath('law_firm'))->not->toBeNull()
+        ->and($steps[0]->getChildSchema()->getComponentByStatePath('registered_with_cvm'))->not->toBeNull()
+        ->and($steps[2]->getChildSchema()->getComponentByStatePath('prepayment_possibility'))->not->toBeNull()
+        ->and($steps[3]->getChildSchema()->getComponentByStatePath('offer_type')?->getLabel())->toBe('Tipo de Oferta')
+        ->and($steps[3]->getChildSchema()->getComponentByStatePath('offer_type')?->getColumnSpan())->toMatchArray([
             'default' => 'full',
         ])
-        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('remuneration_indexer'))->not->toBeNull()
-        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('remuneration_rate'))->not->toBeNull()
-        ->and($sections['Valores e Remuneração']->getChildSchema()->getComponentByStatePath('issued_volume'))->not->toBeNull()
-        ->and($sections['Cláusulas e Garantias']->getChildSchema()->getComponentByStatePath('use_of_proceeds'))->not->toBeNull()
-        ->and($sections['Divulgação Institucional']->getChildSchema()->getComponentByStatePath('description'))->not->toBeNull();
+        ->and($steps[3]->getChildSchema()->getComponentByStatePath('remuneration_indexer'))->not->toBeNull()
+        ->and($steps[3]->getChildSchema()->getComponentByStatePath('remuneration_rate'))->not->toBeNull()
+        ->and($steps[3]->getChildSchema()->getComponentByStatePath('issued_volume'))->not->toBeNull()
+        ->and($steps[4]->getChildSchema()->getComponentByStatePath('use_of_proceeds'))->not->toBeNull()
+        ->and($steps[5]->getChildSchema()->getComponentByStatePath('description'))->not->toBeNull()
+        ->and($steps[6]->getChildSchema()->getComponentByStatePath('resumo'))->not->toBeNull();
 });
 
 it('uses the full content width on emission create and edit pages', function () {

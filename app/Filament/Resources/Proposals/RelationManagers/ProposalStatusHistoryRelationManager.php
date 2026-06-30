@@ -13,7 +13,7 @@ class ProposalStatusHistoryRelationManager extends RelationManager
 {
     protected static string $relationship = 'statusHistories';
 
-    protected static ?string $title = 'Histórico de Situações';
+    protected static ?string $title = 'Linha do Tempo (Evolução de Status)';
 
     protected static ?string $modelLabel = 'Movimentação';
 

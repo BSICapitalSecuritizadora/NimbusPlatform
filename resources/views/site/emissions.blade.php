@@ -17,6 +17,23 @@
     .metric-item:last-child {
         border-right: none;
     }
+
+    /* Mobile adjustments for 2x2 grid */
+    @media (max-width: 767.98px) {
+        .metrics-bar {
+            padding: 1rem;
+        }
+        .metric-item {
+            padding: 1.25rem 0.75rem !important;
+        }
+        .metric-item:nth-child(even) {
+            border-right: none;
+        }
+        .metric-item:nth-child(1),
+        .metric-item:nth-child(2) {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    }
     .metric-label {
         font-size: 0.7rem;
         text-transform: uppercase;
@@ -125,6 +142,44 @@
     .search-input-group:focus-within {
         border-color: var(--gold) !important;
         box-shadow: none !important;
+    }
+
+    /* Mobile adjustments for search bar */
+    @media (max-width: 767.98px) {
+        .search-input-group {
+            flex-direction: column;
+            border-bottom: none !important;
+            gap: 0.75rem;
+            overflow: visible;
+        }
+        .search-input-group .input-group-text {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 10;
+            height: 56px; /* Matches input height */
+            display: flex;
+            align-items: center;
+            padding-left: 1.25rem !important;
+        }
+        .search-input-group .form-control {
+            width: 100% !important;
+            border: 1px solid rgba(9,27,35,0.1) !important;
+            border-radius: 12px !important;
+            padding-left: 3.25rem !important;
+            background: #ffffff !important;
+        }
+        .search-input-group .form-control:focus {
+            border-color: var(--gold) !important;
+            box-shadow: 0 4px 14px rgba(9,27,35,0.04) !important;
+        }
+        .search-input-group .btn {
+            width: 100%;
+            margin-left: 0 !important;
+            border-radius: 12px !important;
+            padding-top: 0.85rem;
+            padding-bottom: 0.85rem;
+        }
     }
 
     .filter-select {

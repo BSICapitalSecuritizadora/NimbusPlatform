@@ -77,7 +77,9 @@ class EmissionMonthlyReportService
             'delinquency' => $this->buildDelinquency($receivable),
             'receivables' => $this->buildReceivablesSummary($receivable),
             'units' => $this->buildUnits($salesBoard),
+            'units_history' => $this->buildUnitsHistory($emission, $monthEnd),
             'negotiations' => $this->buildNegotiations($negotiation),
+            'negotiations_history' => $this->buildNegotiationsHistory($emission, $monthEnd),
             'analise_mes' => $this->buildAnaliseMes($receivable),
             'receivables_history' => $this->buildReceivablesHistory($emission, $monthEnd),
             'construction' => $this->buildConstructionProgress($emission, $monthStart, $constructions),
@@ -331,10 +333,13 @@ class EmissionMonthlyReportService
         $rows = [];
 
         foreach ($buckets as $label => $value) {
+            $share = $total > 0 ? $value / $total * 100 : 0.0;
+
             $rows[] = [
                 'label' => $label,
                 'value' => $this->money($value),
-                'percent' => $total > 0 ? $this->percent($value / $total * 100) : '0,00%',
+                'percent' => $total > 0 ? $this->percent($share) : '0,00%',
+                'bar_percent' => round($share, 2),
             ];
         }
 
@@ -377,6 +382,22 @@ class EmissionMonthlyReportService
             return ['has_data' => false, 'empty_message' => self::NO_DATA];
         }
 
+        $stock = (int) $salesBoard->stock_units;
+        $financed = (int) $salesBoard->financed_units;
+        $paid = (int) $salesBoard->paid_units;
+        $exchanged = (int) $salesBoard->exchanged_units;
+        $base = $stock + $financed + $paid + $exchanged;
+
+        $composition = [];
+        if ($base > 0) {
+            $composition = [
+                ['label' => 'Quitadas', 'class' => 'seg-1', 'percent' => round($paid / $base * 100, 2)],
+                ['label' => 'Financiadas/Vendidas', 'class' => 'seg-2', 'percent' => round($financed / $base * 100, 2)],
+                ['label' => 'Permutadas', 'class' => 'seg-3', 'percent' => round($exchanged / $base * 100, 2)],
+                ['label' => 'Estoque', 'class' => 'seg-4', 'percent' => round($stock / $base * 100, 2)],
+            ];
+        }
+
         return [
             'has_data' => true,
             'rows' => [
@@ -386,6 +407,7 @@ class EmissionMonthlyReportService
                 ['label' => 'Permutadas', 'value' => $this->integer($salesBoard->exchanged_units)],
                 ['label' => 'Total', 'value' => $this->integer($salesBoard->total_units)],
             ],
+            'composition' => $composition,
         ];
     }
 
@@ -541,6 +563,93 @@ class EmissionMonthlyReportService
         }
 
         return sprintf('%s — %s', $start ?? '—', $end ?? '—');
+    }
+
+    /**
+     * Histórico de unidades (últimas competências) a partir dos snapshots de SalesBoard,
+     * agregando por competência (soma dos empreendimentos). Sem inferências. Exibido
+     * apenas quando há ao menos duas competências.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildUnitsHistory(Emission $emission, CarbonImmutable $monthEnd, int $limit = 6): array
+    {
+        $boards = SalesBoard::query()
+            ->where('emission_id', $emission->id)
+            ->where('reference_month', '<=', $monthEnd->toDateString())
+            ->orderByDesc('reference_month')
+            ->get();
+
+        $months = $boards
+            ->map(fn (SalesBoard $board): ?string => $board->reference_month?->format('Y-m'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->slice(-$limit)
+            ->values();
+
+        $rows = $months->map(function (string $ym) use ($boards): array {
+            $monthBoards = $boards->filter(fn (SalesBoard $board): bool => $board->reference_month?->format('Y-m') === $ym);
+
+            return [
+                'competencia' => CarbonImmutable::parse($ym.'-01')->format('m/Y'),
+                'stock' => $this->integer((int) $monthBoards->sum('stock_units')),
+                'financed' => $this->integer((int) $monthBoards->sum('financed_units')),
+                'paid' => $this->integer((int) $monthBoards->sum('paid_units')),
+                'exchanged' => $this->integer((int) $monthBoards->sum('exchanged_units')),
+                'total' => $this->integer((int) $monthBoards->sum('total_units')),
+            ];
+        })->all();
+
+        return [
+            'has_data' => count($rows) >= 2,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * Histórico de negociações (últimas competências) a partir dos snapshots de
+     * Negotiation, agregando por competência. Apenas contagens (vendas/distratos): a
+     * tabela não possui valor monetário negociado, então nada é inferido nesse sentido.
+     * Exibido apenas quando há ao menos duas competências.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildNegotiationsHistory(Emission $emission, CarbonImmutable $monthEnd, int $limit = 6): array
+    {
+        $negotiations = Negotiation::query()
+            ->where('emission_id', $emission->id)
+            ->where('reference_month', '<=', $monthEnd->toDateString())
+            ->orderByDesc('reference_month')
+            ->get();
+
+        $months = $negotiations
+            ->map(fn (Negotiation $negotiation): ?string => $negotiation->reference_month?->format('Y-m'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->slice(-$limit)
+            ->values();
+
+        $rows = $months->map(function (string $ym) use ($negotiations): array {
+            $monthRows = $negotiations->filter(fn (Negotiation $negotiation): bool => $negotiation->reference_month?->format('Y-m') === $ym);
+            $sales = (int) $monthRows->sum('sales');
+            $cancellations = (int) $monthRows->sum('cancellations');
+
+            return [
+                'competencia' => CarbonImmutable::parse($ym.'-01')->format('m/Y'),
+                'sales' => $this->integer($sales),
+                'cancellations' => $this->integer($cancellations),
+                'net' => $this->integer($sales - $cancellations),
+            ];
+        })->all();
+
+        return [
+            'has_data' => count($rows) >= 2,
+            'rows' => $rows,
+        ];
     }
 
     /**

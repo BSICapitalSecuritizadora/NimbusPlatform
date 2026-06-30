@@ -263,6 +263,59 @@ stage **apenas** os hunks PU (`PuIndexSync`/`PuIndexImport`/`PuProjectionApprove
 
 ---
 
+## Calendário de dias úteis (B3) — cobertura e backfill (2026-06-26)
+
+A geração da curva exige cobertura do calendário de dias úteis para **todo o período**. Antes desta fase,
+uma curva longa (ex.: **23/09/2021 → 23/08/2025**) era **bloqueada** com a mensagem
+*"O calendário B3 não cobre todo o período da curva. Faltam 1350 data(s)…"* porque a tabela
+`business_calendar_dates` estava vazia para o período.
+
+### Como funciona agora
+
+- O calendário **B3** é **auto-completável**: as datas faltantes são geradas automaticamente na geração
+  (e na verificação de pré-requisitos), de forma **idempotente** — **fim de semana = não útil**, **dia de
+  semana = útil**. Isso espelha exatamente o fallback histórico da engine (`BusinessCalendarService`), logo
+  **não altera nenhum valor de curva** já validado (CDI/IPCA/Prefixado).
+- **Feriados B3 não são derivados automaticamente** (limitação documentada — o projeto não possui base
+  oficial de feriados). Quando relevantes, os feriados devem ser **cadastrados/importados manualmente** como
+  linhas com `is_business_day = false`. O backfill **nunca sobrescreve** linhas existentes, então feriados
+  lançados manualmente são **preservados**.
+- Para calendários **não** auto-completáveis (qualquer código fora de `pu_calculator.business_calendar.
+  auto_completable_codes`), datas faltantes **continuam bloqueando** a geração — agora com mensagem
+  **acionável** indicando o comando de backfill e a opção de cadastro/importação manual.
+
+### Como completar o calendário B3
+
+```bash
+php artisan pu:business-calendar:seed --calendar=B3 --from=2021-09-23 --to=2025-08-23
+php artisan pu:business-calendar:seed --calendar=B3 --from=2021-09-23 --to=2025-08-23 --dry-run
+```
+
+Ou pela UI: **Índices (CDI/IPCA)** → botão **"Completar calendário B3"** (permissão `pu.calendar.manage`),
+com período configurável e opção *dry-run*.
+
+### Como cadastrar/importar feriados B3
+
+Insira (ou importe) linhas em `business_calendar_dates` com `calendar_code = 'B3'`,
+`is_business_day = false` e uma `description` (ex.: *"Independência"*). Como o backfill é insert-only, essas
+linhas sobrepõem a derivação dia-de-semana. Recomendado lançar os feriados **antes** de gerar curvas longas
+para máxima precisão na contagem de dias úteis (base 252).
+
+### Erro *"calendário B3 não cobre todo o período"*
+
+Não confundir com **falta de IPCA/CDI** (mensagem distinta, com `pu:index-rates:sync`). Para o calendário,
+basta rodar o `pu:business-calendar:seed` (ou o botão da UI) — ou, com `auto_complete` ligado (default), a
+própria geração completa o B3 automaticamente. Configuração em `config/pu_calculator.php`
+(`business_calendar.auto_complete`, `business_calendar.auto_completable_codes`).
+
+### Isolamento (atenção)
+
+Os arquivos compartilhados de permissão (`app/Enums/AccessPermission.php`,
+`database/seeders/RolesAndPermissionsSeeder.php`) ganharam o hunk PU **`PuCalendarManage` /
+`pu.calendar.manage`**; use **`git add -p`** e stage **apenas** esse hunk. **Nunca** `git add -A`/`git add .`.
+
+---
+
 ## Permissões
 
 As ações críticas são controladas por permissões granulares (grupo **"Curva de PU"** em Perfis):

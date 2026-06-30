@@ -90,15 +90,28 @@ class EmissionResource extends Resource
                             ->label('Volume Total Emitido')
                             ->formatStateUsing(fn ($state) => $state !== null ? 'R$ '.number_format((float) $state, 2, ',', '.') : '—'),
                         \Filament\Infolists\Components\TextEntry::make('next_action')
-                            ->label('Próxima Ação Recomendada')
+                            ->label('Próxima Ação / Criticidade')
                             ->state(fn (Emission $record): string => match ($record->status) {
-                                'draft' => 'Concluir o preenchimento dos dados da emissão e ativar a operação.',
-                                'active' => 'Monitorar obrigações e eventos de PU.',
-                                'default' => 'Acompanhar inadimplência e notificar responsáveis.',
-                                'closed' => 'Nenhuma ação. Operação encerrada.',
-                                default => 'Aguardando atualização de status.',
+                                'draft' => 'Atenção: Concluir preenchimento de dados e ativar a operação.',
+                                'active' => 'Baixa: Monitorar obrigações e eventos de PU.',
+                                'default' => 'Crítica: Acompanhar inadimplência e notificar responsáveis.',
+                                'closed' => 'Concluída: Nenhuma ação. Operação encerrada.',
+                                default => 'Atenção: Aguardando atualização de status.',
                             })
-                            ->color('primary')
+                            ->color(fn (Emission $record): string => match ($record->status) {
+                                'draft' => 'warning',
+                                'active' => 'info',
+                                'default' => 'danger',
+                                'closed' => 'success',
+                                default => 'warning',
+                            })
+                            ->icon(fn (Emission $record): string => match ($record->status) {
+                                'draft' => 'heroicon-m-exclamation-triangle',
+                                'active' => 'heroicon-m-information-circle',
+                                'default' => 'heroicon-m-exclamation-circle',
+                                'closed' => 'heroicon-m-check-circle',
+                                default => 'heroicon-m-exclamation-triangle',
+                            })
                             ->weight('bold')
                             ->columnSpan(4),
                     ]),
@@ -158,6 +171,7 @@ class EmissionResource extends Resource
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSuggestionsRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager::class,
             \App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationEvidencesRelationManager::class,
+            \App\Filament\RelationManagers\ActivitiesRelationManager::class,
         ];
     }
 

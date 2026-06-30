@@ -4,6 +4,7 @@ namespace App\Filament\Resources\IndexRates\Pages;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Exceptions\BcbSgsException;
+use App\Domain\PuCalculator\Services\BusinessCalendarCoverageService;
 use App\Domain\PuCalculator\Services\IndexRateImportService;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
 use App\Filament\Resources\IndexRates\IndexRateResource;
@@ -57,6 +58,7 @@ class ListIndexRates extends ListRecords
         return [
             $this->buildSyncAction('syncCdi', 'Sincronizar CDI (BCB)', PuIndexer::Cdi),
             $this->buildSyncAction('syncIpca', 'Sincronizar IPCA (BCB)', PuIndexer::Ipca),
+            $this->buildSeedCalendarAction(),
             Action::make('importPublished')
                 ->label('Importar índices publicados')
                 ->icon('heroicon-o-arrow-up-tray')
@@ -163,6 +165,67 @@ class ListIndexRates extends ListRecords
                         ->send();
                 }),
         ];
+    }
+
+    private function buildSeedCalendarAction(): Action
+    {
+        $now = CarbonImmutable::now();
+
+        return Action::make('seedBusinessCalendar')
+            ->label('Completar calendário B3')
+            ->icon('heroicon-o-calendar-days')
+            ->color('gray')
+            ->visible(fn (): bool => auth()->user()?->can('pu.calendar.manage') ?? false)
+            ->modalHeading('Completar calendário de dias úteis')
+            ->modalDescription('Gera as datas faltantes do período (fim de semana = não útil; dia de semana = útil), de forma idempotente. Não sobrescreve datas já cadastradas — feriados B3 lançados manualmente são preservados.')
+            ->form([
+                TextInput::make('calendar_code')
+                    ->label('Calendário')
+                    ->default('B3')
+                    ->required(),
+                DatePicker::make('from')
+                    ->label('De')
+                    ->default($now->subYears(5)->startOfYear())
+                    ->required(),
+                DatePicker::make('to')
+                    ->label('Até')
+                    ->default($now->addYears(3)->endOfYear())
+                    ->required(),
+                Toggle::make('dry_run')->label('Dry-run (simular, sem persistir)')->default(false),
+            ])
+            ->action(function (array $data): void {
+                $from = CarbonImmutable::parse((string) $data['from'])->startOfDay();
+                $to = CarbonImmutable::parse((string) $data['to'])->startOfDay();
+
+                if ($to->lt($from)) {
+                    Notification::make()->title('Período inválido.')->body('A data final não pode ser anterior à data inicial.')->danger()->send();
+
+                    return;
+                }
+
+                $summary = app(BusinessCalendarCoverageService::class)->backfill(
+                    (string) $data['calendar_code'],
+                    $from,
+                    $to,
+                    (bool) ($data['dry_run'] ?? false),
+                );
+
+                if ($summary['dry_run']) {
+                    Notification::make()
+                        ->title('Dry-run concluído (nada persistido).')
+                        ->body(sprintf('%d data(s) seriam criadas (%d úteis, %d não úteis).', $summary['would_create'], $summary['business_days'], $summary['non_business_days']))
+                        ->warning()
+                        ->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Calendário completado.')
+                    ->body(sprintf('%d data(s) criada(s) (%d úteis, %d não úteis). Datas existentes preservadas.', $summary['created'], $summary['business_days'], $summary['non_business_days']))
+                    ->success()
+                    ->send();
+            });
     }
 
     private function buildSyncAction(string $name, string $label, PuIndexer $indexer): Action

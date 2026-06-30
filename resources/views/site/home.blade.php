@@ -19,8 +19,8 @@
                 </p>
 
                 <div class="d-grid d-sm-flex gap-3 mb-4">
-                    <a href="{{ route('proposal.create') }}" class="btn btn-brand btn-lg px-5">Submeter Operação para Análise</a>
-                    <a href="{{ route('site.emissions') }}" class="btn btn-light btn-lg px-5">Ver Emissões</a>
+                    <a href="{{ route('proposal.create') }}" class="btn btn-hero-primary btn-lg px-5">Submeter Operação para Análise</a>
+                    <a href="{{ route('site.emissions') }}" class="btn btn-hero-secondary btn-lg px-5">Ver Emissões</a>
                 </div>
 
                 <div class="row g-3">
@@ -213,6 +213,42 @@
 </section>
 
 <style>
+.btn-hero-primary {
+    background: var(--brand);
+    border: 1px solid var(--gold);
+    color: var(--surface);
+    box-shadow: 0 4px 20px rgba(160, 110, 40, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-hero-primary:hover,
+.btn-hero-primary:focus,
+.btn-hero-primary:active {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--brand-strong);
+    box-shadow: 0 6px 25px rgba(160, 110, 40, 0.45);
+    transform: translateY(-2px);
+}
+
+.btn-hero-secondary {
+    background: rgba(9, 27, 35, 0.25);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(160, 110, 40, 0.5);
+    color: var(--surface);
+    transition: all 0.3s ease;
+}
+
+.btn-hero-secondary:hover,
+.btn-hero-secondary:focus,
+.btn-hero-secondary:active {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--brand-strong);
+    box-shadow: 0 4px 15px rgba(160, 110, 40, 0.3);
+    transform: translateY(-2px);
+}
+
 .home-institutional-cta {
     background: linear-gradient(135deg, #091B23 0%, #0B2029 55%, #091B23 100%);
     border-top: 1px solid rgba(160, 110, 40, 0.35);
