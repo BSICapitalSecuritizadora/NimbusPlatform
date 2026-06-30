@@ -414,8 +414,8 @@ it('hides documentary widgets and concluded-without-approved rows from users wit
     Livewire::test(ObligationOperationalTableWidget::class)
         ->assertCanSeeTableRecords([$open])
         ->assertCanNotSeeTableRecords([$concludedWithoutApproved])
-        ->assertDontSee('Status das Evidências')
-        ->assertDontSee('Qtd. Evidências');
+        ->assertDontSee('Situação documental')
+        ->assertDontSee('Evidências anexadas');
 });
 
 it('ignores evidence-only operational focus filters forced by users without evidence permission', function () {
@@ -457,8 +457,9 @@ it('renders the expanded operational and documentary KPIs on the dashboard widge
         ->assertSee('Não Aplicáveis');
 
     Livewire::test(ObligationEvidenceOverviewStatsWidget::class)
-        ->assertSee('Em análise com Evidência Pendente')
-        ->assertSee('Concluídas com Aprovada');
+        ->assertSee('Sem evidência aprovada')
+        ->assertSee('Em análise com evidência pendente')
+        ->assertSee('Concluídas com evidência aprovada');
 });
 
 it('lists operational obligations and filters them by emission', function () {
@@ -637,8 +638,8 @@ it('extends the emission obligations relation manager with operational filters a
     $this->actingAs(makeAdminUser());
 
     dashboardRelationManager($emission)
-        ->assertSee('Status das Evidências')
-        ->assertSee('Qtd. Evidências')
+        ->assertSee('Situação documental')
+        ->assertSee('Evidências anexadas')
         ->filterTable('responsible_user_id', $responsible->id)
         ->filterTable('responsible_area', 'Compliance')
         ->filterTable('priority', 'high')
@@ -669,8 +670,9 @@ it('keeps documentary fields hidden on the emission obligations relation manager
     $this->actingAs($user);
 
     dashboardRelationManager($emission)
-        ->assertDontSee('Status das Evidências')
-        ->assertDontSee('Qtd. Evidências')
+        ->assertSee('Modo consulta')
+        ->assertDontSee('Situação documental')
+        ->assertDontSee('Evidências anexadas')
         ->filterTable('has_responsible', false)
         ->assertCanSeeTableRecords([$withoutResponsible])
         ->assertCanNotSeeTableRecords([$withResponsible]);

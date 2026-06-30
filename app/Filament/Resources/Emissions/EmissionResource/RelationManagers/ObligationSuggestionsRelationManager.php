@@ -81,39 +81,6 @@ class ObligationSuggestionsRelationManager extends RelationManager
                     ->label('Título')
                     ->searchable()
                     ->wrap(),
-                TextColumn::make('obligation_category')
-                    ->label('Categoria')
-                    ->badge()
-                    ->toggleable(),
-                TextColumn::make('responsibleUser.name')
-                    ->label('Responsável')
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('due_rule')
-                    ->label('Prazo')
-                    ->placeholder('—')
-                    ->limit(40)
-                    ->toggleable(),
-                TextColumn::make('priority')
-                    ->label('Prioridade')
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => ExtractedObligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
-                    ->color(fn (?string $state): string => match ($state) {
-                        'critical' => 'danger',
-                        'high' => 'warning',
-                        'medium' => 'info',
-                        default => 'gray',
-                    }),
-                TextColumn::make('confidence_score')
-                    ->label('Confiança')
-                    ->formatStateUsing(fn (?float $state): string => $state === null ? '—' : round($state * 100).'%')
-                    ->toggleable(),
-                TextColumn::make('source_excerpt')
-                    ->label('Trecho do Termo')
-                    ->placeholder('—')
-                    ->limit(70)
-                    ->wrap()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -123,8 +90,18 @@ class ObligationSuggestionsRelationManager extends RelationManager
                         ExtractedObligation::STATUS_REJECTED => 'danger',
                         default => 'warning',
                     }),
+                TextColumn::make('obligation.title')
+                    ->label('Obrigação criada')
+                    ->placeholder('Ainda não criada')
+                    ->limit(50)
+                    ->wrap()
+                    ->url(fn (ExtractedObligation $record): ?string => $record->obligation?->id
+                        ? EmissionResource::getUrl('edit', ['record' => $record->emission_id])
+                        : null)
+                    ->openUrlInNewTab()
+                    ->toggleable(),
                 TextColumn::make('review_notes')
-                    ->label('Observação da revisão')
+                    ->label('Motivo / observação da revisão')
                     ->placeholder('—')
                     ->limit(60)
                     ->wrap()
@@ -139,15 +116,38 @@ class ObligationSuggestionsRelationManager extends RelationManager
                     ->placeholder('—')
                     ->sortable()
                     ->toggleable(),
-                TextColumn::make('obligation.title')
-                    ->label('Obrigação criada')
+                TextColumn::make('priority')
+                    ->label('Prioridade')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => ExtractedObligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
+                    ->color(fn (?string $state): string => match ($state) {
+                        'critical' => 'danger',
+                        'high' => 'warning',
+                        'medium' => 'info',
+                        default => 'gray',
+                    }),
+                TextColumn::make('responsibleUser.name')
+                    ->label('Responsável')
                     ->placeholder('—')
-                    ->limit(50)
+                    ->toggleable(),
+                TextColumn::make('due_rule')
+                    ->label('Prazo')
+                    ->placeholder('—')
+                    ->limit(40)
+                    ->toggleable(),
+                TextColumn::make('obligation_category')
+                    ->label('Categoria')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('confidence_score')
+                    ->label('Confiança')
+                    ->formatStateUsing(fn (?float $state): string => $state === null ? '—' : round($state * 100).'%')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('source_excerpt')
+                    ->label('Trecho do Termo')
+                    ->placeholder('—')
+                    ->limit(70)
                     ->wrap()
-                    ->url(fn (ExtractedObligation $record): ?string => $record->obligation?->id
-                        ? EmissionResource::getUrl('edit', ['record' => $record->emission_id])
-                        : null)
-                    ->openUrlInNewTab()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('confidence_score', 'desc')
@@ -163,7 +163,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
                 $this->makeApproveAction(),
                 $this->makeRejectAction(),
                 Action::make('view_obligation')
-                    ->label('Ver obrigação')
+                    ->label('Abrir obrigação criada')
                     ->icon('heroicon-o-arrow-top-right-on-square')
                     ->color('gray')
                     ->url(fn (ExtractedObligation $record): string => EmissionResource::getUrl('edit', ['record' => $record->emission_id]))
@@ -183,7 +183,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
                 ]),
             ])
             ->emptyStateHeading('Nenhuma obrigação sugerida')
-            ->emptyStateDescription('Use "Gerar obrigações do Termo" para extrair sugestões do Termo de Securitização.');
+            ->emptyStateDescription('Use "Gerar obrigações do Termo" para extrair sugestões do Termo de Securitização. Sugestões aprovadas ou rejeitadas não possuem reabertura nesta etapa.');
     }
 
     protected function makeGenerateAction(): Action
@@ -278,7 +278,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
             : '';
 
         return new HtmlString(
-            $banner.'<span class="block">Revise as obrigações sugeridas pela IA a partir do Termo de Securitização e tome uma decisão formal de aprovação ou rejeição.</span>'
+            $banner.'<span class="block">Revise as obrigações sugeridas pela IA a partir do Termo de Securitização e tome uma decisão formal de aprovação ou rejeição.</span><span class="mt-1 block text-sm text-gray-600">Sugestões aprovadas criam uma obrigação na emissão; sugestões rejeitadas encerram a análise e não possuem reabertura nesta etapa.</span>'.$this->readOnlySuggestionHint()
         );
     }
 
@@ -289,7 +289,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->icon('heroicon-o-check')
             ->color('success')
             ->modalHeading('Aprovar sugestão')
-            ->modalDescription('A sugestão será consolidada como uma obrigação da emissão.')
+            ->modalDescription('A sugestão será aprovada e uma obrigação será criada nesta emissão.')
             ->modalSubmitActionLabel('Aprovar sugestão')
             ->form([
                 Textarea::make('review_notes')
@@ -313,6 +313,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->icon('heroicon-o-x-mark')
             ->color('danger')
             ->modalHeading('Rejeitar sugestão')
+            ->modalDescription('A rejeição exige motivo, encerra a sugestão sem criar obrigação e não há fluxo de reabertura nesta etapa.')
             ->modalSubmitActionLabel('Rejeitar sugestão')
             ->form([
                 Textarea::make('review_notes')
@@ -356,5 +357,19 @@ class ObligationSuggestionsRelationManager extends RelationManager
     protected function reviewService(): ObligationSuggestionReviewService
     {
         return app(ObligationSuggestionReviewService::class);
+    }
+
+    protected function readOnlySuggestionHint(): string
+    {
+        if (
+            $this->canGenerateObligations()
+            || (auth()->user()?->can(AccessPermission::ObligationsApproveSuggestion->value) ?? false)
+            || (auth()->user()?->can(AccessPermission::ObligationsRejectSuggestion->value) ?? false)
+            || $this->canManage()
+        ) {
+            return '';
+        }
+
+        return '<span class="mt-1 block text-sm text-gray-600">Modo consulta: seu perfil pode acompanhar as sugestões, mas não gerar, aprovar ou rejeitar registros.</span>';
     }
 }

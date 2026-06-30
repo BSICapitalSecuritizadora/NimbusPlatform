@@ -419,3 +419,15 @@ it('shows the generate obligations action on the suggestions tab', function () {
         ->assertTableActionExists('generate_obligations')
         ->assertTableActionHasLabel('generate_obligations', 'Gerar obrigações do Termo');
 });
+
+it('explains that reviewed suggestions do not have a reopen flow in this stage', function () {
+    $this->actingAs(makeSuggestionReviewer([]));
+
+    $emission = Emission::factory()->create();
+
+    Livewire::test(ObligationSuggestionsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSee('não possuem reabertura nesta etapa');
+});

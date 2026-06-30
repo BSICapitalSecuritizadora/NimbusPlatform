@@ -73,7 +73,7 @@ class ObligationDashboard extends Dashboard
 
     public function getSubheading(): ?string
     {
-        return 'Visão operacional das obrigações de todas as emissões: vencimentos, responsáveis, prioridades, áreas e situação documental.';
+        return 'Visão operacional das obrigações de todas as emissões. Os filtros do topo recortam indicadores, gráficos e tabela; a situação documental considera que apenas evidência aprovada vale como comprovação válida.';
     }
 
     public function filtersForm(Schema $schema): Schema
@@ -92,7 +92,7 @@ class ObligationDashboard extends Dashboard
                     ->pluck('name', 'id')
                     ->all()),
             Select::make('status')
-                ->label('Status da obrigação')
+                ->label('Status')
                 ->placeholder('Todos')
                 ->options(Obligation::STATUS_OPTIONS),
             Select::make('responsible_user_id')
@@ -120,11 +120,11 @@ class ObligationDashboard extends Dashboard
                 ->placeholder('Todas')
                 ->options(Obligation::PRIORITY_OPTIONS),
             Select::make('due_window')
-                ->label('Período de vencimento')
+                ->label('Janela de vencimento')
                 ->placeholder('Todos')
                 ->options(ObligationDashboardData::DUE_WINDOW_OPTIONS),
             Select::make('operational_focus')
-                ->label('Visão operacional')
+                ->label('Fila operacional')
                 ->placeholder('Todas')
                 ->options($dashboardData->operationalFocusOptions($canViewEvidence)),
             Select::make('source')
@@ -135,7 +135,7 @@ class ObligationDashboard extends Dashboard
 
         if ($canViewEvidence) {
             $fields[] = Select::make('evidence_state')
-                ->label('Status da evidência')
+                ->label('Situação documental')
                 ->placeholder('Todos')
                 ->options(ObligationDashboardData::EVIDENCE_FILTER_OPTIONS);
         }

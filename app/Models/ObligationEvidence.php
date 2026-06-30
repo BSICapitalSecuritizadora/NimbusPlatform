@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Observers\ObligationEvidenceObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Number;
 
+#[ObservedBy(ObligationEvidenceObserver::class)]
 class ObligationEvidence extends Model
 {
     /** @use HasFactory<\Database\Factories\ObligationEvidenceFactory> */

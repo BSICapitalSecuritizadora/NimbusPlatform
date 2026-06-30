@@ -687,6 +687,82 @@ it('renders the reports page with the generation form', function () {
         ->assertSee('Relatório Mensal por Emissão');
 });
 
+it('builds the Resumo da Operação saldo devedor from the PU history at the data-base times the integralized quantity', function () {
+    $emission = Emission::factory()->create([
+        'integralized_quantity' => 10000,
+    ]);
+
+    $emission->puHistories()->create(['date' => '2026-06-15', 'unit_value' => '1000.000000']);
+    $emission->puHistories()->create(['date' => '2026-06-30', 'unit_value' => '1011.033019']);
+    $emission->puHistories()->create(['date' => '2026-07-05', 'unit_value' => '1020.000000']);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-06-01'));
+
+    expect($data['header']['debt_position'])->toBe('30/06/2026')
+        ->and($data['header']['current_pu'])->toBe('R$ 1.011,03301900')
+        ->and($data['header']['debt_balance'])->toBe('R$ 10.110.330,19');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('<td class="label">Saldo Devedor</td>');
+});
+
+it('uses the last available PU on or before the data-base when there is none exactly on the last day', function () {
+    $emission = Emission::factory()->create([
+        'integralized_quantity' => 5000,
+    ]);
+
+    $emission->puHistories()->create(['date' => '2026-06-20', 'unit_value' => '900.000000']);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-06-01'));
+
+    expect($data['header']['current_pu'])->toBe('R$ 900,00000000')
+        ->and($data['header']['debt_balance'])->toBe('R$ 4.500.000,00');
+});
+
+it('takes the próximo evento from the payment schedule (Cronograma de Pagamentos)', function () {
+    $emission = Emission::factory()->create();
+
+    $emission->payments()->create([
+        'payment_date' => '2026-06-09',
+        'premium_value' => 0,
+        'interest_value' => 0,
+        'amortization_value' => 0,
+        'extra_amortization_value' => 0,
+    ]);
+    $emission->payments()->create([
+        'payment_date' => '2026-07-09',
+        'premium_value' => 0,
+        'interest_value' => 0,
+        'amortization_value' => 0,
+        'extra_amortization_value' => 0,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-06-01'));
+
+    expect($data['header']['next_event'])->toBe('09/06/2026');
+});
+
+it('keeps the Resumo da Operação graceful without PU, integralized quantity or payment schedule', function () {
+    $emission = Emission::factory()->create([
+        'integralized_quantity' => 0,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-06-01'));
+
+    expect($data['header']['debt_balance'])->toBe('Não informado')
+        ->and($data['header']['current_pu'])->toBe('Não informado')
+        ->and($data['header']['next_event'])->toBe('Nenhum evento cadastrado');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('<td class="label">Saldo Devedor</td>');
+});
+
 it('forbids users without the reports.view permission', function () {
     $user = User::factory()->withTwoFactor()->create();
     $user->assignRole('commercial-representative');

@@ -78,6 +78,7 @@ it('queues the filtered global export for the current operational view', functio
 
     Livewire::test(ObligationOperationalTableWidget::class)
         ->assertTableActionVisible('export')
+        ->assertTableActionHasLabel('export', 'Exportar visão filtrada atual')
         ->filterTable('emission_id', $alpha->id)
         ->filterTable('status', 'vencida')
         ->callTableAction('export');
@@ -131,6 +132,7 @@ it('queues an emission-scoped export from the relation manager', function () {
 
     obligationExportRelationManager($emission)
         ->assertTableActionVisible('export')
+        ->assertTableActionHasLabel('export', 'Exportar obrigações desta emissão')
         ->filterTable('status', 'a_vencer')
         ->callTableAction('export');
 
@@ -232,7 +234,7 @@ it('exports operational columns, aging and evidence counters', function () {
         'updated_at' => '18/06/2026 08:45',
         'completed_at' => '17/06/2026 15:30',
         'completedByUser.name' => 'Marina',
-        'document_status' => 'Aprovada, pendente e rejeitada',
+        'document_status' => 'Com aprovação, pendência e rejeição',
         'evidences_count' => 3,
         'approved_evidences_count' => 1,
         'pending_evidences_count' => 1,
@@ -245,6 +247,8 @@ it('exports operational columns, aging and evidence counters', function () {
         ExportFormat::Xlsx,
         ExportFormat::Csv,
     ]);
+
+    expect($exporter->getFileName($export))->toBe('obrigacoes-operacionais-recorte-'.$export->getKey());
 });
 
 it('excludes sensitive fields and documentary columns when evidence permission is absent', function () {

@@ -43,7 +43,7 @@ class ObligationDashboardData
         ObligationEvidence::STATUS_APPROVED => 'Com evidência aprovada',
         ObligationEvidence::STATUS_PENDING => 'Com evidência pendente',
         ObligationEvidence::STATUS_REJECTED => 'Com evidência rejeitada',
-        'without_evidence' => 'Sem evidência',
+        'without_evidence' => 'Sem anexo',
         'without_approved_evidence' => 'Sem evidência aprovada',
     ];
 
@@ -63,16 +63,16 @@ class ObligationDashboardData
      * @var array<string, string>
      */
     public const OPERATIONAL_FOCUS_OPTIONS = [
-        'critical_overdue' => 'Pendências Críticas',
+        'critical_overdue' => 'Críticas vencidas',
         'due_today' => 'Vencem Hoje',
         'next_7_days' => 'Próximos 7 Dias',
         'high_priority_next_7_days' => 'Alta Prioridade em 7 Dias',
         'in_review' => 'Em Análise',
         'rejected_evidence' => 'Evidência Rejeitada',
-        'without_evidence' => 'Sem Evidência',
+        'without_evidence' => 'Sem anexo',
         'without_responsible' => 'Sem Responsável',
-        'completed_without_approved_evidence' => 'Concluídas sem Evidência Aprovada',
-        'in_review_with_pending_evidence' => 'Em análise com Evidência Pendente',
+        'completed_without_approved_evidence' => 'Concluídas sem evidência aprovada',
+        'in_review_with_pending_evidence' => 'Em análise com evidência pendente',
     ];
 
     /**
@@ -110,6 +110,7 @@ class ObligationDashboardData
      *     com_evidencia_pendente: int,
      *     com_evidencia_rejeitada: int,
      *     sem_evidencia: int,
+     *     sem_evidencia_aprovada: int,
      *     concluidas_com_evidencia_aprovada: int,
      *     em_analise_com_evidencia_pendente: int,
      *     concluidas_sem_evidencia_aprovada: int
@@ -151,6 +152,9 @@ class ObligationDashboardData
             'com_evidencia_pendente' => $evidenceCoverage['pending'],
             'com_evidencia_rejeitada' => $evidenceCoverage['rejected'],
             'sem_evidencia' => $evidenceCoverage['without_evidence'],
+            'sem_evidencia_aprovada' => $this->filteredQuery($filters, $referenceDate)
+                ->whereDoesntHave('evidences', fn (Builder $query): Builder => $query->approved())
+                ->count(),
             'concluidas_com_evidencia_aprovada' => $this->filteredQuery($filters, $referenceDate)
                 ->where('status', 'concluida')
                 ->whereHas('evidences', fn (Builder $query): Builder => $query->approved())
@@ -434,14 +438,14 @@ SQL,
         $rejectedCount = $this->evidenceCountFromRecord($obligation, 'rejected_evidences_count', fn (): int => $obligation->evidences()->rejected()->count());
 
         return match (true) {
-            $obligation->due_date !== null && $obligation->due_date->isBefore($today) && $obligation->priority === 'critical' => 'Pendências Críticas',
+            $obligation->due_date !== null && $obligation->due_date->isBefore($today) && $obligation->priority === 'critical' => 'Críticas vencidas',
             $obligation->due_date !== null && $obligation->due_date->isSameDay($today) => 'Vencem Hoje',
             $obligation->due_date !== null && $obligation->due_date->between($today->copy()->addDay(), $today->copy()->addDays(7)) => 'Próximos 7 Dias',
-            $obligation->status === 'em_analise' && $pendingCount > 0 => 'Em análise com Evidência Pendente',
+            $obligation->status === 'em_analise' && $pendingCount > 0 => 'Em análise com evidência pendente',
             $obligation->status === 'em_analise' => 'Em Análise',
             $rejectedCount > 0 => 'Evidência Rejeitada',
-            $obligation->status === 'concluida' && $approvedCount === 0 => 'Concluídas sem Evidência Aprovada',
-            $approvedCount === 0 && $pendingCount === 0 && $rejectedCount === 0 => 'Sem Evidência',
+            $obligation->status === 'concluida' && $approvedCount === 0 => 'Concluídas sem evidência aprovada',
+            $approvedCount === 0 && $pendingCount === 0 && $rejectedCount === 0 => 'Sem anexo',
             $obligation->responsible_user_id === null => 'Sem Responsável',
             $obligation->due_date !== null && $obligation->due_date->isBefore($today) => 'Vencidas',
             $obligation->due_date !== null && $obligation->due_date->between($today->copy()->addDays(8), $today->copy()->addDays(30)) => 'Próximos 30 Dias',
@@ -453,8 +457,8 @@ SQL,
     public function operationalFocusColorFor(Obligation $obligation, ?CarbonInterface $referenceDate = null): string
     {
         return match ($this->operationalFocusLabelFor($obligation, $referenceDate)) {
-            'Pendências Críticas', 'Vencidas', 'Evidência Rejeitada', 'Concluídas sem Evidência Aprovada' => 'danger',
-            'Vencem Hoje', 'Próximos 7 Dias', 'Em Análise', 'Em análise com Evidência Pendente', 'Sem Evidência', 'Sem Responsável' => 'warning',
+            'Críticas vencidas', 'Vencidas', 'Evidência Rejeitada', 'Concluídas sem evidência aprovada' => 'danger',
+            'Vencem Hoje', 'Próximos 7 Dias', 'Em Análise', 'Em análise com evidência pendente', 'Sem anexo', 'Sem Responsável' => 'warning',
             'Próximos 30 Dias' => 'info',
             default => 'gray',
         };
@@ -471,10 +475,10 @@ SQL,
             $approvedCount > 0 && $pendingCount === 0 && $rejectedCount === 0 => 'Evidência aprovada',
             $approvedCount === 0 && $pendingCount > 0 && $rejectedCount === 0 => 'Evidência pendente',
             $approvedCount === 0 && $pendingCount === 0 && $rejectedCount > 0 => 'Evidência rejeitada',
-            $approvedCount > 0 && $pendingCount > 0 && $rejectedCount === 0 => 'Aprovada com pendência',
-            $approvedCount > 0 && $pendingCount === 0 && $rejectedCount > 0 => 'Aprovada com rejeição',
+            $approvedCount > 0 && $pendingCount > 0 && $rejectedCount === 0 => 'Com aprovação e pendência',
+            $approvedCount > 0 && $pendingCount === 0 && $rejectedCount > 0 => 'Com aprovação e rejeição',
             $approvedCount === 0 && $pendingCount > 0 && $rejectedCount > 0 => 'Pendente com rejeição',
-            default => 'Aprovada, pendente e rejeitada',
+            default => 'Com aprovação, pendência e rejeição',
         };
     }
 

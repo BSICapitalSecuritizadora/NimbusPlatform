@@ -5,7 +5,7 @@
 {{-- ===== Resumo / cabeçalho ===== --}}
 <div class="section-title">Resumo da Operação</div>
 <table class="kv">
-    <tr><td class="label">Saldo devedor do CRI</td><td class="value">{{ $header['debt_balance'] }} <span style="font-weight:normal;color:#888;font-size:10px;">(posição em {{ $header['debt_position'] }})</span></td></tr>
+    <tr><td class="label">Saldo Devedor</td><td class="value">{{ $header['debt_balance'] }} <span style="font-weight:normal;color:#888;font-size:10px;">(posição em {{ $header['debt_position'] }})</span></td></tr>
     <tr><td class="label">Quantidade em circulação</td><td class="value">{{ $header['circulating_quantity'] }}</td></tr>
     <tr><td class="label">Remuneração</td><td class="value">{{ $header['remuneration'] }}</td></tr>
     <tr><td class="label">PU</td><td class="value">{{ $header['current_pu'] }}</td></tr>

@@ -13,6 +13,7 @@ use App\Models\Expense;
 use App\Models\ExpenseHistory;
 use App\Models\Negotiation;
 use App\Models\Payment;
+use App\Models\PuHistory;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Services\ConstructionProgressProvider;
@@ -41,6 +42,8 @@ class EmissionMonthlyReportService
 
     private const NOT_CONSOLIDATED = 'Dados ainda não consolidados para este período.';
 
+    private const NO_SCHEDULED_EVENT = 'Nenhum evento cadastrado';
+
     public function __construct(
         private readonly ConstructionProgressProvider $constructionProgressProvider,
     ) {}
@@ -60,7 +63,6 @@ class EmissionMonthlyReportService
         $negotiation = $this->latestNegotiation($emission, $monthStart, $monthEnd);
         $payment = $this->lastPaymentUntil($emission, $monthEnd);
         $upcomingEvents = $this->upcomingEventsFrom($emission, $monthStart);
-        $nextEvent = $upcomingEvents->first();
         $constructions = $emission->constructions()->orderBy('development_name')->get();
 
         return [
@@ -69,7 +71,7 @@ class EmissionMonthlyReportService
                 'reference_month' => $monthStart->format('m/Y'),
                 'generated_at' => CarbonImmutable::now()->format('d/m/Y H:i'),
             ],
-            'header' => $this->buildHeader($emission, $monthEnd, $nextEvent),
+            'header' => $this->buildHeader($emission, $monthStart, $monthEnd),
             'characteristics' => $this->buildCharacteristics($emission),
             'payment' => $this->buildPayment($payment),
             'calendar' => $this->buildCalendar($upcomingEvents),
@@ -168,22 +170,32 @@ class EmissionMonthlyReportService
     }
 
     /**
+     * Monta o "Resumo da Operação".
+     *
+     * Saldo Devedor e PU derivam do Histórico de Preço Unitário (PuHistory) na
+     * data-base (último dia do mês de referência), usando o último PU disponível
+     * menor ou igual a essa data quando não houver lançamento exatamente no dia.
+     * O Saldo Devedor multiplica esse PU pela Quantidade Integralizada da emissão.
+     * O Próximo Evento vem do Cronograma de Pagamentos (relação payments).
+     *
      * @return array<string, mixed>
      */
-    private function buildHeader(Emission $emission, CarbonImmutable $monthEnd, ?EmissionPuEvent $nextEvent): array
+    private function buildHeader(Emission $emission, CarbonImmutable $monthStart, CarbonImmutable $monthEnd): array
     {
-        $debt = $this->debtBalanceValue($emission);
+        $pu = $this->latestPuHistoryUntil($emission, $monthEnd);
+        $integralizedQuantity = $this->integralizedQuantity($emission);
+        $nextPayment = $this->nextScheduledPayment($emission, $monthStart);
 
         return [
             'name' => $this->text($emission->name),
             'identifier' => $this->text($emission->isin_code ?? $emission->if_code),
             'offer' => $this->text($emission->type ?? $emission->offer_type),
-            'debt_balance' => $debt !== null ? $this->money($debt) : self::NOT_AVAILABLE,
+            'debt_balance' => $this->resumoDebtBalance($pu, $integralizedQuantity),
             'debt_position' => $monthEnd->format('d/m/Y'),
             'circulating_quantity' => $this->integer($emission->integralized_quantity ?: $emission->issued_quantity),
             'remuneration' => $this->text($emission->formatted_remuneration),
-            'current_pu' => $emission->current_pu !== null ? $this->pu((float) $emission->current_pu) : self::NOT_AVAILABLE,
-            'next_event' => $nextEvent?->effective_date?->format('d/m/Y') ?? self::NOT_INFORMED,
+            'current_pu' => $pu !== null ? $this->pu((float) $pu->unit_value) : self::NOT_INFORMED,
+            'next_event' => $nextPayment?->payment_date?->format('d/m/Y') ?? self::NO_SCHEDULED_EVENT,
         ];
     }
 
@@ -1009,6 +1021,59 @@ class EmissionMonthlyReportService
             ->orderByDesc('payment_date')
             ->orderByDesc('id')
             ->first();
+    }
+
+    /**
+     * PU do Histórico de Preço Unitário na data-base do relatório. Prefere o
+     * lançamento exatamente no último dia do mês; na ausência, usa o último PU
+     * disponível com data menor ou igual à data-base (sem inventar valores).
+     */
+    private function latestPuHistoryUntil(Emission $emission, CarbonImmutable $monthEnd): ?PuHistory
+    {
+        return $emission->puHistories()
+            ->whereNotNull('date')
+            ->where('date', '<=', $monthEnd->endOfDay())
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * Próximo evento do Cronograma de Pagamentos (relação payments) a partir do
+     * início do mês de referência.
+     */
+    private function nextScheduledPayment(Emission $emission, CarbonImmutable $monthStart): ?Payment
+    {
+        return $emission->payments()
+            ->whereNotNull('payment_date')
+            ->where('payment_date', '>=', $monthStart->toDateString())
+            ->orderBy('payment_date')
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * Quantidade Integralizada da emissão. Trata ausência/zero como dado ainda
+     * não cadastrado para evitar Saldo Devedor fixo em R$ 0,00.
+     */
+    private function integralizedQuantity(Emission $emission): ?int
+    {
+        $quantity = (int) ($emission->integralized_quantity ?? 0);
+
+        return $quantity > 0 ? $quantity : null;
+    }
+
+    /**
+     * Saldo Devedor do Resumo da Operação = PU da data-base × Quantidade
+     * Integralizada. Sem PU ou sem quantidade, exibe fallback amigável.
+     */
+    private function resumoDebtBalance(?PuHistory $pu, ?int $integralizedQuantity): string
+    {
+        if (! $pu instanceof PuHistory || $integralizedQuantity === null) {
+            return self::NOT_INFORMED;
+        }
+
+        return $this->money((float) $pu->unit_value * $integralizedQuantity);
     }
 
     /**

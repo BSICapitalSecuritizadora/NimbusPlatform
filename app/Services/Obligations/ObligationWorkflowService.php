@@ -108,7 +108,7 @@ class ObligationWorkflowService
 
         if ($normalizedNote === null) {
             throw ValidationException::withMessages([
-                'note' => 'Informe uma observação para enviar a obrigação para análise.',
+                'note' => 'Informe uma observação para contextualizar o envio da obrigação para análise.',
             ]);
         }
 
@@ -161,7 +161,7 @@ class ObligationWorkflowService
 
         if ($normalizedNotes === null) {
             throw ValidationException::withMessages([
-                'completion_notes' => 'Informe uma justificativa para concluir a obrigação.',
+                'completion_notes' => 'Informe uma justificativa de conclusão para registrar como a obrigação foi cumprida.',
             ]);
         }
 
@@ -171,7 +171,7 @@ class ObligationWorkflowService
 
         if (! $hasApprovedEvidence && ! $confirmWithoutEvidence) {
             throw ValidationException::withMessages([
-                'confirm_without_evidence' => 'Confirme explicitamente a conclusão sem evidência aprovada.',
+                'confirm_without_evidence' => 'Para concluir sem evidência aprovada, confirme explicitamente a exceção e mantenha a justificativa registrada.',
             ]);
         }
 
@@ -227,7 +227,7 @@ class ObligationWorkflowService
 
         if ($normalizedReason === null) {
             throw ValidationException::withMessages([
-                'reason' => 'Informe o motivo para marcar a obrigação como não aplicável.',
+                'reason' => 'Informe o motivo para registrar a obrigação como não aplicável.',
             ]);
         }
 
@@ -277,7 +277,7 @@ class ObligationWorkflowService
 
         if ($normalizedReason === null) {
             throw ValidationException::withMessages([
-                'reason' => 'Informe o motivo para reabrir a obrigação.',
+                'reason' => 'Informe o motivo da reabertura para retomar o acompanhamento operacional.',
             ]);
         }
 

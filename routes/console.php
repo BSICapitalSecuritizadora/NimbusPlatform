@@ -68,3 +68,8 @@ Artisan::command('inspire', function () {
     ->monthlyOn(2, '06:45')
     ->name('pu-index-sync-ipca')
     ->withoutOverlapping();
+
+\Illuminate\Support\Facades\Schedule::command('proposals:check-stale')
+    ->dailyAt('07:00')
+    ->name('proposals-check-stale')
+    ->withoutOverlapping();

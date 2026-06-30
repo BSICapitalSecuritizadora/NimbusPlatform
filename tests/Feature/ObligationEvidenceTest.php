@@ -358,6 +358,8 @@ it('lists the emission evidences for users with the view evidence permission', f
         'pageClass' => EditEmission::class,
     ])
         ->assertSuccessful()
+        ->assertSee('Apenas evidência aprovada conta como comprovação válida')
+        ->assertSee('Modo consulta')
         ->assertTableColumnExists('status')
         ->assertTableColumnExists('reviewer.name')
         ->assertTableColumnExists('reviewed_at')

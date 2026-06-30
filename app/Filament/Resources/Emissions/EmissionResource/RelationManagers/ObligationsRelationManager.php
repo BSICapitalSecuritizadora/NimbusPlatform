@@ -98,13 +98,18 @@ class ObligationsRelationManager extends RelationManager
                         \Filament\Infolists\Components\TextEntry::make('next_action')
                             ->label('Próxima Ação Recomendada')
                             ->state(fn (\App\Models\Obligation $record): string => match ($record->status) {
-                                'a_vencer', 'vencida' => 'Anexar evidências de cumprimento e concluir a obrigação.',
-                                'em_analise' => 'Revisar as evidências anexadas e aprovar ou rejeitar o cumprimento.',
-                                'em_dia', 'concluida' => 'Nenhuma ação necessária.',
-                                default => 'Definir responsável e anexar evidências.',
+                                'a_vencer', 'vencida' => 'Anexe evidências e conclua a obrigação quando houver comprovação suficiente.',
+                                'em_analise' => 'Revise as evidências anexadas. Apenas evidência aprovada conta como comprovação válida.',
+                                'em_dia', 'concluida' => 'Nenhuma ação operacional pendente.',
+                                default => 'Defina responsável e organize a comprovação necessária.',
                             })
                             ->color('primary')
                             ->weight('bold')
+                            ->columnSpan(2),
+                        \Filament\Infolists\Components\TextEntry::make('workflow_availability')
+                            ->label('Acesso operacional')
+                            ->state(fn (\App\Models\Obligation $record): string => $this->workflowAvailabilityMessage($record))
+                            ->placeholder('—')
                             ->columnSpan(2),
                     ]),
                     \Filament\Infolists\Components\TextEntry::make('description')
@@ -125,18 +130,17 @@ class ObligationsRelationManager extends RelationManager
                 ->label('Título')
                 ->searchable()
                 ->wrap(),
-            TextColumn::make('obligation_category')
-                ->label('Categoria')
+            TextColumn::make('status')
+                ->label('Status')
                 ->badge()
-                ->toggleable(),
-            TextColumn::make('responsibleUser.name')
-                ->label('Responsável')
-                ->placeholder('—')
-                ->toggleable(),
-            TextColumn::make('responsible_area')
-                ->label('Área')
-                ->placeholder('—')
-                ->toggleable(),
+                ->formatStateUsing(fn (?string $state): string => Obligation::STATUS_OPTIONS[$state] ?? (string) $state)
+                ->color(fn (?string $state): string => match ($state) {
+                    'em_dia', 'concluida' => 'success',
+                    'a_vencer' => 'info',
+                    'vencida' => 'danger',
+                    'em_analise' => 'warning',
+                    default => 'gray',
+                }),
             TextColumn::make('due_date')
                 ->label('Vencimento')
                 ->date('d/m/Y')
@@ -152,34 +156,35 @@ class ObligationsRelationManager extends RelationManager
                     'medium' => 'info',
                     default => 'gray',
                 }),
-            TextColumn::make('status')
-                ->label('Status')
-                ->badge()
-                ->formatStateUsing(fn (?string $state): string => Obligation::STATUS_OPTIONS[$state] ?? (string) $state)
-                ->color(fn (?string $state): string => match ($state) {
-                    'em_dia', 'concluida' => 'success',
-                    'a_vencer' => 'info',
-                    'vencida' => 'danger',
-                    'em_analise' => 'warning',
-                    default => 'gray',
-                }),
+            TextColumn::make('responsibleUser.name')
+                ->label('Responsável')
+                ->placeholder('Sem responsável')
+                ->toggleable(),
+            TextColumn::make('responsible_area')
+                ->label('Área')
+                ->placeholder('Sem área')
+                ->toggleable(),
             TextColumn::make('source')
                 ->label('Origem')
                 ->badge()
                 ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual')
                 ->color(fn (string $state): string => $state === 'Manual' ? 'gray' : 'info')
-                ->toggleable(),
+                ->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('obligation_category')
+                ->label('Categoria')
+                ->badge()
+                ->toggleable(isToggledHiddenByDefault: true),
         ];
 
         if ($canViewEvidence) {
             $columns[] = TextColumn::make('document_status')
-                ->label('Status das Evidências')
+                ->label('Situação documental')
                 ->state(fn (Obligation $record): string => $dashboardData->documentStatusFor($record))
                 ->badge()
                 ->color(fn (Obligation $record): string => $dashboardData->documentStatusColorFor($record))
                 ->wrap();
             $columns[] = TextColumn::make('evidences_count')
-                ->label('Qtd. Evidências')
+                ->label('Evidências anexadas')
                 ->state(fn (Obligation $record): int => (int) ($record->evidences_count ?? 0))
                 ->badge()
                 ->color('gray');
@@ -205,7 +210,7 @@ class ObligationsRelationManager extends RelationManager
                 ->label('Prioridade')
                 ->options(Obligation::PRIORITY_OPTIONS),
             SelectFilter::make('due_window')
-                ->label('Vencimento')
+                ->label('Janela de vencimento')
                 ->options(ObligationDashboardData::DUE_WINDOW_OPTIONS)
                 ->query(fn (Builder $query, array $data): Builder => $dashboardData->applyDueWindowFilter($query, $data['value'] ?? null)),
             TernaryFilter::make('has_responsible')
@@ -232,14 +237,14 @@ class ObligationsRelationManager extends RelationManager
 
         if ($canViewEvidence) {
             $filters[] = SelectFilter::make('evidence_state')
-                ->label('Status das evidências')
+                ->label('Situação documental')
                 ->options(ObligationDashboardData::EVIDENCE_FILTER_OPTIONS)
                 ->query(fn (Builder $query, array $data): Builder => $dashboardData->applyEvidenceFilter($query, $data['value'] ?? null));
         }
 
         return $table
             ->recordTitleAttribute('title')
-            ->description('Obrigações consolidadas desta emissão.')
+            ->description($this->obligationsTableDescription())
             ->modifyQueryUsing(function (Builder $query) use ($canViewEvidence): Builder {
                 $query->with('responsibleUser');
 
@@ -262,14 +267,14 @@ class ObligationsRelationManager extends RelationManager
                     ->label('Cadastrar obrigação')
                     ->authorize(fn (): bool => $this->canCreateObligations()),
                 ExportAction::make()
-                    ->label('Exportar obrigações da emissão')
+                    ->label('Exportar obrigações desta emissão')
                     ->authorize(fn (): bool => $this->canExportObligations())
                     ->columnMapping(false)
                     ->exporter(ObligationExporter::class),
             ])
             ->actions([
                 \Filament\Actions\ViewAction::make()
-                    ->label('Acessar Dossiê')
+                    ->label('Abrir dossiê')
                     ->color('info')
                     ->authorize(fn (): bool => auth()->user()?->can(\App\Enums\AccessPermission::ObligationsView->value) ?? false)
                     ->extraModalFooterActions(fn (\App\Models\Obligation $record) => [
@@ -285,8 +290,14 @@ class ObligationsRelationManager extends RelationManager
                 $this->makeMarkNotApplicableAction(),
                 $this->makeReopenAction(),
                 EditAction::make()
+                    ->label('Editar obrigação')
+                    ->tooltip('Editar obrigação')
+                    ->iconButton()
                     ->authorize(fn (): bool => $this->canEditObligations()),
                 DeleteAction::make()
+                    ->label('Remover obrigação')
+                    ->tooltip('Remover obrigação')
+                    ->iconButton()
                     ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsDelete->value) ?? false),
             ])
             ->bulkActions([
@@ -305,6 +316,8 @@ class ObligationsRelationManager extends RelationManager
             ->label('Histórico')
             ->icon('heroicon-o-clock')
             ->color('gray')
+            ->tooltip('Histórico')
+            ->iconButton()
             ->modalHeading('Histórico da Obrigação')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Fechar')
@@ -326,6 +339,8 @@ class ObligationsRelationManager extends RelationManager
             ->label('Comentários internos')
             ->icon('heroicon-o-chat-bubble-left-right')
             ->color('gray')
+            ->tooltip('Comentários internos')
+            ->iconButton()
             ->url(fn (Obligation $record): string => EmissionResource::getUrl('obligation-comments', [
                 'record' => $record->emission_id,
                 'obligation' => $record->id,
@@ -369,7 +384,7 @@ class ObligationsRelationManager extends RelationManager
             ->color('warning')
             ->modalWidth(Width::Large)
             ->modalHeading('Enviar obrigação para análise')
-            ->modalDescription('As evidências anexadas serão enviadas para revisão. O status mudará para "Em análise".')
+            ->modalDescription('As evidências já anexadas seguirão para revisão documental e a obrigação passará para o status "Em análise".')
             ->modalSubmitActionLabel('Enviar para análise')
             ->form([
                 Textarea::make('note')
@@ -395,7 +410,7 @@ class ObligationsRelationManager extends RelationManager
             ->color('success')
             ->modalWidth(Width::Large)
             ->modalHeading('Concluir obrigação')
-            ->modalDescription('Esta ação encerrará a obrigação como concluída.')
+            ->modalDescription('Esta ação encerrará a obrigação como concluída. Apenas evidência aprovada conta como comprovação válida; se não houver uma aprovada, a conclusão é excepcional e exige justificativa e confirmação explícita.')
             ->modalSubmitActionLabel('Concluir obrigação')
             ->form(fn (Obligation $record): array => $this->completeActionForm($record))
             ->visible(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_COMPLETE))
@@ -419,7 +434,7 @@ class ObligationsRelationManager extends RelationManager
             ->color('gray')
             ->modalWidth(Width::Large)
             ->modalHeading('Marcar obrigação como não aplicável')
-            ->modalDescription('Isto cancelará a necessidade de cumprimento desta obrigação.')
+            ->modalDescription('Isto encerrará a obrigação sem exigir cumprimento, mantendo o motivo registrado para auditoria.')
             ->modalSubmitActionLabel('Marcar como não aplicável')
             ->form([
                 Textarea::make('reason')
@@ -445,7 +460,7 @@ class ObligationsRelationManager extends RelationManager
             ->color('info')
             ->modalWidth(Width::Large)
             ->modalHeading('Reabrir obrigação')
-            ->modalDescription('A obrigação voltará ao status anterior para novos ajustes ou anexos de evidências.')
+            ->modalDescription('A obrigação voltará para acompanhamento operacional. O status será recalculado pela data de vencimento atual: vencida, a vencer ou em dia quando não houver vencimento definido.')
             ->modalSubmitActionLabel('Reabrir obrigação')
             ->form([
                 Textarea::make('reason')
@@ -472,8 +487,8 @@ class ObligationsRelationManager extends RelationManager
         $approvedEvidenceCount = $record->evidences()->approved()->count();
         $hasApprovedEvidence = $approvedEvidenceCount > 0;
         $withoutEvidenceCheckbox = Checkbox::make('confirm_without_evidence')
-            ->label('Confirmo a conclusão sem evidência aprovada.')
-            ->helperText('Use esta opção apenas quando o cumprimento não gerar comprovação formal válida ou quando a justificativa operacional for suficiente.')
+            ->label('Confirmo que esta conclusão seguirá sem evidência aprovada.')
+            ->helperText('Use esta exceção apenas quando o cumprimento não gerar comprovação formal válida e a justificativa operacional registrada for suficiente.')
             ->visible(! $hasApprovedEvidence);
 
         if (! $hasApprovedEvidence) {
@@ -490,10 +505,10 @@ class ObligationsRelationManager extends RelationManager
                         $totalEvidenceCount,
                     ),
                     $totalEvidenceCount > 0 => sprintf(
-                        '%d evidência(s) anexada(s), mas nenhuma aprovada até o momento.',
+                        '%d evidência(s) anexada(s), mas nenhuma aprovada até o momento. A conclusão sem aprovada é tratada como exceção.',
                         $totalEvidenceCount,
                     ),
-                    default => 'Nenhuma evidência anexada até o momento.',
+                    default => 'Nenhuma evidência anexada até o momento. A conclusão sem aprovada é tratada como exceção.',
                 }),
             Textarea::make('completion_notes')
                 ->label('Justificativa de conclusão')
@@ -513,5 +528,61 @@ class ObligationsRelationManager extends RelationManager
     protected function workflow(): ObligationWorkflowService
     {
         return app(ObligationWorkflowService::class);
+    }
+
+    protected function obligationsTableDescription(): string
+    {
+        $description = 'Acompanhe status, vencimento, prioridade, responsável e situação documental desta emissão.';
+
+        if (! $this->canCreateObligations() && ! $this->canEditObligations() && ! $this->canExportObligations() && ! $this->userHasWorkflowPermission()) {
+            return $description.' Modo consulta: seu perfil pode visualizar o fluxo, mas não executar ações operacionais.';
+        }
+
+        return $description.' Apenas evidência aprovada conta como comprovação válida para o cumprimento.';
+    }
+
+    protected function workflowAvailabilityMessage(Obligation $record): string
+    {
+        if ($this->userCanRunAnyWorkflowTransition($record)) {
+            return 'Use as ações no rodapé deste dossiê para avançar o fluxo desta obrigação.';
+        }
+
+        if (! $this->userHasWorkflowPermission()) {
+            return 'Seu perfil está em modo consulta. Você pode acompanhar a obrigação, mas não executar ações de workflow.';
+        }
+
+        return match ($record->status) {
+            'concluida', 'nao_aplicavel' => 'Fluxo encerrado. Apenas um perfil com permissão de reabertura pode retomar o acompanhamento.',
+            'em_analise' => 'A obrigação aguarda revisão documental por um perfil autorizado.',
+            default => 'Nenhuma ação adicional está disponível para o seu perfil nesta etapa.',
+        };
+    }
+
+    protected function userCanRunAnyWorkflowTransition(Obligation $record): bool
+    {
+        foreach ([
+            ObligationWorkflowService::TRANSITION_SUBMIT_FOR_REVIEW,
+            ObligationWorkflowService::TRANSITION_COMPLETE,
+            ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE,
+            ObligationWorkflowService::TRANSITION_REOPEN,
+        ] as $transition) {
+            if ($this->canRunWorkflowAction($record, $transition)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function userHasWorkflowPermission(): bool
+    {
+        $user = auth()->user();
+
+        return collect([
+            AccessPermission::ObligationsSubmitForReview->value,
+            AccessPermission::ObligationsComplete->value,
+            AccessPermission::ObligationsMarkNotApplicable->value,
+            AccessPermission::ObligationsReopen->value,
+        ])->contains(fn (string $permission): bool => (bool) $user?->can($permission));
     }
 }

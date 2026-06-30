@@ -71,10 +71,10 @@ class ObligationExporter extends Exporter
         return [
             ...$columns,
             ExportColumn::make('document_status')
-                ->label('Status documental')
+                ->label('Situação documental')
                 ->state(fn (Obligation $record): string => $dashboardData->documentStatusFor($record)),
             ExportColumn::make('evidences_count')
-                ->label('Quantidade de evidências')
+                ->label('Evidências anexadas')
                 ->state(fn (Obligation $record): int => (int) ($record->evidences_count ?? 0)),
             ExportColumn::make('approved_evidences_count')
                 ->label('Evidências aprovadas')
@@ -108,12 +108,12 @@ class ObligationExporter extends Exporter
 
     public function getFileName(Export $export): string
     {
-        return 'obrigacoes-operacionais-'.$export->getKey();
+        return 'obrigacoes-operacionais-recorte-'.$export->getKey();
     }
 
     public static function getCompletedNotificationBody(Export $export): string
     {
-        $body = 'A exportação de obrigações foi concluída com '.Number::format($export->successful_rows).' '.str('registro')->plural($export->successful_rows).' exportado(s).';
+        $body = 'A exportação das obrigações do recorte selecionado foi concluída com '.Number::format($export->successful_rows).' '.str('registro')->plural($export->successful_rows).' exportado(s).';
 
         if ($failedRowsCount = $export->getFailedRowsCount()) {
             $body .= ' '.Number::format($failedRowsCount).' '.str('registro')->plural($failedRowsCount).' falhou na exportação.';

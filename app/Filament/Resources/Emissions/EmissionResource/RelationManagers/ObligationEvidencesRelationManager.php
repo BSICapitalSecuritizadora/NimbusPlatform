@@ -111,7 +111,7 @@ class ObligationEvidencesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('original_name')
-            ->description('Evidências e comprovantes anexados às obrigações desta emissão.')
+            ->description($this->evidencesTableDescription())
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['uploader', 'obligation', 'reviewer']))
             ->columns([
                 TextColumn::make('obligation.title')
@@ -119,10 +119,6 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->searchable()
                     ->wrap()
                     ->limit(50),
-                TextColumn::make('original_name')
-                    ->label('Arquivo')
-                    ->searchable()
-                    ->wrap(),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -132,21 +128,18 @@ class ObligationEvidencesRelationManager extends RelationManager
                         ObligationEvidence::STATUS_REJECTED => 'danger',
                         default => 'warning',
                     }),
-                TextColumn::make('mime_type')
-                    ->label('Tipo')
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('size')
-                    ->label('Tamanho')
-                    ->formatStateUsing(fn (?int $state): string => $state ? Number::fileSize($state) : '—'),
+                TextColumn::make('original_name')
+                    ->label('Arquivo')
+                    ->searchable()
+                    ->wrap(),
+                TextColumn::make('uploaded_at')
+                    ->label('Enviado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
                 TextColumn::make('uploader.name')
                     ->label('Enviado por')
                     ->placeholder('—')
                     ->toggleable(),
-                TextColumn::make('uploaded_at')
-                    ->label('Data de envio')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
                 TextColumn::make('reviewer.name')
                     ->label('Revisado por')
                     ->placeholder('—')
@@ -157,20 +150,30 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->placeholder('—')
                     ->sortable()
                     ->toggleable(),
+                TextColumn::make('rejection_reason')
+                    ->label('Motivo da rejeição')
+                    ->placeholder('—')
+                    ->limit(60)
+                    ->wrap()
+                    ->toggleable(),
+                TextColumn::make('review_notes')
+                    ->label('Observação da revisão')
+                    ->placeholder('—')
+                    ->limit(60)
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('description')
                     ->label('Descrição')
                     ->placeholder('—')
                     ->limit(40)
                     ->toggleable(),
-                TextColumn::make('review_notes')
-                    ->label('Observação da aprovação')
+                TextColumn::make('size')
+                    ->label('Tamanho')
+                    ->formatStateUsing(fn (?int $state): string => $state ? Number::fileSize($state) : '—')
+                    ->toggleable(),
+                TextColumn::make('mime_type')
+                    ->label('Tipo')
                     ->placeholder('—')
-                    ->limit(40)
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('rejection_reason')
-                    ->label('Motivo da rejeição')
-                    ->placeholder('—')
-                    ->limit(40)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('uploaded_at', 'desc')
@@ -205,7 +208,7 @@ class ObligationEvidencesRelationManager extends RelationManager
                             ->storeFiles(false)
                             ->acceptedFileTypes((array) config('uploads.obligation_evidence.allowed_mimes', []))
                             ->maxSize((int) config('uploads.obligation_evidence.max_kb', 20480))
-                            ->helperText('Tipos aceitos: PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG. Tamanho máximo: '.(int) ceil(config('uploads.obligation_evidence.max_kb', 20480) / 1024).' MB.'),
+                            ->helperText('Tipos aceitos: PDF, DOC, DOCX, XLS, XLSX, CSV, PNG, JPG. Tamanho máximo: '.(int) ceil(config('uploads.obligation_evidence.max_kb', 20480) / 1024).' MB. Apenas evidência aprovada conta como comprovação válida.'),
                         Textarea::make('description')
                             ->label('Descrição')
                             ->maxLength(1000)
@@ -226,7 +229,7 @@ class ObligationEvidencesRelationManager extends RelationManager
             ])
             ->actions([
                 \Filament\Actions\ViewAction::make()
-                    ->label('Revisar Evidência')
+                    ->label('Abrir evidência')
                     ->color('info')
                     ->authorize(fn (): bool => auth()->user()?->can(\App\Enums\AccessPermission::ObligationsViewEvidence->value) ?? false)
                     ->extraModalFooterActions(fn (\App\Models\ObligationEvidence $record) => [
@@ -256,7 +259,7 @@ class ObligationEvidencesRelationManager extends RelationManager
                     }),
             ])
             ->emptyStateHeading('Nenhuma evidência anexada')
-            ->emptyStateDescription('Anexe comprovantes e documentos de suporte às obrigações desta emissão.');
+            ->emptyStateDescription('Anexe comprovantes e documentos de suporte às obrigações desta emissão. Apenas evidência aprovada conta como comprovação válida.');
     }
 
     protected function makeApproveAction(): Action
@@ -266,7 +269,7 @@ class ObligationEvidencesRelationManager extends RelationManager
             ->icon('heroicon-o-check-badge')
             ->color('success')
             ->modalHeading('Aprovar evidência')
-            ->modalDescription('Esta ação aprovará a evidência e atualizará o status da obrigação relacionada.')
+            ->modalDescription('A evidência será marcada como aprovada e passará a contar como comprovação válida. A obrigação só será concluída quando o workflow de conclusão for executado.')
             ->modalSubmitActionLabel('Aprovar evidência')
             ->form([
                 Textarea::make('review_notes')
@@ -290,7 +293,7 @@ class ObligationEvidencesRelationManager extends RelationManager
             ->icon('heroicon-o-x-circle')
             ->color('danger')
             ->modalHeading('Rejeitar evidência')
-            ->modalDescription('A evidência será rejeitada e o responsável deverá enviar um novo documento válido.')
+            ->modalDescription('A evidência será marcada como rejeitada. Informe o motivo para orientar o próximo envio documental.')
             ->modalSubmitActionLabel('Rejeitar evidência')
             ->form([
                 Textarea::make('rejection_reason')
@@ -321,5 +324,21 @@ class ObligationEvidencesRelationManager extends RelationManager
     protected function reviewService(): ObligationEvidenceReviewService
     {
         return app(ObligationEvidenceReviewService::class);
+    }
+
+    protected function evidencesTableDescription(): string
+    {
+        $description = 'Acompanhe anexos, revisão documental e responsáveis de cada evidência desta emissão. Apenas evidência aprovada conta como comprovação válida.';
+
+        if (
+            ! $this->canUploadEvidence()
+            && ! (auth()->user()?->can(AccessPermission::ObligationsApproveEvidence->value) ?? false)
+            && ! (auth()->user()?->can(AccessPermission::ObligationsRejectEvidence->value) ?? false)
+            && ! (auth()->user()?->can(AccessPermission::ObligationsDeleteEvidence->value) ?? false)
+        ) {
+            return $description.' Modo consulta: seu perfil pode acompanhar a documentação, mas não anexar nem revisar evidências.';
+        }
+
+        return $description;
     }
 }

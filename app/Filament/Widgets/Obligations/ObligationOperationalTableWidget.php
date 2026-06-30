@@ -26,7 +26,7 @@ class ObligationOperationalTableWidget extends TableWidget
 
     protected int|string|array $columnSpan = 'full';
 
-    protected static ?string $heading = 'Obrigações que Requerem Atenção';
+    protected static ?string $heading = 'Fila operacional priorizada';
 
     public function table(Table $table): Table
     {
@@ -62,12 +62,6 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->wrap()
                 ->limit(70)
                 ->url($obligationUrl),
-            TextColumn::make('operational_focus')
-                ->label('Foco Operacional')
-                ->state(fn (Obligation $record): string => $data->operationalFocusLabelFor($record))
-                ->badge()
-                ->color(fn (Obligation $record): string => $data->operationalFocusColorFor($record))
-                ->wrap(),
             TextColumn::make('status')
                 ->label('Status')
                 ->badge()
@@ -84,24 +78,6 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->date('d/m/Y')
                 ->placeholder('Sem data')
                 ->sortable(),
-            TextColumn::make('aging')
-                ->label('Aging')
-                ->state(fn (Obligation $record): ?string => $data->agingLabelFor($record))
-                ->placeholder('—')
-                ->badge()
-                ->color(fn (?string $state): string => match ($state) {
-                    'Mais de 30 dias', '16 a 30 dias' => 'danger',
-                    '8 a 15 dias', '1 a 7 dias' => 'warning',
-                    default => 'gray',
-                }),
-            TextColumn::make('responsibleUser.name')
-                ->label('Responsável')
-                ->placeholder('Sem responsável')
-                ->toggleable(),
-            TextColumn::make('responsible_area')
-                ->label('Área')
-                ->placeholder('Sem área')
-                ->toggleable(),
             TextColumn::make('priority')
                 ->label('Prioridade')
                 ->badge()
@@ -112,22 +88,46 @@ class ObligationOperationalTableWidget extends TableWidget
                     'medium' => 'info',
                     default => 'gray',
                 }),
+            TextColumn::make('responsibleUser.name')
+                ->label('Responsável')
+                ->placeholder('Sem responsável')
+                ->toggleable(),
+            TextColumn::make('responsible_area')
+                ->label('Área')
+                ->placeholder('Sem área')
+                ->toggleable(),
         ];
 
         if ($canViewEvidence) {
             $columns[] = TextColumn::make('document_status')
-                ->label('Status das Evidências')
+                ->label('Situação documental')
                 ->state(fn (Obligation $record): string => $data->documentStatusFor($record))
                 ->badge()
                 ->color(fn (Obligation $record): string => $data->documentStatusColorFor($record))
                 ->wrap();
             $columns[] = TextColumn::make('evidences_count')
-                ->label('Qtd. Evidências')
+                ->label('Evidências anexadas')
                 ->state(fn (Obligation $record): int => (int) ($record->evidences_count ?? 0))
                 ->badge()
                 ->color('gray');
         }
 
+        $columns[] = TextColumn::make('operational_focus')
+            ->label('Motivo de atenção')
+            ->state(fn (Obligation $record): string => $data->operationalFocusLabelFor($record))
+            ->badge()
+            ->color(fn (Obligation $record): string => $data->operationalFocusColorFor($record))
+            ->wrap();
+        $columns[] = TextColumn::make('aging')
+            ->label('Aging')
+            ->state(fn (Obligation $record): ?string => $data->agingLabelFor($record))
+            ->placeholder('—')
+            ->badge()
+            ->color(fn (?string $state): string => match ($state) {
+                'Mais de 30 dias', '16 a 30 dias' => 'danger',
+                '8 a 15 dias', '1 a 7 dias' => 'warning',
+                default => 'gray',
+            });
         $columns[] = TextColumn::make('source')
             ->label('Origem')
             ->badge()
@@ -160,11 +160,11 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->label('Prioridade')
                 ->options(Obligation::PRIORITY_OPTIONS),
             SelectFilter::make('due_window')
-                ->label('Vencimento')
+                ->label('Janela de vencimento')
                 ->options(ObligationDashboardData::DUE_WINDOW_OPTIONS)
                 ->query(fn (Builder $query, array $data): Builder => app(ObligationDashboardData::class)->applyDueWindowFilter($query, $data['value'] ?? null)),
             SelectFilter::make('operational_focus')
-                ->label('Visão operacional')
+                ->label('Fila operacional')
                 ->options($data->operationalFocusOptions($canViewEvidence))
                 ->query(fn (Builder $query, array $data): Builder => app(ObligationDashboardData::class)->applyOperationalFocusFilter(
                     $query,
@@ -196,7 +196,7 @@ class ObligationOperationalTableWidget extends TableWidget
 
         if ($canViewEvidence) {
             $filters[] = SelectFilter::make('evidence_state')
-                ->label('Status das evidências')
+                ->label('Situação documental')
                 ->options(ObligationDashboardData::EVIDENCE_FILTER_OPTIONS)
                 ->query(fn (Builder $query, array $data): Builder => app(ObligationDashboardData::class)->applyEvidenceFilter($query, $data['value'] ?? null));
         }
@@ -208,18 +208,19 @@ class ObligationOperationalTableWidget extends TableWidget
             ))
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['emission', 'responsibleUser']))
             ->recordUrl($obligationUrl)
+            ->description('Os filtros do topo recortam todo o painel. Use os filtros desta tabela apenas para refinar a fila operacional exibida abaixo.')
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
             ->columns($columns)
             ->filters($filters)
             ->headerActions([
                 ExportAction::make()
-                    ->label('Exportar visão atual')
+                    ->label('Exportar visão filtrada atual')
                     ->authorize(fn (): bool => $canExport)
                     ->columnMapping(false)
                     ->exporter(ObligationExporter::class),
             ])
-            ->emptyStateHeading('Nenhuma obrigação pendente')
-            ->emptyStateDescription('Não há obrigações em aberto que exijam atenção no momento.');
+            ->emptyStateHeading('Nenhuma obrigação exige ação no recorte atual')
+            ->emptyStateDescription('Revise os filtros do painel ou acompanhe as próximas janelas de vencimento para identificar novas pendências.');
     }
 }
