@@ -125,7 +125,7 @@ class PuCurvePrerequisiteService
 
         if ($startDate !== null && $endDate !== null && $endDate->gte($startDate)) {
             $this->validateIntegralizationTimeline($issues, $emission, $endDate);
-            $this->validateCalendarCoverage($issues, $startDate, $endDate, (string) $parameter->calendar_code);
+            $this->validateCalendarCoverage($issues, $startDate, $endDate, (string) $parameter->calendar_code, $indexer);
 
             if ($indexer === PuIndexer::Cdi) {
                 $this->validateIndexCoverage($issues, $parameter, $startDate, $endDate);
@@ -186,6 +186,7 @@ class PuCurvePrerequisiteService
         CarbonImmutable $startDate,
         CarbonImmutable $endDate,
         string $calendarCode,
+        PuIndexer $indexer,
     ): void {
         if ($this->calendarCoverage->ensureCoverage($calendarCode, $startDate, $endDate)) {
             $this->businessDayCalendar->flushCache();
@@ -193,20 +194,55 @@ class PuCurvePrerequisiteService
 
         $missingDates = $this->calendarCoverage->missingDates($calendarCode, $startDate, $endDate);
 
-        if ($missingDates === []) {
+        if ($missingDates !== []) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'business_calendar_dates',
+                sprintf(
+                    'O calendario %s nao cobre todo o periodo da curva (faltam %d data(s), a primeira em %s). Complete o calendario com "php artisan pu:business-calendar:seed --calendar=%s --from=%s --to=%s" ou importe/cadastre os dias e feriados manualmente.',
+                    $calendarCode,
+                    count($missingDates),
+                    $missingDates[0],
+                    $calendarCode,
+                    $startDate->toDateString(),
+                    $endDate->toDateString(),
+                ),
+            );
+
             return;
         }
 
-        $issues[] = PuCurvePrerequisiteIssue::blocking(
-            'business_calendar_dates',
+        $this->warnWhenWeekendOnly($issues, $startDate, $endDate, $calendarCode, $indexer);
+    }
+
+    /**
+     * Aviso (nao bloqueante): o calendario cobre o periodo, mas nao ha feriados cadastrados (derivacao
+     * weekend-only). Para CDI/Prefixado isso reduz a precisao na base 252 em curvas longas, pois esses
+     * indexadores contam dias uteis pelo calendario. O IPCA nao recebe o aviso porque sua engine apura
+     * DUP/DUT apenas por fim de semana (feriados nao alteram o gabarito validado).
+     *
+     * @param  list<PuCurvePrerequisiteIssue>  $issues
+     */
+    private function warnWhenWeekendOnly(
+        array &$issues,
+        CarbonImmutable $startDate,
+        CarbonImmutable $endDate,
+        string $calendarCode,
+        PuIndexer $indexer,
+    ): void {
+        if (! in_array($indexer, [PuIndexer::Cdi, PuIndexer::Prefixed], true)) {
+            return;
+        }
+
+        if (! $this->calendarCoverage->isWeekendOnly($calendarCode, $startDate, $endDate)) {
+            return;
+        }
+
+        $issues[] = PuCurvePrerequisiteIssue::warning(
+            'business_calendar_holidays',
             sprintf(
-                'O calendario %s nao cobre todo o periodo da curva (faltam %d data(s), a primeira em %s). Complete o calendario com "php artisan pu:business-calendar:seed --calendar=%s --from=%s --to=%s" ou importe/cadastre os dias e feriados manualmente.',
+                'O calendario %s esta apenas com fins de semana (nenhum feriado importado para o periodo da curva). Para maxima precisao na base 252, clique em "Importar feriados ANBIMA" ou rode "php artisan pu:holidays:import-anbima --calendar=%s".',
                 $calendarCode,
-                count($missingDates),
-                $missingDates[0],
                 $calendarCode,
-                $startDate->toDateString(),
-                $endDate->toDateString(),
             ),
         );
     }

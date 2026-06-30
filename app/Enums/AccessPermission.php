@@ -145,6 +145,7 @@ enum AccessPermission: string
     case PuIndexSync = 'pu.index.sync';
     case PuProjectionApprove = 'pu.projection.approve';
     case PuCalendarManage = 'pu.calendar.manage';
+    case PuHolidayImport = 'pu.holiday.import';
     case AuditActivitiesView = 'audit.activities.view';
     case AuditDocumentDownloadsView = 'audit.document-downloads.view';
     case ReportsView = 'reports.view';
@@ -336,6 +337,7 @@ enum AccessPermission: string
             self::PuIndexSync => 'Curva de PU: sincronizar índices (Banco Central)',
             self::PuProjectionApprove => 'Curva de PU: aprovar série projetada',
             self::PuCalendarManage => 'Curva de PU: completar calendário de dias úteis',
+            self::PuHolidayImport => 'Curva de PU: importar feriados ANBIMA',
             self::AuditActivitiesView => 'Auditoria logs do sistema: visualizar',
             self::AuditDocumentDownloadsView => 'Auditoria downloads do portal: visualizar',
             self::ReportsView => 'Relatórios: visualizar',

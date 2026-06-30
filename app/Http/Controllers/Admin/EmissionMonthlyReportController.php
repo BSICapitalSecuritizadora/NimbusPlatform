@@ -20,6 +20,15 @@ class EmissionMonthlyReportController extends Controller
         abort_unless(auth()->user()?->can('reports.view') ?? false, Response::HTTP_FORBIDDEN);
 
         $referenceMonth = $this->resolveReferenceMonth($request->query('reference_month'));
+        $referenceMonthEnd = $this->resolveOptionalMonth($request->query('reference_month_end'));
+
+        // Multi-mês apenas quando o mês final é informado e difere do inicial.
+        if ($referenceMonthEnd instanceof CarbonImmutable && ! $referenceMonthEnd->equalTo($referenceMonth)) {
+            $data = $service->buildConsolidated($emission, $referenceMonth, $referenceMonthEnd);
+
+            return Pdf::loadView('pdf.emission-monthly-report-consolidated', $data)
+                ->stream($service->consolidatedFileName($emission, $referenceMonth, $referenceMonthEnd));
+        }
 
         $data = $service->build($emission, $referenceMonth);
 
@@ -29,16 +38,21 @@ class EmissionMonthlyReportController extends Controller
 
     private function resolveReferenceMonth(mixed $value): CarbonImmutable
     {
+        return $this->resolveOptionalMonth($value) ?? CarbonImmutable::now()->startOfMonth();
+    }
+
+    private function resolveOptionalMonth(mixed $value): ?CarbonImmutable
+    {
         if (is_string($value) && $value !== '') {
             $normalized = preg_match('/^\d{4}-\d{2}$/', $value) === 1 ? $value.'-01' : $value;
 
             try {
                 return CarbonImmutable::parse($normalized)->startOfMonth();
             } catch (\Throwable) {
-                // Valor inválido cai no padrão (mês atual) abaixo.
+                // Valor inválido é ignorado.
             }
         }
 
-        return CarbonImmutable::now()->startOfMonth();
+        return null;
     }
 }

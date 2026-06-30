@@ -296,10 +296,12 @@ com período configurável e opção *dry-run*.
 
 ### Como cadastrar/importar feriados B3
 
-Insira (ou importe) linhas em `business_calendar_dates` com `calendar_code = 'B3'`,
-`is_business_day = false` e uma `description` (ex.: *"Independência"*). Como o backfill é insert-only, essas
-linhas sobrepõem a derivação dia-de-semana. Recomendado lançar os feriados **antes** de gerar curvas longas
-para máxima precisão na contagem de dias úteis (base 252).
+A forma recomendada é a **importação de feriados nacionais da ANBIMA** (ver a seção
+*"Importação de feriados nacionais ANBIMA"* abaixo), que persiste os feriados e os aplica ao calendário
+automaticamente. Alternativamente, ainda é possível inserir linhas manualmente em `business_calendar_dates`
+com `calendar_code = 'B3'`, `is_business_day = false` e uma `description` (ex.: *"Independência"*). Como o
+backfill é insert-only, essas linhas sobrepõem a derivação dia-de-semana. Recomendado lançar os feriados
+**antes** de gerar curvas longas para máxima precisão na contagem de dias úteis (base 252).
 
 ### Erro *"calendário B3 não cobre todo o período"*
 
@@ -313,6 +315,106 @@ própria geração completa o B3 automaticamente. Configuração em `config/pu_c
 Os arquivos compartilhados de permissão (`app/Enums/AccessPermission.php`,
 `database/seeders/RolesAndPermissionsSeeder.php`) ganharam o hunk PU **`PuCalendarManage` /
 `pu.calendar.manage`**; use **`git add -p`** e stage **apenas** esse hunk. **Nunca** `git add -A`/`git add .`.
+
+---
+
+## Importação de feriados nacionais ANBIMA (2026-06-30)
+
+Para elevar a precisão do calendário B3 (base 252) além do *weekend-only*, os **feriados nacionais
+publicados pela ANBIMA** podem ser importados e aplicados ao calendário de dias úteis. A fonte oficial é o
+arquivo `.xls`:
+
+```
+https://www.anbima.com.br/feriados/arqs/feriados_nacionais.xls
+```
+
+> Esse arquivo é um Excel binário legado (BIFF8), por isso a leitura usa **PhpOffice/PhpSpreadsheet**
+> (dependência adicionada nesta fase). A engine de cálculo **nunca** baixa o arquivo em tempo de cálculo —
+> o download/leitura só ocorre no fluxo de importação.
+
+### Modelo de dados
+
+- Os feriados são persistidos em **`business_holidays`** (fonte/auditoria), com unicidade por
+  `calendar_code + holiday_date + source` (idempotente).
+- Fora do *dry-run*, cada feriado é **aplicado ao calendário** (`business_calendar_dates`,
+  `is_business_day = false`, `description = nome do feriado`), que é a estrutura consultada pela engine via
+  `BusinessCalendarService`. Reimportar não duplica nem altera dados existentes (a menos de `--force`).
+
+### Como importar pelo command
+
+```bash
+# URL padrão da ANBIMA (default quando --url/--file não são informados)
+php artisan pu:holidays:import-anbima --calendar=B3
+
+# URL explícita
+php artisan pu:holidays:import-anbima --url=https://www.anbima.com.br/feriados/arqs/feriados_nacionais.xls --calendar=B3
+
+# Upload manual (fallback quando a URL está indisponível) — aceita .xls ou .xlsx
+php artisan pu:holidays:import-anbima --file=storage/app/imports/feriados_nacionais.xls --calendar=B3
+
+# Simulação (não persiste nem aplica ao calendário)
+php artisan pu:holidays:import-anbima --dry-run
+
+# Atualizar nomes de feriados já cadastrados
+php artisan pu:holidays:import-anbima --force
+```
+
+O command informa, ao final: **lidos**, **criados**, **atualizados**, **já cadastrados**, **inválidos** e
+**aplicados ao calendário**.
+
+### Como importar pela UI
+
+**Cadastros Base → Feriados (Calendário B3)**:
+- **"Importar feriados ANBIMA"** — baixa por URL (permissão `pu.holiday.import`);
+- **"Importar feriados de arquivo"** — upload manual `.xls`/`.xlsx` (fallback quando a URL falha);
+- **"Completar calendário B3"** — backfill de cobertura (permissão `pu.calendar.manage`);
+- lista com filtros por **ano** e **fonte**, além de **última importação** e total cadastrado.
+
+### Se a URL da ANBIMA falhar
+
+O importador **não quebra a geração da curva**. Em caso de timeout/erro HTTP/arquivo vazio, ele lança uma
+exceção com mensagem clara **orientando o upload manual** (`--file` ou o botão *"Importar feriados de
+arquivo"*). Baixe o `.xls` manualmente e reimporte.
+
+### Weekend-only × calendário com feriados (impacto na base 252)
+
+| Indexador | Consulta o calendário? | Impacto dos feriados ANBIMA |
+|-----------|------------------------|------------------------------|
+| **CDI** | Sim (`BusinessCalendarService`, incl. *lag* útil) | Feriados viram não úteis → **melhora a precisão** da defasagem e da contagem 252 em curvas longas |
+| **Prefixado** | Sim (`FixedRateCurveCalculator`) | Idem — feriados deixam de ser contados como úteis |
+| **IPCA** | **Não** — `IpcaCurveCalculator` apura DUP/DUT **apenas por fim de semana** (`isWeekend`) | **Nenhum**: a curva IPCA é idêntica com ou sem feriados (ver revalidação abaixo) |
+
+Enquanto **nenhum** feriado é importado para o período de uma curva CDI/Prefixado, a verificação de
+pré-requisitos emite um **aviso não bloqueante** (`business_calendar_holidays`): *"O calendário B3 está
+apenas com fins de semana… clique em Importar feriados ANBIMA…"*. O aviso some assim que há feriados no
+período. (O IPCA não recebe esse aviso, pois sua engine ignora o calendário.)
+
+### Como revalidar uma curva após importar feriados
+
+1. Importe os feriados (command ou UI) cobrindo a janela da curva.
+2. Reprocesse/gere a curva (CDI/Prefixado). As datas marcadas como feriado deixam de contar como úteis.
+3. Para IPCA, **não há mudança**: a engine é weekend-only por design.
+
+**Revalidação do gabarito IPCA (CRI RIO BRANCO):** após a infraestrutura de feriados, o teste de
+homologação `IpcaHomologationCurveTest` permanece **idêntico** (0 divergências de DUP/DUT, número-índice,
+fatores, pagamentos, PU e valor total). Isso é esperado e correto: `IpcaCurveCalculator` calcula dias úteis
+**apenas por fim de semana** e nunca lê `business_calendar_dates`/`business_holidays`. Conforme orientação,
+**a fórmula financeira do IPCA não foi alterada** apenas por causa dos feriados — só o calendário (consumido
+por CDI/Prefixado) passou a respeitá-los. Ajustar a engine IPCA para base-252-com-feriados exigiria evidência
+de gabarito e fica **fora do escopo desta fase**.
+
+### Fora de escopo (mantido)
+
+- Integração automática completa ANBIMA/B3 (agenda/scraping contínuo).
+- Curva projetada ANBIMA/B3 automática.
+- Mudança da fórmula financeira CDI/IPCA/Prefixado sem evidência.
+
+### Isolamento (atenção)
+
+Esta fase adiciona o hunk PU **`PuHolidayImport` / `pu.holiday.import`** aos arquivos compartilhados
+`app/Enums/AccessPermission.php` e `database/seeders/RolesAndPermissionsSeeder.php`. Use **`git add -p`** e
+stage **apenas** os hunks de PU/calendário (`pu.calendar.manage`, `pu.holiday.import` e labels relacionados).
+**Nunca** use `git add -A` nem `git add .`. Nenhum commit deve ser feito sem aprovação.
 
 ---
 
@@ -332,6 +434,8 @@ As ações críticas são controladas por permissões granulares (grupo **"Curva
 | `pu.curve.invalidate` | Invalidar curva |
 | `pu.index.import` | Importar/cadastrar índices (CDI/IPCA, publicado/projetado) |
 | `pu.projection.approve` | Aprovar/rejeitar/obsoletar série projetada IPCA (checker) |
+| `pu.calendar.manage` | Completar (backfill) o calendário de dias úteis B3 |
+| `pu.holiday.import` | Importar feriados nacionais ANBIMA (URL/arquivo) |
 
 **Distribuição padrão por perfil** (seeder `RolesAndPermissionsSeeder`):
 - **super-admin / admin**: todas.

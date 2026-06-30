@@ -10,6 +10,7 @@ use App\Models\Emission;
 use App\Models\EmissionMonthlyReportNote;
 use App\Models\EmissionPuEvent;
 use App\Models\Expense;
+use App\Models\ExpenseHistory;
 use App\Models\Negotiation;
 use App\Models\Payment;
 use App\Models\Receivable;
@@ -17,6 +18,7 @@ use App\Models\SalesBoard;
 use App\Services\ConstructionProgressProvider;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -74,6 +76,7 @@ class EmissionMonthlyReportService
             'debt_balance' => $this->buildDebtBalance($emission, $monthEnd),
             'accounts' => $this->buildAccounts($emission),
             'expenses' => $this->buildExpenses($emission, $monthStart, $monthEnd),
+            'expenses_history' => $this->buildExpensesHistory($emission, $monthEnd),
             'delinquency' => $this->buildDelinquency($receivable),
             'receivables' => $this->buildReceivablesSummary($receivable),
             'units' => $this->buildUnits($salesBoard),
@@ -94,6 +97,73 @@ class EmissionMonthlyReportService
             'relatorio-mensal-emissao-%d-%s.pdf',
             $emission->id,
             CarbonImmutable::parse($referenceMonth->toDateString())->format('Y-m'),
+        );
+    }
+
+    /**
+     * Monta o relatório consolidado de múltiplas competências de uma emissão,
+     * reaproveitando o montador mensal por competência. Cada mês respeita seus
+     * próprios dados; meses sem dados exibem os fallbacks normais sem quebrar o PDF.
+     * O número de competências é limitado para evitar consultas/PDF excessivos.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildConsolidated(
+        Emission $emission,
+        CarbonInterface $startMonth,
+        CarbonInterface $endMonth,
+        int $maxMonths = 12,
+    ): array {
+        $start = CarbonImmutable::parse($startMonth->toDateString())->startOfMonth();
+        $end = CarbonImmutable::parse($endMonth->toDateString())->startOfMonth();
+
+        if ($end->lt($start)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $months = [];
+        $cursor = $start;
+        $last = $start;
+
+        while ($cursor->lte($end) && count($months) < $maxMonths) {
+            $months[] = [
+                'label' => $this->monthLabel($cursor),
+                'data' => $this->build($emission, $cursor),
+            ];
+            $last = $cursor;
+            $cursor = $cursor->addMonthNoOverflow();
+        }
+
+        $header = $months[0]['data']['header'] ?? [];
+
+        return [
+            'meta' => [
+                'period_label' => $this->monthLabel($start).' a '.$this->monthLabel($last),
+                'generated_at' => CarbonImmutable::now()->format('d/m/Y H:i'),
+            ],
+            'emission' => [
+                'name' => $header['name'] ?? self::NOT_INFORMED,
+                'identifier' => $header['identifier'] ?? self::NOT_INFORMED,
+                'offer' => $header['offer'] ?? self::NOT_INFORMED,
+            ],
+            'months' => $months,
+        ];
+    }
+
+    public function consolidatedFileName(Emission $emission, CarbonInterface $startMonth, CarbonInterface $endMonth): string
+    {
+        $start = CarbonImmutable::parse($startMonth->toDateString());
+        $end = CarbonImmutable::parse($endMonth->toDateString());
+
+        if ($end->lt($start)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        return sprintf(
+            'relatorio-mensal-emissao-%d-%s-a-%s.pdf',
+            $emission->id,
+            $start->format('Y-m'),
+            $end->format('Y-m'),
         );
     }
 
@@ -589,23 +659,126 @@ class EmissionMonthlyReportService
             ->slice(-$limit)
             ->values();
 
-        $rows = $months->map(function (string $ym) use ($boards): array {
+        $rows = [];
+        $previousTotal = null;
+
+        foreach ($months as $ym) {
             $monthBoards = $boards->filter(fn (SalesBoard $board): bool => $board->reference_month?->format('Y-m') === $ym);
 
-            return [
+            $stock = (int) $monthBoards->sum('stock_units');
+            $financed = (int) $monthBoards->sum('financed_units');
+            $paid = (int) $monthBoards->sum('paid_units');
+            $exchanged = (int) $monthBoards->sum('exchanged_units');
+            $total = (int) $monthBoards->sum('total_units');
+            $base = $stock + $financed + $paid + $exchanged;
+
+            $composition = $base > 0 ? [
+                ['class' => 'seg-1', 'percent' => round($paid / $base * 100, 2)],
+                ['class' => 'seg-2', 'percent' => round($financed / $base * 100, 2)],
+                ['class' => 'seg-3', 'percent' => round($exchanged / $base * 100, 2)],
+                ['class' => 'seg-4', 'percent' => round($stock / $base * 100, 2)],
+            ] : [];
+
+            $rows[] = [
                 'competencia' => CarbonImmutable::parse($ym.'-01')->format('m/Y'),
-                'stock' => $this->integer((int) $monthBoards->sum('stock_units')),
-                'financed' => $this->integer((int) $monthBoards->sum('financed_units')),
-                'paid' => $this->integer((int) $monthBoards->sum('paid_units')),
-                'exchanged' => $this->integer((int) $monthBoards->sum('exchanged_units')),
-                'total' => $this->integer((int) $monthBoards->sum('total_units')),
+                'stock' => $this->integer($stock),
+                'financed' => $this->integer($financed),
+                'paid' => $this->integer($paid),
+                'exchanged' => $this->integer($exchanged),
+                'total' => $this->integer($total),
+                'variation' => $this->countVariationLabel($previousTotal, $total),
+                'composition' => $composition,
             ];
-        })->all();
+
+            $previousTotal = $total;
+        }
 
         return [
             'has_data' => count($rows) >= 2,
             'rows' => $rows,
         ];
+    }
+
+    /**
+     * Histórico de despesas por competência, a partir dos lançamentos de ExpenseHistory
+     * (valor por data de vencimento). Cada linha é uma competência com lançamentos
+     * efetivos — nada é inferido. Exibido apenas quando há ao menos duas competências.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildExpensesHistory(Emission $emission, CarbonImmutable $monthEnd, int $limit = 6): array
+    {
+        $histories = ExpenseHistory::query()
+            ->whereHas('expense', fn (Builder $query): Builder => $query->where('emission_id', $emission->id))
+            ->whereNotNull('due_date')
+            ->where('due_date', '<=', $monthEnd->toDateString())
+            ->get();
+
+        $months = $histories
+            ->map(fn (ExpenseHistory $history): ?string => $history->due_date?->format('Y-m'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->slice(-$limit)
+            ->values();
+
+        $totals = [];
+        foreach ($months as $ym) {
+            $totals[$ym] = (float) $histories
+                ->filter(fn (ExpenseHistory $history): bool => $history->due_date?->format('Y-m') === $ym)
+                ->sum('amount');
+        }
+
+        $max = $totals === [] ? 0.0 : max($totals);
+        $previous = null;
+        $rows = [];
+
+        foreach ($totals as $ym => $total) {
+            $rows[] = [
+                'competencia' => CarbonImmutable::parse($ym.'-01')->format('m/Y'),
+                'total' => $this->money($total),
+                'variation' => $this->moneyVariationLabel($previous, $total),
+                'bar_percent' => $max > 0 ? round($total / $max * 100, 2) : 0.0,
+            ];
+
+            $previous = $total;
+        }
+
+        return [
+            'has_data' => count($rows) >= 2,
+            'rows' => $rows,
+        ];
+    }
+
+    private function countVariationLabel(?int $previous, int $current): string
+    {
+        if ($previous === null) {
+            return '—';
+        }
+
+        $delta = $current - $previous;
+
+        if ($delta > 0) {
+            return '+'.number_format($delta, 0, ',', '.');
+        }
+
+        return number_format($delta, 0, ',', '.');
+    }
+
+    private function moneyVariationLabel(?float $previous, float $current): string
+    {
+        if ($previous === null) {
+            return '—';
+        }
+
+        $delta = $current - $previous;
+
+        if (abs($delta) < 0.005) {
+            return $this->money(0.0);
+        }
+
+        return ($delta > 0 ? '+' : '-').$this->money(abs($delta));
     }
 
     /**

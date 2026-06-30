@@ -14,6 +14,8 @@ class Reports extends Page
 
     public string $referenceMonth = '';
 
+    public string $referenceMonthEnd = '';
+
     protected string $view = 'filament.pages.reports';
 
     protected static string|UnitEnum|null $navigationGroup = 'Administração';
@@ -59,9 +61,15 @@ class Reports extends Page
             return null;
         }
 
-        return route('admin.emissions.monthly-report.pdf', [
+        $parameters = [
             'emission' => $this->emissionId,
             'reference_month' => $this->referenceMonth,
-        ]);
+        ];
+
+        if ($this->referenceMonthEnd !== '' && $this->referenceMonthEnd !== $this->referenceMonth) {
+            $parameters['reference_month_end'] = $this->referenceMonthEnd;
+        }
+
+        return route('admin.emissions.monthly-report.pdf', $parameters);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Models\BusinessCalendarDate;
+use App\Models\BusinessHoliday;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 
@@ -69,13 +70,16 @@ class BusinessCalendarCoverageService
     }
 
     /**
-     * Resumo de cobertura do calendario no periodo.
+     * Resumo de cobertura do calendario no periodo, diferenciando dia util, fim de semana e feriado
+     * importado. `weekend_only` indica que o periodo nao tem nenhum feriado cadastrado (calendario
+     * derivado apenas de fins de semana — menos preciso na base 252 para curvas longas de CDI/Prefixado).
      *
-     * @return array{calendar_code:string, from:string, to:string, total_days:int, covered_days:int, missing_count:int, first_missing:?string, auto_completable:bool}
+     * @return array{calendar_code:string, from:string, to:string, total_days:int, covered_days:int, missing_count:int, first_missing:?string, auto_completable:bool, holiday_count:int, weekend_only:bool}
      */
     public function summary(string $calendarCode, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $missing = $this->missingDates($calendarCode, $from, $to);
+        $holidays = $this->holidayDates($calendarCode, $from, $to);
         $totalDays = $to->lt($from) ? 0 : ($from->diffInDays($to) + 1);
 
         return [
@@ -87,17 +91,50 @@ class BusinessCalendarCoverageService
             'missing_count' => count($missing),
             'first_missing' => $missing[0] ?? null,
             'auto_completable' => $this->willAutoComplete($calendarCode),
+            'holiday_count' => count($holidays),
+            'weekend_only' => $holidays === [],
         ];
+    }
+
+    /**
+     * Indica se o periodo nao tem nenhum feriado cadastrado para o calendario (derivacao weekend-only).
+     */
+    public function isWeekendOnly(string $calendarCode, CarbonImmutable $from, CarbonImmutable $to): bool
+    {
+        return $this->holidayDates($calendarCode, $from, $to) === [];
+    }
+
+    /**
+     * Feriados cadastrados (qualquer fonte) para o calendario no periodo.
+     *
+     * @return array<string, ?string> indexado por `YYYY-MM-DD` => nome do feriado
+     */
+    public function holidayDates(string $calendarCode, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        if ($calendarCode === '' || $to->lt($from)) {
+            return [];
+        }
+
+        return BusinessHoliday::query()
+            ->where('calendar_code', $calendarCode)
+            ->whereDate('holiday_date', '>=', $from->toDateString())
+            ->whereDate('holiday_date', '<=', $to->toDateString())
+            ->get(['holiday_date', 'name'])
+            ->mapWithKeys(fn (BusinessHoliday $holiday): array => [
+                CarbonImmutable::instance($holiday->holiday_date)->toDateString() => $holiday->name,
+            ])
+            ->all();
     }
 
     /**
      * Preenche (idempotente) as datas faltantes do periodo. Nunca sobrescreve linhas existentes.
      *
-     * @return array{calendar_code:string, from:string, to:string, created:int, would_create:int, business_days:int, non_business_days:int, total_days:int, dry_run:bool}
+     * @return array{calendar_code:string, from:string, to:string, created:int, would_create:int, business_days:int, non_business_days:int, total_days:int, dry_run:bool, holiday_count:int, weekend_only:bool}
      */
     public function backfill(string $calendarCode, CarbonImmutable $from, CarbonImmutable $to, bool $dryRun = false): array
     {
         $missing = $this->missingDates($calendarCode, $from, $to);
+        $holidays = $this->holidayDates($calendarCode, $from, $to);
 
         $rows = [];
         $businessDays = 0;
@@ -105,14 +142,15 @@ class BusinessCalendarCoverageService
         $timestamp = Date::now();
 
         foreach ($missing as $dateString) {
-            $isBusinessDay = ! CarbonImmutable::parse($dateString)->isWeekend();
+            $isHoliday = array_key_exists($dateString, $holidays);
+            $isBusinessDay = ! $isHoliday && ! CarbonImmutable::parse($dateString)->isWeekend();
             $isBusinessDay ? $businessDays++ : $nonBusinessDays++;
 
             $rows[] = [
                 'calendar_code' => $calendarCode,
                 'calendar_date' => $dateString,
                 'is_business_day' => $isBusinessDay,
-                'description' => null,
+                'description' => $isHoliday ? $holidays[$dateString] : null,
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ];
@@ -138,6 +176,8 @@ class BusinessCalendarCoverageService
             'non_business_days' => $nonBusinessDays,
             'total_days' => $to->lt($from) ? 0 : ($from->diffInDays($to) + 1),
             'dry_run' => $dryRun,
+            'holiday_count' => count($holidays),
+            'weekend_only' => $holidays === [],
         ];
     }
 

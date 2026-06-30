@@ -4,6 +4,7 @@ use App\Domain\PuCalculator\Services\BusinessCalendarCoverageService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuIndexCoverageService;
 use App\Models\BusinessCalendarDate;
+use App\Models\BusinessHoliday;
 use App\Models\Emission;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
@@ -159,4 +160,64 @@ it('treats an auto completable calendar as covered in the index coverage report'
     $report = app(PuIndexCoverageService::class)->report($emission->fresh());
 
     expect($report->missingCalendarDates)->toBe([]);
+});
+
+it('backfills imported holidays as non business days while keeping weekdays and weekends correct', function () {
+    BusinessHoliday::query()->create([
+        'calendar_code' => 'B3',
+        'holiday_date' => '2025-12-25', // quinta-feira (feriado)
+        'name' => 'Natal',
+        'source' => 'anbima',
+    ]);
+
+    $summary = coverageService()->backfill('B3', CarbonImmutable::parse('2025-12-22'), CarbonImmutable::parse('2025-12-28'));
+
+    expect($summary['holiday_count'])->toBe(1)
+        ->and($summary['weekend_only'])->toBeFalse();
+
+    $holiday = BusinessCalendarDate::query()->whereDate('calendar_date', '2025-12-25')->firstOrFail();
+    $weekday = BusinessCalendarDate::query()->whereDate('calendar_date', '2025-12-24')->firstOrFail();
+    $weekend = BusinessCalendarDate::query()->whereDate('calendar_date', '2025-12-27')->firstOrFail();
+
+    expect($holiday->is_business_day)->toBeFalse()
+        ->and($holiday->description)->toBe('Natal')
+        ->and($weekday->is_business_day)->toBeTrue()
+        ->and($weekend->is_business_day)->toBeFalse();
+});
+
+it('reports the calendar as weekend-only until holidays are imported', function () {
+    $from = CarbonImmutable::parse('2025-01-01');
+    $to = CarbonImmutable::parse('2025-12-31');
+
+    expect(coverageService()->isWeekendOnly('B3', $from, $to))->toBeTrue();
+
+    BusinessHoliday::query()->create([
+        'calendar_code' => 'B3',
+        'holiday_date' => '2025-01-01',
+        'name' => 'Confraternização Universal',
+        'source' => 'anbima',
+    ]);
+
+    expect(coverageService()->isWeekendOnly('B3', $from, $to))->toBeFalse();
+});
+
+it('warns the CDI curve when the calendar is weekend-only and silences once holidays exist', function () {
+    $emission = makeCdiEmissionForCoverage('2025-01-02', '2025-01-10');
+    seedCdiRatesForCoverage('2025-01-01', '2025-01-10');
+
+    $warningKeys = fn (Emission $e): array => array_map(
+        fn ($issue): string => $issue->key,
+        app(PuCurvePrerequisiteService::class)->handle($e->fresh())->warningIssues(),
+    );
+
+    expect($warningKeys($emission))->toContain('business_calendar_holidays');
+
+    BusinessHoliday::query()->create([
+        'calendar_code' => 'B3',
+        'holiday_date' => '2025-01-06',
+        'name' => 'Feriado de teste',
+        'source' => 'anbima',
+    ]);
+
+    expect($warningKeys($emission))->not->toContain('business_calendar_holidays');
 });

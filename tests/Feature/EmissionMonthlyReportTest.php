@@ -8,6 +8,7 @@ use App\Models\Emission;
 use App\Models\EmissionMonthlyReportNote;
 use App\Models\EmissionPuEvent;
 use App\Models\Expense;
+use App\Models\ExpenseHistory;
 use App\Models\Fund;
 use App\Models\Negotiation;
 use App\Models\Receivable;
@@ -547,6 +548,135 @@ it('adds proportional bars to the delinquency bands', function () {
 
     expect($html)->toContain('Distribuição')
         ->and($html)->toContain('mini-fill');
+});
+
+it('adds composition and variation to the units history', function () {
+    $emission = Emission::factory()->create();
+
+    foreach ([['2026-04-01', 10, 5, 3, 1], ['2026-05-01', 6, 7, 5, 1]] as [$month, $stock, $financed, $paid, $exchanged]) {
+        SalesBoard::factory()->for($emission)->create([
+            'reference_month' => $month,
+            'stock_units' => $stock,
+            'financed_units' => $financed,
+            'paid_units' => $paid,
+            'exchanged_units' => $exchanged,
+        ]);
+    }
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    $rows = $data['units_history']['rows'];
+
+    expect($rows[0]['variation'])->toBe('—')
+        ->and($rows[1]['variation'])->toBe('0')
+        ->and($rows[0]['composition'])->not->toBe([])
+        ->and($rows[1]['composition'][0]['class'])->toBe('seg-1');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Composição');
+});
+
+it('builds an expenses history series from expense occurrences', function () {
+    $emission = Emission::factory()->create();
+    $expense = Expense::factory()->for($emission)->create();
+
+    foreach (['2026-03-15' => 1000, '2026-04-15' => 1500, '2026-05-15' => 1200] as $due => $amount) {
+        ExpenseHistory::create([
+            'expense_id' => $expense->id,
+            'amount' => $amount,
+            'due_date' => $due,
+        ]);
+    }
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['expenses_history']['has_data'])->toBeTrue()
+        ->and($data['expenses_history']['rows'])->toHaveCount(3)
+        ->and($data['expenses_history']['rows'][0]['competencia'])->toBe('03/2026')
+        ->and($data['expenses_history']['rows'][1]['total'])->toBe('R$ 1.500,00')
+        ->and($data['expenses_history']['rows'][1]['variation'])->toBe('+R$ 500,00');
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toContain('Histórico de Despesas');
+});
+
+it('omits the expenses history when there is a single competence', function () {
+    $emission = Emission::factory()->create();
+    $expense = Expense::factory()->for($emission)->create();
+    ExpenseHistory::create(['expense_id' => $expense->id, 'amount' => 1000, 'due_date' => '2026-05-15']);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['expenses_history']['has_data'])->toBeFalse();
+
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->not->toContain('Histórico de Despesas');
+});
+
+it('builds a consolidated multi-month report', function () {
+    $emission = Emission::factory()->create();
+
+    Receivable::factory()->for($emission)->create([
+        'reference_month' => '2026-04-01',
+        'expected_interest_amount' => 1000,
+        'received_installment_interest_amount' => 800,
+    ]);
+    Receivable::factory()->for($emission)->create([
+        'reference_month' => '2026-05-01',
+        'expected_interest_amount' => 1000,
+        'received_installment_interest_amount' => 900,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)->buildConsolidated(
+        $emission,
+        CarbonImmutable::parse('2026-04-01'),
+        CarbonImmutable::parse('2026-05-01'),
+    );
+
+    expect($data['months'])->toHaveCount(2)
+        ->and($data['months'][0]['label'])->toBe('Abril de 2026')
+        ->and($data['meta']['period_label'])->toBe('Abril de 2026 a Maio de 2026');
+
+    $html = view('pdf.emission-monthly-report-consolidated', $data)->render();
+
+    expect($html)->toContain('Relatório Mensal Consolidado')
+        ->and($html)->toContain('Competência: Abril de 2026')
+        ->and($html)->toContain('Competência: Maio de 2026');
+});
+
+it('generates the consolidated PDF via the route even without data', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create();
+
+    $response = $this->get(route('admin.emissions.monthly-report.pdf', [
+        'emission' => $emission->id,
+        'reference_month' => '2026-04',
+        'reference_month_end' => '2026-06',
+    ]));
+
+    $response->assertOk();
+    expect($response->headers->get('content-type'))->toContain('application/pdf');
+});
+
+it('falls back to the single-month report when no end month is provided', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create();
+
+    $response = $this->get(route('admin.emissions.monthly-report.pdf', [
+        'emission' => $emission->id,
+        'reference_month' => '2026-05',
+    ]));
+
+    $response->assertOk();
+    expect($response->headers->get('content-type'))->toContain('application/pdf');
 });
 
 it('renders the reports page with the generation form', function () {
