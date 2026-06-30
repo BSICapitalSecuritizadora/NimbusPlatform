@@ -22,7 +22,7 @@ class MyPendingsWidget extends Widget
         $proposals = collect();
         if ($user->can('proposals.view')) {
             $proposals = Proposal::query()
-                ->where('representative_id', clone $user->representative?->id ?? -1)
+                ->where('assigned_representative_id', $user->proposalRepresentative?->id ?? -1)
                 ->whereNotIn('status', ['rejeitado', 'concluida'])
                 ->latest()
                 ->limit(5)

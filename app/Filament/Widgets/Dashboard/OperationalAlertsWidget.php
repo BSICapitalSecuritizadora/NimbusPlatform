@@ -49,7 +49,7 @@ class OperationalAlertsWidget extends Widget
 
         // Propostas sem Responsável
         if (auth()->user()->can('proposals.view')) {
-            $unassignedProposals = Proposal::query()->whereNull('representative_id')->whereNotIn('status', ['rejeitado', 'concluida'])->count();
+            $unassignedProposals = Proposal::query()->whereNull('assigned_representative_id')->whereNotIn('status', ['rejeitado', 'concluida'])->count();
             if ($unassignedProposals > 0) {
                 $alerts->push([
                     'title' => "{$unassignedProposals} Propostas sem Responsável",
