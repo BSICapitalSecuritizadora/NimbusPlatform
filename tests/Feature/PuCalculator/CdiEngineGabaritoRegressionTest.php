@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\Pu\PuValidationTolerance;
 
 uses(RefreshDatabase::class);
 
@@ -56,10 +57,10 @@ it('reproduces the CDI gabarito PU within 6 decimals across the whole curve', fu
 
     expect($report->totalRowsCompared)->toBe($expectedRows)
         // PU atualizado: exato em 6 casas em TODAS as linhas (sem drift).
-        ->and(bccomp($report->largestPuDifference, '0.000001', 6))->toBeLessThanOrEqual(0)
+        ->and(bccomp($report->largestPuDifference, PuValidationTolerance::PU_DISPLAY, PuValidationTolerance::DISPLAY_SCALE))->toBeLessThanOrEqual(0)
         // Valor total na carteira: divergência sub-centavo (apenas precisão de exibição do PU).
-        ->and(bccomp($report->largestTotalValueDifference, '0.010000', 6))->toBeLessThanOrEqual(0)
-        ->and(bccomp($report->largestPaymentDifference, '0.010000', 6))->toBeLessThanOrEqual(0);
+        ->and(bccomp($report->largestTotalValueDifference, PuValidationTolerance::TOTAL_VALUE, PuValidationTolerance::DISPLAY_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($report->largestPaymentDifference, PuValidationTolerance::TOTAL_VALUE, PuValidationTolerance::DISPLAY_SCALE))->toBeLessThanOrEqual(0);
 })->with('cdi_gabaritos');
 
 it('keeps the raw-scale CDI divergence bounded to per-column rounding noise (~1e-7)', function (string $keyword, int $expectedRows) {
@@ -68,8 +69,8 @@ it('keeps the raw-scale CDI divergence bounded to per-column rounding noise (~1e
     $report = app(PuValidationService::class)->handle($emission, $path, $version, PuValidationMode::RawScale);
 
     // Mesmo em escala 16, a maior diferença por unidade de PU fica em ruído de arredondamento.
-    expect(bccomp($report->largestPuDifference, '0.000001', 16))->toBeLessThanOrEqual(0)
-        ->and(bccomp($report->largestTotalValueDifference, '0.010000', 16))->toBeLessThanOrEqual(0);
+    expect(bccomp($report->largestPuDifference, PuValidationTolerance::RAW_UNIT, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($report->largestTotalValueDifference, PuValidationTolerance::TOTAL_VALUE, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0);
 })->with('cdi_gabaritos');
 
 it('produces a different curve when the spread parameter changes (values are not fixed)', function () {

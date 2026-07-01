@@ -956,3 +956,48 @@ Há trabalho concorrente no repositório em **site** e **Obrigações**. As muda
 > `tests/Feature/PuCalculator/IpcaHomologationCurveTest.php`,
 > `tests/Unit/PuCalculator/IpcaIndexResolverTest.php` e `docs/pu-calculator-operacional.md`.
 > **Nunca** `git add -A`/`git add .`.
+
+---
+
+## Tolerâncias de validação e divergência raw-scale (2026-06-30)
+
+A engine Nimbus bate **materialmente** os gabaritos (AMANI/TROUPE em CDI; RIO BRANCO em IPCA). As
+tolerâncias usadas nos testes de validação estão **centralizadas** em
+`tests/Support/Pu/PuValidationTolerance.php` (sem números mágicos espalhados):
+
+| Constante | Valor | Significado |
+|-----------|-------|-------------|
+| `PU_DISPLAY` | `0.000001` | PU atualizado/residual **exato em 6 casas** (display-scale), em todas as linhas, sem drift |
+| `TOTAL_VALUE` | `0.010000` | Valor total da carteira (PU × quantidade): divergência **sub-centavo** |
+| `RAW_UNIT` | `0.000001` | Diferença por unidade em raw-scale (16 casas): ruído de arredondamento por coluna |
+| `FACTOR` | `0.000000001` | Fatores DI/spread/acumulado em raw-scale: muito abaixo de 1e-9 |
+
+### Divergência raw-scale é esperada e NÃO é erro de fórmula
+
+Em raw-scale (16 casas) restam diferenças da ordem de **~1e-7 por unidade**. A causa é a política de
+arredondamento **por coluna** da engine externa (Fator Spread arredondado em 9 casas, Fator do
+Indicador em 8 etc. — a "Aba Precisão" da engine de origem). O **próprio gabarito é internamente
+inconsistente** nessa ordem de grandeza:
+
+> **Exemplo (AMANI, 2026-03-02):** a coluna *Juros Real* exibe `0.80137900`, mas o *Fator Spread×DI*
+> da mesma linha (`1.0008013787894596`) implica `1000 × (fator − 1) = 0.8013787894596`. As duas
+> colunas do gabarito **não fecham entre si** (~2e-7). A engine Nimbus é internamente consistente
+> (`juros = base × (fator − 1)` exato), então não há como casar simultaneamente as duas colunas.
+
+Por isso **bit-exatidão raw-scale NÃO é requisito atual** — é opcional. Se o negócio exigir bater
+coluna-a-coluna com a engine externa, o caminho correto é criar uma **`PrecisionPolicy` isolada por
+indexador** (truncar/arredondar por campo, na ordem da engine de origem), **sem** alterar o
+`DecimalRounder` global nem a engine homologada de IPCA/CDI, guiada pelos testes de regressão.
+
+### Onde cada coisa é validada (não confundir mirror com engine)
+
+- **`CdiEngineGabaritoRegressionTest`** — roda a engine REAL (`PuCurveGenerationService` via
+  `GeneratePuDailyCurve`) para AMANI/TROUPE e assere os **valores gerados** contra o gabarito dentro
+  das tolerâncias acima; inclui um caso provando que **mudar o spread altera o PU** materialmente.
+- **`PuOperationalReadinessTest`** (cenário AMANI/TROUPE) — roda a engine e agora assere **maior
+  divergência de PU/PU residual/juros/amortização/valor total** (display e raw), além da contagem de
+  linhas. Falha se os valores divergirem acima da tolerância.
+- **`IpcaHomologationCurveTest`** — validação real da engine IPCA contra RIO BRANCO na janela publicada.
+- **`PuValidationTest`** — **NÃO testa a engine**: faz round-trip do `PuValidationService` com linhas já
+  persistidas (gabarito × gabarito) para exercitar leitura, modos display/raw, detecção de divergência
+  e seleção de versão. Os nomes dos testes deixam isso explícito.

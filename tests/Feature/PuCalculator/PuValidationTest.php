@@ -11,7 +11,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('approves the mirrored AMANI reference curve in display-scale mode', function () {
+/*
+ * IMPORTANTE: este arquivo NÃO testa a engine de cálculo.
+ *
+ * `persistReferenceRows()` grava na tabela da curva os VALORES do próprio gabarito e, em seguida,
+ * o PuValidationService compara esses valores persistidos contra o mesmo gabarito (round-trip
+ * gabarito × gabarito). O objetivo aqui é exercitar o COMPORTAMENTO do PuValidationService
+ * (leitura, modos display/raw, detecção de divergência, seleção de versão), não a correção da
+ * engine. A validação REAL da engine CDI (rodando PuCurveGenerationService e comparando os valores
+ * gerados contra o gabarito) vive em CdiEngineGabaritoRegressionTest; o IPCA em
+ * IpcaHomologationCurveTest.
+ */
+
+it('validates persisted reference rows against the AMANI workbook (PuValidationService round-trip, not the engine)', function () {
     $keyword = 'AMANI';
     $expectedRowCount = 1810;
     $spreadsheetPath = sampleSpreadsheetPath($keyword);
@@ -42,7 +54,7 @@ it('approves the mirrored AMANI reference curve in display-scale mode', function
         ->and($report->status)->toBe(PuValidationStatus::Approved);
 });
 
-it('reports divergences when the generated curve does not match the TROUPE workbook', function () {
+it('detects divergences in persisted rows against the TROUPE workbook (PuValidationService, not the engine)', function () {
     $spreadsheetPath = sampleSpreadsheetPath('TROUPE');
     $emission = Emission::factory()->create([
         'type' => 'CR',
@@ -132,7 +144,7 @@ function persistReferenceRows(Emission $emission, array $referenceRows, string $
     }
 }
 
-it('validates the latest generated version by default when multiple curve versions exist', function () {
+it('selects the latest persisted version by default when multiple curve versions exist (PuValidationService, not the engine)', function () {
     $spreadsheetPath = sampleSpreadsheetPath('AMANI');
     $emission = Emission::factory()->create([
         'type' => 'CRI',

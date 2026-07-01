@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\Pu\PuValidationTolerance;
 
 uses(RefreshDatabase::class);
 
@@ -174,9 +175,27 @@ it('logs validation runs and supports complete AMANI and TROUPE workflows', func
         PuValidationMode::RawScale,
     );
 
+    // Maior diferença persistida por campo (string), tolerante a campos ausentes (sem divergência).
+    $fieldDiff = fn ($report, string $field): string => $report->largestDifferencesByField[$field]?->absoluteDifference ?? '0';
+
     expect($displayReport->totalRowsCompared)->toBe($expectedRows)
         ->and($rawReport->totalRowsCompared)->toBe($expectedRows)
         ->and($displayReport->calculationVersion)->toBe($generationResult->calculationVersion)
+        // ---- Valores gerados pela ENGINE vs gabarito (não apenas contagem de linhas) ----
+        // Display-scale: PU atualizado/residual exatos em 6 casas; total/pagamento sub-centavo.
+        ->and(bccomp($displayReport->largestPuDifference, PuValidationTolerance::PU_DISPLAY, PuValidationTolerance::DISPLAY_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($fieldDiff($displayReport, 'pu_residual'), PuValidationTolerance::PU_DISPLAY, PuValidationTolerance::DISPLAY_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($displayReport->largestTotalValueDifference, PuValidationTolerance::TOTAL_VALUE, PuValidationTolerance::DISPLAY_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($displayReport->largestPaymentDifference, PuValidationTolerance::TOTAL_VALUE, PuValidationTolerance::DISPLAY_SCALE))->toBeLessThanOrEqual(0)
+        // Raw-scale (16 casas): diferenças por unidade ficam em ruído de arredondamento por coluna.
+        ->and(bccomp($rawReport->largestPuDifference, PuValidationTolerance::RAW_UNIT, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($fieldDiff($rawReport, 'pu_residual'), PuValidationTolerance::RAW_UNIT, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($fieldDiff($rawReport, 'interest_real'), PuValidationTolerance::RAW_UNIT, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($fieldDiff($rawReport, 'amortization'), PuValidationTolerance::RAW_UNIT, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($rawReport->largestTotalValueDifference, PuValidationTolerance::TOTAL_VALUE, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
+        // Fatores (DI/spread/acumulado) batem muito abaixo de 1e-9.
+        ->and(bccomp($fieldDiff($rawReport, 'factor_di_accumulated'), PuValidationTolerance::FACTOR, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
+        ->and(bccomp($fieldDiff($rawReport, 'factor_spread_di'), PuValidationTolerance::FACTOR, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
         ->and(Activity::query()
             ->where('log_name', 'pu-calculation')
             ->where('description', 'pu_curve_validated')

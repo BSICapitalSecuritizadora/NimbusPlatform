@@ -96,6 +96,16 @@ class AppServiceProvider extends ServiceProvider
                 ->withProperties(['guard' => $event->guard, 'ip' => request()->ip()])
                 ->log('logout');
         });
+
+        Event::listen(
+            \Illuminate\Notifications\Events\NotificationSent::class,
+            [\App\Listeners\LogNotificationListener::class, 'handleSent']
+        );
+
+        Event::listen(
+            \Illuminate\Notifications\Events\NotificationFailed::class,
+            [\App\Listeners\LogNotificationListener::class, 'handleFailed']
+        );
     }
 
     /**

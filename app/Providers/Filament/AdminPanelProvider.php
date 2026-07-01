@@ -58,6 +58,8 @@ class AdminPanelProvider extends PanelProvider
                 'primary' => Color::hex('#a06e28'),
                 'warning' => Color::hex('#a06e28'),
             ])
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->navigationGroups([
                 NavigationGroup::make('Operações'),
