@@ -959,41 +959,88 @@ Há trabalho concorrente no repositório em **site** e **Obrigações**. As muda
 
 ---
 
-## Tolerâncias de validação e divergência raw-scale (2026-06-30)
+## Tolerâncias de validação e divergência raw-scale (2026-06-30, revisado em 2026-07-02)
 
-A engine Nimbus bate **materialmente** os gabaritos (AMANI/TROUPE em CDI; RIO BRANCO em IPCA). As
-tolerâncias usadas nos testes de validação estão **centralizadas** em
-`tests/Support/Pu/PuValidationTolerance.php` (sem números mágicos espalhados):
+A engine Nimbus bate os gabaritos (AMANI/TROUPE em CDI; RIO BRANCO em IPCA) **inclusive em
+raw-scale** desde 2026-07-02 (ver seção seguinte). As tolerâncias usadas nos testes de validação
+estão **centralizadas** em `tests/Support/Pu/PuValidationTolerance.php` (sem números mágicos):
 
 | Constante | Valor | Significado |
 |-----------|-------|-------------|
 | `PU_DISPLAY` | `0.000001` | PU atualizado/residual **exato em 6 casas** (display-scale), em todas as linhas, sem drift |
-| `TOTAL_VALUE` | `0.010000` | Valor total da carteira (PU × quantidade): divergência **sub-centavo** |
-| `RAW_UNIT` | `0.000001` | Diferença por unidade em raw-scale (16 casas): ruído de arredondamento por coluna |
+| `TOTAL_VALUE` | `0.001000` | Valor total da carteira (PU × quantidade): pior caso medido `1e-4` (folga ~10×) |
+| `RAW_UNIT` | `0.0000001` | Diferença por unidade em raw-scale (16 casas): pior caso medido `~1e-8` (folga ~10×) |
 | `FACTOR` | `0.000000001` | Fatores DI/spread/acumulado em raw-scale: muito abaixo de 1e-9 |
 
-### Divergência raw-scale é esperada e NÃO é erro de fórmula
+## Divergência raw-scale do CDI: causa identificada e corrigida (2026-07-02)
 
-Em raw-scale (16 casas) restam diferenças da ordem de **~1e-7 por unidade**. A causa é a política de
-arredondamento **por coluna** da engine externa (Fator Spread arredondado em 9 casas, Fator do
-Indicador em 8 etc. — a "Aba Precisão" da engine de origem). O **próprio gabarito é internamente
-inconsistente** nessa ordem de grandeza:
+### Diagnóstico das linhas críticas (AMANI 2026-03-02, TROUPE 2025-06-05)
 
-> **Exemplo (AMANI, 2026-03-02):** a coluna *Juros Real* exibe `0.80137900`, mas o *Fator Spread×DI*
-> da mesma linha (`1.0008013787894596`) implica `1000 × (fator − 1) = 0.8013787894596`. As duas
-> colunas do gabarito **não fecham entre si** (~2e-7). A engine Nimbus é internamente consistente
-> (`juros = base × (fator − 1)` exato), então não há como casar simultaneamente as duas colunas.
+As primeiras linhas raw-divergentes de cada gabarito foram reproduzidas coluna-a-coluna
+(gabarito × engine × hipóteses de arredondamento, tudo em `bcmath`):
 
-Por isso **bit-exatidão raw-scale NÃO é requisito atual** — é opcional. Se o negócio exigir bater
-coluna-a-coluna com a engine externa, o caminho correto é criar uma **`PrecisionPolicy` isolada por
-indexador** (truncar/arredondar por campo, na ordem da engine de origem), **sem** alterar o
-`DecimalRounder` global nem a engine homologada de IPCA/CDI, guiada pelos testes de regressão.
+| Linha | Fator Spread×DI (gabarito) | Juros (gabarito) | `base×(fator−1)` exato | `base×(round9(fator)−1)` |
+|-------|---------------------------|------------------|------------------------|--------------------------|
+| AMANI 2026-03-02 | `1.0008013787894596` | `0.80137900` | `0.8013787894596` | **`0.801379` (exato)** |
+| TROUPE 2025-06-05 | `1.0007927292124057` | `0.79272900` | `0.7927292124057` | **`0.792729` (exato)** |
+
+Ou seja: a engine externa **arredonda o fator Spread×DI em 9 casas ANTES de calcular os juros**
+(hipóteses refutadas: truncar juros em 8 daria `0.80137878`; arredondar fator em 8 daria `0.80138`).
+A divergência de PU de cada linha era **exatamente** `base × (round9(fator) − fator)` (~2e-7).
+
+Correção da nota anterior (2026-06-30): o gabarito **NÃO é internamente inconsistente** — ele fecha
+exatamente sob a política `juros = base × (round9(fator) − 1)` e `PU = base + juros`. A cadeia de
+fatores do gabarito também fecha (`fda(t) = fda(t−1) × fdi(t)`; `fator = fda × fs`, com `fdi`
+arredondado em 8 e `fs` em 9 **apenas** no modo `BusinessDayLagExact` — no `PreviousCalendarDayExact`
+do TROUPE os fatores ficam em precisão íntegra, como a engine já fazia).
+
+### O que foi ajustado (mínimo necessário)
+
+Um único passo em `PuCurveGenerationService::factorSpreadDiForInterest()`: nos modos
+`BusinessDayLagExact` e `PreviousCalendarDayExact` (os dois modos "Exact" que espelham a engine
+externa, ambos validados por gabarito), o fator Spread×DI é arredondado em **9 casas antes do
+cálculo dos juros**. O fator **persistido/exibido** permanece sem esse arredondamento (como nas
+planilhas de origem). Resultado medido na curva inteira:
+
+| Métrica (raw-scale) | Antes | Depois |
+|---------------------|-------|--------|
+| AMANI (1810 linhas): maior diff de PU por unidade | ~4e-7 | ≤1e-8 |
+| AMANI: maior diff de valor total | ~R$ 0,0027 | R$ 0,0001 |
+| TROUPE (696 linhas): maior diff de PU / valor total | ~2e-7 / ~R$ 0,0016 | **0 / 0** |
+| Display-scale (6 casas) | exato | exato (inalterado) |
+
+O ruído residual do AMANI (~1e-8) vem do armazenamento em **double IEEE 754** das células do próprio
+`.xlsx` (o gabarito guarda ~15–17 dígitos significativos); **bit-exatidão absoluta abaixo disso não é
+alcançável nem exigida**.
+
+### Por que NÃO existe uma `PrecisionPolicy` como classe separada
+
+A política de precisão por coluna da engine externa **já estava implementada inline** em
+`PuCurveGenerationService` (fator DI arredondado em 8, fator spread em 9, fator acumulado arredondado
+em 8 antes do uso), **opt-in por modo de lookup** (`BusinessDayLagExact`) — os modos são o mecanismo
+de opt-in. O ajuste de 2026-07-02 seguiu o mesmo idioma (um método privado documentado), sem criar
+infraestrutura nova. Extração para classes `Precision/*` só se justificará se surgir um segundo
+conjunto de políticas conflitante.
+
+**Isolamento garantido:** `PuCurveGenerationService` é usado **apenas pelo CDI**
+(`CdiSpreadCurveCalculator` delega a ele; IPCA usa `IpcaCurveCalculator` e Prefixado usa
+`FixedRateCurveCalculator` — caminhos separados, sem regressão possível por este ajuste). O modo
+default `PreviousAvailableBusinessDay` não recebe o arredondamento (comportamento inalterado,
+provado pelos testes existentes que pinam valores exatos). O `DecimalRounder` global **não foi
+alterado** — mexer nele afetaria todos os indexadores de uma vez e invalidaria as curvas homologadas;
+qualquer mudança de precisão deve continuar entrando por coluna/modo, guiada por gabarito.
+
+**Python não é solução de produção:** a aritmética de produção é `bcmath` (decimal arbitrário) dentro
+do Laravel. O diagnóstico acima foi feito em PHP/`bcmath` puro (teste temporário, removido após a
+análise) — não há dependência nem chamada de Python no cálculo do Nimbus.
 
 ### Onde cada coisa é validada (não confundir mirror com engine)
 
 - **`CdiEngineGabaritoRegressionTest`** — roda a engine REAL (`PuCurveGenerationService` via
   `GeneratePuDailyCurve`) para AMANI/TROUPE e assere os **valores gerados** contra o gabarito dentro
-  das tolerâncias acima; inclui um caso provando que **mudar o spread altera o PU** materialmente.
+  das tolerâncias acima; desde 2026-07-02 também **pina a linha crítica** AMANI 2026-03-02
+  (`juros = 0.801379` exato, fator persistido sem o arredondamento de uso); inclui um caso provando
+  que **mudar o spread altera o PU** materialmente.
 - **`PuOperationalReadinessTest`** (cenário AMANI/TROUPE) — roda a engine e agora assere **maior
   divergência de PU/PU residual/juros/amortização/valor total** (display e raw), além da contagem de
   linhas. Falha se os valores divergirem acima da tolerância.
@@ -1001,3 +1048,73 @@ indexador** (truncar/arredondar por campo, na ordem da engine de origem), **sem*
 - **`PuValidationTest`** — **NÃO testa a engine**: faz round-trip do `PuValidationService` com linhas já
   persistidas (gabarito × gabarito) para exercitar leitura, modos display/raw, detecção de divergência
   e seleção de versão. Os nomes dos testes deixam isso explícito.
+
+## Homologação de emissão CDI real: CONVIVA (2026-07-02)
+
+A recomendação da fase anterior ("na próxima homologação de uma emissão CDI real nos modos Exact,
+comparar o raw contra a planilha da securitizadora") foi executada com a **23ª EMISSÃO - CRI CONVIVA**,
+usando a planilha real da securitizadora (formato `PuDiario`, idêntico aos gabaritos) encontrada em
+`storage/app/private/imports/` (6 uploads com MD5 idêntico) e **versionada** como gabarito interno em
+`docs/samples/pu-validation/23ª EMISSÃO - CRI CONVIVA_20260323_173300.xlsx`.
+
+### Resultado (round9 dos modos Exact CONFIRMADO em emissão real)
+
+- **Cenário inferido pela sync**: `business_day_lag_exact` com offset **-5** (igual AMANI), spread
+  **5,00% a.a.**, base 252, 1079 linhas (2025-12-02 → 2028-11-14), 116 dias de CDI publicado +
+  cauda `forward_projection`, 12 eventos (11 pgtos de juros + 1 amortização), 5 integralizações.
+- **Display-scale**: PU **exato em 6 casas** em todas as 1079 linhas. A planilha CONVIVA exibe PU com
+  **8 casas** e, mesmo nessa escala, a maior diferença é `1e-8`.
+- **Raw-scale**: maior diff de PU por unidade `1e-8`; fatores ≤ `2e-14`; valor total ≤ **R$ 0,00023**
+  (tolerância do teste: R$ 0,001). Sem o round9 os juros divergiriam na 7ª casa e a validação falharia.
+- **Piso de bit-exatidão (mesmo padrão de AMANI):** o resíduo de `1e-8` vem da engine externa calcular
+  em ponto flutuante (IEEE 754) e truncar o juros em 8 casas na célula — ex.: juros Nimbus `0.745048`
+  exato (bcmath) vs `0.74504799` na planilha (= trunc8 do ruído float de `0.745048`). Isso não é
+  reprodutível em aritmética decimal e **não deve** ser perseguido.
+- **Nenhum novo modo/política foi necessário**; a engine não foi alterada nesta fase.
+
+### Como homologar uma emissão CDI real contra planilha da securitizadora (runbook)
+
+1. Obter a planilha `PuDiario` da securitizadora e colocá-la em `docs/samples/pu-validation/`
+   (o `PuValidationSpreadsheetLocatorService` também lê `docs/design/`).
+2. Sincronizar o cenário: `PuReferenceWorkbookScenarioService::sync($emission, $path)` — infere modo
+   de lookup, offset, spread, calendário, índices (com `forward_projection` na cauda), eventos e
+   integralizações a partir da própria planilha. Conferir o summary retornado.
+3. Gerar a curva com a engine real: `GeneratePuDailyCurve` (**cria nova versão**; nunca sobrescreve —
+   e curvas **homologadas não são regeneradas automaticamente**, ver `GenerateRealizedPuCurvesCommand`
+   + `PuCurveVersionService::hasHomologatedVersion`, coberto por teste).
+4. Validar nos dois modos com `PuValidationService` (`DisplayScale` e `RawScale`) e comparar contra as
+   tolerâncias de `PuValidationTolerance` (PU display exato em 6 casas; raw ≤ 1e-7/unidade; total ≤
+   R$ 0,001). Analisar `largestDifferencesByField`/`firstDivergenceDate` para divergências por coluna.
+5. Se aprovado, adicionar a emissão ao dataset `cdi_gabaritos` do `CdiEngineGabaritoRegressionTest`
+   (com o `row_count`) e um caso de inferência no `PuReferenceWorkbookScenarioTest` — vira regressão
+   permanente.
+
+### Quando criar um novo modo/política (e quando não)
+
+Só crie um novo `PuIndexRateLookupMode`/política se uma planilha real divergir **materialmente**
+(acima das tolerâncias) e o diagnóstico por coluna provar uma política de arredondamento/lookup
+diferente — nunca por causa do resíduo `~1e-8` de float/trunc8 da engine externa. O novo modo deve
+ser **opt-in por parâmetro da emissão**, com gabarito versionado e caso no dataset de regressão;
+`DecimalRounder` e os modos existentes (validados por AMANI/TROUPE/CONVIVA) não devem ser tocados.
+Planilhas em formato "Consolidado" multi-emissão (ex.: CHEMIN II) **não** são lidas pelo
+`PuSpreadsheetReferenceReader` atual — precisam da aba `PuDiario` por emissão.
+
+> **Nota de isolamento (2026-07-02):** o WIP concorrente de **ReminderLog** citado como risco
+> (`ReminderLogResource`, `app/Listeners/`, providers, migration `create_reminder_logs_table`) **não
+> estava presente** no working tree desta execução — boot e suíte PU completa rodaram normalmente
+> (194 testes verdes). O working tree continha, além do escopo PU, mudanças concorrentes em
+> `EmissionForm`/`EmissionManagementTest` (opções de atualização monetária/amortização) e
+> `IntegralizationHistoriesRelationManager` (Fundo do Investidor via `ExpenseServiceProvider`) —
+> **nada disso foi tocado**. Havia também um arquivo untracked `NUL` (artefato Windows) que **não
+> deve ser stageado**. Stage seletivo desta fase (PU precision): `git add` apenas de
+> `app/Domain/PuCalculator/Services/PuCurveGenerationService.php`,
+> `tests/Support/Pu/PuValidationTolerance.php`,
+> `tests/Feature/PuCalculator/CdiEngineGabaritoRegressionTest.php` e
+> `docs/pu-calculator-operacional.md`. Para os hunks de PU que convivem com mudanças de terceiros no
+> mesmo arquivo, usar `git add -p`. **Nunca** `git add -A`/`git add .`; **nenhum commit sem aprovação.**
+>
+> **Fase de homologação CONVIVA (2026-07-02):** acrescenta ao stage seletivo
+> `docs/samples/pu-validation/23ª EMISSÃO - CRI CONVIVA_20260323_173300.xlsx` e
+> `tests/Feature/PuCalculator/PuReferenceWorkbookScenarioTest.php`. O working tree desta fase também
+> continha WIP de terceiros em proposals (`CreateProposalForm`, blades, testes), `SetSecurityHeaders`,
+> `DatabaseSeeder` e scripts `fix_*` untracked na raiz — **nada disso foi tocado nem deve ser stageado.**

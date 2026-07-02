@@ -10,6 +10,7 @@ use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
+use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
@@ -60,6 +61,10 @@ class PuCurveGenerationService
             $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $parameter->calendar_code);
             $quantity = $this->quantityForDate($quantityTimeline, $currentDate);
             $rateSnapshot = $this->resolveRateSnapshot($parameter, $currentDate, $isBusinessDay);
+
+            if ($this->reachedRealizedTail($parameter, $currentDate, $startDate, $isBusinessDay, $rateSnapshot)) {
+                break;
+            }
 
             if ($currentDate->equalTo($startDate)) {
                 $factorDi = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
@@ -130,7 +135,7 @@ class PuCurveGenerationService
                 $interestRealUnitValue = $this->rounder->round(
                     bcmul(
                         $baseUnitValue,
-                        bcsub($factorSpreadDi, '1', DecimalRounder::CALCULATION_SCALE + 4),
+                        bcsub($this->factorSpreadDiForInterest($parameter, $factorSpreadDi), '1', DecimalRounder::CALCULATION_SCALE + 4),
                         DecimalRounder::CALCULATION_SCALE + 4,
                     ),
                     DecimalRounder::CALCULATION_SCALE,
@@ -403,6 +408,49 @@ class PuCurveGenerationService
         return $resolvedValue;
     }
 
+    /**
+     * No modo de offset exato do CDI a curva realizada termina no último dia útil cujo índice já foi
+     * publicado. Uma data-alvo sem CDI (futuro ainda não divulgado) não é projetada silenciosamente:
+     * apenas trunca a geração. A parte futura entra automaticamente quando o índice for sincronizado.
+     * O lookup do BusinessDayLagExact sempre cai em um dia útil, então um snapshot nulo significa
+     * genuinamente "sem CDI publicado" — diferente do PreviousCalendarDayExact, cujo alvo pode ser
+     * um fim de semana sem cotação por natureza.
+     */
+    private function reachedRealizedTail(
+        EmissionPuParameter $parameter,
+        CarbonImmutable $currentDate,
+        CarbonImmutable $startDate,
+        bool $isBusinessDay,
+        ?IndexRateData $rateSnapshot,
+    ): bool {
+        return ! $currentDate->equalTo($startDate)
+            && $isBusinessDay
+            && $rateSnapshot === null
+            && $parameter->indexer_enum === PuIndexer::Cdi
+            && $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact;
+    }
+
+    /**
+     * A engine externa espelhada pelos modos "Exact" arredonda o fator Spread×DI em 9 casas ANTES de
+     * calcular os juros (comprovado linha-a-linha nos gabaritos AMANI 2026-03-02 e TROUPE 2025-06-05:
+     * juros do gabarito = base × (round9(fator) − 1), exato). O fator persistido/exibido permanece sem
+     * esse arredondamento, como nas planilhas de origem. Modos não espelhados mantêm o fator íntegro.
+     */
+    private function factorSpreadDiForInterest(EmissionPuParameter $parameter, string $factorSpreadDi): string
+    {
+        if (! in_array($parameter->index_rate_lookup_mode_enum, [
+            PuIndexRateLookupMode::BusinessDayLagExact,
+            PuIndexRateLookupMode::PreviousCalendarDayExact,
+        ], true)) {
+            return $factorSpreadDi;
+        }
+
+        return $this->rounder->normalize(
+            $this->rounder->round($factorSpreadDi, 9),
+            DecimalRounder::CALCULATION_SCALE,
+        );
+    }
+
     private function resolveRateSnapshot(
         EmissionPuParameter $parameter,
         CarbonImmutable $currentDate,
@@ -422,7 +470,7 @@ class PuCurveGenerationService
                 $parameter->indexer_enum,
                 $this->businessDayCalendar->shiftBusinessDays(
                     $currentDate,
-                    -((int) $parameter->index_rate_lag_business_days),
+                    (int) $parameter->index_rate_lag_business_days,
                     $parameter->calendar_code,
                 ),
             ),

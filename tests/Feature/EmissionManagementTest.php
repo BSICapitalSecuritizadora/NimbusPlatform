@@ -215,6 +215,7 @@ it('filters emission service provider fields by the expected provider types', fu
             return $field->getOptions() === [
                 'Mensal' => 'Mensal',
                 'Anual' => 'Anual',
+                'Não' => 'Não',
             ];
         })
         ->assertFormFieldExists('interest_payment_frequency', function (Select $field): bool {
@@ -234,6 +235,7 @@ it('filters emission service provider fields by the expected provider types', fu
                 'Mensal' => 'Mensal',
                 'Anual' => 'Anual',
                 'Bullet' => 'Bullet',
+                'Data de Vencimento' => 'Data de Vencimento',
             ];
         })
         ->assertFormFieldExists('remuneration_indexer', function (Select $field): bool {

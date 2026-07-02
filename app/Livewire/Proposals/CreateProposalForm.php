@@ -65,7 +65,7 @@ class CreateProposalForm extends Component
             'Solicitação registrada com sucesso. Enviamos um link seguro para o e-mail informado para que você possa complementar as informações da oportunidade, quando aplicável.',
         );
 
-        $this->redirect(route('proposal.create'), navigate: true);
+        $this->redirect(route('proposal.create'));
     }
 
     protected function ensureSubmissionIsNotRateLimited(): bool

@@ -48,6 +48,31 @@ it('shows the PU actions and relation managers on the emission admin screen', fu
     ])->assertSuccessful();
 });
 
+it('accepts a negative business day lag on the PU calculation parameters form', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create();
+
+    Livewire::test(EditEmission::class, [
+        'record' => $emission->getRouteKey(),
+    ])
+        ->callAction('configurePuCalculation', [
+            'curve_start_date' => '2026-01-01',
+            'curve_end_date' => '2026-01-31',
+            'initial_unit_value' => '1000.00',
+            'indexer' => \App\Domain\PuCalculator\Enums\PuIndexer::Cdi->value,
+            'spread_rate' => '6.50',
+            'business_day_basis' => 252,
+            'calendar_code' => 'B3',
+            'index_rate_lookup_mode' => \App\Domain\PuCalculator\Enums\PuIndexRateLookupMode::BusinessDayLagExact->value,
+            'index_rate_lag_business_days' => -5,
+            'legacy_projection_enabled' => true,
+        ])
+        ->assertHasNoActionErrors();
+
+    expect($emission->fresh()->puParameter?->index_rate_lag_business_days)->toBe(-5);
+});
+
 it('stores PU calculation parameters on the emission model using the same payload expected by the page action', function () {
     $emission = Emission::factory()->create([
         'issue_date' => '2026-01-01',

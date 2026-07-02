@@ -128,12 +128,12 @@ it('stores lookup mode defaults on PU parameters', function () {
             'business_day_basis' => 252,
             'calendar_code' => 'B3',
             'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
-            'index_rate_lag_business_days' => 5,
+            'index_rate_lag_business_days' => -5,
             'legacy_projection_enabled' => false,
         ]);
 
     expect($parameter->index_rate_lookup_mode_enum)->toBe(PuIndexRateLookupMode::BusinessDayLagExact)
-        ->and($parameter->index_rate_lag_business_days)->toBe(5);
+        ->and($parameter->index_rate_lag_business_days)->toBe(-5);
 });
 
 it('validates long prerequisite ranges without per-day database queries', function () {

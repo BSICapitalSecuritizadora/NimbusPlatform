@@ -11,6 +11,7 @@ use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\Emission;
 use App\Models\EmissionPuParameter;
+use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
 
 class PuCurvePrerequisiteService
@@ -109,17 +110,6 @@ class PuCurvePrerequisiteService
             $issues[] = PuCurvePrerequisiteIssue::blocking(
                 'calendar_code',
                 'Informe o calendario de dias uteis utilizado na curva.',
-            );
-        }
-
-        if (
-            $indexer->requiresIndexRates()
-            && $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
-            && (int) $parameter->index_rate_lag_business_days < 1
-        ) {
-            $issues[] = PuCurvePrerequisiteIssue::blocking(
-                'index_rate_lag_business_days',
-                'Informe uma defasagem util positiva para o CDI.',
             );
         }
 
@@ -256,6 +246,8 @@ class PuCurvePrerequisiteService
         CarbonImmutable $startDate,
         CarbonImmutable $endDate,
     ): void {
+        $lastResolvedDate = null;
+
         for ($currentDate = $startDate->addDay(); $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
             try {
                 $lookupDate = $this->requiredIndexLookupDate($parameter, $currentDate);
@@ -288,7 +280,30 @@ class PuCurvePrerequisiteService
             };
 
             if ($snapshot !== null) {
+                $lastResolvedDate = $currentDate;
+
                 continue;
+            }
+
+            // Offset exato do CDI: a data-alvo além do último CDI publicado é a "cauda futura" da curva.
+            // Não bloqueia — a curva é gerada apenas na parte realizada e a parte futura entra sozinha na
+            // próxima sincronização. Um buraco DENTRO do período já publicado continua sendo bloqueante.
+            if (
+                $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
+                && $lastResolvedDate !== null
+                && $this->isBeyondPublishedCdi($lookupDate)
+            ) {
+                $issues[] = PuCurvePrerequisiteIssue::warning(
+                    'index_rates',
+                    sprintf(
+                        'Somente a parte realizada da curva sera gerada, ate %s. As datas a partir de %s aguardam a publicacao do CDI (lookup em %s) e entrarao automaticamente na proxima sincronizacao do indice.',
+                        $lastResolvedDate->toDateString(),
+                        $currentDate->toDateString(),
+                        $lookupDate->toDateString(),
+                    ),
+                );
+
+                return;
             }
 
             $issues[] = PuCurvePrerequisiteIssue::blocking(
@@ -302,6 +317,16 @@ class PuCurvePrerequisiteService
 
             return;
         }
+    }
+
+    private function isBeyondPublishedCdi(CarbonImmutable $lookupDate): bool
+    {
+        $lastPublished = IndexRate::query()
+            ->forIndexer(PuIndexer::Cdi)
+            ->max('rate_date');
+
+        return $lastPublished === null
+            || $lookupDate->gt(CarbonImmutable::parse((string) $lastPublished));
     }
 
     /**
@@ -416,7 +441,7 @@ class PuCurvePrerequisiteService
             PuIndexRateLookupMode::BusinessDayLagExact => $isBusinessDay
                 ? $this->businessDayCalendar->shiftBusinessDays(
                     $currentDate,
-                    -((int) $parameter->index_rate_lag_business_days),
+                    (int) $parameter->index_rate_lag_business_days,
                     $calendarCode,
                 )
                 : null,

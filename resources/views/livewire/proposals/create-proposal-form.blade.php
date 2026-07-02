@@ -217,13 +217,13 @@
 
                     <div class="col-md-4">
                         <label class="form-label">Celular para contato</label>
-                        <input type="tel" class="form-control" wire:model.blur="form.personalPhone" x-mask:dynamic="$input.replace(/\D/g, '').length > 10 ? '(99) 99999-9999' : '(99) 9999-9999'" inputmode="tel" placeholder="(00) 00000-0000">
+                        <input type="tel" class="form-control" wire:model.blur="form.personalPhone" data-phone-mask inputmode="tel" placeholder="(00) 00000-0000">
                         @error('form.personalPhone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">Telefone da Empresa</label>
-                        <input type="tel" class="form-control" wire:model.blur="form.companyPhone" x-mask:dynamic="$input.replace(/\D/g, '').length > 10 ? '(99) 99999-9999' : '(99) 9999-9999'" inputmode="tel" placeholder="(00) 0000-0000">
+                        <input type="tel" class="form-control" wire:model.blur="form.companyPhone" data-phone-mask inputmode="tel" placeholder="(00) 0000-0000">
                         @error('form.companyPhone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
 
@@ -290,3 +290,13 @@
     </div>
 </section>
 
+<script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+    document.addEventListener('input', function(e) {
+        if (e.target.hasAttribute('data-phone-mask')) {
+            let v = e.target.value.replace(/\D/g, '').substring(0, 11);
+            v = v.replace(/^(\d{2})(\d)/g, '($1) $2');
+            v = v.replace(/(\d)(\d{4})$/, '$1-$2');
+            e.target.value = v;
+        }
+    });
+</script>

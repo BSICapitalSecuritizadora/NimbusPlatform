@@ -1,10 +1,13 @@
 <?php
 
 use App\Actions\Emissions\GeneratePuDailyCurve;
+use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\DecimalRounder;
+use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
+use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\PuHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -273,7 +276,7 @@ it('uses lagged business-day CDI lookup and stores DUP/DUT with business-day sem
         'business_day_basis' => 252,
         'calendar_code' => 'B3',
         'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
-        'index_rate_lag_business_days' => 5,
+        'index_rate_lag_business_days' => -5,
         'legacy_projection_enabled' => false,
     ]);
 
@@ -297,6 +300,100 @@ it('uses lagged business-day CDI lookup and stores DUP/DUT with business-day sem
         ->and($monday->index_rate_date?->toDateString())->toBe('2026-03-02')
         ->and($monday->dup_interest)->toBe(5)
         ->and($monday->dut_interest)->toBe(252);
+});
+
+it('generates only the realized portion when the CDI is not yet published for the future tail', function () {
+    $emission = Emission::factory()->create([
+        'type' => 'CRI',
+        'status' => 'active',
+        'issued_quantity' => 1000,
+    ]);
+
+    // Calendario cobre ate 2026-03-20, mas o CDI so foi publicado ate 2026-03-06.
+    seedBusinessCalendar('2026-02-16', '2026-03-20');
+    seedFixedCdiRates('2026-02-20', '2026-03-06', '14.90000000');
+
+    $emission->integralizationHistories()->create([
+        'date' => '2026-03-02',
+        'quantity' => '10.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '10000.00',
+        'investor_fund' => 'Head Invest',
+    ]);
+
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-03-02',
+        'curve_end_date' => '2026-03-20',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.50000000',
+        'indexer' => PuIndexer::Cdi->value,
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
+        'index_rate_lag_business_days' => -5,
+        'legacy_projection_enabled' => false,
+    ]);
+
+    // O offset -5 permite calcular ate 5 dias uteis apos o ultimo CDI publicado: 2026-03-06 -> 2026-03-13.
+    $prerequisite = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
+
+    $realizedWarning = collect($prerequisite->warningMessages())
+        ->first(fn (string $message): bool => str_contains($message, 'parte realizada'));
+
+    expect($prerequisite->passes())->toBeTrue()
+        ->and($prerequisite->blockingMessages())->toBe([])
+        ->and($realizedWarning)->not()->toBeNull()
+        ->and($realizedWarning)->toContain('2026-03-13')
+        ->and($realizedWarning)->toContain('2026-03-16');
+
+    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
+
+    expect($emission->puDailyCurves()->whereDate('curve_date', '2026-03-02')->exists())->toBeTrue()
+        ->and($emission->puDailyCurves()->whereDate('curve_date', '2026-03-13')->exists())->toBeTrue()
+        ->and($emission->puDailyCurves()->whereDate('curve_date', '>=', '2026-03-16')->exists())->toBeFalse();
+});
+
+it('still blocks generation when the CDI has a gap inside the already published period', function () {
+    $emission = Emission::factory()->create([
+        'type' => 'CRI',
+        'status' => 'active',
+        'issued_quantity' => 1000,
+    ]);
+
+    seedBusinessCalendar('2026-02-16', '2026-03-20');
+    seedFixedCdiRates('2026-02-20', '2026-03-06', '14.90000000');
+    // Buraco DENTRO do periodo publicado: 2026-03-03 (lookup exigido por 2026-03-10 no offset -5).
+    IndexRate::query()
+        ->where('indexer', PuIndexer::Cdi->value)
+        ->whereDate('rate_date', '2026-03-03')
+        ->delete();
+
+    $emission->integralizationHistories()->create([
+        'date' => '2026-03-02',
+        'quantity' => '10.0000',
+        'unit_value' => '1000.00000000',
+        'financial_value' => '10000.00',
+        'investor_fund' => 'Head Invest',
+    ]);
+
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-03-02',
+        'curve_end_date' => '2026-03-11',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.50000000',
+        'indexer' => PuIndexer::Cdi->value,
+        'business_day_basis' => 252,
+        'calendar_code' => 'B3',
+        'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
+        'index_rate_lag_business_days' => -5,
+        'legacy_projection_enabled' => false,
+    ]);
+
+    $prerequisite = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
+
+    expect($prerequisite->passes())->toBeFalse()
+        ->and($prerequisite->blockingSummary())->toContain('Nao existe CDI suficiente')
+        ->and($prerequisite->blockingSummary())->toContain('2026-03-10');
 });
 
 function seedBusinessCalendar(string $startDate, string $endDate): void

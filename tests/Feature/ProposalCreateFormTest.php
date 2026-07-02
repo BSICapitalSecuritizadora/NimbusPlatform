@@ -20,6 +20,15 @@ it('renders the proposal creation page through the full-page livewire component'
         ->assertSee('Envie sua Proposta');
 });
 
+it('grants the unsafe-eval csp source the livewire form needs to evaluate wire directives', function () {
+    $response = $this->get(route('proposal.create'));
+
+    $response->assertSuccessful();
+
+    expect($response->headers->get('Content-Security-Policy'))
+        ->toContain("'unsafe-eval'");
+});
+
 it('keeps the legacy public proposal url working', function () {
     $this->get('/proposta')
         ->assertRedirect(route('proposal.create'));
@@ -94,6 +103,8 @@ it('stores the initial proposal through the livewire component and sends the con
         ->call('save')
         ->assertHasNoErrors()
         ->assertRedirect(route('proposal.create'));
+
+    expect($component->effects)->not->toHaveKey('redirectUsingNavigate');
 
     $proposal = Proposal::query()
         ->with(['company.sectors', 'contact', 'statusHistories', 'latestContinuationAccess'])

@@ -4,11 +4,16 @@ use App\Actions\Emissions\ImportIntegralizationHistoriesFromSpreadsheet;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
+use App\Models\ExpenseServiceProvider;
+use App\Models\ExpenseServiceProviderType;
 use App\Models\IntegralizationHistory;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Testing\TestAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -93,6 +98,91 @@ it('accepts pt-br financial masks when creating an integralization history manua
         ->and($integralizationHistory->financial_value)->toBe('1000987.65')
         ->and($integralizationHistory->investor_fund)->toBe('Head Invest')
         ->and($emission->refresh()->integralized_quantity)->toBe(1000);
+});
+
+it('lists investor funds and enables inline registration on the investor fund select', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'issued_quantity' => 10000,
+    ]);
+    $type = ExpenseServiceProviderType::factory()->create(['name' => 'Fundo do Investidor']);
+    $fund = ExpenseServiceProvider::factory()->create([
+        'name' => 'Headinvest Asset Management',
+        'expense_service_provider_type_id' => $type->id,
+    ]);
+    ExpenseServiceProvider::factory()->create([
+        'name' => 'Prestador Irrelevante',
+        'expense_service_provider_type_id' => ExpenseServiceProviderType::factory()->create()->id,
+    ]);
+
+    Livewire::test(IntegralizationHistoriesRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->mountTableAction('create')
+        ->assertFormFieldExists('investor_fund', function (Select $field) use ($fund): bool {
+            return $field->isSearchable()
+                && $field->hasCreateOptionActionFormSchema()
+                && $field->getCreateOptionUsing() !== null
+                && $field->getOptions() === [$fund->name => $fund->name];
+        });
+});
+
+it('persists the selected investor fund when creating an integralization', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'issued_quantity' => 10000,
+    ]);
+    $type = ExpenseServiceProviderType::factory()->create(['name' => 'Fundo do Investidor']);
+    ExpenseServiceProvider::factory()->create([
+        'name' => 'Headinvest Asset Management',
+        'expense_service_provider_type_id' => $type->id,
+    ]);
+
+    Livewire::test(IntegralizationHistoriesRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->callTableAction('create', data: [
+            'date' => '2026-02-10',
+            'quantity' => '1.000',
+            'unit_value' => '1.000,00',
+            'investor_fund' => 'Headinvest Asset Management',
+        ])
+        ->assertHasNoTableActionErrors();
+
+    expect(IntegralizationHistory::query()->sole()->investor_fund)
+        ->toBe('Headinvest Asset Management');
+});
+
+it('registers a new investor fund inline with cnpj and name from the select', function () {
+    Http::fake();
+
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'issued_quantity' => 10000,
+    ]);
+
+    Livewire::test(IntegralizationHistoriesRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->callAction([
+            TestAction::make('create')->table(),
+            TestAction::make('createOption')->schemaComponent('investor_fund'),
+        ], data: [
+            'cnpj' => '11222333000181',
+            'name' => 'Novo Fundo Inline',
+        ])
+        ->assertHasNoActionErrors();
+
+    $fund = ExpenseServiceProvider::query()->where('name', 'Novo Fundo Inline')->sole();
+
+    expect($fund->cnpj)->toBe('11222333000181')
+        ->and($fund->type->name)->toBe('Fundo do Investidor');
 });
 
 it('imports integralization history spreadsheets with quantity pu financial and investor fund headers', function () {

@@ -5,10 +5,14 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 use App\Actions\Emissions\ImportIntegralizationHistoriesFromSpreadsheet;
 use App\Actions\Emissions\IntegralizationHistorySpreadsheetTemplate;
 use App\Filament\Pages\Settings as SettingsPage;
+use App\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm;
+use App\Models\ExpenseServiceProvider;
+use App\Models\ExpenseServiceProviderType;
 use App\Models\IntegralizationHistory;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -23,6 +27,8 @@ use Illuminate\Validation\ValidationException;
 
 class IntegralizationHistoriesRelationManager extends RelationManager
 {
+    private const INVESTOR_FUND_TYPE = 'Fundo do Investidor';
+
     protected static string $relationship = 'integralizationHistories';
 
     protected static ?string $recordTitleAttribute = 'date';
@@ -81,10 +87,26 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ->formatStateUsing(fn (mixed $state): ?string => self::formatDecimalForDisplay($state, 2))
                     ->dehydrateStateUsing(fn (Get $get): ?float => self::calculateFinancialValue($get))
                     ->placeholder('0,00'),
-                TextInput::make('investor_fund')
+                Select::make('investor_fund')
                     ->label('Fundo do Investidor')
-                    ->maxLength(255)
-                    ->placeholder('Informe o nome do fundo'),
+                    ->options(fn (): array => self::getInvestorFundOptions())
+                    ->searchable()
+                    ->preload()
+                    ->getSearchResultsUsing(fn (string $search): array => self::getInvestorFundOptions($search))
+                    ->getOptionLabelUsing(fn (mixed $value): ?string => filled($value) ? (string) $value : null)
+                    ->createOptionForm(fn (): array => ExpenseServiceProviderForm::fields(
+                        serviceProviderTypeId: self::resolveInvestorFundTypeId(),
+                        lockServiceProviderType: true,
+                    ))
+                    ->createOptionUsing(
+                        fn (array $data): string => (string) ExpenseServiceProvider::query()->create($data)->name,
+                    )
+                    ->createOptionAction(
+                        fn (Action $action): Action => $action
+                            ->label('Cadastrar Fundo do Investidor')
+                            ->modalHeading('Cadastrar Fundo do Investidor'),
+                    )
+                    ->placeholder('Selecione ou cadastre o fundo'),
             ]);
     }
 
@@ -260,5 +282,28 @@ class IntegralizationHistoriesRelationManager extends RelationManager
         }
 
         return round($quantity * $unitValue, 2);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function getInvestorFundOptions(?string $search = null): array
+    {
+        return ExpenseServiceProvider::query()
+            ->whereHas('type', fn ($query) => $query->where('name', self::INVESTOR_FUND_TYPE))
+            ->when(
+                filled($search),
+                fn ($query): mixed => $query->where('name', 'like', '%'.trim((string) $search).'%'),
+            )
+            ->orderBy('name')
+            ->pluck('name', 'name')
+            ->all();
+    }
+
+    private static function resolveInvestorFundTypeId(): int
+    {
+        return (int) ExpenseServiceProviderType::query()
+            ->firstOrCreate(['name' => self::INVESTOR_FUND_TYPE])
+            ->getKey();
     }
 }

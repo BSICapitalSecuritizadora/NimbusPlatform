@@ -55,7 +55,9 @@ class SetSecurityHeaders
             return false;
         }
 
-        return str_contains($content, '/flux/flux')
+        return str_contains($content, 'wire:snapshot')
+            || str_contains($content, 'wire:id=')
+            || str_contains($content, '/flux/flux')
             || str_contains($content, '/livewire/livewire')
             || str_contains($content, 'window.livewireScriptConfig');
     }

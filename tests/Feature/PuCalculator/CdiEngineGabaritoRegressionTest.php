@@ -20,22 +20,20 @@ uses(RefreshDatabase::class);
  *
  * Tolerâncias (medidas empiricamente, sem drift ao longo de ~5 anos):
  *  - PU atualizado/residual: EXATO em 6 casas decimais (display-scale) em todas as linhas.
- *  - Valor total (PU x quantidade): <= R$ 0,01 (a engine carrega o PU em escala 16; o gabarito
- *    arredonda o PU em ~6 casas antes de multiplicar pela quantidade — diferença puramente de
- *    precisão de exibição, não de fórmula).
- *  - Em raw-scale (16 casas) restam diferenças de ordem ~1e-7 por unidade, originadas da política
- *    de arredondamento POR COLUNA da engine externa (Fator Spread arred. 9, Fator Indicador arred. 8
- *    etc.). O próprio gabarito é internamente inconsistente nessa ordem de grandeza (coluna Juros !=
- *    base x (Fator-1)), logo reprodução bit-exata é impossível; a engine Nimbus é internamente
- *    consistente.
+ *  - Valor total (PU x quantidade): <= R$ 0,001 (pior caso medido 1e-4).
+ *  - Em raw-scale (16 casas) a engine reproduz o gabarito: nos modos "Exact" o fator Spread×DI é
+ *    arredondado em 9 casas ANTES do cálculo dos juros, exatamente como a engine externa (comprovado
+ *    em AMANI 2026-03-02 e TROUPE 2025-06-05: juros do gabarito = base × (round9(fator) − 1)).
+ *    O ruído residual (~1e-8 por unidade) vem do armazenamento em double (IEEE 754) das células do
+ *    próprio .xlsx, logo bit-exatidão absoluta não é alcançável nem exigida.
  */
 function generateCdiCurveFromGabarito(string $keyword): array
 {
     $emission = Emission::factory()->create([
         'name' => $keyword.' Regression',
-        'type' => $keyword === 'AMANI' ? 'CRI' : 'CR',
+        'type' => $keyword === 'TROUPE' ? 'CR' : 'CRI',
         'status' => 'active',
-        'issued_quantity' => 20000,
+        'issued_quantity' => $keyword === 'CONVIVA' ? 50000 : 20000,
     ]);
 
     $path = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword($keyword);
@@ -48,6 +46,7 @@ function generateCdiCurveFromGabarito(string $keyword): array
 dataset('cdi_gabaritos', [
     'AMANI' => ['AMANI', 1810],
     'TROUPE' => ['TROUPE', 696],
+    'CONVIVA' => ['CONVIVA', 1079],
 ]);
 
 it('reproduces the CDI gabarito PU within 6 decimals across the whole curve', function (string $keyword, int $expectedRows) {
@@ -63,15 +62,33 @@ it('reproduces the CDI gabarito PU within 6 decimals across the whole curve', fu
         ->and(bccomp($report->largestPaymentDifference, PuValidationTolerance::TOTAL_VALUE, PuValidationTolerance::DISPLAY_SCALE))->toBeLessThanOrEqual(0);
 })->with('cdi_gabaritos');
 
-it('keeps the raw-scale CDI divergence bounded to per-column rounding noise (~1e-7)', function (string $keyword, int $expectedRows) {
+it('keeps the raw-scale CDI divergence bounded to the gabarito float-storage noise (~1e-8)', function (string $keyword, int $expectedRows) {
     [$emission, $path, $version] = generateCdiCurveFromGabarito($keyword);
 
     $report = app(PuValidationService::class)->handle($emission, $path, $version, PuValidationMode::RawScale);
 
-    // Mesmo em escala 16, a maior diferença por unidade de PU fica em ruído de arredondamento.
+    // Mesmo em escala 16, a maior diferença por unidade de PU fica no ruído de double do .xlsx.
     expect(bccomp($report->largestPuDifference, PuValidationTolerance::RAW_UNIT, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0)
         ->and(bccomp($report->largestTotalValueDifference, PuValidationTolerance::TOTAL_VALUE, PuValidationTolerance::RAW_SCALE))->toBeLessThanOrEqual(0);
 })->with('cdi_gabaritos');
+
+it('rounds the combined Spread x DI factor to 9 decimals before interest, matching the external engine on the first raw-divergence line', function () {
+    [$emission, , $version] = generateCdiCurveFromGabarito('AMANI');
+
+    // Primeira linha historicamente divergente em raw-scale (2026-03-02): fator combinado
+    // 1.0008013787894596 -> round9 = 1.000801379 -> juros = 1000 x 0.000801379 = 0.801379 EXATO.
+    // Sem o arredondamento em 9 casas, os juros seriam 0.8013787894596... (falha em raw-scale).
+    $row = EmissionPuDailyCurve::query()
+        ->where('emission_id', $emission->id)
+        ->where('calculation_version', $version)
+        ->whereDate('curve_date', '2026-03-02')
+        ->sole();
+
+    expect(bccomp((string) $row->interest_real_unit_value, '0.801379', PuValidationTolerance::RAW_SCALE))->toBe(0)
+        ->and(bccomp((string) $row->updated_unit_value, '1000.801379', PuValidationTolerance::RAW_SCALE))->toBe(0)
+        // O fator persistido permanece SEM o arredondamento de uso (como exibido no gabarito).
+        ->and(bccomp((string) $row->factor_spread_di, '1.000801379', PuValidationTolerance::RAW_SCALE))->not->toBe(0);
+});
 
 it('produces a different curve when the spread parameter changes (values are not fixed)', function () {
     [$emission, $path, $version] = generateCdiCurveFromGabarito('AMANI');

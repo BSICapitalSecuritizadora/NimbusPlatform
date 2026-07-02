@@ -44,6 +44,12 @@ class EmissionForm
         'Anual' => 'Anual',
     ];
 
+    private const MONETARY_UPDATE_OPTIONS = [
+        'Mensal' => 'Mensal',
+        'Anual' => 'Anual',
+        'Não' => 'Não',
+    ];
+
     private const CONCENTRATION_OPTIONS = [
         'Concentrado' => 'Concentrado',
         'Pulverizado' => 'Pulverizado',
@@ -53,6 +59,7 @@ class EmissionForm
         'Mensal' => 'Mensal',
         'Anual' => 'Anual',
         'Bullet' => 'Bullet',
+        'Data de Vencimento' => 'Data de Vencimento',
     ];
 
     public static function configure(Schema $schema): Schema
@@ -180,7 +187,7 @@ class EmissionForm
 
                             Select::make('monetary_update_period')
                                 ->label('Periodicidade de Atualização Monetária')
-                                ->options(self::MONTHLY_ANNUAL_OPTIONS)
+                                ->options(self::MONETARY_UPDATE_OPTIONS)
                                 ->placeholder('Selecione'),
 
                             Select::make('interest_payment_frequency')
@@ -321,7 +328,7 @@ class EmissionForm
                                     ->modalHeading('Extrair Cláusulas do Termo de Securitização')
                                     ->modalDescription('O processo de extração via inteligência artificial leva entre 3 e 5 minutos. A página será atualizada automaticamente ao concluir. Note que os campos preenchidos serão sobrescritos.')
                                     ->modalSubmitActionLabel('Iniciar Extração')
-                                    ->mountUsing(function (FormAction $action, Emission $record): void {
+                                    ->mountUsing(function (Action $action, Emission $record): void {
                                         $document = $record->documents()
                                             ->where('category', 'documentos_operacao')
                                             ->whereRaw('TRIM(title) = ?', ['Termo de Securitização'])

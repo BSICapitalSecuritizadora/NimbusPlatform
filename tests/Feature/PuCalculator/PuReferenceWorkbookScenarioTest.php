@@ -24,10 +24,10 @@ it('synchronizes the AMANI workbook scenario with lagged business-day CDI lookup
     expect($summary['row_count'])->toBe(1810)
         ->and($summary['spread_rate'])->toBe('6.50000000')
         ->and($summary['index_lookup_mode'])->toBe(PuIndexRateLookupMode::BusinessDayLagExact->value)
-        ->and($summary['index_lag_business_days'])->toBe(5)
+        ->and($summary['index_lag_business_days'])->toBe(-5)
         ->and($parameter)->not()->toBeNull()
         ->and($parameter?->index_rate_lookup_mode_enum)->toBe(PuIndexRateLookupMode::BusinessDayLagExact)
-        ->and($parameter?->index_rate_lag_business_days)->toBe(5)
+        ->and($parameter?->index_rate_lag_business_days)->toBe(-5)
         ->and($emission->puEvents()->count())->toBe(61)
         ->and($emission->integralizationHistories()->count())->toBe(3);
 });
@@ -59,4 +59,30 @@ it('synchronizes the TROUPE workbook scenario with exact previous-calendar-day C
         ->and($emission->puEvents()->count())->toBe(46)
         ->and($emission->integralizationHistories()->count())->toBe(1)
         ->and($precisionSensitiveAmortizationEvent?->amortization_value)->toBe('43.4787075100000000');
+});
+
+it('synchronizes the CONVIVA real-emission workbook with lagged business-day CDI lookup and forward projection tail', function () {
+    $emission = Emission::factory()->create([
+        'name' => 'CRI Conviva',
+        'type' => 'CRI',
+        'status' => 'active',
+        'issued_quantity' => 50000,
+    ]);
+
+    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword('CONVIVA');
+    $summary = app(PuReferenceWorkbookScenarioService::class)->sync($emission, $spreadsheetPath);
+
+    $parameter = $emission->fresh()->puParameter;
+
+    expect($summary['row_count'])->toBe(1079)
+        ->and($summary['spread_rate'])->toBe('5.00000000')
+        ->and($summary['index_lookup_mode'])->toBe(PuIndexRateLookupMode::BusinessDayLagExact->value)
+        ->and($summary['index_lag_business_days'])->toBe(-5)
+        // 116 dias de CDI publicado no workbook + cauda preenchida por forward_projection.
+        ->and($summary['index_rate_rows'])->toBe(744)
+        ->and($parameter)->not()->toBeNull()
+        ->and($parameter?->index_rate_lookup_mode_enum)->toBe(PuIndexRateLookupMode::BusinessDayLagExact)
+        ->and($parameter?->index_rate_lag_business_days)->toBe(-5)
+        ->and($emission->puEvents()->count())->toBe(12)
+        ->and($emission->integralizationHistories()->count())->toBe(5);
 });

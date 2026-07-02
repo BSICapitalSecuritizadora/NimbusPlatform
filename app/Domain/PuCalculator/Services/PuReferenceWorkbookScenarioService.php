@@ -193,13 +193,13 @@ class PuReferenceWorkbookScenarioService
         }
 
         if ($lagCounts === []) {
-            return 1;
+            return -1;
         }
 
         $frequencies = array_count_values($lagCounts);
         arsort($frequencies);
 
-        return (int) array_key_first($frequencies);
+        return -((int) array_key_first($frequencies));
     }
 
     /**

@@ -675,9 +675,13 @@ class EditEmission extends EditRecord
                 ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value)
                 ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value),
             TextInput::make('index_rate_lag_business_days')
-                ->label('Defasagem util do CDI')
+                ->label('Offset util do CDI')
+                ->helperText('Offset em relacao a data de busca do indice, em dias uteis. Negativo = dias ANTES (ex.: -1 = CDI do dia util anterior; -5 = 5 dias uteis antes).')
                 ->numeric()
-                ->default(1)
+                ->integer()
+                ->minValue(-32768)
+                ->maxValue(32767)
+                ->default(-1)
                 ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value)
                 ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value),
             Toggle::make('legacy_projection_enabled')
@@ -707,7 +711,7 @@ class EditEmission extends EditRecord
             'business_day_basis' => $parameter?->business_day_basis ?? 252,
             'calendar_code' => $parameter?->calendar_code ?? 'B3',
             'index_rate_lookup_mode' => $parameter?->index_rate_lookup_mode ?? PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
-            'index_rate_lag_business_days' => $parameter?->index_rate_lag_business_days ?? 1,
+            'index_rate_lag_business_days' => $parameter?->index_rate_lag_business_days ?? -1,
             'legacy_projection_enabled' => $parameter?->legacy_projection_enabled ?? true,
         ];
     }

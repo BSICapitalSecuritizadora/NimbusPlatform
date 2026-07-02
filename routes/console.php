@@ -63,6 +63,13 @@ Artisan::command('inspire', function () {
     ->name('pu-index-sync-cdi')
     ->withoutOverlapping();
 
+// Após a sincronização do CDI, estende a parte realizada das curvas de PU (não homologadas) com o
+// índice recém-publicado. Curvas homologadas são preservadas; curvas já completas são ignoradas.
+\Illuminate\Support\Facades\Schedule::command('pu:curves:generate-realized')
+    ->dailyAt('07:15')
+    ->name('pu-curves-generate-realized')
+    ->withoutOverlapping();
+
 // IPCA publicado (BCB/SGS): todo dia 2 de cada mês, consultando sempre os últimos 10 anos. Idempotente.
 \Illuminate\Support\Facades\Schedule::command('pu:index-rates:sync --indexer=ipca --queue')
     ->monthlyOn(2, '06:45')

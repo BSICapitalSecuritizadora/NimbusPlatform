@@ -167,7 +167,7 @@ class PuIndexCoverageService
             PuIndexRateLookupMode::BusinessDayLagExact => $isBusinessDay
                 ? $this->businessDayCalendar->shiftBusinessDays(
                     $currentDate,
-                    -((int) $parameter->index_rate_lag_business_days),
+                    (int) $parameter->index_rate_lag_business_days,
                     $calendarCode,
                 )
                 : null,
