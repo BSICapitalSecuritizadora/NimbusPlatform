@@ -29,7 +29,7 @@ class ContinuationFormObject extends Form
     #[Validate('nullable|string|max:50')]
     public string $landMarketValue = '';
 
-    #[Validate('required|numeric|min:0')]
+    #[Validate('required|string|max:50')]
     public string $landArea = '';
 
     #[Validate('required|date_format:Y-m')]
@@ -154,7 +154,7 @@ class ContinuationFormObject extends Form
 
     public function updated(string $property, mixed $value): void
     {
-        if (in_array($property, ['requestedAmount', 'landMarketValue'], true)) {
+        if (in_array($property, ['requestedAmount', 'landMarketValue', 'landArea'], true)) {
             $this->formatMoneyProperty($property);
         }
 
@@ -289,7 +289,7 @@ class ContinuationFormObject extends Form
         $this->websiteUrl = $firstProject?->website_url ?? '';
         $this->requestedAmount = $firstProject?->formatted_requested_amount ?? '';
         $this->landMarketValue = $firstProject?->formatted_land_market_value ?? '';
-        $this->landArea = (string) ($firstProject?->land_area ?? '');
+        $this->landArea = $firstProject?->formatted_land_area ?? '';
         $this->launchDate = $firstProject?->launch_month ?? '';
         $this->salesLaunchDate = $firstProject?->sales_launch_month ?? '';
         $this->constructionStartDate = $firstProject?->construction_start_month ?? '';
@@ -464,7 +464,7 @@ class ContinuationFormObject extends Form
             'websiteUrl' => ['nullable', 'url', 'max:255'],
             'requestedAmount' => ['required', 'string', 'max:50'],
             'landMarketValue' => ['nullable', 'string', 'max:50'],
-            'landArea' => ['required', 'numeric', 'min:0'],
+            'landArea' => ['required', 'string', 'max:50'],
             'launchDate' => ['required', 'date_format:Y-m'],
             'salesLaunchDate' => ['required', 'date_format:Y-m'],
             'constructionStartDate' => ['required', 'date_format:Y-m'],

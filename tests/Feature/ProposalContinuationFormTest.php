@@ -29,6 +29,20 @@ it('renders the continuation page through the full-page livewire component', fun
         ->assertSee('Formulário de Empreendimento');
 });
 
+it('renders the continuation validation errors in portuguese', function () {
+    Mail::fake();
+
+    [, $access] = createProposalContinuationContext($this);
+
+    seedProposalContinuationSession($access);
+
+    Livewire::test(ContinuationForm::class, ['access' => $access])
+        ->call('save')
+        ->assertHasErrors('form.zipCode')
+        ->assertSee('O campo CEP é obrigatório.')
+        ->assertSee('O campo rua é obrigatório.');
+});
+
 it('looks up the zip code and hydrates the operation address fields', function () {
     Mail::fake();
     Http::fake([
@@ -55,6 +69,19 @@ it('looks up the zip code and hydrates the operation address fields', function (
     Http::assertSentCount(3);
 });
 
+it('computes the remaining months from the construction and delivery dates', function () {
+    Mail::fake();
+
+    [, $access] = createProposalContinuationContext($this);
+
+    seedProposalContinuationSession($access);
+
+    Livewire::test(ContinuationForm::class, ['access' => $access])
+        ->set('form.constructionStartDate', '2026-03')
+        ->set('form.deliveryForecastDate', '2030-12')
+        ->assertSet('form.remainingMonths', 57);
+});
+
 it('recalculates project and unit type metrics reactively', function () {
     Mail::fake();
 
@@ -78,6 +105,10 @@ it('recalculates project and unit type metrics reactively', function () {
         ->set('form.blockCount', 2)
         ->set('form.typicalFloorCount', 15)
         ->set('form.unitsPerFloor', 4)
+        ->set('form.landArea', '5000')
+        ->assertSet('form.landArea', '5.000,00')
+        ->set('form.landArea', '382.000,00')
+        ->assertSet('form.landArea', '382.000,00')
         ->assertSet('form.projects.0.totalUnits', 100)
         ->assertSet('form.projects.0.salesPercentage', '38.89')
         ->assertSet('form.projects.0.totalCost', '4.000.000,00')
@@ -144,6 +175,7 @@ it('stores the continuation payload through the livewire component', function ()
     $firstProject = $proposal->projects->first();
 
     expect((int) $firstProject->units_total)->toBe(100)
+        ->and((float) $firstProject->land_area)->toBe(5000.0)
         ->and((float) $firstProject->sales_percentage)->toBe(38.89)
         ->and((float) $firstProject->total_cost)->toBe(4000000.0)
         ->and((float) $firstProject->gross_sales_value)->toBe(4900001.25)

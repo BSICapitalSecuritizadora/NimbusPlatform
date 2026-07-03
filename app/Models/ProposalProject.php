@@ -188,6 +188,11 @@ class ProposalProject extends Model
         return self::formatCurrencyForDisplay($this->land_market_value);
     }
 
+    public function getFormattedLandAreaAttribute(): string
+    {
+        return self::formatCurrencyForDisplay($this->land_area);
+    }
+
     public function getFormattedIncurredCostAttribute(): string
     {
         return self::formatCurrencyForDisplay($this->incurred_cost);
