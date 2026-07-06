@@ -12,10 +12,10 @@
             <div class="col-xl-7">
                 <div class="kicker mb-3">Securitização • Mercado de Capitais • Crédito Estruturado</div>
                 <h1 class="display-3 fw-bold mb-4">
-                    A securitizadora que fica na operação do início ao fim.
+                    Atuação completa da estruturação ao encerramento da operação.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    Estruturação, emissão e gestão fiduciária de CRI, CRA e CR. Protegemos os interesses de investidores e emissores com controle tecnológico e diligência técnica, da originação até a liquidação final.
+                    Soluções completas em CRI, CRA e CR, com segurança, tecnologia e diligência da estruturação à liquidação final.
                 </p>
 
                 <div class="d-grid d-sm-flex gap-3 mb-4">
@@ -34,15 +34,15 @@
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
                             <div class="kicker mb-2">Escala</div>
-                            <div class="hero-metric-value fw-bold text-white" style="font-size: 1.5rem">R$ [X] Bilhões</div>
+                            <div class="hero-metric-value fw-bold text-white" style="font-size: 1.5rem">R$ 1,4 Bilhão</div>
                             <div class="small text-white-50">Volume emitido e sob gestão em diversas classes de ativos.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
                         <div class="surface-card-dark p-4 h-100">
-                            <div class="kicker mb-2">Regulação</div>
-                            <div class="hero-metric-value fw-bold text-white" style="font-size: 1.5rem">CVM</div>
-                            <div class="small text-white-50">Companhia aberta registrada e aderente aos rigorosos padrões de compliance.</div>
+                            <div class="kicker mb-2">Expertise</div>
+                            <div class="hero-metric-value fw-bold text-white" style="font-size: 1.5rem">Crédito Privado</div>
+                            <div class="small text-white-50">Especialistas na estruturação de CRI, CRA e CR com soluções sob medida para o mercado de capitais.</div>
                         </div>
                     </div>
                 </div>
@@ -51,9 +51,9 @@
             <div class="col-xl-5">
                 <div class="surface-card-dark p-4 p-lg-5">
                     <div class="kicker mb-3">ATUAÇÃO PONTA A PONTA</div>
-                    <h2 class="h3 fw-bold mb-3 text-white">Da estruturação à gestão: cobertura integral da operação</h2>
+                    <h2 class="h3 fw-bold mb-3 text-white">Da estruturação à gestão fiduciária</h2>
                     <p class="text-white-50 mb-4" style="text-align: justify;">
-                        Atuamos desde a concepção jurídico-financeira até o acompanhamento pós-emissão, com processos definidos, documentação controlada e fluxo de informações estruturado entre emissores, investidores e partes envolvidas.
+                        Conduzimos operações de CRI, CRA e CR com acompanhamento integral, controle documental, diligência técnica e governança em todas as etapas — da originação à liquidação final.
                     </p>
 
                     <div class="d-flex flex-column gap-3">
@@ -61,21 +61,21 @@
                             <div class="badge badge-soft px-3 py-2">1</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Estruturação e Modelagem</div>
-                                <div class="small text-white-50" style="text-align: justify;">Desenho da tese, modelagem financeira, estruturação jurídico-regulatória e coordenação da oferta.</div>
+                                <div class="small text-white-50" style="text-align: justify;">Desenho da operação, modelagem financeira, garantias e estrutura jurídico-regulatória.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">2</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Monitoramento e Governança</div>
-                                <div class="small text-white-50" style="text-align: justify;">Acompanhamento de covenants, garantias, indicadores da operação e eventos de crédito.</div>
+                                <div class="small text-white-50" style="text-align: justify;">Acompanhamento de covenants, garantias, indicadores e eventos relevantes da operação.</div>
                             </div>
                         </div>
                         <div class="d-flex gap-3 align-items-start">
                             <div class="badge badge-soft px-3 py-2">3</div>
                             <div>
                                 <div class="fw-semibold text-white mb-1">Transparência e Controle</div>
-                                <div class="small text-white-50" style="text-align: justify;">Gestão de documentos, trilha de auditoria, relatórios e visibilidade para investidores.</div>
+                                <div class="small text-white-50" style="text-align: justify;">Relatórios, trilha de auditoria e fluxo estruturado de informações para investidores e partes envolvidas.</div>
                             </div>
                         </div>
                     </div>
@@ -91,9 +91,9 @@
         <div class="row align-items-end g-4 mb-5">
             <div class="col-lg-8">
                 <div class="section-kicker mb-2">Atuação setorial</div>
-                <h2 class="display-6 fw-bold mb-3 text-brand">Estruturas alinhadas ao ativo, ao setor e ao fluxo da operação</h2>
+                <h2 class="display-6 fw-bold mb-3 text-brand">Estruturas sob medida para cada setor e operação</h2>
                 <p class="section-copy mb-0">
-                    Cada setor possui dinâmica própria de geração de caixa, risco e lastro. A BSI Capital estrutura operações sob medida, considerando as características do ativo, a natureza do negócio e os requisitos de cada emissão.
+                    A BSI Capital estrutura operações sob medida, considerando as características do ativo, a dinâmica do setor e os requisitos de cada emissão.
                 </p>
             </div>
             <div class="col-lg-4 text-lg-end">
@@ -103,9 +103,9 @@
 
         @php
             $industries = [
-                ['Imobiliário', 'Operações de CRI e crédito imobiliário estruturado, desenvolvidas a partir de ativos, recebíveis e portfólios imobiliários, com controle documental, governança e monitoramento da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
-                ['Agronegócio', 'Operações de CRA e crédito estruturado para o agronegócio, alinhadas ao ciclo produtivo, às garantias e à dinâmica de geração de caixa do setor.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
-                ['Infra & Empresas', 'Operações de crédito corporativo estruturado, incluindo debêntures, notas comerciais e recebíveis empresariais, para apoiar expansão, capex e reorganização de passivos.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
+                ['Imobiliário', 'CRI e crédito estruturado lastreados em ativos e recebíveis imobiliários, com foco em governança, segurança documental e acompanhamento da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
+                ['Agronegócio', 'CRA e operações estruturadas para o agronegócio, com modelagem aderente ao ciclo do setor, às garantias e à geração de caixa da atividade.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
+                ['Infra & Empresas', 'Debêntures, notas comerciais e recebíveis empresariais estruturados para financiar crescimento, investimento e reorganização financeira.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
             ];
         @endphp
 
@@ -132,75 +132,19 @@
 
 
 
-<section class="py-5 section-dark">
-    <div class="container py-5">
-        <div class="row align-items-end g-4 mb-5">
-            <div class="col-lg-8">
-                <div class="section-kicker mb-2">Governança em Execução</div>
-                <h2 class="display-6 fw-bold mb-3">BSI Sentinel: Tecnologia e diligência aplicadas na prática</h2>
-                <p class="text-muted mb-0">
-                    Da estruturação ao monitoramento pós-emissão, atuamos com processos rigorosos e a plataforma <span class="text-brand-light">BSI Sentinel</span>, nossa tecnologia proprietária para garantir transparência, rastreabilidade e segurança operacional.
-                </p>
-            </div>
-            <div class="col-lg-4 text-lg-end">
-                <div class="section-divider ms-lg-auto"></div>
-            </div>
-        </div>
 
-        @php
-            $cases = [
-                [
-                    'title' => 'Estruturação de CRI com Gestão Integral de Lastro e Reporting',
-                    'desc' => 'Modelagem técnica integral, coordenação jurídica e financeira, controle de lastro e monitoramento ativo via BSI Sentinel até o vencimento final.',
-                    'img' => 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop',
-                    'slug' => 'estruturacao-cri',
-                ],
-                [
-                    'title' => 'Monitoramento Ativo e Governança Digital de Ativos',
-                    'desc' => 'Ecosistema digital BSI Sentinel com acessos dedicados para emissores e investidores, integrando custódia de documentos e trilha de auditoria fiduciária.',
-                    'img' => 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=1000&auto=format&fit=crop',
-                    'slug' => 'gestao-de-documentos',
-                ],
-            ];
-        @endphp
 
-        <div class="row g-4">
-            @foreach($cases as $case)
-                <div class="col-lg-6">
-                    <div class="card h-100 border-0 overflow-hidden">
-                        <div class="row g-0 h-100">
-                            <div class="col-md-5">
-                                <img src="{{ $case['img'] }}" class="w-100 h-100 object-fit-cover" alt="{{ $case['title'] }}" style="min-height: 280px;">
-                            </div>
-                            <div class="col-md-7">
-                                <div class="p-4 p-lg-5 d-flex flex-column h-100">
-                                    <div class="section-kicker mb-2">Estudo de Caso</div>
-                                    <h3 class="h3 fw-bold mb-3" style="font-size: 1.4rem;">{{ $case['title'] }}</h3>
-                                    <p class="text-muted mb-4">{{ $case['desc'] }}</p>
-                                    <div class="mt-auto">
-                                        <a href="{{ route('site.cases.show', $case['slug']) }}" class="btn btn-outline-gold px-4">Analisar Caso</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    </div>
-</section>
-
-<section class="py-4" style="background: color-mix(in srgb, var(--surface) 94%, var(--brand) 6%); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
+<section class="py-5" style="background: color-mix(in srgb, var(--surface) 94%, var(--brand) 6%); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
     <div class="container">
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
-                <div class="section-kicker mb-2">Nossa missão</div>
+                <div class="section-kicker mb-2">Missão e Valores</div>
                 <p class="fw-semibold mb-3" style="font-size: 1.05rem; color: var(--text); line-height: 1.6;">
                     Viabilizar o acesso ao mercado de capitais por meio de estruturas de crédito robustas, atuando como o elo de segurança e governança entre quem produz e quem investe.
                 </p>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="result-chip">Governança corporativa</span>
-                    <span class="result-chip">governança documental</span>
+                    <span class="result-chip">Governança documental</span>
                     <span class="result-chip">Diligência fiduciária</span>
                     <span class="result-chip">Parcerias sólidas</span>
                 </div>
@@ -302,9 +246,9 @@
             <div class="col-lg-8">
                 <div class="py-4 py-lg-5">
                     <div class="home-institutional-cta__eyebrow mb-2">Relacionamento institucional</div>
-                    <h2 class="h2 fw-bold home-institutional-cta__title mb-3">Entre em contato com a BSI Capital</h2>
+                    <h2 class="h2 fw-bold home-institutional-cta__title mb-3">Fale com a BSI Capital</h2>
                     <p class="home-institutional-cta__text mb-0" style="max-width: 640px; font-size: 1.1rem; line-height: 1.6;">
-                        Traga sua operação para a BSI Capital. Converse diretamente com nossos especialistas em estruturação e gestão de risco.
+                        Traga sua operação para análise. Nossa equipe avalia a viabilidade, a estrutura e os caminhos para emissão com segurança, governança e eficiência.
                     </p>
                 </div>
             </div>
@@ -314,7 +258,7 @@
                         Solicitar Análise de Estruturação
                     </a>
                     <a href="{{ route('site.contact') }}" class="home-institutional-cta__link text-decoration-none" style="padding: 0.25rem 0; font-weight: 500;">
-                        ou avaliar viabilidade →
+                        Falar com um especialista →
                     </a>
                 </div>
             </div>

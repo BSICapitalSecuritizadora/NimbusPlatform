@@ -50,11 +50,8 @@
             </div>
 
             <div class="col-md-4 text-center text-md-end">
-                <div class="footer-anbima-card">
-                    <div class="footer-anbima-title">Autorregulação</div>
-                    <div class="footer-anbima-seal">
-                        <img src="{{ asset('images/selo-anbima.jpg') }}" alt="Selo ANBIMA Securitizadora">
-                    </div>
+                <div class="footer-anbima-seal">
+                    <img src="{{ asset('images/selo-anbima.jpg') }}" alt="Selo ANBIMA Securitizadora">
                 </div>
             </div>
         </div>

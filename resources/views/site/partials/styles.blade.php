@@ -722,39 +722,6 @@
             color: var(--gold);
         }
 
-        .footer-anbima-card {
-            max-width: 210px;
-            padding: 18px 20px;
-            border: 1px solid rgba(160, 110, 40, 0.35);
-            border-radius: 14px;
-            background: rgba(230, 228, 228, 0.04);
-            margin: 0 auto;
-        }
-
-        @media (min-width: 768px) {
-            .footer-anbima-card {
-                margin: 0 0 0 auto;
-            }
-        }
-
-        .footer-anbima-title {
-            margin-bottom: 0.5rem;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: #E6E4E4;
-            text-align: center;
-        }
-
-        .footer-anbima-copy {
-            margin-bottom: 14px;
-            color: rgba(230, 228, 228, 0.72);
-            font-size: 0.8rem;
-            line-height: 1.55;
-            text-align: center;
-        }
-
         .footer-anbima-seal {
             display: flex;
             align-items: center;
@@ -764,6 +731,12 @@
             padding: 10px 12px;
             border-radius: 8px;
             background: #E6E4E4;
+        }
+
+        @media (min-width: 768px) {
+            .footer-anbima-seal {
+                margin: 0 0 0 auto;
+            }
         }
 
         .footer-anbima-seal img {
