@@ -5,7 +5,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/cooperativas_agro.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/cooperativas_agro2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/cooperativas_agro.png') }}" class="img-fluid" alt="Cooperativas do Agronegócio" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/cooperativas_agro.jpg') }}" class="img-fluid" alt="Cooperativas do Agronegócio" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -195,7 +195,7 @@
                 <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Diretrizes Fiduciárias</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Perfil das Operações para Cooperativas</h2>
                 <p class="text-muted mb-4">Desenvolvemos soluções direcionadas a operações de médio e grande porte, conforme análise técnica de viabilidade e governança corporativa.</p>
-                
+
                 <div class="row g-4">
                     <div class="col-sm-6">
                         <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
@@ -265,35 +265,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/cooperativas_agro.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Leadership Quote -->
-<section class="py-5" style="background: var(--bg);">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
-                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
-                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
-                    </div>
-                    <div class="row align-items-center g-4 position-relative z-1">
-                        <div class="col-md-12">
-                            <blockquote class="blockquote mb-0 text-center">
-                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6; font-style: italic;">
-                                    "Gerir o lastro de uma cooperativa exige mais do que técnica financeira, exige respeito à Lei 5.764. Nós compreendemos a dinâmica de monitorar múltiplos fluxos produtivos na safra e sabemos como alinhar essa força associativa à eficiência do mercado de capitais."
-                                </p>
-                                <footer class="blockquote-footer mt-2">
-                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria de Agronegócio</span>
-                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
-                                </footer>
-                            </blockquote>
-                        </div>
-                    </div>
-                </div>
+                <div style="background: url('{{ asset('images/cooperativas_agro.jpg') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>
@@ -307,7 +279,7 @@
                 <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Fomento de Base</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Eficiência no Fluxo Associativo</h2>
                 <p class="text-muted mb-4">A securitização funciona como um motor de liquidez qualificado que conecta a força da produção ao mercado de capitais.</p>
-                
+
                 <div class="d-flex flex-column gap-4">
                     <div class="d-flex gap-3">
                         <div class="flex-shrink-0 bg-brand text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">

@@ -5,7 +5,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/cr_futuro.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/cr_futuro2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -31,14 +31,14 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/cr_futuro.png') }}" class="img-fluid" alt="CR - Certificados de Recebíveis" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/cr_futuro.jpg') }}" class="img-fluid" alt="CR - Certificados de Recebíveis" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                         </div>
                         <div>
-                            <div class="text-muted small fw-medium">Marco CVM 175</div>
+                            <div class="text-muted small fw-medium">Resolução CVM 160</div>
                             <div class="fw-bold fs-5" style="color: #0b1220;">Eficiência Regulatória</div>
                         </div>
                     </div>
@@ -48,37 +48,6 @@
     </div>
 </section>
 
-<!-- BSI no Novo Marco (Social Proof) -->
-<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong), var(--brand));">
-    <div class="container py-4">
-        <div class="row g-4 text-center">
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">R$ 1.2Bi</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Pipeline em Estruturação</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">+R$ 10Bi</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Histórico de Custódia</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">5+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Novos Setores Atendidos</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">100%</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Aderência à CVM 175</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 
 <!-- Público-Alvo Section -->
 <section class="py-5" style="background-color: #ffffff;">
@@ -156,7 +125,7 @@
                     <p class="text-muted mb-0">Estruturas desenhadas para projetos com fluxos previsíveis e maturação estendida, garantindo fôlego financeiro durante a implantação de infraestrutura.</p>
                 </div>
             </div>
-            
+
             <!-- Diferencial 2 -->
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
@@ -164,7 +133,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
                     <h3 class="h5 fw-bold mb-3" style="color: #0b1220;">Inteligência Regulatória</h3>
-                    <p class="text-muted mb-0">Expertise técnica para definir critérios de elegibilidade e arquitetura de garantias perfeitamente adequadas ao novo marco da CVM 175.</p>
+                    <p class="text-muted mb-0">Expertise técnica para definir critérios de elegibilidade e arquitetura de garantias perfeitamente adequadas à Resolução CVM 160.</p>
                 </div>
             </div>
 
@@ -208,7 +177,7 @@
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                     </div>
                     <h4 class="h6 fw-bold text-uppercase mb-2" style="color: var(--brand-strong);">Estruturação</h4>
-                    <p class="small text-muted mb-0">Isolamento fiduciário do ativo gerador, formalização dos contratos, adequação à CVM 175 e composição do lastro.</p>
+                    <p class="small text-muted mb-0">Isolamento fiduciário do ativo gerador, formalização dos contratos, adequação à Resolução CVM 160 e composição do lastro.</p>
                 </div>
             </div>
             <!-- Step 3 -->
@@ -267,7 +236,7 @@
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div class="position-relative">
-                    <div style="background: url('{{ asset('images/cr_futuro.png') }}') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); filter: grayscale(20%); mix-blend-mode: multiply;"></div>
+                    <div style="background: url('{{ asset('images/cr_futuro.jpg') }}') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); filter: grayscale(20%); mix-blend-mode: multiply;"></div>
                     <div class="position-absolute bg-white p-4 rounded-4 shadow-lg border" style="bottom: 30px; right: -20px; max-width: 280px;">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <div class="bg-success bg-opacity-10 p-2 rounded-circle">
@@ -291,7 +260,7 @@
                 <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Mitigação de Riscos</span>
                 <h2 class="h3 fw-bold text-dark mb-4">CR vs. Debêntures: Vantagens Fiduciárias</h2>
                 <p class="text-muted mb-4">Para projetos de infraestrutura e CAPEX corporativo, o Certificado de Recebíveis oferece benefícios que a dívida direta não consegue atingir.</p>
-                
+
                 <div class="comparison-table-container">
                     <table class="table align-middle mb-0 border-0">
                         <thead>
@@ -351,37 +320,6 @@
     </div>
 </section>
 
-<!-- Leadership Quote -->
-<section class="py-5" style="background: var(--bg);">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
-                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
-                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
-                    </div>
-                    <div class="row align-items-center g-4 position-relative z-1">
-                        <div class="col-md-3 text-center">
-                            <div class="rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; background: url('{{ asset('images/avatar-placeholder.png') }}') center/cover; border: 4px solid var(--gold-soft);"></div>
-                        </div>
-                        <div class="col-md-9">
-                            <blockquote class="blockquote mb-0">
-                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6;">
-                                    "O CR é a maior inovação do mercado de capitais na última década. Ele permite que o isolamento de risco e a eficiência fiduciária, antes restritos ao agro e imobiliário, cheguem a toda a economia real. Nosso papel é ser o elo que transforma bons projetos corporativos em ativos de alta liquidez e segurança."
-                                </p>
-                                <footer class="blockquote-footer mt-2">
-                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria de Estruturação Corporativa</span>
-                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
-                                </footer>
-                            </blockquote>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
 <!-- FAQ Section -->
 <section class="py-5 bg-white border-top">
     <div class="container py-5">
@@ -389,8 +327,8 @@
             <div class="col-lg-4">
                 <div class="pe-lg-4">
                     <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--brand); color: var(--brand); background: rgba(0,32,91, 0.05); letter-spacing: 0.1em; font-weight: 600;">Dúvidas Estratégicas</span>
-                    <h2 class="h3 fw-bold text-dark mb-4">A Nova Era da Securitização com a CVM 175</h2>
-                    <p class="text-muted mb-4">Esclarecemos os principais detalhes e mudanças estruturais trazidos pelo novo marco regulatório para emissores (CRA, CRI e o novo CR).</p>
+                    <h2 class="h3 fw-bold text-dark mb-4">A Nova Era de Ofertas com a Resolução CVM 160</h2>
+                    <p class="text-muted mb-4">Esclarecemos os principais detalhes e mudanças estruturais trazidos pelo novo marco regulatório de ofertas públicas para emissores de CR.</p>
                     <a href="{{ route('site.contact') }}" class="btn btn-brand btn-sm px-4 py-2">Consultar Especialista</a>
                 </div>
             </div>
@@ -400,12 +338,12 @@
                     <div class="accordion-item bg-transparent border-bottom py-3">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed bg-transparent fw-bold text-dark px-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
-                                01. O que mudou com a CVM 175 para o mercado de CR?
+                                01. O que mudou com a Resolução CVM 160 para o mercado de CR?
                             </button>
                         </h2>
                         <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqCR">
                             <div class="accordion-body px-0 text-muted">
-                                A resolução permitiu a consolidação de diferentes ativos e padronizou o Regime Fiduciário, simplificando os processos e ampliando a segurança jurídica. Ela expande a securitização para praticamente qualquer recebível estruturado de corporações (fora de CRI e CRA).
+                                A Resolução CVM 160 unificou e simplificou o regime de ofertas públicas (substituindo as antigas instruções 400 e 476). Isso trouxe maior agilidade por meio do rito automático e ampliou o acesso ao mercado de capitais, facilitando a captação e distribuição do CR para diferentes perfis de investidores.
                             </div>
                         </div>
                     </div>
@@ -519,7 +457,7 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-    
+
     .comparison-table-container {
         background: #ffffff;
         border: 1px solid rgba(9,27,35,0.04);

@@ -13,7 +13,7 @@
 @endphp
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/documentos_acl.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/documentos_acl2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -40,7 +40,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/documentos_acl.png') }}" class="img-fluid" alt="Documentos com ACL" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/documentos_acl.jpg') }}" class="img-fluid" alt="Documentos com ACL" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -202,12 +202,12 @@
             <div class="position-absolute top-0 end-0 p-5" style="opacity: 0.05;">
                 <svg width="250" height="250" viewBox="0 0 24 24" fill="none" stroke="#A06E28" stroke-width="1"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
             </div>
-            
+
             <div class="row align-items-center g-5 position-relative z-1">
                 <div class="col-lg-7" style="color: #E6E4E4;">
                     <h2 class="h2 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em; text-wrap: balance;">Documentos públicos, restritos e operacionais</h2>
                     <p class="lead mb-5" style="color: #E6E4E4; opacity: 0.85; font-weight: 300;">Oferecemos um cofre digital com governança, onde cada perfil acessa os documentos compatíveis com sua permissão e papel na operação.</p>
-                    
+
                     <div class="row g-4">
                         <div class="col-sm-6">
                             <div class="d-flex gap-3 align-items-start p-3 rounded-3 h-100" style="background: rgba(230, 228, 228, 0.03); border: 1px solid rgba(230, 228, 228, 0.05); transition: all 0.3s ease;">
@@ -265,11 +265,11 @@
                 <p class="text-muted mb-0">Exemplos de emissões com repositório documental público disponível.</p>
             </div>
             <a href="{{ route('site.emissions') }}" class="fw-bold text-decoration-none d-flex align-items-center gap-1" style="color: #A06E28; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-                Ver portfólio completo 
+                Ver portfólio completo
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
             </a>
         </div>
-        
+
         <div class="row g-4">
             @foreach($latestEmissions as $emission)
             <div class="col-md-4">
@@ -292,7 +292,7 @@
                             @endif
                         </div>
                     </div>
-                    
+
                     <div class="card-body p-4">
                         <div class="d-flex flex-column gap-3">
                             <div class="d-flex justify-content-between align-items-center border-bottom pb-2" style="border-color: #f8f9fa !important;">
@@ -305,7 +305,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="p-4 pt-0 mt-auto">
                         <a href="{{ route('site.emissions.show', $emission->if_code) }}" class="btn w-100 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2 py-2" style="background: #f8f9fa; color: #091B23; border: 1px solid #E6E4E4; transition: all 0.2s;" onmouseover="this.style.background='#091B23'; this.style.color='#ffffff'; this.style.borderColor='#091B23';" onmouseout="this.style.background='#f8f9fa'; this.style.color='#091B23'; this.style.borderColor='#E6E4E4';">
                             Documentos Públicos
@@ -328,7 +328,7 @@
             <div class="col-lg-5">
                 <h2 class="h4 fw-bold text-dark mb-4">Muitos acessos, um só repositório</h2>
                 <p class="text-muted small mb-4">A estrutura de controle de acesso documental permite organizar os arquivos da operação em um local unificado, com visualização segmentada por permissão.</p>
-                
+
                 <div class="d-flex flex-column gap-3">
                     <div class="p-3 bg-white rounded-3 shadow-xs border-start border-4 border-gold">
                         <div class="fw-bold text-dark small mb-1">Agente Fiduciário</div>
@@ -340,13 +340,13 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-7">
                 <div class="bg-white p-4 rounded-4 shadow-sm border border-brand-subtle">
                     <div class="text-center mb-4">
                         <span class="badge bg-light text-dark border px-3 py-1 rounded-pill smaller fw-bold">Como funciona na tela</span>
                     </div>
-                    
+
                     <div class="row g-3">
                         <!-- Perfil 1 -->
                         <div class="col-md-6">
@@ -371,7 +371,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Perfil 2 -->
                         <div class="col-md-6">
                             <div class="p-3 rounded-3 border bg-light h-100">
@@ -431,7 +431,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/documentos_acl.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('{{ asset('images/documentos_acl.jpg') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>

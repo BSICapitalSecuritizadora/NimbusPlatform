@@ -1,18 +1,18 @@
 @extends('site.layout')
 
-@section('title', 'Relatórios — BSI Capital')
+@section('title', 'Relatórios Customizados | BSI Capital')
 
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/relatorios.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/relatorios2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Serviços</span>
+                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Gestão</span>
                 <h1 class="display-3 fw-bold mb-4" style="color: #ffffff; letter-spacing: -0.02em;">
-                    <span style="color: var(--gold);">Relatórios Fiduciários</span> <br>e Gerenciais
+                    <span style="color: var(--gold);">Relatórios Customizados</span> <br>e Gerenciais
                 </h1>
                 <p class="lead mb-5" style="color: #E6E4E4; max-width: 90%;">
                     Consolidamos informações sobre lastro, garantias, fluxo de caixa, pagamentos, covenants e eventos relevantes para apoiar investidores, agentes fiduciários e demais stakeholders no acompanhamento contínuo das operações.
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/relatorios.png') }}" class="img-fluid" alt="Relatórios Gerenciais" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/relatorios.jpg') }}" class="img-fluid" alt="Relatórios Gerenciais" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -253,7 +253,7 @@
             <h2 class="h4 fw-bold text-dark">Nosso escopo de relatórios gerenciais</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Consolidamos os relatórios aplicáveis a cada operação, conforme estruturado em seus documentos, para manter todos os stakeholders alinhados.</p>
         </div>
-        
+
         <div class="row g-4 justify-content-center text-center">
             <div class="col-6 col-md-2">
                 <div class="p-3">
@@ -373,7 +373,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/relatorios.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('{{ asset('images/relatorios.jpg') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>
@@ -428,9 +428,9 @@
 <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
     document.addEventListener('DOMContentLoaded', function () {
         const ctx = document.getElementById('inadimplenciaChart').getContext('2d');
-        
+
         const brand = '#091b23';
-        
+
         new Chart(ctx, {
             type: 'bar',
             data: {

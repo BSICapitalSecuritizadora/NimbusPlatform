@@ -48,37 +48,6 @@
     </div>
 </section>
 
-<!-- BSI em Estruturações (Social Proof) -->
-<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong), var(--brand));">
-    <div class="container py-4">
-        <div class="row g-4 text-center">
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">R$ 950Mi+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Ativos Judiciais e Atípicos</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">12</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Teses de Crédito Exclusivas</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">R$ 400Mi</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Em Special Situations</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">8+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Anos de Engenharia Financeira</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 
 <!-- Benefícios Section -->
 <section class="py-5" style="background-color: var(--bg);">
@@ -130,7 +99,7 @@
                 <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Diretrizes de Estruturação</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Perfil das Estruturas Tailor-Made</h2>
                 <p class="text-muted mb-4">Focamos em operações que exigem alta sofisticação técnica e veículos exclusivos de securitização ou dívida.</p>
-                
+
                 <div class="row g-4">
                     <div class="col-sm-6">
                         <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
@@ -213,37 +182,6 @@
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div style="background: url('{{ asset('images/estruturacao_projetos.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Leadership Quote -->
-<section class="py-5" style="background: var(--bg);">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
-                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
-                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
-                    </div>
-                    <div class="row align-items-center g-4 position-relative z-1">
-                        <div class="col-md-3 text-center">
-                            <div class="rounded-circle mx-auto mb-3" style="width: 120px; height: 120px; background: url('{{ asset('images/avatar-placeholder.png') }}') center/cover; border: 4px solid var(--gold-soft);"></div>
-                        </div>
-                        <div class="col-md-9">
-                            <blockquote class="blockquote mb-0">
-                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6;">
-                                    "A verdadeira engenharia financeira não está em replicar modelos, mas em criar caminhos onde o crédito tradicional não alcança. Nossa missão é traduzir a complexidade de ativos judiciais e contratos atípicos em segurança institucional para emissores e investidores."
-                                </p>
-                                <footer class="blockquote-footer mt-2">
-                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria de Engenharia Financeira</span>
-                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
-                                </footer>
-                            </blockquote>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

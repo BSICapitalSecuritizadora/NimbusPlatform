@@ -25,7 +25,7 @@
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title mb-3">Imobiliário</div>
 
-                                <a class="mega-link" href="{{ route('site.imobiliario.cri') }}">CRI / Real Estate</a>
+                                <a class="mega-link" href="{{ route('site.imobiliario.cri') }}">CRI</a>
                                 <a class="mega-link" href="{{ route('site.imobiliario.loteamentos') }}">Loteamentos</a>
                                 <a class="mega-link" href="{{ route('site.imobiliario.incorporacao') }}">Incorporação</a>
                             </div>
@@ -57,23 +57,28 @@
                     <div class="dropdown-menu mega-menu p-0 border-0">
                         <div class="row g-3">
                             <div class="col-lg-4 p-3">
-                                <div class="mega-title">Estruturação</div>
-                                <a class="mega-link" href="{{ route('site.servicos.originacao') }}">Originação</a>
-                                <a class="mega-link" href="{{ route('site.servicos.estrutura-juridica') }}">Estrutura jurídica</a>
-                                <a class="mega-link" href="{{ route('site.servicos.registro-distribuicao') }}">Registro e distribuição</a>
+                                <div class="mega-title mb-3">Estruturação</div>
+
+                                <a class="mega-link" href="{{ route('site.servicos.estruturacao-operacoes') }}">Estruturação de Operações</a>
+                                <a class="mega-link" href="{{ route('site.servicos.captacao-recursos') }}">Captação de Recursos</a>
+                                <a class="mega-link" href="{{ route('site.servicos.emissao-cri') }}">Emissão e Coordenação de CRI</a>
+                                <a class="mega-link" href="{{ route('site.servicos.emissao-cra') }}">Emissão e Coordenação de CRA</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
-                                <div class="mega-title">Gestão</div>
-                                <a class="mega-link" href="{{ route('site.servicos.portal-investidor') }}">Portal do investidor</a>
-                                <a class="mega-link" href="{{ route('site.servicos.relatorios') }}">Relatórios fiduciários</a>
-                                <a class="mega-link" href="{{ route('site.servicos.monitoramento-regulatorio') }}">Monitoramento regulatório</a>
+                                <div class="mega-title mb-3">Gestão</div>
+
+                                <a class="mega-link" href="{{ route('site.servicos.portal-investidor') }}">Portal do Investidor</a>
+                                <a class="mega-link" href="{{ route('site.servicos.relatorios') }}">Relatórios Customizados</a>
+                                <a class="mega-link" href="{{ route('site.servicos.monitoramento-regulatorio') }}">Monitoramento Regulatório</a>
+                                <a class="mega-link" href="{{ route('site.servicos.atendimento-especializado') }}">Atendimento Especializado</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
-                                <div class="mega-title">Tecnologia</div>
+                                <div class="mega-title mb-3">Tecnologia</div>
+
                                 <a class="mega-link" href="{{ route('site.servicos.documentos-acl') }}">Documentos com ACL</a>
-                                <a class="mega-link" href="{{ route('site.servicos.auditoria-acessos') }}">Auditoria de acessos</a>
+                                <a class="mega-link" href="{{ route('site.servicos.auditoria-acessos') }}">Auditoria de Acessos</a>
                                 <a class="mega-link" href="{{ route('site.servicos.integracoes') }}">Integrações</a>
                             </div>
                         </div>

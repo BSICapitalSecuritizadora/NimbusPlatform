@@ -5,7 +5,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/compliance.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/monitoramento.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/compliance.png') }}" class="img-fluid" alt="Monitoramento regulatório" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/monitoramento.jpg') }}" class="img-fluid" alt="Monitoramento regulatório" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -213,7 +213,7 @@
                     <h3 class="h5 fw-bold text-dark mb-4 text-center">Nossa Esteira de Aprovação</h3>
                     <div class="d-flex flex-column gap-3 position-relative">
                         <div class="position-absolute h-100 border-start border-2 border-dashed" style="left: 20px; top: 0; opacity: 0.2;"></div>
-                        
+
                         <div class="d-flex align-items-center gap-3 position-relative z-1">
                             <div class="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold small shadow-sm" style="background-color: var(--brand, #091b23); width: 40px; height: 40px; min-width: 40px;">1</div>
                             <div class="flex-grow-1 p-2 bg-light rounded-3 border">
@@ -304,7 +304,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/compliance.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('{{ asset('images/monitoramento.jpg') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>

@@ -55,12 +55,17 @@ Route::view('/infra-empresas/estruturacao-sob-medida', 'site.infra-empresas.estr
 Route::view('/servicos/originacao', 'site.servicos.originacao')->name('site.servicos.originacao');
 Route::view('/servicos/estrutura-juridica', 'site.servicos.estrutura-juridica')->name('site.servicos.estrutura-juridica');
 Route::view('/servicos/registro-distribuicao', 'site.servicos.registro-distribuicao')->name('site.servicos.registro-distribuicao');
+Route::view('/servicos/estruturacao-de-operacoes', 'site.servicos.estruturacao-operacoes')->name('site.servicos.estruturacao-operacoes');
+Route::view('/servicos/captacao-de-recursos', 'site.servicos.captacao-recursos')->name('site.servicos.captacao-recursos');
+Route::view('/servicos/emissao-coordenacao-cri', 'site.servicos.emissao-cri')->name('site.servicos.emissao-cri');
+Route::view('/servicos/emissao-coordenacao-cra', 'site.servicos.emissao-cra')->name('site.servicos.emissao-cra');
 
 // Serviços > Gestão
 Route::view('/servicos/portal-do-investidor', 'site.servicos.portal-investidor')->name('site.servicos.portal-investidor');
 Route::view('/servicos/relatorios', 'site.servicos.relatorios')->name('site.servicos.relatorios');
 Route::permanentRedirect('/servicos/compliance', '/servicos/monitoramento-regulatorio');
 Route::view('/servicos/monitoramento-regulatorio', 'site.servicos.compliance')->name('site.servicos.monitoramento-regulatorio');
+Route::view('/servicos/atendimento-especializado', 'site.servicos.atendimento-especializado')->name('site.servicos.atendimento-especializado');
 
 // Serviços > Tecnologia
 Route::get('/servicos/documentos-acl', [SiteController::class, 'documentosAcl'])->name('site.servicos.documentos-acl');

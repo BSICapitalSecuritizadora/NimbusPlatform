@@ -5,7 +5,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/cra_agronegocio.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/cra_agronegocio2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/cra_agronegocio.png') }}" class="img-fluid" alt="CRA - Certificados de Recebíveis do Agronegócio" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/cra_agronegocio.jpg') }}" class="img-fluid" alt="CRA - Certificados de Recebíveis do Agronegócio" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -48,37 +48,6 @@
     </div>
 </section>
 
-<!-- BSI no Campo (Social Proof) -->
-<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong), var(--brand));">
-    <div class="container py-4">
-        <div class="row g-4 text-center">
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">R$ 1.5Bi+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Emissões Agro</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">120+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">CPRs Monitoradas</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">10</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Principais Culturas</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">24h</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Monitoramento Geográfico</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 
 <!-- Público-Alvo Section -->
 <section class="py-5" style="background-color: #ffffff;">
@@ -156,7 +125,7 @@
                     <p class="text-muted mb-0">Gestão rigorosa de Cédulas de Produto Rural (CPR), penhor de safra e recebíveis, assegurando o controle fiduciário do lastro agrícola.</p>
                 </div>
             </div>
-            
+
             <!-- Diferencial 2 -->
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
@@ -247,33 +216,33 @@
             @php
                 $culturas = [
                     [
-                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>', 
-                        'title' => 'Grãos', 
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>',
+                        'title' => 'Grãos',
                         'desc' => 'Soja, milho e trigo com foco em custeio, CPR e recebíveis agrícolas.'
                     ],
                     [
-                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>', 
-                        'title' => 'Sucroenergético', 
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+                        'title' => 'Sucroenergético',
                         'desc' => 'Recebíveis, fornecedores e fluxos vinculados à cadeia sucroenergética.'
                     ],
                     [
-                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M4 4v16"/><path d="M20 4v16"/><path d="M4 10h16"/><path d="M4 16h16"/></svg>', 
-                        'title' => 'Pecuária', 
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M4 4v16"/><path d="M20 4v16"/><path d="M4 10h16"/><path d="M4 16h16"/></svg>',
+                        'title' => 'Pecuária',
                         'desc' => 'Operações com recebíveis, garantias e fluxos associados à cadeia pecuária.'
                     ],
                     [
-                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>', 
-                        'title' => 'Café', 
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>',
+                        'title' => 'Café',
                         'desc' => 'Estruturas para cooperativas, produtores e exportadores da cadeia cafeeira.'
                     ],
                     [
-                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="12" cy="13" r="8"/><path d="M12 5a4 4 0 0 1 4-4 4 4 0 0 1-4 4z"/></svg>', 
-                        'title' => 'Citricultura', 
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><circle cx="12" cy="13" r="8"/><path d="M12 5a4 4 0 0 1 4-4 4 4 0 0 1-4 4z"/></svg>',
+                        'title' => 'Citricultura',
                         'desc' => 'Financiamento estruturado para pomares, indústria de sucos e recebíveis do setor.'
                     ],
                     [
-                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m8 14 4-4 4 4"/><path d="m4 10 8-8 8 8"/><path d="M12 22V14"/></svg>', 
-                        'title' => 'Silvicultura', 
+                        'icon' => '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="m8 14 4-4 4 4"/><path d="m4 10 8-8 8 8"/><path d="M12 22V14"/></svg>',
+                        'title' => 'Silvicultura',
                         'desc' => 'Crédito de longo prazo para florestas plantadas, manejo e ativos florestais.'
                     ],
                 ];
@@ -325,7 +294,7 @@
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div class="position-relative">
-                    <div style="background: url('{{ asset('images/cra_agronegocio.png') }}') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); filter: grayscale(20%); mix-blend-mode: multiply;"></div>
+                    <div style="background: url('{{ asset('images/cra_agronegocio.jpg') }}') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); filter: grayscale(20%); mix-blend-mode: multiply;"></div>
                     <div class="position-absolute bg-white p-4 rounded-4 shadow-lg border" style="bottom: 30px; right: -20px; max-width: 280px;">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <div class="bg-success bg-opacity-10 p-2 rounded-circle">
@@ -334,34 +303,6 @@
                             <div class="fw-bold small">Adequação Normativa</div>
                         </div>
                         <div class="text-muted smaller">Rigorosa observância às normas do CMN 5.118 e rastreabilidade fiduciária.</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Leadership Quote -->
-<section class="py-5" style="background: var(--bg);">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
-                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
-                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
-                    </div>
-                    <div class="row align-items-center g-4 position-relative z-1">
-                        <div class="col-md-12">
-                            <blockquote class="blockquote mb-0 text-center">
-                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6; font-style: italic;">
-                                    "No agronegócio, estruturação financeira qualificada baseia-se na sincronização temporal. Entendemos que um título corporativo deve estar acoplado à sazonalidade e à dinâmica operacional do campo. Nosso papel é aproximar o mercado de capitais das grandes cadeias agroindustriais com governança fiduciária rígida."
-                                </p>
-                                <footer class="blockquote-footer mt-2">
-                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria de Agronegócio</span>
-                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
-                                </footer>
-                            </blockquote>
-                        </div>
                     </div>
                 </div>
             </div>

@@ -4,7 +4,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.08; background: url('{{ asset('images/estrutura_juridica.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.08; background: url('{{ asset('images/estrutura_juridica2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -30,7 +30,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/estrutura_juridica.png') }}" class="img-fluid" alt="Governança Corporativa" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/estrutura_juridica.jpg') }}" class="img-fluid" alt="Governança Corporativa" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -118,7 +118,7 @@
                 <div class="card border-0 shadow-sm position-relative overflow-hidden" style="border-radius: 20px; background: #ffffff;">
                     <!-- Decorative background element -->
                     <div class="position-absolute top-0 end-0 h-100 w-50" style="background: radial-gradient(circle at top right, rgba(0,32,91,0.03), transparent 70%); pointer-events: none;"></div>
-                    
+
                     <div class="row g-0 align-items-stretch">
                         <div class="col-md-4 p-5 d-flex flex-column justify-content-center align-items-center text-center position-relative" style="background: linear-gradient(145deg, rgba(240,240,240,0.6), rgba(255,255,255,1)); border-right: 1px solid rgba(0,0,0,0.04);">
                             <div class="rounded-circle d-flex align-items-center justify-content-center mb-4 shadow-sm" style="width: 80px; height: 80px; background: #fff; border: 1px solid rgba(212,175,55,0.2);">
@@ -463,7 +463,7 @@
                     'Código de Ética'
                 ];
             @endphp
-            
+
             @foreach($expectedDocs as $docTitle)
                 @php
                     $dbDoc = $documents->firstWhere('title', $docTitle);
@@ -533,7 +533,7 @@
 
                 </div>
             </div>
-            
+
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
                     <div class="mb-4 d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 60px; height: 60px; background: rgba(0,32,91,0.08); color: var(--brand);">

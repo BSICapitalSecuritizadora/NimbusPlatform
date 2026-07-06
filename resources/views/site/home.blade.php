@@ -103,9 +103,9 @@
 
         @php
             $industries = [
-                ['Imobiliário', 'CRI e crédito estruturado lastreados em ativos e recebíveis imobiliários, com foco em governança, segurança documental e acompanhamento da carteira.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800&auto=format&fit=crop', '/imobiliario/cri-real-estate'],
-                ['Agronegócio', 'CRA e operações estruturadas para o agronegócio, com modelagem aderente ao ciclo do setor, às garantias e à geração de caixa da atividade.', 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop', '/agronegocio/cra'],
-                ['Infra & Empresas', 'Debêntures, notas comerciais e recebíveis empresariais estruturados para financiar crescimento, investimento e reorganização financeira.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800&auto=format&fit=crop', '/infra-empresas/cr-futuro'],
+                ['Imobiliário', 'CRI e crédito estruturado lastreados em ativos e recebíveis imobiliários, com foco em governança, segurança documental e acompanhamento da carteira.', asset('images/imobiliario.jpg'), '/imobiliario/cri-real-estate'],
+                ['Agronegócio', 'CRA e operações estruturadas para o agronegócio, com modelagem aderente ao ciclo do setor, às garantias e à geração de caixa da atividade.', asset('images/agronegocio.jpg'), '/agronegocio/cra'],
+                ['Infra & Empresas', 'Debêntures, notas comerciais e recebíveis empresariais estruturados para financiar crescimento, investimento e reorganização financeira.', asset('images/infra-empresas.jpg'), '/infra-empresas/cr-futuro'],
             ];
         @endphp
 

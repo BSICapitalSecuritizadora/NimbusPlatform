@@ -4,7 +4,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.08; background: url('{{ asset('images/compliance.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.08; background: url('{{ asset('images/sobre2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -30,7 +30,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/compliance.png') }}" class="img-fluid" alt="BSI Capital Securitizadora" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/sobre.jpg') }}" class="img-fluid" alt="BSI Capital Securitizadora" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -323,7 +323,7 @@
         <div class="row align-items-center g-5">
             <div class="col-lg-6 order-lg-2">
                 <div class="position-relative">
-                    <img src="{{ asset('images/compliance.png') }}" class="img-fluid rounded-4 shadow-lg" alt="Tecnologia BSI" style="filter: grayscale(20%); width: 100%; height: 400px; object-fit: cover;">
+                    <img src="{{ asset('images/sobre.jpg') }}" class="img-fluid rounded-4 shadow-lg" alt="Tecnologia BSI" style="filter: grayscale(20%); width: 100%; height: 400px; object-fit: cover;">
                 </div>
             </div>
             <div class="col-lg-6 order-lg-1">
@@ -486,16 +486,16 @@
 </section>
 
 <!-- Nossa Liderança -->
-<section class="py-5" style="background-color: #f8f9fa;">
+<!--<section class="py-5" style="background-color: #f8f9fa;">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
             <h2 class="h3 fw-bold text-dark mb-3">Liderança Executiva</h2>
             <p class="text-muted mx-auto" style="max-width: 600px;">Nossa estrutura de liderança multidisciplinar combina sólida bagagem no mercado de capitais com foco em governança fiduciária, operações e relacionamento.</p>
         </div>
 
-        <div class="row g-4 justify-content-center">
+        <div class="row g-4 justify-content-center">-->
             <!-- Líder 1 -->
-            <div class="col-md-6 col-lg-3">
+            <!--<div class="col-md-6 col-lg-3">
                 <div class="card border-0 shadow-sm text-center h-100 p-4" style="border-radius: 16px;">
                     <div class="mb-4 mx-auto position-relative" style="width: 80px; height: 80px;">
                         <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; border: 3px solid var(--brand);">
@@ -505,10 +505,10 @@
                     <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Diretoria Executiva</h4>
                     <p class="text-muted small mb-0">Especialistas na estruturação de ativos de crédito corporativo, imobiliário e agronegócio.</p>
                 </div>
-            </div>
-            
+            </div>-->
+
             <!-- Líder 2 -->
-            <div class="col-md-6 col-lg-3">
+            <!--<div class="col-md-6 col-lg-3">
                 <div class="card border-0 shadow-sm text-center h-100 p-4" style="border-radius: 16px;">
                     <div class="mb-4 mx-auto position-relative" style="width: 80px; height: 80px;">
                         <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; border: 3px solid var(--brand);">
@@ -518,10 +518,10 @@
                     <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Governança e Risco</h4>
                     <p class="text-muted small mb-0">Responsáveis por assegurar o rigor técnico e a conformidade regulatória nas emissões estruturadas.</p>
                 </div>
-            </div>
+            </div>-->
 
             <!-- Líder 3 -->
-            <div class="col-md-6 col-lg-3">
+            <!--<div class="col-md-6 col-lg-3">
                 <div class="card border-0 shadow-sm text-center h-100 p-4" style="border-radius: 16px;">
                     <div class="mb-4 mx-auto position-relative" style="width: 80px; height: 80px;">
                         <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; border: 3px solid var(--brand);">
@@ -531,10 +531,10 @@
                     <h4 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">Operações</h4>
                     <p class="text-muted small mb-0">Gestão do ciclo operacional, administração de carteiras, contratos e processamento de informações.</p>
                 </div>
-            </div>
+            </div>-->
 
             <!-- Líder 4 -->
-            <div class="col-md-6 col-lg-3">
+            <!--<div class="col-md-6 col-lg-3">
                 <div class="card border-0 shadow-sm text-center h-100 p-4" style="border-radius: 16px;">
                     <div class="mb-4 mx-auto position-relative" style="width: 80px; height: 80px;">
                         <div class="rounded-circle overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; border: 3px solid var(--brand);">
@@ -547,7 +547,7 @@
             </div>
         </div>
     </div>
-</section>
+</section>-->
 
 
 <!-- Credenciais / Selos -->

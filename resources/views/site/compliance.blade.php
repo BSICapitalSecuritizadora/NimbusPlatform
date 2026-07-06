@@ -5,7 +5,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.12; background: url('{{ asset('images/compliance.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.12; background: url('{{ asset('images/compliance2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/compliance.png') }}" class="img-fluid" alt="Compliance & Ética Corporativa" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/compliance.jpg') }}" class="img-fluid" alt="Compliance & Ética Corporativa" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -222,7 +222,7 @@
                         <div class="compliance-document-card__meta">Em validação</div>
                         @endif
                     </div>
-                    
+
                     <div class="compliance-document-card__footer">
                         @if($dbDoc)
                         <a href="{{ route('site.documents.download', $dbDoc) }}" class="compliance-document-card__link d-flex justify-content-between align-items-center w-100" download>
@@ -257,7 +257,7 @@
                             @endif
                         </div>
                     </div>
-                    
+
                     <div class="compliance-document-card__footer">
                         <a href="{{ route('site.documents.download', $document) }}" class="compliance-document-card__link d-flex justify-content-between align-items-center w-100" download>
                             <span>Acessar arquivo</span>

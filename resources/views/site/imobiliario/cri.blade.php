@@ -7,8 +7,8 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/cri_real_estate.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
-    
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/cri_real_estate2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
+
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
@@ -29,12 +29,12 @@
                     </a>
                 </div>
             </div>
-            
+
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <!-- Image Card -->
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/cri_real_estate.png') }}" class="img-fluid" alt="CRI Real Estate" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/cri_real_estate.jpg') }}" class="img-fluid" alt="CRI Real Estate" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <!-- Floating Data Box -->
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
@@ -130,7 +130,7 @@
                     <p class="text-muted mb-0">Rigor na formalização de garantias reais e cessão fiduciária, desenhando veículos de securitização com conformidade normativa institucional.</p>
                 </div>
             </div>
-            
+
             <!-- Diferencial 2 -->
             <div class="col-md-4">
                 <div class="card card-opea h-100 p-4 border-0 shadow-sm card-hover" style="transition: .3s;">
@@ -284,7 +284,7 @@
                                         $termo = $e->documents->first(fn($doc) => str_contains(strtolower($doc->title), 'termo') || $doc->category === 'documentos_operacao');
                                         $relatorio = $e->documents->first(fn($doc) => str_contains(strtolower($doc->title), 'relatório') || str_contains(strtolower($doc->title), 'mensal'));
                                     @endphp
-                                    
+
                                     @if($termo)
                                         <a href="{{ route('site.documents.download', $termo->id) }}" class="d-flex align-items-center gap-2 text-decoration-none py-1" style="color: var(--brand); font-size: 0.85rem;">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -345,7 +345,7 @@
             </div>
             <div class="col-lg-6 order-lg-1">
                 <div class="position-relative">
-                    <div style="background: url('{{ asset('images/documentos_acl.png') }}') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); filter: grayscale(20%); mix-blend-mode: multiply;"></div>
+                    <div style="background: url('{{ asset('images/gestao.jpg') }}') center/cover; height: 450px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); filter: grayscale(20%); mix-blend-mode: multiply;"></div>
                     <div class="position-absolute bg-white p-4 rounded-4 shadow-lg border" style="bottom: 30px; right: -20px; max-width: 280px;">
                         <div class="d-flex align-items-center gap-3 mb-3">
                             <div class="bg-success bg-opacity-10 p-2 rounded-circle">

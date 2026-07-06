@@ -5,7 +5,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/incorporacao.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/incorporacao2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/incorporacao.png') }}" class="img-fluid" alt="Incorporação Imobiliária" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/incorporacao.jpg') }}" class="img-fluid" alt="Incorporação Imobiliária" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -133,7 +133,7 @@
                 <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Diretrizes de Crédito</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Alinhamento Estratégico: Para quem a estrutura é indicada</h2>
                 <p class="text-muted mb-4">Focamos em parcerias estruturadas com desenvolvedores imobiliários e incorporadoras que possuem track record comprovado e projetos de forte viabilidade.</p>
-                
+
                 <div class="row g-4">
                     <div class="col-sm-6">
                         <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
@@ -254,7 +254,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/incorporacao.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('{{ asset('images/incorporacao.jpg') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>
@@ -267,7 +267,7 @@
             <div class="col-lg-6">
                 <h2 class="h3 fw-bold text-dark mb-4">Fluxo de Desembolso Sincronizado (Curva S)</h2>
                 <p class="text-muted mb-5">Em operações de produção, a liberação de recursos segue a Curva S de evolução física da obra, assegurando que o capital esteja disponível com aderência ao cronograma físico-financeiro do canteiro.</p>
-                
+
                 <div class="position-relative p-4 bg-white rounded-4 border shadow-sm mb-4">
                     <svg viewBox="0 0 400 200" class="w-100 h-auto mb-3" style="max-height: 250px;">
                         <!-- Grid Lines -->
@@ -276,10 +276,10 @@
                         <line x1="0" y1="100" x2="400" y2="100" stroke="#eee" stroke-width="1"/>
                         <line x1="0" y1="60" x2="400" y2="60" stroke="#eee" stroke-width="1"/>
                         <line x1="0" y1="20" x2="400" y2="20" stroke="#eee" stroke-width="1"/>
-                        
+
                         <!-- S-Curve Path (Physical Evolution) -->
                         <path d="M 0 180 Q 100 180 200 100 T 400 20" fill="none" stroke="var(--gold)" stroke-width="4" stroke-linecap="round"/>
-                        
+
                         <!-- Disbursement Bars (Tranches) -->
                         <rect x="20" y="160" width="20" height="20" fill="var(--brand)" opacity="0.4"/>
                         <rect x="80" y="150" width="20" height="30" fill="var(--brand)" opacity="0.6"/>
@@ -287,11 +287,11 @@
                         <rect x="200" y="80" width="20" height="100" fill="var(--brand)"/>
                         <rect x="260" y="60" width="20" height="120" fill="var(--brand)"/>
                         <rect x="320" y="40" width="20" height="140" fill="var(--brand)" opacity="0.8"/>
-                        
+
                         <text x="5" y="15" font-size="10" fill="#999">100% Obra</text>
                         <text x="350" y="195" font-size="10" fill="#999">Tempo</text>
                     </svg>
-                    
+
                     <div class="d-flex justify-content-between small text-muted px-2">
                         <div class="d-flex align-items-center gap-2">
                             <span class="d-inline-block" style="width: 12px; height: 3px; background: var(--gold);"></span> Curva de Evolução Física
@@ -302,7 +302,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="col-lg-6">
                 <div class="d-flex flex-column h-100 justify-content-center">
                     <div class="d-flex gap-4 mb-4">
@@ -332,33 +332,6 @@
     </div>
 </section>
 
-<!-- Leadership Quote -->
-<section class="py-5" style="background: var(--bg);">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
-                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
-                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
-                    </div>
-                    <div class="row align-items-center g-4 position-relative z-1">
-                        <div class="col-md-12">
-                            <blockquote class="blockquote mb-0 text-center">
-                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6; font-style: italic;">
-                                    "O segredo de um financiamento para incorporação via mercado de capitais não está apenas nas garantias, mas na execução. Entendemos que o sucesso da operação depende do sincronismo entre o cronograma de obra e o fluxo de caixa da SPE. Nosso papel é garantir estabilidade e governança corporativa durante todo o ciclo do projeto."
-                                </p>
-                                <footer class="blockquote-footer mt-2">
-                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria de Real Estate</span>
-                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
-                                </footer>
-                            </blockquote>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 
 <!-- FAQ Section -->
 <section class="py-5 bg-white">

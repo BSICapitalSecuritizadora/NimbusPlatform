@@ -5,7 +5,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/projetos_agro.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/projetos_agro2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/projetos_agro.png') }}" class="img-fluid" alt="Projetos do Agronegócio" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/projetos_agro.jpg') }}" class="img-fluid" alt="Projetos do Agronegócio" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -48,37 +48,6 @@
     </div>
 </section>
 
-<!-- BSI em Infraestrutura (Social Proof) -->
-<section class="py-5" style="background: linear-gradient(135deg, var(--brand-strong), var(--brand));">
-    <div class="container py-4">
-        <div class="row g-4 text-center">
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">R$ 550Mi+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Em CAPEX Estruturado</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">45+</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Obras Monitoradas</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">1.2Mt</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Capacidade de Silagem</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="px-3">
-                    <div class="display-5 fw-bold text-white mb-1">25MW</div>
-                    <div class="small text-uppercase fw-bold" style="color: var(--gold); letter-spacing: 0.1em;">Energia Limpa no Campo</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
 
 <!-- Gargalos e Desafios de CAPEX -->
 <section class="py-5 bg-white border-bottom">
@@ -195,7 +164,7 @@
                 <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Diretrizes de Crédito</span>
                 <h2 class="h3 fw-bold text-dark mb-4">Parâmetros para Projetos Estruturados</h2>
                 <p class="text-muted mb-4">Atuamos como securitizadora e estruturadora via mercado de capitais de forma complementar e qualificada, potencializando as garantias reais rurais constituídas.</p>
-                
+
                 <div class="row g-4">
                     <div class="col-sm-6">
                         <div class="p-3 border-start border-4 border-gold bg-white shadow-sm h-100">
@@ -278,35 +247,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/projetos_agro.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Leadership Quote -->
-<section class="py-5" style="background: var(--bg);">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card border-0 shadow-sm p-4 p-md-5 position-relative overflow-hidden" style="border-radius: 30px; background: white;">
-                    <div class="position-absolute top-0 end-0 p-4" style="opacity: 0.05; pointer-events: none;">
-                        <svg width="120" height="120" viewBox="0 0 24 24" fill="var(--brand)"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"/></svg>
-                    </div>
-                    <div class="row align-items-center g-4 position-relative z-1">
-                        <div class="col-md-12">
-                            <blockquote class="blockquote mb-0 text-center">
-                                <p class="fs-4 fw-medium text-dark mb-4 italic" style="line-height: 1.6; font-style: italic;">
-                                    "Projetos de CAPEX e infraestrutura rural demandam governança qualificada. Nosso papel como securitizadora é estruturar alternativas de capital de longo prazo adequadas ao cronograma físico-financeiro, oferecendo a estabilidade informacional necessária para os agentes de mercado."
-                                </p>
-                                <footer class="blockquote-footer mt-2">
-                                    <span class="fw-bold text-brand fs-5 d-block">Diretoria de Projetos Estruturados</span>
-                                    <cite title="BSI Capital" class="small text-muted text-uppercase fw-bold" style="letter-spacing: 0.1em;">BSI Capital Securitizadora</cite>
-                                </footer>
-                            </blockquote>
-                        </div>
-                    </div>
-                </div>
+                <div style="background: url('{{ asset('images/projetos_agro.jpg') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>

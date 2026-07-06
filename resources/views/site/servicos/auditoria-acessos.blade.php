@@ -5,7 +5,7 @@
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/auditoria_acessos.png') }}') center/cover; mix-blend-mode: luminosity;"></div>
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="opacity: 0.15; background: url('{{ asset('images/auditoria_acessos2.jpg') }}') center/cover; mix-blend-mode: luminosity;"></div>
 
     <div class="container position-relative z-1">
         <div class="row align-items-center g-5">
@@ -31,7 +31,7 @@
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="position-relative">
                     <div style="border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                        <img src="{{ asset('images/auditoria_acessos.png') }}" class="img-fluid" alt="Auditoria de Acessos" style="width: 100%; height: 500px; object-fit: cover;">
+                        <img src="{{ asset('images/auditoria_acessos.jpg') }}" class="img-fluid" alt="Auditoria de Acessos" style="width: 100%; height: 500px; object-fit: cover;">
                     </div>
                     <div class="position-absolute bg-white px-4 py-3 rounded-4 shadow-lg d-flex align-items-center gap-3" style="bottom: -20px; left: -30px; animation: float 6s ease-in-out infinite;">
                         <div class="bg-light p-3 rounded-circle" style="background: rgba(9,27,35,0.1) !important; color: #091b23 !important;">
@@ -172,7 +172,7 @@
                         </div>
                         <div class="badge bg-success-subtle text-success border border-success-subtle smaller">Sistema Ativo</div>
                     </div>
-                    
+
                     <div class="p-4">
                         <div class="row g-3 mb-4">
                             <div class="col-4">
@@ -241,7 +241,7 @@
                             </table>
                         </div>
                     </div>
-                    
+
                     <div class="p-3 bg-dark text-white d-flex justify-content-between align-items-center" style="background-color: #091B23 !important;">
                         <div class="smaller d-flex align-items-center gap-2">
                             <span class="text-gold">•</span> Registro Criptográfico SHA-256 Ativo
@@ -253,7 +253,7 @@
                     <span class="small text-muted" style="font-size: 0.75rem; opacity: 0.8;">Exemplo ilustrativo de painel de auditoria. Dados reais variam conforme a operação, usuários autorizados, documentos cadastrados e permissões de acesso.</span>
                 </div>
             </div>
-            
+
             <div class="col-lg-5">
                 <h2 class="h4 fw-bold text-dark mb-4">Monitoramento Fiduciário</h2>
                 <div class="d-flex flex-column gap-3">
@@ -304,7 +304,7 @@
                 </ul>
             </div>
             <div class="col-lg-6 order-lg-1">
-                <div style="background: url('{{ asset('images/auditoria_acessos.png') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
+                <div style="background: url('{{ asset('images/auditoria_acessos.jpg') }}') center/cover; height: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></div>
             </div>
         </div>
     </div>
