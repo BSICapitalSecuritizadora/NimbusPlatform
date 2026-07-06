@@ -197,14 +197,14 @@
                 <div class="p-4 p-lg-5 rounded-4 border bg-white shadow-lg">
                     <h3 class="h5 fw-bold text-dark mb-4 text-center">Presença em todo o território nacional</h3>
                     <p class="text-muted text-center mb-5">Atuamos com especialistas locais em polos de desenvolvimento urbano de Norte a Sul do Brasil.</p>
-                    
+
                     <div class="row g-3 text-center">
                         <div class="col-4">
-                            <div class="fw-bold h4 mb-0 text-brand">12+</div>
+                            <div class="fw-bold h4 mb-0 text-brand">7+</div>
                             <div class="small text-muted">Estados Atendidos</div>
                         </div>
                         <div class="col-4">
-                            <div class="fw-bold h4 mb-0 text-brand">R$ 5B+</div>
+                            <div class="fw-bold h4 mb-0 text-brand">R$ 700Mi+</div>
                             <div class="small text-muted">VGV Estruturado</div>
                         </div>
                         <div class="col-4">
@@ -212,11 +212,11 @@
                             <div class="small text-muted">Loteamentos</div>
                         </div>
                     </div>
-                    
+
                     <hr class="my-4" style="opacity: 0.1;">
-                    
+
                     <div class="d-flex flex-wrap justify-content-center gap-2">
-                        @foreach(['SP', 'MG', 'PR', 'SC', 'GO', 'MS', 'MT', 'BA', 'PE', 'CE'] as $uf)
+                        @foreach(['AL', 'MT', 'MG', 'PE', 'RJ', 'SP', 'TO'] as $uf)
                             <span class="badge bg-light text-muted border px-3 py-2">{{ $uf }}</span>
                         @endforeach
                     </div>

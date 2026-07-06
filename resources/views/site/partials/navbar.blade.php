@@ -23,24 +23,24 @@
                     <div class="dropdown-menu mega-menu p-0 border-0">
                         <div class="row g-3">
                             <div class="col-lg-4 p-3">
-                                <div class="mega-title">Imobiliário</div>
-                                <div class="mega-kicker">Operações lastreadas e estruturação completa.</div>
+                                <div class="mega-title mb-3">Imobiliário</div>
+
                                 <a class="mega-link" href="{{ route('site.imobiliario.cri') }}">CRI / Real Estate</a>
                                 <a class="mega-link" href="{{ route('site.imobiliario.loteamentos') }}">Loteamentos</a>
                                 <a class="mega-link" href="{{ route('site.imobiliario.incorporacao') }}">Incorporação</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
-                                <div class="mega-title">Agronegócio</div>
-                                <div class="mega-kicker">Crédito estruturado para cadeias e projetos.</div>
+                                <div class="mega-title mb-3">Agronegócio</div>
+
                                 <a class="mega-link" href="{{ route('site.agronegocio.cra') }}">CRA</a>
                                 <a class="mega-link" href="{{ route('site.agronegocio.cooperativas') }}">Cooperativas</a>
                                 <a class="mega-link" href="{{ route('site.agronegocio.projetos') }}">Projetos</a>
                             </div>
 
                             <div class="col-lg-4 p-3">
-                                <div class="mega-title">Infra & Empresas</div>
-                                <div class="mega-kicker">Estruturas para expansão e investimentos.</div>
+                                <div class="mega-title mb-3">Infra & Empresas</div>
+
                                 <a class="mega-link" href="{{ route('site.infra.cr') }}">CR</a>
                                 <a class="mega-link" href="{{ route('site.infra.recebiveis') }}">Recebíveis</a>
                                 <a class="mega-link" href="{{ route('site.infra.estruturacao') }}">Estruturação sob medida</a>
@@ -58,7 +58,6 @@
                         <div class="row g-3">
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Estruturação</div>
-                                <div class="mega-kicker">Modelagem, documentação e governança.</div>
                                 <a class="mega-link" href="{{ route('site.servicos.originacao') }}">Originação</a>
                                 <a class="mega-link" href="{{ route('site.servicos.estrutura-juridica') }}">Estrutura jurídica</a>
                                 <a class="mega-link" href="{{ route('site.servicos.registro-distribuicao') }}">Registro e distribuição</a>
@@ -66,7 +65,6 @@
 
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Gestão</div>
-                                <div class="mega-kicker">Transparência e acompanhamento ao investidor.</div>
                                 <a class="mega-link" href="{{ route('site.servicos.portal-investidor') }}">Portal do investidor</a>
                                 <a class="mega-link" href="{{ route('site.servicos.relatorios') }}">Relatórios fiduciários</a>
                                 <a class="mega-link" href="{{ route('site.servicos.monitoramento-regulatorio') }}">Monitoramento regulatório</a>
@@ -74,7 +72,6 @@
 
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Tecnologia</div>
-                                <div class="mega-kicker">Automação e trilha de auditoria.</div>
                                 <a class="mega-link" href="{{ route('site.servicos.documentos-acl') }}">Documentos com ACL</a>
                                 <a class="mega-link" href="{{ route('site.servicos.auditoria-acessos') }}">Auditoria de acessos</a>
                                 <a class="mega-link" href="{{ route('site.servicos.integracoes') }}">Integrações</a>
@@ -92,7 +89,6 @@
                         <div class="row g-3">
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">A BSI</div>
-                                <div class="mega-kicker">História, time e visão.</div>
                                 <a class="mega-link" href="{{ route('site.about') }}">Sobre</a>
                                 <a class="mega-link" href="{{ route('site.governance') }}">Governança</a>
                                 <a class="mega-link" href="{{ route('site.compliance') }}">Compliance</a>
@@ -100,7 +96,6 @@
 
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Relações com Investidores</div>
-                                <div class="mega-kicker">Documentos públicos e comunicados.</div>
                                 <a class="mega-link" href="{{ route('site.ri') }}">Portal do Investidor</a>
                                 <a class="mega-link" href="{{ route('site.intelligence') }}">Intelligence (Análises)</a>
                                 <a class="mega-link" href="{{ route('site.ri', ['category' => 'assembleias']) }}">Assembleias</a>
@@ -108,7 +103,6 @@
 
                             <div class="col-lg-4 p-3">
                                 <div class="mega-title">Contato</div>
-                                <div class="mega-kicker">Fale com a BSI.</div>
                                 <a class="mega-link" href="{{ route('site.contact') }}">Fale conosco</a>
                                 <a class="mega-link" href="{{ route('site.partnerships') }}">Parcerias</a>
                                 <a class="mega-link" href="{{ route('site.vacancies.index') }}">Trabalhe conosco</a>

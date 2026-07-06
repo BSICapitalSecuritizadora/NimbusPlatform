@@ -361,12 +361,6 @@
     </div>
 </section>
 
-<!-- Viability Simulator -->
-<section class="py-5 bg-light border-top">
-    <div class="container py-5">
-        <livewire:imobiliario.viability-simulator />
-    </div>
-</section>
 
 <!-- FAQ Section -->
 <section class="py-5 bg-light">

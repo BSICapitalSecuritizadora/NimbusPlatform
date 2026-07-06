@@ -1,9 +1,9 @@
 @php
     $stats = $stats ?? [
-        ['label' => 'Emissões Realizadas', 'value' => '+R$ 2Bi'],
-        ['label' => 'Projetos Financiados', 'value' => '85+'],
-        ['label' => 'Estados Atendidos', 'value' => '15'],
-        ['label' => 'VGV Sob Gestão', 'value' => 'R$ 450Mi'],
+        ['label' => 'Emissões Realizadas', 'value' => '+R$ 1Bi'],
+        ['label' => 'Projetos Financiados', 'value' => '20+'],
+        ['label' => 'Estados Atendidos', 'value' => '7'],
+        ['label' => 'VGV Sob Gestão', 'value' => 'R$ 700Mi+'],
     ];
 @endphp
 
