@@ -9,8 +9,9 @@ uses(RefreshDatabase::class);
 it('renders the revised institutional copy on the home page', function () {
     $this->get(route('site.home'))
         ->assertSuccessful()
-        ->assertSeeText('Estruturação, emissão e gestão fiduciária de CRI, CRA e CR.')
-        ->assertSeeText('Da estruturação à gestão: cobertura integral da operação')
+        ->assertSeeText('Atuação completa da estruturação ao encerramento da operação.')
+        ->assertSeeText('Soluções completas em CRI, CRA e CR, com segurança, tecnologia e diligência da estruturação à liquidação final.')
+        ->assertSeeText('Da estruturação à gestão fiduciária')
         ->assertSeeText('Submeter Operação para Análise')
         ->assertSeeText('Ver Emissões')
         ->assertSeeText('Solicitar Análise de Estruturação')
@@ -21,7 +22,7 @@ it('renders the revised institutional copy on the home page', function () {
         ->assertDontSeeText('Portal de R.I.')
         ->assertDontSeeText('Divulgações ao mercado')
         ->assertSeeText('Relacionamento institucional')
-        ->assertSeeText('Entre em contato com a BSI Capital');
+        ->assertSeeText('Fale com a BSI Capital');
 });
 
 it('renders the home hero video from a local project asset', function () {

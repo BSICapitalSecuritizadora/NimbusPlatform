@@ -48,24 +48,24 @@
 </section>
 
 <!-- Contadores -->
-<section style="background: #0b1220; border-top: 1px solid rgba(212,175,55,0.15);">
+<section style="background: #091B23; border-top: 1px solid rgba(212,175,55,0.15);">
     <div class="container py-5">
         <div class="row text-center g-4">
             <div class="col-6 col-md-3">
-                <div class="display-5 fw-bold" style="color: var(--gold);">2009</div>
-                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Fundação</div>
+                <div class="display-5 fw-bold" style="color: #A06E23;">2009</div>
+                <div class="text-uppercase mt-2" style="color: #E6E4E4; font-size: 0.8rem; letter-spacing: 0.1em;">Fundação</div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="display-5 fw-bold" style="color: var(--gold);">+R$ 1 Bi</div>
-                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Volume Estruturado</div>
+                <div class="display-5 fw-bold" style="color: #A06E23;">+R$ 1 Bi</div>
+                <div class="text-uppercase mt-2" style="color: #E6E4E4; font-size: 0.8rem; letter-spacing: 0.1em;">Volume Estruturado</div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="display-5 fw-bold" style="color: var(--gold);">CVM</div>
-                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Registro CVM</div>
+                <div class="display-5 fw-bold" style="color: #A06E23;">CVM</div>
+                <div class="text-uppercase mt-2" style="color: #E6E4E4; font-size: 0.8rem; letter-spacing: 0.1em;">Registro CVM</div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="display-5 fw-bold" style="color: var(--gold);">ANBIMA</div>
-                <div class="text-uppercase mt-2" style="color: #8892b0; font-size: 0.8rem; letter-spacing: 0.1em;">Autorregulação</div>
+                <div class="display-5 fw-bold" style="color: #A06E23;">ANBIMA</div>
+                <div class="text-uppercase mt-2" style="color: #E6E4E4; font-size: 0.8rem; letter-spacing: 0.1em;">Autorregulação</div>
             </div>
         </div>
     </div>
@@ -227,41 +227,41 @@
 </section>
 
 <!-- Cultura: Ética, Inovação, Foco no Cliente -->
-<section class="py-5" style="background: #0b1220;">
+<section class="py-5" style="background: #091B23;">
     <div class="container py-5">
         <div class="text-center mb-5 pb-3">
-            <h2 class="h3 fw-bold mb-3" style="color: #ffffff;">Nosso jeito de trabalhar</h2>
-            <p class="mx-auto" style="max-width: 600px; color: #E6E4E4;">Nossa abordagem é pautada pelo apoio à tomada de decisão, excelência em governança e controle de cada etapa.</p>
+            <h2 class="h3 fw-bold mb-3" style="color: #E6E4E4;">Nosso jeito de trabalhar</h2>
+            <p class="mx-auto" style="max-width: 600px; color: rgba(230, 228, 228, 0.72);">Nossa abordagem é pautada pelo apoio à tomada de decisão, excelência em governança e controle de cada etapa.</p>
         </div>
 
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.04); border-radius: 16px;">
+                <div class="card h-100 p-4" style="background: rgba(230, 228, 228, 0.04); border: 1px solid rgba(230, 228, 228, 0.08); border-radius: 16px;">
                     <div class="mb-3">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A06E23" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Integridade e Ética</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Atuamos com transparência, diligência e aderência às normas aplicáveis, mantendo governança e rastreabilidade nas decisões da operação.</p>
+                    <h4 class="fw-bold mb-2" style="color: #E6E4E4; font-size: 1.1rem;">Integridade e Ética</h4>
+                    <p class="mb-0" style="color: rgba(230, 228, 228, 0.72); font-size: 0.95rem;">Atuamos com transparência, diligência e aderência às normas aplicáveis, mantendo governança e rastreabilidade nas decisões da operação.</p>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.04); border-radius: 16px;">
+                <div class="card h-100 p-4" style="background: rgba(230, 228, 228, 0.04); border: 1px solid rgba(230, 228, 228, 0.08); border-radius: 16px;">
                     <div class="mb-3">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A06E23" stroke-width="1.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Inovação prática</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Tecnologia aplicada à eficiência operacional. Automação de rotinas e controles documentais para suporte e acompanhamento contínuo da operação.</p>
+                    <h4 class="fw-bold mb-2" style="color: #E6E4E4; font-size: 1.1rem;">Inovação prática</h4>
+                    <p class="mb-0" style="color: rgba(230, 228, 228, 0.72); font-size: 0.95rem;">Tecnologia aplicada à eficiência operacional. Automação de rotinas e controles documentais para suporte e acompanhamento contínuo da operação.</p>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="card h-100 p-4 border-0" style="background: rgba(255,255,255,0.04); border-radius: 16px;">
+                <div class="card h-100 p-4" style="background: rgba(230, 228, 228, 0.04); border: 1px solid rgba(230, 228, 228, 0.08); border-radius: 16px;">
                     <div class="mb-3">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A06E23" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     </div>
-                    <h4 class="fw-bold mb-2" style="color: #fff; font-size: 1.1rem;">Foco na solução</h4>
-                    <p class="mb-0" style="color: #8892b0; font-size: 0.95rem;">Desenhamos estruturas compatíveis com o perfil do ativo, o fluxo de caixa, as garantias e os requisitos regulatórios aplicáveis.</p>
+                    <h4 class="fw-bold mb-2" style="color: #E6E4E4; font-size: 1.1rem;">Foco na solução</h4>
+                    <p class="mb-0" style="color: rgba(230, 228, 228, 0.72); font-size: 0.95rem;">Desenhamos estruturas compatíveis com o perfil do ativo, o fluxo de caixa, as garantias e os requisitos regulatórios aplicáveis.</p>
                 </div>
             </div>
         </div>

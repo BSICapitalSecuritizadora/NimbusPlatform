@@ -9,9 +9,9 @@ dataset('public-layout-routes', [
     'home' => [
         'site.home',
         [
-            'Estruturação, emissão e gestão fiduciária de CRI, CRA e CR.',
-            'Estruturas alinhadas ao ativo, ao setor e ao fluxo da operação',
-            'Da estruturação à gestão: cobertura integral da operação',
+            'Atuação completa da estruturação ao encerramento da operação.',
+            'Estruturas sob medida para cada setor e operação',
+            'Da estruturação à gestão fiduciária',
         ],
     ],
     'services' => [
