@@ -390,11 +390,6 @@
     };
 
     $hasPayments = $emission->payments->count() > 0;
-    $hasPuHistory = $emission->puHistories->count() > 0;
-    $indexer = $emission->remuneration_indexer;
-    $spreadRate = is_numeric($emission->remuneration_rate) ? (float) $emission->remuneration_rate : null;
-    $isIndexed = in_array($indexer, ['CDI', 'IPCA'], true);
-    $hasSimulatorData = $hasPuHistory && ($spreadRate !== null) && ($emission->maturity_date !== null);
     $publicDocuments = $emission->documents
         ->unique('id')
         ->sortByDesc('published_at')
@@ -540,7 +535,6 @@
                 <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#caracteristicas" aria-selected="true">Características</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#pagamentos" aria-selected="false">Pagamentos & PU</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#documentos" aria-selected="false">Documentos</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#simulador" aria-selected="false">Simulador de Fluxo</a></li>
                 {{-- <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#fluxograma" aria-selected="false">Fluxograma</a></li> --}}
                 {{-- <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#comunicados" aria-selected="false">Comunicados</a></li> --}}
             </ul>
@@ -685,102 +679,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {{-- Simulador de Fluxo --}}
-            <div class="tab-pane fade" id="simulador" role="tabpanel">
-                <div class="surface-card p-4 p-lg-5 mb-4 shadow-sm border-0">
-                    <div class="row g-4 align-items-end mb-4">
-                        <div class="col-lg-8">
-                            <div class="section-kicker mb-2">Fluxo do Investidor</div>
-                            <h2 class="h3 fw-bold text-brand mb-2">Simulador de Resultado Estimado</h2>
-                            <p class="section-copy mb-0">Estime o ganho bruto da sua posição considerando a variação do PU e o histórico de eventos financeiros (juros e amortizações) no período selecionado.</p>
-                        </div>
-                    </div>
-
-                    @if($hasSimulatorData)
-                        <div class="alert alert-info border-0 shadow-sm rounded-4 p-4 mb-5" style="background: rgba(9,27,35,0.03);">
-                            <div class="d-flex gap-3">
-                                <i class="bi bi-info-circle-fill text-brand" style="font-size: 1.5rem;"></i>
-                                <div class="small text-muted" style="text-align: justify;">
-                                    <strong>Nota Técnica:</strong> Este simulador projeta o resultado bruto estimado com base no PU da data selecionada e na remuneração contratual da operação, aplicada sobre o prazo restante até o vencimento. {{ $isIndexed ? 'A taxa do ' . $indexer . ' utilizada é uma estimativa e pode variar.' : '' }} Os valores apresentados não consideram tributação, taxas ou eventos extraordinários.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="calculator-card p-4 p-lg-5">
-                            <div class="row g-4">
-                                <div class="col-lg-7">
-                                    <div class="row g-3">
-                                        <div class="col-md-8">
-                                            <label class="calc-input-label">Data de Compra</label>
-                                            <select class="form-select doc-filter-select" id="calc_date_start">
-                                                @foreach($emission->puHistories->sortBy('date') as $pu)
-                                                    <option value="{{ $pu->unit_value }}" data-date="{{ $pu->date->format('Y-m-d') }}">{{ $pu->date->format('d/m/Y') }} (PU: {{ number_format($pu->unit_value, 6, ',', '.') }})</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="calc-input-label">Quantidade</label>
-                                            <input type="number" class="form-control doc-filter-select" id="calc_quantity" value="100" min="1">
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-3 p-3 rounded-3" style="background: rgba(9,27,35,0.03);">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="small text-muted">Remuneração da Operação</span>
-                                            <span class="small fw-semibold text-brand">{{ $emission->formatted_remuneration ?? '—' }}</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center mt-1">
-                                            <span class="small text-muted">Vencimento</span>
-                                            <span class="small fw-semibold">{{ $emission->maturity_date?->format('d/m/Y') ?? '—' }}</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center mt-1">
-                                            <span class="small text-muted">Prazo Restante</span>
-                                            <span class="small fw-semibold" id="detail_remaining_term">—</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="mt-4 border-top pt-4">
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="small text-muted">Investimento Inicial:</span>
-                                            <span class="small fw-semibold" id="detail_invested">R$ 0,00</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="small text-muted">Taxa Utilizada na Projeção (a.a.):</span>
-                                            <span class="small fw-semibold" id="detail_total_rate">0,00%</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="small text-muted">Valor Bruto Projetado no Vencimento:</span>
-                                            <span class="small fw-semibold" id="detail_projected_value">R$ 0,00</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-lg-5">
-                                    <div class="calc-result-box h-100 d-flex flex-column justify-content-center">
-                                        <div class="mb-4">
-                                            <div class="calc-result-label">Resultado Bruto Estimado</div>
-                                            <div class="calc-result-value" id="calc_result_bruto">R$ 0,00</div>
-                                        </div>
-                                        <div>
-                                            <div class="calc-result-label">Rentabilidade Projetada</div>
-                                            <div class="calc-result-value" id="calc_result_perc" style="font-size: 1.5rem;">0,00%</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-4 p-3 bg-light rounded-3 text-center small text-muted">
-                            Simulação informativa com base na remuneração contratual. Não constitui promessa de rentabilidade futura e não substitui os documentos oficiais do escriturador ou custodiante.
-                        </div>
-                    @else
-                        <div class="p-5 bg-light rounded-4 text-center text-muted border border-dashed">
-                            <i class="bi bi-calculator display-4 mb-3 d-block"></i>
-                            <p class="mb-0">A simulação de fluxo do investidor ficará disponível quando houver histórico suficiente de PU e dados completos de remuneração e vencimento para esta operação.</p>
-                        </div>
-                    @endif
                 </div>
             </div>
 
@@ -1009,70 +907,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-    }
-
-    // Simulador de Projeção do Investidor
-    const calcDateStart = document.getElementById('calc_date_start');
-    const calcQty = document.getElementById('calc_quantity');
-    const calcBruto = document.getElementById('calc_result_bruto');
-    const calcPerc = document.getElementById('calc_result_perc');
-    const detailInvested = document.getElementById('detail_invested');
-    const detailTotalRate = document.getElementById('detail_total_rate');
-    const detailProjectedValue = document.getElementById('detail_projected_value');
-    const detailRemainingTerm = document.getElementById('detail_remaining_term');
-
-    const spreadRate = @json($spreadRate);
-    const maturityDate = @json($emission->maturity_date?->format('Y-m-d'));
-
-    const currencyFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-
-    function calculate() {
-        if (!calcDateStart || !calcQty || !maturityDate || spreadRate === null) return;
-
-        const puStart = parseFloat(calcDateStart.value);
-        const qty = parseFloat(calcQty.value) || 0;
-        const dateStart = calcDateStart.options[calcDateStart.selectedIndex].dataset.date;
-
-        if (isNaN(puStart) || qty <= 0) {
-            calcBruto.innerText = 'R$ 0,00';
-            calcPerc.innerText = '0,00%';
-            return;
-        }
-
-        const totalAnnualRate = spreadRate;
-
-        const start = new Date(dateStart + 'T00:00:00');
-        const end = new Date(maturityDate + 'T00:00:00');
-        const diffMs = end.getTime() - start.getTime();
-        const diffDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
-        const yearsRemaining = diffDays / 365;
-
-        const years = Math.floor(yearsRemaining);
-        const months = Math.round((yearsRemaining - years) * 12);
-        if (detailRemainingTerm) {
-            detailRemainingTerm.innerText = years > 0
-                ? years + (years === 1 ? ' ano' : ' anos') + (months > 0 ? ' e ' + months + (months === 1 ? ' mês' : ' meses') : '')
-                : months + (months === 1 ? ' mês' : ' meses');
-        }
-
-        const investedInitial = puStart * qty;
-        const projectedValue = investedInitial * Math.pow(1 + totalAnnualRate / 100, yearsRemaining);
-        const profit = projectedValue - investedInitial;
-        const variation = (investedInitial > 0) ? (profit / investedInitial) * 100 : 0;
-
-        detailInvested.innerText = currencyFmt.format(investedInitial);
-        detailTotalRate.innerText = totalAnnualRate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '% a.a.';
-        detailProjectedValue.innerText = currencyFmt.format(projectedValue);
-
-        calcBruto.innerText = currencyFmt.format(profit);
-        calcPerc.innerText = (variation >= 0 ? '+' : '') + variation.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
-        calcPerc.style.color = variation >= 0 ? '#ffffff' : '#ffc107';
-    }
-
-    if (calcDateStart && calcQty) {
-        calcDateStart.addEventListener('change', calculate);
-        calcQty.addEventListener('input', calculate);
-        calculate();
     }
 });
 </script>
