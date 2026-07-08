@@ -40,7 +40,7 @@
                     <div class="col-6 col-sm-6">
                         <div class="footer-heading">Conformidade</div>
                         <div class="d-flex flex-column gap-2 fw-medium">
-                            <a href="{{ route('site.compliance') }}#canal-de-etica" class="footer-link">Canal de Ética</a>
+                            <a href="{{ route('site.canal-etica') }}" class="footer-link">Canal de Ética</a>
                             <a href="{{ route('site.compliance') }}" class="footer-link">Compliance</a>
                             <a href="{{ route('site.governance') }}" class="footer-link">Governança</a>
                             <a href="{{ route('site.contact', ['assunto' => 'ouvidoria']) }}" class="footer-link">Ouvidoria</a>
@@ -67,7 +67,7 @@
                 <span class="text-muted opacity-50">•</span>
                 <a href="{{ route('site.terms-of-use') }}" class="footer-legal-link">Termos de Uso</a>
                 <span class="text-muted opacity-50">•</span>
-                <a href="{{ route('site.compliance') }}#canal-de-etica" class="footer-legal-link" style="color: var(--gold);">Canal de Ética</a>
+                <a href="{{ route('site.canal-etica') }}" class="footer-legal-link" style="color: var(--gold);">Canal de Ética</a>
             </div>
         </div>
     </div>

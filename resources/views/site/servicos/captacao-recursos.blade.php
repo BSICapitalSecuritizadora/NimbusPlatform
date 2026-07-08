@@ -117,7 +117,7 @@
         </div>
         
         <div class="row g-0 position-relative">
-            <div class="d-none d-lg-block position-absolute top-50 start-0 w-100 border-top border-2" style="border-color: rgba(212,175,55, 0.3) !important; z-index: 1;"></div>
+            <div class="d-none d-lg-block position-absolute start-0 w-100 border-top border-2" style="top: 29px; border-color: rgba(212,175,55, 0.3) !important; z-index: 1;"></div>
             
             <div class="col-lg-3 px-4 py-4 py-lg-0 text-center position-relative z-2">
                 <div class="bg-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-4 border border-2 shadow-sm" style="width: 60px; height: 60px; border-color: var(--gold) !important; color: var(--brand);">

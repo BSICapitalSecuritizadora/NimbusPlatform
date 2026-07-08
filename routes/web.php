@@ -28,6 +28,7 @@ Route::view('/politica-de-privacidade', 'site.privacy-policy')->name('site.priva
 Route::view('/termos-de-uso', 'site.terms-of-use')->name('site.terms-of-use');
 Route::get('/governanca', [SiteController::class, 'governance'])->name('site.governance');
 Route::get('/compliance', [SiteController::class, 'complianceBsi'])->name('site.compliance');
+Route::view('/canal-de-etica', 'site.canal-etica')->name('site.canal-etica');
 Route::get('/documentos/{document}/download', SiteDocumentDownloadController::class)->name('site.documents.download');
 Route::view('/contato', 'site.contact')->name('site.contact');
 Route::post('/contato', [SiteController::class, 'submitContact'])->name('site.contact.submit');

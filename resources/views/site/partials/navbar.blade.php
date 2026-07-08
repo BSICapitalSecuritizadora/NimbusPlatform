@@ -97,6 +97,7 @@
                                 <a class="mega-link" href="{{ route('site.about') }}">Sobre</a>
                                 <a class="mega-link" href="{{ route('site.governance') }}">Governança</a>
                                 <a class="mega-link" href="{{ route('site.compliance') }}">Compliance</a>
+                                <a class="mega-link" href="{{ route('site.canal-etica') }}">Canal de Ética</a>
                             </div>
 
                             <div class="col-lg-4 p-3">

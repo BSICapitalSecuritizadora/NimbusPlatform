@@ -46,6 +46,7 @@ it('renders the revised compliance copy on the bsi area page', function () {
     $this->get(route('site.compliance'))
         ->assertSuccessful()
         ->assertSee('Frentes de atuação do Compliance')
-        ->assertSee('Protocolo de Sigilo')
-        ->assertSee('Canal de Denúncia');
+        ->assertSee('Canal de Ética')
+        ->assertSee('Conhecer o Canal de Ética')
+        ->assertSee(route('site.canal-etica'), false);
 });

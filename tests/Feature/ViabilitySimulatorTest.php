@@ -5,14 +5,6 @@ use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
-it('renders the configurable viability simulator on the cri page', function () {
-    $this->get(route('site.imobiliario.cri'))
-        ->assertSuccessful()
-        ->assertSee('Prazo (meses)')
-        ->assertSee('Indexador')
-        ->assertSee('Percentual (%)');
-});
-
 it('updates the displayed term and remuneration when the simulator fields change', function () {
     Livewire::test('imobiliario.viability-simulator')
         ->set('term', '120')

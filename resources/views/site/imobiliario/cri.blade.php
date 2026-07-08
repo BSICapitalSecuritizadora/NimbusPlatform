@@ -54,19 +54,6 @@
 
 @include('site.partials.imobiliario-stats')
 
-<section class="py-5 border-top" style="background-color: var(--bg);">
-    <div class="container py-5">
-        <div class="row justify-content-center mb-5">
-            <div class="col-lg-8 text-center">
-                <span class="text-brand fw-bold small text-uppercase mb-2 d-block" style="letter-spacing: 0.1em;">Análise Preliminar</span>
-                <h2 class="h3 fw-bold text-dark mb-3">Simule a viabilidade da sua operação</h2>
-                <p class="text-muted mb-0">Use os parâmetros iniciais de prazo, indexador e taxa alvo para estimar o potencial de captação do projeto.</p>
-            </div>
-        </div>
-
-        <livewire:imobiliario.viability-simulator />
-    </div>
-</section>
 
 <!-- Público-Alvo Section -->
 <section class="py-5" style="background-color: #ffffff;">

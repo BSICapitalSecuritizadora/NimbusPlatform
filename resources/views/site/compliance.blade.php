@@ -271,43 +271,20 @@
     </div>
 </section>
 
-<!-- Canal de Denúncia -->
-<section class="py-5" style="background-color: var(--bg);">
+<!-- Canal de Ética (Teaser) -->
+<section id="canal-de-etica" class="py-5" style="background-color: var(--bg);">
     <div class="container py-5">
-        <div class="row align-items-center g-5">
-            <div class="col-lg-6">
-                <span class="badge mb-3 px-3 py-2 text-uppercase" style="border: 1px solid var(--gold); color: var(--gold); background: rgba(212,175,55, 0.1); letter-spacing: 0.1em; font-weight: 600;">Canal de Integridade</span>
-                <h2 class="h3 fw-bold text-dark mb-3">Canal de Integridade e Denúncia</h2>
-                <p class="text-muted mb-4">Possuímos um canal institucional para relatos, com tratamento confidencial e possibilidade de anonimato conforme o meio disponível e as políticas internas.</p>
-                <p class="text-muted mb-4">Os relatos são tratados conforme procedimento interno, com segregação de responsabilidades e restrição de acesso às informações, quando aplicável.</p>
-                <a href="{{ route('site.contact') }}" class="btn btn-brand d-inline-flex align-items-center gap-2 px-4 py-2">
-                    Acessar Canal de Integridade
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <div class="mb-4 d-inline-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 72px; height: 72px; color: var(--gold); background: rgba(212,175,55, 0.1) !important;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+                <h2 class="h3 fw-bold text-dark mb-3">Canal de Ética</h2>
+                <p class="text-muted mb-4">A BSI Capital possui um Canal de Ética próprio, atuando como um mecanismo fundamental para a manutenção da nossa integridade corporativa. Ele é destinado ao relato de condutas inadequadas e descumprimento de políticas aplicáveis.</p>
+                <a href="{{ route('site.canal-etica') }}" class="btn btn-brand d-inline-flex align-items-center gap-2 px-4 py-2">
+                    Conhecer o Canal de Ética
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </a>
-            </div>
-            <div class="col-lg-6">
-                <div class="card border-0 p-5" style="background: linear-gradient(135deg, rgba(0,32,91,0.05), rgba(212,175,55,0.05)); border-radius: 20px;">
-                    <div class="d-flex align-items-center gap-3 mb-4">
-                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 52px; height: 52px; background: rgba(0,32,91,0.08); color: var(--brand);">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                        </div>
-                        <h4 class="fw-bold mb-0" style="color: var(--brand);">Protocolo de Sigilo</h4>
-                    </div>
-                    <div class="d-flex flex-column gap-3">
-                        <div class="d-flex align-items-start gap-3">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                            <span class="text-muted" style="font-size: 0.95rem;"><strong class="text-dark">Recebimento e triagem</strong> — relato registrado e encaminhado para avaliação conforme procedimento interno.</span>
-                        </div>
-                        <div class="d-flex align-items-start gap-3">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                            <span class="text-muted" style="font-size: 0.95rem;"><strong class="text-dark">Apuração e tratamento</strong> — análise conduzida com acesso restrito às informações e segregação dos envolvidos, quando aplicável.</span>
-                        </div>
-                        <div class="d-flex align-items-start gap-3">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-1 flex-shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                            <span class="text-muted" style="font-size: 0.95rem;"><strong class="text-dark">Encerramento formal</strong> — conclusão registrada, com documentação das tratativas e medidas aplicáveis, quando cabíveis.</span>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
