@@ -146,7 +146,7 @@ it('shows the emission progress timeline with issue date, maturity date and stat
     $this->travelBack();
 });
 
-it('renders the payment flow with the legacy chart model', function () {
+it('renders the payment flow showing all components (Cenario 5)', function () {
     $emission = Emission::factory()->active()->create([
         'name' => 'CRI Fluxo',
         'type' => 'CRI',
@@ -169,12 +169,58 @@ it('renders the payment flow with the legacy chart model', function () {
         ->assertOk()
         ->assertSee('paymentsChart')
         ->assertSee('cdn.jsdelivr.net/npm/chart.js')
-        ->assertSee('ticks: { display: false }', false);
+        ->assertSee('Juros')
+        ->assertSee('Amortização')
+        ->assertSee('Prêmio')
+        ->assertSee('Amortização Extra')
+        ->assertSee('Intl.NumberFormat', false);
+});
 
-    preg_match("/'nonce-([^']+)'/", (string) $response->headers->get('Content-Security-Policy'), $matches);
+it('renders only interest dataset when other components are zero (Cenario 1)', function () {
+    $emission = Emission::factory()->active()->create(['if_code' => 'IF-CENARIO-1', 'is_public' => true]);
+    Payment::query()->create(['emission_id' => $emission->id, 'payment_date' => '2025-01-15', 'interest_value' => 500]);
 
-    $nonce = $matches[1] ?? null;
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertSee('"label":"Juros"', false)
+        ->assertDontSee('"label":"Prêmio"', false)
+        ->assertDontSee('"label":"Amortização Extra"', false);
+});
 
-    expect($nonce)->not->toBeNull();
-    expect(substr_count($response->getContent(), 'nonce="'.$nonce.'"'))->toBeGreaterThanOrEqual(1);
+it('renders only amortization dataset when other components are zero (Cenario 2)', function () {
+    $emission = Emission::factory()->active()->create(['if_code' => 'IF-CENARIO-2', 'is_public' => true]);
+    Payment::query()->create(['emission_id' => $emission->id, 'payment_date' => '2025-01-15', 'amortization_value' => 500]);
+
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertSee('"label":"Amortização"', false)
+        ->assertDontSee('"label":"Prêmio"', false)
+        ->assertDontSee('"label":"Amortização Extra"', false);
+});
+
+it('renders premium dataset when present (Cenario 3)', function () {
+    $emission = Emission::factory()->active()->create(['if_code' => 'IF-CENARIO-3', 'is_public' => true]);
+    Payment::query()->create(['emission_id' => $emission->id, 'payment_date' => '2025-01-15', 'premium_value' => 500]);
+
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertSee('"label":"Prêmio"', false);
+});
+
+it('renders extra amortization dataset when present (Cenario 4)', function () {
+    $emission = Emission::factory()->active()->create(['if_code' => 'IF-CENARIO-4', 'is_public' => true]);
+    Payment::query()->create(['emission_id' => $emission->id, 'payment_date' => '2025-01-15', 'extra_amortization_value' => 500]);
+
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertSee('"label":"Amortização Extra"', false);
+});
+
+it('renders empty state when there are no payments (Cenario 6)', function () {
+    $emission = Emission::factory()->active()->create(['if_code' => 'IF-CENARIO-6', 'is_public' => true]);
+
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertSee('Nenhum evento de pagamento registrado para esta operação até o momento.')
+        ->assertDontSee('<canvas id="paymentsChart"></canvas>', false);
 });

@@ -398,7 +398,8 @@
         ->pluck('category')
         ->filter()
         ->unique()
-        ->values();
+        ->mapWithKeys(fn ($cat) => [$cat => \App\Models\Document::CATEGORY_OPTIONS[$cat] ?? ucfirst($cat)])
+        ->sortBy(fn ($label) => \Illuminate\Support\Str::ascii($label));
     $publicDocumentCount = $publicDocuments->count();
     $publicDocumentCountLabel = $publicDocumentCount.' '.($publicDocumentCount === 1 ? 'documento público' : 'documentos públicos');
 
@@ -701,8 +702,8 @@
                                         <label for="docCategoryFilter" class="form-label tech-data-label">Filtrar por Categoria</label>
                                         <select id="docCategoryFilter" class="form-select shadow-none doc-filter-select">
                                             <option value="">Todos os Documentos</option>
-                                            @foreach($documentCategories as $cat)
-                                                <option value="{{ $cat }}">{{ \App\Models\Document::CATEGORY_OPTIONS[$cat] ?? ucfirst($cat) }}</option>
+                                            @foreach($documentCategories as $catValue => $catLabel)
+                                                <option value="{{ $catValue }}">{{ $catLabel }}</option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -876,24 +877,67 @@ document.addEventListener('DOMContentLoaded', function() {
     const chartElement = document.getElementById('paymentsChart');
     if (chartElement) {
         const labels = {!! json_encode($emission->payments->pluck('payment_date')->map(fn ($date) => $date->format('d/m/Y'))) !!};
+
+        @php
+            $chartDatasets = [];
+            
+            if ($emission->payments->sum('interest_value') > 0) {
+                $chartDatasets[] = [
+                    'label' => 'Juros',
+                    'data' => $emission->payments->pluck('interest_value')->map(fn ($v) => (float)$v > 0 ? (float)$v : null)->toArray(),
+                    'backgroundColor' => '#a06e28',
+                    'borderRadius' => 4,
+                ];
+            }
+            
+            if ($emission->payments->sum('amortization_value') > 0) {
+                $chartDatasets[] = [
+                    'label' => 'Amortização',
+                    'data' => $emission->payments->pluck('amortization_value')->map(fn ($v) => (float)$v > 0 ? (float)$v : null)->toArray(),
+                    'backgroundColor' => '#091b23',
+                    'borderRadius' => 4,
+                ];
+            }
+            
+            if ($emission->payments->sum('premium_value') > 0) {
+                $chartDatasets[] = [
+                    'label' => 'Prêmio',
+                    'data' => $emission->payments->pluck('premium_value')->map(fn ($v) => (float)$v > 0 ? (float)$v : null)->toArray(),
+                    'backgroundColor' => '#d4af37',
+                    'borderRadius' => 4,
+                ];
+            }
+            
+            if ($emission->payments->sum('extra_amortization_value') > 0) {
+                $chartDatasets[] = [
+                    'label' => 'Amortização Extra',
+                    'data' => $emission->payments->pluck('extra_amortization_value')->map(fn ($v) => (float)$v > 0 ? (float)$v : null)->toArray(),
+                    'backgroundColor' => '#3a5365',
+                    'borderRadius' => 4,
+                ];
+            }
+
+            if (empty($chartDatasets)) {
+                $chartDatasets[] = [
+                    'label' => 'Juros',
+                    'data' => $emission->payments->pluck('interest_value')->toArray(),
+                    'backgroundColor' => '#a06e28',
+                    'borderRadius' => 4,
+                ];
+                $chartDatasets[] = [
+                    'label' => 'Amortização',
+                    'data' => $emission->payments->pluck('amortization_value')->toArray(),
+                    'backgroundColor' => '#091b23',
+                    'borderRadius' => 4,
+                ];
+            }
+        @endphp
+
         new Chart(chartElement, {
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: [
-                    {
-                        label: 'Amortização',
-                        data: {!! json_encode($emission->payments->pluck('amortization_value')) !!},
-                        backgroundColor: '#091b23',
-                        borderRadius: 4,
-                    },
-                    {
-                        label: 'Juros',
-                        data: {!! json_encode($emission->payments->pluck('interest_value')) !!},
-                        backgroundColor: '#a06e28',
-                        borderRadius: 4,
-                    }
-                ]
+                datasets: {!! json_encode($chartDatasets, JSON_UNESCAPED_UNICODE) !!}
             },
             options: {
                 responsive: true,
@@ -903,7 +947,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     x: { grid: { display: false } }
                 },
                 plugins: {
-                    legend: { position: 'bottom' }
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    }
                 }
             }
         });
