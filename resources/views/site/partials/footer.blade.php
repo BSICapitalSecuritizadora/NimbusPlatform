@@ -10,7 +10,7 @@
                 </p>
                 <p class="small mb-3" style="color: var(--muted); line-height: 1.65;">
                     CNPJ 11.257.352/0001-43<br>
-                    Av. das Nações Unidas, 14.401, Sala 712 e 713<br>
+                    Av. das Nações Unidas, 14.401, Torre Tarumã, Sala 712 e 713<br>
                     Chácara Santo Antônio, São Paulo – SP
                 </p>
                 <div class="d-flex gap-3 justify-content-center justify-content-md-start mt-2">
@@ -67,7 +67,7 @@
                 <span class="text-muted opacity-50">•</span>
                 <a href="{{ route('site.terms-of-use') }}" class="footer-legal-link">Termos de Uso</a>
                 <span class="text-muted opacity-50">•</span>
-                <a href="{{ route('site.canal-etica') }}" class="footer-legal-link" style="color: var(--gold);">Canal de Ética</a>
+                <a href="{{ route('site.canal-etica') }}" class="footer-legal-link">Canal de Ética</a>
             </div>
         </div>
     </div>

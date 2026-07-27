@@ -17,7 +17,7 @@
 
                 {{-- Soluções --}}
                 <li class="nav-item dropdown dropdown-mega">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.imobiliario.*', 'site.agronegocio.*', 'site.infra.*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.imobiliario.*', 'site.agronegocio.*', 'site.infra.*') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         Soluções
                     </a>
                     <div class="dropdown-menu mega-menu p-0 border-0">
@@ -51,7 +51,7 @@
 
                 {{-- Serviços --}}
                 <li class="nav-item dropdown dropdown-mega">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.services', 'site.servicos.*') ? 'active' : '' }}" href="{{ route('site.services') }}" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.services', 'site.servicos.*') ? 'active' : '' }}" href="{{ route('site.services') }}" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         Serviços
                     </a>
                     <div class="dropdown-menu mega-menu p-0 border-0">
@@ -87,7 +87,7 @@
 
                 {{-- Institucional --}}
                 <li class="nav-item dropdown dropdown-mega">
-                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.about', 'site.partnerships', 'site.governance', 'site.compliance', 'site.ri', 'site.contact') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('site.about', 'site.partnerships', 'site.governance', 'site.compliance', 'site.ri', 'site.contact') ? 'active' : '' }}" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         Institucional
                     </a>
                     <div class="dropdown-menu mega-menu p-0 border-0">
@@ -127,3 +127,50 @@
         </div>
     </div>
 </nav>
+
+@push('scripts')
+    <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
+        (function () {
+            var CLOSE_DELAY = 150;
+            var canHover = window.matchMedia('(hover: hover) and (pointer: fine)');
+            var isDesktopWidth = window.matchMedia('(min-width: 992px)');
+
+            function hoverModeEnabled() {
+                return canHover.matches && isDesktopWidth.matches;
+            }
+
+            document.querySelectorAll('.navbar .dropdown-mega').forEach(function (item) {
+                var toggle = item.querySelector('.dropdown-toggle');
+                var closeTimer = null;
+
+                if (!toggle) {
+                    return;
+                }
+
+                function open() {
+                    clearTimeout(closeTimer);
+                    bootstrap.Dropdown.getOrCreateInstance(toggle).show();
+                }
+
+                function scheduleClose() {
+                    clearTimeout(closeTimer);
+                    closeTimer = setTimeout(function () {
+                        bootstrap.Dropdown.getOrCreateInstance(toggle).hide();
+                    }, CLOSE_DELAY);
+                }
+
+                item.addEventListener('mouseenter', function () {
+                    if (hoverModeEnabled()) {
+                        open();
+                    }
+                });
+
+                item.addEventListener('mouseleave', function () {
+                    if (hoverModeEnabled()) {
+                        scheduleClose();
+                    }
+                });
+            });
+        })();
+    </script>
+@endpush

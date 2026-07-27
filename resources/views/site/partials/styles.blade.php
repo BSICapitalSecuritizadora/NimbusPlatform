@@ -518,6 +518,25 @@
             border-radius: var(--radius-card);
             padding: 1.5rem;
             box-shadow: 0 20px 50px rgba(9, 27, 35, 0.12);
+            display: block !important;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+        }
+
+        .mega-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .mega-menu {
+                transition: none;
+            }
         }
 
         .mega-menu .col-lg-4 {

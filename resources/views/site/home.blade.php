@@ -15,7 +15,7 @@
                     Atuação completa da estruturação ao encerramento da operação.
                 </h1>
                 <p class="lead mb-4" style="max-width: 720px;">
-                    Soluções completas em CRI, CRA e CR, com segurança, tecnologia e diligência da estruturação à liquidação final.
+                    Soluções completas em CRI, CRA e CR, com segurança, tecnologia e diligência da estruturação à liquidação.
                 </p>
 
                 <div class="d-grid d-sm-flex gap-3 mb-4">
@@ -53,7 +53,7 @@
                     <div class="kicker mb-3">ATUAÇÃO PONTA A PONTA</div>
                     <h2 class="h3 fw-bold mb-3 text-white">Da estruturação à gestão fiduciária</h2>
                     <p class="text-white-50 mb-4" style="text-align: justify;">
-                        Conduzimos operações de CRI, CRA e CR com acompanhamento integral, controle documental, diligência técnica e governança em todas as etapas — da originação à liquidação final.
+                        Conduzimos operações de CRI, CRA e CR com acompanhamento integral, controle documental, diligência técnica e governança em todas as etapas — da originação à liquidação.
                     </p>
 
                     <div class="d-flex flex-column gap-3">
