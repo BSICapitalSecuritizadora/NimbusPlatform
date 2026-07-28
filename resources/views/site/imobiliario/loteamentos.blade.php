@@ -48,8 +48,6 @@
     </div>
 </section>
 
-@include('site.partials.imobiliario-stats')
-
 <!-- Público-Alvo Section -->
 <section class="py-5" style="background-color: #ffffff;">
     <div class="container py-5">

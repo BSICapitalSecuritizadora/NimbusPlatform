@@ -48,8 +48,6 @@
     </div>
 </section>
 
-@include('site.partials.imobiliario-stats')
-
 <!-- Desafios e Dores Section -->
 <section class="py-5 bg-white border-bottom">
     <div class="container py-4">
