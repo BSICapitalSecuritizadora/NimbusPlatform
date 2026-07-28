@@ -214,6 +214,12 @@
             border: 1px solid rgba(107, 114, 128, 0.28);
         }
 
+        .badge-ri {
+            color: var(--gold);
+            background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.32);
+        }
+
         .btn {
             border-radius: var(--radius-control);
             padding: 0.72rem 1.5rem;

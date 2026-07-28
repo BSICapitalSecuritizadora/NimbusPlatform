@@ -166,6 +166,16 @@
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
     }
 
+    /**
+     * Os logos das operações são enviados em arte escura sobre fundo transparente,
+     * o que os torna ilegíveis sobre o hero escuro. brightness(0) achata qualquer
+     * cor original em preto e invert(1) a converte em branco puro, preservando o
+     * canal alfa e gerando uma versão monocromática branca de qualquer logo.
+     */
+    .emission-hero-logo {
+        filter: brightness(0) invert(1);
+    }
+
     .tech-data-card {
         background: #ffffff;
         border: 1px solid rgba(9,27,35,0.04);
@@ -410,7 +420,7 @@
         <div class="row g-4 align-items-center">
             <div class="col-lg-8">
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                    <span class="badge px-3 py-2 text-uppercase" style="background: rgba(212,175,55,0.2); color: var(--gold);">Relacionamento com o Mercado</span>
+                    <span class="badge badge-ri px-3 py-2">Relacionamento com o Mercado</span>
                     @if($emission->type)
                         <span class="badge badge-type-{{ strtolower($emission->type) }} px-3 py-2">{{ $emission->type }}</span>
                     @endif
@@ -422,7 +432,7 @@
                 <div class="d-flex flex-wrap align-items-center gap-4 mb-4">
                     @if($emission->logo_path)
                         <div class="liquid-glass-logo d-inline-flex align-items-center justify-content-center px-4 py-3" style="min-height: 86px; min-width: 180px;">
-                            <img src="{{ Storage::disk($emission->logo_storage_disk)->url($emission->logo_path) }}" alt="{{ $emission->name }}" style="max-height: 52px; max-width: 180px; object-fit: contain;">
+                            <img src="{{ Storage::disk($emission->logo_storage_disk)->url($emission->logo_path) }}" alt="{{ $emission->name }}" class="emission-hero-logo" style="max-height: 52px; max-width: 180px; object-fit: contain;">
                         </div>
                     @endif
                     <div>

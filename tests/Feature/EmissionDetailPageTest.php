@@ -224,3 +224,45 @@ it('renders empty state when there are no payments (Cenario 6)', function () {
         ->assertSee('Nenhum evento de pagamento registrado para esta operação até o momento.')
         ->assertDontSee('<canvas id="paymentsChart"></canvas>', false);
 });
+
+it('styles the market relationship badge with the shared badge palette', function () {
+    $emission = Emission::factory()->active()->create([
+        'type' => 'CRI',
+        'if_code' => 'IF-BADGE-01',
+        'is_public' => true,
+    ]);
+
+    $response = $this->get(route('site.emissions.show', $emission->if_code));
+
+    $response->assertOk()
+        ->assertSee('<span class="badge badge-ri px-3 py-2">Relacionamento com o Mercado</span>', false)
+        ->assertSee('<span class="badge badge-type-cri px-3 py-2">CRI</span>', false)
+        ->assertSee('.badge-ri {', false)
+        ->assertDontSee('background: rgba(212,175,55,0.2); color: var(--gold);', false)
+        ->assertDontSee('badge px-3 py-2 text-uppercase', false);
+});
+
+it('renders the operation logo as a white monochrome mark over the dark hero', function () {
+    $emission = Emission::factory()->active()->create([
+        'if_code' => 'IF-LOGO-01',
+        'is_public' => true,
+        'logo_path' => 'emissions/logos/operacao.png',
+    ]);
+
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertSee('class="emission-hero-logo"', false)
+        ->assertSee('filter: brightness(0) invert(1);', false);
+});
+
+it('omits the logo markup entirely when the emission has no logo', function () {
+    $emission = Emission::factory()->active()->create([
+        'if_code' => 'IF-LOGO-02',
+        'is_public' => true,
+        'logo_path' => null,
+    ]);
+
+    $this->get(route('site.emissions.show', $emission->if_code))
+        ->assertOk()
+        ->assertDontSee('class="emission-hero-logo"', false);
+});

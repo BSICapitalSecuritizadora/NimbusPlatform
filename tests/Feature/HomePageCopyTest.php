@@ -14,7 +14,7 @@ it('renders the revised institutional copy on the home page', function () {
         ->assertSeeText('Da estruturação à gestão fiduciária')
         ->assertSeeText('Submeter Operação para Análise')
         ->assertSeeText('Ver Emissões')
-        ->assertSeeText('Solicitar Análise de Estruturação')
+        ->assertSeeText('Solicitar Análise')
         ->assertDontSeeText('Consultar Viabilidade')
         ->assertDontSeeText('Pipeline de Emissões')
         ->assertDontSeeText('Transparência e Mercado')
