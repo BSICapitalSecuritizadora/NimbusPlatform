@@ -745,7 +745,7 @@
                                                 <span class="badge badge-premium px-2 py-1 small">{{ $doc->category_label }}</span>
                                             </td>
                                             <td class="text-end">
-                                                <a href="{{ Storage::disk($doc->resolved_storage_disk)->url($doc->file_path) }}" target="_blank" class="btn doc-action-btn">Download</a>
+                                                <a href="{{ route('site.documents.download', $doc) }}" class="btn doc-action-btn">Download</a>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -817,7 +817,7 @@
                                                 <div class="badge badge-premium px-2 py-1 small">{{ $doc->category_label }}</div>
                                             </td>
                                             <td class="text-end">
-                                                <a href="{{ Storage::disk($doc->resolved_storage_disk)->url($doc->file_path) }}" target="_blank" class="btn doc-action-btn">Abrir</a>
+                                                <a href="{{ route('site.documents.download', $doc) }}" class="btn doc-action-btn">Abrir</a>
                                             </td>
                                         </tr>
                                     @endforeach

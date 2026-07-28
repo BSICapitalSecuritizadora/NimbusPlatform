@@ -302,7 +302,7 @@
                             </div>
                         </div>
                         <div class="col-12 col-lg-auto px-3 px-lg-4 pb-3 pb-lg-0 d-grid">
-                            <a href="{{ Storage::disk($d->resolved_storage_disk)->url($d->file_path) }}" target="_blank" class="btn btn-brand btn-sm px-4 d-block text-center" download>
+                            <a href="{{ route('site.documents.download', $d) }}" class="btn btn-brand btn-sm px-4 d-block text-center">
                                 Abrir documento
                             </a>
                         </div>

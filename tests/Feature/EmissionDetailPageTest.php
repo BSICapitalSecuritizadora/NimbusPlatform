@@ -266,3 +266,24 @@ it('omits the logo markup entirely when the emission has no logo', function () {
         ->assertOk()
         ->assertDontSee('class="emission-hero-logo"', false);
 });
+
+it('links public documents through the controlled download route instead of the storage disk', function () {
+    $emission = Emission::factory()->active()->create([
+        'if_code' => 'IF-DOWNLOAD-01',
+        'is_public' => true,
+    ]);
+
+    $document = Document::factory()->public()->create([
+        'title' => 'Termo de Securitizacao',
+        'category' => 'documentos_operacao',
+        'file_path' => 'documents/01DOWNLOAD.pdf',
+    ]);
+
+    $emission->documents()->attach($document->id);
+
+    $response = $this->get(route('site.emissions.show', $emission->if_code));
+
+    $response->assertOk()
+        ->assertSee('href="'.route('site.documents.download', $document).'"', false)
+        ->assertDontSee('/storage/documents/01DOWNLOAD.pdf', false);
+});
