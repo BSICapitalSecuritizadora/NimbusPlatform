@@ -498,21 +498,6 @@
         transform: translateY(-5px);
         box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
     }
-
-    /* Flow Diagram Arrows */
-    @media (min-width: 768px) {
-        .flow-container .flow-item:not(:last-child)::after {
-            content: "→";
-            position: absolute;
-            right: -10px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1.5rem;
-            color: var(--brand-strong);
-            opacity: 0.2;
-            z-index: 0;
-        }
-    }
 </style>
 @endpush
 @endsection

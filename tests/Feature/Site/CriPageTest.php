@@ -65,3 +65,29 @@ it('loads flux assets for the viability simulator on the CRI page', function () 
         ->assertSee('/flux/flux', false)
         ->assertSee('/livewire-', false);
 });
+
+it('renders the securitization flow with four cards and no trailing arrow', function () {
+    $response = $this->get(route('site.imobiliario.cri'));
+
+    $response->assertSuccessful()
+        ->assertSee('Como funciona o fluxo de Securitização')
+        ->assertSeeInOrder(['Originação', 'Estruturação', 'Distribuição', 'Monitoramento']);
+
+    /**
+     * A seta era gerada por .flow-container .flow-item:not(:last-child)::after.
+     * Como .flow-item não tem contexto de posicionamento, os três pseudoelementos
+     * ancoravam em .flow-container e empilhavam à direita do último card.
+     */
+    $response->assertDontSee('.flow-container .flow-item', false)
+        ->assertDontSee('right: -10px;', false);
+
+    expect(substr_count($response->getContent(), 'class="col-md-3 flow-item"'))->toBe(4);
+});
+
+it('keeps the call-to-action and mega menu arrows untouched on the CRI page', function () {
+    $response = $this->get(route('site.imobiliario.cri'));
+
+    $response->assertSuccessful()
+        ->assertSee('Submeter projeto para avaliação →', false)
+        ->assertSee('.mega-link::after', false);
+});
