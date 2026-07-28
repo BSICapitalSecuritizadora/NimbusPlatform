@@ -38,7 +38,7 @@ class CreateProposalFormObject extends Form
     public ?string $website = null;
 
     #[Validate('required', message: 'Selecione o setor de atuação.')]
-    #[Validate('exists:proposal_sectors,id', message: 'Selecione um setor de atuação válido.')]
+    #[Validate('exists:proposal_sectors,id,is_active,1', message: 'Selecione um setor de atuação válido.')]
     public ?string $sectorId = null;
 
     #[Validate('required', message: 'O CEP é obrigatório.')]

@@ -116,18 +116,25 @@
 
                     <div class="col-12">
                         <label class="form-label">Setor de Atuação</label>
-                        <div class="form-text mt-0 mb-3">Selecione o setor ligado à sua proposta.</div>
 
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach ($sectors as $sector)
-                                <input type="radio" class="btn-check" name="sectorId" id="sector-{{ $sector->id }}" value="{{ $sector->id }}" wire:model.live="form.sectorId">
-                                <label class="btn btn-outline-brand rounded-pill" for="sector-{{ $sector->id }}" style="font-weight: 600;">
-                                    {{ $sector->name }}
-                                </label>
-                            @endforeach
-                        </div>
+                        @if ($sectors->isEmpty())
+                            <div class="alert alert-warning mb-0" role="alert" style="border-radius: 16px; border: 1px solid rgba(255, 193, 7, 0.3); background: rgba(255, 193, 7, 0.08);">
+                                <div>{{ $noSectorsMessage }}</div>
+                            </div>
+                        @else
+                            <div class="form-text mt-0 mb-3">Selecione o setor ligado à sua proposta.</div>
 
-                        @error('form.sectorId') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach ($sectors as $sector)
+                                    <input type="radio" class="btn-check" name="sectorId" id="sector-{{ $sector->id }}" value="{{ $sector->id }}" wire:model.live="form.sectorId">
+                                    <label class="btn btn-outline-brand rounded-pill" for="sector-{{ $sector->id }}" style="font-weight: 600;">
+                                        {{ $sector->name }}
+                                    </label>
+                                @endforeach
+                            </div>
+
+                            @error('form.sectorId') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        @endif
                     </div>
                 </div>
             </div>
@@ -279,10 +286,14 @@
                         </p>
                     </div>
                     <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
-                        <button type="submit" class="btn px-4 py-3 w-100 w-lg-auto" wire:loading.attr="disabled" wire:target="save" style="background: var(--gold); border-color: var(--brand-strong); color: var(--brand-strong); font-weight: 700; border-radius: 999px;">
+                        <button type="submit" class="btn px-4 py-3 w-100 w-lg-auto" wire:loading.attr="disabled" wire:target="save" @disabled($sectors->isEmpty()) style="background: var(--gold); border-color: var(--brand-strong); color: var(--brand-strong); font-weight: 700; border-radius: 999px;">
                             <span wire:loading.remove wire:target="save">Enviar para análise preliminar</span>
                             <span wire:loading wire:target="save">Registrando solicitação...</span>
                         </button>
+
+                        @if ($sectors->isEmpty())
+                            <p class="small text-white-50 mt-3 mb-0">{{ $noSectorsMessage }}</p>
+                        @endif
                     </div>
                 </div>
             </div>

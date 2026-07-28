@@ -255,7 +255,7 @@
             <div class="col-lg-4 text-lg-end text-start">
                 <div class="py-4 py-lg-5 d-flex flex-column gap-3 align-items-start align-items-lg-end">
                     <a href="{{ route('proposal.create') }}" class="btn home-institutional-cta__button text-uppercase fw-bold px-4 py-3">
-                        Solicitar Análise de Estruturação
+                        Solicitar Análise
                     </a>
                     <a href="{{ route('site.contact') }}" class="home-institutional-cta__link text-decoration-none" style="padding: 0.25rem 0; font-weight: 500;">
                         Falar com um especialista →

@@ -125,6 +125,47 @@ it('stores the initial proposal through the livewire component and sends the con
     Mail::assertSent(ProposalContinuationLinkMail::class);
 });
 
+it('offers the active sectors provisioned by the migrations, ordered by name', function () {
+    ProposalSector::query()->create(['name' => 'Infraestrutura']);
+    ProposalSector::query()->create(['name' => 'Setor Descontinuado', 'is_active' => false]);
+
+    $response = $this->get(route('proposal.create'));
+
+    $response->assertSuccessful()
+        ->assertSee('Setor de Atuação')
+        ->assertSeeInOrder(['Agronegócio', 'Imobiliário', 'Infraestrutura', 'Outros'])
+        ->assertDontSee('Setor Descontinuado')
+        ->assertDontSee(CreateProposalForm::NO_SECTORS_MESSAGE);
+
+    expect(Livewire::test(CreateProposalForm::class)->viewData('sectors')->pluck('name')->all())
+        ->toBe(['Agronegócio', 'Imobiliário', 'Infraestrutura', 'Outros']);
+});
+
+it('rejects a sector that is no longer active', function () {
+    $sector = ProposalSector::query()->create(['name' => 'Setor Descontinuado', 'is_active' => false]);
+
+    Livewire::test(CreateProposalForm::class)
+        ->set('form.sectorId', (string) $sector->id)
+        ->call('save')
+        ->assertHasErrors(['form.sectorId']);
+});
+
+it('explains the empty state and blocks submission when no sector is available', function () {
+    ProposalSector::query()->delete();
+
+    $this->get(route('proposal.create'))
+        ->assertSuccessful()
+        ->assertSee('Setor de Atuação')
+        ->assertSee(CreateProposalForm::NO_SECTORS_MESSAGE);
+
+    Livewire::test(CreateProposalForm::class)
+        ->call('save')
+        ->assertHasErrors(['submission'])
+        ->assertNoRedirect();
+
+    expect(Proposal::query()->count())->toBe(0);
+});
+
 it('validates the required fields before saving the proposal', function () {
     Livewire::test(CreateProposalForm::class)
         ->call('save')

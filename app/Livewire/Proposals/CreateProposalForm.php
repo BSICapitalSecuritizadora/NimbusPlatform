@@ -8,10 +8,12 @@ use App\Actions\Proposals\UpdateProposalStatus;
 use App\Livewire\Forms\CreateProposalFormObject;
 use App\Models\ProposalSector;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -20,12 +22,24 @@ use Livewire\Component;
 #[Title('Envie sua Proposta - BSI Capital')]
 class CreateProposalForm extends Component
 {
+    public const NO_SECTORS_MESSAGE = 'Nenhum setor de atuação está disponível no momento. Entre em contato com a BSI Capital.';
+
     public CreateProposalFormObject $form;
+
+    /**
+     * @return Collection<int, ProposalSector>
+     */
+    #[Computed]
+    public function sectors(): Collection
+    {
+        return ProposalSector::query()->active()->orderBy('name')->get();
+    }
 
     public function render(): View
     {
         return view('livewire.proposals.create-proposal-form', [
-            'sectors' => ProposalSector::query()->orderBy('name')->get(),
+            'sectors' => $this->sectors,
+            'noSectorsMessage' => self::NO_SECTORS_MESSAGE,
         ]);
     }
 
@@ -35,6 +49,12 @@ class CreateProposalForm extends Component
         UpdateProposalStatus $updateProposalStatus,
     ): void {
         $this->resetErrorBag('submission');
+
+        if ($this->sectors->isEmpty()) {
+            $this->addError('submission', self::NO_SECTORS_MESSAGE);
+
+            return;
+        }
 
         if (! $this->ensureSubmissionIsNotRateLimited()) {
             return;

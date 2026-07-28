@@ -283,6 +283,13 @@
         'Data de emissão' => ($issue_date_order ?? '') !== '' ? ($issue_date_order === 'desc' ? 'Mais recente para mais antiga' : 'Mais antiga para mais recente') : null,
         'Data de vencimento' => ($maturity_date_order ?? '') !== '' ? ($maturity_date_order === 'desc' ? 'Mais recente para mais antiga' : 'Mais antiga para mais recente') : null,
     ]);
+
+    $distributionVolume = (float) $metrics['distribution_volume'];
+    $formattedDistributionVolume = match (true) {
+        $distributionVolume >= 1_000_000_000 => 'R$ '.number_format($distributionVolume / 1_000_000_000, 1, ',', '.').' bi',
+        $distributionVolume >= 1_000_000 => 'R$ '.number_format($distributionVolume / 1_000_000, 1, ',', '.').' mi',
+        default => 'R$ '.number_format($distributionVolume, 2, ',', '.'),
+    };
 @endphp
 
 <section class="hero position-relative d-flex align-items-center" style="min-height: 45vh; background: linear-gradient(135deg, #020918 0%, #051a3d 100%);">
@@ -301,8 +308,8 @@
                         <div class="metric-value">{{ $metrics['total_count'] }}</div>
                     </div>
                     <div class="col-6 col-md-3 metric-item p-3">
-                        <div class="metric-label">Volume Total Emitido</div>
-                        <div class="metric-value">R$ {{ number_format($metrics['total_volume'] / 1000000000, 1, ',', '.') }} bi</div>
+                        <div class="metric-label">Volume em Distribuição</div>
+                        <div class="metric-value">{{ $formattedDistributionVolume }}</div>
                     </div>
                     <div class="col-6 col-md-3 metric-item p-3">
                         <div class="metric-label">Em Distribuição</div>

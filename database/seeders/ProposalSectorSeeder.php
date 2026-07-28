@@ -12,10 +12,6 @@ class ProposalSectorSeeder extends Seeder
      */
     public function run(): void
     {
-        $sectors = ['Imobiliário', 'Agronegócio', 'Outros'];
-
-        foreach ($sectors as $name) {
-            ProposalSector::firstOrCreate(['name' => $name]);
-        }
+        ProposalSector::provisionOfficialSectors();
     }
 }

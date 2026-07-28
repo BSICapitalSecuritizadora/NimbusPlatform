@@ -77,7 +77,7 @@ class SiteController extends Controller
 
         $metrics = [
             'total_count' => Emission::where('is_public', true)->whereNotNull('if_code')->count(),
-            'total_volume' => Emission::where('is_public', true)->whereNotNull('if_code')->sum('issued_volume'),
+            'distribution_volume' => Emission::where('is_public', true)->whereNotNull('if_code')->where('status', 'active')->sum('issued_volume'),
             'active_count' => Emission::where('is_public', true)->whereNotNull('if_code')->where('status', 'active')->count(),
             'closed_count' => Emission::where('is_public', true)->whereNotNull('if_code')->where('status', 'closed')->count(),
             'last_update' => Emission::where('is_public', true)->whereNotNull('if_code')->max('updated_at'),
