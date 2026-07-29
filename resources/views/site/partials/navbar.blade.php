@@ -147,6 +147,14 @@
                     return;
                 }
 
+                function markPointerOpen() {
+                    toggle.dataset.pointerOpen = 'true';
+                }
+
+                function clearPointerOpen() {
+                    delete toggle.dataset.pointerOpen;
+                }
+
                 function open() {
                     clearTimeout(closeTimer);
                     bootstrap.Dropdown.getOrCreateInstance(toggle).show();
@@ -161,6 +169,7 @@
 
                 item.addEventListener('mouseenter', function () {
                     if (hoverModeEnabled()) {
+                        markPointerOpen();
                         open();
                     }
                 });
@@ -170,6 +179,10 @@
                         scheduleClose();
                     }
                 });
+
+                toggle.addEventListener('pointerdown', markPointerOpen);
+                toggle.addEventListener('keydown', clearPointerOpen);
+                toggle.addEventListener('blur', clearPointerOpen);
             });
         })();
     </script>

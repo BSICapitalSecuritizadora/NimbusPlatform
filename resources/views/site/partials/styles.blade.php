@@ -53,6 +53,13 @@
             box-shadow: 0 0 0 0.24rem rgba(9, 27, 35, 0.14), 0 0 0 0.42rem rgba(160, 110, 40, 0.18) !important;
         }
 
+        /* Bootstrap's Dropdown.show() focuses the toggle, so opening a mega menu with
+           the pointer would otherwise paint the keyboard focus ring on hover. The
+           navbar script flags pointer-driven opens; keyboard focus keeps the ring. */
+        .navbar .nav-link[data-pointer-open]:focus-visible {
+            box-shadow: none !important;
+        }
+
         img {
             max-width: 100%;
         }
