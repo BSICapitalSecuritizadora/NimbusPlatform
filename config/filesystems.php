@@ -2,12 +2,13 @@
 
 /*
 |--------------------------------------------------------------------------
-| Private Storage Root
+| Storage Roots
 |--------------------------------------------------------------------------
 |
-| Raiz dos documentos privados (documentos de operações, arquivos de
-| propostas/submissões e currículos). Em produção ela DEVE apontar para um
-| diretório fora da pasta de deploy — por exemplo `/home/data/private` no
+| Raiz dos arquivos enviados pelos usuários: privados (documentos de operações,
+| arquivos de propostas/submissões e currículos) e públicos (logos de bancos,
+| imagens de medições). Em produção ambas DEVEM apontar para diretórios fora da
+| pasta de deploy — por exemplo `/home/data/private` e `/home/data/public` no
 | Azure App Service — porque o pacote de deploy substitui o conteúdo de
 | `/home/site/wwwroot` e apagaria os arquivos já enviados.
 |
@@ -18,11 +19,15 @@
 |
 */
 
-$configuredPrivateStorageRoot = rtrim((string) env('PRIVATE_STORAGE_ROOT', ''), '/');
+$resolveStorageRoot = static function (string $variable, string $default): string {
+    $configured = rtrim((string) env($variable, ''), '/');
 
-$privateStorageRoot = str_starts_with($configuredPrivateStorageRoot, '/')
-    ? $configuredPrivateStorageRoot
-    : storage_path('app/private');
+    return str_starts_with($configured, '/') ? $configured : $default;
+};
+
+$privateStorageRoot = $resolveStorageRoot('PRIVATE_STORAGE_ROOT', storage_path('app/private'));
+
+$publicStorageRoot = $resolveStorageRoot('PUBLIC_STORAGE_ROOT', storage_path('app/public'));
 
 return [
 
@@ -84,7 +89,7 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            'root' => $publicStorageRoot,
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
@@ -131,7 +136,7 @@ return [
     */
 
     'links' => [
-        public_path('storage') => storage_path('app/public'),
+        public_path('storage') => $publicStorageRoot,
     ],
 
 ];
