@@ -2,6 +2,7 @@
 
 namespace App\Actions\Nimbus;
 
+use App\Enums\MalwareScanStatus;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
 use App\Models\Nimbus\SubmissionFile;
@@ -24,6 +25,7 @@ class DownloadPortalSubmissionFile
         );
 
         abort_unless($file->nimbus_submission_id === $submission->id, Response::HTTP_NOT_FOUND);
+        abort_unless($file->scan_status === MalwareScanStatus::Clean, Response::HTTP_NOT_FOUND);
 
         if (($file->origin === 'ADMIN') && (! $file->visible_to_user)) {
             abort(Response::HTTP_NOT_FOUND);

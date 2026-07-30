@@ -1,19 +1,36 @@
 <?php
 
+use App\Enums\MalwareScanStatus;
 use App\Filament\Resources\Recruitment\JobApplicationResource;
 use App\Filament\Resources\Recruitment\Pages\CreateVacancy;
 use App\Filament\Resources\Recruitment\Pages\EditVacancy;
 use App\Filament\Resources\Recruitment\VacancyResource;
+use App\Jobs\ScanFileForMalware;
 use App\Models\JobApplication;
+use App\Models\User;
 use App\Models\Vacancy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Vite;
 
 uses(RefreshDatabase::class);
 
+it('loads the phone mask from the local Vite bundle on public vacancies', function () {
+    $vacancy = Vacancy::factory()->create([
+        'is_active' => true,
+    ]);
+
+    $this->get(route('site.vacancies.show', $vacancy->slug))
+        ->assertSuccessful()
+        ->assertSee(Vite::asset('resources/js/imask.js'), false)
+        ->assertDontSee('unpkg.com', false);
+});
+
 it('stores new applications with the default recruitment pipeline status', function () {
     Storage::fake('resumes');
+    Queue::fake();
 
     $vacancy = Vacancy::factory()->create([
         'is_active' => true,
@@ -35,12 +52,41 @@ it('stores new applications with the default recruitment pipeline status', funct
     $application = JobApplication::query()->firstOrFail();
 
     expect($application->status)->toBe(JobApplication::STATUS_NEW)
+        ->and($application->scan_status)->toBe(MalwareScanStatus::Pending)
         ->and($application->internal_notes)->toBeNull()
         ->and($application->reviewed_at)->toBeNull()
         ->and($application->reviewed_by_user_id)->toBeNull();
 
     Storage::disk('resumes')->assertExists($application->resume_path);
+    Queue::assertPushed(ScanFileForMalware::class, 1);
 });
+
+it('releases resumes only after a clean antivirus result', function (MalwareScanStatus $scanStatus, bool $isAvailable) {
+    Storage::fake('resumes');
+
+    $user = User::factory()->create();
+    $user->assignRole('super-admin');
+
+    $application = JobApplication::factory()->create([
+        'resume_path' => 'candidate.pdf',
+        'scan_status' => $scanStatus,
+    ]);
+
+    Storage::disk('resumes')->put($application->resume_path, 'resume');
+
+    $response = $this->actingAs($user)
+        ->get(route('admin.job-applications.resume', $application));
+
+    if ($isAvailable) {
+        $response->assertDownload();
+    } else {
+        $response->assertNotFound();
+    }
+})->with([
+    'pending' => [MalwareScanStatus::Pending, false],
+    'infected' => [MalwareScanStatus::Infected, false],
+    'clean' => [MalwareScanStatus::Clean, true],
+]);
 
 it('exposes consistent labels and colors for the recruitment pipeline', function () {
     expect(JobApplication::statusOptions())->toMatchArray([

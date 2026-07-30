@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\CustomLogin;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Pages\Nimbus\NotificationSettings;
@@ -21,6 +22,9 @@ use App\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResourc
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
+use App\Http\Middleware\EnsureTwoFactorEnabled;
+use App\Http\Middleware\EnsureUserIsApproved;
+use App\Http\Middleware\SetSecurityHeaders;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -48,7 +52,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login(\App\Filament\Pages\Auth\CustomLogin::class)
+            ->login(CustomLogin::class)
             ->brandName('BSI Capital')
             ->brandLogo(fn () => view('filament.logo'))
             ->brandLogoHeight('2.5rem')
@@ -140,6 +144,7 @@ class AdminPanelProvider extends PanelProvider
                 FilamentInfoWidget::class,
             ])
             ->middleware([
+                SetSecurityHeaders::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
@@ -152,8 +157,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                \App\Http\Middleware\EnsureUserIsApproved::class,
-                \App\Http\Middleware\EnsureTwoFactorEnabled::class,
+                EnsureUserIsApproved::class,
+                EnsureTwoFactorEnabled::class,
             ]);
     }
 }

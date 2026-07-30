@@ -1,5 +1,29 @@
 <?php
 
+/*
+|--------------------------------------------------------------------------
+| Private Storage Root
+|--------------------------------------------------------------------------
+|
+| Raiz dos documentos privados (documentos de operações, arquivos de
+| propostas/submissões e currículos). Em produção ela DEVE apontar para um
+| diretório fora da pasta de deploy — por exemplo `/home/data/private` no
+| Azure App Service — porque o pacote de deploy substitui o conteúdo de
+| `/home/site/wwwroot` e apagaria os arquivos já enviados.
+|
+| Só caminhos absolutos são aceitos: um valor relativo (ou um nome de disco
+| informado por engano) faria o Laravel gravar em um diretório relativo ao CWD
+| do processo — php-fpm, filas e artisan cada um em um lugar diferente. Nesse
+| caso o valor é ignorado e vale o padrão da aplicação.
+|
+*/
+
+$configuredPrivateStorageRoot = rtrim((string) env('PRIVATE_STORAGE_ROOT', ''), '/');
+
+$privateStorageRoot = str_starts_with($configuredPrivateStorageRoot, '/')
+    ? $configuredPrivateStorageRoot
+    : storage_path('app/private');
+
 return [
 
     /*
@@ -14,6 +38,19 @@ return [
     */
 
     'default' => env('FILESYSTEM_DISK', 'local'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Private Documents Disk
+    |--------------------------------------------------------------------------
+    |
+    | Disco usado pelo `DocumentStorageService` para gravar e ler documentos
+    | privados. O padrão `local` grava em `PRIVATE_STORAGE_ROOT`; troque para
+    | `private` (Azure Blob Storage) quando o container estiver provisionado.
+    |
+    */
+
+    'private_disk' => env('PRIVATE_FILESYSTEM_DISK', 'local'),
 
     /*
     |--------------------------------------------------------------------------
@@ -32,7 +69,7 @@ return [
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
+            'root' => $privateStorageRoot,
             'serve' => true,
             'throw' => false,
             'report' => false,
@@ -40,7 +77,7 @@ return [
 
         'resumes' => [
             'driver' => 'local',
-            'root' => storage_path('app/private/resumes'),
+            'root' => $privateStorageRoot.'/resumes',
             'throw' => false,
             'report' => false,
         ],
@@ -71,6 +108,14 @@ return [
             'driver' => 'azure-storage-blob',
             'connection_string' => env('AZURE_STORAGE_CONNECTION_STRING'),
             'container' => env('AZURE_STORAGE_CONTAINER'),
+        ],
+
+        'private' => [
+            'driver' => 'azure-storage-blob',
+            'connection_string' => env('AZURE_STORAGE_CONNECTION_STRING'),
+            'container' => env('AZURE_STORAGE_PRIVATE_CONTAINER', 'bsi-docs-privados'),
+            'visibility' => 'private',
+            'throw' => true,
         ],
     ],
 

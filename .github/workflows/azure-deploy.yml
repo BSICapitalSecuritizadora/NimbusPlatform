@@ -28,8 +28,26 @@ jobs:
           npm install
           npm run build
 
+      # storage/app/** contém os documentos privados enviados em produção e não
+      # pode entrar no pacote — o deploy substituiria os arquivos existentes.
       - name: Zip artifact for deployment
-        run: zip -r release.zip . -x ".git/*" "node_modules/*" "tests/*"
+        run: |
+          zip -r release.zip . \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x "node_modules/*" \
+            -x "tests/*" \
+            -x "docs/*" \
+            -x "infra/*" \
+            -x ".env" \
+            -x ".env.staging" \
+            -x ".env.testing" \
+            -x ".env.example.production" \
+            -x "storage/app/*" \
+            -x "storage/logs/*" \
+            -x "storage/framework/cache/*" \
+            -x "storage/framework/sessions/*" \
+            -x "storage/framework/views/*"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4

@@ -2,12 +2,14 @@
 
 namespace App\Actions\Nimbus;
 
+use App\Enums\MalwareScanStatus;
 use App\Models\Nimbus\SubmissionFile;
 use App\Models\User;
 use App\Services\DocumentStorageService;
 use Filament\Facades\Filament;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PreviewAdminSubmissionFile
 {
@@ -15,9 +17,11 @@ class PreviewAdminSubmissionFile
         protected DocumentStorageService $documentStorageService,
     ) {}
 
-    public function handle(?User $user, SubmissionFile $file): BinaryFileResponse
+    public function handle(?User $user, SubmissionFile $file): BinaryFileResponse|StreamedResponse
     {
         $this->assertAdminPanelAccess($user);
+
+        abort_unless($file->scan_status === MalwareScanStatus::Clean, Response::HTTP_NOT_FOUND);
 
         if (! $this->documentStorageService->privateExists($file->storage_path)) {
             abort(Response::HTTP_NOT_FOUND);

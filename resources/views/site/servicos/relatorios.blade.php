@@ -424,7 +424,7 @@
 @endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@vite('resources/js/chart.js')
 <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
     document.addEventListener('DOMContentLoaded', function () {
         const ctx = document.getElementById('inadimplenciaChart').getContext('2d');

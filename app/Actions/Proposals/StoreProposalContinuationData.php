@@ -222,7 +222,7 @@ class StoreProposalContinuationData
                 "proposal-files/{$proposal->id}",
             );
 
-            $proposal->files()->create([
+            $proposalFile = $proposal->files()->create([
                 'disk' => $storedFile['disk'],
                 'file_path' => $storedFile['path'],
                 'file_name' => $storedFile['stored_name'],
@@ -232,7 +232,12 @@ class StoreProposalContinuationData
                 'checksum' => $storedFile['checksum'],
             ]);
 
-            ScanFileForMalware::dispatch($storedFile['disk'], $storedFile['path'], "proposal:{$proposal->id}");
+            ScanFileForMalware::dispatch(
+                $storedFile['disk'],
+                $storedFile['path'],
+                "proposal:{$proposal->id}",
+                $proposalFile,
+            )->afterCommit();
         }
     }
 }

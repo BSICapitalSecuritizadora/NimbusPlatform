@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MalwareScanStatus;
 use App\Filament\Resources\Nimbus\Announcements\Schemas\AnnouncementForm;
 use App\Filament\Resources\Nimbus\GeneralDocuments\Schemas\GeneralDocumentForm;
 use App\Filament\Resources\Nimbus\PortalDocuments\Schemas\PortalDocumentForm;
@@ -29,7 +30,7 @@ use Spatie\Permission\Models\Permission;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Storage::set(DocumentStorageService::PRIVATE_DISK, Storage::createLocalDriver([
+    Storage::set(DocumentStorageService::privateDisk(), Storage::createLocalDriver([
         'root' => storage_path('framework/testing/disks/local-'.uniqid()),
         'throw' => false,
     ]));
@@ -292,11 +293,11 @@ it('pins Nimbus backoffice uploads to the private local disk', function () {
         ->first(fn (mixed $component): bool => $component instanceof FileUpload && $component->getName() === 'file_path');
 
     expect($portalUpload)->toBeInstanceOf(FileUpload::class)
-        ->and($portalUpload?->getDiskName())->toBe(DocumentStorageService::PRIVATE_DISK)
+        ->and($portalUpload?->getDiskName())->toBe(DocumentStorageService::privateDisk())
         ->and($portalUpload?->getDirectory())->toBe(DocumentStorageService::PRIVATE_PREFIX.'/portal-documents')
         ->and($portalUpload?->getMaxSize())->toBe(102400)
         ->and($generalUpload)->toBeInstanceOf(FileUpload::class)
-        ->and($generalUpload?->getDiskName())->toBe(DocumentStorageService::PRIVATE_DISK)
+        ->and($generalUpload?->getDiskName())->toBe(DocumentStorageService::privateDisk())
         ->and($generalUpload?->getDirectory())->toBe(DocumentStorageService::PRIVATE_PREFIX.'/general-documents')
         ->and($generalUpload?->getMaxSize())->toBe(102400);
 });
@@ -757,6 +758,7 @@ it('shows portal-visible return documents and allows secure submission file down
         'mime_type' => 'application/pdf',
         'size_bytes' => 2048,
         'storage_path' => $visibleResponsePath,
+        'scan_status' => MalwareScanStatus::Clean,
         'uploaded_at' => now(),
     ]);
 
@@ -769,6 +771,7 @@ it('shows portal-visible return documents and allows secure submission file down
         'mime_type' => 'application/pdf',
         'size_bytes' => 2048,
         'storage_path' => $internalResponsePath,
+        'scan_status' => MalwareScanStatus::Clean,
         'uploaded_at' => now(),
     ]);
 
@@ -801,6 +804,12 @@ it('shows portal-visible return documents and allows secure submission file down
         ->assertSee('balanco.pdf')
         ->assertSee('parecer.pdf')
         ->assertDontSee('interno.pdf');
+
+    $this->actingAs($portalUser, 'nimbus')
+        ->get(route('nimbus.submissions.files.download', [$submission, $userFile]))
+        ->assertNotFound();
+
+    $userFile->forceFill(['scan_status' => MalwareScanStatus::Clean])->save();
 
     $this->actingAs($portalUser, 'nimbus')
         ->get(route('nimbus.submissions.files.download', [$submission, $userFile]))

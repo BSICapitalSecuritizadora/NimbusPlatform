@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Site;
 
 use App\Actions\Proposals\StoreProposalContinuationData;
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
+use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\VerifyProposalContinuationRequest;
 use App\Models\Proposal;
@@ -97,6 +98,7 @@ class ProposalContinuationController extends Controller
         $this->ensureAuthorizedContinuation($request, $access);
 
         abort_unless($file->proposal_id === $access->proposal_id, 404);
+        abort_unless($file->scan_status === MalwareScanStatus::Clean, 404);
         abort_unless($documentStorageService->privateExists($file->file_path), 404);
 
         return $documentStorageService->downloadPrivate(

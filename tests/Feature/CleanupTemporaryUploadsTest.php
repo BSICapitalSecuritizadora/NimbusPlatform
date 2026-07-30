@@ -8,15 +8,15 @@ $tmpDir = DocumentStorageService::PRIVATE_PREFIX.'/'.DocumentStorageService::TMP
 // Ensure the staging directory starts clean and is removed after each test,
 // mirroring the pattern used by NimbusSubmissionStoreTest.
 beforeEach(function () use ($tmpDir) {
-    Storage::disk(DocumentStorageService::PRIVATE_DISK)->deleteDirectory($tmpDir);
+    Storage::disk(DocumentStorageService::privateDisk())->deleteDirectory($tmpDir);
 });
 
 afterEach(function () use ($tmpDir) {
-    Storage::disk(DocumentStorageService::PRIVATE_DISK)->deleteDirectory($tmpDir);
+    Storage::disk(DocumentStorageService::privateDisk())->deleteDirectory($tmpDir);
 });
 
 it('deletes staged files older than 24 hours and preserves recent ones', function () use ($tmpDir) {
-    $disk = Storage::disk(DocumentStorageService::PRIVATE_DISK);
+    $disk = Storage::disk(DocumentStorageService::privateDisk());
 
     $staleFile = $tmpDir.'/stale-upload.pdf';
     $recentFile = $tmpDir.'/recent-upload.pdf';
@@ -40,7 +40,7 @@ it('does nothing when the tmp directory is empty', function () {
 });
 
 it('reports the correct number of deleted files', function () use ($tmpDir) {
-    $disk = Storage::disk(DocumentStorageService::PRIVATE_DISK);
+    $disk = Storage::disk(DocumentStorageService::privateDisk());
 
     foreach (['a.pdf', 'b.pdf', 'c.pdf'] as $name) {
         $path = $tmpDir.'/'.$name;

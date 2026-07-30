@@ -25,6 +25,14 @@
             scroll-behavior: smooth;
         }
 
+        /* Safety net only; horizontal overflow must be fixed at its source.
+           `clip` (not `hidden`) keeps position: sticky working on the navbar. */
+        html,
+        body {
+            max-width: 100%;
+            overflow-x: clip;
+        }
+
         body {
             font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background: var(--bg);
@@ -524,7 +532,7 @@
         }
 
         .mega-menu {
-            width: min(1080px, 96vw);
+            width: min(1080px, calc(100% - 2rem));
             margin-top: 0.8rem;
             border: 1px solid var(--border);
             background: var(--surface);
@@ -546,10 +554,39 @@
             pointer-events: auto;
         }
 
+        /* The closed panel stays in the layout (display: block) so it can animate, so it must
+           never sit outside the viewport. With `left: auto` it was placed at the nav link's
+           static position, and its 1080px width pushed documentElement's scrollWidth past
+           clientWidth, producing a horizontal scrollbar on every page. Anchoring it to the
+           centre of the sticky navbar keeps closed and open panels inside the viewport. The
+           [data-bs-popper] duplicate outranks Bootstrap's own `.dropdown-menu[data-bs-popper]
+           { left: 0 }`, which Bootstrap applies to the menu once the dropdown opens. */
+        @media (min-width: 992px) {
+            .navbar .mega-menu,
+            .navbar .mega-menu[data-bs-popper] {
+                top: 100%;
+                left: 50%;
+                right: auto;
+                margin-top: 0.8rem;
+                transform: translate(-50%, 8px);
+            }
+
+            .navbar .mega-menu.show,
+            .navbar .mega-menu.show[data-bs-popper] {
+                transform: translate(-50%, 0);
+            }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .mega-menu {
                 transition: none;
             }
+        }
+
+        /* The columns carry their own padding, so Bootstrap's horizontal gutter only
+           contributes the row's negative side margins, which bleed past the panel. */
+        .mega-menu .row {
+            --bs-gutter-x: 0;
         }
 
         .mega-menu .col-lg-4 {

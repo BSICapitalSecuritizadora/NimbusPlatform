@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Site;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ScanFileForMalware;
 use App\Models\JobApplication;
 use App\Models\Vacancy;
 use Illuminate\Contracts\View\View;
@@ -52,7 +53,7 @@ class JobController extends Controller
 
         $resumePath = $request->file('resume')->store('', 'resumes');
 
-        JobApplication::create([
+        $jobApplication = JobApplication::create([
             'vacancy_id' => $vacancy->id,
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -62,6 +63,13 @@ class JobController extends Controller
             'message' => $validated['message'],
             'status' => JobApplication::STATUS_NEW,
         ]);
+
+        ScanFileForMalware::dispatch(
+            'resumes',
+            $resumePath,
+            "job-application:{$jobApplication->id}",
+            $jobApplication,
+        )->afterCommit();
 
         return back()->with('success', 'Sua candidatura foi enviada com sucesso! Agradecemos o interesse em fazer parte da equipe BSI Capital.');
     }

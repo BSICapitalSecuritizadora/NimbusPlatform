@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Storage::set(DocumentStorageService::PRIVATE_DISK, Storage::createLocalDriver([
+    Storage::set(DocumentStorageService::privateDisk(), Storage::createLocalDriver([
         'root' => storage_path('framework/testing/disks/local-'.uniqid()),
         'throw' => false,
     ]));
@@ -61,7 +61,7 @@ it('successfully uploads and processes a submission file (Happy Path)', function
         ->and($submissionFile->storage_path)->toStartWith("nimbus_docs/submissions/{$submission->id}/");
 
     // Physical file assertion
-    Storage::disk(DocumentStorageService::PRIVATE_DISK)->assertExists($submissionFile->storage_path);
+    Storage::disk(DocumentStorageService::privateDisk())->assertExists($submissionFile->storage_path);
 
     // Database assertions
     $this->assertDatabaseHas('nimbus_submission_files', [
@@ -116,7 +116,7 @@ it('uploads a file with ADMIN origin to the responses directory', function () {
         ->and($submissionFile->storage_path)->toContain('/responses/')
         ->and($submissionFile->storage_path)->toContain("nimbus_docs/submissions/{$submission->id}/responses/");
 
-    Storage::disk(DocumentStorageService::PRIVATE_DISK)->assertExists($submissionFile->storage_path);
+    Storage::disk(DocumentStorageService::privateDisk())->assertExists($submissionFile->storage_path);
 
     $this->assertDatabaseHas('nimbus_submission_file_versions', [
         'nimbus_submission_file_id' => $submissionFile->id,
@@ -173,7 +173,7 @@ it('cleans up physical file when database transaction fails (Failure Path)', fun
 
     // 4. Assertions
     // Ensure no files are left on the disk (it should have been cleaned up from staging)
-    $files = Storage::disk(DocumentStorageService::PRIVATE_DISK)->allFiles();
+    $files = Storage::disk(DocumentStorageService::privateDisk())->allFiles();
     expect($files)->toBeEmpty();
 
     // Ensure no database records were created

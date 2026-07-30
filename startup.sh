@@ -6,6 +6,7 @@ NGINX_DEFAULT_CONF="/etc/nginx/sites-enabled/default"
 NGINX_FALLBACK_CONF="/etc/nginx/sites-available/default"
 NGINX_CLIENT_MAX_BODY_SIZE="${NGINX_CLIENT_MAX_BODY_SIZE:-110M}"
 LARAVEL_PUBLIC_ROOT="/home/site/wwwroot/public"
+LEGACY_PRIVATE_STORAGE_ROOT="/home/site/wwwroot/storage/app/private"
 
 if [ ! -f "$NGINX_DEFAULT_CONF" ] && [ -f "$NGINX_FALLBACK_CONF" ]; then
     NGINX_DEFAULT_CONF="$NGINX_FALLBACK_CONF"
@@ -40,6 +41,35 @@ server {
     }
 }
 EOF
+fi
+
+# Documentos privados vivem fora de /home/site/wwwroot, que é substituído a cada
+# deploy. Garante a raiz persistente e traz, uma única vez, o que ainda estiver
+# no local antigo (sem sobrescrever nada que já exista no destino).
+# Só caminho absoluto é aceito: um valor relativo criaria o diretório no CWD do
+# processo e espalharia os documentos. A aplicação aplica a mesma regra.
+PRIVATE_STORAGE_TARGET=""
+
+case "${PRIVATE_STORAGE_ROOT:-}" in
+    "")
+        echo "AVISO: PRIVATE_STORAGE_ROOT não definido — documentos privados ficarão em $LEGACY_PRIVATE_STORAGE_ROOT e serão perdidos no próximo deploy." >&2
+        ;;
+    /*)
+        PRIVATE_STORAGE_TARGET="${PRIVATE_STORAGE_ROOT%/}"
+        ;;
+    *)
+        echo "AVISO: PRIVATE_STORAGE_ROOT='$PRIVATE_STORAGE_ROOT' não é um caminho absoluto e será ignorado. Use, por exemplo, /home/data/private." >&2
+        ;;
+esac
+
+if [ -n "$PRIVATE_STORAGE_TARGET" ]; then
+    mkdir -p "$PRIVATE_STORAGE_TARGET"
+
+    if [ -d "$LEGACY_PRIVATE_STORAGE_ROOT" ] && [ "$PRIVATE_STORAGE_TARGET" != "$LEGACY_PRIVATE_STORAGE_ROOT" ]; then
+        cp -a -n "$LEGACY_PRIVATE_STORAGE_ROOT/." "$PRIVATE_STORAGE_TARGET/" 2>/dev/null || true
+    fi
+
+    chown -R www-data:www-data "$PRIVATE_STORAGE_TARGET" 2>/dev/null || true
 fi
 
 cd /home/site/wwwroot

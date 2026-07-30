@@ -52,6 +52,9 @@ jobs:
           mkdir -p storage/framework/views
           mkdir -p storage/logs
 
+      # storage/app/** guarda os documentos privados enviados em produção.
+      # Ele NUNCA pode entrar no pacote, senão o deploy sobrescreve os arquivos
+      # do App Service com o diretório vazio do runner.
       - name: Package application
         run: |
           zip -r app.zip . \
@@ -59,11 +62,30 @@ jobs:
             -x ".github/*" \
             -x "node_modules/*" \
             -x "tests/*" \
+            -x "docs/*" \
+            -x "infra/*" \
             -x ".env" \
+            -x ".env.staging" \
+            -x ".env.testing" \
+            -x ".env.example.production" \
+            -x "storage/app/*" \
             -x "storage/logs/*" \
             -x "storage/framework/cache/*" \
             -x "storage/framework/sessions/*" \
-            -x "storage/framework/views/*"
+            -x "storage/framework/views/*" \
+            -x "fix_*.php" \
+            -x "fix_*.py" \
+            -x "update_*.php" \
+            -x "compose.yaml"
+
+      # Entradas de diretório são inofensivas; arquivos dentro de storage/app não.
+      - name: Assert private storage is not packaged
+        run: |
+          if unzip -Z1 app.zip | grep -qE "^storage/app/.*[^/]$"; then
+            echo "::error::O pacote contém arquivos em storage/app — o deploy destruiria os documentos privados."
+            unzip -Z1 app.zip | grep -E "^storage/app/.*[^/]$" | head
+            exit 1
+          fi
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4

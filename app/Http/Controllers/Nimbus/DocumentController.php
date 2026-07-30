@@ -64,7 +64,7 @@ class DocumentController extends Controller
         Request $request,
         PortalDocument $document,
         DocumentStorageService $documentStorageService,
-    ): BinaryFileResponse {
+    ): BinaryFileResponse|StreamedResponse {
         $portalUser = $request->user('nimbus');
 
         if ((int) $document->nimbus_portal_user_id !== (int) $portalUser->id) {
@@ -77,7 +77,7 @@ class DocumentController extends Controller
 
         return $documentStorageService->previewPrivate(
             $document->file_path,
-            null,
+            $document->file_mime,
             $document->file_original_name ?: basename($document->file_path),
         );
     }
@@ -107,7 +107,7 @@ class DocumentController extends Controller
         Request $request,
         GeneralDocument $document,
         DocumentStorageService $documentStorageService,
-    ): BinaryFileResponse {
+    ): BinaryFileResponse|StreamedResponse {
         if (! $document->is_active) {
             abort(Response::HTTP_NOT_FOUND);
         }

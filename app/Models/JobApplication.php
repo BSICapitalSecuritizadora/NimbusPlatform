@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MalwareScanStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,16 +23,22 @@ class JobApplication extends Model
 
     public const STATUS_REJECTED = 'reprovada';
 
+    protected $attributes = [
+        'scan_status' => MalwareScanStatus::Pending->value,
+    ];
+
     protected $fillable = [
         'vacancy_id', 'name', 'email', 'phone',
         'linkedin_url', 'resume_path', 'message',
         'status', 'internal_notes', 'reviewed_at', 'reviewed_by_user_id',
+        'scan_status',
     ];
 
     protected function casts(): array
     {
         return [
             'reviewed_at' => 'datetime',
+            'scan_status' => MalwareScanStatus::class,
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
 use App\Models\JobApplication;
 use Illuminate\Support\Facades\Gate;
@@ -15,7 +16,9 @@ class JobApplicationResumeController extends Controller
         Gate::authorize('recruitment.applications.view');
 
         abort_unless(
-            $jobApplication->resume_path && Storage::disk('resumes')->exists($jobApplication->resume_path),
+            $jobApplication->scan_status === MalwareScanStatus::Clean
+                && $jobApplication->resume_path
+                && Storage::disk('resumes')->exists($jobApplication->resume_path),
             404,
         );
 

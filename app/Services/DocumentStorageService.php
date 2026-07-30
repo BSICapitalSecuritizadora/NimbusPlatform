@@ -13,19 +13,56 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentStorageService
 {
-    public const PRIVATE_DISK = 'local';
-
     public const PRIVATE_PREFIX = 'nimbus_docs';
 
     public const TMP_DIRECTORY = 'tmp_uploads';
+
+    public const DEFAULT_PRIVATE_DISK = 'local';
 
     /**
      * @var array<int, string>
      */
     private const SUPPORTED_DISKS = [
         'local',
+        'private',
         'public',
     ];
+
+    /**
+     * Disco onde os documentos privados são gravados. Configurável para permitir
+     * a migração do armazenamento local para o Azure Blob Storage sem alterar
+     * os registros já existentes (cada registro guarda o disco de origem).
+     */
+    public static function privateDisk(): string
+    {
+        return (string) config('filesystems.private_disk', self::DEFAULT_PRIVATE_DISK);
+    }
+
+    /**
+     * Únicos tipos que podem ser servidos inline: nenhum deles é interpretado
+     * como documento executável pelo navegador. Qualquer outro tipo é forçado
+     * para download, de modo que um `Content-Type` indevido não vire XSS.
+     *
+     * @var array<int, string>
+     */
+    private const INLINE_SAFE_MIMES = [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+    ];
+
+    /**
+     * CSP aplicada a arquivos servidos ao navegador: sem rede, sem script e em
+     * origem opaca, mesmo que o tipo declarado seja contornado.
+     *
+     * `allow-scripts` não reabre execução de script: `default-src 'none'` já
+     * cobre `script-src`, então nada carrega ou executa no documento. Ele apenas
+     * evita que a flag de sandbox interfira nos leitores internos do navegador
+     * (o visualizador de PDF é acionado por script no próprio navegador). O que
+     * protege a sessão é a ausência de `allow-same-origin`: o documento fica em
+     * origem opaca e não alcança cookies nem DOM da aplicação.
+     */
+    private const FILE_RESPONSE_CSP = "default-src 'none'; style-src 'unsafe-inline'; sandbox allow-scripts";
 
     /**
      * @return array{
@@ -40,10 +77,11 @@ class DocumentStorageService
      */
     public function storePrivateFile(UploadedFile $file, string $directory): array
     {
-        $path = $file->store($this->privateDirectoryPath($directory), self::PRIVATE_DISK);
+        $privateDisk = self::privateDisk();
+        $path = $file->store($this->privateDirectoryPath($directory), $privateDisk);
 
         return [
-            'disk' => self::PRIVATE_DISK,
+            'disk' => $privateDisk,
             'path' => $path,
             'stored_name' => basename($path),
             'original_name' => $file->getClientOriginalName(),
@@ -69,7 +107,7 @@ class DocumentStorageService
      */
     public function moveStagedFile(string $fromPath, string $toDirectory, string $storedName): string
     {
-        $disk = $this->filesystem(self::PRIVATE_DISK);
+        $disk = $this->filesystem(self::privateDisk());
         $finalPath = $this->privateDirectoryPath($toDirectory).'/'.$storedName;
 
         $disk->makeDirectory(dirname($finalPath));
@@ -85,20 +123,20 @@ class DocumentStorageService
 
     public function privateExists(string $path): bool
     {
-        return $this->exists($path, self::PRIVATE_DISK);
+        return $this->exists($path, self::privateDisk());
     }
 
     public function downloadPrivate(string $path, string $downloadName): StreamedResponse
     {
-        return $this->download($path, $downloadName, self::PRIVATE_DISK);
+        return $this->download($path, $downloadName, self::privateDisk());
     }
 
     public function previewPrivate(
         string $path,
         ?string $mimeType = null,
         ?string $downloadName = null,
-    ): BinaryFileResponse {
-        return $this->preview($path, $mimeType, $downloadName, self::PRIVATE_DISK);
+    ): BinaryFileResponse|StreamedResponse {
+        return $this->preview($path, $mimeType, $downloadName, self::privateDisk());
     }
 
     /**
@@ -106,50 +144,73 @@ class DocumentStorageService
      */
     public function privateMetadata(string $path): array
     {
-        return $this->metadata($path, self::PRIVATE_DISK);
+        return $this->metadata($path, self::privateDisk());
     }
 
+    /**
+     * Só faz sentido em discos locais; discos remotos (Azure Blob) não expõem
+     * um caminho de sistema de arquivos.
+     */
     public function absolutePrivatePath(string $path): string
     {
-        return $this->absolutePath($path, self::PRIVATE_DISK);
+        return $this->absolutePath($path, self::privateDisk());
     }
 
-    public function exists(string $path, string $disk = self::PRIVATE_DISK): bool
+    public function exists(string $path, ?string $disk = null): bool
     {
-        return $this->filesystem($disk)->exists($path);
+        return $this->filesystem($disk ?? self::privateDisk())->exists($path);
     }
 
     public function download(
         string $path,
         string $downloadName,
-        string $disk = self::PRIVATE_DISK,
+        ?string $disk = null,
     ): StreamedResponse {
-        return $this->filesystem($disk)->download($path, $downloadName);
+        return $this->filesystem($disk ?? self::privateDisk())->download($path, $downloadName);
     }
 
     public function preview(
         string $path,
         ?string $mimeType = null,
         ?string $downloadName = null,
-        string $disk = self::PRIVATE_DISK,
-    ): BinaryFileResponse {
+        ?string $disk = null,
+    ): BinaryFileResponse|StreamedResponse {
+        $resolvedDisk = $disk ?? self::privateDisk();
+        $isInlineSafe = in_array($mimeType, self::INLINE_SAFE_MIMES, true);
+        $resolvedMime = $isInlineSafe ? (string) $mimeType : 'application/octet-stream';
         $resolvedDownloadName = $downloadName ?: basename($path);
+        $disposition = $isInlineSafe ? HeaderUtils::DISPOSITION_INLINE : HeaderUtils::DISPOSITION_ATTACHMENT;
 
-        return response()->file($this->absolutePath($path, $disk), [
-            'Content-Type' => $mimeType ?: 'application/octet-stream',
+        $headers = [
+            'Content-Type' => $resolvedMime,
+            'X-Content-Type-Options' => 'nosniff',
+            'Content-Security-Policy' => self::FILE_RESPONSE_CSP,
             'Content-Disposition' => HeaderUtils::makeDisposition(
-                'inline',
+                $disposition,
                 $resolvedDownloadName,
                 Str::ascii($resolvedDownloadName),
             ),
-        ]);
+        ];
+
+        if (! $this->isLocalDisk($resolvedDisk)) {
+            return $this->filesystem($resolvedDisk)->response(
+                $path,
+                $resolvedDownloadName,
+                $headers,
+                $disposition,
+            );
+        }
+
+        return response()->file($this->absolutePath($path, $resolvedDisk), $headers);
     }
 
     /**
      * @return array{mime_type: ?string, size_bytes: ?int}
      */
-    public function metadata(string $path, string $disk = self::PRIVATE_DISK): array
+    public function metadata(string $path, ?string $disk = null): array
     {
+        $disk ??= self::privateDisk();
+
         if (! $this->exists($path, $disk)) {
             return [
                 'mime_type' => null,
@@ -165,9 +226,14 @@ class DocumentStorageService
         ];
     }
 
-    public function absolutePath(string $path, string $disk = self::PRIVATE_DISK): string
+    public function absolutePath(string $path, ?string $disk = null): string
     {
-        return Storage::disk($this->normalizeDisk($disk))->path($path);
+        return Storage::disk($this->normalizeDisk($disk ?? self::privateDisk()))->path($path);
+    }
+
+    protected function isLocalDisk(string $disk): bool
+    {
+        return config("filesystems.disks.{$this->normalizeDisk($disk)}.driver") === 'local';
     }
 
     protected function privateDirectory(string $directory): string

@@ -371,6 +371,10 @@
 
                         <form action="{{ route('site.contact.submit') }}" method="POST">
                             @csrf
+                            <div class="d-none" aria-hidden="true">
+                                <label for="website">Website</label>
+                                <input type="text" name="website" id="website" value="" tabindex="-1" autocomplete="off">
+                            </div>
                             <div class="row g-4">
                                 <div class="col-md-6">
                                     <label class="form-label">Nome</label>
@@ -390,12 +394,9 @@
                                     <label class="form-label">Assunto</label>
                                     <select name="subject" class="form-select @error('subject') is-invalid @enderror" required>
                                         <option value="" selected disabled>Selecione a área de interesse</option>
-                                        <option value="Relações com investidores" @selected(old('subject') === 'Relações com investidores')>Relações com investidores</option>
-                                        <option value="Comercial e novos negócios" @selected(old('subject') === 'Comercial e novos negócios')>Comercial e novos negócios</option>
-                                        <option value="Compliance e ética" @selected(old('subject') === 'Compliance e ética')>Compliance e ética</option>
-                                        <option value="Documentos públicos" @selected(old('subject') === 'Documentos públicos')>Documentos públicos</option>
-                                        <option value="Parcerias estratégicas" @selected(old('subject') === 'Parcerias estratégicas')>Parcerias estratégicas</option>
-                                        <option value="Carreiras / Trabalhe conosco" @selected(old('subject') === 'Carreiras / Trabalhe conosco')>Carreiras</option>
+                                        @foreach (\App\Models\ContactMessage::SUBJECT_OPTIONS as $value => $label)
+                                            <option value="{{ $value }}" @selected(old('subject') === $value)>{{ $label }}</option>
+                                        @endforeach
                                     </select>
                                     @error('subject')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
@@ -520,4 +521,3 @@
 @endpush
 
 @endsection
-

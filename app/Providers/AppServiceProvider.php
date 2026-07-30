@@ -10,14 +10,21 @@ use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\IndexRateLookupService;
 use App\Domain\PuCalculator\Services\IndexRateService;
 use App\Domain\PuCalculator\Services\RoundingService;
+use App\Listeners\LogNotificationListener;
 use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\Document;
 use App\Models\Nimbus\Submission;
 use App\Policies\DocumentPolicy;
 use App\Policies\Nimbus\SubmissionPolicy;
+use App\Services\ConstructionProgressProvider;
+use App\Services\MeasurementPlanProgressProvider;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\Events\NotificationFailed;
+use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -40,8 +47,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(
-            \App\Services\ConstructionProgressProvider::class,
-            \App\Services\MeasurementPlanProgressProvider::class,
+            ConstructionProgressProvider::class,
+            MeasurementPlanProgressProvider::class,
         );
 
         $this->app->singleton(RoundingService::class);
@@ -79,14 +86,14 @@ class AppServiceProvider extends ServiceProvider
             $event->extendSocialite('azure', AzureProvider::class);
         });
 
-        Event::listen(function (\Illuminate\Auth\Events\Login $event): void {
+        Event::listen(function (Login $event): void {
             activity('login')
                 ->causedBy($event->user)
                 ->withProperties(['guard' => $event->guard, 'ip' => request()->ip()])
                 ->log('login');
         });
 
-        Event::listen(function (\Illuminate\Auth\Events\Logout $event): void {
+        Event::listen(function (Logout $event): void {
             if ($event->user === null) {
                 return;
             }
@@ -98,13 +105,13 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::listen(
-            \Illuminate\Notifications\Events\NotificationSent::class,
-            [\App\Listeners\LogNotificationListener::class, 'handleSent']
+            NotificationSent::class,
+            [LogNotificationListener::class, 'handleSent']
         );
 
         Event::listen(
-            \Illuminate\Notifications\Events\NotificationFailed::class,
-            [\App\Listeners\LogNotificationListener::class, 'handleFailed']
+            NotificationFailed::class,
+            [LogNotificationListener::class, 'handleFailed']
         );
     }
 
@@ -157,6 +164,13 @@ class AppServiceProvider extends ServiceProvider
 
     protected function configureRateLimiting(): void
     {
+        RateLimiter::for('site-contact', function (Request $request): array {
+            return [
+                Limit::perMinutes(60, 5)->by("site-contact|ip|{$request->ip()}"),
+                Limit::perDay(200)->by('site-contact|global'),
+            ];
+        });
+
         RateLimiter::for('proposal-submission', function (Request $request): Limit {
             $email = mb_strtolower((string) $request->input('email'));
             $cnpj = Str::digitsOnly((string) $request->input('cnpj'));

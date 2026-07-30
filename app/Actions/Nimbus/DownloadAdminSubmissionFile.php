@@ -2,6 +2,7 @@
 
 namespace App\Actions\Nimbus;
 
+use App\Enums\MalwareScanStatus;
 use App\Models\Nimbus\SubmissionFile;
 use App\Models\User;
 use App\Services\DocumentStorageService;
@@ -18,6 +19,8 @@ class DownloadAdminSubmissionFile
     public function handle(?User $user, SubmissionFile $file): StreamedResponse
     {
         $this->assertAdminPanelAccess($user);
+
+        abort_unless($file->scan_status === MalwareScanStatus::Clean, Response::HTTP_NOT_FOUND);
 
         if (! $this->documentStorageService->privateExists($file->storage_path)) {
             abort(Response::HTTP_NOT_FOUND);

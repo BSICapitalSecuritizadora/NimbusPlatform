@@ -19,7 +19,7 @@ class AdminDocumentController extends Controller
         Request $request,
         GeneralDocument $document,
         DocumentStorageService $documentStorageService,
-    ): BinaryFileResponse {
+    ): BinaryFileResponse|StreamedResponse {
         $this->authorizeDocumentAccess($request->user(), 'nimbus.general-documents.view');
         $this->abortIfMissing($documentStorageService, $document->file_path);
 
@@ -48,7 +48,7 @@ class AdminDocumentController extends Controller
         Request $request,
         PortalDocument $document,
         DocumentStorageService $documentStorageService,
-    ): BinaryFileResponse {
+    ): BinaryFileResponse|StreamedResponse {
         $this->authorizeDocumentAccess($request->user(), 'nimbus.portal-documents.view');
         $this->abortIfMissing($documentStorageService, $document->file_path);
 

@@ -18,7 +18,7 @@ it('stores private files on the local disk under the nimbus docs prefix', functi
         'submissions/42',
     );
 
-    expect($storedFile['disk'])->toBe(DocumentStorageService::PRIVATE_DISK)
+    expect($storedFile['disk'])->toBe(DocumentStorageService::privateDisk())
         ->and($storedFile['path'])->toStartWith(DocumentStorageService::PRIVATE_PREFIX.'/submissions/42/')
         ->and($storedFile['stored_name'])->toEndWith('.pdf')
         ->and($storedFile['original_name'])->toBe('contrato-social.pdf')
@@ -47,5 +47,5 @@ it('normalizes private directories without ever escaping the private prefix', fu
 
 it('rejects unsupported storage disks', function () {
     expect(fn () => app(DocumentStorageService::class)->exists('documents/demo.pdf', 's3'))
-        ->toThrow(\InvalidArgumentException::class, 'Unsupported storage disk [s3].');
+        ->toThrow(InvalidArgumentException::class, 'Unsupported storage disk [s3].');
 });

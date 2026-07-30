@@ -64,17 +64,18 @@ class DocumentManager
                 ]);
 
                 ScanFileForMalware::dispatch(
-                    DocumentStorageService::PRIVATE_DISK,
+                    DocumentStorageService::privateDisk(),
                     $finalPath,
                     "submission:{$submission->id}",
-                );
+                    $submissionFile,
+                )->afterCommit();
 
                 return $submissionFile;
             });
         } catch (Throwable $e) {
             // If the file was already moved to the final path before the failure,
             // clean it up from there; otherwise clean it up from staging.
-            Storage::disk(DocumentStorageService::PRIVATE_DISK)->delete($finalPath ?? $stagedFile['path']);
+            Storage::disk(DocumentStorageService::privateDisk())->delete($finalPath ?? $stagedFile['path']);
 
             throw $e;
         }

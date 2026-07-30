@@ -1,6 +1,7 @@
 <?php
 
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
+use App\Enums\MalwareScanStatus;
 use App\Enums\ProposalStatus;
 use App\Livewire\Proposals\ContinuationForm;
 use App\Models\Proposal;
@@ -9,7 +10,9 @@ use App\Models\ProposalRepresentative;
 use App\Models\ProposalSector;
 use App\Services\DocumentStorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -146,7 +149,7 @@ it('stores the continuation payload through the livewire component', function ()
             UploadedFile::fake()->create('memorial-descritivo.pdf', 128, 'application/pdf'),
         ]);
 
-    \Illuminate\Support\Facades\Date::setTestNow(now()->addSecond());
+    Date::setTestNow(now()->addSecond());
 
     $component
         ->call('save')
@@ -215,13 +218,25 @@ it('downloads continuation files from the private disk even if the stored disk s
 
     $this->withSession(proposalContinuationSessionState($access))
         ->get(route('site.proposal.continuation.files.download', [$access, $file]))
+        ->assertNotFound();
+
+    $file->forceFill(['scan_status' => MalwareScanStatus::Infected])->save();
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->get(route('site.proposal.continuation.files.download', [$access, $file]))
+        ->assertNotFound();
+
+    $file->forceFill(['scan_status' => MalwareScanStatus::Clean])->save();
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->get(route('site.proposal.continuation.files.download', [$access, $file]))
         ->assertDownload('memorial.pdf');
 });
 
 /**
  * @return array{0: Proposal, 1: ProposalContinuationAccess}
  */
-function createProposalContinuationContext(\Illuminate\Foundation\Testing\TestCase $testCase): array
+function createProposalContinuationContext(TestCase $testCase): array
 {
     $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
 

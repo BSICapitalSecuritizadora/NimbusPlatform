@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MalwareScanStatus;
 use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Pages\Nimbus\NotificationSettings;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
@@ -35,7 +36,7 @@ use Spatie\Permission\PermissionRegistrar;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Storage::set(DocumentStorageService::PRIVATE_DISK, Storage::createLocalDriver([
+    Storage::set(DocumentStorageService::privateDisk(), Storage::createLocalDriver([
         'root' => storage_path('framework/testing/disks/local-'.uniqid()),
         'throw' => false,
     ]));
@@ -84,6 +85,23 @@ it('allows admin users to preview and download submission files', function () {
         'storage_path' => $storagePath,
         'uploaded_at' => now(),
     ]);
+
+    $previewResponse = $this->actingAs($user)
+        ->get(route('admin.nimbus.submissions.files.preview', $file));
+
+    $previewResponse->assertNotFound();
+
+    $this->actingAs($user)
+        ->get(route('admin.nimbus.submissions.files.download', $file))
+        ->assertNotFound();
+
+    $file->forceFill(['scan_status' => MalwareScanStatus::Infected])->save();
+
+    $this->actingAs($user)
+        ->get(route('admin.nimbus.submissions.files.download', $file))
+        ->assertNotFound();
+
+    $file->forceFill(['scan_status' => MalwareScanStatus::Clean])->save();
 
     $previewResponse = $this->actingAs($user)
         ->get(route('admin.nimbus.submissions.files.preview', $file));

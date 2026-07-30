@@ -1,14 +1,16 @@
 <?php
 
 use App\Models\Proposal;
+use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalRepresentative;
 use App\Models\ProposalSector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Vite;
 
 uses(RefreshDatabase::class);
 
-function continuationAccessForTest(): App\Models\ProposalContinuationAccess
+function continuationAccessForTest(): ProposalContinuationAccess
 {
     $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
 
@@ -37,7 +39,9 @@ it('renders the continuation access page from a valid signed magic link', functi
     $this->get($access->generated_url)
         ->assertOk()
         ->assertViewIs('site.proposal.access')
-        ->assertSee($access->proposal->company->name);
+        ->assertSee($access->proposal->company->name)
+        ->assertSee(Vite::asset('resources/js/imask.js'), false)
+        ->assertDontSee('unpkg.com', false);
 
     expect(session()->has($access->magicLinkSessionKey()))->toBeTrue();
 

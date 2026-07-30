@@ -14,7 +14,7 @@ class CleanupTemporaryUploads extends Command
 
     public function handle(): int
     {
-        $disk = Storage::disk(DocumentStorageService::PRIVATE_DISK);
+        $disk = Storage::disk(DocumentStorageService::privateDisk());
         $tmpDirectory = DocumentStorageService::PRIVATE_PREFIX.'/'.DocumentStorageService::TMP_DIRECTORY;
         $cutoff = now()->subHours(24)->timestamp;
         $deleted = 0;

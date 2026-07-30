@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Storage::set(DocumentStorageService::PRIVATE_DISK, Storage::createLocalDriver([
+    Storage::set(DocumentStorageService::privateDisk(), Storage::createLocalDriver([
         'root' => storage_path('framework/testing/disks/local-'.uniqid()),
         'throw' => false,
     ]));

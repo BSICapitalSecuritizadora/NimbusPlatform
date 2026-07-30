@@ -23,7 +23,7 @@ class AdminSubmissionFileController extends Controller
         Request $request,
         SubmissionFile $file,
         PreviewAdminSubmissionFile $previewAdminSubmissionFile,
-    ): BinaryFileResponse {
+    ): BinaryFileResponse|StreamedResponse {
         try {
             return $previewAdminSubmissionFile->handle($request->user(), $file);
         } catch (Throwable $e) {

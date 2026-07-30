@@ -2,6 +2,7 @@
 
 namespace App\Models\Nimbus;
 
+use App\Enums\MalwareScanStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -28,11 +29,16 @@ class SubmissionFile extends Model
 
     protected $table = 'nimbus_submission_files';
 
+    protected $attributes = [
+        'scan_status' => MalwareScanStatus::Pending->value,
+    ];
+
     protected $guarded = ['id'];
 
     protected $casts = [
         'visible_to_user' => 'boolean',
         'uploaded_at' => 'datetime',
+        'scan_status' => MalwareScanStatus::class,
     ];
 
     /**

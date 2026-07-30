@@ -63,13 +63,13 @@ return [
     | ClamAV antivirus scanning (M-8)
     |--------------------------------------------------------------------------
     |
-    | Set CLAMAV_ENABLED=true in production once the ClamAV daemon is installed.
-    | The job dispatches only when enabled; all other settings are ignored otherwise.
+    | Scanning is enabled by default in production and can be explicitly disabled
+    | in local environments. Files are not released until clamd reports them clean.
     |
     */
 
     'clamav' => [
-        'enabled' => (bool) env('CLAMAV_ENABLED', false),
+        'enabled' => (bool) env('CLAMAV_ENABLED', env('APP_ENV') === 'production'),
         'socket' => env('CLAMAV_SOCKET', '/var/run/clamav/clamd.ctl'),
         'host' => env('CLAMAV_HOST', '127.0.0.1'),
         'port' => (int) env('CLAMAV_PORT', 3310),

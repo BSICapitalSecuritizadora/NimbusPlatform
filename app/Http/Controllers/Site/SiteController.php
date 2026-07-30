@@ -8,13 +8,15 @@ use App\Mail\ContactFormMail;
 use App\Models\ContactMessage;
 use App\Models\Document;
 use App\Models\Emission;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\View\View;
 
 class SiteController extends Controller
 {
-    public function governance(): \Illuminate\View\View
+    public function governance(): View
     {
         $documents = Document::query()
             ->published()
@@ -26,7 +28,7 @@ class SiteController extends Controller
         return view('site.governance', compact('documents'));
     }
 
-    public function complianceBsi(): \Illuminate\View\View
+    public function complianceBsi(): View
     {
         $documents = Document::query()
             ->published()
@@ -86,7 +88,7 @@ class SiteController extends Controller
         return view('site.emissions', compact('emissions', 'q', 'type', 'status', 'issue_date_order', 'maturity_date_order', 'metrics'));
     }
 
-    public function criRealEstate(): \Illuminate\View\View
+    public function criRealEstate(): View
     {
         $featuredEmissions = Emission::query()
             ->with(['documents' => function ($query) {
@@ -151,7 +153,7 @@ class SiteController extends Controller
         return view('site.ri', compact('docs', 'categories', 'category', 'q', 'dateField'));
     }
 
-    public function documentosAcl(): \Illuminate\View\View
+    public function documentosAcl(): View
     {
         $latestEmissions = Emission::query()
             ->where('is_public', true)
@@ -178,9 +180,15 @@ class SiteController extends Controller
         return view('site.servicos.documentos-acl', compact('latestEmissions', 'stats'));
     }
 
-    public function submitContact(ContactFormRequest $request): \Illuminate\Http\RedirectResponse
+    public function submitContact(ContactFormRequest $request): RedirectResponse
     {
-        $validated = $request->validated();
+        $validated = $request->safe()->only([
+            'name',
+            'email',
+            'phone',
+            'subject',
+            'message',
+        ]);
 
         ContactMessage::query()->create([
             'name' => $validated['name'],
@@ -192,7 +200,7 @@ class SiteController extends Controller
         ]);
 
         Mail::to((string) config('services.contact.email'))
-            ->send(new ContactFormMail($validated));
+            ->queue(new ContactFormMail($validated));
 
         return redirect()->back()->with('contact_success', true);
     }

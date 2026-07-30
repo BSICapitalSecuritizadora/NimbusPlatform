@@ -13,7 +13,7 @@ class SetSecurityHeaders
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -28,7 +28,12 @@ class SetSecurityHeaders
         $response->headers->set('X-XSS-Protection', '0');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-        $response->headers->set('Content-Security-Policy', $this->buildCsp($nonce, $allowUnsafeEval));
+
+        // Respostas que servem arquivos definem a própria CSP (mais restritiva);
+        // a política global não deve sobrescrevê-la.
+        if (! $response->headers->has('Content-Security-Policy')) {
+            $response->headers->set('Content-Security-Policy', $this->buildCsp($nonce, $allowUnsafeEval));
+        }
 
         if (app()->isProduction()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -68,7 +73,6 @@ class SetSecurityHeaders
             "'self'",
             "'unsafe-inline'",
             "'nonce-{$nonce}'",
-            'https://cdn.jsdelivr.net',
             'https://*.clarity.ms',
         ];
 
@@ -87,7 +91,6 @@ class SetSecurityHeaders
         $styleSources = [
             "'self'",
             "'unsafe-inline'",
-            'https://cdn.jsdelivr.net',
             'https://fonts.googleapis.com',
         ];
 
@@ -102,13 +105,11 @@ class SetSecurityHeaders
         $fontSources = implode(' ', [
             "'self'",
             'data:',
-            'https://cdn.jsdelivr.net',
             'https://fonts.gstatic.com',
         ]);
 
         $connectSources = [
             "'self'",
-            'https://cdn.jsdelivr.net',
             'https://fonts.googleapis.com',
             'https://fonts.gstatic.com',
             'https://*.clarity.ms',

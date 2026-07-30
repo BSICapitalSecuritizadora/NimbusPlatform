@@ -6,6 +6,7 @@ use App\Models\IntegralizationHistory;
 use App\Models\Payment;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Vite;
 
 uses(RefreshDatabase::class);
 
@@ -168,7 +169,8 @@ it('renders the payment flow showing all components (Cenario 5)', function () {
     $response
         ->assertOk()
         ->assertSee('paymentsChart')
-        ->assertSee('cdn.jsdelivr.net/npm/chart.js')
+        ->assertSee(Vite::asset('resources/js/chart.js'), false)
+        ->assertDontSee('cdn.jsdelivr.net', false)
         ->assertSee('Juros')
         ->assertSee('Amortização')
         ->assertSee('Prêmio')

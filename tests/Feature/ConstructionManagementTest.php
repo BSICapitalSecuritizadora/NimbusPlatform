@@ -307,7 +307,7 @@ it('formats derived values when editing a construction', function () {
         'record' => $construction->getRouteKey(),
     ])
         ->assertFormSet([
-            'development_cnpj' => '12.345.678/0001-90',
+            'development_cnpj' => '12345678000190',
             'construction_start_date' => '04/2026',
             'construction_end_date' => '12/2028',
             'estimated_value' => '1.250.000,75',

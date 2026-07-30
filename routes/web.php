@@ -1,8 +1,25 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminDocumentDownloadController;
+use App\Http\Controllers\Admin\EmissionMonthlyReportController;
+use App\Http\Controllers\Admin\EmissionPuCurveExportController;
+use App\Http\Controllers\Admin\EmissionPuHomologationReportController;
+use App\Http\Controllers\Admin\IntegralizationHistoryTemplateDownloadController;
+use App\Http\Controllers\Admin\JobApplicationResumeController;
+use App\Http\Controllers\Admin\ObligationEvidenceDownloadController;
+use App\Http\Controllers\Admin\PaymentTemplateDownloadController;
+use App\Http\Controllers\Admin\ProjectReportController;
+use App\Http\Controllers\Admin\PuHistoryTemplateDownloadController;
 use App\Http\Controllers\Auth\AzureController;
+use App\Http\Controllers\Nimbus\AdminDocumentController;
 use App\Http\Controllers\Nimbus\AdminSubmissionFileController;
+use App\Http\Controllers\Nimbus\CnpjLookupController;
+use App\Http\Controllers\Nimbus\DocumentController;
+use App\Http\Controllers\Nimbus\NimbusDashboardController;
+use App\Http\Controllers\Nimbus\PortalAuthController;
+use App\Http\Controllers\Nimbus\SubmissionController;
 use App\Http\Controllers\Operacional\ProposalDashboardController as OperacionalProposalDashboardController;
+use App\Http\Controllers\Site\CaseStudyController;
 use App\Http\Controllers\Site\HomeController;
 use App\Http\Controllers\Site\JobController;
 use App\Http\Controllers\Site\ProposalContinuationController;
@@ -10,8 +27,12 @@ use App\Http\Controllers\Site\PublicDocumentsController;
 use App\Http\Controllers\Site\SiteController;
 use App\Http\Controllers\Site\SiteDocumentDownloadController;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Livewire\Proposals\ContinuationForm;
+use App\Livewire\Proposals\CreateProposalForm;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // Microsoft Azure Auth
 Route::get('/auth/azure/redirect', [AzureController::class, 'redirect'])->name('auth.azure.redirect');
@@ -31,7 +52,9 @@ Route::get('/compliance', [SiteController::class, 'complianceBsi'])->name('site.
 Route::view('/canal-de-etica', 'site.canal-etica')->name('site.canal-etica');
 Route::get('/documentos/{document}/download', SiteDocumentDownloadController::class)->name('site.documents.download');
 Route::view('/contato', 'site.contact')->name('site.contact');
-Route::post('/contato', [SiteController::class, 'submitContact'])->name('site.contact.submit');
+Route::post('/contato', [SiteController::class, 'submitContact'])
+    ->middleware('throttle:site-contact')
+    ->name('site.contact.submit');
 
 Route::get('/emissoes', [SiteController::class, 'emissions'])->name('site.emissions');
 Route::get('/emissoes/{if_code}', [SiteController::class, 'emissionShow'])->name('site.emissions.show');
@@ -78,7 +101,7 @@ Route::get('/documentos-publicos', [PublicDocumentsController::class, 'index'])
 
 // Proposals (Integrated from NimbusForms)
 Route::redirect('/proposta', '/proposals/create')->name('site.proposal.create');
-Route::get('/proposals/create', \App\Livewire\Proposals\CreateProposalForm::class)->name('proposal.create');
+Route::get('/proposals/create', CreateProposalForm::class)->name('proposal.create');
 Route::get('/proposta/continuar/{access}', [ProposalContinuationController::class, 'access'])
     ->middleware('throttle:proposal-link-access')
     ->name('site.proposal.continuation.access');
@@ -110,17 +133,17 @@ Route::get('/healthcheck', function () {
     ];
 
     try {
-        \Illuminate\Support\Facades\DB::select('SELECT 1');
+        DB::select('SELECT 1');
         $checks['database'] = true;
-    } catch (\Throwable) {
+    } catch (Throwable) {
     }
 
     try {
-        $disk = \Illuminate\Support\Facades\Storage::disk(config('filesystems.default'));
+        $disk = Storage::disk(config('filesystems.default'));
         $disk->put('healthcheck.txt', 'ok');
         $disk->delete('healthcheck.txt');
         $checks['storage'] = true;
-    } catch (\Throwable) {
+    } catch (Throwable) {
     }
 
     $healthy = ! in_array(false, $checks, true);
@@ -139,7 +162,7 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
 });
 
 // Operacional Interno (Fase 1 — POC Inertia/Vue, read-only, ao lado do Filament)
-Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class, \App\Http\Middleware\HandleInertiaRequests::class])
+Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class, HandleInertiaRequests::class])
     ->prefix('operacional')
     ->name('operacional.')
     ->group(function () {
@@ -148,38 +171,38 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class, \App\Http\
     });
 
 // Estudos de Caso (Públicos)
-Route::get('/estudos-de-caso/{slug}', [App\Http\Controllers\Site\CaseStudyController::class, 'show'])->name('site.cases.show');
+Route::get('/estudos-de-caso/{slug}', [CaseStudyController::class, 'show'])->name('site.cases.show');
 
 // Admin Routes
 Route::middleware(['auth', 'approved'])->group(function () {
-    Route::get('/admin/projetos/{project}/relatorio', [App\Http\Controllers\Admin\ProjectReportController::class, 'generateReport'])->name('admin.projects.report');
-    Route::get('/admin/projetos/{project}/analitico', [App\Http\Controllers\Admin\ProjectReportController::class, 'analyticalReport'])->name('admin.projects.analytical');
-    Route::get('/admin/candidaturas/{jobApplication}/curriculo', [App\Http\Controllers\Admin\JobApplicationResumeController::class, 'download'])->name('admin.job-applications.resume');
-    Route::get('/admin/documents/{document}/download', App\Http\Controllers\Admin\AdminDocumentDownloadController::class)
+    Route::get('/admin/projetos/{project}/relatorio', [ProjectReportController::class, 'generateReport'])->name('admin.projects.report');
+    Route::get('/admin/projetos/{project}/analitico', [ProjectReportController::class, 'analyticalReport'])->name('admin.projects.analytical');
+    Route::get('/admin/candidaturas/{jobApplication}/curriculo', [JobApplicationResumeController::class, 'download'])->name('admin.job-applications.resume');
+    Route::get('/admin/documents/{document}/download', AdminDocumentDownloadController::class)
         ->name('admin.documents.download')
         ->middleware('throttle:60,1');
-    Route::get('/admin/obligations/evidences/{evidence}/download', App\Http\Controllers\Admin\ObligationEvidenceDownloadController::class)
+    Route::get('/admin/obligations/evidences/{evidence}/download', ObligationEvidenceDownloadController::class)
         ->name('admin.obligations.evidences.download')
         ->middleware('throttle:60,1');
-    Route::get('/admin/emissions/{emission}/relatorio-mensal', App\Http\Controllers\Admin\EmissionMonthlyReportController::class)
+    Route::get('/admin/emissions/{emission}/relatorio-mensal', EmissionMonthlyReportController::class)
         ->name('admin.emissions.monthly-report.pdf')
         ->middleware('throttle:30,1');
 });
 
 Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(function () {
-    Route::get('/admin/payments/template/download', App\Http\Controllers\Admin\PaymentTemplateDownloadController::class)
+    Route::get('/admin/payments/template/download', PaymentTemplateDownloadController::class)
         ->name('admin.payments.template.download')
         ->middleware('throttle:60,1');
-    Route::get('/admin/pu-histories/template/download', App\Http\Controllers\Admin\PuHistoryTemplateDownloadController::class)
+    Route::get('/admin/pu-histories/template/download', PuHistoryTemplateDownloadController::class)
         ->name('admin.pu-histories.template.download')
         ->middleware('throttle:60,1');
-    Route::get('/admin/integralization-histories/template/download', App\Http\Controllers\Admin\IntegralizationHistoryTemplateDownloadController::class)
+    Route::get('/admin/integralization-histories/template/download', IntegralizationHistoryTemplateDownloadController::class)
         ->name('admin.integralization-histories.template.download')
         ->middleware('throttle:60,1');
-    Route::get('/admin/emissions/{emission}/pu-curves/export', App\Http\Controllers\Admin\EmissionPuCurveExportController::class)
+    Route::get('/admin/emissions/{emission}/pu-curves/export', EmissionPuCurveExportController::class)
         ->name('admin.emissions.pu-curves.export')
         ->middleware('throttle:30,1');
-    Route::get('/admin/emissions/{emission}/pu-curves/{version}/homologacao', App\Http\Controllers\Admin\EmissionPuHomologationReportController::class)
+    Route::get('/admin/emissions/{emission}/pu-curves/{version}/homologacao', EmissionPuHomologationReportController::class)
         ->name('admin.emissions.pu-homologation.pdf')
         ->middleware('throttle:30,1');
 });
@@ -207,10 +230,10 @@ Route::middleware(['auth', EnsureTwoFactorEnabled::class])
         Route::prefix('/documents')
             ->name('documents.')
             ->group(function () {
-                Route::get('/general/{document}/preview', [\App\Http\Controllers\Nimbus\AdminDocumentController::class, 'previewGeneral'])->name('general.preview');
-                Route::get('/general/{document}/download', [\App\Http\Controllers\Nimbus\AdminDocumentController::class, 'downloadGeneral'])->name('general.download');
-                Route::get('/portal/{document}/preview', [\App\Http\Controllers\Nimbus\AdminDocumentController::class, 'previewPortal'])->name('portal.preview');
-                Route::get('/portal/{document}/download', [\App\Http\Controllers\Nimbus\AdminDocumentController::class, 'downloadPortal'])->name('portal.download');
+                Route::get('/general/{document}/preview', [AdminDocumentController::class, 'previewGeneral'])->name('general.preview');
+                Route::get('/general/{document}/download', [AdminDocumentController::class, 'downloadGeneral'])->name('general.download');
+                Route::get('/portal/{document}/preview', [AdminDocumentController::class, 'previewPortal'])->name('portal.preview');
+                Route::get('/portal/{document}/download', [AdminDocumentController::class, 'downloadPortal'])->name('portal.download');
             });
     });
 
@@ -223,32 +246,32 @@ Route::redirect('/nimbus/login', '/gestao-documental-externa/login');
 // Gestão Documental Externa Portal Routes
 Route::prefix('gestao-documental-externa')->name('nimbus.')->group(function () {
     // Auth Routes...
-    Route::get('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'showRequestForm'])->name('auth.request');
-    Route::post('/login', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'verifyPin'])
+    Route::get('/login', [PortalAuthController::class, 'showRequestForm'])->name('auth.request');
+    Route::post('/login', [PortalAuthController::class, 'verifyPin'])
         ->middleware(['throttle:5,1', 'throttle:nimbus-access-code'])
         ->name('auth.verify.post');
-    Route::post('/sair', [\App\Http\Controllers\Nimbus\PortalAuthController::class, 'logout'])->name('auth.logout');
+    Route::post('/sair', [PortalAuthController::class, 'logout'])->name('auth.logout');
 
     // Authenticated Portal Routes
     Route::middleware(['auth:nimbus'])->group(function () {
-        Route::get('/dashboard', [\App\Http\Controllers\Nimbus\NimbusDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard', [NimbusDashboardController::class, 'index'])->name('dashboard');
 
         // Submissions
-        Route::get('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'index'])->name('submissions.index');
-        Route::get('/submissions/new', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'create'])->name('submissions.create');
-        Route::post('/submissions/cnpj-lookup', \App\Http\Controllers\Nimbus\CnpjLookupController::class)
+        Route::get('/submissions', [SubmissionController::class, 'index'])->name('submissions.index');
+        Route::get('/submissions/new', [SubmissionController::class, 'create'])->name('submissions.create');
+        Route::post('/submissions/cnpj-lookup', CnpjLookupController::class)
             ->middleware('throttle:15,1')
             ->name('submissions.cnpj-lookup');
-        Route::post('/submissions', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'store'])->name('submissions.store');
-        Route::post('/submissions/{submission}/reply', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'reply'])->name('submissions.reply');
-        Route::get('/submissions/{submission}/files/{file}/download', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'downloadFile'])->name('submissions.files.download');
-        Route::get('/submissions/{submission}', [\App\Http\Controllers\Nimbus\SubmissionController::class, 'show'])->name('submissions.show');
+        Route::post('/submissions', [SubmissionController::class, 'store'])->name('submissions.store');
+        Route::post('/submissions/{submission}/reply', [SubmissionController::class, 'reply'])->name('submissions.reply');
+        Route::get('/submissions/{submission}/files/{file}/download', [SubmissionController::class, 'downloadFile'])->name('submissions.files.download');
+        Route::get('/submissions/{submission}', [SubmissionController::class, 'show'])->name('submissions.show');
 
         // Documents
-        Route::get('/documents', [\App\Http\Controllers\Nimbus\DocumentController::class, 'index'])->name('documents.index');
-        Route::get('/documents/{document}/preview', [\App\Http\Controllers\Nimbus\DocumentController::class, 'preview'])->name('documents.preview');
-        Route::get('/documents/{document}/download', [\App\Http\Controllers\Nimbus\DocumentController::class, 'download'])->name('documents.download');
-        Route::get('/documents/general/{document}/preview', [\App\Http\Controllers\Nimbus\DocumentController::class, 'previewGeneral'])->name('documents.general.preview');
-        Route::get('/documents/general/{document}/download', [\App\Http\Controllers\Nimbus\DocumentController::class, 'downloadGeneral'])->name('documents.general.download');
+        Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
+        Route::get('/documents/{document}/preview', [DocumentController::class, 'preview'])->name('documents.preview');
+        Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+        Route::get('/documents/general/{document}/preview', [DocumentController::class, 'previewGeneral'])->name('documents.general.preview');
+        Route::get('/documents/general/{document}/download', [DocumentController::class, 'downloadGeneral'])->name('documents.general.download');
     });
 });

@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Nimbus\PortalDocuments\Schemas;
 use App\Models\Nimbus\PortalUser;
 use App\Services\DocumentStorageService;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -14,7 +13,6 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Number;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class PortalDocumentForm
 {
@@ -54,13 +52,10 @@ class PortalDocumentForm
                                     ->placeholder('Informações adicionais sobre o documento destinadas ao usuário.')
                                     ->rows(4)
                                     ->columnSpanFull(),
-                                Hidden::make('file_original_name'),
-                                Hidden::make('file_size'),
-                                Hidden::make('file_mime'),
                                 FileUpload::make('file_path')
                                     ->label('Arquivo')
                                     ->required()
-                                    ->disk(DocumentStorageService::PRIVATE_DISK)
+                                    ->disk(DocumentStorageService::privateDisk())
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/portal-documents')
                                     ->preserveFilenames()
                                     ->maxSize((int) config('uploads.document.max_kb', 102400))
@@ -75,15 +70,6 @@ class PortalDocumentForm
                                         'image/png',
                                         'application/zip',
                                     ])
-                                    ->afterStateUpdated(function ($state, callable $set): void {
-                                        if (! $state instanceof TemporaryUploadedFile) {
-                                            return;
-                                        }
-
-                                        $set('file_original_name', $state->getClientOriginalName());
-                                        $set('file_size', $state->getSize());
-                                        $set('file_mime', $state->getMimeType());
-                                    })
                                     ->columnSpanFull(),
                             ]),
                         Section::make('Informações do Arquivo')

@@ -2,6 +2,7 @@
 
 namespace App\Models\Nimbus;
 
+use App\Concerns\DerivesStoredFileMetadata;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class GeneralDocument extends Model
 {
+    use DerivesStoredFileMetadata;
     use HasFactory;
 
     protected $table = 'nimbus_general_documents';

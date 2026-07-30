@@ -62,7 +62,7 @@
 @endsection
 
 @push('scripts')
-<script src="https://unpkg.com/imask"></script>
+@vite('resources/js/imask.js')
 <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
     document.addEventListener('DOMContentLoaded', function () {
         IMask(document.getElementById('cnpj'), { mask: '00.000.000/0000-00' });

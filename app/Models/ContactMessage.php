@@ -2,14 +2,24 @@
 
 namespace App\Models;
 
+use Database\Factories\ContactMessageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ContactMessage extends Model
 {
-    /** @use HasFactory<\Database\Factories\ContactMessageFactory> */
+    /** @use HasFactory<ContactMessageFactory> */
     use HasFactory;
+
+    public const SUBJECT_OPTIONS = [
+        'Relações com investidores' => 'Relações com investidores',
+        'Comercial e novos negócios' => 'Comercial e novos negócios',
+        'Compliance e ética' => 'Compliance e ética',
+        'Documentos públicos' => 'Documentos públicos',
+        'Parcerias estratégicas' => 'Parcerias estratégicas',
+        'Carreiras / Trabalhe conosco' => 'Carreiras',
+    ];
 
     public const STATUS_NEW = 'novo';
 

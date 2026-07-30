@@ -5,15 +5,16 @@
         "gemini",
         "copilot"
     ],
+    "cloud": false,
     "guidelines": true,
-    "packages": [
-        "laravel/fortify"
-    ],
     "skills": [
+        "fortify-development",
+        "laravel-best-practices",
+        "socialite-development",
         "fluxui-development",
         "livewire-development",
         "pest-testing",
-        "tailwindcss-development",
-        "developing-with-fortify"
+        "inertia-vue-development",
+        "tailwindcss-development"
     ]
 }
