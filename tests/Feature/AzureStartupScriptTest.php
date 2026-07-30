@@ -20,6 +20,25 @@ it('configures the Azure startup script to raise the nginx body size limit', fun
         ->and($startupScript)->toContain('service nginx reload || service nginx restart || true');
 });
 
+it('keeps the queue worker and the scheduler alive under supervision loops', function () {
+    $startupScript = File::get(base_path('startup.sh'));
+
+    expect($startupScript)
+        ->toContain('while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=420 --max-time=3600; sleep 5; done &')
+        ->toContain('while true; do php artisan schedule:work; sleep 5; done &');
+});
+
+it('never starts the queue worker or the scheduler without a restart loop', function () {
+    $lines = preg_split('/\R/', File::get(base_path('startup.sh')));
+
+    $unsupervised = array_values(array_filter(
+        $lines,
+        fn (string $line): bool => preg_match('/^\s*php artisan (queue:work|schedule:(work|run))/', $line) === 1,
+    ));
+
+    expect($unsupervised)->toBe([]);
+});
+
 it('ships a .user.ini in public/ to configure PHP upload limits for Azure', function () {
     $userIniPath = public_path('.user.ini');
 

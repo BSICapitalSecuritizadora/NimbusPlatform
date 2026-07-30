@@ -76,6 +76,11 @@ cd /home/site/wwwroot
 php artisan migrate --force --no-interaction
 php artisan optimize
 
-php artisan queue:work --sleep=3 --tries=1 --timeout=420 --max-time=3600 &
+# O container Linux do App Service não tem cron nem supervisor, e nada reinicia
+# um processo em segundo plano que termine. Sem os laços abaixo o `queue:work`
+# encerra por `--max-time` após uma hora e o agendador nunca roda — as duas
+# coisas param em silêncio até o próximo deploy.
+while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=420 --max-time=3600; sleep 5; done &
+while true; do php artisan schedule:work; sleep 5; done &
 
 service nginx reload || service nginx restart || true
