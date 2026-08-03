@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Foundation\Vite;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -11,23 +12,57 @@ use Symfony\Component\HttpFoundation\Response;
 class SetSecurityHeaders
 {
     /**
+     * Áreas que renderizam Alpine (painel Filament e telas Livewire + Flux) e
+     * por isso ainda dependem de `'unsafe-eval'` para avaliar expressões `x-*`.
+     *
+     * Tudo que não estiver nesta lista — incluindo todo o site público — recebe
+     * uma CSP sem `'unsafe-eval'`.
+     *
+     * @var list<string>
+     */
+    private const UNSAFE_EVAL_ROUTES = [
+        'filament.admin.*',
+        'investor.*',
+        'proposal.*',
+        'site.proposal.continuation.*',
+        'dashboard',
+        'pending-approval',
+        'login',
+        'register',
+        'password.*',
+        'verification.*',
+        'two-factor.*',
+        'profile.edit',
+        'appearance.edit',
+    ];
+
+    /**
      * Handle an incoming request.
      *
      * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
+        if ($httpsRedirect = $this->httpsRedirect($request)) {
+            return $httpsRedirect;
+        }
+
         $nonce = Str::random(16);
         app(Vite::class)->useCspNonce($nonce);
 
         $response = $next($request);
-        $allowUnsafeEval = $this->shouldAllowUnsafeEval($request, $response);
+        $allowUnsafeEval = $this->shouldAllowUnsafeEval($request);
 
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-XSS-Protection', '0');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+
+        if ($request->user() || $request->user('investor') || $request->user('nimbus')) {
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+        }
 
         // Respostas que servem arquivos definem a própria CSP (mais restritiva);
         // a política global não deve sobrescrevê-la.
@@ -42,29 +77,47 @@ class SetSecurityHeaders
         return $response;
     }
 
-    private function shouldAllowUnsafeEval(Request $request, Response $response): bool
+    /**
+     * Defense in depth for the App Service "HTTPS Only" toggle: `URL::forceScheme()`
+     * only affects URL generation, it does not redirect inbound plain HTTP requests.
+     *
+     * A request carrying `X-Forwarded-Proto: https` is treated as already secure even
+     * when the proxy is not trusted, so a missing `TRUSTED_PROXIES` on the App Service
+     * cannot turn this into a redirect loop.
+     */
+    private function httpsRedirect(Request $request): ?RedirectResponse
     {
-        if ($request->is('admin') || $request->is('admin/*')) {
-            return true;
+        if (! app()->isProduction() || ! config('app.force_https_redirect')) {
+            return null;
         }
 
-        $contentType = (string) $response->headers->get('Content-Type', '');
-
-        if (! str_contains($contentType, 'text/html')) {
-            return false;
+        if ($request->isSecure() || $this->forwardedProtocol($request) === 'https') {
+            return null;
         }
 
-        $content = $response->getContent();
-
-        if (! is_string($content) || $content === '') {
-            return false;
+        // Platform health probes and warmup pings run over plain HTTP and expect a 2xx.
+        if ($request->is('up', 'healthcheck')) {
+            return null;
         }
 
-        return str_contains($content, 'wire:snapshot')
-            || str_contains($content, 'wire:id=')
-            || str_contains($content, '/flux/flux')
-            || str_contains($content, '/livewire/livewire')
-            || str_contains($content, 'window.livewireScriptConfig');
+        return redirect()->secure(
+            $request->getRequestUri(),
+            $request->isMethodSafe() ? 301 : 308,
+        );
+    }
+
+    private function forwardedProtocol(Request $request): string
+    {
+        return Str::of((string) $request->headers->get('X-Forwarded-Proto'))
+            ->before(',')
+            ->trim()
+            ->lower()
+            ->value();
+    }
+
+    private function shouldAllowUnsafeEval(Request $request): bool
+    {
+        return $request->routeIs(...self::UNSAFE_EVAL_ROUTES);
     }
 
     private function buildCsp(string $nonce, bool $allowUnsafeEval = false): string

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Measurements\Pages;
 use App\Concerns\MoneyFormatter;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\MeasurementPayment;
+use App\Models\MeasurementPlanSet;
 use App\Services\MeasurementWorkflow;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -16,6 +17,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Support\RawJs;
 use Illuminate\Support\Collection;
@@ -104,7 +106,7 @@ class ViewMeasurement extends ViewRecord
     }
 
     /**
-     * @return array<int, \Filament\Schemas\Components\Component>
+     * @return array<int, Component>
      */
     private function approveSchema(): array
     {
@@ -154,7 +156,7 @@ class ViewMeasurement extends ViewRecord
      * Developments (plan sets) covered by this measurement, derived from its
      * uploaded assets when available, otherwise from the operation's plan sets.
      *
-     * @return Collection<int, \App\Models\MeasurementPlanSet>
+     * @return Collection<int, MeasurementPlanSet>
      */
     private function coveredPlanSets(): Collection
     {
@@ -270,7 +272,7 @@ class ViewMeasurement extends ViewRecord
     }
 
     /**
-     * @return array<int, \Filament\Schemas\Components\Component>
+     * @return array<int, Component>
      */
     private function registerPaymentSchema(): array
     {
@@ -344,7 +346,7 @@ class ViewMeasurement extends ViewRecord
     }
 
     /**
-     * @return array<int, \Filament\Schemas\Components\Component>
+     * @return array<int, Component>
      */
     private function attachReceiptSchema(): array
     {
@@ -375,7 +377,8 @@ class ViewMeasurement extends ViewRecord
                     FileUpload::make('receipt')
                         ->label('Comprovante')
                         ->disk('public')
-                        ->directory('measurements/receipts'),
+                        ->directory('measurements/receipts')
+                        ->acceptedFileTypes((array) config('uploads.measurement_receipt.allowed_mimes', [])),
                 ]),
         ];
     }

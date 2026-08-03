@@ -155,6 +155,9 @@ return [
 
         'default' => [
             'url' => env('REDIS_URL'),
+            // Sem valor, o host vai cru para o cliente (mantém unix sockets
+            // funcionando). Com 'tls', vira tls://host — obrigatório no Azure.
+            'scheme' => env('REDIS_SCHEME'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'username' => env('REDIS_USERNAME'),
             'password' => env('REDIS_PASSWORD'),
@@ -168,6 +171,9 @@ return [
 
         'cache' => [
             'url' => env('REDIS_URL'),
+            // Sem valor, o host vai cru para o cliente (mantém unix sockets
+            // funcionando). Com 'tls', vira tls://host — obrigatório no Azure.
+            'scheme' => env('REDIS_SCHEME'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'username' => env('REDIS_USERNAME'),
             'password' => env('REDIS_PASSWORD'),

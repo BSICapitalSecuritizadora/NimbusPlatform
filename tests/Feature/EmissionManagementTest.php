@@ -8,6 +8,7 @@ use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Wizard;
@@ -16,6 +17,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -39,7 +41,7 @@ it('organizes the emission form into dedicated wizard steps', function () {
     ])
         ->and($wizard->isSkippable())->toBeTrue()
         ->and($steps)->toHaveCount(7)
-        ->and($steps->map(fn (Step $step): string => \Illuminate\Support\Str::of((string) $step->getLabel())->ascii()->lower()->toString())->all())->toBe([
+        ->and($steps->map(fn (Step $step): string => Str::of((string) $step->getLabel())->ascii()->lower()->toString())->all())->toBe([
             'dados basicos',
             'participantes',
             'caracteristicas financeiras',
@@ -356,18 +358,19 @@ it('filters emission service provider fields by the expected provider types', fu
         ->assertFormSet([
             'offer_type' => 'CVM 160',
         ])
-        ->assertFormComponentActionExists('issuer', 'createOption')
-        ->assertFormComponentActionExists('lead_coordinator', 'createOption')
-        ->assertFormComponentActionExists('settlement_bank', 'createOption')
-        ->assertFormComponentActionExists('registrar', 'createOption')
-        ->assertFormComponentActionExists('distributor', 'createOption')
-        ->assertFormComponentActionExists('trustee_agent', 'createOption')
-        ->assertFormComponentActionExists('debtor', 'createOption')
-        ->assertFormComponentActionExists('law_firm', 'createOption');
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('issuer'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('lead_coordinator'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('settlement_bank'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('registrar'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('distributor'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('trustee_agent'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('debtor'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('law_firm'));
 });
 
 it('creates an issuer inline from the emission form with the locked issuer type', function () {
     $this->actingAs(makeAdminUser());
+    $createIssuerAction = TestAction::make('createOption')->schemaComponent('issuer');
 
     ExpenseServiceProviderType::factory()->create([
         'name' => 'Emissor',
@@ -383,12 +386,12 @@ it('creates an issuer inline from the emission form with the locked issuer type'
     ]);
 
     Livewire::test(CreateEmission::class)
-        ->assertFormComponentActionHasLabel('issuer', 'createOption', 'Cadastrar Prestador')
-        ->mountFormComponentAction('issuer', 'createOption')
+        ->assertActionHasLabel($createIssuerAction, 'Cadastrar Prestador')
+        ->mountAction($createIssuerAction)
         ->fillForm([
             'cnpj' => '12.345.678/0001-90',
         ])
-        ->assertFormComponentActionDataSet([
+        ->assertActionDataSet([
             'name' => 'Emissor Inline',
         ])
         ->callMountedAction()
@@ -405,6 +408,7 @@ it('creates an issuer inline from the emission form with the locked issuer type'
 
 it('creates a settlement bank inline from the emission form with the locked settlement bank type', function () {
     $this->actingAs(makeAdminUser());
+    $createSettlementBankAction = TestAction::make('createOption')->schemaComponent('settlement_bank');
 
     ExpenseServiceProviderType::factory()->create([
         'name' => 'Banco Liquidante',
@@ -420,12 +424,12 @@ it('creates a settlement bank inline from the emission form with the locked sett
     ]);
 
     Livewire::test(CreateEmission::class)
-        ->assertFormComponentActionHasLabel('settlement_bank', 'createOption', 'Cadastrar Prestador')
-        ->mountFormComponentAction('settlement_bank', 'createOption')
+        ->assertActionHasLabel($createSettlementBankAction, 'Cadastrar Prestador')
+        ->mountAction($createSettlementBankAction)
         ->fillForm([
             'cnpj' => '22.333.444/0001-55',
         ])
-        ->assertFormComponentActionDataSet([
+        ->assertActionDataSet([
             'name' => 'Banco Inline',
         ])
         ->callMountedAction()
@@ -442,6 +446,7 @@ it('creates a settlement bank inline from the emission form with the locked sett
 
 it('creates a debtor inline from the emission form with the locked debtor type', function () {
     $this->actingAs(makeAdminUser());
+    $createDebtorAction = TestAction::make('createOption')->schemaComponent('debtor');
 
     ExpenseServiceProviderType::factory()->create([
         'name' => 'Devedor',
@@ -457,12 +462,12 @@ it('creates a debtor inline from the emission form with the locked debtor type',
     ]);
 
     Livewire::test(CreateEmission::class)
-        ->assertFormComponentActionHasLabel('debtor', 'createOption', 'Cadastrar Prestador')
-        ->mountFormComponentAction('debtor', 'createOption')
+        ->assertActionHasLabel($createDebtorAction, 'Cadastrar Prestador')
+        ->mountAction($createDebtorAction)
         ->fillForm([
             'cnpj' => '98.765.432/0001-10',
         ])
-        ->assertFormComponentActionDataSet([
+        ->assertActionDataSet([
             'name' => 'Devedor Inline',
         ])
         ->callMountedAction()
@@ -479,6 +484,7 @@ it('creates a debtor inline from the emission form with the locked debtor type',
 
 it('creates a debtor inline from the emission edit form without trying to ignore the emission record in provider uniqueness', function () {
     $this->actingAs(makeAdminUser());
+    $createDebtorAction = TestAction::make('createOption')->schemaComponent('debtor');
 
     ExpenseServiceProviderType::factory()->create([
         'name' => 'Devedor',
@@ -500,11 +506,11 @@ it('creates a debtor inline from the emission edit form without trying to ignore
     Livewire::test(EditEmission::class, [
         'record' => $emission->getRouteKey(),
     ])
-        ->mountFormComponentAction('debtor', 'createOption')
+        ->mountAction($createDebtorAction)
         ->fillForm([
             'cnpj' => '66.106.600/0001-47',
         ])
-        ->assertFormComponentActionDataSet([
+        ->assertActionDataSet([
             'name' => 'Devedor Edição',
         ])
         ->callMountedAction()

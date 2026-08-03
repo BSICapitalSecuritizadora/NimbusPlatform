@@ -4,7 +4,6 @@ use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Enums\PuValidationStatus;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
 use App\Domain\PuCalculator\Services\PuValidationService;
-use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -89,7 +88,7 @@ it('detects divergences in persisted rows against the TROUPE workbook (PuValidat
 
 function sampleSpreadsheetPath(string $keyword): string
 {
-    return app(PuValidationSpreadsheetLocatorService::class)->findByKeyword($keyword);
+    return puValidationSpreadsheetPath($keyword);
 }
 
 function persistReferenceRows(Emission $emission, array $referenceRows, string $calculationVersion = 'v1'): void

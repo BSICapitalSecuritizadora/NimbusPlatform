@@ -2,7 +2,6 @@
 
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\PuReferenceWorkbookScenarioService;
-use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Models\Emission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -16,7 +15,7 @@ it('synchronizes the AMANI workbook scenario with lagged business-day CDI lookup
         'issued_quantity' => 20000,
     ]);
 
-    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword('AMANI');
+    $spreadsheetPath = puValidationSpreadsheetPath('AMANI');
     $summary = app(PuReferenceWorkbookScenarioService::class)->sync($emission, $spreadsheetPath);
 
     $parameter = $emission->fresh()->puParameter;
@@ -40,7 +39,7 @@ it('synchronizes the TROUPE workbook scenario with exact previous-calendar-day C
         'issued_quantity' => 10000,
     ]);
 
-    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword('TROUPE');
+    $spreadsheetPath = puValidationSpreadsheetPath('TROUPE');
     $summary = app(PuReferenceWorkbookScenarioService::class)->sync($emission, $spreadsheetPath);
 
     $parameter = $emission->fresh()->puParameter;
@@ -69,7 +68,7 @@ it('synchronizes the CONVIVA real-emission workbook with lagged business-day CDI
         'issued_quantity' => 50000,
     ]);
 
-    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword('CONVIVA');
+    $spreadsheetPath = puValidationSpreadsheetPath('CONVIVA');
     $summary = app(PuReferenceWorkbookScenarioService::class)->sync($emission, $spreadsheetPath);
 
     $parameter = $emission->fresh()->puParameter;

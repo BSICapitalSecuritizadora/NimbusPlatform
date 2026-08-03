@@ -44,7 +44,7 @@
                 <div class="mb-5">
                     <h2 class="h4 fw-bold mb-3" style="color: var(--brand);">Descrição da Vaga</h2>
                     <div class="text-muted recruitment-text">
-                        {!! $vacancy->description !!}
+                        <x-safe-html :html="$vacancy->description" />
                     </div>
                 </div>
 
@@ -52,7 +52,7 @@
                 <div class="mb-5">
                     <h2 class="h4 fw-bold mb-4" style="color: var(--brand);">Requisitos</h2>
                     <div class="text-muted recruitment-text">
-                        {!! $vacancy->requirements !!}
+                        <x-safe-html :html="$vacancy->requirements" />
                     </div>
                 </div>
                 @endif
@@ -61,7 +61,7 @@
                 <div class="mb-5">
                     <h2 class="h4 fw-bold mb-4" style="color: var(--brand);">Benefícios</h2>
                     <div class="text-muted recruitment-text">
-                        {!! $vacancy->benefits !!}
+                        <x-safe-html :html="$vacancy->benefits" />
                     </div>
                 </div>
                 @endif

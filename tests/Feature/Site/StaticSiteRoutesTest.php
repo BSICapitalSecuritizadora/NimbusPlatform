@@ -16,6 +16,7 @@ it('includes required security headers on every web response', function () {
     expect($contentSecurityPolicy)
         ->not->toBeNull()
         ->and($contentSecurityPolicy)->not->toContain('https://cdn.jsdelivr.net')
+        ->and($contentSecurityPolicy)->not->toContain('https://fonts.bunny.net')
         ->and($contentSecurityPolicy)->not->toContain('https://unpkg.com')
         ->and($contentSecurityPolicy)->toContain('https://fonts.googleapis.com')
         ->and($contentSecurityPolicy)->toContain('https://fonts.gstatic.com')

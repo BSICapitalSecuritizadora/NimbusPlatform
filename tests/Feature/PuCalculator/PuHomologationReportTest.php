@@ -4,7 +4,6 @@ use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Enums\PuValidationStatus;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
 use App\Domain\PuCalculator\Services\PuValidationService;
-use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 it('builds a grouped validation report with first divergence and largest differences by field', function () {
-    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword('TROUPE');
+    $spreadsheetPath = puValidationSpreadsheetPath('TROUPE');
     $referenceRows = app(PuSpreadsheetReferenceReader::class)->read($spreadsheetPath)['rows'];
     $emission = Emission::factory()->create([
         'type' => 'CR',

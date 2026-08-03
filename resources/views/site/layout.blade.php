@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @if(request()->routeIs('site.proposal.continuation.*'))
+    <meta name="robots" content="noindex,nofollow">
+    @endif
     <title>
         @isset($title)
             {{ $title }}

@@ -1,5 +1,10 @@
 <?php
 
+use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Enums\PuValidationMode;
+use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
+use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuDailyCurvesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuEventsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
@@ -8,6 +13,7 @@ use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\IndexRate;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -60,11 +66,11 @@ it('accepts a negative business day lag on the PU calculation parameters form', 
             'curve_start_date' => '2026-01-01',
             'curve_end_date' => '2026-01-31',
             'initial_unit_value' => '1000.00',
-            'indexer' => \App\Domain\PuCalculator\Enums\PuIndexer::Cdi->value,
+            'indexer' => PuIndexer::Cdi->value,
             'spread_rate' => '6.50',
             'business_day_basis' => 252,
             'calendar_code' => 'B3',
-            'index_rate_lookup_mode' => \App\Domain\PuCalculator\Enums\PuIndexRateLookupMode::BusinessDayLagExact->value,
+            'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
             'index_rate_lag_business_days' => -5,
             'legacy_projection_enabled' => true,
         ])
@@ -90,7 +96,7 @@ it('stores PU calculation parameters on the emission model using the same payloa
         'indexer' => 'CDI',
         'business_day_basis' => 252,
         'calendar_code' => 'B3',
-        'index_rate_lookup_mode' => \App\Domain\PuCalculator\Enums\PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+        'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
         'index_rate_lag_business_days' => 1,
         'legacy_projection_enabled' => true,
     ]);
@@ -128,7 +134,7 @@ it('dispatches the PU curve generation job from the emission page action', funct
         'indexer' => 'CDI',
         'business_day_basis' => 252,
         'calendar_code' => 'B3',
-        'index_rate_lookup_mode' => \App\Domain\PuCalculator\Enums\PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+        'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
         'index_rate_lag_business_days' => 1,
         'legacy_projection_enabled' => true,
     ]);
@@ -162,7 +168,7 @@ it('validates a selected spreadsheet version from the emission page action', fun
     ]);
 
     $spreadsheetPath = sampleSpreadsheetPathForAdmin('TROUPE');
-    $referenceRows = app(\App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader::class)->read($spreadsheetPath)['rows'];
+    $referenceRows = app(PuSpreadsheetReferenceReader::class)->read($spreadsheetPath)['rows'];
 
     persistReferenceRowsForAdmin($emission, $referenceRows, 'v2');
 
@@ -172,14 +178,14 @@ it('validates a selected spreadsheet version from the emission page action', fun
         ->callAction('validatePuDailyCurve', data: [
             'reference_spreadsheet' => sampleSpreadsheetSelectionForAdmin('TROUPE'),
             'calculation_version' => 'v2',
-            'validation_mode' => \App\Domain\PuCalculator\Enums\PuValidationMode::DisplayScale->value,
+            'validation_mode' => PuValidationMode::DisplayScale->value,
         ])
         ->assertHasNoActionErrors();
 });
 
 function seedBusinessCalendarForAdmin(string $startDate, string $endDate): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         BusinessCalendarDate::query()->create([
             'calendar_code' => 'B3',
             'calendar_date' => $date->toDateString(),
@@ -191,7 +197,7 @@ function seedBusinessCalendarForAdmin(string $startDate, string $endDate): void
 
 function seedFixedCdiRatesForAdmin(string $startDate, string $endDate, string $rateValue): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         if ($date->isWeekend()) {
             continue;
         }
@@ -208,13 +214,13 @@ function seedFixedCdiRatesForAdmin(string $startDate, string $endDate, string $r
 
 function sampleSpreadsheetPathForAdmin(string $keyword): string
 {
-    return app(\App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService::class)->findByKeyword($keyword);
+    return puValidationSpreadsheetPath($keyword);
 }
 
 function sampleSpreadsheetSelectionForAdmin(string $keyword): string
 {
     $path = sampleSpreadsheetPathForAdmin($keyword);
-    $options = app(\App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService::class)->options();
+    $options = app(PuValidationSpreadsheetLocatorService::class)->options();
 
     return array_search(basename($path), $options, true) ?: array_key_first($options);
 }

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Security\PiiPseudonymizer;
 use Filament\Facades\Filament;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -26,7 +28,7 @@ class AzureController extends Controller
     /**
      * Obtain the user information from Microsoft.
      */
-    public function callback(): \Illuminate\Http\RedirectResponse
+    public function callback(): RedirectResponse
     {
         try {
             $azureUser = Socialite::driver('azure')->user();
@@ -49,19 +51,19 @@ class AzureController extends Controller
             ->first();
 
         if (! $user) {
-            Log::warning('Azure SSO: e-mail não cadastrado.', ['email' => $email]);
+            Log::warning('Azure SSO: e-mail não cadastrado.', ['email_hash' => PiiPseudonymizer::email($email)]);
 
             return redirect('/admin/login')->with('loginError', 'Seu e-mail ('.$email.') não está cadastrado no sistema. Entre em contato com o administrador.');
         }
 
         if (! $user->isActive()) {
-            Log::warning('Azure SSO: usuário inativo.', ['user_id' => $user->id, 'email' => $email]);
+            Log::warning('Azure SSO: usuário inativo.', ['user_id' => $user->id]);
 
             return redirect('/admin/login')->with('loginError', 'Seu usuário está inativo. Entre em contato com um Super Admin.');
         }
 
         if (! $user->canAccessPanel(Filament::getPanel('admin'))) {
-            Log::warning('Azure SSO: usuário sem permissão de acesso ao painel.', ['user_id' => $user->id, 'email' => $email]);
+            Log::warning('Azure SSO: usuário sem permissão de acesso ao painel.', ['user_id' => $user->id]);
 
             return redirect('/admin/login')->with('loginError', 'Seu usuário não possui permissão para acessar o painel administrativo.');
         }

@@ -48,7 +48,7 @@
 
                 <div class="row">
                     <div class="col-lg-8 case-content">
-                        {!! $case->content !!}
+                        <x-safe-html :html="$case->content" />
                     </div>
                     <div class="col-lg-4">
                         <div class="card border-0 p-4 sticky-lg-top" style="top: 120px; z-index: 10; border-radius: 24px; background: var(--bg);">

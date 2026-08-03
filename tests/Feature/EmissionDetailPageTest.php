@@ -5,6 +5,7 @@ use App\Models\Emission;
 use App\Models\IntegralizationHistory;
 use App\Models\Payment;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Vite;
 
@@ -171,11 +172,65 @@ it('renders the payment flow showing all components (Cenario 5)', function () {
         ->assertSee('paymentsChart')
         ->assertSee(Vite::asset('resources/js/chart.js'), false)
         ->assertDontSee('cdn.jsdelivr.net', false)
-        ->assertSee('Juros')
-        ->assertSee('Amortização')
-        ->assertSee('Prêmio')
-        ->assertSee('Amortização Extra')
+        ->assertSee('"label":"Juros"', false)
+        ->assertSee('"label":"Amortiza\u00e7\u00e3o"', false)
+        ->assertSee('"label":"Pr\u00eamio"', false)
+        ->assertSee('"label":"Amortiza\u00e7\u00e3o Extra"', false)
         ->assertSee('Intl.NumberFormat', false);
+});
+
+it('hex encodes payment chart labels embedded in the inline script', function () {
+    $scriptBreakingLabel = '</script><img src=x onerror=alert(1)>';
+    $emission = Emission::factory()->active()->create([
+        'if_code' => 'IF-CHART-XSS-01',
+        'is_public' => true,
+    ]);
+
+    $payment = new class($scriptBreakingLabel) extends Payment
+    {
+        private object $paymentDate;
+
+        public function __construct(?string $label = null)
+        {
+            parent::__construct([
+                'interest_value' => 100,
+                'amortization_value' => 0,
+                'premium_value' => 0,
+                'extra_amortization_value' => 0,
+            ]);
+
+            $this->paymentDate = new class($label ?? '')
+            {
+                public function __construct(private readonly string $label) {}
+
+                public function format(string $format): string
+                {
+                    return $this->label;
+                }
+            };
+        }
+
+        public function getAttribute($key)
+        {
+            if ($key === 'payment_date') {
+                return $this->paymentDate;
+            }
+
+            return parent::getAttribute($key);
+        }
+    };
+
+    $emission->setRelation('payments', new EloquentCollection([$payment]));
+
+    $content = view('site.emission-detail', compact('emission'))->render();
+    $encodedLabels = json_encode(
+        [$scriptBreakingLabel],
+        JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT,
+    );
+
+    expect($content)
+        ->toContain("const labels = {$encodedLabels};")
+        ->not->toContain($scriptBreakingLabel);
 });
 
 it('renders only interest dataset when other components are zero (Cenario 1)', function () {
@@ -185,8 +240,8 @@ it('renders only interest dataset when other components are zero (Cenario 1)', f
     $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
         ->assertSee('"label":"Juros"', false)
-        ->assertDontSee('"label":"Prêmio"', false)
-        ->assertDontSee('"label":"Amortização Extra"', false);
+        ->assertDontSee('"label":"Pr\u00eamio"', false)
+        ->assertDontSee('"label":"Amortiza\u00e7\u00e3o Extra"', false);
 });
 
 it('renders only amortization dataset when other components are zero (Cenario 2)', function () {
@@ -195,9 +250,9 @@ it('renders only amortization dataset when other components are zero (Cenario 2)
 
     $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
-        ->assertSee('"label":"Amortização"', false)
-        ->assertDontSee('"label":"Prêmio"', false)
-        ->assertDontSee('"label":"Amortização Extra"', false);
+        ->assertSee('"label":"Amortiza\u00e7\u00e3o"', false)
+        ->assertDontSee('"label":"Pr\u00eamio"', false)
+        ->assertDontSee('"label":"Amortiza\u00e7\u00e3o Extra"', false);
 });
 
 it('renders premium dataset when present (Cenario 3)', function () {
@@ -206,7 +261,7 @@ it('renders premium dataset when present (Cenario 3)', function () {
 
     $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
-        ->assertSee('"label":"Prêmio"', false);
+        ->assertSee('"label":"Pr\u00eamio"', false);
 });
 
 it('renders extra amortization dataset when present (Cenario 4)', function () {
@@ -215,7 +270,7 @@ it('renders extra amortization dataset when present (Cenario 4)', function () {
 
     $this->get(route('site.emissions.show', $emission->if_code))
         ->assertOk()
-        ->assertSee('"label":"Amortização Extra"', false);
+        ->assertSee('"label":"Amortiza\u00e7\u00e3o Extra"', false);
 });
 
 it('renders empty state when there are no payments (Cenario 6)', function () {

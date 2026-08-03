@@ -886,7 +886,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Gráfico de Pagamentos
     const chartElement = document.getElementById('paymentsChart');
     if (chartElement) {
-        const labels = {!! json_encode($emission->payments->pluck('payment_date')->map(fn ($date) => $date->format('d/m/Y'))) !!};
+        const labels = @json($emission->payments->pluck('payment_date')->map(fn ($date) => $date->format('d/m/Y')));
 
         @php
             $chartDatasets = [];
@@ -947,7 +947,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'bar',
             data: {
                 labels: labels,
-                datasets: {!! json_encode($chartDatasets, JSON_UNESCAPED_UNICODE) !!}
+                datasets: @json($chartDatasets)
             },
             options: {
                 responsive: true,

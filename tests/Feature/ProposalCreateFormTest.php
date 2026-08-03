@@ -125,6 +125,48 @@ it('stores the initial proposal through the livewire component and sends the con
     Mail::assertSent(ProposalContinuationLinkMail::class);
 });
 
+it('blocks the eleventh proposal from the same IP when identities are varied', function () {
+    Mail::fake();
+
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+
+    ProposalRepresentative::factory()->create([
+        'name' => 'Representante Comercial',
+        'queue_position' => 1,
+    ]);
+
+    $stateForAttempt = function (int $attempt) use ($sector): array {
+        $state = proposalCreateFormState($sector);
+        $state['cnpj'] = sprintf('12.345.%03d/0001-%02d', $attempt, $attempt);
+        $state['companyName'] = "Construtora Rate Limit {$attempt}";
+        $state['email'] = "rate-limit-{$attempt}@example.com";
+
+        return $state;
+    };
+
+    foreach (range(1, 10) as $attempt) {
+        submitProposalCreateForm($stateForAttempt($attempt));
+    }
+
+    $blockedState = $stateForAttempt(11);
+    fakeProposalCreateLookups($blockedState);
+
+    $component = Livewire::test(CreateProposalForm::class);
+
+    foreach ($blockedState as $property => $value) {
+        $component->set("form.{$property}", $value);
+    }
+
+    $component
+        ->call('save')
+        ->assertHasErrors(['submission'])
+        ->assertNoRedirect();
+
+    expect(Proposal::query()->count())->toBe(10);
+
+    Mail::assertSent(ProposalContinuationLinkMail::class, 10);
+});
+
 it('offers the active sectors provisioned by the migrations, ordered by name', function () {
     ProposalSector::query()->create(['name' => 'Infraestrutura']);
     ProposalSector::query()->create(['name' => 'Setor Descontinuado', 'is_active' => false]);
@@ -142,12 +184,20 @@ it('offers the active sectors provisioned by the migrations, ordered by name', f
 });
 
 it('rejects a sector that is no longer active', function () {
+    Mail::fake();
+
     $sector = ProposalSector::query()->create(['name' => 'Setor Descontinuado', 'is_active' => false]);
 
     Livewire::test(CreateProposalForm::class)
         ->set('form.sectorId', (string) $sector->id)
         ->call('save')
-        ->assertHasErrors(['form.sectorId']);
+        ->assertHasErrors(['form.sectorId' => ['exists']])
+        ->assertSee('Selecione um setor de atuação válido.')
+        ->assertNoRedirect();
+
+    expect(Proposal::query()->count())->toBe(0);
+
+    Mail::assertNothingSent();
 });
 
 it('explains the empty state and blocks submission when no sector is available', function () {
@@ -167,20 +217,30 @@ it('explains the empty state and blocks submission when no sector is available',
 });
 
 it('validates the required fields before saving the proposal', function () {
+    Mail::fake();
+
     Livewire::test(CreateProposalForm::class)
         ->call('save')
         ->assertHasErrors([
-            'form.cnpj',
-            'form.companyName',
-            'form.sectorId',
-            'form.postalCode',
-            'form.street',
-            'form.addressNumber',
-            'form.neighborhood',
-            'form.city',
-            'form.state',
-            'form.contactName',
-            'form.email',
-            'form.personalPhone',
-        ]);
+            'form.cnpj' => ['required'],
+            'form.companyName' => ['required'],
+            'form.sectorId' => ['required'],
+            'form.postalCode' => ['required'],
+            'form.street' => ['required'],
+            'form.addressNumber' => ['required'],
+            'form.neighborhood' => ['required'],
+            'form.city' => ['required'],
+            'form.state' => ['required'],
+            'form.contactName' => ['required'],
+            'form.email' => ['required'],
+            'form.personalPhone' => ['required'],
+        ])
+        ->assertSee('Revise os campos destacados antes de continuar.')
+        ->assertSee('O CNPJ da empresa é obrigatório.')
+        ->assertSee('O e-mail de contato é obrigatório.')
+        ->assertNoRedirect();
+
+    expect(Proposal::query()->count())->toBe(0);
+
+    Mail::assertNothingSent();
 });

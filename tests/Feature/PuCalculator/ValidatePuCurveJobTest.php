@@ -2,7 +2,6 @@
 
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
-use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Jobs\ValidatePuCurveJob;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
@@ -20,7 +19,7 @@ it('validates the curve in the queued job and marks the version validated', func
         'issued_quantity' => 20000,
     ]);
 
-    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword('AMANI');
+    $spreadsheetPath = puValidationSpreadsheetPath('AMANI');
     $referenceRows = app(PuSpreadsheetReferenceReader::class)->read($spreadsheetPath)['rows'];
     persistOperationalReferenceRows($emission, $referenceRows, 'v1');
 

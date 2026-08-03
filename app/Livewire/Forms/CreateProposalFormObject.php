@@ -9,6 +9,7 @@ use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
+use App\Services\Security\PiiPseudonymizer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -210,7 +211,7 @@ class CreateProposalFormObject extends Form
             $response = Http::timeout(8)->acceptJson()->get("https://publica.cnpj.ws/cnpj/{$cnpj}");
         } catch (\Throwable $exception) {
             Log::warning('Falha ao consultar dados públicos de CNPJ.', [
-                'cnpj' => $cnpj,
+                'cnpj_hash' => PiiPseudonymizer::document($cnpj),
                 'message' => $exception->getMessage(),
             ]);
 
@@ -251,7 +252,7 @@ class CreateProposalFormObject extends Form
             $response = Http::timeout(8)->acceptJson()->get("https://viacep.com.br/ws/{$postalCode}/json/");
         } catch (\Throwable $exception) {
             Log::warning('Falha ao consultar endereço pelo CEP.', [
-                'postal_code' => $postalCode,
+                'postal_code_hash' => PiiPseudonymizer::document($postalCode),
                 'message' => $exception->getMessage(),
             ]);
 

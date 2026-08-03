@@ -29,6 +29,7 @@ class BankForm
             FileUpload::make('logo_path')
                 ->label('Logo')
                 ->image()
+                ->acceptedFileTypes((array) config('uploads.logo.allowed_mimes', []))
                 ->disk('public')
                 ->directory('banks/logos')
                 ->required()

@@ -23,6 +23,15 @@ server {
     server_name _;
     client_max_body_size ${NGINX_CLIENT_MAX_BODY_SIZE};
 
+    # TLS termina no front-end do App Service, então o container sempre recebe
+    # HTTP em 8080: o protocolo original chega em X-Forwarded-Proto. Comparar com
+    # "http" (em vez de "!= https") garante que sondas internas e requisições sem
+    # o cabeçalho não entrem em loop de redirecionamento. Cobre também os arquivos
+    # estáticos, que são servidos pelo nginx sem passar pelo PHP.
+    if (\$http_x_forwarded_proto = "http") {
+        return 301 https://\$host\$request_uri;
+    }
+
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
@@ -82,7 +91,7 @@ provision_storage_root "PRIVATE_STORAGE_ROOT" "${PRIVATE_STORAGE_ROOT:-}" "$LEGA
 provision_storage_root "PUBLIC_STORAGE_ROOT" "${PUBLIC_STORAGE_ROOT:-}" "$LEGACY_PUBLIC_STORAGE_ROOT"
 
 cd /home/site/wwwroot
-php artisan migrate --force --no-interaction
+php artisan migrate --force --isolated --no-interaction
 php artisan optimize
 
 # O symlink public/storage fica dentro do wwwroot e é destruído a cada deploy.

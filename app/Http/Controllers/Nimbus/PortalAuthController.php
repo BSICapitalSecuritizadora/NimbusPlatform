@@ -64,9 +64,12 @@ class PortalAuthController extends Controller
         return implode('-', str_split($sanitizedCode, 4));
     }
 
-    public function logout(): RedirectResponse
+    public function logout(Request $request): RedirectResponse
     {
         Auth::guard('nimbus')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect()->route('nimbus.auth.request');
     }

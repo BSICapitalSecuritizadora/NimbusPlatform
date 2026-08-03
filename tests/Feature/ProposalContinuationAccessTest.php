@@ -40,6 +40,7 @@ it('renders the continuation access page from a valid signed magic link', functi
         ->assertOk()
         ->assertViewIs('site.proposal.access')
         ->assertSee($access->proposal->company->name)
+        ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
         ->assertSee(Vite::asset('resources/js/imask.js'), false)
         ->assertDontSee('unpkg.com', false);
 

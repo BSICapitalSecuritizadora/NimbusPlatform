@@ -29,6 +29,7 @@ it('renders the continuation page through the full-page livewire component', fun
         ->get(route('site.proposal.continuation.form', $access))
         ->assertSuccessful()
         ->assertSeeLivewire(ContinuationForm::class)
+        ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
         ->assertSee('Formulário de Empreendimento');
 });
 

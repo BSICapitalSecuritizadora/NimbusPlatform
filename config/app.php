@@ -58,6 +58,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Force HTTPS Redirect
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, plain HTTP requests received in production are redirected to
+    | HTTPS by the SetSecurityHeaders middleware. This backs up the platform level
+    | "HTTPS Only" toggle and can be disabled if the edge already handles it.
+    |
+    */
+
+    'force_https_redirect' => env('FORCE_HTTPS_REDIRECT', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

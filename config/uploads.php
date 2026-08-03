@@ -31,6 +31,46 @@ return [
 
     'document' => [
         'max_kb' => (int) env('UPLOAD_DOCUMENT_MAX_KB', 102400),
+        'allowed_mimes' => [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ],
+    ],
+
+    'receivables_import' => [
+        'allowed_mimes' => [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/zip',
+        ],
+    ],
+
+    'measurement' => [
+        'allowed_mimes' => [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+        ],
+    ],
+
+    'measurement_receipt' => [
+        'allowed_mimes' => [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+        ],
+    ],
+
+    'logo' => [
+        'allowed_mimes' => [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+        ],
     ],
 
     'submission' => [

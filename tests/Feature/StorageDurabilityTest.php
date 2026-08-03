@@ -43,6 +43,48 @@ it('keeps the uploaded files out of the deployment package', function () {
         ->and(File::get(base_path('.github/workflows/azure-deploy.yml')))->toContain('-x "storage/app/*"');
 });
 
+it('keeps repository-only files out of deployment packages', function () {
+    $primaryWorkflow = File::get(base_path('.github/workflows/main_bsicapital.yml'));
+    $legacyWorkflow = File::get(base_path('.github/workflows/azure-deploy.yml'));
+
+    foreach ([$primaryWorkflow, $legacyWorkflow] as $workflow) {
+        expect($workflow)
+            ->toContain('-x ".env*"')
+            ->toContain('-x "*/.env*"')
+            ->toContain('-x "App_Data/*"')
+            ->toContain('-x "compose.yaml"')
+            ->toContain('-x "docs/*"')
+            ->toContain('-x "fix_*.php"')
+            ->toContain('-x "fix_*.py"')
+            ->toContain('-x "infra/*"')
+            ->toContain('-x "update_*.php"')
+            ->toContain('-x "NUL"')
+            ->toContain('Assert repository-only files are not packaged')
+            ->toContain("grep -E '(^|/)\\.env[^/]*$|^(docs|infra|App_Data)/|")
+            ->toContain('^update_[^/]*\\.php$');
+    }
+});
+
+it('does not keep operational spreadsheets or loose maintenance scripts', function () {
+    $spreadsheetFiles = collect(File::allFiles(base_path('docs')))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'xlsx');
+    $maintenanceScripts = collect([
+        ...File::glob(base_path('fix_*.php')),
+        ...File::glob(base_path('fix_*.py')),
+        ...File::glob(base_path('update_*.php')),
+    ]);
+    $gitignore = File::get(base_path('.gitignore'));
+
+    expect($spreadsheetFiles)->toBeEmpty()
+        ->and($maintenanceScripts)->toBeEmpty()
+        ->and(File::exists(base_path('NUL')))->toBeFalse()
+        ->and($gitignore)->toContain('/docs/**/*.xlsx')
+        ->and($gitignore)->toContain('/fix_*.php')
+        ->and($gitignore)->toContain('/fix_*.py')
+        ->and($gitignore)->toContain('/update_*.php')
+        ->and($gitignore)->toContain('/NUL');
+});
+
 it('provisions both persistent storage roots on container start', function () {
     $startupScript = File::get(base_path('startup.sh'));
 

@@ -60,23 +60,24 @@ jobs:
           zip -r app.zip . \
             -x ".git/*" \
             -x ".github/*" \
+            -x ".env*" \
+            -x "*/.env*" \
+            -x "App_Data/*" \
+            -x "compose.yaml" \
+            -x "compose.yml" \
+            -x "docs/*" \
+            -x "fix_*.php" \
+            -x "fix_*.py" \
+            -x "infra/*" \
             -x "node_modules/*" \
             -x "tests/*" \
-            -x "docs/*" \
-            -x "infra/*" \
-            -x ".env" \
-            -x ".env.staging" \
-            -x ".env.testing" \
-            -x ".env.example.production" \
+            -x "update_*.php" \
+            -x "NUL" \
             -x "storage/app/*" \
             -x "storage/logs/*" \
             -x "storage/framework/cache/*" \
             -x "storage/framework/sessions/*" \
-            -x "storage/framework/views/*" \
-            -x "fix_*.php" \
-            -x "fix_*.py" \
-            -x "update_*.php" \
-            -x "compose.yaml"
+            -x "storage/framework/views/*"
 
       # Entradas de diretório são inofensivas; arquivos dentro de storage/app não.
       - name: Assert private storage is not packaged
@@ -84,6 +85,15 @@ jobs:
           if unzip -Z1 app.zip | grep -qE "^storage/app/.*[^/]$"; then
             echo "::error::O pacote contém arquivos em storage/app — o deploy destruiria os documentos privados."
             unzip -Z1 app.zip | grep -E "^storage/app/.*[^/]$" | head
+            exit 1
+          fi
+
+      - name: Assert repository-only files are not packaged
+        run: |
+          forbidden_entries="$(unzip -Z1 app.zip | grep -E '(^|/)\.env[^/]*$|^(docs|infra|App_Data)/|^compose\.ya?ml$|^fix_[^/]*\.(php|py)$|^update_[^/]*\.php$|^NUL$' || true)"
+          if [ -n "$forbidden_entries" ]; then
+            echo "::error::O pacote contém arquivos exclusivos do repositório ou dados operacionais."
+            printf '%s\n' "$forbidden_entries" | head
             exit 1
           fi
 

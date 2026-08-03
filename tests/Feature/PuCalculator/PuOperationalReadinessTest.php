@@ -5,12 +5,12 @@ use App\Actions\Emissions\ValidatePuDailyCurve;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Services\PuReferenceWorkbookScenarioService;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
-use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\IndexRate;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -154,7 +154,7 @@ it('logs validation runs and supports complete AMANI and TROUPE workflows', func
         'issued_quantity' => 20000,
     ]);
 
-    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword($keyword);
+    $spreadsheetPath = puValidationSpreadsheetPath($keyword);
     app(PuReferenceWorkbookScenarioService::class)->sync($emission, $spreadsheetPath);
     $generationResult = app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
 
@@ -213,7 +213,7 @@ it('logs approved validation payloads with severity-aware sample data', function
         'status' => 'active',
     ]);
 
-    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword('AMANI');
+    $spreadsheetPath = puValidationSpreadsheetPath('AMANI');
     $referenceRows = app(PuSpreadsheetReferenceReader::class)->read($spreadsheetPath)['rows'];
 
     persistOperationalReferenceRows($emission, $referenceRows, 'v1');
@@ -244,7 +244,7 @@ it('logs approved validation payloads with severity-aware sample data', function
 
 function seedOperationalCalendar(string $startDate, string $endDate): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         BusinessCalendarDate::query()->create([
             'calendar_code' => 'B3',
             'calendar_date' => $date->toDateString(),
@@ -256,7 +256,7 @@ function seedOperationalCalendar(string $startDate, string $endDate): void
 
 function seedOperationalRates(string $startDate, string $endDate, string $rateValue): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         if ($date->isWeekend()) {
             continue;
         }

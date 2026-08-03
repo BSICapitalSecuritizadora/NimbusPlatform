@@ -91,6 +91,37 @@ it('renders the updated optional document labels in the registration form', func
         ->assertSee('Ata de eleição de diretoria');
 });
 
+it('hex encodes restored shareholders embedded in the inline script', function () {
+    $scriptBreakingName = '</script><img src=x onerror=alert(1)>';
+    $shareholders = [
+        [
+            'name' => $scriptBreakingName,
+            'percentage' => 100,
+        ],
+    ];
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Teste JSON Seguro',
+        'email' => 'teste.json.seguro@example.com',
+        'document_number' => '12345678906',
+        'phone_number' => '11999999999',
+        'status' => 'ACTIVE',
+    ]);
+
+    $response = $this->actingAs($portalUser, 'nimbus')
+        ->withSession(['old_shareholders' => $shareholders])
+        ->get(route('nimbus.submissions.create'))
+        ->assertSuccessful();
+
+    $encodedShareholders = json_encode(
+        $shareholders,
+        JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT,
+    );
+
+    expect($response->getContent())
+        ->toContain("shareholders: {$encodedShareholders},")
+        ->not->toContain($scriptBreakingName);
+});
+
 it('renders the Nimbus submission and document pages with CSP-compatible scripts', function () {
     $portalUser = PortalUser::query()->create([
         'full_name' => 'Teste CSP Portal',

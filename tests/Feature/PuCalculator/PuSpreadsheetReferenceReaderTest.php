@@ -4,7 +4,6 @@ use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Enums\PuValidationStatus;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
 use App\Domain\PuCalculator\Services\PuValidationService;
-use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use Carbon\CarbonImmutable;
@@ -84,7 +83,7 @@ it('supports display-scale and raw-scale validation modes', function () {
 });
 
 it('filters the AMANI validation analysis to the requested date range', function () {
-    $spreadsheetPath = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword('AMANI');
+    $spreadsheetPath = puValidationSpreadsheetPath('AMANI');
     $referenceRows = app(PuSpreadsheetReferenceReader::class)->read($spreadsheetPath)['rows'];
     $emission = Emission::factory()->create([
         'type' => 'CRI',

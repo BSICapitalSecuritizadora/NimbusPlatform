@@ -2,9 +2,11 @@
 
 use App\Domain\PuCalculator\Calculators\DailyFactorCalculator;
 use App\Domain\PuCalculator\Calculators\IpcaCurveCalculator;
+use App\Domain\PuCalculator\DTOs\SpreadsheetReferenceRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Exceptions\IndexerNotSupportedException;
 use App\Domain\PuCalculator\Services\IndexRateService;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
 use App\Models\Emission;
@@ -23,15 +25,13 @@ uses(RefreshDatabase::class);
  */
 function ipcaGabaritoPath(): string
 {
-    $matches = glob(base_path('docs/samples/pu-validation/*RIO BRANCO*.xlsx'));
-
-    return $matches[0] ?? '';
+    return puValidationSpreadsheetPath('RIO BRANCO');
 }
 
 /** Última data com IPCA publicado no gabarito (última NI = 2025-06; período fecha em 2025-07-23). */
 const IPCA_WINDOW_END = '2025-07-23';
 
-/** @return list<\App\Domain\PuCalculator\DTOs\SpreadsheetReferenceRowData> */
+/** @return list<SpreadsheetReferenceRowData> */
 function ipcaReferenceRows(): array
 {
     $reader = app(PuSpreadsheetReferenceReader::class);
@@ -274,7 +274,7 @@ it('keeps IPCA blocked beyond the published number-index series (projection not 
     ]);
 
     expect(fn () => app(IpcaCurveCalculator::class)->calculate($emission->fresh(['puParameter', 'puEvents', 'integralizationHistories'])))
-        ->toThrow(\App\Domain\PuCalculator\Exceptions\IndexerNotSupportedException::class);
+        ->toThrow(IndexerNotSupportedException::class);
 });
 
 /** Vencimento da operação (bullet final). Reference month da projeção vai até o 1º deste mês. */
@@ -466,7 +466,7 @@ it('blocks the projected tail when the projection policy is published-only', fun
     $emission = seedIpcaProjectedToMaturity($reference, 'published_only');
 
     expect(fn () => app(IpcaCurveCalculator::class)->calculate($emission->fresh(['puParameter', 'puEvents', 'integralizationHistories'])))
-        ->toThrow(\App\Domain\PuCalculator\Exceptions\IndexerNotSupportedException::class, 'PROJETADO');
+        ->toThrow(IndexerNotSupportedException::class, 'PROJETADO');
 });
 
 function bcabs_diff(string $left, string $right): string

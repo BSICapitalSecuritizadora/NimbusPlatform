@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsureLivewirePreviewIsSafe;
+use App\Http\Middleware\EnsureUserIsApproved;
+use App\Http\Middleware\SetSecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,11 +21,15 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // H-1: security headers on every web response
         $middleware->web(prepend: [
-            \App\Http\Middleware\SetSecurityHeaders::class,
+            SetSecurityHeaders::class,
+        ]);
+
+        $middleware->web(append: [
+            EnsureLivewirePreviewIsSafe::class,
         ]);
 
         $middleware->alias([
-            'approved' => \App\Http\Middleware\EnsureUserIsApproved::class,
+            'approved' => EnsureUserIsApproved::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

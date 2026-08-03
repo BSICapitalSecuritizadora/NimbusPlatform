@@ -1,2 +1,15 @@
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /auth
+Disallow: /dashboard
+Disallow: /gestao-documental-externa
+Disallow: /healthcheck
+Disallow: /investidor
+Disallow: /login
+Disallow: /nimbus
+Disallow: /operacional
+Disallow: /pending-approval
+Disallow: /proposta/continuar
+Disallow: /settings
+Disallow: /up
+Allow: /

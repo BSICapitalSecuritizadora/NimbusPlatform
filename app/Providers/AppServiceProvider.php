@@ -26,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Notifications\Events\NotificationFailed;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\ConfigurationUrlParser;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -69,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->assertRedisIsHardened();
         $this->configureRateLimiting();
         $this->configureMacros();
         $this->configureMailTransports();
@@ -144,6 +146,65 @@ class AppServiceProvider extends ServiceProvider
         );
     }
 
+    /**
+     * Sessão, cache e fila autenticadas não podem trafegar num Redis remoto sem
+     * senha ou em texto claro: quem alcançar a porta lê e reescreve sessões de
+     * administrador. O template de produção já aponta para TLS na 6380, mas o
+     * valor real vem de App Settings — por isso a checagem é feita no boot.
+     *
+     * Conexões em loopback (sidecar/socket) ficam de fora: não estão expostas
+     * na rede e quebrar esse cenário não traria ganho de segurança.
+     */
+    protected function assertRedisIsHardened(): void
+    {
+        if (! app()->isProduction() || ! $this->usesRedis()) {
+            return;
+        }
+
+        foreach ((array) config('database.redis') as $name => $connection) {
+            if (! is_array($connection) || ! array_key_exists('host', $connection)) {
+                continue;
+            }
+
+            $connection = (new ConfigurationUrlParser)->parseConfiguration($connection);
+            $driver = strtolower((string) ($connection['driver'] ?? ''));
+            $scheme = in_array($driver, ['tcp', 'tls'], true)
+                ? $driver
+                : (string) ($connection['scheme'] ?? 'tcp');
+
+            if ($this->isLoopbackRedisHost((string) ($connection['host'] ?? ''))) {
+                continue;
+            }
+
+            abort_if(
+                blank($connection['password'] ?? null),
+                500,
+                "Redis connection [{$name}] is exposed without a password. Set REDIS_PASSWORD in production.",
+            );
+
+            abort_if(
+                $scheme !== 'tls',
+                500,
+                "Redis connection [{$name}] would send session data in cleartext. Set REDIS_SCHEME=tls in production.",
+            );
+        }
+    }
+
+    protected function usesRedis(): bool
+    {
+        return config('cache.default') === 'redis'
+            || config('session.driver') === 'redis'
+            || config('queue.default') === 'redis';
+    }
+
+    protected function isLoopbackRedisHost(string $host): bool
+    {
+        $host = Str::of($host)->after('://')->trim()->toString();
+
+        return str_starts_with($host, '/')
+            || in_array($host, ['127.0.0.1', 'localhost', '::1', '[::1]'], true);
+    }
+
     protected function configureMacros(): void
     {
         Str::macro('digitsOnly', fn (string $value): string => preg_replace('/\D/', '', $value) ?? '');
@@ -169,18 +230,6 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinutes(60, 5)->by("site-contact|ip|{$request->ip()}"),
                 Limit::perDay(200)->by('site-contact|global'),
             ];
-        });
-
-        RateLimiter::for('proposal-submission', function (Request $request): Limit {
-            $email = mb_strtolower((string) $request->input('email'));
-            $cnpj = Str::digitsOnly((string) $request->input('cnpj'));
-
-            return Limit::perMinute(5)->by(implode('|', [
-                'proposal-submission',
-                $request->ip(),
-                $email,
-                $cnpj,
-            ]));
         });
 
         RateLimiter::for('proposal-link-access', function (Request $request): Limit {

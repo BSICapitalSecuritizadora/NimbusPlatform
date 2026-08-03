@@ -3,6 +3,7 @@
 namespace App\Actions\Nimbus;
 
 use App\DTOs\Nimbus\LookupNimbusCnpjDTO;
+use App\Services\Security\PiiPseudonymizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -20,7 +21,7 @@ class LookupNimbusCnpj
                 ->get("https://publica.cnpj.ws/cnpj/{$dto->cnpj}");
         } catch (\Throwable $exception) {
             Log::warning('Falha ao consultar CNPJ no portal Nimbus.', [
-                'cnpj' => $dto->cnpj,
+                'cnpj_hash' => PiiPseudonymizer::document($dto->cnpj),
                 'message' => $exception->getMessage(),
             ]);
 

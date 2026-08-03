@@ -5,12 +5,10 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ __('Documentos Públicos') }} - {{ config('app.name', 'BSI Capital') }}</title>
         <meta name="description" content="Documentos públicos disponíveis para consulta.">
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
         <style>
             *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
             body {
-                font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+                font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                 background: #FDFDFC;
                 color: #1b1b18;
                 min-height: 100vh;

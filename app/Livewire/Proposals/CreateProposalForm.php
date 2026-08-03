@@ -7,6 +7,7 @@ use App\Actions\Proposals\SendProposalContinuationLink;
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\Livewire\Forms\CreateProposalFormObject;
 use App\Models\ProposalSector;
+use App\Services\Security\PiiPseudonymizer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,14 @@ use Livewire\Component;
 class CreateProposalForm extends Component
 {
     public const NO_SECTORS_MESSAGE = 'Nenhum setor de atuação está disponível no momento. Entre em contato com a BSI Capital.';
+
+    private const IP_SUBMISSION_LIMIT = 10;
+
+    private const IP_SUBMISSION_DECAY_SECONDS = 3600;
+
+    private const IDENTITY_SUBMISSION_LIMIT = 5;
+
+    private const IDENTITY_SUBMISSION_DECAY_SECONDS = 60;
 
     public CreateProposalFormObject $form;
 
@@ -70,8 +79,8 @@ class CreateProposalForm extends Component
             throw $exception;
         } catch (\Throwable $exception) {
             Log::error('Falha ao registrar proposta pública.', [
-                'email' => $this->form->email,
-                'cnpj' => $this->form->cnpj,
+                'email_hash' => PiiPseudonymizer::email($this->form->email),
+                'cnpj_hash' => PiiPseudonymizer::document($this->form->cnpj),
                 'message' => $exception->getMessage(),
             ]);
 
@@ -90,24 +99,35 @@ class CreateProposalForm extends Component
 
     protected function ensureSubmissionIsNotRateLimited(): bool
     {
-        $key = $this->submissionRateLimitKey();
-
-        if (RateLimiter::tooManyAttempts($key, 5)) {
+        if (
+            RateLimiter::tooManyAttempts($this->submissionIpRateLimitKey(), self::IP_SUBMISSION_LIMIT)
+            || RateLimiter::tooManyAttempts($this->submissionIdentityRateLimitKey(), self::IDENTITY_SUBMISSION_LIMIT)
+        ) {
             $this->addError('submission', 'Você atingiu o limite de envios. Tente novamente em alguns instantes.');
 
             return false;
         }
 
-        RateLimiter::hit($key, 60);
+        RateLimiter::hit($this->submissionIpRateLimitKey(), self::IP_SUBMISSION_DECAY_SECONDS);
+        RateLimiter::hit($this->submissionIdentityRateLimitKey(), self::IDENTITY_SUBMISSION_DECAY_SECONDS);
 
         return true;
     }
 
-    protected function submissionRateLimitKey(): string
+    protected function submissionIpRateLimitKey(): string
     {
         return implode('|', [
             'proposal-submission',
+            'ip',
             request()->ip(),
+        ]);
+    }
+
+    protected function submissionIdentityRateLimitKey(): string
+    {
+        return implode('|', [
+            'proposal-submission',
+            'identity',
             mb_strtolower(trim($this->form->email)),
             Str::digitsOnly($this->form->cnpj),
         ]);

@@ -50,6 +50,7 @@ class ListReceivables extends ListRecords
                         ->label('Arquivo Excel (.xlsx)')
                         ->disk('local')
                         ->directory('imports/receivables')
+                        ->acceptedFileTypes((array) config('uploads.receivables_import.allowed_mimes', []))
                         ->rules([new ReceivablesSpreadsheetFile])
                         ->helperText('A competência e os indicadores serão lidos da aba "Resumo". Caso ela não exista, o sistema tentará as abas "Planilha1" ou "Plan1".')
                         ->required(),

@@ -109,6 +109,7 @@ class DocumentsTable
                             ->disk('local')
                             ->visibility('private')
                             ->directory('documents')
+                            ->acceptedFileTypes((array) config('uploads.document.allowed_mimes', []))
                             ->maxSize((int) config('uploads.document.max_kb', 102400))
                             ->helperText('Tamanho máximo por arquivo: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
                             ->getUploadedFileNameForStorageUsing(function (TemporaryUploadedFile $file): string {

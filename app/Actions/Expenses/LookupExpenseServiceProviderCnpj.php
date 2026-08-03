@@ -2,6 +2,7 @@
 
 namespace App\Actions\Expenses;
 
+use App\Services\Security\PiiPseudonymizer;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -30,7 +31,7 @@ class LookupExpenseServiceProviderCnpj
                 ->get("https://publica.cnpj.ws/cnpj/{$cnpj}");
         } catch (\Throwable $exception) {
             Log::warning('Falha ao consultar CNPJ para prestador de serviço.', [
-                'cnpj' => $cnpj,
+                'cnpj_hash' => PiiPseudonymizer::document($cnpj),
                 'message' => $exception->getMessage(),
             ]);
 

@@ -27,9 +27,6 @@ it('keeps the IPCA calculation method flagged as experimental', function () {
         ->and(PuCalculationMethod::IpcaCorrected->label())->toContain('experimental');
 });
 
-it('does not homologate IPCA just because a validation gabarito exists', function () {
-    $gabarito = glob(base_path('docs/samples/pu-validation/*RIO BRANCO*.xlsx'));
-
-    expect($gabarito)->not->toBeEmpty()
-        ->and(PuIndexer::Ipca->isHomologated())->toBeFalse();
+it('keeps static IPCA homologation gated independently of operational gabaritos', function () {
+    expect(PuIndexer::Ipca->isHomologated())->toBeFalse();
 });

@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\CommandMutex;
 use Illuminate\Support\Facades\File;
 
 it('configures the Azure startup script to raise the nginx body size limit', function () {
@@ -15,9 +16,42 @@ it('configures the Azure startup script to raise the nginx body size limit', fun
         ->and($startupScript)->toContain('/etc/nginx/sites-available/default')
         ->and($startupScript)->toContain('/home/site/wwwroot/public')
         ->and($startupScript)->toContain('try_files \$uri \$uri/ /index.php?\$query_string;')
-        ->and($startupScript)->toContain('php artisan migrate --force --no-interaction')
+        ->and($startupScript)->toContain('php artisan migrate --force --isolated --no-interaction')
         ->and($startupScript)->toContain('php artisan optimize')
         ->and($startupScript)->toContain('service nginx reload || service nginx restart || true');
+});
+
+it('redirects forwarded http traffic to https at the nginx layer', function () {
+    $startupScript = File::get(base_path('startup.sh'));
+
+    expect($startupScript)
+        ->toContain('if (\$http_x_forwarded_proto = "http") {')
+        ->toContain('return 301 https://\$host\$request_uri;')
+        // "!= https" redirecionaria sondas internas sem o cabeçalho, criando loop.
+        ->not->toContain('\$http_x_forwarded_proto != "https"');
+});
+
+it('runs container migrations once under a distributed lock', function () {
+    $startupLines = preg_split('/\R/', File::get(base_path('startup.sh')));
+    $migrationCommands = array_values(array_filter(
+        $startupLines,
+        fn (string $line): bool => preg_match('/^\s*php artisan migrate\b/', $line) === 1,
+    ));
+
+    expect($migrationCommands)->toBe(['php artisan migrate --force --isolated --no-interaction'])
+        ->and(File::get(base_path('.env.example.production')))->toContain('CACHE_STORE=redis');
+});
+
+it('logs and skips migrations when another container owns the migration lock', function () {
+    $commandMutex = Mockery::mock(CommandMutex::class);
+    $commandMutex->shouldReceive('create')->once()->andReturnFalse();
+    $commandMutex->shouldNotReceive('forget');
+
+    app()->instance(CommandMutex::class, $commandMutex);
+
+    $this->artisan('migrate --force --isolated --no-interaction')
+        ->expectsOutputToContain('The [migrate] command is already running.')
+        ->assertSuccessful();
 });
 
 it('keeps the queue worker and the scheduler alive under supervision loops', function () {

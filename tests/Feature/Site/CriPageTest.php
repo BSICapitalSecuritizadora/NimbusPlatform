@@ -59,11 +59,17 @@ it('limits featured emissions to three on the CRI page', function () {
         ->assertViewHas('featuredEmissions', fn ($emissions) => $emissions->count() <= 3);
 });
 
-it('loads flux assets for the viability simulator on the CRI page', function () {
+/**
+ * O simulador de viabilidade não é montado na página (nenhuma view referencia
+ * `imobiliario.viability-simulator`), então carregar Flux/Livewire aqui só
+ * obrigava a CSP a liberar `'unsafe-eval'` numa rota pública. Se o simulador
+ * voltar para a página, restaure `@section('uses_flux', '1')` na view e inclua
+ * `site.imobiliario.cri` em SetSecurityHeaders::UNSAFE_EVAL_ROUTES.
+ */
+it('does not load flux assets on the CRI page while the viability simulator is unmounted', function () {
     $this->get(route('site.imobiliario.cri'))
         ->assertSuccessful()
-        ->assertSee('/flux/flux', false)
-        ->assertSee('/livewire-', false);
+        ->assertDontSee('/flux/flux', false);
 });
 
 it('renders the securitization flow with four cards and no trailing arrow', function () {

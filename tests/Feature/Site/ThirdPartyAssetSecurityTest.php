@@ -5,12 +5,13 @@ use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Str;
 use Symfony\Component\Finder\SplFileInfo;
 
-it('does not load scripts or styles from jsdelivr or unpkg in Blade views', function () {
+it('does not load scripts or styles from disallowed CDNs in Blade views', function () {
     $bladeFilesWithExternalCdnReferences = collect(File::allFiles(resource_path('views')))
         ->filter(fn (SplFileInfo $file): bool => Str::endsWith($file->getFilename(), '.blade.php'))
         ->filter(function (SplFileInfo $file): bool {
             return Str::contains(File::get($file->getPathname()), [
                 'cdn.jsdelivr.net',
+                'fonts.bunny.net',
                 'unpkg.com',
             ]);
         })

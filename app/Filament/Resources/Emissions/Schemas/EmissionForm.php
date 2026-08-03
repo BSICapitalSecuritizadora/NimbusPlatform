@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Emissions\Schemas;
 
+use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm;
 use App\Jobs\ExtractSecuritizationClausesJob;
 use App\Models\Emission;
@@ -319,10 +320,10 @@ class EmissionForm
                         ->schema([
                             SchemaActions::make([
                                 Action::make('extract_from_term')
-                                    ->label(fn (mixed $livewire): string => ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses) ? 'Extraindo cláusulas...' : 'Extrair do Termo')
+                                    ->label(fn (mixed $livewire): string => ($livewire instanceof EditEmission && $livewire->isExtractingClauses) ? 'Extraindo cláusulas...' : 'Extrair do Termo')
                                     ->icon('heroicon-o-sparkles')
                                     ->color('warning')
-                                    ->disabled(fn (mixed $livewire): bool => $livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses)
+                                    ->disabled(fn (mixed $livewire): bool => $livewire instanceof EditEmission && $livewire->isExtractingClauses)
                                     ->visible(fn (string $operation): bool => $operation === 'edit')
                                     ->requiresConfirmation()
                                     ->modalHeading('Extrair Cláusulas do Termo de Securitização')
@@ -412,7 +413,7 @@ class EmissionForm
                                 ))
                                 ->columnSpanFull()
                                 ->visibleOn('edit')
-                                ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isExtractingClauses))
+                                ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof EditEmission && $livewire->isExtractingClauses))
                                 ->extraAttributes(['wire:poll.5000ms' => 'checkGeminiExtractionStatus']),
 
                             Placeholder::make('pu_curve_generation_progress')
@@ -428,7 +429,7 @@ class EmissionForm
                                 ))
                                 ->columnSpanFull()
                                 ->visibleOn('edit')
-                                ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isGeneratingPuCurve))
+                                ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof EditEmission && $livewire->isGeneratingPuCurve))
                                 ->extraAttributes(['wire:poll.5000ms' => 'checkPuCurveGenerationStatus']),
 
                             Placeholder::make('pu_curve_validation_progress')
@@ -444,7 +445,7 @@ class EmissionForm
                                 ))
                                 ->columnSpanFull()
                                 ->visibleOn('edit')
-                                ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof \App\Filament\Resources\Emissions\Pages\EditEmission && $livewire->isValidatingPuCurve))
+                                ->hidden(fn (mixed $livewire): bool => ! ($livewire instanceof EditEmission && $livewire->isValidatingPuCurve))
                                 ->extraAttributes(['wire:poll.5000ms' => 'checkPuCurveValidationStatus']),
 
                             Select::make('guarantee_fund')
@@ -585,6 +586,7 @@ class EmissionForm
                             FileUpload::make('logo_path')
                                 ->label('Logotipo ou Identidade Visual da Operação')
                                 ->image()
+                                ->acceptedFileTypes((array) config('uploads.logo.allowed_mimes', []))
                                 ->disk(Emission::defaultStorageDisk())
                                 ->visibility('public')
                                 ->directory('emissions/logos')

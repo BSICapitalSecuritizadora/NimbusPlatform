@@ -5,6 +5,7 @@ use App\Http\Requests\Nimbus\StoreSubmissionReplyRequest;
 use App\Http\Requests\Nimbus\StoreSubmissionRequest;
 use App\Http\Requests\StoreAdminSubmissionResponseFilesRequest;
 use App\Http\Requests\VerifyProposalContinuationRequest;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Validator;
@@ -114,7 +115,9 @@ it('raises the global Livewire temporary upload ceiling to 100 MB', function () 
         'required',
         'file',
         'max:102400',
+        'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
     ])
+        ->and(config('livewire.temporary_file_upload.preview_mimes'))->not->toContain('svg')
         ->and(config('livewire.temporary_file_upload.max_upload_time'))->toBe(15);
 });
 
@@ -154,13 +157,13 @@ it('maps the proposal continuation verification request into a typed dto', funct
 });
 
 /**
- * @param  class-string<\Illuminate\Foundation\Http\FormRequest>  $requestClass
+ * @param  class-string<FormRequest>  $requestClass
  * @param  array<string, mixed>  $inputs
  * @param  array<string, mixed>  $files
  */
 function buildValidatedRequest(string $requestClass, array $inputs, array $files = []): object
 {
-    /** @var \Illuminate\Foundation\Http\FormRequest $request */
+    /** @var FormRequest $request */
     $request = $requestClass::create('/test', 'POST', $inputs, [], $files);
 
     attachValidator($request, array_merge($inputs, $files));
@@ -169,7 +172,7 @@ function buildValidatedRequest(string $requestClass, array $inputs, array $files
 }
 
 /**
- * @param  \Illuminate\Foundation\Http\FormRequest  $request
+ * @param  FormRequest  $request
  * @param  array<string, mixed>  $payload
  */
 function attachValidator(object $request, array $payload): void

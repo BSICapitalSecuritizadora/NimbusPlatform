@@ -54,7 +54,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            // M-5: default to daily rotation (14 days) instead of a single unbounded file
+            // Default to daily rotation with bounded retention instead of one unbounded file.
             'channels' => explode(',', (string) env('LOG_STACK', 'daily')),
             'ignore_exceptions' => false,
         ],
@@ -70,7 +70,7 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
+            'days' => (int) env('LOG_DAILY_DAYS', 30),
             'replace_placeholders' => true,
         ],
 

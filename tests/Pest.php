@@ -1,13 +1,26 @@
 <?php
 
+use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Livewire\Forms\CreateProposalFormObject;
 use App\Livewire\Proposals\CreateProposalForm;
 use App\Models\ProposalSector;
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 uses(TestCase::class)->in('Feature');
+
+function puValidationSpreadsheetPath(string $keyword): string
+{
+    try {
+        return app(PuValidationSpreadsheetLocatorService::class)->findByKeyword($keyword);
+    } catch (InvalidArgumentException) {
+        test()->markTestSkipped(
+            "A planilha operacional de validação [{$keyword}] não está disponível neste ambiente.",
+        );
+    }
+}
 
 /**
  * @return array<string, array<int>|bool|string>
@@ -96,9 +109,9 @@ function submitInitialProposalThroughComponent(ProposalSector $sector, int $inde
     submitProposalCreateForm(proposalCreateFormState($sector, $index));
 }
 
-function makeAdminUser(): \App\Models\User
+function makeAdminUser(): User
 {
-    $user = \App\Models\User::factory()->withTwoFactor()->create([
+    $user = User::factory()->withTwoFactor()->create([
         'email' => fake()->unique()->safeEmail(),
     ]);
     $user->assignRole('admin');

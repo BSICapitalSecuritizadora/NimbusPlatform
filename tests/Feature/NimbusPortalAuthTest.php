@@ -87,6 +87,42 @@ it('regenerates the session after successful login to prevent session fixation',
     expect(session()->getId())->not->toBe($beforeSessionId);
 });
 
+it('invalidates the session and regenerates the CSRF token on logout', function () {
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente Logout',
+        'email' => 'logout@example.com',
+        'document_number' => '12345678904',
+        'phone_number' => '11999999997',
+        'status' => 'ACTIVE',
+    ]);
+
+    $plainCode = 'DDDD-EEEE-FFFF';
+
+    AccessToken::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'code_hash' => AccessToken::computeHash($plainCode),
+        'status' => 'PENDING',
+        'expires_at' => now()->addDays(7),
+    ]);
+
+    $this->post(route('nimbus.auth.verify.post'), [
+        'access_code' => $plainCode,
+    ])->assertRedirect(route('nimbus.dashboard'));
+
+    session()->put('nimbus_session_probe', 'valor-da-sessao-anterior');
+
+    $sessionIdBeforeLogout = session()->getId();
+    $csrfTokenBeforeLogout = session()->token();
+
+    $this->post(route('nimbus.auth.logout'))
+        ->assertRedirect(route('nimbus.auth.request'));
+
+    expect(session()->getId())->not->toBe($sessionIdBeforeLogout)
+        ->and(session()->token())->not->toBe($csrfTokenBeforeLogout)
+        ->and(session()->has('nimbus_session_probe'))->toBeFalse()
+        ->and(auth('nimbus')->check())->toBeFalse();
+});
+
 it('does not authenticate with an already used access code', function () {
     $portalUser = PortalUser::query()->create([
         'full_name' => 'Cliente do Portal',

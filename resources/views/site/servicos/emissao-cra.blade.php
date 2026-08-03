@@ -2,8 +2,6 @@
 
 @section('title', 'Emissão e Coordenação de CRA | BSI Capital')
 
-@section('uses_flux', '1')
-
 @section('content')
 <!-- Hero Section -->
 <section class="hero position-relative d-flex align-items-center" style="min-height: 60vh; overflow: hidden; background: var(--brand-strong);">

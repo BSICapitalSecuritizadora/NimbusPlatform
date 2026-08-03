@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Carbon;
 
 class MeasurementForm
 {
@@ -89,7 +90,7 @@ class MeasurementForm
                                         : null;
 
                                     if (filled($date)) {
-                                        $set('../../reference_month', \Illuminate\Support\Carbon::parse($date)->toDateString());
+                                        $set('../../reference_month', Carbon::parse($date)->toDateString());
                                     }
                                 })
                                 ->helperText('A qual medição prevista deste empreendimento o arquivo corresponde.'),
@@ -98,6 +99,7 @@ class MeasurementForm
                                 ->label('Arquivo da Medição')
                                 ->disk('public')
                                 ->directory('measurements')
+                                ->acceptedFileTypes((array) config('uploads.measurement.allowed_mimes', []))
                                 ->downloadable()
                                 ->openable()
                                 ->required()

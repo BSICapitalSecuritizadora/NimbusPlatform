@@ -11,6 +11,7 @@ use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -311,6 +312,8 @@ it('creates a service provider inline from the expense form', function () {
     $serviceProviderType = ExpenseServiceProviderType::factory()->create([
         'name' => 'Administrador',
     ]);
+    $createServiceProviderAction = TestAction::make('createOption')
+        ->schemaComponent('expense_service_provider_id');
 
     Http::fake([
         'https://publica.cnpj.ws/cnpj/*' => Http::response([
@@ -322,14 +325,14 @@ it('creates a service provider inline from the expense form', function () {
     ]);
 
     Livewire::test(CreateExpense::class)
-        ->assertFormComponentActionExists('expense_service_provider_id', 'createOption')
-        ->assertFormComponentActionHasLabel('expense_service_provider_id', 'createOption', 'Cadastrar prestador')
-        ->mountFormComponentAction('expense_service_provider_id', 'createOption')
+        ->assertActionExists($createServiceProviderAction)
+        ->assertActionHasLabel($createServiceProviderAction, 'Cadastrar prestador')
+        ->mountAction($createServiceProviderAction)
         ->fillForm([
             'cnpj' => '12.345.678/0001-90',
             'expense_service_provider_type_id' => $serviceProviderType->id,
         ])
-        ->assertFormComponentActionDataSet([
+        ->assertActionDataSet([
             'name' => 'Prestador Inline',
         ])
         ->callMountedAction()
@@ -364,10 +367,12 @@ it('fills the service provider name automatically from cnpj on the direct create
 
 it('creates a service provider type inline from the direct create page', function () {
     $this->actingAs(makeExpenseAdminUser());
+    $createServiceProviderTypeAction = TestAction::make('createOption')
+        ->schemaComponent('expense_service_provider_type_id');
 
     Livewire::test(CreateExpenseServiceProvider::class)
-        ->assertFormComponentActionExists('expense_service_provider_type_id', 'createOption')
-        ->mountFormComponentAction('expense_service_provider_type_id', 'createOption')
+        ->assertActionExists($createServiceProviderTypeAction)
+        ->mountAction($createServiceProviderTypeAction)
         ->fillForm([
             'name' => 'Tipo criado inline',
         ])

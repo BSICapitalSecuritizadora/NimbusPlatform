@@ -26,6 +26,13 @@ yarn-error.log
 /.DS_Store
 /.codex-artifacts
 
+# Dados operacionais e scripts locais nunca devem ser versionados.
+/docs/**/*.xlsx
+/fix_*.php
+/fix_*.py
+/update_*.php
+/NUL
+
 # Claude harness local settings (machine-specific, not shared)
 /.claude/settings.local.json
 /.claude/worktrees/

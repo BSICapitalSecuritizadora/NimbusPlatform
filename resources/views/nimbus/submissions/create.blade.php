@@ -391,7 +391,7 @@
 <script src="{{ asset('assets/nimbus/js/nimbusdocs-utils.js') }}"></script>
 <script nonce="{{ \Illuminate\Support\Facades\Vite::cspNonce() }}">
     window.SubmissionConfig = {
-        shareholders: {!! json_encode(session('old_shareholders', [])) !!},
+        shareholders: @json(session()->get('old_shareholders') ?? []),
         csrfToken: "{{ csrf_token() }}",
         cnpjLookupUrl: "{{ route('nimbus.submissions.cnpj-lookup') }}",
         submissionDocumentTotalMaxBytes: {{ $submissionDocumentsTotalMaxBytes }},

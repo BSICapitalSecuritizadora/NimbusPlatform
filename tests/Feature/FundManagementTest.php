@@ -11,6 +11,7 @@ use App\Models\FundName;
 use App\Models\FundType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Support\RawJs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -261,10 +262,12 @@ it('allows reusing the same account in another application', function () {
 
 it('allows creating a fund type inline from the fund form', function () {
     $this->actingAs(makeFundAdminUser());
+    $createFundTypeAction = TestAction::make('createOption')
+        ->schemaComponent('fund_type_id');
 
     Livewire::test(CreateFund::class)
-        ->assertFormComponentActionExists('fund_type_id', 'createOption')
-        ->mountFormComponentAction('fund_type_id', 'createOption')
+        ->assertActionExists($createFundTypeAction)
+        ->mountAction($createFundTypeAction)
         ->fillForm([
             'name' => 'Fundo Multimercado',
         ])

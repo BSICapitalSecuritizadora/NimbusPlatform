@@ -4,7 +4,6 @@ use App\Actions\Emissions\GeneratePuDailyCurve;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Services\PuReferenceWorkbookScenarioService;
 use App\Domain\PuCalculator\Services\PuValidationService;
-use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,7 +35,7 @@ function generateCdiCurveFromGabarito(string $keyword): array
         'issued_quantity' => $keyword === 'CONVIVA' ? 50000 : 20000,
     ]);
 
-    $path = app(PuValidationSpreadsheetLocatorService::class)->findByKeyword($keyword);
+    $path = puValidationSpreadsheetPath($keyword);
     app(PuReferenceWorkbookScenarioService::class)->sync($emission, $path);
     $result = app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
 

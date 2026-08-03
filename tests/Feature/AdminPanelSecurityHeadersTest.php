@@ -56,6 +56,16 @@ it('keeps unsafe-eval allowed for the Alpine-driven admin panel (A-2)', function
 it('sends HSTS on admin routes in production (A-2)', function () {
     $this->app['env'] = 'production';
 
-    $this->get('/admin/login')
+    // HSTS só é honrado quando entregue sobre TLS, e em produção uma requisição
+    // em HTTP simples é redirecionada antes de chegar à rota (M-17).
+    $this->get('https://localhost/admin/login')
         ->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+});
+
+it('redirects the admin panel to https in production (M-17)', function () {
+    $this->app['env'] = 'production';
+
+    $this->get('http://localhost/admin/login')
+        ->assertStatus(301)
+        ->assertRedirect('https://localhost/admin/login');
 });

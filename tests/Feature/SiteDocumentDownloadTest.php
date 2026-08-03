@@ -26,6 +26,18 @@ it('downloads a public published document', function () {
     $response->assertHeader('Content-Disposition');
 });
 
+it('rate limits public document downloads after thirty requests per minute', function () {
+    $document = Document::factory()->public()->create(['category' => 'governanca']);
+    Storage::disk($document->resolved_storage_disk)->put($document->file_path, 'fake-pdf-content');
+    $downloadUrl = route('site.documents.download', $document);
+
+    foreach (range(1, 30) as $attempt) {
+        $this->get($downloadUrl)->assertSuccessful();
+    }
+
+    $this->get($downloadUrl)->assertTooManyRequests();
+});
+
 it('returns 404 for a document that is published but not public', function () {
     $document = Document::factory()->published()->create(['is_public' => false]);
     Storage::disk($document->resolved_storage_disk)->put($document->file_path, 'fake-pdf-content');
