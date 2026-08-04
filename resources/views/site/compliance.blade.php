@@ -250,12 +250,6 @@
                             </div>
                             <h4 class="compliance-document-card__title mb-0 fs-5">{{ $document->title }}</h4>
                         </div>
-                        <div class="compliance-document-card__meta">
-                            {{ $document->published_at?->format('d/m/Y') ?? $document->created_at->format('d/m/Y') }}
-                            @if($document->file_size)
-                                · {{ number_format($document->file_size / 1024, 0) }} KB
-                            @endif
-                        </div>
                     </div>
 
                     <div class="compliance-document-card__footer">
