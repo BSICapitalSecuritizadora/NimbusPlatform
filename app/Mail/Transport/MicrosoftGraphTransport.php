@@ -2,6 +2,7 @@
 
 namespace App\Mail\Transport;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\Exception\TransportException;
@@ -14,6 +15,14 @@ use Symfony\Component\Mime\Part\DataPart;
 
 class MicrosoftGraphTransport extends AbstractTransport
 {
+    /**
+     * Margem descontada do `expires_in` devolvido pelo Entra ID, para que o
+     * token nunca seja usado no exato instante em que expira.
+     */
+    private const TOKEN_EXPIRY_LEEWAY_SECONDS = 300;
+
+    private const TOKEN_MAX_CACHE_SECONDS = 3300;
+
     public function __construct(
         private string $tenantId,
         private string $clientId,
@@ -50,7 +59,36 @@ class MicrosoftGraphTransport extends AbstractTransport
         return 'microsoft-graph';
     }
 
+    /**
+     * Tokens `client_credentials` valem cerca de uma hora, mas eram pedidos ao
+     * Entra ID a cada mensagem: uma fila com muitos e-mails multiplicava as
+     * chamadas ao endpoint de token e podia ser barrada por throttling, levando
+     * junto os códigos de acesso do portal e os links de proposta.
+     *
+     * O token fica em cache pelo tempo que o próprio Entra ID informa em
+     * `expires_in`, com margem de segurança para o relógio e para o tempo de
+     * envio, e limitado a 55 minutos.
+     */
     private function getAccessToken(): string
+    {
+        $cacheKey = $this->accessTokenCacheKey();
+        $cachedToken = Cache::get($cacheKey);
+
+        if (is_string($cachedToken) && $cachedToken !== '') {
+            return $cachedToken;
+        }
+
+        $token = $this->requestAccessToken();
+
+        Cache::put($cacheKey, $token['access_token'], $this->cacheableTokenLifetime($token));
+
+        return $token['access_token'];
+    }
+
+    /**
+     * @return array{access_token: string, expires_in: int}
+     */
+    private function requestAccessToken(): array
     {
         $response = Http::asForm()
             ->timeout($this->timeout)
@@ -74,7 +112,34 @@ class MicrosoftGraphTransport extends AbstractTransport
             throw new TransportException('Microsoft identity platform did not return an access token.');
         }
 
-        return (string) $accessToken;
+        return [
+            'access_token' => (string) $accessToken,
+            'expires_in' => (int) $response->json('expires_in', 0),
+        ];
+    }
+
+    /**
+     * @param  array{access_token: string, expires_in: int}  $token
+     */
+    private function cacheableTokenLifetime(array $token): int
+    {
+        $lifetime = $token['expires_in'] - self::TOKEN_EXPIRY_LEEWAY_SECONDS;
+
+        return max(60, min($lifetime, self::TOKEN_MAX_CACHE_SECONDS));
+    }
+
+    /**
+     * A chave carrega o tenant, o client e a caixa: transports diferentes no
+     * mesmo processo não podem compartilhar o token um do outro. O segredo não
+     * entra na chave — só o que identifica a credencial.
+     */
+    private function accessTokenCacheKey(): string
+    {
+        return 'msgraph:token:'.hash('sha256', implode('|', [
+            $this->tenantId,
+            $this->clientId,
+            $this->mailbox,
+        ]));
     }
 
     /**

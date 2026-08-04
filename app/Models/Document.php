@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Concerns\ScansUploadedFile;
+use App\Enums\MalwareScanStatus;
+use Database\Factories\DocumentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,8 +16,8 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Document extends Model
 {
-    /** @use HasFactory<\Database\Factories\DocumentFactory> */
-    use HasFactory, LogsActivity;
+    /** @use HasFactory<DocumentFactory> */
+    use HasFactory, LogsActivity, ScansUploadedFile;
 
     public const CATEGORY_OPTIONS = [
         'anuncios' => 'Anúncios',
@@ -26,6 +29,10 @@ class Document extends Model
         'governanca' => 'Governança',
         'relatorios_anuais' => 'Relatórios Anuais',
         'societarios' => 'Societários',
+    ];
+
+    protected $attributes = [
+        'scan_status' => MalwareScanStatus::Pending->value,
     ];
 
     protected $fillable = [
@@ -43,6 +50,7 @@ class Document extends Model
         'replaced_at',
         'published_at',
         'published_by',
+        'scan_status',
     ];
 
     protected $casts = [
@@ -50,6 +58,7 @@ class Document extends Model
         'is_published' => 'boolean',
         'is_public' => 'boolean',
         'published_at' => 'datetime',
+        'scan_status' => MalwareScanStatus::class,
     ];
 
     public static function defaultStorageDisk(): string
@@ -60,6 +69,11 @@ class Document extends Model
     public function getResolvedStorageDiskAttribute(): string
     {
         return $this->storage_disk ?: self::defaultStorageDisk();
+    }
+
+    public function uploadedFileDisk(): string
+    {
+        return $this->resolved_storage_disk;
     }
 
     public function getCategoryLabelAttribute(): string

@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\MalwareScanStatus;
 use App\Observers\ObligationEvidenceObserver;
+use Database\Factories\ObligationEvidenceFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +16,7 @@ use Illuminate\Support\Number;
 #[ObservedBy(ObligationEvidenceObserver::class)]
 class ObligationEvidence extends Model
 {
-    /** @use HasFactory<\Database\Factories\ObligationEvidenceFactory> */
+    /** @use HasFactory<ObligationEvidenceFactory> */
     use HasFactory, SoftDeletes;
 
     public const STATUS_PENDING = 'pending';
@@ -30,6 +32,10 @@ class ObligationEvidence extends Model
     ];
 
     protected $table = 'obligation_evidences';
+
+    protected $attributes = [
+        'scan_status' => MalwareScanStatus::Pending->value,
+    ];
 
     protected $fillable = [
         'obligation_id',
@@ -47,6 +53,7 @@ class ObligationEvidence extends Model
         'review_notes',
         'rejection_reason',
         'uploaded_at',
+        'scan_status',
     ];
 
     protected function casts(): array
@@ -55,6 +62,7 @@ class ObligationEvidence extends Model
             'size' => 'integer',
             'reviewed_at' => 'datetime',
             'uploaded_at' => 'datetime',
+            'scan_status' => MalwareScanStatus::class,
         ];
     }
 

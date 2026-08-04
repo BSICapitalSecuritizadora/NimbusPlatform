@@ -71,6 +71,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Healthcheck Token
+    |--------------------------------------------------------------------------
+    |
+    | Token compartilhado com o probe da plataforma. O endpoint `/healthcheck` é
+    | público — precisa ser, para o probe alcançá-lo sem sessão —, então o corpo
+    | detalhado, que revela qual dependência está degradada, só é devolvido a
+    | quem envia este token no cabeçalho `X-Healthcheck-Token`. Sem o token o
+    | probe continua funcionando: lê apenas o código HTTP e o campo `status`.
+    |
+    */
+
+    'healthcheck_token' => env('HEALTHCHECK_TOKEN'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

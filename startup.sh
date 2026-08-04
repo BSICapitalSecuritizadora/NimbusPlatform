@@ -13,6 +13,55 @@ if [ ! -f "$NGINX_DEFAULT_CONF" ] && [ -f "$NGINX_FALLBACK_CONF" ]; then
     NGINX_DEFAULT_CONF="$NGINX_FALLBACK_CONF"
 fi
 
+# Raiz efetiva de cada disco, aplicando as mesmas regras da aplicação: só
+# caminho absoluto vale, e a raiz pública precisa ser disjunta da privada.
+# O nginx serve `/storage/` diretamente desta raiz, então uma raiz pública que
+# se sobreponha à privada publicaria todos os documentos privados.
+resolve_storage_root() {
+    storage_configured="${1%/}"
+    storage_default="$2"
+
+    case "$storage_configured" in
+        /*) printf '%s\n' "$storage_configured" ;;
+        *) printf '%s\n' "$storage_default" ;;
+    esac
+}
+
+storage_roots_overlap() {
+    case "$1/" in
+        "$2"/*) return 0 ;;
+    esac
+
+    case "$2/" in
+        "$1"/*) return 0 ;;
+    esac
+
+    return 1
+}
+
+EFFECTIVE_PRIVATE_STORAGE_ROOT="$(resolve_storage_root "${PRIVATE_STORAGE_ROOT:-}" "$LEGACY_PRIVATE_STORAGE_ROOT")"
+EFFECTIVE_PUBLIC_STORAGE_ROOT="$(resolve_storage_root "${PUBLIC_STORAGE_ROOT:-}" "$LEGACY_PUBLIC_STORAGE_ROOT")"
+
+# Uma raiz vazia viraria `alias /;` no nginx, servindo o container inteiro em
+# /storage/. resolve_storage_root nunca devolve vazio, mas o custo de errar aqui
+# é alto demais para depender só disso.
+for storage_variable in EFFECTIVE_PRIVATE_STORAGE_ROOT EFFECTIVE_PUBLIC_STORAGE_ROOT; do
+    eval "storage_value=\$$storage_variable"
+
+    case "$storage_value" in
+        /?*) ;;
+        *)
+            echo "ERRO: $storage_variable='$storage_value' não é utilizável." >&2
+            exit 1
+            ;;
+    esac
+done
+
+if storage_roots_overlap "$EFFECTIVE_PUBLIC_STORAGE_ROOT" "$EFFECTIVE_PRIVATE_STORAGE_ROOT"; then
+    echo "ERRO: PUBLIC_STORAGE_ROOT ('$EFFECTIVE_PUBLIC_STORAGE_ROOT') se sobrepõe a PRIVATE_STORAGE_ROOT ('$EFFECTIVE_PRIVATE_STORAGE_ROOT') — os documentos privados seriam servidos publicamente. Usando '$LEGACY_PUBLIC_STORAGE_ROOT'; corrija as App Settings." >&2
+    EFFECTIVE_PUBLIC_STORAGE_ROOT="$LEGACY_PUBLIC_STORAGE_ROOT"
+fi
+
 if [ -f "$NGINX_DEFAULT_CONF" ]; then
     cat > "$NGINX_DEFAULT_CONF" << EOF
 server {
@@ -34,6 +83,16 @@ server {
 
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    # Os arquivos públicos são servidos direto da raiz persistente, nunca
+    # através do symlink public/storage: se ele apontar para o lugar errado, os
+    # documentos privados vazariam como arquivo estático. O prefixo "^~" impede
+    # que a location regex de PHP abaixo capture um .php enviado como upload e
+    # o execute — com o symlink, um arquivo em qualquer raiz seria executável.
+    location ^~ /storage/ {
+        alias ${EFFECTIVE_PUBLIC_STORAGE_ROOT}/;
+        try_files \$uri =404;
     }
 
     location ~ \\.php\$ {
@@ -61,22 +120,18 @@ fi
 provision_storage_root() {
     storage_variable="$1"
     storage_configured="$2"
-    storage_legacy="$3"
-    storage_target=""
+    storage_target="$3"
+    storage_legacy="$4"
 
     case "$storage_configured" in
         "")
             echo "AVISO: $storage_variable não definido — os arquivos ficarão em $storage_legacy e serão perdidos no próximo deploy." >&2
             ;;
-        /*)
-            storage_target="${storage_configured%/}"
-            ;;
+        /*) ;;
         *)
             echo "AVISO: $storage_variable='$storage_configured' não é um caminho absoluto e será ignorado. Use, por exemplo, /home/data/private." >&2
             ;;
     esac
-
-    [ -n "$storage_target" ] || return 0
 
     mkdir -p "$storage_target"
 
@@ -87,8 +142,8 @@ provision_storage_root() {
     chown -R www-data:www-data "$storage_target" 2>/dev/null || true
 }
 
-provision_storage_root "PRIVATE_STORAGE_ROOT" "${PRIVATE_STORAGE_ROOT:-}" "$LEGACY_PRIVATE_STORAGE_ROOT"
-provision_storage_root "PUBLIC_STORAGE_ROOT" "${PUBLIC_STORAGE_ROOT:-}" "$LEGACY_PUBLIC_STORAGE_ROOT"
+provision_storage_root "PRIVATE_STORAGE_ROOT" "${PRIVATE_STORAGE_ROOT:-}" "$EFFECTIVE_PRIVATE_STORAGE_ROOT" "$LEGACY_PRIVATE_STORAGE_ROOT"
+provision_storage_root "PUBLIC_STORAGE_ROOT" "${PUBLIC_STORAGE_ROOT:-}" "$EFFECTIVE_PUBLIC_STORAGE_ROOT" "$LEGACY_PUBLIC_STORAGE_ROOT"
 
 cd /home/site/wwwroot
 php artisan migrate --force --isolated --no-interaction

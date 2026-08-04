@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\MalwareScanStatus;
 use App\Models\Emission;
 use App\Models\Obligation;
 use App\Models\ObligationEvidence;
@@ -38,7 +39,24 @@ class ObligationEvidenceFactory extends Factory
             'review_notes' => null,
             'rejection_reason' => null,
             'uploaded_at' => now(),
+            // O fluxo real grava a evidência depois da varredura síncrona, que
+            // rejeita tanto o arquivo infectado quanto o não verificável.
+            'scan_status' => MalwareScanStatus::Clean,
         ];
+    }
+
+    public function awaitingScan(): static
+    {
+        return $this->state(fn (): array => [
+            'scan_status' => MalwareScanStatus::Pending,
+        ]);
+    }
+
+    public function infected(): static
+    {
+        return $this->state(fn (): array => [
+            'scan_status' => MalwareScanStatus::Infected,
+        ]);
     }
 
     public function approved(?User $reviewer = null): static

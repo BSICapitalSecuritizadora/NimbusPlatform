@@ -4,8 +4,12 @@ namespace App\Console\Commands;
 
 use App\Enums\MalwareScanStatus;
 use App\Jobs\ScanFileForMalware;
+use App\Models\Document;
 use App\Models\JobApplication;
+use App\Models\Nimbus\GeneralDocument;
+use App\Models\Nimbus\PortalDocument;
 use App\Models\Nimbus\SubmissionFile;
+use App\Models\ObligationEvidence;
 use App\Models\ProposalFile;
 use App\Services\DocumentStorageService;
 use Illuminate\Console\Command;
@@ -67,6 +71,58 @@ class ScanPendingUploads extends Command
                     $application->resume_path,
                     "job-application:{$application->id}",
                     $application,
+                );
+
+                $dispatchedJobs++;
+            });
+
+        ObligationEvidence::query()
+            ->where('scan_status', MalwareScanStatus::Pending->value)
+            ->eachById(function (ObligationEvidence $evidence) use (&$dispatchedJobs): void {
+                ScanFileForMalware::dispatch(
+                    $evidence->disk,
+                    $evidence->path,
+                    "obligation-evidence:{$evidence->id}",
+                    $evidence,
+                );
+
+                $dispatchedJobs++;
+            });
+
+        Document::query()
+            ->where('scan_status', MalwareScanStatus::Pending->value)
+            ->eachById(function (Document $document) use (&$dispatchedJobs): void {
+                ScanFileForMalware::dispatch(
+                    $document->resolved_storage_disk,
+                    $document->file_path,
+                    "document:{$document->id}",
+                    $document,
+                );
+
+                $dispatchedJobs++;
+            });
+
+        GeneralDocument::query()
+            ->where('scan_status', MalwareScanStatus::Pending->value)
+            ->eachById(function (GeneralDocument $document) use (&$dispatchedJobs): void {
+                ScanFileForMalware::dispatch(
+                    DocumentStorageService::privateDisk(),
+                    $document->file_path,
+                    "nimbus-general-document:{$document->id}",
+                    $document,
+                );
+
+                $dispatchedJobs++;
+            });
+
+        PortalDocument::query()
+            ->where('scan_status', MalwareScanStatus::Pending->value)
+            ->eachById(function (PortalDocument $document) use (&$dispatchedJobs): void {
+                ScanFileForMalware::dispatch(
+                    DocumentStorageService::privateDisk(),
+                    $document->file_path,
+                    "nimbus-portal-document:{$document->id}",
+                    $document,
                 );
 
                 $dispatchedJobs++;

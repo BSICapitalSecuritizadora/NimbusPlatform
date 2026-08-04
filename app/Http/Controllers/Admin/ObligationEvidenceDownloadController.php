@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\AccessPermission;
+use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ObligationEvidence;
 use App\Services\DocumentStorageService;
@@ -20,6 +21,8 @@ class ObligationEvidenceDownloadController extends Controller
         Gate::authorize(AccessPermission::ObligationsView->value);
         Gate::authorize(AccessPermission::ObligationsViewEvidence->value);
         Gate::authorize(AccessPermission::ObligationsDownloadEvidence->value);
+
+        abort_unless($evidence->scan_status === MalwareScanStatus::Clean, Response::HTTP_NOT_FOUND);
 
         if (! $documentStorageService->exists($evidence->path, $evidence->disk)) {
             abort(Response::HTTP_NOT_FOUND);

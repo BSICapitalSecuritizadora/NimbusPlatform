@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Nimbus;
 
+use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Nimbus\DocumentCategory;
 use App\Models\Nimbus\GeneralDocument;
@@ -71,6 +72,8 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        $this->abortIfNotScanned($document);
+
         if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
@@ -93,6 +96,8 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        $this->abortIfNotScanned($document);
+
         if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
@@ -111,6 +116,8 @@ class DocumentController extends Controller
         if (! $document->is_active) {
             abort(Response::HTTP_NOT_FOUND);
         }
+
+        $this->abortIfNotScanned($document);
 
         if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
@@ -132,6 +139,8 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        $this->abortIfNotScanned($document);
+
         if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
@@ -140,5 +149,14 @@ class DocumentController extends Controller
             $document->file_path,
             $document->file_original_name ?: basename($document->file_path),
         );
+    }
+
+    /**
+     * Um arquivo sem varredura concluída não chega ao portal — nem como
+     * download, nem como preview renderizado no navegador do usuário externo.
+     */
+    protected function abortIfNotScanned(GeneralDocument|PortalDocument $document): void
+    {
+        abort_unless($document->scan_status === MalwareScanStatus::Clean, Response::HTTP_NOT_FOUND);
     }
 }

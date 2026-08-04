@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Models\DocumentDownload;
 use App\Services\DocumentStorageService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,8 +35,11 @@ class DocumentDownloadController extends Controller
             abort(Response::HTTP_FORBIDDEN);
         }
 
-        // 2) Log de download (Auditoria de Acesso / Compliance)
-        \App\Models\DocumentDownload::create([
+        // 2) Só entrega arquivo com varredura antivírus concluída e limpa
+        abort_unless($document->scan_status === MalwareScanStatus::Clean, Response::HTTP_NOT_FOUND);
+
+        // 3) Log de download (Auditoria de Acesso / Compliance)
+        DocumentDownload::create([
             'document_id' => $document->id,
             'investor_id' => $investor->id,
             'ip' => $request->ip(),
@@ -44,7 +49,7 @@ class DocumentDownloadController extends Controller
             'session_id' => $request->session()->getId(),
         ]);
 
-        // 3) Entrega o arquivo (local/disk atual)
+        // 4) Entrega o arquivo (local/disk atual)
         $disk = $document->resolved_storage_disk;
         $path = $document->file_path;
 

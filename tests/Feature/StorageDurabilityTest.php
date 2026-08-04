@@ -90,8 +90,8 @@ it('provisions both persistent storage roots on container start', function () {
 
     expect($startupScript)->toContain('LEGACY_PRIVATE_STORAGE_ROOT="/home/site/wwwroot/storage/app/private"')
         ->and($startupScript)->toContain('LEGACY_PUBLIC_STORAGE_ROOT="/home/site/wwwroot/storage/app/public"')
-        ->and($startupScript)->toContain('provision_storage_root "PRIVATE_STORAGE_ROOT" "${PRIVATE_STORAGE_ROOT:-}" "$LEGACY_PRIVATE_STORAGE_ROOT"')
-        ->and($startupScript)->toContain('provision_storage_root "PUBLIC_STORAGE_ROOT" "${PUBLIC_STORAGE_ROOT:-}" "$LEGACY_PUBLIC_STORAGE_ROOT"')
+        ->and($startupScript)->toContain('provision_storage_root "PRIVATE_STORAGE_ROOT" "${PRIVATE_STORAGE_ROOT:-}" "$EFFECTIVE_PRIVATE_STORAGE_ROOT" "$LEGACY_PRIVATE_STORAGE_ROOT"')
+        ->and($startupScript)->toContain('provision_storage_root "PUBLIC_STORAGE_ROOT" "${PUBLIC_STORAGE_ROOT:-}" "$EFFECTIVE_PUBLIC_STORAGE_ROOT" "$LEGACY_PUBLIC_STORAGE_ROOT"')
         ->and($startupScript)->toContain('mkdir -p "$storage_target"')
         ->and($startupScript)->toContain('cp -a -n "$storage_legacy/." "$storage_target/"');
 });
@@ -100,7 +100,7 @@ it('refuses a storage root that is not an absolute path on container start', fun
     $startupScript = File::get(base_path('startup.sh'));
 
     expect($startupScript)->toContain('não é um caminho absoluto e será ignorado')
-        ->and($startupScript)->toContain('storage_target="${storage_configured%/}"');
+        ->and($startupScript)->toContain('/*) printf \'%s\n\' "$storage_configured" ;;');
 });
 
 it('recreates the public storage symlink on every container start', function () {
@@ -115,7 +115,50 @@ it('documents the storage variables for production', function () {
     expect($productionEnv)->toContain('PRIVATE_STORAGE_ROOT=/home/data/private')
         ->and($productionEnv)->toContain('PUBLIC_STORAGE_ROOT=/home/data/public')
         ->and($productionEnv)->toContain('PRIVATE_FILESYSTEM_DISK=local')
-        ->and($productionEnv)->toContain('AZURE_STORAGE_PRIVATE_CONTAINER=bsi-docs-privados');
+        ->and($productionEnv)->toContain('AZURE_STORAGE_PRIVATE_CONTAINER=bsi-docs-privados')
+        // Nome real do container no Azure — os logos das emissões são lidos
+        // dele pela URL pública, então trocar o valor quebra o site.
+        ->and($productionEnv)->toMatch('/^AZURE_STORAGE_CONTAINER=public$/m');
+});
+
+/**
+ * O template já apontou `FILESYSTEM_DISK=s3` com todo o bloco `AWS_*`
+ * comentado. Um disco padrão sem credencial não falha só no upload: o
+ * /healthcheck escreve nele a cada probe, então a instância inteira é marcada
+ * como não íntegra. Este teste amarra o disco escolhido às suas credenciais.
+ */
+it('never defaults the production filesystem to a disk without credentials', function () {
+    $productionEnv = File::get(base_path('.env.example.production'));
+
+    preg_match('/^FILESYSTEM_DISK=(.*)$/m', $productionEnv, $matches);
+    $disk = trim($matches[1] ?? '');
+
+    expect($disk)->toBeIn(['local', 'public', 'azure', 's3']);
+
+    $requiredVariables = match ($disk) {
+        'azure' => ['AZURE_STORAGE_CONNECTION_STRING', 'AZURE_STORAGE_CONTAINER'],
+        's3' => ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION', 'AWS_BUCKET'],
+        default => [],
+    };
+
+    // Uma variável comentada não chega ao processo: só a linha ativa conta.
+    foreach ($requiredVariables as $variable) {
+        expect($productionEnv)->toMatch('/^'.preg_quote($variable, '/').'=/m');
+    }
+});
+
+it('keeps the production mailer aligned with the transport it configures', function () {
+    $productionEnv = File::get(base_path('.env.example.production'));
+
+    preg_match('/^MAIL_MAILER=(.*)$/m', $productionEnv, $matches);
+    $mailer = trim($matches[1] ?? '');
+
+    expect($mailer)->toBe('graph')
+        ->and(config("mail.mailers.{$mailer}"))->not->toBeNull();
+
+    foreach (['OUTLOOK_TENANT_ID', 'OUTLOOK_CLIENT_ID', 'OUTLOOK_CLIENT_SECRET', 'OUTLOOK_MAILBOX'] as $variable) {
+        expect($productionEnv)->toMatch('/^'.preg_quote($variable, '/').'=/m');
+    }
 });
 
 it('roots the upload disks outside the deploy folder when configured', function () {
@@ -128,6 +171,73 @@ it('roots the upload disks outside the deploy folder when configured', function 
         ->and($filesystems['disks']['resumes']['root'])->toBe('/home/data/private/resumes')
         ->and($filesystems['disks']['public']['root'])->toBe('/home/data/public')
         ->and($filesystems['links'][public_path('storage')])->toBe('/home/data/public');
+});
+
+/**
+ * O symlink `public/storage` aponta para a raiz pública e é servido como
+ * arquivo estático. Uma raiz pública sobreposta à privada publicaria todos os
+ * documentos, então ela é descartada em favor do padrão da aplicação.
+ */
+it('refuses a public storage root that overlaps the private one', function (string $publicRoot) {
+    $filesystems = reloadFilesystemsConfigWithEnv([
+        'PRIVATE_STORAGE_ROOT' => '/home/data/private',
+        'PUBLIC_STORAGE_ROOT' => $publicRoot,
+    ]);
+
+    expect($filesystems['disks']['local']['root'])->toBe('/home/data/private')
+        ->and($filesystems['disks']['public']['root'])->toBe(storage_path('app/public'))
+        ->and($filesystems['links'][public_path('storage')])->toBe(storage_path('app/public'));
+})->with([
+    'mesma raiz' => '/home/data/private',
+    'mesma raiz com barra final' => '/home/data/private/',
+    'dentro da raiz privada' => '/home/data/private/publico',
+    'contendo a raiz privada' => '/home/data',
+]);
+
+it('accepts a public storage root that only shares a name prefix', function () {
+    $filesystems = reloadFilesystemsConfigWithEnv([
+        'PRIVATE_STORAGE_ROOT' => '/home/data/private',
+        'PUBLIC_STORAGE_ROOT' => '/home/data/private-publico',
+    ]);
+
+    expect($filesystems['disks']['public']['root'])->toBe('/home/data/private-publico');
+});
+
+it('serves the public storage location from the public root instead of the symlink', function () {
+    $startupScript = File::get(base_path('startup.sh'));
+
+    expect($startupScript)
+        // "^~" impede que a location regex de PHP execute um upload .php.
+        ->toContain('location ^~ /storage/ {')
+        ->toContain('alias ${EFFECTIVE_PUBLIC_STORAGE_ROOT}/;')
+        ->toContain('try_files \$uri =404;');
+});
+
+it('discards an overlapping public storage root on container start', function () {
+    $startupScript = File::get(base_path('startup.sh'));
+
+    expect($startupScript)
+        ->toContain('storage_roots_overlap "$EFFECTIVE_PUBLIC_STORAGE_ROOT" "$EFFECTIVE_PRIVATE_STORAGE_ROOT"')
+        ->toContain('se sobrepõe a PRIVATE_STORAGE_ROOT')
+        ->toContain('EFFECTIVE_PUBLIC_STORAGE_ROOT="$LEGACY_PUBLIC_STORAGE_ROOT"');
+});
+
+/**
+ * Uma raiz vazia viraria `alias /;` e publicaria o sistema de arquivos inteiro
+ * do container em /storage/.
+ */
+it('aborts the container start when a resolved storage root is unusable', function () {
+    $startupScript = File::get(base_path('startup.sh'));
+
+    expect($startupScript)
+        ->toContain('for storage_variable in EFFECTIVE_PRIVATE_STORAGE_ROOT EFFECTIVE_PUBLIC_STORAGE_ROOT; do')
+        ->toContain('/?*) ;;')
+        ->toContain('não é utilizável.');
+});
+
+it('documents that the public storage root must be disjoint from the private one', function () {
+    expect(File::get(base_path('.env.example.production')))
+        ->toContain('precisa ser DIFERENTE de PRIVATE_STORAGE_ROOT');
 });
 
 it('falls back to the application storage path when no root is configured', function () {

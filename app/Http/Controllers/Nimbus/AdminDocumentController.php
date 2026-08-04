@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Nimbus;
 
+use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Nimbus\GeneralDocument;
 use App\Models\Nimbus\PortalDocument;
@@ -21,6 +22,7 @@ class AdminDocumentController extends Controller
         DocumentStorageService $documentStorageService,
     ): BinaryFileResponse|StreamedResponse {
         $this->authorizeDocumentAccess($request->user(), 'nimbus.general-documents.view');
+        $this->abortIfNotScanned($document);
         $this->abortIfMissing($documentStorageService, $document->file_path);
 
         return $documentStorageService->previewPrivate(
@@ -36,6 +38,7 @@ class AdminDocumentController extends Controller
         DocumentStorageService $documentStorageService,
     ): StreamedResponse {
         $this->authorizeDocumentAccess($request->user(), 'nimbus.general-documents.view');
+        $this->abortIfNotScanned($document);
         $this->abortIfMissing($documentStorageService, $document->file_path);
 
         return $documentStorageService->downloadPrivate(
@@ -50,6 +53,7 @@ class AdminDocumentController extends Controller
         DocumentStorageService $documentStorageService,
     ): BinaryFileResponse|StreamedResponse {
         $this->authorizeDocumentAccess($request->user(), 'nimbus.portal-documents.view');
+        $this->abortIfNotScanned($document);
         $this->abortIfMissing($documentStorageService, $document->file_path);
 
         return $documentStorageService->previewPrivate(
@@ -65,6 +69,7 @@ class AdminDocumentController extends Controller
         DocumentStorageService $documentStorageService,
     ): StreamedResponse {
         $this->authorizeDocumentAccess($request->user(), 'nimbus.portal-documents.view');
+        $this->abortIfNotScanned($document);
         $this->abortIfMissing($documentStorageService, $document->file_path);
 
         return $documentStorageService->downloadPrivate(
@@ -90,5 +95,14 @@ class AdminDocumentController extends Controller
         if (! $documentStorageService->privateExists($path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
+    }
+
+    /**
+     * Um arquivo sem varredura concluída não é servido nem para o painel: o
+     * preview renderiza o conteúdo no navegador do analista.
+     */
+    protected function abortIfNotScanned(GeneralDocument|PortalDocument $document): void
+    {
+        abort_unless($document->scan_status === MalwareScanStatus::Clean, Response::HTTP_NOT_FOUND);
     }
 }

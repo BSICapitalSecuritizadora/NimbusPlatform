@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\ReminderLogs;
 
+use App\Enums\AccessPermission;
 use App\Models\ReminderLog;
 use BackedEnum;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -12,6 +14,7 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class ReminderLogResource extends Resource
@@ -118,8 +121,8 @@ class ReminderLogResource extends Resource
                 Filter::make('sent_at')
                     ->label('Enviado em')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('from')->label('De'),
-                        \Filament\Forms\Components\DatePicker::make('until')->label('Até'),
+                        DatePicker::make('from')->label('De'),
+                        DatePicker::make('until')->label('Até'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -144,5 +147,35 @@ class ReminderLogResource extends Resource
         return [
             'index' => Pages\ManageReminderLogs::route('/'),
         ];
+    }
+
+    /**
+     * A auditoria de lembretes expõe destinatário, motivo e criticidade de cada
+     * envio. Sem policy registrada o Filament liberava o Resource por padrão, e
+     * esconder o item de navegação não fecha a URL direta.
+     */
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can(AccessPermission::ReminderLogsView->value) ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return static::canViewAny();
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
     }
 }

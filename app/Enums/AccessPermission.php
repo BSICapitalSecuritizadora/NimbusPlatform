@@ -146,6 +146,9 @@ enum AccessPermission: string
     case PuProjectionApprove = 'pu.projection.approve';
     case PuCalendarManage = 'pu.calendar.manage';
     case PuHolidayImport = 'pu.holiday.import';
+    case ContactMessagesView = 'contact-messages.view';
+    case ContactMessagesUpdate = 'contact-messages.update';
+    case ReminderLogsView = 'reminder-logs.view';
     case AuditActivitiesView = 'audit.activities.view';
     case AuditDocumentDownloadsView = 'audit.document-downloads.view';
     case ReportsView = 'reports.view';
@@ -338,6 +341,9 @@ enum AccessPermission: string
             self::PuProjectionApprove => 'Curva de PU: aprovar série projetada',
             self::PuCalendarManage => 'Curva de PU: completar calendário de dias úteis',
             self::PuHolidayImport => 'Curva de PU: importar feriados ANBIMA',
+            self::ContactMessagesView => 'Mensagens de contato: visualizar',
+            self::ContactMessagesUpdate => 'Mensagens de contato: registrar atendimento',
+            self::ReminderLogsView => 'Auditoria de lembretes: visualizar',
             self::AuditActivitiesView => 'Auditoria logs do sistema: visualizar',
             self::AuditDocumentDownloadsView => 'Auditoria downloads do portal: visualizar',
             self::ReportsView => 'Relatórios: visualizar',
@@ -359,8 +365,10 @@ enum AccessPermission: string
             str_starts_with($this->value, 'recruitment.') => 'Recrutamento',
             str_starts_with($this->value, 'pu.') => 'Curva de PU',
             str_starts_with($this->value, 'audit.') => 'Auditoria',
+            str_starts_with($this->value, 'reminder-logs.') => 'Auditoria',
             str_starts_with($this->value, 'reports.') => 'Relatórios',
             str_starts_with($this->value, 'proposal') => 'Comercial',
+            str_starts_with($this->value, 'contact-messages.') => 'Comercial',
             in_array($this, [
                 self::InvestorsView,
                 self::InvestorsCreate,

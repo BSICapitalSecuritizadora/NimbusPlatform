@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContactMessages;
 
+use App\Enums\AccessPermission;
 use App\Filament\Resources\ContactMessages\Pages\EditContactMessage;
 use App\Filament\Resources\ContactMessages\Pages\ListContactMessages;
 use App\Filament\Resources\ContactMessages\Pages\ViewContactMessage;
@@ -143,9 +144,30 @@ class ContactMessageResource extends Resource
         ];
     }
 
+    /**
+     * As mensagens do formulário público carregam nome, e-mail, telefone e o
+     * conteúdo enviado por cada lead. Sem policy registrada o Filament liberava
+     * o Resource por padrão, e esconder o item de navegação não fecha a URL
+     * direta — o gate precisa estar aqui.
+     */
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can(AccessPermission::ContactMessagesView->value) ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return static::canViewAny();
+    }
+
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()?->can(AccessPermission::ContactMessagesUpdate->value) ?? false;
     }
 
     public static function canDelete(Model $record): bool

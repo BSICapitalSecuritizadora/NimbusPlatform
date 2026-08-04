@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Document;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +13,8 @@ class GeminiService
     private const MODEL = 'gemini-2.5-flash';
 
     private const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
+
+    private const GENERATE_CONTENT_URL = self::API_URL.self::MODEL.':generateContent';
 
     private const SECURITIZATION_PROMPT = <<<'PROMPT'
 Você é um especialista em análise de documentos financeiros brasileiros, especificamente Termos de Securitização de CRI/CRA.
@@ -164,8 +167,8 @@ PROMPT;
     {
         $contents = $this->readDocumentContents($document);
 
-        $response = Http::timeout(360)->connectTimeout(15)
-            ->post(self::API_URL.self::MODEL.':generateContent?key='.config('services.gemini.key'), [
+        $response = $this->pendingRequest()
+            ->post(self::GENERATE_CONTENT_URL, [
                 'contents' => [[
                     'parts' => [
                         ['text' => self::SECURITIZATION_PROMPT],
@@ -238,8 +241,8 @@ PROMPT;
     {
         $contents = $this->readDocumentContents($document);
 
-        $response = Http::timeout(360)->connectTimeout(15)
-            ->post(self::API_URL.self::MODEL.':generateContent?key='.config('services.gemini.key'), [
+        $response = $this->pendingRequest()
+            ->post(self::GENERATE_CONTENT_URL, [
                 'contents' => [[
                     'parts' => [
                         ['text' => self::OBLIGATIONS_PROMPT],
@@ -480,6 +483,27 @@ PROMPT;
         }
 
         return $maxLength === null ? $value : mb_substr($value, 0, $maxLength);
+    }
+
+    /**
+     * Cliente HTTP compartilhado pelas chamadas ao Gemini.
+     *
+     * A chave vai no cabeçalho `x-goog-api-key`, não na query string: uma chave
+     * em `?key=` é registrada por proxies reversos, telemetria de saída e pelo
+     * histórico do próprio cliente HTTP — inclusive em `Http::recorded()`, que
+     * os testes inspecionam.
+     *
+     * ATENÇÃO (LGPD): os métodos que usam este cliente enviam o documento
+     * integral em base64 para um processador fora do país. Só devem ser
+     * disparados por ação explícita do usuário sobre documentos cuja
+     * transferência internacional esteja registrada no inventário de
+     * tratamento — nunca de forma automática.
+     */
+    private function pendingRequest(): PendingRequest
+    {
+        return Http::timeout(360)
+            ->connectTimeout(15)
+            ->withHeaders(['x-goog-api-key' => (string) config('services.gemini.key')]);
     }
 
     private function readDocumentContents(Document $document): string

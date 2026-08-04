@@ -2,6 +2,7 @@
 
 namespace App\Services\Obligations;
 
+use App\Enums\MalwareScanStatus;
 use App\Models\Obligation;
 use App\Models\ObligationEvidence;
 use App\Services\DocumentStorageService;
@@ -55,6 +56,10 @@ class ObligationEvidenceService
             'review_notes' => null,
             'rejection_reason' => null,
             'uploaded_at' => now(),
+            // O arquivo já passou pela varredura síncrona acima — que rejeita
+            // tanto o infectado quanto o não verificável — então o registro
+            // nasce com o veredito, e não pendente.
+            'scan_status' => MalwareScanStatus::Clean,
         ]);
 
         $this->historyRecorder->recordEvidenceUploaded($obligation, $evidence);

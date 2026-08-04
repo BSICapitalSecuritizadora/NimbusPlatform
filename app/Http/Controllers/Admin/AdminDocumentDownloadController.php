@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\DocumentDownload;
@@ -19,6 +20,8 @@ class AdminDocumentDownloadController extends Controller
         DocumentStorageService $documentStorageService,
     ): StreamedResponse {
         Gate::authorize('documents.view');
+
+        abort_unless($document->scan_status === MalwareScanStatus::Clean, Response::HTTP_NOT_FOUND);
 
         $disk = $document->resolved_storage_disk;
         $path = $document->file_path;

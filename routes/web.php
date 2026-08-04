@@ -30,9 +30,11 @@ use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Livewire\Proposals\ContinuationForm;
 use App\Livewire\Proposals\CreateProposalForm;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 // Microsoft Azure Auth
 Route::get('/auth/azure/redirect', [AzureController::class, 'redirect'])->name('auth.azure.redirect');
@@ -126,8 +128,18 @@ Route::post('/trabalhe-conosco/{id}/candidatar', [JobController::class, 'apply']
     ->middleware('throttle:site-job-apply')
     ->name('site.vacancies.apply');
 
-// Healthcheck para staging / monitoramento
-Route::get('/healthcheck', function () {
+/**
+ * Healthcheck para o probe da plataforma / monitoramento.
+ *
+ * Cada requisição custa um `SELECT 1` e um par escrita/remoção no storage, então
+ * o endpoint é limitado por IP: sem o limite, um GET anônimo repetido vira
+ * amplificação barata de I/O de disco e de conexões de banco.
+ *
+ * O corpo detalhado (`checks`) diz qual dependência está degradada e por isso só
+ * é devolvido a quem apresenta o token compartilhado. O probe não precisa dele:
+ * lê o código HTTP e o campo `status`.
+ */
+Route::get('/healthcheck', function (Request $request) {
     $checks = [
         'app' => true,
         'database' => false,
@@ -142,20 +154,27 @@ Route::get('/healthcheck', function () {
 
     try {
         $disk = Storage::disk(config('filesystems.default'));
-        $disk->put('healthcheck.txt', 'ok');
-        $disk->delete('healthcheck.txt');
+        // Caminho único por requisição: dois probes simultâneos não podem
+        // apagar o arquivo um do outro e reportar falha por isso.
+        $probePath = 'healthcheck/'.Str::random(24).'.txt';
+        $disk->put($probePath, 'ok');
+        $disk->delete($probePath);
         $checks['storage'] = true;
     } catch (Throwable) {
     }
 
     $healthy = ! in_array(false, $checks, true);
 
-    return response()->json([
+    $expectedToken = (string) config('app.healthcheck_token', '');
+    $providedToken = (string) $request->header('X-Healthcheck-Token', '');
+    $showsDetails = $expectedToken !== '' && hash_equals($expectedToken, $providedToken);
+
+    return response()->json(array_filter([
         'status' => $healthy ? 'ok' : 'degraded',
-        'checks' => $checks,
+        'checks' => $showsDetails ? $checks : null,
         'timestamp' => now()->toIso8601String(),
-    ], $healthy ? 200 : 503);
-})->name('healthcheck');
+    ], static fn (mixed $value): bool => $value !== null), $healthy ? 200 : 503);
+})->middleware('throttle:20,1')->name('healthcheck');
 
 Route::middleware(['auth'])->get('/pending-approval', fn () => view('pages.auth.pending-approval'))->name('pending-approval');
 

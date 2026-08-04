@@ -50,6 +50,34 @@ it('sends the pdf as inline base64 to the generation endpoint', function (): voi
         ->and($result['covenants'])->toBe("Cláusula 9ª\n\nTexto dos covenants");
 });
 
+/**
+ * A chave ia na query string (`?key=...`), padrão da API do Gemini, mas que a
+ * deixa registrada em log de proxy, telemetria de saída e no histórico do
+ * próprio cliente HTTP.
+ */
+it('sends the api key in a header and never in the request url', function (): void {
+    Storage::fake('local');
+    Storage::disk('local')->put('contracts/test.pdf', '%PDF-1.4 fake content');
+
+    Http::fake([
+        'https://generativelanguage.googleapis.com/v1beta/models/*' => Http::response([
+            'candidates' => [[
+                'content' => ['parts' => [['text' => '{}']]],
+            ]],
+        ]),
+    ]);
+
+    $document = mock(Document::class);
+    $document->shouldReceive('getAttribute')->with('resolved_storage_disk')->andReturn('local');
+    $document->shouldReceive('getAttribute')->with('file_path')->andReturn('contracts/test.pdf');
+
+    app(GeminiService::class)->extractSecuritizationClauses($document);
+
+    Http::assertSent(fn ($request): bool => $request->hasHeader('x-goog-api-key', 'test-key')
+        && ! str_contains($request->url(), 'key=')
+        && ! str_contains($request->url(), 'test-key'));
+});
+
 it('returns null for clauses not found in the document', function (): void {
     Storage::fake('local');
     Storage::disk('local')->put('contracts/test.pdf', '%PDF-1.4 fake content');
@@ -86,7 +114,7 @@ it('throws when the generation request fails', function (): void {
     $document->shouldReceive('getAttribute')->with('file_path')->andReturn('contracts/test.pdf');
 
     expect(fn () => app(GeminiService::class)->extractSecuritizationClauses($document))
-        ->toThrow(\Exception::class);
+        ->toThrow(Exception::class);
 });
 
 it('throws when the document file does not exist', function (): void {
@@ -97,5 +125,5 @@ it('throws when the document file does not exist', function (): void {
     $document->shouldReceive('getAttribute')->with('file_path')->andReturn('missing.pdf');
 
     expect(fn () => app(GeminiService::class)->extractSecuritizationClauses($document))
-        ->toThrow(\RuntimeException::class);
+        ->toThrow(RuntimeException::class);
 });

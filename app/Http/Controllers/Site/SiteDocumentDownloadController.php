@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Site;
 
+use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Services\DocumentStorageService;
@@ -41,6 +42,12 @@ class SiteDocumentDownloadController extends Controller
 
         if ($path === '') {
             $this->logFailure($request, $document, $disk, $path, 'caminho_do_arquivo_vazio', true, null);
+
+            abort(Response::HTTP_NOT_FOUND);
+        }
+
+        if ($document->scan_status !== MalwareScanStatus::Clean) {
+            $this->logFailure($request, $document, $disk, $path, 'varredura_antivirus_nao_concluida', true, null);
 
             abort(Response::HTTP_NOT_FOUND);
         }

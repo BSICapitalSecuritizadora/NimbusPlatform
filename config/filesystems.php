@@ -17,6 +17,12 @@
 | do processo — php-fpm, filas e artisan cada um em um lugar diferente. Nesse
 | caso o valor é ignorado e vale o padrão da aplicação.
 |
+| As duas raízes também precisam ser disjuntas. O symlink `public/storage`
+| aponta para a raiz pública e é servido como arquivo estático pelo nginx: se
+| ela for igual à privada — ou contiver/estiver contida nela — todo documento
+| privado passa a ser baixável por URL, sem autenticação. Nesse caso a raiz
+| pública é ignorada e vale o padrão da aplicação.
+|
 */
 
 $resolveStorageRoot = static function (string $variable, string $default): string {
@@ -25,9 +31,22 @@ $resolveStorageRoot = static function (string $variable, string $default): strin
     return str_starts_with($configured, '/') ? $configured : $default;
 };
 
+/**
+ * Dois diretórios se sobrepõem quando são iguais ou quando um está dentro do
+ * outro. A barra final evita que `/home/data/private-backup` seja tratado como
+ * filho de `/home/data/private`.
+ */
+$storageRootsOverlap = static function (string $first, string $second): bool {
+    return str_starts_with($first.'/', $second.'/') || str_starts_with($second.'/', $first.'/');
+};
+
 $privateStorageRoot = $resolveStorageRoot('PRIVATE_STORAGE_ROOT', storage_path('app/private'));
 
 $publicStorageRoot = $resolveStorageRoot('PUBLIC_STORAGE_ROOT', storage_path('app/public'));
+
+if ($storageRootsOverlap($publicStorageRoot, $privateStorageRoot)) {
+    $publicStorageRoot = storage_path('app/public');
+}
 
 return [
 
