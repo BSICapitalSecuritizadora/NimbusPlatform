@@ -94,7 +94,12 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => $privateStorageRoot,
-            'serve' => true,
+            // A aplicação nunca gera URL assinada para este disco: todo documento
+            // privado sai por controller, que reautoriza a cada requisição. Com
+            // `serve => true` o framework ainda registrava GET e PUT em
+            // /storage/{path} — o PUT aceita escrita arbitrária no disco privado
+            // para quem tiver uma assinatura válida. Sem uso, é só superfície.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

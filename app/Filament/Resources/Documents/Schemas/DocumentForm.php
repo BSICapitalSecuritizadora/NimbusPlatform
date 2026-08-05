@@ -33,9 +33,12 @@ class DocumentForm
                         ->required()
                         ->searchable(),
 
+                    // `mime_type` e `file_size` não vêm mais do formulário: são
+                    // derivados do arquivo em disco por DerivesStoredFileMetadata.
+                    // Campos Hidden fazem parte do estado Livewire e são
+                    // reescritos por quem controla a requisição — e o MIME vira
+                    // `Content-Type` no preview.
                     Hidden::make('file_name'),
-                    Hidden::make('mime_type'),
-                    Hidden::make('file_size'),
                     Hidden::make('storage_disk'),
 
                     FileUpload::make('file_path')
@@ -58,8 +61,6 @@ class DocumentForm
                         ->afterStateUpdated(function ($state, callable $set) {
                             if ($state instanceof TemporaryUploadedFile) {
                                 $set('file_name', $state->getClientOriginalName());
-                                $set('mime_type', $state->getMimeType());
-                                $set('file_size', $state->getSize());
                                 $set('storage_disk', 'local');
                             }
                         })

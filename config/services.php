@@ -55,8 +55,48 @@ return [
         'obligations_min_confidence' => (float) env('GEMINI_OBLIGATIONS_MIN_CONFIDENCE', 0.6),
     ],
 
+    /*
+    | Microsoft Clarity faz gravação de sessão (session replay), não apenas
+    | contagem de páginas: registra movimento de ponteiro, cliques e o conteúdo
+    | da tela. Por isso ele não é carregado onde a gravação capturaria segredo,
+    | dado pessoal sensível ou identificaria quem preferiu não se identificar.
+    |
+    | O nível de mascaramento continua sendo responsabilidade do painel do
+    | Clarity (Settings › Masking deve ficar em "Strict"): o SDK não expõe API
+    | para forçá-lo pelo cliente. A exclusão por rota abaixo é o controle que a
+    | aplicação consegue garantir sozinha.
+    */
     'clarity' => [
         'id' => env('CLARITY_PROJECT_ID'),
+
+        'excluded_routes' => [
+            // Canal de Ética: denúncias pressupõem anonimato; gravar a sessão de
+            // quem denuncia anula a própria finalidade do canal.
+            'site.canal-etica',
+
+            // Telas de autenticação — a gravação alcançaria o campo de senha.
+            'login',
+            'register',
+            'password.*',
+            'two-factor.*',
+            'verification.*',
+            'nimbus.auth.*',
+            'investor.login',
+
+            // Áreas autenticadas: dados financeiros, documentos e dados pessoais.
+            'filament.*',
+            'investor.*',
+            'nimbus.*',
+            'operacional.*',
+            'settings.*',
+            'profile.edit',
+            'appearance.edit',
+            'dashboard',
+
+            // Formulário de proposta: dados financeiros da empresa proponente.
+            'site.proposal.continuation.*',
+            'proposal.create',
+        ],
     ],
 
     'portal' => [

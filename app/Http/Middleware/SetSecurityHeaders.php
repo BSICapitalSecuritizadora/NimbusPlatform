@@ -187,7 +187,10 @@ class SetSecurityHeaders
             "img-src 'self' data: blob: https:",
             "font-src {$fontSources}",
             'connect-src '.implode(' ', array_unique($connectSources)),
-            "frame-src 'self' https://www.google.com",
+            // O único iframe de terceiro é o mapa embutido na página de contato
+            // (resources/views/site/contact.blade.php). O caminho restringe a
+            // origem ao endpoint de embed — não é entrada morta, não remover.
+            "frame-src 'self' https://www.google.com/maps/embed",
             "frame-ancestors 'self'",
             "form-action 'self'",
             "base-uri 'self'",

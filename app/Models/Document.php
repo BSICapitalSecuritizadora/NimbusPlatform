@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\DerivesStoredFileMetadata;
 use App\Concerns\ScansUploadedFile;
 use App\Enums\MalwareScanStatus;
 use Database\Factories\DocumentFactory;
@@ -17,7 +18,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 class Document extends Model
 {
     /** @use HasFactory<DocumentFactory> */
-    use HasFactory, LogsActivity, ScansUploadedFile;
+    use DerivesStoredFileMetadata, HasFactory, LogsActivity, ScansUploadedFile;
 
     public const CATEGORY_OPTIONS = [
         'anuncios' => 'Anúncios',
@@ -72,6 +73,27 @@ class Document extends Model
     }
 
     public function uploadedFileDisk(): string
+    {
+        return $this->resolved_storage_disk;
+    }
+
+    protected function storedFileMimeColumn(): string
+    {
+        return 'mime_type';
+    }
+
+    /**
+     * O nome exibido no download é o original informado no upload, não o nome de
+     * armazenamento. Ele sai por `HeaderUtils::makeDisposition()`, que sanitiza —
+     * o que precisava sair do controle do cliente era o MIME, reutilizado como
+     * `Content-Type`.
+     */
+    protected function storedFileNameColumn(): ?string
+    {
+        return null;
+    }
+
+    protected function storedFileMetadataDisk(): string
     {
         return $this->resolved_storage_disk;
     }

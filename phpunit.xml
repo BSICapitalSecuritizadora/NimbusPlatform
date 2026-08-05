@@ -17,7 +17,14 @@
             <directory>app</directory>
         </include>
     </source>
+    <!--
+        Ambiente da suíte. Fica aqui, e não em um `.env.testing` versionado: um
+        arquivo de ambiente no repositório precisa carregar uma APP_KEY para
+        funcionar, e chave commitada é chave vazada. A APP_KEY vem do `.env`
+        local ou do `key:generate` da pipeline.
+    -->
     <php>
+        <env name="APP_NAME" value="BSI Capital (testes)"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
@@ -28,6 +35,8 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- Sem clamd na suíte: o scanner devolve CLEAN e nada fica bloqueado. -->
+        <env name="CLAMAV_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

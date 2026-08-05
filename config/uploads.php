@@ -1,5 +1,43 @@
 <?php
 
+use Illuminate\Support\Env;
+
+/*
+|--------------------------------------------------------------------------
+| Antivirus flag parsing
+|--------------------------------------------------------------------------
+|
+| `(bool) env(...)` aceita qualquer string não vazia como `true`: `disable`,
+| `off` e `no` LIGARIAM a varredura em vez de desligá-la, silenciosamente. Como
+| o valor decide se os uploads são varridos, um erro de digitação aqui não pode
+| virar um padrão implícito — ele falha no boot (e no `config:cache`, portanto
+| no deploy) com a mensagem dizendo o que escrever.
+|
+*/
+
+$parseAntivirusFlag = static function (bool $default): bool {
+    $configured = Env::get('CLAMAV_ENABLED');
+
+    if ($configured === null || $configured === '') {
+        return $default;
+    }
+
+    if (is_bool($configured)) {
+        return $configured;
+    }
+
+    $parsed = filter_var($configured, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+    if ($parsed === null) {
+        throw new RuntimeException(
+            "CLAMAV_ENABLED='{$configured}' não é um booleano válido. Use true ou false — "
+            .'valores como "enable", "disable" ou "off" seriam interpretados como TRUE.'
+        );
+    }
+
+    return $parsed;
+};
+
 return [
 
     /*
@@ -106,11 +144,21 @@ return [
     | Scanning is enabled by default in production and can be explicitly disabled
     | in local environments. Files are not released until clamd reports them clean.
     |
+    | Em produção o clamd é um container sidecar do Azure App Service. Sidecars
+    | compartilham o namespace de rede do container principal e NÃO recebem DNS
+    | por nome — o nome no portal é só identificador de deployment. Por isso o
+    | endereço é sempre `127.0.0.1`; um hostname simbólico não resolve.
+    |
+    | O `socket` só é usado quando explicitamente definido. O default precisa ser
+    | falsy: o ClamAvFileScanner prefere o socket unix sempre que ele existir e,
+    | com um caminho como padrão, uma variável ausente faria o TCP nunca ser
+    | tentado — antivírus "indisponível" com o sidecar rodando ao lado.
+    |
     */
 
     'clamav' => [
-        'enabled' => (bool) env('CLAMAV_ENABLED', env('APP_ENV') === 'production'),
-        'socket' => env('CLAMAV_SOCKET', '/var/run/clamav/clamd.ctl'),
+        'enabled' => $parseAntivirusFlag(env('APP_ENV') === 'production'),
+        'socket' => env('CLAMAV_SOCKET') ?: null,
         'host' => env('CLAMAV_HOST', '127.0.0.1'),
         'port' => (int) env('CLAMAV_PORT', 3310),
         'timeout' => (int) env('CLAMAV_TIMEOUT', 30),

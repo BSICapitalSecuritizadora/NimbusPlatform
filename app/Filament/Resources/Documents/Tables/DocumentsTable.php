@@ -120,14 +120,12 @@ class DocumentsTable
                             ->afterStateUpdated(function ($state, callable $set): void {
                                 if ($state instanceof TemporaryUploadedFile) {
                                     $set('file_name', $state->getClientOriginalName());
-                                    $set('mime_type', $state->getMimeType());
-                                    $set('file_size', $state->getSize());
                                     $set('storage_disk', 'local');
                                 }
                             }),
+                        // `mime_type` e `file_size` são derivados do arquivo em
+                        // disco no `saving` do model, não enviados pelo formulário.
                         Hidden::make('file_name'),
-                        Hidden::make('mime_type'),
-                        Hidden::make('file_size'),
                         Hidden::make('storage_disk')
                             ->default(Document::defaultStorageDisk()),
                     ])
@@ -146,8 +144,6 @@ class DocumentsTable
                         ]);
                         $newVersion->file_path = $data['file_path'];
                         $newVersion->file_name = $data['file_name'] ?? null;
-                        $newVersion->mime_type = $data['mime_type'] ?? null;
-                        $newVersion->file_size = $data['file_size'] ?? null;
                         $newVersion->storage_disk = $data['storage_disk'] ?? Document::defaultStorageDisk();
                         $newVersion->version = $record->version + 1;
                         $newVersion->parent_document_id = $record->parent_document_id ?? $record->id;

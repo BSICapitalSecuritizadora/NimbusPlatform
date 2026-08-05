@@ -5,17 +5,17 @@ namespace App\Concerns;
 use App\Services\DocumentStorageService;
 
 /**
- * Deriva `file_mime`, `file_size` e `file_original_name` do arquivo realmente
- * gravado em disco, em vez de aceitar o que veio no payload do formulário.
+ * Deriva os metadados do arquivo realmente gravado em disco, em vez de aceitar
+ * o que veio no payload do formulário.
  *
- * Metadados de arquivo enviados pelo cliente não são confiáveis: o `file_mime`
- * persistido é reutilizado como `Content-Type` no preview, então um valor
- * forjado se tornaria execução de conteúdo no navegador.
+ * Metadados enviados pelo cliente não são confiáveis: o MIME persistido é
+ * reutilizado como `Content-Type` no preview, então um valor forjado se tornaria
+ * execução de conteúdo no navegador. Campos `Hidden` do Filament fazem parte do
+ * estado Livewire e são reescritos por quem controla a requisição.
  *
- * @property string $file_path
- * @property string $file_mime
- * @property int $file_size
- * @property string $file_original_name
+ * Os nomes de coluna são sobrescrevíveis porque os models não convergem: o
+ * `Document` usa `mime_type`/`file_name`, os do portal usam
+ * `file_mime`/`file_original_name`.
  */
 trait DerivesStoredFileMetadata
 {
@@ -27,24 +27,82 @@ trait DerivesStoredFileMetadata
     }
 
     /**
+     * Coluna que guarda o caminho do arquivo no disco.
+     */
+    protected function storedFilePathColumn(): string
+    {
+        return 'file_path';
+    }
+
+    /**
+     * Coluna do MIME derivado do disco.
+     */
+    protected function storedFileMimeColumn(): string
+    {
+        return 'file_mime';
+    }
+
+    /**
+     * Coluna do tamanho em bytes.
+     */
+    protected function storedFileSizeColumn(): string
+    {
+        return 'file_size';
+    }
+
+    /**
+     * Coluna do nome de exibição, ou `null` para não derivá-lo.
+     *
+     * Só faz sentido derivar quando o nome exibido é o do arquivo em disco. Onde
+     * o nome original informado pelo usuário é o que aparece no download, herdar
+     * `basename($path)` trocaria "Termo de Securitização.pdf" pelo nome de
+     * armazenamento — e o nome é inofensivo, porque sai sempre por
+     * `HeaderUtils::makeDisposition()`, que o sanitiza.
+     */
+    protected function storedFileNameColumn(): ?string
+    {
+        return 'file_original_name';
+    }
+
+    /**
+     * Disco em que o arquivo está gravado.
+     */
+    protected function storedFileMetadataDisk(): string
+    {
+        return DocumentStorageService::privateDisk();
+    }
+
+    /**
      * Só toca no banco quando algum campo de arquivo mudou — inclusive quando
      * apenas os metadados mudaram, o que sinaliza tentativa de sobrescrevê-los
      * sem trocar o arquivo.
      */
     protected function syncStoredFileMetadata(): void
     {
-        if (! $this->isDirty(['file_path', 'file_mime', 'file_size', 'file_original_name'])) {
+        $pathColumn = $this->storedFilePathColumn();
+        $mimeColumn = $this->storedFileMimeColumn();
+        $sizeColumn = $this->storedFileSizeColumn();
+        $nameColumn = $this->storedFileNameColumn();
+
+        $watchedColumns = array_values(array_filter([
+            $pathColumn,
+            $mimeColumn,
+            $sizeColumn,
+            $nameColumn,
+        ]));
+
+        if (! $this->isDirty($watchedColumns)) {
             return;
         }
 
-        $path = (string) $this->file_path;
+        $path = (string) $this->getAttribute($pathColumn);
 
         if ($path === '') {
             return;
         }
 
         $metadata = rescue(
-            fn (): array => app(DocumentStorageService::class)->privateMetadata($path),
+            fn (): array => app(DocumentStorageService::class)->metadata($path, $this->storedFileMetadataDisk()),
             ['mime_type' => null, 'size_bytes' => null],
             report: false,
         );
@@ -59,11 +117,14 @@ trait DerivesStoredFileMetadata
             return;
         }
 
-        $this->file_mime = $mimeType;
-        $this->file_original_name = basename($path);
+        $this->setAttribute($mimeColumn, $mimeType);
+
+        if ($nameColumn !== null) {
+            $this->setAttribute($nameColumn, basename($path));
+        }
 
         if (is_int($metadata['size_bytes'])) {
-            $this->file_size = $metadata['size_bytes'];
+            $this->setAttribute($sizeColumn, $metadata['size_bytes']);
         }
     }
 
@@ -76,8 +137,15 @@ trait DerivesStoredFileMetadata
      */
     protected function backfillMissingFileMetadata(string $path): void
     {
-        $this->file_mime ??= 'application/octet-stream';
-        $this->file_original_name ??= basename($path);
-        $this->file_size ??= 0;
+        $mimeColumn = $this->storedFileMimeColumn();
+        $sizeColumn = $this->storedFileSizeColumn();
+        $nameColumn = $this->storedFileNameColumn();
+
+        $this->setAttribute($mimeColumn, $this->getAttribute($mimeColumn) ?? 'application/octet-stream');
+        $this->setAttribute($sizeColumn, $this->getAttribute($sizeColumn) ?? 0);
+
+        if ($nameColumn !== null) {
+            $this->setAttribute($nameColumn, $this->getAttribute($nameColumn) ?? basename($path));
+        }
     }
 }
