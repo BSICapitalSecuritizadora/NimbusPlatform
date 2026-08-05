@@ -261,6 +261,10 @@ Route::middleware(['auth', EnsureTwoFactorEnabled::class])
 require __DIR__.'/settings.php';
 require __DIR__.'/investor.php';
 
+// Por último, de propósito: os redirects do site anterior incluem um curinga em
+// /download/{...} e não podem sombrear nenhuma rota da aplicação.
+require __DIR__.'/legacy-redirects.php';
+
 Route::redirect('/nimbus', '/gestao-documental-externa/login');
 Route::redirect('/nimbus/login', '/gestao-documental-externa/login');
 
