@@ -1,7 +1,14 @@
 <x-filament-panels::page.simple>
     <div class="grid gap-4">
         @if(session('loginError'))
-            <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+            <div
+                class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400"
+                role="alert"
+                aria-live="assertive"
+                aria-atomic="true"
+                tabindex="-1"
+                autofocus
+            >
                 {{ session('loginError') }}
             </div>
         @endif

@@ -118,7 +118,7 @@
             </div>
         </section>
 
-        <section class="overflow-hidden rounded-3xl border border-white/10 bg-gray-950/70 shadow-2xl shadow-black/20">
+        <section class="hidden overflow-hidden rounded-3xl border border-white/10 bg-gray-950/70 shadow-2xl shadow-black/20 lg:block">
             <div class="overflow-x-auto">
                 <div class="min-w-[980px]">
                     <div class="grid grid-cols-7 border-b border-white/10 bg-white/[0.02]">
@@ -144,7 +144,7 @@
                                         <span
                                             @class([
                                                 'inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold',
-                                                'bg-primary-500 text-gray-950' => $day['is_today'],
+                                                'bg-primary-500 text-[#091b23]' => $day['is_today'],
                                                 'text-white' => ! $day['is_today'],
                                             ])
                                         >
@@ -153,7 +153,7 @@
 
                                         @if (count($day['events']) > 0)
                                             <span class="rounded-full border border-primary-400/20 bg-primary-500/10 px-2.5 py-1 text-[11px] font-semibold text-primary-200">
-                                                {{ count($day['events']) }} pgto(s)
+                                                {{ count($day['events']) }} {{ count($day['events']) === 1 ? 'pagamento' : 'pagamentos' }}
                                             </span>
                                         @endif
                                     </div>
@@ -197,7 +197,7 @@
                     <div wire:key="expense-calendar-mobile-{{ $day['date'] }}" class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                         <div class="mb-3 flex items-center justify-between">
                             <h3 class="text-sm font-semibold text-white">{{ \Carbon\CarbonImmutable::parse($day['date'])->locale('pt_BR')->translatedFormat('d \d\e F') }}</h3>
-                            <span class="text-xs text-gray-400">{{ count($day['events']) }} evento(s)</span>
+                            <span class="text-xs text-gray-400">{{ count($day['events']) }} {{ count($day['events']) === 1 ? 'evento' : 'eventos' }}</span>
                         </div>
 
                         <div class="space-y-2">

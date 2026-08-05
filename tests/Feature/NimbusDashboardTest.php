@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\MalwareScanStatus;
+use App\Filament\NimbusWidgets\NimbusRecentActivities;
 use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Pages\Nimbus\NotificationSettings;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
@@ -179,6 +180,41 @@ it('renders the Nimbus dashboard widgets when recent submissions exist', functio
         ->assertSuccessful();
 });
 
+it('links expired access keys to their existing filtered list', function () {
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-expired-access-keys@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $portalUser = PortalUser::query()->create([
+        'full_name' => 'Cliente com chave expirada',
+        'email' => 'cliente.chave.expirada@example.com',
+        'document_number' => '45678912300',
+        'phone_number' => '11977776666',
+        'status' => 'ACTIVE',
+    ]);
+
+    AccessToken::query()->create([
+        'nimbus_portal_user_id' => $portalUser->id,
+        'code_hash' => AccessToken::computeHash('EXPI-RED1-2345'),
+        'status' => 'PENDING',
+        'expires_at' => now()->subDay(),
+    ]);
+
+    $filteredUrl = AccessTokenResource::getUrl('index', [
+        'filters' => [
+            'expiradas' => ['isActive' => true],
+        ],
+    ], panel: 'admin');
+
+    $this->actingAs($user);
+
+    Livewire::test(NimbusRecentActivities::class)
+        ->assertSee('1 token')
+        ->assertSee($filteredUrl, false)
+        ->assertDontSee('href="#"', false);
+});
+
 it('loads the application vite theme for the admin panel', function () {
     expect(Filament::getPanel('admin')->getViteTheme())
         ->toBe('resources/css/filament/admin/theme.css');
@@ -187,10 +223,11 @@ it('loads the application vite theme for the admin panel', function () {
 it('registers the refreshed admin palette on the Filament panel', function () {
     expect(Filament::getPanel('admin')->getColors())
         ->toMatchArray([
+            'danger' => Color::Red,
             'gray' => Color::hex('#e6e4e4'),
             'info' => Color::hex('#091b23'),
-            'primary' => Color::hex('#a06e28'),
-            'warning' => Color::hex('#a06e28'),
+            'primary' => Color::hex('#b7832f'),
+            'warning' => Color::Amber,
         ]);
 });
 
@@ -487,6 +524,9 @@ it('allows admin users to upload return documents and renders them in the dedica
         ->assertSee('planilha.xlsx')
         ->assertSee('Disponível no portal')
         ->assertSee('Anexar resposta')
+        ->assertSee('for="response-files"', false)
+        ->assertSee('id="response-files"', false)
+        ->assertSee('aria-describedby="response-files-help"', false)
         ->assertSee(route('admin.nimbus.submissions.response-files.store', $submission), false);
 });
 
@@ -880,7 +920,12 @@ it('renders and saves notification settings under Comunicação', function () {
         ->assertSee('Microsoft 365 / Outlook')
         ->assertSee('Conectar conta corporativa')
         ->assertSee('Salvar configurações')
-        ->assertSee('Ver auditoria de envios');
+        ->assertSee('Ver auditoria de envios')
+        ->assertSee('id="notification-portal_notify_new_submission"', false)
+        ->assertSee('for="notification-portal_notify_new_submission"', false)
+        ->assertSee('aria-labelledby="notification-portal_notify_new_submission-label"', false)
+        ->assertSee('aria-describedby="notification-portal_notify_new_submission-description"', false)
+        ->assertSee('aria-live="polite"', false);
 
     Livewire::test(NotificationSettings::class)
         ->set('data.portal_notify_new_submission', false)

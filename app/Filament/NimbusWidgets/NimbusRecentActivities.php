@@ -2,7 +2,9 @@
 
 namespace App\Filament\NimbusWidgets;
 
+use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
 use App\Models\Nimbus\AccessToken;
+use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
 use Filament\Widgets\Widget;
 
@@ -23,7 +25,7 @@ class NimbusRecentActivities extends Widget
             ->where('expires_at', '<', now())
             ->count();
 
-        $recentActivities = \App\Models\Nimbus\PortalUser::latest('last_login_at')
+        $recentActivities = PortalUser::latest('last_login_at')
             ->whereNotNull('last_login_at')
             ->take(5)
             ->get();
@@ -31,6 +33,13 @@ class NimbusRecentActivities extends Widget
         return [
             'oldPendingCount' => $oldPendingCount,
             'expiredTokensCount' => $expiredTokensCount,
+            'expiredTokensUrl' => AccessTokenResource::canViewAny()
+                ? AccessTokenResource::getUrl('index', [
+                    'filters' => [
+                        'expiradas' => ['isActive' => true],
+                    ],
+                ], panel: 'admin')
+                : null,
             'recentActivities' => $recentActivities,
         ];
     }

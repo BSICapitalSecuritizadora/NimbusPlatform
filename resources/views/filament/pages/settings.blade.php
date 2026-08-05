@@ -36,7 +36,7 @@
                             @if ($this->hasPaymentTemplate())
                                 <a
                                     href="{{ $this->getPaymentTemplateDownloadUrl() }}"
-                                    class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-gray-950 shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60"
+                                    class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-[#091b23] shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60"
                                 >
                                     <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedArrowDownTray" class="h-5 w-5" />
                                     <span>Baixar template atual</span>
@@ -53,7 +53,7 @@
                                 type="file"
                                 wire:model="paymentTemplateFile"
                                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                class="block w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-200 file:mr-4 file:rounded-xl file:border-0 file:bg-primary-500 file:px-4 file:py-2 file:font-semibold file:text-gray-950 hover:file:bg-primary-400 focus:border-primary-400/40 focus:outline-none focus:ring-2 focus:ring-primary-300/40"
+                                class="block w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-200 file:mr-4 file:rounded-xl file:border-0 file:bg-primary-500 file:px-4 file:py-2 file:font-semibold file:text-[#091b23] hover:file:bg-primary-400 focus:border-primary-400/40 focus:outline-none focus:ring-2 focus:ring-primary-300/40"
                             >
                             <p class="text-sm text-gray-500">
                                 Envie uma nova planilha `.xlsx` para substituir o arquivo padrão.
@@ -67,6 +67,7 @@
                             <button
                                 type="button"
                                 wire:click="restoreDefaultPaymentTemplate"
+                                wire:confirm="Restaurar o template padrão do fluxo de pagamentos? O arquivo personalizado atual deixará de ser usado."
                                 wire:loading.attr="disabled"
                                 wire:target="restoreDefaultPaymentTemplate"
                                 class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white transition hover:border-primary-400/40 hover:bg-primary-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
@@ -79,7 +80,7 @@
                                 type="submit"
                                 wire:loading.attr="disabled"
                                 wire:target="savePaymentTemplate,paymentTemplateFile"
-                                class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-gray-950 shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
+                                class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-[#091b23] shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedCheck" class="h-5 w-5" />
                                 <span>Salvar template</span>
@@ -124,7 +125,7 @@
                             @if ($this->hasPuHistoryTemplate())
                                 <a
                                     href="{{ $this->getPuHistoryTemplateDownloadUrl() }}"
-                                    class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-gray-950 shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60"
+                                    class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-[#091b23] shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60"
                                 >
                                     <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedArrowDownTray" class="h-5 w-5" />
                                     <span>Baixar template atual</span>
@@ -141,7 +142,7 @@
                                 type="file"
                                 wire:model="puHistoryTemplateFile"
                                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                class="block w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-200 file:mr-4 file:rounded-xl file:border-0 file:bg-primary-500 file:px-4 file:py-2 file:font-semibold file:text-gray-950 hover:file:bg-primary-400 focus:border-primary-400/40 focus:outline-none focus:ring-2 focus:ring-primary-300/40"
+                                class="block w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-200 file:mr-4 file:rounded-xl file:border-0 file:bg-primary-500 file:px-4 file:py-2 file:font-semibold file:text-[#091b23] hover:file:bg-primary-400 focus:border-primary-400/40 focus:outline-none focus:ring-2 focus:ring-primary-300/40"
                             >
                             <p class="text-sm text-gray-500">
                                 Envie uma nova planilha `.xlsx` para substituir o arquivo padrão.
@@ -155,6 +156,7 @@
                             <button
                                 type="button"
                                 wire:click="restoreDefaultPuHistoryTemplate"
+                                wire:confirm="Restaurar o template padrão do histórico de PU? O arquivo personalizado atual deixará de ser usado."
                                 wire:loading.attr="disabled"
                                 wire:target="restoreDefaultPuHistoryTemplate"
                                 class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white transition hover:border-primary-400/40 hover:bg-primary-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
@@ -167,7 +169,7 @@
                                 type="submit"
                                 wire:loading.attr="disabled"
                                 wire:target="savePuHistoryTemplate,puHistoryTemplateFile"
-                                class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-gray-950 shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
+                                class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-[#091b23] shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedCheck" class="h-5 w-5" />
                                 <span>Salvar template</span>
@@ -212,7 +214,7 @@
                             @if ($this->hasIntegralizationHistoryTemplate())
                                 <a
                                     href="{{ $this->getIntegralizationHistoryTemplateDownloadUrl() }}"
-                                    class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-gray-950 shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60"
+                                    class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-[#091b23] shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60"
                                 >
                                     <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedArrowDownTray" class="h-5 w-5" />
                                     <span>Baixar template atual</span>
@@ -229,7 +231,7 @@
                                 type="file"
                                 wire:model="integralizationHistoryTemplateFile"
                                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                class="block w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-200 file:mr-4 file:rounded-xl file:border-0 file:bg-primary-500 file:px-4 file:py-2 file:font-semibold file:text-gray-950 hover:file:bg-primary-400 focus:border-primary-400/40 focus:outline-none focus:ring-2 focus:ring-primary-300/40"
+                                class="block w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-gray-200 file:mr-4 file:rounded-xl file:border-0 file:bg-primary-500 file:px-4 file:py-2 file:font-semibold file:text-[#091b23] hover:file:bg-primary-400 focus:border-primary-400/40 focus:outline-none focus:ring-2 focus:ring-primary-300/40"
                             >
                             <p class="text-sm text-gray-500">
                                 Envie uma nova planilha `.xlsx` para substituir o arquivo padrão.
@@ -243,6 +245,7 @@
                             <button
                                 type="button"
                                 wire:click="restoreDefaultIntegralizationHistoryTemplate"
+                                wire:confirm="Restaurar o template padrão do histórico de integralizações? O arquivo personalizado atual deixará de ser usado."
                                 wire:loading.attr="disabled"
                                 wire:target="restoreDefaultIntegralizationHistoryTemplate"
                                 class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white transition hover:border-primary-400/40 hover:bg-primary-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
@@ -255,7 +258,7 @@
                                 type="submit"
                                 wire:loading.attr="disabled"
                                 wire:target="saveIntegralizationHistoryTemplate,integralizationHistoryTemplateFile"
-                                class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-gray-950 shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
+                                class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-[#091b23] shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedCheck" class="h-5 w-5" />
                                 <span>Salvar template</span>

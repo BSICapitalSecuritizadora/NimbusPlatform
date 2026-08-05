@@ -189,7 +189,7 @@ class NotificationSettings extends Page
             'status_classes' => 'border border-slate-400/20 bg-white/5 text-slate-200',
             'description' => 'Conecte a conta Microsoft corporativa para usar o canal Outlook/Microsoft 365 no envio das notificações do portal.',
             'action_label' => 'Conectar conta corporativa',
-            'action_classes' => 'bg-primary-500 text-gray-950 hover:bg-primary-400 focus-visible:ring-primary-300/60',
+            'action_classes' => 'bg-primary-500 text-[#091b23] hover:bg-primary-400 focus-visible:ring-primary-300/60',
             'action_icon' => Heroicon::OutlinedArrowTopRightOnSquare,
             'notification_title' => 'Conexão corporativa pendente.',
             'notification_body' => 'Para concluir a conexão, configure no ambiente: '.implode(', ', $missingLabels).'.',

@@ -37,10 +37,10 @@ class DeadlinesWidget extends Widget
         return [
             'groups' => [
                 'Vencidos' => ['items' => $vencidos->take(5), 'color' => 'danger', 'count' => $vencidos->count()],
-                'Vencem Hoje' => ['items' => $hoje->take(5), 'color' => 'danger', 'count' => $hoje->count()],
-                'Próx. 3 Dias' => ['items' => $proximos3->take(5), 'color' => 'warning', 'count' => $proximos3->count()],
-                'Próx. 7 Dias' => ['items' => $proximos7->take(5), 'color' => 'warning', 'count' => $proximos7->count()],
-                'Sem Prazo' => ['items' => $semPrazo->take(5), 'color' => 'gray', 'count' => $semPrazo->count()],
+                'Vencem hoje' => ['items' => $hoje->take(5), 'color' => 'danger', 'count' => $hoje->count()],
+                'Próx. 3 dias' => ['items' => $proximos3->take(5), 'color' => 'warning', 'count' => $proximos3->count()],
+                'Próx. 7 dias' => ['items' => $proximos7->take(5), 'color' => 'warning', 'count' => $proximos7->count()],
+                'Sem prazo' => ['items' => $semPrazo->take(5), 'color' => 'gray', 'count' => $semPrazo->count()],
             ],
         ];
     }

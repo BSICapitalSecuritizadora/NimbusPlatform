@@ -2,7 +2,7 @@
     <x-filament::section>
         <div class="flex flex-col gap-y-4">
             <h3 class="text-base font-semibold leading-6 text-gray-950 dark:text-white">
-                Ações Rápidas
+                Ações rápidas
             </h3>
             
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -30,10 +30,10 @@
                 </x-filament::button>
                 @endif
 
-                @if(auth()->user()->can('obligations.view'))
+                @if(\App\Filament\Pages\ObligationDashboard::canAccess())
                 <x-filament::button
                     tag="a"
-                    href="{{ \App\Filament\Pages\ObligationDashboard::getUrl() ?? '#' }}"
+                    href="{{ \App\Filament\Pages\ObligationDashboard::getUrl(['filters' => ['due_window' => 'overdue']]) }}"
                     color="danger"
                     icon="heroicon-o-exclamation-triangle"
                     class="w-full"

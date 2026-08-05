@@ -73,7 +73,10 @@ it('renders the settings page and allows replacing the payment template', functi
         ->get(Settings::getUrl(panel: 'admin'))
         ->assertSuccessful()
         ->assertSee('Template do fluxo de pagamentos')
-        ->assertSee('Salvar template');
+        ->assertSee('Salvar template')
+        ->assertSee('wire:confirm="Restaurar o template padrão do fluxo de pagamentos?', false)
+        ->assertSee('wire:confirm="Restaurar o template padrão do histórico de PU?', false)
+        ->assertSee('wire:confirm="Restaurar o template padrão do histórico de integralizações?', false);
 
     Livewire::test(Settings::class)
         ->set('paymentTemplateFile', UploadedFile::fake()->create(

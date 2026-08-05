@@ -1,6 +1,7 @@
 <?php
 
 use App\DTOs\ConstructionProgressData;
+use App\Filament\Pages\Reports;
 use App\Filament\Resources\EmissionMonthlyReportNotes\EmissionMonthlyReportNoteResource;
 use App\Filament\Resources\EmissionMonthlyReportNotes\Pages\ListEmissionMonthlyReportNotes;
 use App\Models\Construction;
@@ -682,9 +683,12 @@ it('falls back to the single-month report when no end month is provided', functi
 it('renders the reports page with the generation form', function () {
     $this->actingAs(makeAdminUser());
 
-    Livewire::test(\App\Filament\Pages\Reports::class)
+    Livewire::test(Reports::class)
         ->assertOk()
-        ->assertSee('Relatório Mensal por Emissão');
+        ->assertSee('Relatório mensal por emissão')
+        ->assertSee('aria-describedby="report-generation-help"', false)
+        ->assertSee('disabled', false)
+        ->assertDontSee('href="#"', false);
 });
 
 it('builds the Resumo da Operação saldo devedor from the PU history at the data-base times the integralized quantity', function () {

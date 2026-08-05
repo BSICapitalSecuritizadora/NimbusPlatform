@@ -58,10 +58,11 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn () => view('filament.logo'))
             ->brandLogoHeight('2.5rem')
             ->colors([
+                'danger' => Color::Red,
                 'gray' => Color::hex('#e6e4e4'),
                 'info' => Color::hex('#091b23'),
-                'primary' => Color::hex('#a06e28'),
-                'warning' => Color::hex('#a06e28'),
+                'primary' => Color::hex('#b7832f'),
+                'warning' => Color::Amber,
             ])
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')

@@ -23,6 +23,11 @@
 
                 <div class="space-y-4 px-6 py-6 sm:px-8">
                     @foreach ($this->notificationOptions() as $option)
+                        @php
+                            $toggleId = 'notification-' . $option['state_path'];
+                            $toggleLabelId = $toggleId . '-label';
+                            $toggleDescriptionId = $toggleId . '-description';
+                        @endphp
                         <div
                             wire:key="notification-option-{{ $option['state_path'] }}"
                             class="flex flex-col gap-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-lg shadow-black/5 sm:flex-row sm:items-center sm:justify-between"
@@ -33,16 +38,19 @@
                                 </div>
 
                                 <div class="space-y-1">
-                                    <h3 class="text-sm font-semibold text-white sm:text-base">{{ $option['title'] }}</h3>
-                                    <p class="max-w-xl text-sm leading-6 text-gray-400">{{ $option['description'] }}</p>
+                                    <h3 id="{{ $toggleLabelId }}" class="text-sm font-semibold text-white sm:text-base">{{ $option['title'] }}</h3>
+                                    <p id="{{ $toggleDescriptionId }}" class="max-w-xl text-sm leading-6 text-gray-400">{{ $option['description'] }}</p>
                                 </div>
                             </div>
 
-                            <label class="relative inline-flex cursor-pointer items-center self-end sm:self-center">
+                            <label for="{{ $toggleId }}" class="relative inline-flex cursor-pointer items-center self-end sm:self-center">
                                 <input
+                                    id="{{ $toggleId }}"
                                     type="checkbox"
                                     class="peer sr-only"
                                     wire:model.live="data.{{ $option['state_path'] }}"
+                                    aria-labelledby="{{ $toggleLabelId }}"
+                                    aria-describedby="{{ $toggleDescriptionId }}"
                                 >
 
                                 <span class="h-7 w-12 rounded-full bg-white/10 transition peer-checked:bg-primary-500 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300/60"></span>
@@ -54,13 +62,16 @@
                     <div class="flex justify-end border-t border-white/10 pt-6">
                         <button
                             type="submit"
-                            class="inline-flex min-w-60 items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-gray-950 shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
+                            class="inline-flex min-w-60 items-center justify-center gap-2 rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-[#091b23] shadow-lg shadow-primary-500/20 transition hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300/60 disabled:cursor-not-allowed disabled:opacity-60"
                             wire:loading.attr="disabled"
                             wire:target="save"
                         >
                             <x-filament::icon :icon="\Filament\Support\Icons\Heroicon::OutlinedCheck" class="h-5 w-5" />
                             <span>Salvar configurações</span>
                         </button>
+                        <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                            <span wire:loading wire:target="save">Salvando configurações.</span>
+                        </p>
                     </div>
                 </div>
             </section>

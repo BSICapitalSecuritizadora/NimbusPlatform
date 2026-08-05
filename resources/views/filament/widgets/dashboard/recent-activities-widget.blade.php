@@ -3,7 +3,7 @@
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold leading-6 text-gray-950 dark:text-white flex items-center gap-2">
                 <x-heroicon-o-bars-3-bottom-left class="w-6 h-6 text-gray-500" />
-                Atividades Recentes
+                Atividades recentes
             </h3>
         </div>
 
@@ -24,16 +24,16 @@
                             default => $activity->description,
                         };
                         
-                        $color = match($activity->description) {
-                            'created' => 'success',
-                            'updated' => 'info',
-                            'deleted' => 'danger',
-                            default => 'gray',
+                        $markerClasses = match($activity->description) {
+                            'created' => 'bg-success-500 ring-success-100 dark:ring-success-500/20',
+                            'updated' => 'bg-info-500 ring-info-100 dark:ring-info-500/20',
+                            'deleted' => 'bg-danger-500 ring-danger-100 dark:ring-danger-500/20',
+                            default => 'bg-gray-500 ring-gray-100 dark:ring-gray-500/20',
                         };
                     @endphp
                     <div class="flex gap-4">
                         <div class="flex-shrink-0 mt-1">
-                            <div class="w-2 h-2 rounded-full bg-{{ $color }}-500 ring-4 ring-{{ $color }}-100 dark:ring-{{ $color }}-900/30"></div>
+                            <div class="h-2 w-2 rounded-full ring-4 {{ $markerClasses }}"></div>
                         </div>
                         <div class="flex flex-col">
                             <p class="text-sm text-gray-800 dark:text-gray-200">

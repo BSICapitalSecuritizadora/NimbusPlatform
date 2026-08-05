@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     <x-filament::section>
-        <x-slot name="heading">Relatório Mensal por Emissão</x-slot>
+        <x-slot name="heading">Relatório mensal por emissão</x-slot>
         <x-slot name="description">
             Gera o PDF do relatório por emissão. Informe apenas o mês de referência para o relatório
             mensal, ou também um mês final para gerar um PDF consolidado multi-mês da mesma emissão.
@@ -41,25 +41,36 @@
 
             <div>
                 @php($url = $this->reportUrl())
-                <x-filament::button
-                    tag="a"
-                    :href="$url ?? '#'"
-                    target="_blank"
-                    icon="heroicon-o-document-arrow-down"
-                    :disabled="$url === null"
-                >
-                    Gerar PDF
-                </x-filament::button>
+                @if ($url)
+                    <x-filament::button
+                        tag="a"
+                        :href="$url"
+                        target="_blank"
+                        icon="heroicon-o-document-arrow-down"
+                        aria-describedby="report-generation-help"
+                    >
+                        Gerar PDF
+                    </x-filament::button>
+                @else
+                    <x-filament::button
+                        type="button"
+                        icon="heroicon-o-document-arrow-down"
+                        disabled
+                        aria-describedby="report-generation-help"
+                    >
+                        Gerar PDF
+                    </x-filament::button>
+                @endif
             </div>
         </div>
 
         @if ($this->reportUrl() === null)
-            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            <p id="report-generation-help" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
                 Selecione uma emissão e o mês de referência para habilitar a geração do relatório.
             </p>
         @else
-            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                Deixe o "Mês final" em branco para o relatório mensal. Preenchendo-o, será gerado um PDF
+            <p id="report-generation-help" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                Deixe o campo “Mês final” em branco para o relatório mensal. Ao preenchê-lo, será gerado um PDF
                 consolidado de {{ $referenceMonth }} até {{ $referenceMonthEnd ?: $referenceMonth }}.
             </p>
         @endif
