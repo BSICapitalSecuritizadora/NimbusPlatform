@@ -20,6 +20,27 @@ class SetSecurityHeaders
      *
      * @var list<string>
      */
+    /**
+     * O painel Filament não emite `nonce` nos scripts que ele próprio injeta —
+     * a versão instalada não expõe API para isso.
+     *
+     * Pela especificação da CSP, a presença de um `nonce-source` na política faz
+     * o `'unsafe-inline'` ser IGNORADO. Enviar nonce aqui, portanto, não protege
+     * nada: apenas bloqueia os scripts do painel e o deixa inutilizável. Nestas
+     * rotas a política sai sem nonce, e o `'unsafe-inline'` volta a valer.
+     *
+     * A troca é aceitável porque o painel exige autenticação, aprovação e 2FA,
+     * enquanto o site público — onde o visitante é anônimo e a CSP realmente
+     * importa — mantém nonce e continua sem `'unsafe-eval'`.
+     *
+     * Revisar quando o Filament passar a suportar nonce.
+     *
+     * @var list<string>
+     */
+    private const ROUTES_WITHOUT_NONCE = [
+        'filament.*',
+    ];
+
     private const UNSAFE_EVAL_ROUTES = [
         'filament.admin.*',
         'investor.*',
@@ -47,8 +68,11 @@ class SetSecurityHeaders
             return $httpsRedirect;
         }
 
-        $nonce = Str::random(16);
-        app(Vite::class)->useCspNonce($nonce);
+        $nonce = $this->shouldUseNonce($request) ? Str::random(16) : null;
+
+        if ($nonce !== null) {
+            app(Vite::class)->useCspNonce($nonce);
+        }
 
         $response = $next($request);
         $allowUnsafeEval = $this->shouldAllowUnsafeEval($request);
@@ -120,14 +144,26 @@ class SetSecurityHeaders
         return $request->routeIs(...self::UNSAFE_EVAL_ROUTES);
     }
 
-    private function buildCsp(string $nonce, bool $allowUnsafeEval = false): string
+    private function shouldUseNonce(Request $request): bool
+    {
+        return ! $request->routeIs(...self::ROUTES_WITHOUT_NONCE);
+    }
+
+    /**
+     * @param  string|null  $nonce  `null` mantém o `'unsafe-inline'` efetivo — ver
+     *                              {@see self::ROUTES_WITHOUT_NONCE}.
+     */
+    private function buildCsp(?string $nonce, bool $allowUnsafeEval = false): string
     {
         $scriptSources = [
             "'self'",
             "'unsafe-inline'",
-            "'nonce-{$nonce}'",
             'https://*.clarity.ms',
         ];
+
+        if ($nonce !== null) {
+            $scriptSources[] = "'nonce-{$nonce}'";
+        }
 
         if ($this->shouldAllowViteDevServerSources()) {
             array_push(
