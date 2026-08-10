@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Documents\Pages;
 use App\Filament\Resources\Documents\DocumentResource;
 use App\Models\Document;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class CreateDocument extends CreateRecord
@@ -30,11 +29,11 @@ class CreateDocument extends CreateRecord
             ]);
         }
 
-        $disk = Storage::disk($data['storage_disk']);
-
-        $data['file_name'] = $data['file_name'] ?: basename((string) $data['file_path']);
-        $data['mime_type'] = $data['mime_type'] ?: rescue(fn () => $disk->mimeType($data['file_path']), 'application/octet-stream');
-        $data['file_size'] = $data['file_size'] ?: rescue(fn () => $disk->size($data['file_path']), 0);
+        // `mime_type` e `file_size` são derivados do arquivo em disco por
+        // DerivesStoredFileMetadata e não chegam mais no payload do formulário.
+        // O nome exibido continua vindo do upload: o trait não o deriva neste
+        // model, para não trocá-lo pelo nome de armazenamento.
+        $data['file_name'] = ($data['file_name'] ?? null) ?: basename((string) $data['file_path']);
 
         if (! empty($data['is_published'])) {
             $data['published_at'] = $data['published_at'] ?? now();

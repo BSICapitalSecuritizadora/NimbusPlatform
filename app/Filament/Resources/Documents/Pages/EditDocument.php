@@ -6,7 +6,6 @@ use App\Filament\Resources\Documents\DocumentResource;
 use App\Models\Document;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Storage;
 
 class EditDocument extends EditRecord
 {
@@ -33,12 +32,10 @@ class EditDocument extends EditRecord
             $data['file_path'] = reset($data['file_path']) ?: null;
         }
 
+        // Ver CreateDocument: os metadados do arquivo são derivados do disco no
+        // `saving`, e só o nome exibido continua vindo do formulário.
         if (! empty($data['file_path'])) {
-            $disk = Storage::disk($data['storage_disk']);
-
-            $data['file_name'] = $data['file_name'] ?: basename((string) $data['file_path']);
-            $data['mime_type'] = $data['mime_type'] ?: rescue(fn () => $disk->mimeType($data['file_path']), 'application/octet-stream');
-            $data['file_size'] = $data['file_size'] ?: rescue(fn () => $disk->size($data['file_path']), 0);
+            $data['file_name'] = ($data['file_name'] ?? null) ?: basename((string) $data['file_path']);
         }
 
         if (! empty($data['is_published']) && ! $record->is_published) {
