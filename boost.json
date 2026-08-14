@@ -8,6 +8,7 @@
     "cloud": false,
     "guidelines": true,
     "skills": [
+        "infer-conventions",
         "fortify-development",
         "laravel-best-practices",
         "socialite-development",
