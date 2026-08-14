@@ -31,6 +31,31 @@ it('redirects forwarded http traffic to https at the nginx layer', function () {
         ->not->toContain('\$http_x_forwarded_proto != "https"');
 });
 
+it('reloads nginx before the migrations so the health check path answers during boot', function () {
+    $startupLines = preg_split('/\R/', File::get(base_path('startup.sh')));
+
+    $firstLineMatching = function (string $pattern) use ($startupLines): ?int {
+        foreach ($startupLines as $index => $line) {
+            if (preg_match($pattern, $line) === 1) {
+                return $index;
+            }
+        }
+
+        return null;
+    };
+
+    $reloadLine = $firstLineMatching('/^\s*service nginx reload\b/');
+    $migrateLine = $firstLineMatching('/^\s*php artisan migrate\b/');
+
+    expect($reloadLine)->not->toBeNull()
+        ->and($migrateLine)->not->toBeNull()
+        // O nginx da imagem serve /home/site/wwwroot até o reload aplicar o
+        // docroot correto. Recarregar depois do migrate faz todo caminho —
+        // inclusive /up — responder 404 durante o boot, e a sonda de
+        // integridade do App Service reprova a instância.
+        ->and($reloadLine)->toBeLessThan($migrateLine);
+});
+
 it('runs container migrations once under a distributed lock', function () {
     $startupLines = preg_split('/\R/', File::get(base_path('startup.sh')));
     $migrationCommands = array_values(array_filter(

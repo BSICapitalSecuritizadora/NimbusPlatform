@@ -110,6 +110,14 @@ server {
     }
 }
 EOF
+
+    # A imagem do App Service sobe o nginx com a config padrão (docroot
+    # /home/site/wwwroot) antes deste script rodar, então a config acima só
+    # passa a valer no reload. Recarregar aqui, e não no fim do script, encurta
+    # a janela em que todo caminho — inclusive /up — responde 404: sem isso ela
+    # se estende por todo o migrate e o optimize, o suficiente para a sonda de
+    # integridade do App Service reprovar a instância a cada deploy.
+    service nginx reload || service nginx restart || true
 fi
 
 # Arquivos enviados pelos usuários vivem fora de /home/site/wwwroot, que é
@@ -160,5 +168,3 @@ php artisan storage:link --force --no-interaction || true
 # coisas param em silêncio até o próximo deploy.
 while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=420 --max-time=3600; sleep 5; done &
 while true; do php artisan schedule:work; sleep 5; done &
-
-service nginx reload || service nginx restart || true
