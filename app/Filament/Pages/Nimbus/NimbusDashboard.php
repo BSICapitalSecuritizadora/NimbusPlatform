@@ -16,13 +16,11 @@ class NimbusDashboard extends BaseDashboard
 
     protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
-    protected static ?string $navigationParentItem = 'Visão Geral';
-
     protected static ?string $title = 'Visão Geral';
 
     protected static ?string $navigationLabel = 'Visão Geral';
 
-    protected static ?int $navigationSort = -10;
+    protected static ?int $navigationSort = -20;
 
     protected static string $routePath = '/gestao-documental-externa-dashboard';
 

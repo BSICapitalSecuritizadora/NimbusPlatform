@@ -23,7 +23,7 @@ class PortalUserResource extends Resource
 
     protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
-    protected static ?string $navigationParentItem = 'Administração';
+    protected static ?string $navigationParentItem = 'Acessos e Usuários';
 
     protected static ?string $navigationLabel = 'Usuários do Portal';
 

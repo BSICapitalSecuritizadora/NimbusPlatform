@@ -7,6 +7,8 @@ use App\Filament\Resources\ProposalRepresentatives\Pages\EditProposalRepresentat
 use App\Filament\Resources\ProposalRepresentatives\Pages\ListProposalRepresentatives;
 use App\Models\ProposalRepresentative;
 use App\Models\User;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -24,6 +26,8 @@ class ProposalRepresentativeResource extends Resource
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
     protected static string|\UnitEnum|null $navigationGroup = 'Comercial';
+
+    protected static ?string $navigationParentItem = 'Propostas';
 
     protected static ?string $navigationLabel = 'Representantes Comerciais';
 
@@ -64,8 +68,8 @@ class ProposalRepresentativeResource extends Resource
             ])
             ->defaultSort('queue_position')
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ]);
     }
 

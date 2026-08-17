@@ -27,9 +27,7 @@ class InvitationResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Convites de Acesso';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Acessos Externos';
-
-    protected static ?string $navigationParentItem = 'Usuários Externos';
+    protected static string|\UnitEnum|null $navigationGroup = 'Administração';
 
     protected static ?int $navigationSort = 10;
 

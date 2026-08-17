@@ -24,8 +24,6 @@ class FundResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static bool $shouldRegisterNavigation = false;
-
     protected static ?string $navigationLabel = 'Fundos';
 
     protected static ?string $modelLabel = 'Fundo';
@@ -34,7 +32,9 @@ class FundResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'account';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+
+    protected static ?int $navigationSort = 10;
 
     public static function form(Schema $schema): Schema
     {

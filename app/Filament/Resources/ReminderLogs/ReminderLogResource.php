@@ -23,7 +23,11 @@ class ReminderLogResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-clipboard-document-check';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Governança & Risco';
+    protected static string|UnitEnum|null $navigationGroup = 'Administração';
+
+    protected static ?string $navigationParentItem = 'Auditoria';
+
+    protected static ?int $navigationSort = 22;
 
     protected static ?string $modelLabel = 'Auditoria de Lembrete';
 

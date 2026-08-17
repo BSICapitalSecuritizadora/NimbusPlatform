@@ -33,9 +33,11 @@ class JobApplicationResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Candidaturas';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Administração';
+    protected static string|\UnitEnum|null $navigationGroup = 'Site Institucional';
 
-    protected static ?int $navigationSort = 20;
+    protected static ?string $navigationParentItem = 'Vagas';
+
+    protected static ?int $navigationSort = 21;
 
     public static function getNavigationBadge(): ?string
     {

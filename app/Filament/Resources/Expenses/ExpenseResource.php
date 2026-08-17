@@ -26,8 +26,6 @@ class ExpenseResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static bool $shouldRegisterNavigation = false;
-
     protected static ?string $navigationLabel = 'Despesas';
 
     protected static ?string $modelLabel = 'Despesa';
@@ -36,7 +34,9 @@ class ExpenseResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'category';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
+
+    protected static ?int $navigationSort = 20;
 
     public static function form(Schema $schema): Schema
     {

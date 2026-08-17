@@ -25,9 +25,9 @@ class BusinessHolidayResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Feriados';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastros Base';
+    protected static string|UnitEnum|null $navigationGroup = 'Dados de Mercado';
 
-    protected static ?int $navigationSort = 28;
+    protected static ?int $navigationSort = 20;
 
     public static function table(Table $table): Table
     {

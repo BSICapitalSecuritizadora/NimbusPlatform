@@ -26,9 +26,9 @@ class VacancyResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Vagas';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Administração';
+    protected static string|\UnitEnum|null $navigationGroup = 'Site Institucional';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 20;
 
     public static function getNavigationBadge(): ?string
     {

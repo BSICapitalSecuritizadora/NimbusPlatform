@@ -32,7 +32,7 @@ class ContactMessageResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Mensagens de Contato';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Site';
+    protected static string|\UnitEnum|null $navigationGroup = 'Site Institucional';
 
     protected static ?int $navigationSort = 10;
 

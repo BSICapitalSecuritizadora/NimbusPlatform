@@ -41,7 +41,7 @@ class InvestorResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Comercial';
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 20;
 
     public static function form(Schema $schema): Schema
     {

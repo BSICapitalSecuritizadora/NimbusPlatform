@@ -33,9 +33,11 @@ class SalesBoardResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'reference_month';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
-    protected static ?int $navigationSort = 30;
+    protected static ?string $navigationParentItem = 'Emissões';
+
+    protected static ?int $navigationSort = 11;
 
     public static function form(Schema $schema): Schema
     {

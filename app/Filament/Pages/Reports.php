@@ -18,13 +18,15 @@ class Reports extends Page
 
     protected string $view = 'filament.pages.reports';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Administração';
+    protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
-    protected static ?int $navigationSort = 40;
+    protected static ?string $navigationParentItem = 'Emissões';
+
+    protected static ?int $navigationSort = 13;
 
     protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
-    protected static ?string $navigationLabel = 'Relatórios';
+    protected static ?string $navigationLabel = 'Relatório Mensal';
 
     protected static ?string $title = 'Relatórios';
 

@@ -31,11 +31,11 @@ class FundNameResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastros Base';
+    protected static string|UnitEnum|null $navigationGroup = 'Financeiro';
 
     protected static ?string $navigationParentItem = 'Fundos';
 
-    protected static ?int $navigationSort = 30;
+    protected static ?int $navigationSort = 12;
 
     public static function form(Schema $schema): Schema
     {

@@ -2,18 +2,12 @@
 
 namespace App\Providers\Filament;
 
+use App\Enums\AccessPermission;
 use App\Filament\Pages\Auth\CustomLogin;
 use App\Filament\Pages\Dashboard;
-use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Pages\Nimbus\NotificationSettings;
-use App\Filament\Resources\Banks\BankResource;
-use App\Filament\Resources\Expenses\ExpenseResource;
-use App\Filament\Resources\Expenses\Pages\ExpenseCalendar;
-use App\Filament\Resources\FundApplications\FundApplicationResource;
-use App\Filament\Resources\FundNames\FundNameResource;
-use App\Filament\Resources\Funds\FundResource;
-use App\Filament\Resources\FundTypes\FundTypeResource;
-use App\Filament\Resources\Invitations\InvitationResource;
+use App\Filament\Resources\Activities\ActivityResource;
+use App\Filament\Resources\DocumentDownloads\DocumentDownloadResource;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
 use App\Filament\Resources\Nimbus\Announcements\AnnouncementResource;
 use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
@@ -21,7 +15,7 @@ use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
 use App\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource;
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
-use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
+use App\Filament\Resources\ReminderLogs\ReminderLogResource;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\SetSecurityHeaders;
@@ -43,6 +37,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Arr;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -73,31 +68,18 @@ class AdminPanelProvider extends PanelProvider
                 scopes: CustomLogin::class,
             )
             ->navigationGroups([
-                NavigationGroup::make('Operações'),
-                NavigationGroup::make('Governança & Risco'),
-                NavigationGroup::make('Gestão'),
                 NavigationGroup::make('Comercial'),
-                NavigationGroup::make('Cadastros Base'),
+                NavigationGroup::make('Operações'),
+                NavigationGroup::make('Financeiro'),
+                NavigationGroup::make('Governança & Risco'),
+                NavigationGroup::make('Gestão Documental Externa'),
+                NavigationGroup::make('Dados de Mercado'),
+                NavigationGroup::make('Site Institucional'),
                 NavigationGroup::make('Administração'),
-                NavigationGroup::make('Acessos Externos'),
             ])
             ->navigationItems([
-                NavigationItem::make('Visão Geral')
-                    ->group('Acessos Externos')
-                    ->icon(Heroicon::OutlinedSquares2x2)
-                    ->sort(-20)
-                    ->visible(fn (): bool => auth()->user()?->can('nimbus.submissions.view') ?? false)
-                    ->url(fn (): string => NimbusDashboard::getUrl(panel: 'admin'))
-                    ->isActiveWhen(fn (): bool => request()->routeIs(NimbusDashboard::getNavigationItemActiveRoutePattern()) || request()->routeIs(SubmissionResource::getNavigationItemActiveRoutePattern())),
-                NavigationItem::make('Administração')
-                    ->group('Acessos Externos')
-                    ->icon(Heroicon::OutlinedCog6Tooth)
-                    ->sort(-10)
-                    ->visible(fn (): bool => auth()->user()?->can('nimbus.portal-users.view') ?? false)
-                    ->url(fn (): string => PortalUserResource::getUrl(panel: 'admin'))
-                    ->isActiveWhen(fn (): bool => request()->routeIs(PortalUserResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(AccessTokenResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Gestão Documental')
-                    ->group('Acessos Externos')
+                    ->group('Gestão Documental Externa')
                     ->icon(Heroicon::OutlinedFolder)
                     ->sort(0)
                     ->visible(fn (): bool => auth()->user()?->canAny([
@@ -105,10 +87,14 @@ class AdminPanelProvider extends PanelProvider
                         'nimbus.general-documents.view',
                         'nimbus.portal-documents.view',
                     ]) ?? false)
-                    ->url(fn (): string => DocumentCategoryResource::getUrl(panel: 'admin'))
+                    ->url(fn (): string => static::firstAccessibleUrl([
+                        'nimbus.document-categories.view' => DocumentCategoryResource::class,
+                        'nimbus.general-documents.view' => GeneralDocumentResource::class,
+                        'nimbus.portal-documents.view' => PortalDocumentResource::class,
+                    ]))
                     ->isActiveWhen(fn (): bool => request()->routeIs(DocumentCategoryResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(GeneralDocumentResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(PortalDocumentResource::getNavigationItemActiveRoutePattern())),
                 NavigationItem::make('Comunicação')
-                    ->group('Acessos Externos')
+                    ->group('Gestão Documental Externa')
                     ->icon(Heroicon::OutlinedMegaphone)
                     ->sort(10)
                     ->visible(fn (): bool => auth()->user()?->canAny([
@@ -116,29 +102,40 @@ class AdminPanelProvider extends PanelProvider
                         'nimbus.notification-outboxes.view',
                         'nimbus.notification-settings.view',
                     ]) ?? false)
-                    ->url(fn (): string => AnnouncementResource::getUrl(panel: 'admin'))
+                    ->url(fn (): string => static::firstAccessibleUrl([
+                        'nimbus.announcements.view' => AnnouncementResource::class,
+                        'nimbus.notification-outboxes.view' => NotificationOutboxResource::class,
+                        'nimbus.notification-settings.view' => NotificationSettings::class,
+                    ]))
                     ->isActiveWhen(fn (): bool => request()->routeIs(AnnouncementResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationOutboxResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(NotificationSettings::getNavigationItemActiveRoutePattern())),
-                NavigationItem::make('Fundos')
-                    ->group('Gestão')
-                    ->icon(Heroicon::OutlinedRectangleStack)
-                    ->sort(20)
-                    ->visible(fn (): bool => auth()->user()?->can('funds.view') ?? false)
-                    ->url(fn (): string => FundResource::getUrl(panel: 'admin'))
-                    ->isActiveWhen(fn (): bool => request()->routeIs(FundResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundTypeResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundNameResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(FundApplicationResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(BankResource::getNavigationItemActiveRoutePattern())),
-                NavigationItem::make('Despesas')
-                    ->group('Gestão')
-                    ->icon(Heroicon::OutlinedRectangleStack)
-                    ->sort(10)
-                    ->visible(fn (): bool => auth()->user()?->can('expenses.view') ?? false)
-                    ->url(fn (): string => ExpenseResource::getUrl(panel: 'admin'))
-                    ->isActiveWhen(fn (): bool => request()->routeIs(ExpenseResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ExpenseCalendar::getRouteName())),
-                NavigationItem::make('Usuários Externos')
-                    ->group('Acessos Externos')
+                NavigationItem::make('Acessos e Usuários')
+                    ->group('Gestão Documental Externa')
                     ->icon(Heroicon::OutlinedUsers)
-                    ->sort(10)
-                    ->visible(fn (): bool => auth()->user()?->can('invitations.view') ?? false)
-                    ->url(fn (): string => InvitationResource::getUrl(panel: 'admin'))
-                    ->isActiveWhen(fn (): bool => request()->routeIs(InvitationResource::getNavigationItemActiveRoutePattern())),
+                    ->sort(20)
+                    ->visible(fn (): bool => auth()->user()?->canAny([
+                        'nimbus.portal-users.view',
+                        'nimbus.access-tokens.view',
+                    ]) ?? false)
+                    ->url(fn (): string => static::firstAccessibleUrl([
+                        'nimbus.portal-users.view' => PortalUserResource::class,
+                        'nimbus.access-tokens.view' => AccessTokenResource::class,
+                    ]))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(PortalUserResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(AccessTokenResource::getNavigationItemActiveRoutePattern())),
+                NavigationItem::make('Auditoria')
+                    ->group('Administração')
+                    ->icon(Heroicon::OutlinedShieldExclamation)
+                    ->sort(20)
+                    ->visible(fn (): bool => auth()->user()?->canAny([
+                        'audit.activities.view',
+                        AccessPermission::ReminderLogsView->value,
+                        'audit.document-downloads.view',
+                    ]) ?? false)
+                    ->url(fn (): string => static::firstAccessibleUrl([
+                        'audit.activities.view' => ActivityResource::class,
+                        AccessPermission::ReminderLogsView->value => ReminderLogResource::class,
+                        'audit.document-downloads.view' => DocumentDownloadResource::class,
+                    ]))
+                    ->isActiveWhen(fn (): bool => request()->routeIs(ActivityResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ReminderLogResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(DocumentDownloadResource::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
@@ -167,5 +164,26 @@ class AdminPanelProvider extends PanelProvider
                 EnsureUserIsApproved::class,
                 EnsureTwoFactorEnabled::class,
             ]);
+    }
+
+    /**
+     * Resolve the URL of the first destination the current user is allowed to open.
+     *
+     * Parent navigation items group several resources, so linking them to a fixed
+     * destination would send users without that specific permission to a 403 page.
+     *
+     * @param  array<string, class-string>  $candidates  Map of permission name to resource or page class.
+     */
+    protected static function firstAccessibleUrl(array $candidates): string
+    {
+        $user = auth()->user();
+
+        foreach ($candidates as $permission => $class) {
+            if ($user?->can($permission)) {
+                return $class::getUrl(panel: 'admin');
+            }
+        }
+
+        return Arr::first($candidates)::getUrl(panel: 'admin');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Proposals;
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\DTOs\Proposals\UpdateProposalStatusDTO;
 use App\Enums\ProposalStatus;
+use App\Filament\RelationManagers\ActivitiesRelationManager;
 use App\Filament\Resources\Proposals\Pages\EditProposal;
 use App\Filament\Resources\Proposals\Pages\ListProposals;
 use App\Filament\Resources\Proposals\Pages\ViewProposal;
@@ -43,7 +44,7 @@ class ProposalResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Propostas';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Operações';
+    protected static string|\UnitEnum|null $navigationGroup = 'Comercial';
 
     protected static ?int $navigationSort = 10;
 
@@ -244,7 +245,7 @@ class ProposalResource extends Resource
             ProposalContinuationAccessRelationManager::class,
             ProposalStatusHistoryRelationManager::class,
             ProjectRelationManager::class,
-            \App\Filament\RelationManagers\ActivitiesRelationManager::class,
+            ActivitiesRelationManager::class,
         ];
     }
 

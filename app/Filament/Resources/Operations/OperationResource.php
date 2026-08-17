@@ -37,9 +37,11 @@ class OperationResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'title';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão';
+    protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
-    protected static ?int $navigationSort = 50;
+    protected static ?string $navigationParentItem = 'Obras';
+
+    protected static ?int $navigationSort = 21;
 
     public static function form(Schema $schema): Schema
     {

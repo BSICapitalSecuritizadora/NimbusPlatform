@@ -8,10 +8,20 @@ use App\Models\DocumentDownload;
 use BackedEnum;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class DocumentDownloadResource extends Resource
 {
@@ -19,7 +29,11 @@ class DocumentDownloadResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowPathRoundedSquare;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'Auditoria';
+    protected static \UnitEnum|string|null $navigationGroup = 'Administração';
+
+    protected static ?string $navigationParentItem = 'Auditoria';
+
+    protected static ?int $navigationSort = 23;
 
     protected static ?string $navigationLabel = 'Histórico de Downloads';
 
@@ -37,12 +51,12 @@ class DocumentDownloadResource extends Resource
         return auth()->user()?->can('audit.document-downloads.view') ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return false;
     }
@@ -51,19 +65,19 @@ class DocumentDownloadResource extends Resource
     {
         return $schema
             ->components([
-                \Filament\Forms\Components\Select::make('document_id')
+                Select::make('document_id')
                     ->relationship('document', 'title')
                     ->label('Documento'),
-                \Filament\Forms\Components\Select::make('investor_id')
+                Select::make('investor_id')
                     ->relationship('investor', 'name')
                     ->label('Investidor'),
-                \Filament\Forms\Components\TextInput::make('ip')
+                TextInput::make('ip')
                     ->label('Endereço IP'),
-                \Filament\Forms\Components\TextInput::make('user_agent')
+                TextInput::make('user_agent')
                     ->label('Navegador / Dispositivo'),
-                \Filament\Forms\Components\TextInput::make('referer')
+                TextInput::make('referer')
                     ->label('Origem do Acesso (Referer)'),
-                \Filament\Forms\Components\DateTimePicker::make('downloaded_at')
+                DateTimePicker::make('downloaded_at')
                     ->label('Data do Download'),
             ]);
     }
@@ -72,16 +86,16 @@ class DocumentDownloadResource extends Resource
     {
         return $schema
             ->components([
-                \Filament\Infolists\Components\TextEntry::make('document.title')->label('Documento'),
-                \Filament\Infolists\Components\TextEntry::make('source')->label('Origem')
+                TextEntry::make('document.title')->label('Documento'),
+                TextEntry::make('source')->label('Origem')
                     ->formatStateUsing(fn (string $state): string => $state === 'admin' ? 'Painel Admin' : 'Portal do Investidor')
                     ->badge()
                     ->color(fn (string $state): string => $state === 'admin' ? 'warning' : 'success'),
-                \Filament\Infolists\Components\TextEntry::make('investor.name')->label('Investidor')->placeholder('—'),
-                \Filament\Infolists\Components\TextEntry::make('adminUser.name')->label('Usuário Admin')->placeholder('—'),
-                \Filament\Infolists\Components\TextEntry::make('ip')->label('Endereço IP'),
-                \Filament\Infolists\Components\TextEntry::make('user_agent')->label('Navegador / Dispositivo'),
-                \Filament\Infolists\Components\TextEntry::make('downloaded_at')->label('Data do Download')->dateTime('d/m/Y H:i:s'),
+                TextEntry::make('investor.name')->label('Investidor')->placeholder('—'),
+                TextEntry::make('adminUser.name')->label('Usuário Admin')->placeholder('—'),
+                TextEntry::make('ip')->label('Endereço IP'),
+                TextEntry::make('user_agent')->label('Navegador / Dispositivo'),
+                TextEntry::make('downloaded_at')->label('Data do Download')->dateTime('d/m/Y H:i:s'),
             ]);
     }
 
@@ -89,68 +103,68 @@ class DocumentDownloadResource extends Resource
     {
         return $table
             ->columns([
-                \Filament\Tables\Columns\TextColumn::make('document.title')
+                TextColumn::make('document.title')
                     ->label('Documento')
                     ->searchable()
                     ->sortable(),
-                \Filament\Tables\Columns\TextColumn::make('source')
+                TextColumn::make('source')
                     ->label('Origem')
                     ->formatStateUsing(fn (string $state): string => $state === 'admin' ? 'Admin' : 'Portal')
                     ->badge()
                     ->color(fn (string $state): string => $state === 'admin' ? 'warning' : 'success'),
-                \Filament\Tables\Columns\TextColumn::make('investor.name')
+                TextColumn::make('investor.name')
                     ->label('Investidor')
                     ->placeholder('—')
                     ->searchable()
                     ->sortable(),
-                \Filament\Tables\Columns\TextColumn::make('adminUser.name')
+                TextColumn::make('adminUser.name')
                     ->label('Usuário Admin')
                     ->placeholder('—')
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                \Filament\Tables\Columns\TextColumn::make('downloaded_at')
+                TextColumn::make('downloaded_at')
                     ->label('Data e Hora')
                     ->dateTime('d/m/Y H:i:s')
                     ->sortable(),
-                \Filament\Tables\Columns\TextColumn::make('ip')
+                TextColumn::make('ip')
                     ->label('Endereço IP')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                \Filament\Tables\Columns\TextColumn::make('user_agent')
+                TextColumn::make('user_agent')
                     ->label('Navegador / Dispositivo')
                     ->searchable()
                     ->limit(30)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('source')
+                SelectFilter::make('source')
                     ->label('Origem')
                     ->options(['portal' => 'Portal do Investidor', 'admin' => 'Painel Admin']),
-                \Filament\Tables\Filters\SelectFilter::make('investor_id')
+                SelectFilter::make('investor_id')
                     ->label('Investidor')
                     ->relationship('investor', 'name')
                     ->searchable()
                     ->preload(),
-                \Filament\Tables\Filters\SelectFilter::make('document_id')
+                SelectFilter::make('document_id')
                     ->label('Documento')
                     ->relationship('document', 'title')
                     ->searchable()
                     ->preload(),
-                \Filament\Tables\Filters\Filter::make('downloaded_at')
+                Filter::make('downloaded_at')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('created_from')->label('Data Inicial'),
-                        \Filament\Forms\Components\DatePicker::make('created_until')->label('Data Final'),
+                        DatePicker::make('created_from')->label('Data Inicial'),
+                        DatePicker::make('created_until')->label('Data Final'),
                     ])
-                    ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data): \Illuminate\Database\Eloquent\Builder {
+                    ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['created_from'],
-                                fn (\Illuminate\Database\Eloquent\Builder $query, $date): \Illuminate\Database\Eloquent\Builder => $query->whereDate('downloaded_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('downloaded_at', '>=', $date),
                             )
                             ->when(
                                 $data['created_until'],
-                                fn (\Illuminate\Database\Eloquent\Builder $query, $date): \Illuminate\Database\Eloquent\Builder => $query->whereDate('downloaded_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('downloaded_at', '<=', $date),
                             );
                     }),
             ])

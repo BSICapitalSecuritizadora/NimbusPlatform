@@ -31,9 +31,11 @@ class EmissionMonthlyReportNoteResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'title';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Administração';
+    protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
-    protected static ?int $navigationSort = 41;
+    protected static ?string $navigationParentItem = 'Emissões';
+
+    protected static ?int $navigationSort = 14;
 
     public static function form(Schema $schema): Schema
     {

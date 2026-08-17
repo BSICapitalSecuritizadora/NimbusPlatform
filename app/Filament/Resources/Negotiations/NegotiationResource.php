@@ -32,9 +32,11 @@ class NegotiationResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'reference_month';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Comercial';
+    protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
-    protected static ?int $navigationSort = 40;
+    protected static ?string $navigationParentItem = 'Emissões';
+
+    protected static ?int $navigationSort = 12;
 
     public static function form(Schema $schema): Schema
     {

@@ -232,19 +232,18 @@ it('registers the refreshed admin palette on the Filament panel', function () {
 });
 
 it('organizes Gestão Documental Externa navigation under the Visão Geral subsection', function () {
-    expect(NimbusDashboard::getNavigationParentItem())->toBe('Visão Geral')
+    expect(NimbusDashboard::getNavigationParentItem())->toBeNull()
+        ->and(NimbusDashboard::getNavigationLabel())->toBe('Visão Geral')
         ->and(SubmissionResource::getNavigationParentItem())->toBe('Visão Geral')
-        ->and(SubmissionResource::getNavigationLabel())->toBe('Envios e Solicitações')
-        ->and(collect(Filament::getPanel('admin')->getNavigationItems())->first(fn ($item) => $item->getLabel() === 'Visão Geral'))
-        ->not->toBeNull();
+        ->and(SubmissionResource::getNavigationLabel())->toBe('Envios e Solicitações');
 });
 
-it('organizes administrative items under the Administração subsection', function () {
-    expect(PortalUserResource::getNavigationParentItem())->toBe('Administração')
+it('organizes administrative items under the Acessos e Usuários subsection', function () {
+    expect(PortalUserResource::getNavigationParentItem())->toBe('Acessos e Usuários')
         ->and(PortalUserResource::getNavigationLabel())->toBe('Usuários do Portal')
-        ->and(AccessTokenResource::getNavigationParentItem())->toBe('Administração')
+        ->and(AccessTokenResource::getNavigationParentItem())->toBe('Acessos e Usuários')
         ->and(AccessTokenResource::getNavigationLabel())->toBe('Chaves de Acesso')
-        ->and(collect(Filament::getPanel('admin')->getNavigationItems())->first(fn ($item) => $item->getLabel() === 'Administração'))
+        ->and(collect(Filament::getPanel('admin')->getNavigationItems())->first(fn ($item) => $item->getLabel() === 'Acessos e Usuários'))
         ->not->toBeNull();
 });
 
@@ -271,16 +270,27 @@ it('organizes communication items under the Comunicação subsection', function 
 });
 
 it('makes the Visão Geral subsection clickable', function () {
-    $overviewItem = collect(Filament::getPanel('admin')->getNavigationItems())
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => 'nimbus-overview-nav@example.com',
+    ]);
+    $user->assignRole('admin');
+
+    $this->actingAs($user);
+
+    $overviewItem = collect(Filament::getPanel('admin')->getNavigation())
+        ->first(fn ($group) => $group->getLabel() === 'Gestão Documental Externa')
+        ?->getItems();
+
+    $overviewItem = collect($overviewItem ?? [])
         ->first(fn ($item) => $item->getLabel() === 'Visão Geral');
 
     expect($overviewItem)->not->toBeNull()
         ->and($overviewItem->getUrl())->toBe(NimbusDashboard::getUrl(panel: 'admin'));
 });
 
-it('makes the Administração subsection clickable', function () {
+it('makes the Acessos e Usuários subsection clickable', function () {
     $administrationItem = collect(Filament::getPanel('admin')->getNavigationItems())
-        ->first(fn ($item) => $item->getLabel() === 'Administração');
+        ->first(fn ($item) => $item->getLabel() === 'Acessos e Usuários');
 
     expect($administrationItem)->not->toBeNull()
         ->and($administrationItem->getUrl())->toBe(PortalUserResource::getUrl(panel: 'admin'));

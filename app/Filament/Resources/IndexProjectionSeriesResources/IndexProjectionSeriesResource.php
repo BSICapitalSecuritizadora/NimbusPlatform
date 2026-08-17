@@ -24,9 +24,11 @@ class IndexProjectionSeriesResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Séries projetadas';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastros Base';
+    protected static string|UnitEnum|null $navigationGroup = 'Dados de Mercado';
 
-    protected static ?int $navigationSort = 28;
+    protected static ?string $navigationParentItem = 'Índices (CDI/IPCA)';
+
+    protected static ?int $navigationSort = 11;
 
     public static function table(Table $table): Table
     {

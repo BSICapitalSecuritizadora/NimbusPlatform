@@ -20,7 +20,7 @@ class PuCurveOperationalDashboard extends Dashboard
 
     protected static string|\UnitEnum|null $navigationGroup = 'Operações';
 
-    protected static ?int $navigationSort = 26;
+    protected static ?int $navigationSort = 0;
 
     public static function canAccess(): bool
     {

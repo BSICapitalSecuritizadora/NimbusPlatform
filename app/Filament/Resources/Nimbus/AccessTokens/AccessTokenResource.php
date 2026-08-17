@@ -8,6 +8,7 @@ use App\Filament\Resources\Nimbus\AccessTokens\Tables\AccessTokensTable;
 use App\Models\Nimbus\AccessToken;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -25,7 +26,7 @@ class AccessTokenResource extends Resource
 
     protected static \UnitEnum|string|null $navigationGroup = 'Gestão Documental Externa';
 
-    protected static ?string $navigationParentItem = 'Administração';
+    protected static ?string $navigationParentItem = 'Acessos e Usuários';
 
     protected static ?string $navigationLabel = 'Chaves de Acesso';
 
@@ -48,30 +49,30 @@ class AccessTokenResource extends Resource
             ->components([
                 Section::make('Informações da Chave')
                     ->schema([
-                        \Filament\Infolists\Components\TextEntry::make('portalUser.full_name')
+                        TextEntry::make('portalUser.full_name')
                             ->label('Usuário do Portal')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('portalUser.email')
+                        TextEntry::make('portalUser.email')
                             ->label('E-mail')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('status_label')
+                        TextEntry::make('status_label')
                             ->label('Situação')
                             ->badge()
                             ->color(fn (AccessToken $record): string => $record->status_color),
-                        \Filament\Infolists\Components\TextEntry::make('created_at')
+                        TextEntry::make('created_at')
                             ->label('Data de Geração')
                             ->dateTime('d/m/Y H:i'),
-                        \Filament\Infolists\Components\TextEntry::make('expires_at')
+                        TextEntry::make('expires_at')
                             ->label('Data de Expiração')
                             ->dateTime('d/m/Y H:i'),
-                        \Filament\Infolists\Components\TextEntry::make('used_at')
+                        TextEntry::make('used_at')
                             ->label('Data de Utilização')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('used_ip')
+                        TextEntry::make('used_ip')
                             ->label('Endereço IP')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('used_user_agent')
+                        TextEntry::make('used_user_agent')
                             ->label('Navegador / Dispositivo')
                             ->placeholder('—')
                             ->columnSpanFull(),

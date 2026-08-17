@@ -4,13 +4,23 @@ namespace App\Filament\Resources\Activities;
 
 use App\Filament\Exports\ActivityExporter;
 use App\Filament\Resources\Activities\Pages\ManageActivities;
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Models\Activity;
 
 class ActivityResource extends Resource
@@ -19,7 +29,11 @@ class ActivityResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldExclamation;
 
-    protected static \UnitEnum|string|null $navigationGroup = 'Auditoria';
+    protected static \UnitEnum|string|null $navigationGroup = 'Administração';
+
+    protected static ?string $navigationParentItem = 'Auditoria';
+
+    protected static ?int $navigationSort = 21;
 
     protected static ?string $navigationLabel = 'Logs de Auditoria';
 
@@ -37,12 +51,12 @@ class ActivityResource extends Resource
         return auth()->user()?->can('audit.activities.view') ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
         return false;
     }
@@ -51,13 +65,13 @@ class ActivityResource extends Resource
     {
         return $schema
             ->components([
-                \Filament\Forms\Components\TextInput::make('log_name')
+                TextInput::make('log_name')
                     ->label('Identificador do Log'),
-                \Filament\Forms\Components\TextInput::make('description')
+                TextInput::make('description')
                     ->label('Ação Executada'),
-                \Filament\Forms\Components\TextInput::make('subject_type')
+                TextInput::make('subject_type')
                     ->label('Entidade Modificada'),
-                \Filament\Forms\Components\Textarea::make('properties')
+                Textarea::make('properties')
                     ->label('Dados da Alteração')
                     ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
                     ->columnSpanFull(),
@@ -68,13 +82,13 @@ class ActivityResource extends Resource
     {
         return $schema
             ->components([
-                \Filament\Infolists\Components\TextEntry::make('log_name')->label('Identificador do Log'),
-                \Filament\Infolists\Components\TextEntry::make('description')->label('Ação Executada'),
-                \Filament\Infolists\Components\TextEntry::make('causer.name')->label('Autor da Ação'),
-                \Filament\Infolists\Components\TextEntry::make('subject_type')->label('Entidade Modificada')
+                TextEntry::make('log_name')->label('Identificador do Log'),
+                TextEntry::make('description')->label('Ação Executada'),
+                TextEntry::make('causer.name')->label('Autor da Ação'),
+                TextEntry::make('subject_type')->label('Entidade Modificada')
                     ->formatStateUsing(fn (?string $state): string => self::friendlySubjectType($state)),
-                \Filament\Infolists\Components\TextEntry::make('created_at')->label('Data e Hora')->dateTime(),
-                \Filament\Infolists\Components\TextEntry::make('properties')
+                TextEntry::make('created_at')->label('Data e Hora')->dateTime(),
+                TextEntry::make('properties')
                     ->label('Dados da Alteração (JSON)')
                     ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
                     ->fontFamily('mono')
@@ -86,30 +100,30 @@ class ActivityResource extends Resource
     {
         return $table
             ->columns([
-                \Filament\Tables\Columns\TextColumn::make('log_name')
+                TextColumn::make('log_name')
                     ->label('Log')
                     ->searchable()
                     ->sortable()
                     ->badge(),
-                \Filament\Tables\Columns\TextColumn::make('description')
+                TextColumn::make('description')
                     ->label('Ação Executada')
                     ->searchable(),
-                \Filament\Tables\Columns\TextColumn::make('subject_type')
+                TextColumn::make('subject_type')
                     ->label('Entidade Modificada')
                     ->formatStateUsing(fn (?string $state): string => self::friendlySubjectType($state))
                     ->searchable()
                     ->sortable(),
-                \Filament\Tables\Columns\TextColumn::make('causer.name')
+                TextColumn::make('causer.name')
                     ->label('Usuário Autor')
                     ->searchable()
                     ->sortable(),
-                \Filament\Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Data e Hora')
                     ->dateTime('d/m/Y H:i:s')
                     ->sortable(),
             ])
             ->filters([
-                \Filament\Tables\Filters\SelectFilter::make('event')
+                SelectFilter::make('event')
                     ->label('Tipo de Evento')
                     ->options([
                         'created' => 'Criação',
@@ -119,24 +133,24 @@ class ActivityResource extends Resource
                         'logout' => 'Logout',
                         'downloaded' => 'Download',
                     ]),
-                \Filament\Tables\Filters\SelectFilter::make('causer_id')
+                SelectFilter::make('causer_id')
                     ->label('Usuário')
-                    ->options(fn (): array => \App\Models\User::query()->orderBy('name')->pluck('name', 'id')->all())
+                    ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
                     ->searchable(),
-                \Filament\Tables\Filters\Filter::make('created_at')
+                Filter::make('created_at')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('created_from')->label('Data Inicial'),
-                        \Filament\Forms\Components\DatePicker::make('created_until')->label('Data Final'),
+                        DatePicker::make('created_from')->label('Data Inicial'),
+                        DatePicker::make('created_until')->label('Data Final'),
                     ])
-                    ->query(function (\Illuminate\Database\Eloquent\Builder $query, array $data): \Illuminate\Database\Eloquent\Builder {
+                    ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['created_from'],
-                                fn (\Illuminate\Database\Eloquent\Builder $query, $date): \Illuminate\Database\Eloquent\Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
                             )
                             ->when(
                                 $data['created_until'],
-                                fn (\Illuminate\Database\Eloquent\Builder $query, $date): \Illuminate\Database\Eloquent\Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     }),
             ])

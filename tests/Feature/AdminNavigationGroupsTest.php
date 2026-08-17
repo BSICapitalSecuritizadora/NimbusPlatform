@@ -14,14 +14,19 @@ use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
 use App\Filament\Resources\FundTypes\FundTypeResource;
 use App\Filament\Resources\Invitations\InvitationResource;
+use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
 use App\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource;
 use App\Filament\Resources\Receivables\ReceivableResource;
+use App\Filament\Resources\ReminderLogs\ReminderLogResource;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -37,132 +42,216 @@ it('registers the current admin navigation groups in the intended order', functi
         ->values()
         ->all();
 
+    expect($navigationGroups)->toBe([
+        'Comercial',
+        'Operações',
+        'Financeiro',
+        'Governança & Risco',
+        'Gestão Documental Externa',
+        'Dados de Mercado',
+        'Site Institucional',
+        'Administração',
+    ]);
+});
+
+it('resolves every navigation parent item inside its own group', function () {
+    $entries = declaredNavigationEntries();
+    $parented = $entries->filter(fn (array $entry): bool => filled($entry['parent']));
+
+    $orphans = $parented
+        ->reject(function (array $entry) use ($entries): bool {
+            return $entries->contains(
+                fn (array $candidate): bool => $candidate['group'] === $entry['group']
+                    && ($candidate['key'] === $entry['parent'] || $candidate['label'] === $entry['parent']),
+            );
+        })
+        ->map(fn (array $entry): string => sprintf('%s -> %s (%s)', $entry['label'], $entry['parent'], $entry['group'] ?? 'sem grupo'))
+        ->values()
+        ->all();
+
+    expect($orphans)->toBe([])
+        ->and($parented)->not->toBeEmpty();
+});
+
+it('registers every declared navigation group in the panel', function () {
+    $registeredGroups = collect(Filament::getPanel('admin')->getNavigationGroups())
+        ->map(fn (NavigationGroup|string $group): string => $group instanceof NavigationGroup ? $group->getLabel() ?? '' : $group)
+        ->all();
+
+    $declaredGroups = declaredNavigationEntries()
+        ->map(fn (array $entry) => $entry['group'])
+        ->filter()
+        ->unique()
+        ->values()
+        ->all();
+
+    expect($declaredGroups)->not->toBeEmpty()
+        ->and(array_diff($declaredGroups, $registeredGroups))->toBe([]);
+});
+
+it('groups the proposal pipeline inside Comercial', function () {
+    $this->actingAs(makeNavigationAdminUser());
+
+    $representativeItem = navigationChild('Comercial', 'Propostas', 'Representantes Comerciais');
+
+    expect(ProposalRepresentativeResource::getNavigationGroup())->toBe('Comercial')
+        ->and(ProposalRepresentativeResource::getNavigationParentItem())->toBe('Propostas')
+        ->and(navigationItem('Comercial', 'Painel de Propostas'))->not->toBeNull()
+        ->and(navigationItem('Comercial', 'Investidores'))->not->toBeNull()
+        ->and($representativeItem)->not->toBeNull()
+        ->and($representativeItem->getUrl())->toBe(ProposalRepresentativeResource::getUrl(panel: 'admin'));
+});
+
+it('groups the emission monthly report resources under Emissões', function () {
+    $this->actingAs(makeNavigationAdminUser());
+
+    $children = navigationChildLabels('Operações', 'Emissões');
+
     expect(EmissionResource::getNavigationGroup())->toBe('Operações')
-        ->and(ExpenseResource::getNavigationGroup())->toBe('Gestão')
-        ->and($navigationGroups)->toBe([
-            'Operações',
-            'Governança & Risco',
-            'Gestão',
-            'Comercial',
-            'Cadastros Base',
-            'Administração',
-            'Acessos Externos',
+        ->and(SalesBoardResource::getNavigationGroup())->toBe('Operações')
+        ->and(SalesBoardResource::getNavigationParentItem())->toBe('Emissões')
+        ->and($children)->toBe([
+            'Quadro de Vendas',
+            'Negociações',
+            'Relatório Mensal',
+            'Comentários do Relatório',
         ]);
 });
 
-it('registers the Despesas subsection inside Gestão', function () {
+it('groups the construction resources under Obras', function () {
     $this->actingAs(makeNavigationAdminUser());
 
-    $expensesGroup = collect(Filament::getPanel('admin')->getNavigation())
-        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Gestão');
-    $expenseItem = collect($expensesGroup?->getItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Despesas');
-    $salesBoardItem = collect($expensesGroup?->getItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Quadro de Vendas');
-    $serviceProviderTypeItem = collect($expenseItem?->getChildItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Tipos de prestador de serviço');
-    $serviceProviderItem = collect($expenseItem?->getChildItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Prestadores de serviço');
-
-    expect(ExpenseResource::getNavigationGroup())->toBe('Gestão')
-        ->and(ExpenseResource::shouldRegisterNavigation())->toBeFalse()
-        ->and(SalesBoardResource::getNavigationGroup())->toBe('Gestão')
-        ->and(SalesBoardResource::getNavigationLabel())->toBe('Quadro de Vendas')
-        ->and($expensesGroup)->not->toBeNull()
-        ->and($expenseItem)->not->toBeNull()
-        ->and($expenseItem->getUrl())->toBe(ExpenseResource::getUrl(panel: 'admin'))
-        ->and($salesBoardItem)->not->toBeNull()
-        ->and($salesBoardItem->getUrl())->toBe(SalesBoardResource::getUrl(panel: 'admin'))
-        ->and($serviceProviderTypeItem)->toBeNull()
-        ->and($serviceProviderItem)->toBeNull();
+    expect(ConstructionResource::getNavigationGroup())->toBe('Operações')
+        ->and(navigationChildLabels('Operações', 'Obras'))->toBe([
+            'Operações de Obra',
+            'Medições',
+        ]);
 });
 
-it('registers the Recebíveis resource inside Governança & Risco', function () {
+it('groups the fund registries under Fundos inside Financeiro', function () {
     $this->actingAs(makeNavigationAdminUser());
 
-    $governanceGroup = collect(Filament::getPanel('admin')->getNavigation())
-        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Governança & Risco');
-    $receivableItem = collect($governanceGroup?->getItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Recebíveis');
+    expect(FundResource::getNavigationGroup())->toBe('Financeiro')
+        ->and(FundResource::shouldRegisterNavigation())->toBeTrue()
+        ->and(FundTypeResource::getNavigationGroup())->toBe('Financeiro')
+        ->and(FundNameResource::getNavigationGroup())->toBe('Financeiro')
+        ->and(FundApplicationResource::getNavigationGroup())->toBe('Financeiro')
+        ->and(BankResource::getNavigationGroup())->toBe('Financeiro')
+        ->and(navigationChildLabels('Financeiro', 'Fundos'))->toBe([
+            'Tipos de fundo',
+            'Nomes de fundo',
+            'Aplicações',
+            'Bancos',
+        ]);
+});
+
+it('groups the service providers under Despesas inside Financeiro', function () {
+    $this->actingAs(makeNavigationAdminUser());
+
+    expect(ExpenseResource::getNavigationGroup())->toBe('Financeiro')
+        ->and(ExpenseResource::shouldRegisterNavigation())->toBeTrue()
+        ->and(ExpenseServiceProviderResource::getNavigationParentItem())->toBe('Despesas')
+        ->and(ExpenseServiceProviderTypeResource::shouldRegisterNavigation())->toBeFalse()
+        ->and(navigationChildLabels('Financeiro', 'Despesas'))->toBe([
+            'Prestadores de serviço',
+        ]);
+});
+
+it('keeps the risk resources inside Governança & Risco', function () {
+    $this->actingAs(makeNavigationAdminUser());
 
     expect(ReceivableResource::getNavigationGroup())->toBe('Governança & Risco')
-        ->and(ReceivableResource::shouldRegisterNavigation())->toBeTrue()
-        ->and($governanceGroup)->not->toBeNull()
-        ->and($receivableItem)->not->toBeNull()
-        ->and($receivableItem->getUrl())->toBe(ReceivableResource::getUrl(panel: 'admin'));
+        ->and(DocumentResource::getNavigationGroup())->toBe('Governança & Risco')
+        ->and(navigationItemLabels('Governança & Risco'))->toBe([
+            'Painel de Obrigações',
+            'Documentos',
+            'Recebíveis',
+        ]);
 });
 
-it('registers the Usuários Externos module inside Acessos Externos', function () {
-    $this->actingAs(makeNavigationAdminUser(['invitations.view']));
-
-    $externalAccessGroup = collect(Filament::getPanel('admin')->getNavigation())
-        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Acessos Externos');
-    $externalUsersItem = collect($externalAccessGroup?->getItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Usuários Externos');
-    $invitationChildItem = collect($externalUsersItem?->getChildItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Convites de Acesso');
-
-    expect(InvitationResource::getNavigationGroup())->toBe('Acessos Externos')
-        ->and(InvitationResource::getNavigationParentItem())->toBe('Usuários Externos')
-        ->and(InvitationResource::getNavigationLabel())->toBe('Convites de Acesso')
-        ->and($externalAccessGroup)->not->toBeNull()
-        ->and($externalUsersItem)->not->toBeNull()
-        ->and($externalUsersItem->getUrl())->toBe(InvitationResource::getUrl(panel: 'admin'))
-        ->and($invitationChildItem)->not->toBeNull()
-        ->and($invitationChildItem->getUrl())->toBe(InvitationResource::getUrl(panel: 'admin'));
-});
-
-it('registers Fundos inside Gestão and Obras inside Operações', function () {
+it('consolidates the external portal into a single section', function () {
     $this->actingAs(makeNavigationAdminUser());
 
-    $managementGroup = collect(Filament::getPanel('admin')->getNavigation())
-        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Gestão');
-    $operationsGroup = collect(Filament::getPanel('admin')->getNavigation())
-        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Operações');
-    $fundItem = collect($managementGroup?->getItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Fundos');
-    $constructionItem = collect($operationsGroup?->getItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Obras');
-
-    expect(FundResource::getNavigationGroup())->toBe('Gestão')
-        ->and(FundResource::shouldRegisterNavigation())->toBeFalse()
-        ->and(ConstructionResource::getNavigationGroup())->toBe('Operações')
-        ->and(ConstructionResource::getNavigationLabel())->toBe('Obras')
-        ->and(FundTypeResource::getNavigationGroup())->toBe('Cadastros Base')
-        ->and(FundTypeResource::getNavigationParentItem())->toBe('Fundos')
-        ->and(FundNameResource::getNavigationGroup())->toBe('Cadastros Base')
-        ->and(FundNameResource::getNavigationParentItem())->toBe('Fundos')
-        ->and(FundApplicationResource::getNavigationGroup())->toBe('Cadastros Base')
-        ->and(FundApplicationResource::getNavigationParentItem())->toBe('Fundos')
-        ->and(BankResource::getNavigationGroup())->toBe('Cadastros Base')
-        ->and(BankResource::getNavigationParentItem())->toBe('Fundos')
-        ->and($fundItem)->not->toBeNull()
-        ->and($fundItem->getUrl())->toBe(FundResource::getUrl(panel: 'admin'))
-        ->and($constructionItem)->not->toBeNull()
-        ->and($constructionItem->getUrl())->toBe(ConstructionResource::getUrl(panel: 'admin'));
+    expect(NimbusDashboard::getNavigationGroup())->toBe('Gestão Documental Externa')
+        ->and(NotificationSettings::getNavigationGroup())->toBe('Gestão Documental Externa')
+        ->and(navigationItemLabels('Gestão Documental Externa'))->toBe([
+            'Visão Geral',
+            'Gestão Documental',
+            'Comunicação',
+            'Acessos e Usuários',
+        ])
+        ->and(navigationChildLabels('Gestão Documental Externa', 'Visão Geral'))->toBe([
+            'Envios e Solicitações',
+        ])
+        ->and(navigationChildLabels('Gestão Documental Externa', 'Gestão Documental'))->toBe([
+            'Categorias de Documentos',
+            'Biblioteca Geral',
+            'Documentos por Usuário',
+        ])
+        ->and(navigationChildLabels('Gestão Documental Externa', 'Comunicação'))->toBe([
+            'Avisos Gerais',
+            'Auditoria de Envios',
+            'Configurações de notificações',
+        ])
+        ->and(navigationChildLabels('Gestão Documental Externa', 'Acessos e Usuários'))->toBe([
+            'Usuários do Portal',
+            'Chaves de Acesso',
+        ]);
 });
 
-it('registers the service provider resources inside Cadastros Base', function () {
+it('groups the market reference data inside Dados de Mercado', function () {
     $this->actingAs(makeNavigationAdminUser());
 
-    $baseRegistriesGroup = collect(Filament::getPanel('admin')->getNavigation())
-        ->first(fn (NavigationGroup $group) => $group->getLabel() === 'Cadastros Base');
-    $serviceProviderTypeItem = collect($baseRegistriesGroup?->getItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Tipos de prestador de serviço');
-    $serviceProviderItem = collect($baseRegistriesGroup?->getItems() ?? [])
-        ->first(fn ($item) => $item->getLabel() === 'Prestadores de serviço');
+    expect(navigationItemLabels('Dados de Mercado'))->toBe([
+        'Índices (CDI/IPCA)',
+        'Feriados (Calendário B3)',
+    ])
+        ->and(navigationChildLabels('Dados de Mercado', 'Índices (CDI/IPCA)'))->toBe([
+            'Séries Projetadas IPCA',
+        ]);
+});
 
-    expect(ExpenseServiceProviderTypeResource::getNavigationGroup())->toBe('Cadastros Base')
-        ->and(ExpenseServiceProviderTypeResource::shouldRegisterNavigation())->toBeFalse()
-        ->and(ExpenseServiceProviderTypeResource::getNavigationParentItem())->toBeNull()
-        ->and(ExpenseServiceProviderTypeResource::getNavigationLabel())->toBe('Tipos de prestador de serviço')
-        ->and(ExpenseServiceProviderResource::getNavigationGroup())->toBe('Cadastros Base')
-        ->and(ExpenseServiceProviderResource::getNavigationParentItem())->toBeNull()
-        ->and(ExpenseServiceProviderResource::getNavigationLabel())->toBe('Prestadores de serviço')
-        ->and($baseRegistriesGroup)->not->toBeNull()
-        ->and($serviceProviderTypeItem)->toBeNull()
-        ->and($serviceProviderItem)->not->toBeNull()
-        ->and($serviceProviderItem->getUrl())->toBe(ExpenseServiceProviderResource::getUrl(panel: 'admin'));
+it('groups the public website resources inside Site Institucional', function () {
+    $this->actingAs(makeNavigationAdminUser());
+
+    expect(navigationItemLabels('Site Institucional'))->toBe([
+        'Mensagens de Contato',
+        'Vagas',
+    ])
+        ->and(navigationChildLabels('Site Institucional', 'Vagas'))->toBe([
+            'Candidaturas',
+        ]);
+});
+
+it('consolidates the audit trails and internal access inside Administração', function () {
+    $this->actingAs(makeNavigationSuperAdminUser());
+
+    expect(InvitationResource::getNavigationGroup())->toBe('Administração')
+        ->and(InvitationResource::getNavigationParentItem())->toBeNull()
+        ->and(navigationItemLabels('Administração'))->toBe([
+            'Convites de Acesso',
+            'Auditoria',
+            'Configurações',
+        ])
+        ->and(navigationChildLabels('Administração', 'Auditoria'))->toBe([
+            'Logs de Auditoria',
+            'Auditoria de Lembretes',
+            'Histórico de Downloads',
+        ])
+        ->and(navigationChildLabels('Administração', 'Configurações'))->toBe([
+            'Usuários',
+            'Perfis de acesso',
+        ]);
+});
+
+it('points every parent navigation item at a destination the user may open', function () {
+    $user = makeNavigationRestrictedUser(['nimbus.general-documents.view', 'reminder-logs.view']);
+    $this->actingAs($user);
+
+    expect(navigationItem('Gestão Documental Externa', 'Gestão Documental')?->getUrl())
+        ->toBe(GeneralDocumentResource::getUrl(panel: 'admin'))
+        ->and(navigationItem('Administração', 'Auditoria')?->getUrl())
+        ->toBe(ReminderLogResource::getUrl(panel: 'admin'));
 });
 
 it('uses pt-BR labels and translations for admin resources', function () {
@@ -180,6 +269,79 @@ it('uses pt-BR labels and translations for admin resources', function () {
         ->and(trans('proposals.status.em_analise'))->toBe('Em Análise Técnica');
 });
 
+/**
+ * Flatten every navigation entry the panel declares, regardless of the current user's visibility.
+ *
+ * Resources and pages register themselves on the navigation manager rather than on the panel,
+ * so they are collected from their classes to keep this structural check independent of auth.
+ *
+ * @return Collection<int, array{label: ?string, group: mixed, parent: ?string, key: ?string}>
+ */
+function declaredNavigationEntries(): Collection
+{
+    $panel = Filament::getPanel('admin');
+
+    $fromClasses = collect([...$panel->getPages(), ...$panel->getResources()])
+        ->map(fn (string $class): array => [
+            'label' => $class::getNavigationLabel(),
+            'group' => $class::getNavigationGroup(),
+            'parent' => $class::getNavigationParentItem(),
+            'key' => $class,
+        ]);
+
+    $fromItems = collect($panel->getNavigationItems())
+        ->map(fn (NavigationItem $item): array => [
+            'label' => $item->getLabel(),
+            'group' => $item->getGroup(),
+            'parent' => $item->getParentItem(),
+            'key' => $item->getKey(),
+        ]);
+
+    return $fromClasses->merge($fromItems)->values();
+}
+
+function navigationGroupItems(string $group): Collection
+{
+    $navigationGroup = collect(Filament::getPanel('admin')->getNavigation())
+        ->first(fn (NavigationGroup $candidate): bool => $candidate->getLabel() === $group);
+
+    return collect($navigationGroup?->getItems() ?? []);
+}
+
+function navigationItem(string $group, string $label): ?NavigationItem
+{
+    return navigationGroupItems($group)
+        ->first(fn (NavigationItem $item): bool => $item->getLabel() === $label);
+}
+
+/**
+ * @return array<int, string>
+ */
+function navigationItemLabels(string $group): array
+{
+    return navigationGroupItems($group)
+        ->map(fn (NavigationItem $item): string => $item->getLabel())
+        ->values()
+        ->all();
+}
+
+function navigationChild(string $group, string $parent, string $label): ?NavigationItem
+{
+    return collect(navigationItem($group, $parent)?->getChildItems() ?? [])
+        ->first(fn (NavigationItem $item): bool => $item->getLabel() === $label);
+}
+
+/**
+ * @return array<int, string>
+ */
+function navigationChildLabels(string $group, string $parent): array
+{
+    return collect(navigationItem($group, $parent)?->getChildItems() ?? [])
+        ->map(fn (NavigationItem $item): string => $item->getLabel())
+        ->values()
+        ->all();
+}
+
 function makeNavigationAdminUser(array $permissions = []): User
 {
     $user = User::factory()->withTwoFactor()->create([
@@ -192,4 +354,32 @@ function makeNavigationAdminUser(array $permissions = []): User
     }
 
     return $user;
+}
+
+function makeNavigationSuperAdminUser(): User
+{
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => fake()->unique()->safeEmail(),
+    ]);
+    $user->assignRole('super-admin');
+    $user->givePermissionTo(Permission::all());
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    return $user->fresh();
+}
+
+/**
+ * @param  array<int, string>  $permissions
+ */
+function makeNavigationRestrictedUser(array $permissions): User
+{
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => fake()->unique()->safeEmail(),
+    ]);
+    $user->givePermissionTo($permissions);
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    return $user->fresh();
 }

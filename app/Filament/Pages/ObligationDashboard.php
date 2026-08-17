@@ -38,7 +38,7 @@ class ObligationDashboard extends Dashboard
 
     protected static string|\UnitEnum|null $navigationGroup = 'Governança & Risco';
 
-    protected static ?int $navigationSort = 25;
+    protected static ?int $navigationSort = 0;
 
     public static function canAccess(): bool
     {

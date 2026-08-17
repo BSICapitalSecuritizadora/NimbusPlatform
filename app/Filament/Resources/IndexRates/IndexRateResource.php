@@ -25,9 +25,9 @@ class IndexRateResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Índices';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastros Base';
+    protected static string|UnitEnum|null $navigationGroup = 'Dados de Mercado';
 
-    protected static ?int $navigationSort = 27;
+    protected static ?int $navigationSort = 10;
 
     public static function table(Table $table): Table
     {

@@ -41,7 +41,7 @@ class SubmissionResource extends Resource
 
     protected static ?string $slug = 'gestao-documental-externa/submissions';
 
-    protected static ?int $navigationSort = -9;
+    protected static ?int $navigationSort = -19;
 
     public static function form(Schema $schema): Schema
     {

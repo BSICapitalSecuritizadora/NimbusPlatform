@@ -35,7 +35,9 @@ class MeasurementResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Operações';
 
-    protected static ?int $navigationSort = 60;
+    protected static ?string $navigationParentItem = 'Obras';
+
+    protected static ?int $navigationSort = 22;
 
     public static function form(Schema $schema): Schema
     {
