@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MalwareScanStatus;
 use Carbon\CarbonInterface;
 use Database\Factories\EmissionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -81,6 +82,9 @@ class Emission extends Model
         'Adimplente' => 'Adimplente',
         'Falência' => 'Falência',
     ];
+
+    /** Categoria do acervo que reúne os instrumentos jurídicos da operação. */
+    public const GUARANTEE_SOURCE_DOCUMENT_CATEGORY = 'documentos_operacao';
 
     public const FORM_OPTIONS = [
         'Nominativa e escritural' => 'Nominativa e escritural',
@@ -351,6 +355,39 @@ class Emission extends Model
      *
      * @return BelongsToMany<Document, $this>
      */
+    /**
+     * Documentos que a análise de garantias pode ler.
+     *
+     * Inclui tudo que está em "Documentos da Operação" mais qualquer documento
+     * já classificado juridicamente. A classificação continua valendo — é ela
+     * que ordena a cadeia documental e resolve prioridade entre instrumentos
+     * (§35) —, mas não é pré-requisito para analisar: exigir que alguém
+     * classificasse antes deixaria a operação sem nada a analisar no dia em que
+     * os documentos foram anexados.
+     *
+     * Arquivos reprovados na varredura ficam de fora: não devem ser abertos nem
+     * enviados a um processador externo.
+     *
+     * @return BelongsToMany<Document, $this>
+     */
+    public function guaranteeSourceDocuments(): BelongsToMany
+    {
+        return $this->documents()
+            ->where(function ($query) {
+                $query
+                    ->where('documents.category', self::GUARANTEE_SOURCE_DOCUMENT_CATEGORY)
+                    ->orWhereNotNull('emission_document.legal_document_type');
+            })
+            ->whereNotIn('documents.scan_status', [
+                MalwareScanStatus::Infected->value,
+                MalwareScanStatus::Rejected->value,
+            ])
+            ->orderByRaw('emission_document.document_date IS NULL')
+            ->orderBy('emission_document.document_date')
+            ->orderBy('emission_document.amendment_order')
+            ->orderBy('documents.title');
+    }
+
     public function legalDocuments(): BelongsToMany
     {
         return $this->documents()

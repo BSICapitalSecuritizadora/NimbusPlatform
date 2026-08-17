@@ -9,6 +9,7 @@ use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
 use App\Models\Document;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -24,6 +25,22 @@ class GeminiService
 
     /** Intervalo entre consultas ao estado de um arquivo ainda em PROCESSING. */
     private const FILE_POLL_SECONDS = 2;
+
+    /**
+     * Respostas em que repetir a chamada tem chance de mudar o resultado.
+     *
+     * São sinais de indisponibilidade momentânea do lado do modelo — o 503
+     * "This model is currently experiencing high demand" é de longe o mais
+     * frequente —, não de pedido malformado. Um 400 repetido três vezes volta
+     * 400 nas três, e insistir só atrasaria o erro que o operador precisa ver.
+     */
+    private const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
+
+    /** Teto da espera entre tentativas, para que `max_attempts` alto não vire uma pausa de minutos. */
+    private const RETRY_MAX_DELAY_MS = 30_000;
+
+    /** Faixa do jitter somado a cada espera. */
+    private const RETRY_JITTER_MS = 1_000;
 
     private const SECURITIZATION_PROMPT = <<<'PROMPT'
 Você é um especialista em análise de documentos financeiros brasileiros, especificamente Termos de Securitização de CRI/CRA.
@@ -927,12 +944,66 @@ PROMPT;
      * disparados por ação explícita do usuário sobre documentos cuja
      * transferência internacional esteja registrada no inventário de
      * tratamento — nunca de forma automática.
+     *
+     * O retry cobre só as respostas de `RETRYABLE_STATUSES`, e deliberadamente
+     * não cobre erro de conexão: o timeout de leitura é de 360s e o de conexão
+     * de 15s, mas os dois chegam aqui como o mesmo cURL 28, indistinguíveis. Ao
+     * repetir, o pior caso de uma leitura estourada passaria de 360s para mais
+     * de 18 minutos e atravessaria o `--timeout` do worker, trocando um erro
+     * legível por um job morto no meio. Como o que derruba a geração na prática
+     * é o 503 de sobrecarga — que volta em segundos —, limitar às respostas com
+     * status mantém o pior caso previsível.
      */
     private function pendingRequest(): PendingRequest
     {
         return Http::timeout(360)
             ->connectTimeout(15)
+            ->retry(
+                $this->maxAttempts(),
+                fn (int $attempt, \Throwable $exception): int => $this->retryDelayMilliseconds($attempt, $exception),
+                fn (\Throwable $exception): bool => $exception instanceof RequestException
+                    && in_array($exception->response->status(), self::RETRYABLE_STATUSES, true),
+            )
             ->withHeaders(['x-goog-api-key' => (string) config('services.gemini.key')]);
+    }
+
+    /**
+     * Espera antes da próxima tentativa: exponencial sobre a base configurada,
+     * com jitter.
+     *
+     * O jitter não é enfeite. Uma emissão dispara extração de cláusulas,
+     * garantias e obrigações sobre o mesmo Termo, e uma sobrecarga do modelo
+     * derruba as três quase no mesmo instante; sem o desvio aleatório, as
+     * tentativas voltariam sincronizadas e recriariam o pico que causou o 503.
+     *
+     * O log aqui é o que torna o retry observável: esta closure só roda quando
+     * uma nova tentativa vai de fato acontecer, então a contagem de warnings é
+     * a contagem de repetições.
+     */
+    private function retryDelayMilliseconds(int $attempt, \Throwable $exception): int
+    {
+        $delay = min(
+            $this->retryBaseSeconds() * 1000 * (2 ** ($attempt - 1)),
+            self::RETRY_MAX_DELAY_MS,
+        ) + random_int(0, self::RETRY_JITTER_MS);
+
+        Log::warning('GeminiService: resposta transitória, repetindo a chamada', [
+            'attempt' => $attempt,
+            'status' => $exception instanceof RequestException ? $exception->response->status() : null,
+            'delay_ms' => $delay,
+        ]);
+
+        return (int) $delay;
+    }
+
+    private function maxAttempts(): int
+    {
+        return max(1, (int) config('services.gemini.max_attempts', 3));
+    }
+
+    private function retryBaseSeconds(): int
+    {
+        return max(1, (int) config('services.gemini.retry_base_seconds', 2));
     }
 
     private function readDocumentContents(Document $document): string

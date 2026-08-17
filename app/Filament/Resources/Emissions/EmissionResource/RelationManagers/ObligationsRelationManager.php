@@ -16,10 +16,15 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Component;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
@@ -49,21 +54,21 @@ class ObligationsRelationManager extends RelationManager
         return $schema->schema(ObligationFormFields::make('obligation'))->columns(2);
     }
 
-    public function infolist(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
+    public function infolist(Schema $schema): Schema
     {
         return $schema->components([
-            \Filament\Infolists\Components\Section::make('Dossiê da Obrigação')
+            Section::make('Dossiê da Obrigação')
                 ->schema([
-                    \Filament\Infolists\Components\Grid::make(4)->schema([
-                        \Filament\Infolists\Components\TextEntry::make('title')
+                    Grid::make(4)->schema([
+                        TextEntry::make('title')
                             ->label('Obrigação')
                             ->weight('bold')
                             ->size('lg')
                             ->columnSpan(2),
-                        \Filament\Infolists\Components\TextEntry::make('status')
+                        TextEntry::make('status')
                             ->label('Status Atual')
                             ->badge()
-                            ->formatStateUsing(fn (?string $state): string => \App\Models\Obligation::STATUS_OPTIONS[$state] ?? (string) $state)
+                            ->formatStateUsing(fn (?string $state): string => Obligation::STATUS_OPTIONS[$state] ?? (string) $state)
                             ->color(fn (?string $state): string => match ($state) {
                                 'em_dia', 'concluida' => 'success',
                                 'a_vencer' => 'info',
@@ -71,33 +76,33 @@ class ObligationsRelationManager extends RelationManager
                                 'em_analise' => 'warning',
                                 default => 'gray',
                             }),
-                        \Filament\Infolists\Components\TextEntry::make('priority')
+                        TextEntry::make('priority')
                             ->label('Prioridade')
                             ->badge()
-                            ->formatStateUsing(fn (?string $state): string => \App\Models\Obligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
+                            ->formatStateUsing(fn (?string $state): string => Obligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
                             ->color(fn (?string $state): string => match ($state) {
                                 'critical' => 'danger',
                                 'high' => 'warning',
                                 'medium' => 'info',
                                 default => 'gray',
                             }),
-                        \Filament\Infolists\Components\TextEntry::make('due_date')
+                        TextEntry::make('due_date')
                             ->label('Prazo / Vencimento')
                             ->date('d/m/Y')
                             ->placeholder('Sem prazo definido'),
-                        \Filament\Infolists\Components\TextEntry::make('responsibleUser.name')
+                        TextEntry::make('responsibleUser.name')
                             ->label('Responsável')
                             ->placeholder('Não atribuído'),
-                        \Filament\Infolists\Components\TextEntry::make('responsible_area')
+                        TextEntry::make('responsible_area')
                             ->label('Área Responsável')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('source')
+                        TextEntry::make('source')
                             ->label('Origem')
-                            ->state(fn (\App\Models\Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual')
+                            ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('next_action')
+                        TextEntry::make('next_action')
                             ->label('Próxima Ação Recomendada')
-                            ->state(fn (\App\Models\Obligation $record): string => match ($record->status) {
+                            ->state(fn (Obligation $record): string => match ($record->status) {
                                 'a_vencer', 'vencida' => 'Anexe evidências e conclua a obrigação quando houver comprovação suficiente.',
                                 'em_analise' => 'Revise as evidências anexadas. Apenas evidência aprovada conta como comprovação válida.',
                                 'em_dia', 'concluida' => 'Nenhuma ação operacional pendente.',
@@ -106,13 +111,13 @@ class ObligationsRelationManager extends RelationManager
                             ->color('primary')
                             ->weight('bold')
                             ->columnSpan(2),
-                        \Filament\Infolists\Components\TextEntry::make('workflow_availability')
+                        TextEntry::make('workflow_availability')
                             ->label('Acesso operacional')
-                            ->state(fn (\App\Models\Obligation $record): string => $this->workflowAvailabilityMessage($record))
+                            ->state(fn (Obligation $record): string => $this->workflowAvailabilityMessage($record))
                             ->placeholder('—')
                             ->columnSpan(2),
                     ]),
-                    \Filament\Infolists\Components\TextEntry::make('description')
+                    TextEntry::make('description')
                         ->label('Descrição / Detalhes da Obrigação')
                         ->columnSpanFull()
                         ->placeholder('Sem descrição adicional.'),
@@ -273,15 +278,15 @@ class ObligationsRelationManager extends RelationManager
                     ->exporter(ObligationExporter::class),
             ])
             ->actions([
-                \Filament\Actions\ViewAction::make()
+                ViewAction::make()
                     ->label('Abrir dossiê')
                     ->color('info')
-                    ->authorize(fn (): bool => auth()->user()?->can(\App\Enums\AccessPermission::ObligationsView->value) ?? false)
-                    ->extraModalFooterActions(fn (\App\Models\Obligation $record) => [
-                        $this->makeSubmitForReviewAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, \App\Services\Obligations\ObligationWorkflowService::TRANSITION_SUBMIT_FOR_REVIEW)),
-                        $this->makeCompleteAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, \App\Services\Obligations\ObligationWorkflowService::TRANSITION_COMPLETE)),
-                        $this->makeMarkNotApplicableAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, \App\Services\Obligations\ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE)),
-                        $this->makeReopenAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, \App\Services\Obligations\ObligationWorkflowService::TRANSITION_REOPEN)),
+                    ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false)
+                    ->extraModalFooterActions(fn (Obligation $record) => [
+                        $this->makeSubmitForReviewAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_SUBMIT_FOR_REVIEW)),
+                        $this->makeCompleteAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_COMPLETE)),
+                        $this->makeMarkNotApplicableAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE)),
+                        $this->makeReopenAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_REOPEN)),
                     ]),
                 $this->makeCommentsAction(),
                 $this->makeHistoryAction(),
@@ -479,7 +484,7 @@ class ObligationsRelationManager extends RelationManager
     }
 
     /**
-     * @return array<int, \Filament\Forms\Components\Component>
+     * @return array<int, Component>
      */
     protected function completeActionForm(Obligation $record): array
     {

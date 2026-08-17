@@ -47,6 +47,12 @@
             </span>
 
             @if ($run->hasFailed())
+                {{-- Mesma razão do banner de obrigações: sem a causa, um 503 momentâneo do
+                     modelo e um erro permanente produzem a mesma tela. --}}
+                @if (filled($run->error_message))
+                    <span class="mt-1 block rounded-lg border {{ $palette['border'] }} bg-white/60 px-2 py-1 font-mono text-xs break-words text-gray-600 dark:bg-gray-950/40 dark:text-gray-400">{{ $run->error_message }}</span>
+                @endif
+
                 <span class="block text-xs {{ $palette['text'] }}">Use novamente "Identificar nos documentos" para tentar de novo.</span>
             @endif
         </span>

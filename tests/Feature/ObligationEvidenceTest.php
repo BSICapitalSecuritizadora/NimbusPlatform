@@ -367,6 +367,27 @@ it('lists the emission evidences for users with the view evidence permission', f
         ->assertTableActionHidden('create');
 });
 
+it('opens the evidence review', function () {
+    $emission = Emission::factory()->create();
+    $obligation = Obligation::factory()->for($emission)->create();
+    $evidence = ObligationEvidence::factory()->create([
+        'obligation_id' => $obligation->id,
+        'emission_id' => $emission->id,
+    ]);
+
+    $this->actingAs(makeEvidenceUserWithPermissions([
+        AccessPermission::ObligationsViewEvidence->value,
+    ]));
+
+    Livewire::test(ObligationEvidencesRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSuccessful()
+        ->mountTableAction('view', $evidence)
+        ->assertHasNoErrors();
+});
+
 it('shows the attach evidence action to users with the upload evidence permission', function () {
     $emission = Emission::factory()->create();
     $user = makeEvidenceUserWithPermissions([

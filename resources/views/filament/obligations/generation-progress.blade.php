@@ -42,6 +42,17 @@
             </span>
 
             @if ($run->hasFailed())
+                {{--
+                    A causa técnica (503 de sobrecarga do modelo, arquivo ausente no disco)
+                    já era gravada em `error_message`, mas só aparecia no log: quem operava
+                    lia "tente novamente" sem saber se esperar um minuto resolvia ou se o
+                    problema exigia suporte. O texto vem da exceção e é truncado em 500
+                    caracteres na gravação; o escape do Blade cuida do conteúdo da API.
+                --}}
+                @if (filled($run->error_message))
+                    <span class="mt-1 block rounded-lg border {{ $palette['border'] }} bg-white/60 px-2 py-1 font-mono text-xs break-words text-gray-600 dark:bg-gray-950/40 dark:text-gray-400">{{ $run->error_message }}</span>
+                @endif
+
                 <span class="block text-xs {{ $palette['text'] }}">Use novamente o botão "Gerar obrigações do Termo" para tentar de novo.</span>
             @endif
         </span>

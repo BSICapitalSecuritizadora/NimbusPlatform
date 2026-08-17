@@ -9,6 +9,7 @@ use App\Enums\GuaranteeRequirementBase;
 use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
 use App\Enums\GuaranteeValueSource;
+use App\Models\Fund;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
@@ -65,6 +66,9 @@ class GuaranteeFormFields
                     Select::make('fund_id')
                         ->label('Conta vinculada / Fundo')
                         ->relationship('fund', 'trade_name')
+                        ->getOptionLabelFromRecordUsing(fn (Fund $record): string => filled($record->trade_name)
+                            ? $record->trade_name
+                            : "Conta {$record->account}")
                         ->searchable()
                         ->preload()
                         ->placeholder('Não vinculado')

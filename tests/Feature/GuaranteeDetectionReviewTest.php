@@ -7,6 +7,7 @@ use App\Enums\GuaranteeRequirementBase;
 use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
 use App\Enums\LegalDocumentType;
+use App\Enums\MalwareScanStatus;
 use App\Jobs\GenerateEmissionGuaranteesJob;
 use App\Models\Document;
 use App\Models\Emission;
@@ -46,6 +47,39 @@ function attachLegalDocument(
 
     return $document;
 }
+
+/**
+ * O banner de garantias tinha o mesmo ponto cego do de obrigações: a causa ia
+ * para `error_message` e nunca chegava à tela. As duas telas falham pela mesma
+ * sobrecarga do modelo e precisam distinguir "tente de novo" de "não adianta".
+ */
+it('shows the recorded cause on the failed guarantee banner', function (): void {
+    $run = GuaranteeGenerationRun::factory()->failed()->create([
+        'error_message' => 'HTTP request returned status code 503: This model is currently experiencing high demand.',
+    ]);
+
+    $banner = view(
+        'filament.resources.emissions.relation-managers.guarantee-generation-progress',
+        ['run' => $run],
+    )->render();
+
+    expect($banner)->toContain('This model is currently experiencing high demand.')
+        ->and($banner)->toContain('Use novamente "Identificar nos documentos" para tentar de novo.');
+});
+
+it('omits the cause block from the guarantee banner when nothing was recorded', function (): void {
+    $run = GuaranteeGenerationRun::factory()->failed()->create([
+        'error_message' => null,
+    ]);
+
+    $banner = view(
+        'filament.resources.emissions.relation-managers.guarantee-generation-progress',
+        ['run' => $run],
+    )->render();
+
+    expect($banner)->toContain('Use novamente "Identificar nos documentos" para tentar de novo.')
+        ->and($banner)->not->toContain('font-mono');
+});
 
 it('records extracted guarantees as pending candidates rather than official guarantees', function (): void {
     $emission = Emission::factory()->create();
@@ -280,6 +314,43 @@ it('supersedes pending candidates on reprocessing but never touches reviewed one
         ->and($confirmed->refresh()->status)->toBe(GuaranteeDetectionStatus::Approved)
         ->and($rejected->refresh()->status)->toBe(GuaranteeDetectionStatus::Rejected)
         ->and(ExtractedGuarantee::query()->pending()->count())->toBe(1);
+});
+
+it('offers every operation document for analysis, classified or not', function (): void {
+    $emission = Emission::factory()->create();
+
+    $classified = attachLegalDocument($emission, LegalDocumentType::SecuritizationTerm, '2024-01-10');
+
+    $unclassified = Document::factory()->create([
+        'title' => 'Contrato de Cessão Fiduciária',
+        'category' => 'documentos_operacao',
+    ]);
+    $emission->documents()->attach($unclassified->id);
+
+    $otherCategory = Document::factory()->create([
+        'title' => 'Fato Relevante',
+        'category' => 'fatos_relevantes',
+    ]);
+    $emission->documents()->attach($otherCategory->id);
+
+    $infected = Document::factory()->create([
+        'title' => 'Anexo suspeito',
+        'category' => 'documentos_operacao',
+    ]);
+    $emission->documents()->attach($infected->id);
+
+    // `ScansUploadedFile` reescreve `scan_status` no saving, então o veredito
+    // da varredura só pode ser simulado direto na tabela.
+    Document::query()->whereKey($infected->id)->update([
+        'scan_status' => MalwareScanStatus::Infected->value,
+    ]);
+
+    $available = $emission->guaranteeSourceDocuments()->pluck('documents.id');
+
+    expect($available)->toContain($classified->id)
+        ->and($available)->toContain($unclassified->id)
+        ->and($available)->not->toContain($otherCategory->id)
+        ->and($available)->not->toContain($infected->id);
 });
 
 it('rejects a candidate only with a reason and records the review', function (): void {

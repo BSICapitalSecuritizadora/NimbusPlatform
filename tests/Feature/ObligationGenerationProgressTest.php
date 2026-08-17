@@ -198,6 +198,43 @@ it('stops polling and shows the success banner once completed', function () {
         ->assertDontSeeHtml('wire:poll.4s');
 });
 
+/**
+ * A causa já era gravada em `error_message` e só aparecia no log. Sem ela na
+ * tela, um 503 momentâneo do modelo e um documento ausente no disco produziam a
+ * mesma mensagem — e a primeira se resolve tentando de novo, a segunda não.
+ */
+it('shows the recorded cause on the failure banner', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create();
+    ObligationGenerationRun::factory()->for($emission)->failed()->create([
+        'error_message' => 'HTTP request returned status code 503: This model is currently experiencing high demand.',
+    ]);
+
+    Livewire::test(ObligationSuggestionsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSee('Não foi possível concluir a geração das obrigações.')
+        ->assertSee('This model is currently experiencing high demand.');
+});
+
+it('keeps the failure banner usable when no cause was recorded', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create();
+    ObligationGenerationRun::factory()->for($emission)->failed()->create([
+        'error_message' => null,
+    ]);
+
+    Livewire::test(ObligationSuggestionsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSee('Não foi possível concluir a geração das obrigações.')
+        ->assertSee('Use novamente o botão');
+});
+
 it('does not expose the suggestions tab to users without permission', function () {
     $user = User::factory()->create();
     $this->actingAs($user);

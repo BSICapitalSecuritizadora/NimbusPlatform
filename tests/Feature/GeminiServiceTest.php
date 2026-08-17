@@ -2,7 +2,9 @@
 
 use App\Models\Document;
 use App\Services\GeminiService;
+use Carbon\CarbonInterval;
 use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
@@ -11,6 +13,9 @@ use function Pest\Laravel\mock;
 
 beforeEach(function (): void {
     config(['services.gemini.key' => 'test-key']);
+
+    // O serviço espera entre as tentativas; sem o fake a suíte pagaria o backoff em tempo real.
+    Sleep::fake();
 });
 
 /**
@@ -30,17 +35,42 @@ function fakeDocument(string $contents = '%PDF-1.4 fake content', int $id = 7): 
 }
 
 /**
+ * Corpo de `generateContent` com o JSON já no formato que o serviço espera.
+ *
+ * @param  array<string, mixed>  $payload
+ * @return array<string, mixed>
+ */
+function geminiJsonBody(array $payload): array
+{
+    return [
+        'candidates' => [[
+            'content' => ['parts' => [['text' => json_encode($payload)]]],
+        ]],
+    ];
+}
+
+/**
  * Resposta de `generateContent` com o JSON já no formato que o serviço espera.
  *
  * @param  array<string, mixed>  $payload
  */
 function geminiJsonResponse(array $payload): PromiseInterface
 {
-    return Http::response([
-        'candidates' => [[
-            'content' => ['parts' => [['text' => json_encode($payload)]]],
-        ]],
-    ]);
+    return Http::response(geminiJsonBody($payload));
+}
+
+/**
+ * Corpo do 503 que o Gemini devolve quando o modelo está sobrecarregado.
+ *
+ * @return array<string, mixed>
+ */
+function geminiOverloadedBody(): array
+{
+    return ['error' => [
+        'code' => 503,
+        'message' => 'This model is currently experiencing high demand. Please try again later.',
+        'status' => 'UNAVAILABLE',
+    ]];
 }
 
 it('sends the pdf as inline base64 to the generation endpoint', function (): void {
@@ -148,6 +178,99 @@ it('throws when the generation request fails', function (): void {
 
     expect(fn () => app(GeminiService::class)->extractSecuritizationClauses(fakeDocument()))
         ->toThrow(Exception::class);
+});
+
+/**
+ * O 503 de sobrecarga é a falha mais comum da geração e é transitória: sem
+ * repetir, um pico momentâneo do lado do Google derrubava a execução inteira e
+ * o operador só via "Não foi possível concluir a geração das obrigações".
+ */
+it('retries the generation when the model reports transient overload', function (): void {
+    Http::fake([
+        'https://generativelanguage.googleapis.com/v1beta/models/*' => Http::sequence()
+            ->push(geminiOverloadedBody(), 503)
+            ->push(geminiJsonBody([
+                'objeto_social' => ['clausula' => 'Cláusula 1ª', 'texto' => 'Objeto social texto'],
+            ])),
+    ]);
+
+    $result = app(GeminiService::class)->extractSecuritizationClauses(fakeDocument());
+
+    expect($result['corporate_purpose'])->toBe("Cláusula 1ª\n\nObjeto social texto");
+
+    Http::assertSentCount(2);
+});
+
+it('retries a rate limited response as well', function (): void {
+    Http::fake([
+        'https://generativelanguage.googleapis.com/v1beta/models/*' => Http::sequence()
+            ->push(['error' => ['code' => 429, 'status' => 'RESOURCE_EXHAUSTED']], 429)
+            ->push(geminiJsonBody([
+                'objeto_social' => ['clausula' => 'Cláusula 1ª', 'texto' => 'Objeto social texto'],
+            ])),
+    ]);
+
+    $result = app(GeminiService::class)->extractSecuritizationClauses(fakeDocument());
+
+    expect($result['corporate_purpose'])->toBe("Cláusula 1ª\n\nObjeto social texto");
+
+    Http::assertSentCount(2);
+});
+
+it('stops after the configured number of attempts and surfaces the failure', function (): void {
+    config(['services.gemini.max_attempts' => 3]);
+
+    Http::fake([
+        'https://generativelanguage.googleapis.com/v1beta/models/*' => Http::response(geminiOverloadedBody(), 503),
+    ]);
+
+    expect(fn () => app(GeminiService::class)->extractSecuritizationClauses(fakeDocument()))
+        ->toThrow(RequestException::class);
+
+    Http::assertSentCount(3);
+});
+
+/**
+ * Um pedido malformado volta o mesmo erro em toda tentativa. Repetir só atrasa
+ * o diagnóstico e multiplica o envio do documento ao processador.
+ */
+it('does not retry a response the api rejected as invalid', function (): void {
+    Http::fake([
+        'https://generativelanguage.googleapis.com/v1beta/models/*' => Http::response(
+            ['error' => ['code' => 400, 'status' => 'INVALID_ARGUMENT']],
+            400,
+        ),
+    ]);
+
+    expect(fn () => app(GeminiService::class)->extractSecuritizationClauses(fakeDocument()))
+        ->toThrow(RequestException::class);
+
+    Http::assertSentCount(1);
+});
+
+/**
+ * A espera cresce a cada tentativa para não insistir contra um modelo que ainda
+ * está congestionado. O jitter mantém cada pausa dentro de uma faixa, e não num
+ * valor exato, para que gerações disparadas juntas não voltem sincronizadas.
+ */
+it('waits longer before each retry', function (): void {
+    config([
+        'services.gemini.max_attempts' => 3,
+        'services.gemini.retry_base_seconds' => 2,
+    ]);
+
+    Http::fake([
+        'https://generativelanguage.googleapis.com/v1beta/models/*' => Http::response(geminiOverloadedBody(), 503),
+    ]);
+
+    expect(fn () => app(GeminiService::class)->extractSecuritizationClauses(fakeDocument()))
+        ->toThrow(RequestException::class);
+
+    Sleep::assertSleptTimes(2);
+    Sleep::assertSlept(fn (CarbonInterval $waited): bool => $waited->totalMilliseconds >= 2000
+        && $waited->totalMilliseconds <= 3000);
+    Sleep::assertSlept(fn (CarbonInterval $waited): bool => $waited->totalMilliseconds >= 4000
+        && $waited->totalMilliseconds <= 5000);
 });
 
 it('throws when the document file does not exist', function (): void {
@@ -258,7 +381,6 @@ it('deletes the uploaded file even when the generation fails', function (): void
  */
 it('waits for a processing upload to become active before generating', function (): void {
     config(['services.gemini.inline_max_bytes' => 10]);
-    Sleep::fake();
 
     Http::fake([
         'https://generativelanguage.googleapis.com/upload/v1beta/files*' => Http::sequence()
@@ -295,7 +417,6 @@ it('throws when the upload never leaves the processing state', function (): void
         'services.gemini.inline_max_bytes' => 10,
         'services.gemini.file_activation_timeout' => 0,
     ]);
-    Sleep::fake();
 
     Http::fake([
         'https://generativelanguage.googleapis.com/upload/v1beta/files*' => Http::sequence()

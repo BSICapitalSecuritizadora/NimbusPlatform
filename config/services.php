@@ -61,6 +61,10 @@ return [
     | pela File API. A API rejeita requisições acima de ~20 MB e o base64 infla
     | o arquivo em ~33%, então o teto do arquivo bruto fica em ~15 MB; 12 MB
     | deixa margem para o prompt e o overhead do JSON.
+    |
+    | `max_attempts` conta a chamada original, não só as repetições: 3 significa
+    | uma tentativa e mais duas. Subir esse número alonga o job na mesma medida
+    | e precisa ser conferido contra o `--timeout` do worker.
     */
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
@@ -68,6 +72,8 @@ return [
         'inline_max_bytes' => (int) env('GEMINI_INLINE_MAX_BYTES', 12 * 1024 * 1024),
         'file_activation_timeout' => (int) env('GEMINI_FILE_ACTIVATION_TIMEOUT', 120),
         'obligations_min_confidence' => (float) env('GEMINI_OBLIGATIONS_MIN_CONFIDENCE', 0.6),
+        'max_attempts' => (int) env('GEMINI_MAX_ATTEMPTS', 3),
+        'retry_base_seconds' => (int) env('GEMINI_RETRY_BASE_SECONDS', 2),
     ],
 
     /*

@@ -9,6 +9,7 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\Guarantee
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Construction;
 use App\Models\Emission;
+use App\Models\Fund;
 use App\Models\Guarantee;
 use App\Models\GuaranteeSnapshot;
 use App\Models\IntegralizationHistory;
@@ -142,6 +143,21 @@ it('updates and deletes guarantees from the emission relation manager', function
     guaranteesRelationManager($emission)->callTableAction('delete', $guarantee);
 
     expect(Guarantee::query()->count())->toBe(0);
+});
+
+it('opens the guarantee edit form when a linked fund has no trade name', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create();
+    $fund = Fund::factory()->for($emission)->create(['trade_name' => null]);
+    $guarantee = Guarantee::factory()->create([
+        'emission_id' => $emission->id,
+        'fund_id' => $fund->id,
+    ]);
+
+    guaranteesRelationManager($emission)
+        ->mountTableAction('edit', $guarantee)
+        ->assertHasNoErrors();
 });
 
 it('uses the latest sales board from each construction up to the competence', function () {

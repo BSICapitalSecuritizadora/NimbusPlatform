@@ -285,8 +285,12 @@ class GuaranteeDetectionsRelationManager extends RelationManager
                 Select::make('document_id')
                     ->label('Documento')
                     ->options(fn (): array => $this->legalDocumentOptions())
+                    ->searchable()
                     ->required()
-                    ->helperText('Classifique os documentos da operação (Termo, aditamentos, instrumentos de garantia) para que apareçam aqui.'),
+                    ->helperText('Lista os documentos da operação vinculados a esta emissão. Classificar o documento (Termo, aditamento, instrumento de garantia) melhora a ordenação da cadeia documental e a detecção de conflitos.')
+                    ->placeholder(fn (): string => $this->legalDocumentOptions() === []
+                        ? 'Nenhum documento da operação vinculado à emissão'
+                        : 'Selecione uma opção'),
             ])
             ->action(function (array $data): void {
                 if ($this->hasActiveGenerationRun()) {
@@ -321,25 +325,30 @@ class GuaranteeDetectionsRelationManager extends RelationManager
     }
 
     /**
+     * Documentos oferecidos para análise.
+     *
+     * Traz todos os "Documentos da Operação" da emissão, classificados ou não.
+     * O rótulo mostra a classificação jurídica quando existe — é ela que ordena
+     * a cadeia documental — e sinaliza a ausência quando falta, para que o
+     * usuário saiba que classificar melhora a detecção de conflitos.
+     *
      * @return array<int, string>
      */
     protected function legalDocumentOptions(): array
     {
         return $this->getOwnerRecord()
-            ->legalDocuments()
+            ->guaranteeSourceDocuments()
             ->get()
             ->mapWithKeys(function (Document $document): array {
                 $type = LegalDocumentType::tryFrom((string) $document->pivot->legal_document_type);
                 $date = $document->pivot->document_date;
 
-                $label = $document->title;
-
-                if ($type !== null) {
-                    $label = "{$type->label()} — {$label}";
-                }
+                $label = $type === null
+                    ? $document->title.' (sem classificação jurídica)'
+                    : "{$type->label()} — {$document->title}";
 
                 if (filled($date)) {
-                    $label .= ' ('.Carbon::parse($date)->format('d/m/Y').')';
+                    $label .= ' · '.Carbon::parse($date)->format('d/m/Y');
                 }
 
                 return [$document->id => $label];

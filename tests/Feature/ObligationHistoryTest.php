@@ -10,7 +10,9 @@ use App\Models\ExtractedObligation;
 use App\Models\Obligation;
 use App\Models\ObligationHistoryEntry;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
@@ -21,14 +23,14 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->seed(RolesAndPermissionsSeeder::class);
-    $this->travelTo(Carbon\CarbonImmutable::parse('2026-06-18 09:00:00'));
+    $this->travelTo(CarbonImmutable::parse('2026-06-18 09:00:00'));
 });
 
 afterEach(function () {
     $this->travelBack();
 });
 
-function historyEntriesFor(Obligation $obligation, ?string $eventType = null): Illuminate\Database\Eloquent\Collection
+function historyEntriesFor(Obligation $obligation, ?string $eventType = null): Collection
 {
     $query = $obligation->historyEntries()->getQuery();
 
@@ -184,6 +186,23 @@ it('exposes the read-only history action to authorized users', function () {
         ->assertSuccessful()
         ->assertTableActionVisible('history', $obligation)
         ->mountTableAction('history', $obligation)
+        ->assertHasNoErrors();
+});
+
+it('opens the obligation dossier', function () {
+    $emission = Emission::factory()->create();
+    $obligation = Obligation::factory()->for($emission)->create(['status' => 'a_vencer']);
+
+    $this->actingAs(makeHistoryUserWithPermissions([
+        AccessPermission::ObligationsView->value,
+    ]));
+
+    Livewire::test(ObligationsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSuccessful()
+        ->mountTableAction('view', $obligation)
         ->assertHasNoErrors();
 });
 

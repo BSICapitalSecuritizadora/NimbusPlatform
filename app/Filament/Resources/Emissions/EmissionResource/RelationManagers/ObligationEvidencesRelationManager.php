@@ -9,11 +9,16 @@ use App\Services\Obligations\ObligationEvidenceService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -38,70 +43,70 @@ class ObligationEvidencesRelationManager extends RelationManager
         return auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value) ?? false;
     }
 
-    public function infolist(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
+    public function infolist(Schema $schema): Schema
     {
         return $schema->components([
-            \Filament\Infolists\Components\Section::make('Revisão da Evidência')
+            Section::make('Revisão da Evidência')
                 ->schema([
-                    \Filament\Infolists\Components\Grid::make(3)->schema([
-                        \Filament\Infolists\Components\TextEntry::make('original_name')
+                    Grid::make(3)->schema([
+                        TextEntry::make('original_name')
                             ->label('Arquivo Anexado')
                             ->weight('bold')
                             ->size('lg')
                             ->columnSpan(2),
-                        \Filament\Infolists\Components\TextEntry::make('status')
+                        TextEntry::make('status')
                             ->label('Status da Revisão')
                             ->badge()
-                            ->formatStateUsing(fn (?string $state): string => \App\Models\ObligationEvidence::STATUS_OPTIONS[$state] ?? (string) $state)
+                            ->formatStateUsing(fn (?string $state): string => ObligationEvidence::STATUS_OPTIONS[$state] ?? (string) $state)
                             ->color(fn (?string $state): string => match ($state) {
-                                \App\Models\ObligationEvidence::STATUS_APPROVED => 'success',
-                                \App\Models\ObligationEvidence::STATUS_REJECTED => 'danger',
+                                ObligationEvidence::STATUS_APPROVED => 'success',
+                                ObligationEvidence::STATUS_REJECTED => 'danger',
                                 default => 'warning',
                             }),
-                        \Filament\Infolists\Components\TextEntry::make('uploader.name')
+                        TextEntry::make('uploader.name')
                             ->label('Enviado por')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('uploaded_at')
+                        TextEntry::make('uploaded_at')
                             ->label('Data de Envio')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
-                        \Filament\Infolists\Components\TextEntry::make('size')
+                        TextEntry::make('size')
                             ->label('Tamanho do Arquivo')
-                            ->formatStateUsing(fn (?int $state): string => $state ? \Illuminate\Support\Number::fileSize($state) : '—'),
-                        \Filament\Infolists\Components\TextEntry::make('next_action')
+                            ->formatStateUsing(fn (?int $state): string => $state ? Number::fileSize($state) : '—'),
+                        TextEntry::make('next_action')
                             ->label('Próxima Ação Recomendada')
-                            ->state(fn (\App\Models\ObligationEvidence $record): string => match ($record->status) {
-                                \App\Models\ObligationEvidence::STATUS_PENDING => 'Revisar a evidência anexada e aprovar ou rejeitar o documento.',
-                                \App\Models\ObligationEvidence::STATUS_APPROVED => 'Nenhuma ação. Evidência aprovada.',
-                                \App\Models\ObligationEvidence::STATUS_REJECTED => 'Anexar um novo documento corrigindo o motivo da rejeição.',
+                            ->state(fn (ObligationEvidence $record): string => match ($record->status) {
+                                ObligationEvidence::STATUS_PENDING => 'Revisar a evidência anexada e aprovar ou rejeitar o documento.',
+                                ObligationEvidence::STATUS_APPROVED => 'Nenhuma ação. Evidência aprovada.',
+                                ObligationEvidence::STATUS_REJECTED => 'Anexar um novo documento corrigindo o motivo da rejeição.',
                                 default => 'Aguardando ação.',
                             })
                             ->color('primary')
                             ->weight('bold')
                             ->columnSpan(2),
                     ]),
-                    \Filament\Infolists\Components\TextEntry::make('description')
+                    TextEntry::make('description')
                         ->label('Descrição do Upload')
                         ->columnSpanFull()
                         ->placeholder('Sem descrição informada.'),
                 ]),
-            \Filament\Infolists\Components\Section::make('Notas de Revisão')
+            Section::make('Notas de Revisão')
                 ->schema([
-                    \Filament\Infolists\Components\TextEntry::make('reviewer.name')
+                    TextEntry::make('reviewer.name')
                         ->label('Revisado por')
                         ->placeholder('Ainda não revisado.'),
-                    \Filament\Infolists\Components\TextEntry::make('reviewed_at')
+                    TextEntry::make('reviewed_at')
                         ->label('Data da Revisão')
                         ->dateTime('d/m/Y H:i')
                         ->placeholder('—'),
-                    \Filament\Infolists\Components\TextEntry::make('review_notes')
+                    TextEntry::make('review_notes')
                         ->label('Observações de Aprovação')
-                        ->visible(fn (\App\Models\ObligationEvidence $record) => $record->status === \App\Models\ObligationEvidence::STATUS_APPROVED)
+                        ->visible(fn (ObligationEvidence $record) => $record->status === ObligationEvidence::STATUS_APPROVED)
                         ->placeholder('Nenhuma observação informada.'),
-                    \Filament\Infolists\Components\TextEntry::make('rejection_reason')
+                    TextEntry::make('rejection_reason')
                         ->label('Motivo da Rejeição')
                         ->color('danger')
-                        ->visible(fn (\App\Models\ObligationEvidence $record) => $record->status === \App\Models\ObligationEvidence::STATUS_REJECTED)
+                        ->visible(fn (ObligationEvidence $record) => $record->status === ObligationEvidence::STATUS_REJECTED)
                         ->placeholder('—'),
                 ])->columns(2),
         ]);
@@ -228,13 +233,13 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->successNotificationTitle('Evidência anexada com sucesso.'),
             ])
             ->actions([
-                \Filament\Actions\ViewAction::make()
+                ViewAction::make()
                     ->label('Abrir evidência')
                     ->color('info')
-                    ->authorize(fn (): bool => auth()->user()?->can(\App\Enums\AccessPermission::ObligationsViewEvidence->value) ?? false)
-                    ->extraModalFooterActions(fn (\App\Models\ObligationEvidence $record) => [
-                        $this->makeApproveAction()->record($record)->visible(fn () => $this->canReviewEvidence($record, \App\Services\Obligations\ObligationEvidenceReviewService::TRANSITION_APPROVE)),
-                        $this->makeRejectAction()->record($record)->visible(fn () => $this->canReviewEvidence($record, \App\Services\Obligations\ObligationEvidenceReviewService::TRANSITION_REJECT)),
+                    ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value) ?? false)
+                    ->extraModalFooterActions(fn (ObligationEvidence $record) => [
+                        $this->makeApproveAction()->record($record)->visible(fn () => $this->canReviewEvidence($record, ObligationEvidenceReviewService::TRANSITION_APPROVE)),
+                        $this->makeRejectAction()->record($record)->visible(fn () => $this->canReviewEvidence($record, ObligationEvidenceReviewService::TRANSITION_REJECT)),
                     ]),
                 $this->makeApproveAction(),
                 $this->makeRejectAction(),
