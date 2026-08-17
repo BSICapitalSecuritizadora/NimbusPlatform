@@ -190,6 +190,7 @@ class ActivityResource extends Resource
             'App\Models\Bank' => 'Banco',
             'App\Models\ExpenseServiceProvider' => 'Prestador de Serviço',
             'App\Models\Proposal' => 'Proposta',
+            'App\Models\ProjectIndicator' => 'Parâmetros de Indicadores do Empreendimento',
             'App\Models\Emission' => 'Emissão',
             'App\Models\Document' => 'Documento',
             'App\Models\FundBalanceHistory' => 'Histórico de Saldo do Fundo',

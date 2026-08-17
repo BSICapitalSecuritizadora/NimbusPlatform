@@ -3,6 +3,8 @@
 namespace App\Actions\Proposals;
 
 use App\Enums\ProjectIndicatorClassification;
+use App\Enums\ProjectIndicatorDefinition;
+use App\Enums\ProjectIndicatorDirection;
 use App\Models\ProjectIndicator;
 use App\Models\ProposalProject;
 
@@ -10,7 +12,7 @@ class CalculateProjectIndicators
 {
     /**
      * @return array{
-     *   indicators: array<int, array{key:string,name:string,value:?float,ideal:?float,limit:?float,unit:string,formula:string,direction:string,classification:string,classification_class:string}>,
+     *   indicators: array<int, array{key:string,name:string,description:string,value:?float,ideal:?float,limit:?float,unit:string,formula:string,direction:string,classification:string,classification_class:string,classification_color:string}>,
      *   units: array<string, float|int|null>, sales: array<string, float>, costs: array<string, float>, receivables: array<string, float>, land: array<string, ?float>
      * }
      */
@@ -19,7 +21,6 @@ class CalculateProjectIndicators
         $thresholds = $project->indicators;
         $grossSalesValue = (float) $project->gross_sales_value;
         $totalCost = (float) $project->total_cost;
-        $requestedAmount = (float) $project->requested_amount;
         $landMarketValue = (float) $project->land_market_value;
         $valueAfterKeys = (float) $project->value_after_keys;
         $stockSalesValue = (float) $project->stock_sales_value;
@@ -29,37 +30,25 @@ class CalculateProjectIndicators
             $project->value_after_keys,
         );
         $unitsTotal = (int) $project->units_total;
-        $sellableUnits = $unitsTotal - (int) $project->exchanged_units;
-
-        $definitions = [
-            ['financiamento_custo_obra', 'Financiamento / Custo de obra', $this->percentage($requestedAmount, $totalCost), 'financiamento_custo_obra', 'requested_amount / total_cost', false],
-            ['financiamento_vgv', 'Financiamento / VGV', $this->percentage($requestedAmount, $grossSalesValue), 'financiamento_vgv', 'requested_amount / gross_sales_value', false],
-            ['custo_obra_vgv', 'Custo da obra / VGV', $this->percentage($totalCost, $grossSalesValue), 'custo_obra_vgv', 'total_cost / gross_sales_value', false],
-            ['recebiveis_vfcto', 'Recebíveis / Valor do financiamento', $this->percentage((float) $project->unpaid_sales_value, $requestedAmount), 'recebiveis_vfcto', 'unpaid_sales_value / requested_amount', true],
-            ['recebiveis_terreno_vfcto', 'Recebíveis + Terreno / Valor do financiamento', $this->percentage((float) $project->unpaid_sales_value + $landMarketValue, $requestedAmount), 'recebiveis_terreno_vfcto', '(unpaid_sales_value + land_market_value) / requested_amount', true],
-            ['vendas_liquido_permutas', 'Vendas líquidas de permutas', $this->percentage((int) $project->paid_units + (int) $project->unpaid_units, $sellableUnits), 'vendas_liquido_permutas', '(paid_units + unpaid_units) / (units_total - exchanged_units)', true],
-            ['terreno_vgv', 'Terreno / VGV', $this->percentage($landMarketValue, $grossSalesValue), 'terreno_vgv', 'land_market_value / gross_sales_value', false],
-            ['terreno_custo_obra', 'Terreno / Custo de obra', $this->percentage($landMarketValue, $totalCost), 'terreno_custo_obra', 'land_market_value / total_cost', false],
-            ['ltv', 'LTV — cobertura de estoque', $this->percentage($stockSalesValue, $valueAfterKeys + $stockSalesValue), 'ltv', 'stock_sales_value / (value_after_keys + stock_sales_value)', true],
-        ];
-
-        $indicators = collect($definitions)->map(function (array $definition) use ($thresholds): array {
-            [$key, $name, $value, $thresholdPrefix, $formula, $higherIsBetter] = $definition;
-            $ideal = $this->threshold($thresholds, "{$thresholdPrefix}_ideal");
-            $limit = $this->threshold($thresholds, "{$thresholdPrefix}_limite");
-            $classification = $this->classify($value, $ideal, $limit, $higherIsBetter);
+        $indicators = collect(ProjectIndicatorDefinition::cases())->map(function (ProjectIndicatorDefinition $definition) use ($project, $thresholds): array {
+            $value = $definition->calculate($project);
+            $ideal = $this->threshold($thresholds, $definition->idealAttribute());
+            $limit = $this->threshold($thresholds, $definition->limitAttribute());
+            $classification = $this->classify($value, $ideal, $limit, $definition->direction());
 
             return [
-                'key' => $key,
-                'name' => $name,
+                'key' => $definition->value,
+                'name' => $definition->label(),
+                'description' => $definition->description(),
                 'value' => $value,
                 'ideal' => $ideal,
                 'limit' => $limit,
-                'unit' => '%',
-                'formula' => $formula,
-                'direction' => $higherIsBetter ? 'Maior ou igual ao ideal' : 'Menor ou igual ao ideal',
+                'unit' => $definition->unit(),
+                'formula' => $definition->formula(),
+                'direction' => $definition->direction()->label(),
                 'classification' => $classification->label(),
                 'classification_class' => $classification->cssClass(),
+                'classification_color' => $classification->color(),
             ];
         })->all();
 
@@ -118,25 +107,13 @@ class CalculateProjectIndicators
         ];
     }
 
-    public function classify(?float $value, ?float $ideal, ?float $limit, bool $higherIsBetter): ProjectIndicatorClassification
-    {
-        if ($value === null || $ideal === null || $limit === null) {
-            return ProjectIndicatorClassification::NaoInformado;
-        }
-
-        if ($higherIsBetter) {
-            return match (true) {
-                $value >= $ideal => ProjectIndicatorClassification::Enquadrado,
-                $value < $limit => ProjectIndicatorClassification::Desenquadrado,
-                default => ProjectIndicatorClassification::Analisar,
-            };
-        }
-
-        return match (true) {
-            $value <= $ideal => ProjectIndicatorClassification::Enquadrado,
-            $value > $limit => ProjectIndicatorClassification::Desenquadrado,
-            default => ProjectIndicatorClassification::Analisar,
-        };
+    public function classify(
+        ?float $value,
+        ?float $ideal,
+        ?float $limit,
+        ProjectIndicatorDirection $direction,
+    ): ProjectIndicatorClassification {
+        return $direction->classify($value, $ideal, $limit);
     }
 
     private function percentage(float|int $numerator, float|int $denominator): ?float

@@ -32,6 +32,8 @@ class ExtractedGuarantee extends Model
 
     protected $fillable = [
         'emission_id',
+        'legal_instrument_id',
+        'legal_instrument_document_id',
         'document_id',
         'guarantee_id',
         'related_guarantee_id',
@@ -107,6 +109,16 @@ class ExtractedGuarantee extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class);
+    }
+
+    public function legalInstrument(): BelongsTo
+    {
+        return $this->belongsTo(LegalInstrument::class);
+    }
+
+    public function legalInstrumentDocument(): BelongsTo
+    {
+        return $this->belongsTo(LegalInstrumentDocument::class, 'legal_instrument_document_id');
     }
 
     public function guarantee(): BelongsTo

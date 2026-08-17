@@ -33,7 +33,42 @@ it('renders complete analytical data with all nine indicators', function () {
         ->and($html)->toContain('Fluxo de recebimentos')
         ->and($html)->toContain('Financiamento / Custo de obra')
         ->and($html)->toContain('LTV — cobertura de estoque')
+        ->and($html)->toContain('70,00%')
+        ->and($html)->toContain('Enquadrado')
+        ->and($html)->toContain('status enquadrado')
         ->and(substr_count($html, 'classification'))->toBe(0);
+});
+
+it('distinguishes not calculable values from missing parameters in the analytical report', function () {
+    [, $project] = proposalReportContext();
+    $project->indicators()->delete();
+    $project->update([
+        'requested_amount' => 0,
+        'land_market_value' => 0,
+        'exchanged_units' => 0,
+        'paid_units' => 0,
+        'unpaid_units' => 0,
+        'stock_units' => 0,
+        'incurred_cost' => 0,
+        'cost_to_incur' => 0,
+        'paid_sales_value' => 0,
+        'unpaid_sales_value' => 0,
+        'stock_sales_value' => 0,
+        'value_after_keys' => 0,
+    ]);
+    $project->refresh()->load(['proposal.company.sectors', 'proposal.contact', 'characteristics.unitTypes', 'indicators']);
+    $analysis = app(CalculateProjectIndicators::class)->handle($project);
+
+    $html = view('pdf.project-analytical', [
+        'project' => $project,
+        'analysis' => $analysis,
+    ])->render();
+
+    expect(collect($analysis['indicators'])->pluck('value')->filter(fn ($value): bool => $value !== null))->toBeEmpty()
+        ->and(collect($analysis['indicators'])->pluck('classification')->unique()->all())->toBe(['Não informado'])
+        ->and(substr_count($html, 'Não calculável'))->toBe(9)
+        ->and(substr_count($html, 'Não informado'))->toBe(9)
+        ->and($html)->toContain('status nao-informado');
 });
 
 it('generates protected individual and consolidated pdfs for every project', function () {

@@ -4,6 +4,10 @@ namespace App\Filament\Resources\Proposals\RelationManagers;
 
 use App\Actions\Proposals\CalculateRemainingProjectTerm;
 use App\Actions\Proposals\FetchAddressFromCep;
+use App\Actions\Proposals\StoreProjectIndicatorParameters;
+use App\Enums\ProjectIndicatorClassification;
+use App\Enums\ProjectIndicatorDefinition;
+use App\Filament\Resources\Proposals\ProposalResource;
 use App\Models\ProposalProject;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -14,11 +18,14 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -376,29 +383,6 @@ class ProjectRelationManager extends RelationManager
                             ->dehydrated(false),
                     ])->columns(2)->collapsed(),
 
-                Section::make('Indicadores Avançados (Thresholds)')
-                    ->icon('heroicon-o-presentation-chart-line')
-                    ->relationship('indicators')
-                    ->schema([
-                        TextInput::make('financiamento_custo_obra_ideal')->label('Financiamento / Custo de Obra (Ideal %)')->numeric()->default(0),
-                        TextInput::make('financiamento_custo_obra_limite')->label('Financiamento / Custo de Obra (Limite %)')->numeric()->default(0),
-                        TextInput::make('financiamento_vgv_ideal')->label('Financiamento / VGV (Ideal %)')->numeric()->default(0),
-                        TextInput::make('financiamento_vgv_limite')->label('Financiamento / VGV (Limite %)')->numeric()->default(0),
-                        TextInput::make('custo_obra_vgv_ideal')->label('Custo de Obra / VGV (Ideal %)')->numeric()->default(0),
-                        TextInput::make('custo_obra_vgv_limite')->label('Custo de Obra / VGV (Limite %)')->numeric()->default(0),
-                        TextInput::make('recebiveis_vfcto_ideal')->label('Recebíveis / V. Faturamento (Ideal %)')->numeric()->default(0),
-                        TextInput::make('recebiveis_vfcto_limite')->label('Recebíveis / V. Faturamento (Limite %)')->numeric()->default(0),
-                        TextInput::make('recebiveis_terreno_vfcto_ideal')->label('Recebíveis + Terreno / V. Faturamento (Ideal %)')->numeric()->default(0),
-                        TextInput::make('recebiveis_terreno_vfcto_limite')->label('Recebíveis + Terreno / V. Faturamento (Limite %)')->numeric()->default(0),
-                        TextInput::make('vendas_liquido_permutas_ideal')->label('Vendas Líquidas (Ideal %)')->numeric()->default(0),
-                        TextInput::make('vendas_liquido_permutas_limite')->label('Vendas Líquidas (Limite %)')->numeric()->default(0),
-                        TextInput::make('terreno_vgv_ideal')->label('Terreno / VGV (Ideal %)')->numeric()->default(0),
-                        TextInput::make('terreno_vgv_limite')->label('Terreno / VGV (Limite %)')->numeric()->default(0),
-                        TextInput::make('terreno_custo_obra_ideal')->label('Terreno / Custo (Ideal %)')->numeric()->default(0),
-                        TextInput::make('terreno_custo_obra_limite')->label('Terreno / Custo (Limite %)')->numeric()->default(0),
-                        TextInput::make('ltv_ideal')->label('LTV (Ideal %)')->numeric()->default(0),
-                        TextInput::make('ltv_limite')->label('LTV (Limite %)')->numeric()->default(0),
-                    ])->columns(2)->collapsed(),
             ]);
     }
 
@@ -432,6 +416,8 @@ class ProjectRelationManager extends RelationManager
             ])
             ->actions([
                 EditAction::make(),
+                $this->configureIndicatorsAction(),
+                $this->viewIndicatorsAction(),
                 Action::make('generateReport')
                     ->label('Gerar Relatório')
                     ->icon('heroicon-o-document-text')
@@ -446,6 +432,166 @@ class ProjectRelationManager extends RelationManager
                     ->openUrlInNewTab(),
                 DeleteAction::make(),
             ]);
+    }
+
+    protected function configureIndicatorsAction(): Action
+    {
+        return Action::make('configureIndicators')
+            ->label('Definir parâmetros')
+            ->icon('heroicon-o-adjustments-horizontal')
+            ->color('primary')
+            ->visible(fn (): bool => ProposalResource::canEdit($this->getOwnerRecord()))
+            ->authorize(fn (): bool => ProposalResource::canEdit($this->getOwnerRecord()))
+            ->modalHeading(fn (ProposalProject $record): string => "Configurar Indicadores Avançados — {$record->name}")
+            ->modalDescription('Informe Ideal e Limite apenas onde houver parâmetros definidos para esta operação. O Valor e a Classificação são automáticos.')
+            ->modalWidth(Width::SevenExtraLarge)
+            ->stickyModalHeader()
+            ->stickyModalFooter()
+            ->modalSubmitActionLabel('Salvar parâmetros')
+            ->fillForm(fn (ProposalProject $record): array => $this->indicatorParameterState($record))
+            ->schema(fn (ProposalProject $record): array => $this->indicatorParameterSchema($record))
+            ->action(function (ProposalProject $record, array $data): void {
+                abort_unless(ProposalResource::canEdit($this->getOwnerRecord()), 403);
+
+                app(StoreProjectIndicatorParameters::class)->handle($record, $data);
+
+                Notification::make()
+                    ->title('Parâmetros dos indicadores salvos com sucesso.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    protected function viewIndicatorsAction(): Action
+    {
+        return Action::make('viewIndicators')
+            ->label('Visualizar indicadores')
+            ->icon('heroicon-o-chart-bar-square')
+            ->color('gray')
+            ->visible(fn (): bool => ProposalResource::canView($this->getOwnerRecord())
+                && ! ProposalResource::canEdit($this->getOwnerRecord()))
+            ->authorize(fn (): bool => ProposalResource::canView($this->getOwnerRecord()))
+            ->modalHeading(fn (ProposalProject $record): string => "Indicadores Avançados — {$record->name}")
+            ->modalDescription('Consulta dos valores calculados, parâmetros da operação e classificações automáticas.')
+            ->modalWidth(Width::SevenExtraLarge)
+            ->fillForm(fn (ProposalProject $record): array => $this->indicatorParameterState($record))
+            ->schema(fn (ProposalProject $record): array => $this->indicatorParameterSchema($record))
+            ->disabledSchema()
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Fechar');
+    }
+
+    /** @return array<int, Section> */
+    protected function indicatorParameterSchema(ProposalProject $project): array
+    {
+        return array_map(
+            fn (ProjectIndicatorDefinition $definition): Section => Section::make($definition->label())
+                ->description($definition->description().' Fórmula: '.$definition->formula())
+                ->icon('heroicon-o-presentation-chart-line')
+                ->columns([
+                    'default' => 1,
+                    'md' => 2,
+                    'xl' => 5,
+                ])
+                ->schema([
+                    TextEntry::make("current_{$definition->value}")
+                        ->label('Valor atual')
+                        ->state(fn (): string => self::formatCalculatedIndicatorValue($definition->calculate($project)))
+                        ->weight('bold'),
+                    TextEntry::make("criterion_{$definition->value}")
+                        ->label('Critério')
+                        ->state($definition->direction()->compactLabel())
+                        ->badge()
+                        ->color('gray'),
+                    self::makePercentageParameterField($definition->idealAttribute(), 'Ideal'),
+                    self::makePercentageParameterField($definition->limitAttribute(), 'Limite', $definition),
+                    TextEntry::make("preview_{$definition->value}")
+                        ->label('Classificação prevista')
+                        ->state(fn (Get $get): string => self::previewClassification($definition, $project, $get)->label())
+                        ->badge()
+                        ->color(fn (Get $get): string => self::previewClassification($definition, $project, $get)->color()),
+                ]),
+            ProjectIndicatorDefinition::cases(),
+        );
+    }
+
+    /** @return array<string, float|null> */
+    protected function indicatorParameterState(ProposalProject $project): array
+    {
+        $project->loadMissing('indicators');
+
+        return collect(ProjectIndicatorDefinition::cases())
+            ->flatMap(fn (ProjectIndicatorDefinition $definition): array => [
+                $definition->idealAttribute() => self::nullableFloat($project->indicators?->getAttribute($definition->idealAttribute())),
+                $definition->limitAttribute() => self::nullableFloat($project->indicators?->getAttribute($definition->limitAttribute())),
+            ])
+            ->all();
+    }
+
+    protected static function makePercentageParameterField(
+        string $name,
+        string $label,
+        ?ProjectIndicatorDefinition $definition = null,
+    ): TextInput {
+        $field = TextInput::make($name)
+            ->label($label)
+            ->suffix('%')
+            ->inputMode('decimal')
+            ->live(debounce: 350)
+            ->mask(RawJs::make(<<<'JS'
+                $money($input, ',', '.')
+            JS))
+            ->helperText('Opcional')
+            ->rules(['nullable', 'numeric', 'min:0', 'max:99999999.99'])
+            ->formatStateUsing(fn ($state): ?string => self::formatNullablePercentage($state))
+            ->dehydrateStateUsing(fn ($state): float|string|null => StoreProjectIndicatorParameters::normalizeNullablePercentage($state))
+            ->mutateStateForValidationUsing(fn ($state): float|string|null => StoreProjectIndicatorParameters::normalizeNullablePercentage($state));
+
+        if ($definition === null) {
+            return $field;
+        }
+
+        return $field->rule(fn (Get $get): \Closure => function (string $attribute, mixed $value, \Closure $fail) use ($definition, $get): void {
+            $ideal = StoreProjectIndicatorParameters::normalizeNullablePercentage($get($definition->idealAttribute()));
+            $limit = StoreProjectIndicatorParameters::normalizeNullablePercentage($value);
+
+            if (! is_numeric($ideal) || ! is_numeric($limit)) {
+                return;
+            }
+
+            if (! $definition->direction()->thresholdsAreCoherent((float) $ideal, (float) $limit)) {
+                $fail($definition->direction()->incoherentThresholdsMessage());
+            }
+        });
+    }
+
+    protected static function previewClassification(
+        ProjectIndicatorDefinition $definition,
+        ProposalProject $project,
+        Get $get,
+    ): ProjectIndicatorClassification {
+        return $definition->direction()->classify(
+            $definition->calculate($project),
+            self::nullableFloat(StoreProjectIndicatorParameters::normalizeNullablePercentage($get($definition->idealAttribute()))),
+            self::nullableFloat(StoreProjectIndicatorParameters::normalizeNullablePercentage($get($definition->limitAttribute()))),
+        );
+    }
+
+    protected static function nullableFloat(mixed $value): ?float
+    {
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    protected static function formatNullablePercentage(mixed $value): ?string
+    {
+        $value = self::nullableFloat($value);
+
+        return $value === null ? null : number_format($value, 2, ',', '.');
+    }
+
+    protected static function formatCalculatedIndicatorValue(?float $value): string
+    {
+        return $value === null ? 'Não calculável' : number_format($value, 2, ',', '.').'%';
     }
 
     public static function updateRemainingMonths(Get $get, Set $set): void

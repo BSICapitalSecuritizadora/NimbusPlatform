@@ -92,7 +92,7 @@
         @foreach ($analysis['indicators'] as $indicator)
             <tr>
                 <td>{{ $indicator['name'] }}<div class="formula">{{ $indicator['formula'] }}</div></td>
-                <td class="number">{{ $indicator['value'] === null ? '—' : number_format($indicator['value'], 2, ',', '.').'%' }}</td>
+                <td class="number {{ $indicator['value'] === null ? 'not-calculable' : '' }}">{{ $indicator['value'] === null ? 'Não calculável' : number_format($indicator['value'], 2, ',', '.').'%' }}</td>
                 <td class="number">{{ $indicator['ideal'] === null ? '—' : number_format($indicator['ideal'], 2, ',', '.').'%' }}</td>
                 <td class="number">{{ $indicator['limit'] === null ? '—' : number_format($indicator['limit'], 2, ',', '.').'%' }}</td>
                 <td>{{ $indicator['direction'] }}</td>

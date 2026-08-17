@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectIndicatorDefinition;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class ProjectIndicator extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'project_id',
         'financiamento_custo_obra_ideal',
@@ -28,6 +33,25 @@ class ProjectIndicator extends Model
         'ltv_ideal',
         'ltv_limite',
     ];
+
+    protected function casts(): array
+    {
+        return collect(ProjectIndicatorDefinition::cases())
+            ->flatMap(fn (ProjectIndicatorDefinition $definition): array => [
+                $definition->idealAttribute() => 'decimal:2',
+                $definition->limitAttribute() => 'decimal:2',
+            ])
+            ->all();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('project-indicators')
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     public function project(): BelongsTo
     {

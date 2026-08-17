@@ -7,6 +7,7 @@ namespace App\Services\Reports;
 use App\DTOs\ConstructionProgressData;
 use App\DTOs\Guarantees\GuaranteePositionData;
 use App\Enums\GuaranteeType;
+use App\Enums\LegalInstrumentFieldKey;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\EmissionMonthlyReportNote;
@@ -15,6 +16,7 @@ use App\Models\Expense;
 use App\Models\ExpenseHistory;
 use App\Models\GuaranteeMonthlyPosition;
 use App\Models\GuaranteeSnapshot;
+use App\Models\LegalInstrument;
 use App\Models\Negotiation;
 use App\Models\Payment;
 use App\Models\PuHistory;
@@ -22,9 +24,11 @@ use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Services\ConstructionProgressProvider;
 use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
+use App\Services\LegalInstruments\InstrumentPositionResolver;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -149,6 +153,52 @@ class EmissionMonthlyReportService
         ];
     }
 
+    /**
+     * Instrumentos jurídicos na competência do relatório (§33 do escopo).
+     *
+     * A posição é reconstruída **na data de fechamento do mês**, não hoje: o
+     * relatório de dezembro tem de mostrar o que valia em dezembro, mesmo que
+     * um aditamento de março tenha mudado tudo depois. A consolidação vem do
+     * domínio; aqui só se formata.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildLegalInstruments(Emission $emission, CarbonImmutable $monthEnd): array
+    {
+        $resolver = app(InstrumentPositionResolver::class);
+
+        return $emission->legalInstruments()
+            ->with(['documents.document', 'guarantees'])
+            ->get()
+            ->map(function (LegalInstrument $instrument) use ($resolver, $monthEnd): array {
+                $position = $resolver->resolve($instrument, Carbon::parse($monthEnd->toDateString()));
+                $latestAmendment = $instrument->latestAmendment();
+
+                return [
+                    'name' => $instrument->display_name,
+                    'type' => $instrument->type->label(),
+                    'status' => $instrument->status_label,
+                    'issuer' => $position->valueOrNotFound(LegalInstrumentFieldKey::Issuer),
+                    'creditor' => $position->valueOrNotFound(LegalInstrumentFieldKey::Creditor),
+                    'original_amount' => $position->valueOrNotFound(LegalInstrumentFieldKey::OriginalAmount),
+                    'current_amount' => $position->valueOrNotFound(LegalInstrumentFieldKey::PrincipalAmount),
+                    'maturity_date' => $position->valueOrNotFound(LegalInstrumentFieldKey::MaturityDate),
+                    'remuneration' => $position->valueOrNotFound(LegalInstrumentFieldKey::Remuneration),
+                    'minimum_coverage' => $position->valueOrNotFound(LegalInstrumentFieldKey::MinimumCoverage),
+                    'guarantees' => $position->guarantees
+                        ->map(fn ($guarantee): string => $guarantee->display_name)
+                        ->all(),
+                    'last_change' => $latestAmendment === null ? null : sprintf(
+                        '%s — %s',
+                        $latestAmendment->role_label,
+                        $latestAmendment->document_date?->format('d/m/Y') ?? 'sem data',
+                    ),
+                    'documents_count' => $instrument->documents->count(),
+                ];
+            })
+            ->all();
+    }
+
     private function toFloat(mixed $value): ?float
     {
         return $value === null ? null : (float) $value;
@@ -200,6 +250,7 @@ class EmissionMonthlyReportService
             'calendar' => $this->buildCalendar($upcomingEvents),
             'debt_balance' => $this->buildDebtBalance($emission, $monthEnd),
             'guarantees' => $this->buildGuarantees($emission, $monthStart),
+            'legal_instruments' => $this->buildLegalInstruments($emission, $monthEnd),
             'accounts' => $this->buildAccounts($emission),
             'expenses' => $this->buildExpenses($emission, $monthStart, $monthEnd),
             'expenses_history' => $this->buildExpensesHistory($emission, $monthEnd),

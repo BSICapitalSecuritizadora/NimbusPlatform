@@ -33,6 +33,7 @@ class Guarantee extends Model
 
     protected $fillable = [
         'emission_id',
+        'legal_instrument_id',
         'type',
         'name',
         'legal_status',
@@ -99,6 +100,21 @@ class Guarantee extends Model
     public function emission(): BelongsTo
     {
         return $this->belongsTo(Emission::class);
+    }
+
+    /** Instrumento jurídico que constitui esta garantia (§14 do escopo). */
+    public function legalInstrument(): BelongsTo
+    {
+        return $this->belongsTo(LegalInstrument::class);
+    }
+
+    /**
+     * Campos consolidados próprios da garantia — matrícula vigente, cartório,
+     * percentual cedido — versionados junto com o instrumento que os alterou.
+     */
+    public function instrumentFields(): HasMany
+    {
+        return $this->hasMany(LegalInstrumentField::class);
     }
 
     public function construction(): BelongsTo

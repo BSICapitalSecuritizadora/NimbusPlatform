@@ -2,6 +2,8 @@
 
 use App\Actions\Proposals\CalculateProjectIndicators;
 use App\Enums\ProjectIndicatorClassification;
+use App\Enums\ProjectIndicatorDefinition;
+use App\Enums\ProjectIndicatorDirection;
 use App\Models\ProjectIndicator;
 use App\Models\ProposalProject;
 
@@ -56,16 +58,114 @@ it('calculates all nine indicators with the corrected formulas', function () {
         ->and($result['land']['value_per_square_meter'])->toBe(2.0);
 });
 
-it('classifies both lower-is-better and higher-is-better boundaries', function () {
+it('centralizes the exact nine fixed indicator definitions', function () {
+    $definitions = collect(ProjectIndicatorDefinition::cases());
+
+    expect($definitions)->toHaveCount(9)
+        ->and($definitions->pluck('value')->all())->toBe([
+            'financiamento_custo_obra',
+            'financiamento_vgv',
+            'custo_obra_vgv',
+            'recebiveis_vfcto',
+            'recebiveis_terreno_vfcto',
+            'vendas_liquido_permutas',
+            'terreno_vgv',
+            'terreno_custo_obra',
+            'ltv',
+        ])
+        ->and($definitions->filter(fn (ProjectIndicatorDefinition $definition): bool => $definition->direction() === ProjectIndicatorDirection::LessThanOrEqual))->toHaveCount(5)
+        ->and($definitions->filter(fn (ProjectIndicatorDefinition $definition): bool => $definition->direction() === ProjectIndicatorDirection::GreaterThanOrEqual))->toHaveCount(4);
+
+    foreach ($definitions as $definition) {
+        expect($definition->label())->not->toBeEmpty()
+            ->and($definition->description())->not->toBeEmpty()
+            ->and($definition->formula())->not->toBeEmpty()
+            ->and($definition->unit())->toBe('%');
+    }
+});
+
+it('classifies every lower-is-better indicator at all boundaries', function () {
     $calculator = new CalculateProjectIndicators;
 
-    expect($calculator->classify(70, 70, 90, false))->toBe(ProjectIndicatorClassification::Enquadrado)
-        ->and($calculator->classify(80, 70, 90, false))->toBe(ProjectIndicatorClassification::Analisar)
-        ->and($calculator->classify(91, 70, 90, false))->toBe(ProjectIndicatorClassification::Desenquadrado)
-        ->and($calculator->classify(100, 100, 95, true))->toBe(ProjectIndicatorClassification::Enquadrado)
-        ->and($calculator->classify(97, 100, 95, true))->toBe(ProjectIndicatorClassification::Analisar)
-        ->and($calculator->classify(94, 100, 95, true))->toBe(ProjectIndicatorClassification::Desenquadrado)
-        ->and($calculator->classify(null, 100, 95, true))->toBe(ProjectIndicatorClassification::NaoInformado);
+    foreach (ProjectIndicatorDefinition::cases() as $definition) {
+        if ($definition->direction() !== ProjectIndicatorDirection::LessThanOrEqual) {
+            continue;
+        }
+
+        expect($calculator->classify(30, 35, 45, $definition->direction()))->toBe(ProjectIndicatorClassification::Enquadrado)
+            ->and($calculator->classify(35, 35, 45, $definition->direction()))->toBe(ProjectIndicatorClassification::Enquadrado)
+            ->and($calculator->classify(40, 35, 45, $definition->direction()))->toBe(ProjectIndicatorClassification::Analisar)
+            ->and($calculator->classify(45, 35, 45, $definition->direction()))->toBe(ProjectIndicatorClassification::Analisar)
+            ->and($calculator->classify(50, 35, 45, $definition->direction()))->toBe(ProjectIndicatorClassification::Desenquadrado);
+    }
+});
+
+it('classifies every higher-is-better indicator at all boundaries', function () {
+    $calculator = new CalculateProjectIndicators;
+
+    foreach (ProjectIndicatorDefinition::cases() as $definition) {
+        if ($definition->direction() !== ProjectIndicatorDirection::GreaterThanOrEqual) {
+            continue;
+        }
+
+        expect($calculator->classify(90, 80, 60, $definition->direction()))->toBe(ProjectIndicatorClassification::Enquadrado)
+            ->and($calculator->classify(80, 80, 60, $definition->direction()))->toBe(ProjectIndicatorClassification::Enquadrado)
+            ->and($calculator->classify(70, 80, 60, $definition->direction()))->toBe(ProjectIndicatorClassification::Analisar)
+            ->and($calculator->classify(60, 80, 60, $definition->direction()))->toBe(ProjectIndicatorClassification::Analisar)
+            ->and($calculator->classify(50, 80, 60, $definition->direction()))->toBe(ProjectIndicatorClassification::Desenquadrado);
+    }
+});
+
+it('supports partial parameters without using zero as a fallback', function () {
+    $calculator = new CalculateProjectIndicators;
+
+    expect($calculator->classify(30, 35, null, ProjectIndicatorDirection::LessThanOrEqual))->toBe(ProjectIndicatorClassification::Enquadrado)
+        ->and($calculator->classify(40, 35, null, ProjectIndicatorDirection::LessThanOrEqual))->toBe(ProjectIndicatorClassification::Analisar)
+        ->and($calculator->classify(90, 80, null, ProjectIndicatorDirection::GreaterThanOrEqual))->toBe(ProjectIndicatorClassification::Enquadrado)
+        ->and($calculator->classify(70, 80, null, ProjectIndicatorDirection::GreaterThanOrEqual))->toBe(ProjectIndicatorClassification::Analisar)
+        ->and($calculator->classify(70, null, 60, ProjectIndicatorDirection::GreaterThanOrEqual))->toBe(ProjectIndicatorClassification::NaoInformado)
+        ->and($calculator->classify(null, 80, 60, ProjectIndicatorDirection::GreaterThanOrEqual))->toBe(ProjectIndicatorClassification::NaoInformado)
+        ->and($calculator->classify(0, 0, 10, ProjectIndicatorDirection::LessThanOrEqual))->toBe(ProjectIndicatorClassification::Enquadrado)
+        ->and($calculator->classify(0, 0, 0, ProjectIndicatorDirection::GreaterThanOrEqual))->toBe(ProjectIndicatorClassification::Enquadrado);
+});
+
+it('does not classify incoherent legacy thresholds', function () {
+    $calculator = new CalculateProjectIndicators;
+
+    expect($calculator->classify(40, 45, 35, ProjectIndicatorDirection::LessThanOrEqual))->toBe(ProjectIndicatorClassification::NaoInformado)
+        ->and($calculator->classify(70, 60, 80, ProjectIndicatorDirection::GreaterThanOrEqual))->toBe(ProjectIndicatorClassification::NaoInformado);
+});
+
+it('returns not calculable for zero denominators and preserves a legitimate zero result', function () {
+    $project = new ProposalProject([
+        'requested_amount' => 0,
+        'land_market_value' => 0,
+        'exchanged_units' => 0,
+        'paid_units' => 0,
+        'unpaid_units' => 0,
+        'units_total' => 0,
+        'total_cost' => 0,
+        'gross_sales_value' => 0,
+        'unpaid_sales_value' => 0,
+        'stock_sales_value' => 0,
+        'value_after_keys' => 0,
+    ]);
+
+    expect(collect(ProjectIndicatorDefinition::cases())->map(fn (ProjectIndicatorDefinition $definition): ?float => $definition->calculate($project))->all())
+        ->toBe([null, null, null, null, null, null, null, null, null]);
+
+    $project->forceFill(['requested_amount' => 0, 'total_cost' => 100]);
+
+    expect(ProjectIndicatorDefinition::FinancingToTotalCost->calculate($project))->toBe(0.0);
+});
+
+it('returns not calculable when a required source value is absent', function () {
+    $project = new ProposalProject([
+        'requested_amount' => null,
+        'total_cost' => 100,
+    ]);
+
+    expect(ProjectIndicatorDefinition::FinancingToTotalCost->calculate($project))->toBeNull();
 });
 
 it('matches the anonymized numeric baseline from the NimbusForms production-copy dump', function () {

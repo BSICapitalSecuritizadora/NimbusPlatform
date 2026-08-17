@@ -237,6 +237,9 @@ class GuaranteeSuggestionReviewService
     {
         /** @var Guarantee $guarantee */
         $guarantee = $suggestion->emission->guarantees()->create(array_merge($attributes, [
+            // A garantia nasce pendurada no instrumento que a revelou, quando a
+            // candidata veio de um dossiê (§14 do escopo).
+            'legal_instrument_id' => $suggestion->legal_instrument_id,
             'legal_status' => $suggestion->legal_status ?? GuaranteeLegalStatus::Active,
             'constituted_at' => $suggestion->effective_date ?? $suggestion->document_date,
             'guarantee_type' => $attributes['name'] ?? null,

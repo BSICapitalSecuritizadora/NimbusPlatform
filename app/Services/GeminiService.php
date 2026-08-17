@@ -8,6 +8,7 @@ use App\Enums\GuaranteeRequirementBase;
 use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
 use App\Models\Document;
+use App\Services\LegalInstruments\InstrumentDocumentPromptBuilder;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -287,6 +288,22 @@ PROMPT;
      *
      * @return array<int, array<string, mixed>>
      */
+    /**
+     * Roda um prompt montado pelo domínio contra um documento do dossiê.
+     *
+     * O prompt vem de {@see InstrumentDocumentPromptBuilder},
+     * porque depende do tipo do instrumento, do papel do documento na cadeia e
+     * da posição já confirmada — conhecimento de domínio que não cabe num
+     * `const` deste serviço. Aqui fica só o transporte, com o retry e a
+     * remoção do upload que os demais métodos já usam.
+     *
+     * @return array<string, mixed>
+     */
+    public function extractFromDocumentWithPrompt(Document $document, string $prompt): array
+    {
+        return $this->generateFromDocument($prompt, $document);
+    }
+
     public function extractGuarantees(Document $document): array
     {
         $json = $this->generateFromDocument(self::GUARANTEES_PROMPT, $document);

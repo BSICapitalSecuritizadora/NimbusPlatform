@@ -325,6 +325,20 @@ class Emission extends Model
         return $this->hasMany(GuaranteeSnapshot::class);
     }
 
+    public function legalInstruments(): HasMany
+    {
+        return $this->hasMany(LegalInstrument::class);
+    }
+
+    /**
+     * Todas as versões de campo dos instrumentos da emissão — é sobre elas que
+     * a fila de revisão de alterações trabalha.
+     */
+    public function legalInstrumentFields(): HasManyThrough
+    {
+        return $this->hasManyThrough(LegalInstrumentField::class, LegalInstrument::class);
+    }
+
     public function guaranteeMonthlyPositions(): HasMany
     {
         return $this->hasMany(GuaranteeMonthlyPosition::class);

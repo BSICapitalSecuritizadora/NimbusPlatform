@@ -25,11 +25,12 @@
     .center { text-align: center; }
     .formula { color: #586970; font-family: DejaVu Sans Mono, monospace; font-size: 7px; }
     .derived-note { margin: -2px 0 8px; color: #44545c; font-size: 8px; text-align: right; }
-    .status { font-weight: bold; text-align: center; white-space: nowrap; }
-    .enquadrado { color: #18733a; }
-    .analisar { color: #a36100; }
-    .desenquadrado { color: #b42318; }
-    .nao-informado { color: #657078; }
+    .status { border-width: 1px; font-weight: bold; text-align: center; white-space: nowrap; }
+    .status.enquadrado { border-color: #9fd5ae; color: #18733a; background: #eaf7ee; }
+    .status.analisar { border-color: #e5c073; color: #8a5200; background: #fff5dc; }
+    .status.desenquadrado { border-color: #e6a39d; color: #b42318; background: #fff0ee; }
+    .status.nao-informado { border-color: #cbd2d6; color: #657078; background: #f2f4f5; }
+    .not-calculable { color: #657078; font-style: italic; }
     .empty-state { padding: 12px; border: 1px solid #d8dde0; color: #657078; background: #f7f8f8; }
     .footer { position: fixed; right: 0; bottom: -28px; left: 0; padding-top: 5px; border-top: 1px solid #c9b18a; color: #677177; text-align: center; font-size: 7px; }
 </style>

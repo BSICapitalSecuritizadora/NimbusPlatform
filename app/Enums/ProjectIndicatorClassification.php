@@ -28,4 +28,14 @@ enum ProjectIndicatorClassification
             self::NaoInformado => 'nao-informado',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Enquadrado => 'success',
+            self::Analisar => 'warning',
+            self::Desenquadrado => 'danger',
+            self::NaoInformado => 'gray',
+        };
+    }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDocumentDownloadController;
+use App\Http\Controllers\Admin\AdminDocumentPreviewController;
 use App\Http\Controllers\Admin\EmissionMonthlyReportController;
 use App\Http\Controllers\Admin\EmissionPuCurveExportController;
 use App\Http\Controllers\Admin\EmissionPuHomologationReportController;
@@ -202,6 +203,9 @@ Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/admin/candidaturas/{jobApplication}/curriculo', [JobApplicationResumeController::class, 'download'])->name('admin.job-applications.resume');
     Route::get('/admin/documents/{document}/download', AdminDocumentDownloadController::class)
         ->name('admin.documents.download')
+        ->middleware('throttle:60,1');
+    Route::get('/admin/documents/{document}/preview', AdminDocumentPreviewController::class)
+        ->name('admin.documents.preview')
         ->middleware('throttle:60,1');
     Route::get('/admin/obligations/evidences/{evidence}/download', ObligationEvidenceDownloadController::class)
         ->name('admin.obligations.evidences.download')

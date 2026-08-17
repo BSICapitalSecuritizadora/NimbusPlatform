@@ -72,6 +72,16 @@ enum AccessPermission: string
     case GuaranteesReopenCompetence = 'guarantees.reopen_competence';
     case GuaranteesManageValuations = 'guarantees.manage_valuations';
     case GuaranteesReleaseGuarantee = 'guarantees.release';
+    case LegalInstrumentsView = 'legal-instruments.view';
+    case LegalInstrumentsCreate = 'legal-instruments.create';
+    case LegalInstrumentsUpdate = 'legal-instruments.update';
+    case LegalInstrumentsDelete = 'legal-instruments.delete';
+    case LegalInstrumentsAttachDocument = 'legal-instruments.attach_document';
+    case LegalInstrumentsDetachDocument = 'legal-instruments.detach_document';
+    case LegalInstrumentsProcessDocument = 'legal-instruments.process_document';
+    case LegalInstrumentsReviewChanges = 'legal-instruments.review_changes';
+    case LegalInstrumentsConfirmChange = 'legal-instruments.confirm_change';
+    case LegalInstrumentsRejectChange = 'legal-instruments.reject_change';
     case DocumentsView = 'documents.view';
     case DocumentsCreate = 'documents.create';
     case DocumentsUpdate = 'documents.update';
@@ -281,6 +291,16 @@ enum AccessPermission: string
             self::GuaranteesReopenCompetence => 'Garantias: reabrir competência',
             self::GuaranteesManageValuations => 'Garantias: registrar avaliações',
             self::GuaranteesReleaseGuarantee => 'Garantias: liberar ou substituir',
+            self::LegalInstrumentsView => 'Instrumentos jurídicos: visualizar',
+            self::LegalInstrumentsCreate => 'Instrumentos jurídicos: criar',
+            self::LegalInstrumentsUpdate => 'Instrumentos jurídicos: editar',
+            self::LegalInstrumentsDelete => 'Instrumentos jurídicos: excluir',
+            self::LegalInstrumentsAttachDocument => 'Instrumentos jurídicos: anexar documento ao dossiê',
+            self::LegalInstrumentsDetachDocument => 'Instrumentos jurídicos: remover documento do dossiê',
+            self::LegalInstrumentsProcessDocument => 'Instrumentos jurídicos: processar documento',
+            self::LegalInstrumentsReviewChanges => 'Instrumentos jurídicos: revisar alterações detectadas',
+            self::LegalInstrumentsConfirmChange => 'Instrumentos jurídicos: confirmar alteração',
+            self::LegalInstrumentsRejectChange => 'Instrumentos jurídicos: rejeitar alteração',
             self::DocumentsView => 'Documentos: visualizar',
             self::DocumentsCreate => 'Documentos: criar',
             self::DocumentsUpdate => 'Documentos: editar',
@@ -460,6 +480,16 @@ enum AccessPermission: string
                 self::GuaranteesReopenCompetence,
                 self::GuaranteesManageValuations,
                 self::GuaranteesReleaseGuarantee,
+                self::LegalInstrumentsView,
+                self::LegalInstrumentsCreate,
+                self::LegalInstrumentsUpdate,
+                self::LegalInstrumentsDelete,
+                self::LegalInstrumentsAttachDocument,
+                self::LegalInstrumentsDetachDocument,
+                self::LegalInstrumentsProcessDocument,
+                self::LegalInstrumentsReviewChanges,
+                self::LegalInstrumentsConfirmChange,
+                self::LegalInstrumentsRejectChange,
                 self::ExpensesView,
                 self::ExpensesCreate,
                 self::ExpensesUpdate,

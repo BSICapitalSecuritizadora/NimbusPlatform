@@ -1,5 +1,7 @@
 <?php
 
+use App\Actions\Proposals\CalculateProjectIndicators;
+use App\Actions\Proposals\StoreProjectIndicatorParameters;
 use App\Enums\ProposalStatus;
 use App\Jobs\ScanFileForMalware;
 use App\Models\Proposal;
@@ -113,8 +115,16 @@ it('synchronizes project removals without duplicating retained projects', functi
         ->assertSessionHas('success');
 
     $projectIds = $proposal->projects()->orderBy('id')->pluck('id')->all();
+    $retainedProject = $proposal->projects()->findOrFail($projectIds[0]);
+    app(StoreProjectIndicatorParameters::class)->handle($retainedProject, [
+        'financiamento_custo_obra_ideal' => 70,
+        'financiamento_custo_obra_limite' => 90,
+    ]);
+    $valueBeforeResubmission = collect(app(CalculateProjectIndicators::class)->handle($retainedProject->fresh())['indicators'])
+        ->firstWhere('key', 'financiamento_custo_obra')['value'];
     $proposal->forceFill(['status' => ProposalStatus::AwaitingInformation->value])->save();
     $payload = controllerContinuationPayload();
+    $payload['valor_solicitado'] = '25.000.000,00';
 
     foreach ([
         'nome_empreendimento',
@@ -140,7 +150,14 @@ it('synchronizes project removals without duplicating retained projects', functi
         ->post(route('site.proposal.continuation.store', $access), $payload)
         ->assertSessionHas('success');
 
-    expect($proposal->projects()->pluck('id')->all())->toBe([$projectIds[0]]);
+    $retainedProject->refresh()->load('indicators');
+    $valueAfterResubmission = collect(app(CalculateProjectIndicators::class)->handle($retainedProject)['indicators'])
+        ->firstWhere('key', 'financiamento_custo_obra')['value'];
+
+    expect($proposal->projects()->pluck('id')->all())->toBe([$projectIds[0]])
+        ->and((float) $retainedProject->indicators->financiamento_custo_obra_ideal)->toBe(70.0)
+        ->and((float) $retainedProject->indicators->financiamento_custo_obra_limite)->toBe(90.0)
+        ->and($valueAfterResubmission)->not->toBe($valueBeforeResubmission);
 });
 
 it('rejects file uploads with disallowed MIME types in the continuation store', function () {
