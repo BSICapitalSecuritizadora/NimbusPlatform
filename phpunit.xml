@@ -30,6 +30,7 @@
         <env name="APP_FALLBACK_LOCALE" value="pt_BR"/>
         <env name="APP_FAKER_LOCALE" value="pt_BR"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="FORCE_HTTPS_REDIRECT" value="true"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>

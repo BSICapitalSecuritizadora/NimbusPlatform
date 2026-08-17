@@ -91,7 +91,7 @@ class CreateProposalForm extends Component
 
         session()->flash(
             'success',
-            'Solicitação registrada com sucesso. Enviamos um link seguro para o e-mail informado para que você possa complementar as informações da oportunidade, quando aplicável.',
+            'Solicitação registrada com sucesso. Encaminhamos ao e-mail informado um link seguro para o preenchimento das informações complementares da oportunidade. Nossa equipe dará sequência à análise após o recebimento dos dados.',
         );
 
         $this->redirect(route('proposal.create'));
