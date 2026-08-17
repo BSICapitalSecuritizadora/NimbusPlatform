@@ -2,11 +2,9 @@
 
 namespace App\Actions\Proposals;
 
-use App\Mail\ProposalContinuationLinkMail;
+use App\Jobs\SendProposalContinuationEmail;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 
 class SendProposalContinuationLink
 {
@@ -14,21 +12,32 @@ class SendProposalContinuationLink
         protected CreateProposalContinuationAccess $createProposalContinuationAccess,
     ) {}
 
-    public function handle(Proposal $proposal): ProposalContinuationAccess
+    public function handle(Proposal $proposal, bool $forceNewAccess = true): ProposalContinuationAccess
     {
-        ['access' => $access, 'code' => $code] = $this->createProposalContinuationAccess->handle($proposal);
+        $access = $forceNewAccess ? null : $proposal->continuationAccesses()
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->latest('id')
+            ->first();
 
-        $continuationUrl = URL::temporarySignedRoute(
-            'site.proposal.continuation.access',
-            $access->expires_at,
-            ['access' => $access],
-        );
+        if (! $access) {
+            ['access' => $access] = $this->createProposalContinuationAccess->handle($proposal);
+        }
 
-        Mail::mailer(config('proposals.mail.mailer'))
-            ->to($proposal->contact->email)
-            ->send(
-                new ProposalContinuationLinkMail($proposal, $access, $code, $continuationUrl),
-            );
+        if ($access->mail_queued_at === null || $access->mail_failed_at !== null) {
+            $access->forceFill([
+                'mail_queued_at' => now(),
+                'mail_failed_at' => null,
+            ])->save();
+
+            try {
+                SendProposalContinuationEmail::dispatch($access->id)->afterCommit();
+            } catch (\Throwable $exception) {
+                $access->forceFill(['mail_failed_at' => now()])->save();
+
+                throw $exception;
+            }
+        }
 
         return $access;
     }

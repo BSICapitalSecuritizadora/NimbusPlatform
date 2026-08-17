@@ -28,11 +28,11 @@ function puValidationSpreadsheetPath(string $keyword): string
 function proposalCreateFormState(ProposalSector $sector, int $index = 1): array
 {
     return [
-        'cnpj' => sprintf('12.345.67%d/0001-%02d', $index, $index),
+        'cnpj' => validTestCnpj($index),
         'companyName' => "Construtora {$index}",
         'stateRegistration' => "12345{$index}",
         'website' => "https://construtora{$index}.example.com",
-        'sectorId' => (string) $sector->id,
+        'sectorIds' => [(int) $sector->id],
         'postalCode' => '04567-000',
         'street' => 'Rua das Torres',
         'addressNumber' => (string) (100 + $index),
@@ -43,11 +43,32 @@ function proposalCreateFormState(ProposalSector $sector, int $index = 1): array
         'contactName' => "Contato {$index}",
         'email' => "contato{$index}@example.com",
         'personalPhone' => '(11) 99999-0000',
-        'hasWhatsapp' => true,
+        'isWhatsapp' => true,
+        'whatsappContactConsent' => true,
         'companyPhone' => '(11) 4000-0000',
         'jobTitle' => 'Diretor',
         'observations' => 'Observações iniciais.',
     ];
+}
+
+function validTestCnpj(int $index): string
+{
+    $base = '12345678'.str_pad((string) $index, 4, '0', STR_PAD_LEFT);
+
+    foreach ([5, 6] as $initialWeight) {
+        $sum = 0;
+        $weight = $initialWeight;
+
+        foreach (str_split($base) as $digit) {
+            $sum += (int) $digit * $weight;
+            $weight = $weight === 2 ? 9 : $weight - 1;
+        }
+
+        $remainder = $sum % 11;
+        $base .= (string) ($remainder < 2 ? 0 : 11 - $remainder);
+    }
+
+    return preg_replace('/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/', '$1.$2.$3/$4-$5', $base) ?: $base;
 }
 
 /**

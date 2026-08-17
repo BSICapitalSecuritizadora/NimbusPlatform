@@ -3,17 +3,21 @@
 namespace App\Livewire\Forms;
 
 use App\Actions\Proposals\AssignProposalRepresentative;
+use App\Actions\Proposals\FetchAddressFromCep;
+use App\Actions\Proposals\ResolveStateRegistration;
 use App\Actions\Proposals\UpdateProposalStatus;
 use App\DTOs\Proposals\ProposalStatusHistoryDTO;
 use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
+use App\Rules\Cnpj;
 use App\Services\Security\PiiPseudonymizer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Validator;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
 
@@ -38,9 +42,15 @@ class CreateProposalFormObject extends Form
     #[Validate('max:255', onUpdate: false)]
     public ?string $website = null;
 
-    #[Validate('required', message: 'Selecione o setor de atuação.')]
-    #[Validate('exists:proposal_sectors,id,is_active,1', message: 'Selecione um setor de atuação válido.')]
-    public ?string $sectorId = null;
+    #[Validate([
+        'sectorIds' => ['required', 'array', 'min:1'],
+        'sectorIds.*' => ['integer', 'distinct', 'exists:proposal_sectors,id,is_active,1'],
+    ], message: [
+        'sectorIds.required' => 'Selecione ao menos um setor de atuação.',
+        'sectorIds.min' => 'Selecione ao menos um setor de atuação.',
+        'sectorIds.*.exists' => 'Selecione um setor de atuação válido.',
+    ])]
+    public array $sectorIds = [];
 
     #[Validate('required', message: 'O CEP é obrigatório.')]
     #[Validate('regex:/^\d{5}\-?\d{3}$/', message: 'Informe um CEP válido no formato 00000-000.')]
@@ -90,7 +100,10 @@ class CreateProposalFormObject extends Form
     public string $personalPhone = '';
 
     #[Validate('boolean')]
-    public bool $hasWhatsapp = true;
+    public bool $isWhatsapp = false;
+
+    #[Validate('boolean')]
+    public bool $whatsappContactConsent = false;
 
     #[Validate('nullable', onUpdate: false)]
     #[Validate('string', onUpdate: false)]
@@ -105,6 +118,11 @@ class CreateProposalFormObject extends Form
     #[Validate('nullable', onUpdate: false)]
     #[Validate('string', onUpdate: false)]
     public ?string $observations = null;
+
+    #[Validate('required|uuid')]
+    public string $submissionToken = '';
+
+    public ?string $addressLookupMessage = null;
 
     public function updatedCnpj(string $value): void
     {
@@ -155,9 +173,21 @@ class CreateProposalFormObject extends Form
     ): Proposal {
         $this->normalizeOptionalFields();
 
-        $validated = $this->validate();
+        $validated = $this
+            ->withValidator(fn (Validator $validator) => $validator->addRules([
+                'cnpj' => [new Cnpj],
+            ]))
+            ->validate();
 
         return DB::transaction(function () use ($assignProposalRepresentative, $updateProposalStatus, $validated): Proposal {
+            $existingProposal = Proposal::query()
+                ->where('submission_token', $validated['submissionToken'])
+                ->first();
+
+            if ($existingProposal) {
+                return $existingProposal->load(['company', 'contact', 'representative']);
+            }
+
             $company = ProposalCompany::query()->create([
                 'name' => trim($validated['companyName']),
                 'cnpj' => $this->formatCnpj($validated['cnpj']),
@@ -172,19 +202,22 @@ class CreateProposalFormObject extends Form
                 'estado' => Str::upper(trim($validated['state'])),
             ]);
 
-            $company->sectors()->sync([$validated['sectorId']]);
+            $company->sectors()->sync($validated['sectorIds']);
 
             $contact = ProposalContact::query()->create([
                 'company_id' => $company->id,
                 'name' => trim($validated['contactName']),
                 'email' => trim($validated['email']),
                 'phone_personal' => trim($validated['personalPhone']),
-                'whatsapp' => (bool) $validated['hasWhatsapp'],
+                'whatsapp' => (bool) $validated['isWhatsapp'],
+                'is_whatsapp' => (bool) $validated['isWhatsapp'],
+                'whatsapp_contact_consent' => (bool) $validated['whatsappContactConsent'],
                 'phone_company' => $this->nullableString($validated['companyPhone']),
                 'cargo' => $this->nullableString($validated['jobTitle']),
             ]);
 
             $proposal = Proposal::query()->create([
+                'submission_token' => $validated['submissionToken'],
                 'company_id' => $company->id,
                 'contact_id' => $contact->id,
                 'observations' => $this->nullableString($validated['observations']),
@@ -208,11 +241,11 @@ class CreateProposalFormObject extends Form
     protected function lookupCompanyByCnpj(string $cnpj): void
     {
         try {
-            $response = Http::timeout(8)->acceptJson()->get("https://publica.cnpj.ws/cnpj/{$cnpj}");
+            $response = Http::connectTimeout(3)->timeout(8)->acceptJson()->get("https://publica.cnpj.ws/cnpj/{$cnpj}");
         } catch (\Throwable $exception) {
             Log::warning('Falha ao consultar dados públicos de CNPJ.', [
                 'cnpj_hash' => PiiPseudonymizer::document($cnpj),
-                'message' => $exception->getMessage(),
+                'exception' => $exception::class,
             ]);
 
             return;
@@ -226,7 +259,11 @@ class CreateProposalFormObject extends Form
         $establishment = $payload['estabelecimento'] ?? [];
 
         $this->companyName = (string) ($payload['razao_social'] ?? $this->companyName);
-        $this->stateRegistration = $this->resolveStateRegistration($establishment['inscricoes_estaduais'] ?? []);
+        $this->stateRegistration = app(ResolveStateRegistration::class)->handle(
+            is_array($establishment['inscricoes_estaduais'] ?? null)
+                ? $establishment['inscricoes_estaduais']
+                : [],
+        );
 
         if (filled($establishment['cep'] ?? null)) {
             $this->postalCode = $this->formatPostalCode((string) $establishment['cep']);
@@ -248,38 +285,17 @@ class CreateProposalFormObject extends Form
 
     protected function lookupAddressByPostalCode(string $postalCode): void
     {
-        try {
-            $response = Http::timeout(8)->acceptJson()->get("https://viacep.com.br/ws/{$postalCode}/json/");
-        } catch (\Throwable $exception) {
-            Log::warning('Falha ao consultar endereço pelo CEP.', [
-                'postal_code_hash' => PiiPseudonymizer::document($postalCode),
-                'message' => $exception->getMessage(),
-            ]);
+        $result = app(FetchAddressFromCep::class)->handle($postalCode);
+        $this->addressLookupMessage = $result['message'];
 
+        if ($result['address'] === null) {
             return;
         }
 
-        if (! $response->successful() || $response->json('erro')) {
-            return;
-        }
-
-        $this->street = (string) ($response->json('logradouro') ?? $this->street);
-        $this->neighborhood = (string) ($response->json('bairro') ?? $this->neighborhood);
-        $this->city = (string) ($response->json('localidade') ?? $this->city);
-        $this->state = Str::upper((string) ($response->json('uf') ?? $this->state));
-    }
-
-    protected function resolveStateRegistration(array $stateRegistrations): ?string
-    {
-        foreach ($stateRegistrations as $stateRegistration) {
-            $number = trim((string) ($stateRegistration['inscricao_estadual'] ?? ''));
-
-            if ($number !== '') {
-                return $number;
-            }
-        }
-
-        return $this->stateRegistration;
+        $this->street = $result['address']['street'] ?: $this->street;
+        $this->neighborhood = $result['address']['neighborhood'] ?: $this->neighborhood;
+        $this->city = $result['address']['city'] ?: $this->city;
+        $this->state = $result['address']['state'] ?: $this->state;
     }
 
     protected function formatCnpj(string $value): string

@@ -58,6 +58,20 @@ enum AccessPermission: string
     case ObligationsDeleteComment = 'obligations.delete_comment';
     case ObligationsSendNotifications = 'obligations.send_notifications';
     case ObligationsExport = 'obligations.export';
+    case GuaranteesView = 'guarantees.view';
+    case GuaranteesCreate = 'guarantees.create';
+    case GuaranteesUpdate = 'guarantees.update';
+    case GuaranteesDelete = 'guarantees.delete';
+    case GuaranteesGenerate = 'guarantees.generate';
+    case GuaranteesReviewSuggestions = 'guarantees.review_suggestions';
+    case GuaranteesApproveSuggestion = 'guarantees.approve_suggestion';
+    case GuaranteesRejectSuggestion = 'guarantees.reject_suggestion';
+    case GuaranteesReprocessDocuments = 'guarantees.reprocess_documents';
+    case GuaranteesUpdateValue = 'guarantees.update_value';
+    case GuaranteesCloseCompetence = 'guarantees.close_competence';
+    case GuaranteesReopenCompetence = 'guarantees.reopen_competence';
+    case GuaranteesManageValuations = 'guarantees.manage_valuations';
+    case GuaranteesReleaseGuarantee = 'guarantees.release';
     case DocumentsView = 'documents.view';
     case DocumentsCreate = 'documents.create';
     case DocumentsUpdate = 'documents.update';
@@ -253,6 +267,20 @@ enum AccessPermission: string
             self::ObligationsDeleteComment => 'Obrigações: remover comentários internos',
             self::ObligationsSendNotifications => 'Obrigações: enviar notificações',
             self::ObligationsExport => 'Obrigações: exportar',
+            self::GuaranteesView => 'Garantias: visualizar',
+            self::GuaranteesCreate => 'Garantias: criar',
+            self::GuaranteesUpdate => 'Garantias: editar',
+            self::GuaranteesDelete => 'Garantias: excluir',
+            self::GuaranteesGenerate => 'Garantias: identificar nos documentos',
+            self::GuaranteesReviewSuggestions => 'Garantias: revisar garantias detectadas',
+            self::GuaranteesApproveSuggestion => 'Garantias: confirmar garantia detectada',
+            self::GuaranteesRejectSuggestion => 'Garantias: rejeitar garantia detectada',
+            self::GuaranteesReprocessDocuments => 'Garantias: reprocessar documentos',
+            self::GuaranteesUpdateValue => 'Garantias: atualizar valor da competência',
+            self::GuaranteesCloseCompetence => 'Garantias: fechar competência',
+            self::GuaranteesReopenCompetence => 'Garantias: reabrir competência',
+            self::GuaranteesManageValuations => 'Garantias: registrar avaliações',
+            self::GuaranteesReleaseGuarantee => 'Garantias: liberar ou substituir',
             self::DocumentsView => 'Documentos: visualizar',
             self::DocumentsCreate => 'Documentos: criar',
             self::DocumentsUpdate => 'Documentos: editar',
@@ -418,6 +446,20 @@ enum AccessPermission: string
                 self::ObligationsDeleteComment,
                 self::ObligationsSendNotifications,
                 self::ObligationsExport,
+                self::GuaranteesView,
+                self::GuaranteesCreate,
+                self::GuaranteesUpdate,
+                self::GuaranteesDelete,
+                self::GuaranteesGenerate,
+                self::GuaranteesReviewSuggestions,
+                self::GuaranteesApproveSuggestion,
+                self::GuaranteesRejectSuggestion,
+                self::GuaranteesReprocessDocuments,
+                self::GuaranteesUpdateValue,
+                self::GuaranteesCloseCompetence,
+                self::GuaranteesReopenCompetence,
+                self::GuaranteesManageValuations,
+                self::GuaranteesReleaseGuarantee,
                 self::ExpensesView,
                 self::ExpensesCreate,
                 self::ExpensesUpdate,

@@ -21,6 +21,8 @@ class ProposalContinuationAccess extends Model
         'code_hash',
         'code_encrypted',
         'sent_at',
+        'mail_queued_at',
+        'mail_failed_at',
         'first_accessed_at',
         'last_accessed_at',
         'expires_at',
@@ -38,6 +40,8 @@ class ProposalContinuationAccess extends Model
     {
         return [
             'sent_at' => 'datetime',
+            'mail_queued_at' => 'datetime',
+            'mail_failed_at' => 'datetime',
             'first_accessed_at' => 'datetime',
             'last_accessed_at' => 'datetime',
             'expires_at' => 'datetime',
@@ -124,6 +128,14 @@ class ProposalContinuationAccess extends Model
 
         if ($this->first_accessed_at) {
             return ProposalContinuationAccessStatus::Accessed;
+        }
+
+        if ($this->mail_failed_at) {
+            return ProposalContinuationAccessStatus::MailFailed;
+        }
+
+        if ($this->mail_queued_at && ! $this->sent_at) {
+            return ProposalContinuationAccessStatus::Queued;
         }
 
         return ProposalContinuationAccessStatus::Sent;

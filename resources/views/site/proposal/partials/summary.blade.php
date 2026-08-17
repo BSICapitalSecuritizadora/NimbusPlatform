@@ -251,19 +251,20 @@
 
             <div class="d-flex flex-column gap-3">
                 @foreach ($attachmentSummaries as $attachment)
-                    <a
-                        class="flex items-center justify-between gap-4 p-5 border border-zinc-200/80 rounded-[22px] bg-brand-50/50 no-underline text-brand-900 hover:border-gold-500/50 hover:bg-gold-400/10 hover:shadow-sm transition-all"
-                        href="{{ $attachment['url'] }}"
-                    >
+                    <div class="flex items-center justify-between gap-4 p-5 border border-zinc-200/80 rounded-[22px] bg-brand-50/50 text-brand-900">
                         <div>
                             <div class="text-brand-800 font-bold">{{ $attachment['original_name'] }}</div>
                             <div class="bsi-copy small">{{ $attachment['meta'] }}</div>
+                            <div class="small fw-semibold mt-1">{{ $attachment['status'] }}</div>
                         </div>
-                        <span class="text-brand-800 text-[0.88rem] font-bold whitespace-nowrap">Baixar arquivo</span>
-                    </a>
+                        @if ($attachment['downloadable'])
+                            <a class="text-brand-800 text-[0.88rem] font-bold whitespace-nowrap" href="{{ $attachment['url'] }}">Baixar arquivo</a>
+                        @else
+                            <span class="text-[var(--muted)] text-[0.88rem] font-bold whitespace-nowrap">Download indisponível</span>
+                        @endif
+                    </div>
                 @endforeach
             </div>
         </div>
     </div>
 @endif
-

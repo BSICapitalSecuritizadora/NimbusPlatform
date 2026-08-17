@@ -5,18 +5,23 @@ declare(strict_types=1);
 namespace App\Services\Reports;
 
 use App\DTOs\ConstructionProgressData;
+use App\DTOs\Guarantees\GuaranteePositionData;
+use App\Enums\GuaranteeType;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\EmissionMonthlyReportNote;
 use App\Models\EmissionPuEvent;
 use App\Models\Expense;
 use App\Models\ExpenseHistory;
+use App\Models\GuaranteeMonthlyPosition;
+use App\Models\GuaranteeSnapshot;
 use App\Models\Negotiation;
 use App\Models\Payment;
 use App\Models\PuHistory;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Services\ConstructionProgressProvider;
+use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,7 +51,125 @@ class EmissionMonthlyReportService
 
     public function __construct(
         private readonly ConstructionProgressProvider $constructionProgressProvider,
+        private readonly EmissionGuaranteeCoverageEngine $guaranteeCoverageEngine,
     ) {}
+
+    /**
+     * Bloco de garantias do relatório (§48 do escopo).
+     *
+     * O relatório consome o resultado do módulo — não recalcula nada. A
+     * competência fechada tem prioridade sobre a apuração ao vivo: é o número
+     * que foi consolidado naquele mês, e reapurar poderia devolver outro depois
+     * de uma correção retroativa em recebíveis, estoque ou curva de PU.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildGuarantees(Emission $emission, CarbonImmutable $monthStart): array
+    {
+        $referenceMonth = $monthStart->toDateString();
+
+        /** @var GuaranteeSnapshot|null $snapshot */
+        $snapshot = $emission->guaranteeSnapshots()
+            ->whereDate('reference_month', $referenceMonth)
+            ->first();
+
+        if ($snapshot !== null) {
+            return $this->guaranteesFromSnapshot($emission, $snapshot, $referenceMonth);
+        }
+
+        $position = $this->guaranteeCoverageEngine->buildPosition($emission, $referenceMonth);
+
+        return [
+            'consolidated' => false,
+            'status' => $position->coverageStatus->label(),
+            'outstanding_balance' => $this->guaranteeMoney($position->outstandingBalance),
+            'gross_value' => $this->guaranteeMoney($position->totalGrossValue),
+            'eligible_value' => $this->guaranteeMoney($position->totalEligibleValue),
+            'required_value' => $this->guaranteeMoney($position->totalRequiredValue),
+            'coverage_ratio' => $this->guaranteeRatio($position->coverageRatio),
+            'required_ratio' => $this->guaranteeRatio($position->requiredRatio),
+            'surplus_deficit' => $this->guaranteeMoney($position->surplusDeficit),
+            'active_count' => $position->activeGuaranteesCount,
+            'items' => $position->positions
+                ->map(fn (GuaranteePositionData $item): array => [
+                    'name' => $item->guarantee->display_name,
+                    'type' => GuaranteeType::labelFor($item->guarantee->type),
+                    'source' => $item->value->source->label(),
+                    'contracted_value' => $this->guaranteeMoney(
+                        $item->guarantee->contracted_value === null ? null : (float) $item->guarantee->contracted_value,
+                    ),
+                    'current_value' => $this->guaranteeMoney($item->currentValue()),
+                    'eligible_value' => $this->guaranteeMoney($item->eligibleValue),
+                    'required_value' => $this->guaranteeMoney($item->requiredValue()),
+                    'status' => $item->coverageStatus->label(),
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function guaranteesFromSnapshot(
+        Emission $emission,
+        GuaranteeSnapshot $snapshot,
+        string $referenceMonth,
+    ): array {
+        $positions = $emission->guaranteeMonthlyPositions()
+            ->with('guarantee')
+            ->whereDate('reference_month', $referenceMonth)
+            ->get();
+
+        return [
+            'consolidated' => true,
+            'closed_at' => $snapshot->closed_at?->format('d/m/Y H:i'),
+            'status' => $snapshot->coverage_status?->label() ?? self::NOT_CONSOLIDATED,
+            'outstanding_balance' => $this->guaranteeMoney($this->toFloat($snapshot->outstanding_balance)),
+            'gross_value' => $this->guaranteeMoney($this->toFloat($snapshot->total_gross_value)),
+            'eligible_value' => $this->guaranteeMoney($this->toFloat($snapshot->total_eligible_value)),
+            'required_value' => $this->guaranteeMoney($this->toFloat($snapshot->total_required_value)),
+            'coverage_ratio' => $this->guaranteeRatio($this->toFloat($snapshot->coverage_ratio)),
+            'required_ratio' => $this->guaranteeRatio($this->toFloat($snapshot->required_ratio)),
+            'surplus_deficit' => $this->guaranteeMoney($this->toFloat($snapshot->surplus_deficit)),
+            'active_count' => $snapshot->active_guarantees_count ?? $positions->count(),
+            'items' => $positions
+                ->map(fn (GuaranteeMonthlyPosition $item): array => [
+                    'name' => $item->guarantee?->display_name ?? '—',
+                    'type' => GuaranteeType::labelFor($item->guarantee?->type),
+                    'source' => $item->value_source?->label() ?? '—',
+                    'contracted_value' => $this->guaranteeMoney(
+                        $item->guarantee?->contracted_value === null ? null : (float) $item->guarantee->contracted_value,
+                    ),
+                    'current_value' => $this->guaranteeMoney($this->toFloat($item->current_value)),
+                    'eligible_value' => $this->guaranteeMoney($this->toFloat($item->eligible_value)),
+                    'required_value' => $this->guaranteeMoney($this->toFloat($item->required_value)),
+                    'status' => $item->coverage_status?->label() ?? '—',
+                ])
+                ->all(),
+        ];
+    }
+
+    private function toFloat(mixed $value): ?float
+    {
+        return $value === null ? null : (float) $value;
+    }
+
+    /**
+     * Ausência é dita, não convertida em zero (§25 do escopo).
+     */
+    private function guaranteeMoney(?float $value): string
+    {
+        return $value === null
+            ? 'Não informado'
+            : 'R$ '.number_format($value, 2, ',', '.');
+    }
+
+    private function guaranteeRatio(?float $value): string
+    {
+        return $value === null
+            ? 'Não apurado'
+            : number_format($value * 100, 2, ',', '.').'%';
+    }
 
     /**
      * @return array<string, mixed>
@@ -76,6 +199,7 @@ class EmissionMonthlyReportService
             'payment' => $this->buildPayment($payment),
             'calendar' => $this->buildCalendar($upcomingEvents),
             'debt_balance' => $this->buildDebtBalance($emission, $monthEnd),
+            'guarantees' => $this->buildGuarantees($emission, $monthStart),
             'accounts' => $this->buildAccounts($emission),
             'expenses' => $this->buildExpenses($emission, $monthStart, $monthEnd),
             'expenses_history' => $this->buildExpensesHistory($emission, $monthEnd),

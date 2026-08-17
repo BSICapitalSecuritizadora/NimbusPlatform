@@ -11,10 +11,12 @@ use App\Models\ProposalSector;
 use App\Services\DocumentStorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -73,8 +75,52 @@ it('looks up the zip code and hydrates the operation address fields', function (
     Http::assertSentCount(3);
 });
 
+it('keeps address fields editable when viacep is unavailable', function () {
+    Mail::fake();
+    Http::fake(fn () => throw new ConnectionException('timeout'));
+    [, $access] = createProposalContinuationContext($this);
+    seedProposalContinuationSession($access);
+
+    Livewire::test(ContinuationForm::class, ['access' => $access])
+        ->set('form.zipCode', '04567-000')
+        ->assertSet('form.addressLookupMessage', fn (?string $message): bool => str_contains((string) $message, 'manualmente'))
+        ->set('form.street', 'Rua preenchida manualmente')
+        ->assertSet('form.street', 'Rua preenchida manualmente');
+});
+
+it('handles missing and unexpected viacep responses without breaking the form', function (mixed $payload, string $messageFragment) {
+    Mail::fake();
+    Http::fake(['https://viacep.com.br/ws/*' => Http::response($payload)]);
+    [, $access] = createProposalContinuationContext($this);
+    seedProposalContinuationSession($access);
+
+    Livewire::test(ContinuationForm::class, ['access' => $access])
+        ->set('form.zipCode', '04567-000')
+        ->assertSet('form.addressLookupMessage', fn (?string $message): bool => str_contains((string) $message, $messageFragment));
+})->with([
+    'not found' => [['erro' => true], 'não localizado'],
+    'unexpected json' => ['invalid-json', 'resposta inesperada'],
+]);
+
+it('keeps manual address entry available after a viacep HTTP error', function (int $status) {
+    Mail::fake();
+    Http::fake(['https://viacep.com.br/ws/*' => Http::response([], $status)]);
+    [, $access] = createProposalContinuationContext($this);
+    seedProposalContinuationSession($access);
+
+    Livewire::test(ContinuationForm::class, ['access' => $access])
+        ->set('form.zipCode', '04567-000')
+        ->assertSet('form.addressLookupMessage', fn (?string $message): bool => str_contains((string) $message, 'manualmente'))
+        ->set('form.city', 'São Paulo')
+        ->assertSet('form.city', 'São Paulo');
+})->with([
+    'client error' => 404,
+    'server error' => 503,
+]);
+
 it('computes the remaining months from the construction and delivery dates', function () {
     Mail::fake();
+    Date::setTestNow('2026-08-15');
 
     [, $access] = createProposalContinuationContext($this);
 
@@ -83,7 +129,9 @@ it('computes the remaining months from the construction and delivery dates', fun
     Livewire::test(ContinuationForm::class, ['access' => $access])
         ->set('form.constructionStartDate', '2026-03')
         ->set('form.deliveryForecastDate', '2030-12')
-        ->assertSet('form.remainingMonths', 57);
+        ->assertSet('form.remainingMonths', 52);
+
+    Date::setTestNow();
 });
 
 it('recalculates project and unit type metrics reactively', function () {
@@ -188,6 +236,49 @@ it('stores the continuation payload through the livewire component', function ()
 
     Storage::disk('local')->assertExists($proposal->files->first()->file_path);
 });
+
+it('uses the shared 20 MB upload limit in the livewire flow', function (int $sizeInKilobytes, bool $accepted) {
+    Mail::fake();
+    Queue::fake();
+
+    expect(config('uploads.proposal_continuation.max_kb'))->toBe(20480)
+        ->and(config('uploads.proposal_continuation.max_bytes'))->toBe(20 * 1024 * 1024);
+
+    config()->set('filesystems.disks.tmp-for-tests', [
+        'driver' => 'local',
+        'root' => storage_path('framework/testing/disks/tmp-for-tests-'.uniqid()),
+        'throw' => false,
+    ]);
+    Storage::set('local', Storage::createLocalDriver([
+        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
+        'throw' => false,
+    ]));
+
+    [$proposal, $access] = createProposalContinuationContext($this);
+    seedProposalContinuationSession($access);
+    $component = Livewire::test(ContinuationForm::class, ['access' => $access]);
+
+    foreach (proposalContinuationComponentState() as $property => $value) {
+        $component->set("form.{$property}", $value);
+    }
+
+    $component->set('form.uploads', [
+        UploadedFile::fake()->create('documento.pdf', $sizeInKilobytes, 'application/pdf'),
+    ])->call('save');
+
+    if ($accepted) {
+        $component->assertHasNoErrors();
+        expect($proposal->fresh()->files)->toHaveCount(1);
+
+        return;
+    }
+
+    $component->assertHasErrors('form.uploads.0');
+    expect($proposal->fresh()->files)->toHaveCount(0);
+})->with([
+    'arquivo acima do limite antigo de 10 MB é aceito' => [11 * 1024, true],
+    'arquivo acima do limite único de 20 MB é rejeitado' => [21 * 1024, false],
+]);
 
 it('downloads continuation files from the private disk even if the stored disk says public', function () {
     Mail::fake();

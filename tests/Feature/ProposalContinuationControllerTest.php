@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
-it('stores continuation submissions through the legacy public endpoint without a form request', function () {
+it('stores validated continuation submissions through the legacy-compatible public endpoint', function () {
     Mail::fake();
 
     $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
@@ -50,6 +50,99 @@ it('stores continuation submissions through the legacy public endpoint without a
         ]);
 });
 
+it('rejects an invalid direct endpoint payload before the storage action', function () {
+    Mail::fake();
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create(['queue_position' => 1]);
+    submitInitialProposalThroughComponent($sector);
+    $proposal = Proposal::query()->with('latestContinuationAccess')->firstOrFail();
+
+    $this->withSession(proposalContinuationSessionState($proposal->latestContinuationAccess))
+        ->post(route('site.proposal.continuation.store', $proposal->latestContinuationAccess), [
+            'nome' => '',
+            'nome_empreendimento' => [],
+            'valor_solicitado' => 'not-money',
+        ])
+        ->assertSessionHasErrors(['nome', 'nome_empreendimento', 'valor_solicitado', 'previsao_entrega']);
+
+    expect($proposal->projects()->count())->toBe(0)
+        ->and($proposal->fresh()->completed_at)->toBeNull();
+});
+
+it('authorizes the direct endpoint before validating its payload', function () {
+    Mail::fake();
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create(['queue_position' => 1]);
+    submitInitialProposalThroughComponent($sector);
+    $proposal = Proposal::query()->with('latestContinuationAccess')->firstOrFail();
+
+    $this->post(route('site.proposal.continuation.store', $proposal->latestContinuationAccess), [])
+        ->assertForbidden();
+
+    expect($proposal->projects()->count())->toBe(0)
+        ->and($proposal->fresh()->completed_at)->toBeNull();
+});
+
+it('rejects misaligned parallel arrays in the direct endpoint', function () {
+    Mail::fake();
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create(['queue_position' => 1]);
+    submitInitialProposalThroughComponent($sector);
+    $proposal = Proposal::query()->with('latestContinuationAccess')->firstOrFail();
+    $payload = controllerContinuationPayload();
+    $payload['tipo_vagas'] = ['1 vaga'];
+
+    $this->withSession(proposalContinuationSessionState($proposal->latestContinuationAccess))
+        ->post(route('site.proposal.continuation.store', $proposal->latestContinuationAccess), $payload)
+        ->assertSessionHasErrors('tipo_vagas');
+
+    expect($proposal->projects()->count())->toBe(0)
+        ->and($proposal->fresh()->completed_at)->toBeNull();
+});
+
+it('synchronizes project removals without duplicating retained projects', function () {
+    Mail::fake();
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create(['queue_position' => 1]);
+    submitInitialProposalThroughComponent($sector);
+    $proposal = Proposal::query()->with('latestContinuationAccess')->firstOrFail();
+    $access = $proposal->latestContinuationAccess;
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->post(route('site.proposal.continuation.store', $access), controllerContinuationPayload())
+        ->assertSessionHas('success');
+
+    $projectIds = $proposal->projects()->orderBy('id')->pluck('id')->all();
+    $proposal->forceFill(['status' => ProposalStatus::AwaitingInformation->value])->save();
+    $payload = controllerContinuationPayload();
+
+    foreach ([
+        'nome_empreendimento',
+        'unidades_permutadas',
+        'unidades_quitadas',
+        'unidades_nao_quitadas',
+        'unidades_estoque',
+        'custo_incidido',
+        'custo_a_incorrer',
+        'valor_quitadas',
+        'valor_nao_quitadas',
+        'valor_estoque',
+        'valor_ja_recebido',
+        'valor_ate_chaves',
+        'valor_chaves_pos',
+    ] as $field) {
+        $payload[$field] = array_slice($payload[$field], 0, 1);
+    }
+
+    $payload['project_id'] = [$projectIds[0]];
+
+    $this->withSession(proposalContinuationSessionState($access))
+        ->post(route('site.proposal.continuation.store', $access), $payload)
+        ->assertSessionHas('success');
+
+    expect($proposal->projects()->pluck('id')->all())->toBe([$projectIds[0]]);
+});
+
 it('rejects file uploads with disallowed MIME types in the continuation store', function () {
     Mail::fake();
 
@@ -72,7 +165,7 @@ it('rejects file uploads with disallowed MIME types in the continuation store', 
             controllerContinuationPayload(),
             ['arquivos' => [UploadedFile::fake()->create('exploit.exe', 100, 'application/x-msdownload')]],
         ))
-        ->assertSessionHasErrors('arquivos');
+        ->assertSessionHasErrors('arquivos.0');
 });
 
 it('stores a checksum on uploaded proposal files (M-3)', function () {
@@ -141,7 +234,7 @@ it('rejects file uploads that exceed the maximum allowed size', function () {
             // 21 MB PDF — over the 20 MB limit
             ['arquivos' => [UploadedFile::fake()->create('big.pdf', 21 * 1024, 'application/pdf')]],
         ))
-        ->assertSessionHasErrors('arquivos');
+        ->assertSessionHasErrors('arquivos.0');
 });
 
 /**

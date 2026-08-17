@@ -115,25 +115,26 @@
                     </div>
 
                     <div class="col-12">
-                        <label class="form-label">Setor de Atuação</label>
+                        <label class="form-label">Setores de Atuação</label>
 
                         @if ($sectors->isEmpty())
                             <div class="alert alert-warning mb-0" role="alert" style="border-radius: 16px; border: 1px solid rgba(255, 193, 7, 0.3); background: rgba(255, 193, 7, 0.08);">
                                 <div>{{ $noSectorsMessage }}</div>
                             </div>
                         @else
-                            <div class="form-text mt-0 mb-3">Selecione o setor ligado à sua proposta.</div>
+                            <div class="form-text mt-0 mb-3">Selecione um ou mais setores ligados à sua proposta.</div>
 
                             <div class="d-flex flex-wrap gap-2">
                                 @foreach ($sectors as $sector)
-                                    <input type="radio" class="btn-check" name="sectorId" id="sector-{{ $sector->id }}" value="{{ $sector->id }}" wire:model.live="form.sectorId">
+                                    <input type="checkbox" class="btn-check" name="sectorIds[]" id="sector-{{ $sector->id }}" value="{{ $sector->id }}" wire:model.live="form.sectorIds">
                                     <label class="btn btn-outline-brand rounded-pill" for="sector-{{ $sector->id }}" style="font-weight: 600;">
                                         {{ $sector->name }}
                                     </label>
                                 @endforeach
                             </div>
 
-                            @error('form.sectorId') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            @error('form.sectorIds') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            @error('form.sectorIds.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         @endif
                     </div>
                 </div>
@@ -156,6 +157,9 @@
                         <label class="form-label">CEP</label>
                         <input type="text" class="form-control" wire:model.live.debounce.500ms="form.postalCode" x-mask="99999-999" inputmode="numeric" placeholder="00000-000">
                         <div wire:loading wire:target="form.postalCode" class="form-text text-brand">Buscando endereço pelo CEP...</div>
+                        @if ($form->addressLookupMessage)
+                            <div class="form-text text-warning" role="status">{{ $form->addressLookupMessage }}</div>
+                        @endif
                         @error('form.postalCode') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
 
@@ -240,15 +244,29 @@
                         @error('form.jobTitle') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                     </div>
 
-                    <div class="col-12 mt-4 mt-md-5">
+                    <div class="col-12 col-md-6 mt-4 mt-md-5">
                         <div class="p-4" style="border-radius: 16px; background: color-mix(in srgb, var(--surface-alt) 50%, transparent); border: 1px solid var(--border);">
                             <div class="d-flex align-items-center gap-3">
                                 <div class="form-check form-switch fs-4 mb-0 pb-0">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="hasWhatsappCheck" wire:model.live="form.hasWhatsapp">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="isWhatsappCheck" wire:model.live="form.isWhatsapp">
                                 </div>
-                                <label class="form-check-label ms-1" for="hasWhatsappCheck" style="cursor: pointer;">
-                                    <div class="fw-bold text-text mb-0" style="line-height:1.2;">Autorizo que a BSI Capital utilize este número para contato relacionado à proposta enviada.</div>
-                                    <div class="text-muted small mt-1">Essa autorização é opcional e poderá ser utilizada apenas para comunicações relacionadas à oportunidade apresentada.</div>
+                                <label class="form-check-label ms-1" for="isWhatsappCheck" style="cursor: pointer;">
+                                    <div class="fw-bold text-text mb-0" style="line-height:1.2;">Este número possui WhatsApp.</div>
+                                    <div class="text-muted small mt-1">Use esta opção apenas para indicar a disponibilidade técnica do número.</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 mt-4 mt-md-5">
+                        <div class="p-4" style="border-radius: 16px; background: color-mix(in srgb, var(--surface-alt) 50%, transparent); border: 1px solid var(--border);">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-switch fs-4 mb-0 pb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="whatsappConsentCheck" wire:model.live="form.whatsappContactConsent">
+                                </div>
+                                <label class="form-check-label ms-1" for="whatsappConsentCheck" style="cursor: pointer;">
+                                    <div class="fw-bold text-text mb-0" style="line-height:1.2;">Autorizo contato da BSI Capital pelo WhatsApp.</div>
+                                    <div class="text-muted small mt-1">Consentimento opcional e restrito às comunicações relacionadas à proposta.</div>
                                 </label>
                             </div>
                         </div>

@@ -2,19 +2,28 @@
 
 namespace App\Services;
 
+use App\Enums\GuaranteeEventType;
+use App\Enums\GuaranteeEvidenceLevel;
+use App\Enums\GuaranteeRequirementBase;
+use App\Enums\GuaranteeRequirementBasis;
+use App\Enums\GuaranteeType;
 use App\Models\Document;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 
 class GeminiService
 {
-    private const MODEL = 'gemini-2.5-flash';
+    private const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/';
 
-    private const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
+    private const FILES_UPLOAD_URL = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
 
-    private const GENERATE_CONTENT_URL = self::API_URL.self::MODEL.':generateContent';
+    private const DOCUMENT_MIME_TYPE = 'application/pdf';
+
+    /** Intervalo entre consultas ao estado de um arquivo ainda em PROCESSING. */
+    private const FILE_POLL_SECONDS = 2;
 
     private const SECURITIZATION_PROMPT = <<<'PROMPT'
 Você é um especialista em análise de documentos financeiros brasileiros, especificamente Termos de Securitização de CRI/CRA.
@@ -162,35 +171,247 @@ Se não houver obrigações no documento, retorne: {"obligations": []}
 Não adicione texto antes ou depois do JSON.
 PROMPT;
 
+    private const GUARANTEES_PROMPT = <<<'PROMPT'
+Você é um especialista em direito do mercado de capitais brasileiro, com foco nas garantias de operações de securitização (CRI, CRA, CR).
+
+Sua tarefa é identificar as GARANTIAS previstas no documento anexado, que pode ser um Termo de Securitização, um aditamento, um contrato de alienação/cessão fiduciária, um instrumento de reforço, substituição ou liberação de garantia, ou outro instrumento da operação.
+
+REGRAS DE FUNDAMENTAÇÃO (CRÍTICAS — a violação invalida a extração):
+- Extraia SOMENTE o que está escrito no documento. Nunca use conhecimento externo.
+- NUNCA invente matrícula, valor, percentual, CNPJ, conta, data, cláusula ou página. Se o dado não estiver no documento, use null.
+- Ausência de informação JAMAIS vira zero. Um valor não localizado é null, não 0.
+- `source_excerpt` deve ser citação LITERAL do documento (máx. 400 caracteres) que comprove a garantia. Não parafraseie.
+- Para cada campo preenchido, classifique em `field_evidence` como:
+  - "explicit": o documento afirma o dado literalmente;
+  - "inferred": você deduziu a partir da relação entre cláusulas;
+  - "not_found": não consta.
+- Prefira uma lista curta e confiável a uma lista longa e ruidosa. Na dúvida, não extraia.
+
+TIPO DO EVENTO (`event_type`) — o que o documento faz com a garantia:
+- "constitution": constitui a garantia ("Fica constituída...", "Passa a integrar a garantia...", "Fica incluída...")
+- "amendment": altera condição existente ("Passa a vigorar com a seguinte redação...", "O percentual mínimo passa de X para Y...")
+- "reinforcement": reforça/adiciona bem à garantia existente
+- "substitution": substitui bem ou garantia ("Fica substituído...", "A matrícula X é substituída pela matrícula Y...")
+- "release": libera a garantia ("A garantia prevista na cláusula X será liberada...", "Fica excluída...")
+Se o documento for aditamento e a cláusula alterar garantia já existente, use "amendment", "substitution" ou "release" — NÃO use "constitution".
+
+TIPOS DE GARANTIA (`type`) — use EXATAMENTE um destes valores:
+af_imovel, af_quotas, cf_recebiveis, cf_direitos_creditorios, promessa_cessao_fiduciaria, hipoteca, penhor, aval, fianca, fundo_reserva, fundo_juros, fundo_obras, conta_reserva, conta_vinculada, recebiveis, estoque, unidades, carta_fianca, seguro_garantia, aplicacao_financeira, outra
+
+IDENTIFICAÇÃO (`identification`) — objeto com as chaves aplicáveis ao tipo, apenas com o que constar:
+- Imóvel: registration_number (matrícula), registry_office (cartório), city, state, owner, construction, unit, area
+- Quotas: company, tax_id (CNPJ), quota_quantity, pledged_percentage, nominal_value, grantor
+- Recebíveis: portfolio, construction, contracts, assigned_percentage, receiving_account, eligibility_criteria
+- Fundos/contas: fund_type, bank, agency, account, composition_rule
+- Outros: identification
+
+REGRA CONTRATUAL DO MÍNIMO EXIGIDO:
+- `requirement_basis`: "absolute" (valor fixo em R$), "percentage" (percentual sobre uma base), "formula" (contagem, ex.: 3 PMTs) ou "none" (o documento não fixa mínimo).
+- `requirement_value`: valor absoluto em número, quando basis = absolute.
+- `requirement_percentage`: fração decimal (120% => 1.2), quando basis = percentage.
+- `requirement_base`: "outstanding_balance" (saldo devedor), "issued_volume", "integralized_value", "next_installments", "interest_months" ou "custom".
+- `requirement_multiplier`: número, quando basis = formula (ex.: 3 para "3 próximas PMTs").
+- `requirement_formula`: o texto literal da regra contratual, sempre que houver.
+
+DEMAIS CAMPOS:
+- name: nome curto da garantia (ex.: "Alienação Fiduciária de Imóvel — Matrícula 45.721").
+- description: descrição baseada exclusivamente no texto-fonte.
+- contracted_value: valor da garantia na contratação, em número, ou null.
+- documentary_value: valor nominal/documental expresso no contrato, ou null.
+- validity_start_date / validity_end_date / effective_date: "YYYY-MM-DD" ou null. effective_date é a data a partir da qual o evento produz efeito.
+- source_clause: referência da cláusula (ex.: "8.3.1") ou null.
+- source_page: número inteiro da página ou null.
+- confidence_score: número entre 0.0 e 1.0 para a extração como um todo.
+- field_confidences: objeto opcional com confiança por campo (0.0 a 1.0).
+- review_notes: observações para o revisor (ambiguidades, dados ausentes) ou null.
+
+Retorne SOMENTE um JSON com esta estrutura:
+
+{
+  "guarantees": [
+    {
+      "event_type": "constitution",
+      "type": "af_imovel",
+      "name": "string",
+      "description": "string|null",
+      "identification": {},
+      "contracted_value": 0,
+      "documentary_value": null,
+      "requirement_basis": "none",
+      "requirement_value": null,
+      "requirement_percentage": null,
+      "requirement_base": null,
+      "requirement_multiplier": null,
+      "requirement_formula": null,
+      "validity_start_date": null,
+      "validity_end_date": null,
+      "effective_date": null,
+      "source_clause": "string|null",
+      "source_page": 0,
+      "source_excerpt": "string",
+      "confidence_score": 0.0,
+      "field_evidence": {},
+      "field_confidences": {},
+      "review_notes": null
+    }
+  ]
+}
+
+Se o documento não previr garantias, retorne: {"guarantees": []}
+Não adicione texto antes ou depois do JSON.
+PROMPT;
+
+    /**
+     * Identifica as garantias previstas num documento jurídico da operação.
+     *
+     * O retorno é proposta de cadastro, nunca garantia oficial: cada item ainda
+     * passa por revisão humana antes de existir como garantia da emissão (§4 do
+     * escopo do módulo).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function extractGuarantees(Document $document): array
+    {
+        $json = $this->generateFromDocument(self::GUARANTEES_PROMPT, $document);
+
+        $guarantees = $json['guarantees'] ?? [];
+
+        if (! is_array($guarantees)) {
+            return [];
+        }
+
+        $normalized = array_values(array_filter(array_map(
+            fn (mixed $item): ?array => is_array($item) ? $this->normalizeGuaranteeProposal($item) : null,
+            $guarantees,
+        )));
+
+        Log::info('GeminiService: garantias extraídas', [
+            'document_id' => $document->id,
+            'detected' => count($normalized),
+        ]);
+
+        return $normalized;
+    }
+
+    /**
+     * Normaliza uma proposta de garantia, descartando o que não é utilizável.
+     *
+     * Toda conversão numérica passa por {@see self::nullableNumber()}: a string
+     * vazia e o texto não numérico viram null, nunca zero — a diferença entre
+     * "o contrato não fixa valor" e "o contrato fixa zero" é o que impede uma
+     * garantia sem valor declarado de entrar como garantia sem valor nenhum.
+     *
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>|null
+     */
+    private function normalizeGuaranteeProposal(array $item): ?array
+    {
+        $name = trim((string) ($item['name'] ?? ''));
+
+        if ($name === '') {
+            return null;
+        }
+
+        $excerpt = $this->nullableString($item['source_excerpt'] ?? null, 2000);
+
+        // Sem trecho literal não há como um revisor conferir a extração contra
+        // o documento, e uma garantia sem comprovação não deve ser proposta.
+        if ($excerpt === null) {
+            return null;
+        }
+
+        $confidence = $item['confidence_score'] ?? null;
+        $confidence = is_numeric($confidence) ? max(0, min(1, (float) $confidence)) : null;
+
+        return [
+            'event_type' => $this->enumValue($item['event_type'] ?? null, GuaranteeEventType::class, GuaranteeEventType::Constitution->value),
+            'type' => $this->enumValue($item['type'] ?? null, GuaranteeType::class, null),
+            'name' => mb_substr($name, 0, 255),
+            'description' => $this->nullableString($item['description'] ?? null),
+            'identification' => is_array($item['identification'] ?? null) ? $item['identification'] : null,
+            'contracted_value' => $this->nullableNumber($item['contracted_value'] ?? null),
+            'documentary_value' => $this->nullableNumber($item['documentary_value'] ?? null),
+            'requirement_basis' => $this->enumValue($item['requirement_basis'] ?? null, GuaranteeRequirementBasis::class, GuaranteeRequirementBasis::None->value),
+            'requirement_value' => $this->nullableNumber($item['requirement_value'] ?? null),
+            'requirement_percentage' => $this->nullableNumber($item['requirement_percentage'] ?? null),
+            'requirement_base' => $this->enumValue($item['requirement_base'] ?? null, GuaranteeRequirementBase::class, null),
+            'requirement_multiplier' => $this->nullableNumber($item['requirement_multiplier'] ?? null),
+            'requirement_formula' => $this->nullableString($item['requirement_formula'] ?? null),
+            'validity_start_date' => $this->nullableDate($item['validity_start_date'] ?? null),
+            'validity_end_date' => $this->nullableDate($item['validity_end_date'] ?? null),
+            'effective_date' => $this->nullableDate($item['effective_date'] ?? null),
+            'source_clause' => $this->nullableString($item['source_clause'] ?? null, 255),
+            'source_page' => is_numeric($item['source_page'] ?? null) ? (int) $item['source_page'] : null,
+            'source_excerpt' => $excerpt,
+            'confidence_score' => $confidence,
+            'field_evidence' => $this->normalizeFieldEvidence($item['field_evidence'] ?? null),
+            'field_confidences' => is_array($item['field_confidences'] ?? null) ? $item['field_confidences'] : null,
+            'review_notes' => $this->nullableString($item['review_notes'] ?? null),
+        ];
+    }
+
+    /**
+     * Mantém em `field_evidence` apenas classificações reconhecidas. Um rótulo
+     * inventado pelo modelo seria lido como "não localizada" na revisão, o que
+     * é mais seguro do que aceitá-lo como evidência válida.
+     *
+     * @return array<string, string>|null
+     */
+    private function normalizeFieldEvidence(mixed $value): ?array
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $normalized = [];
+
+        foreach ($value as $field => $level) {
+            if (! is_string($field) || ! is_string($level)) {
+                continue;
+            }
+
+            if (GuaranteeEvidenceLevel::tryFrom($level) === null) {
+                continue;
+            }
+
+            $normalized[$field] = $level;
+        }
+
+        return $normalized === [] ? null : $normalized;
+    }
+
+    /**
+     * @param  class-string<\BackedEnum>  $enumClass
+     */
+    private function enumValue(mixed $value, string $enumClass, ?string $default): ?string
+    {
+        if (! is_string($value)) {
+            return $default;
+        }
+
+        return $enumClass::tryFrom(trim($value))?->value ?? $default;
+    }
+
+    private function nullableNumber(mixed $value): ?float
+    {
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function nullableDate(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($value)) === 1 ? trim($value) : null;
+    }
+
     /** @return array<string, string|null> */
     public function extractSecuritizationClauses(Document $document): array
     {
-        $contents = $this->readDocumentContents($document);
-
-        $response = $this->pendingRequest()
-            ->post(self::GENERATE_CONTENT_URL, [
-                'contents' => [[
-                    'parts' => [
-                        ['text' => self::SECURITIZATION_PROMPT],
-                        ['inline_data' => [
-                            'mime_type' => 'application/pdf',
-                            'data' => base64_encode($contents),
-                        ]],
-                    ],
-                ]],
-                'generationConfig' => [
-                    'response_mime_type' => 'application/json',
-                ],
-            ]);
-
-        $response->throw();
-
-        $json = json_decode(
-            $response->json('candidates.0.content.parts.0.text') ?? '{}',
-            true,
+        return $this->mapToFormFields(
+            $this->generateFromDocument(self::SECURITIZATION_PROMPT, $document),
         );
-
-        return $this->mapToFormFields($json ?? []);
     }
 
     /** @return array<string, string|null> */
@@ -239,30 +460,7 @@ PROMPT;
      */
     public function extractObligations(Document $document): array
     {
-        $contents = $this->readDocumentContents($document);
-
-        $response = $this->pendingRequest()
-            ->post(self::GENERATE_CONTENT_URL, [
-                'contents' => [[
-                    'parts' => [
-                        ['text' => self::OBLIGATIONS_PROMPT],
-                        ['inline_data' => [
-                            'mime_type' => 'application/pdf',
-                            'data' => base64_encode($contents),
-                        ]],
-                    ],
-                ]],
-                'generationConfig' => [
-                    'response_mime_type' => 'application/json',
-                ],
-            ]);
-
-        $response->throw();
-
-        $json = json_decode(
-            $response->json('candidates.0.content.parts.0.text') ?? '{}',
-            true,
-        );
+        $json = $this->generateFromDocument(self::OBLIGATIONS_PROMPT, $document);
 
         $obligations = $json['obligations'] ?? [];
 
@@ -486,6 +684,235 @@ PROMPT;
     }
 
     /**
+     * Envia o documento com um prompt e devolve o JSON decodificado da resposta.
+     *
+     * Documentos pequenos vão embutidos na própria requisição; acima de
+     * `inline_max_bytes` a requisição estouraria o limite de tamanho da API, e o
+     * arquivo sobe antes pela File API. O upload é sempre apagado ao final: a
+     * File API retém o arquivo por 48h e, tratando-se de documento de operação,
+     * a cópia no processador não pode sobreviver à chamada que a justificou.
+     *
+     * @return array<string, mixed>
+     */
+    private function generateFromDocument(string $prompt, Document $document): array
+    {
+        $contents = $this->readDocumentContents($document);
+        $uploadedFileName = null;
+
+        try {
+            if (strlen($contents) > $this->inlineMaxBytes()) {
+                $file = $this->uploadDocument($contents, $document);
+                $uploadedFileName = $file['name'];
+                $documentPart = ['file_data' => [
+                    'mime_type' => self::DOCUMENT_MIME_TYPE,
+                    'file_uri' => $file['uri'],
+                ]];
+            } else {
+                $documentPart = ['inline_data' => [
+                    'mime_type' => self::DOCUMENT_MIME_TYPE,
+                    'data' => base64_encode($contents),
+                ]];
+            }
+
+            $response = $this->pendingRequest()
+                ->post($this->generateContentUrl(), [
+                    'contents' => [[
+                        'parts' => [
+                            ['text' => $prompt],
+                            $documentPart,
+                        ],
+                    ]],
+                    'generationConfig' => [
+                        'response_mime_type' => 'application/json',
+                    ],
+                ]);
+
+            $response->throw();
+
+            $decoded = json_decode($this->firstAnswerText($response->json()) ?? '{}', true);
+
+            return is_array($decoded) ? $decoded : [];
+        } finally {
+            if ($uploadedFileName !== null) {
+                $this->deleteUploadedFile($uploadedFileName);
+            }
+        }
+    }
+
+    /**
+     * Primeiro trecho de texto que seja resposta, e não raciocínio.
+     *
+     * Os modelos da linha 3 raciocinam por padrão e podem emitir partes com
+     * `thought: true` antes da resposta. Ler `parts.0.text` cegamente pegaria o
+     * raciocínio, o `json_decode` falharia e cada campo viraria null — falha
+     * silenciosa, já que o chamador trata ausência de chave como "não
+     * encontrado" em vez de erro.
+     *
+     * @param  array<string, mixed>|null  $payload
+     */
+    private function firstAnswerText(?array $payload): ?string
+    {
+        /** @var array<int, array<string, mixed>> $parts */
+        $parts = data_get($payload, 'candidates.0.content.parts', []);
+
+        foreach ($parts as $part) {
+            if (($part['thought'] ?? false) === true) {
+                continue;
+            }
+
+            $text = $part['text'] ?? null;
+
+            if (is_string($text) && trim($text) !== '') {
+                return $text;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Sobe o documento pela File API usando o protocolo resumível e devolve o
+     * arquivo já em estado ACTIVE.
+     *
+     * O `display_name` carrega só o id do documento: o nome original do arquivo
+     * costuma trazer razão social e número de operação, e não há motivo para
+     * replicar isso nos metadados do processador.
+     *
+     * @return array{name: string, uri: string}
+     */
+    private function uploadDocument(string $contents, Document $document): array
+    {
+        $size = strlen($contents);
+
+        $start = $this->pendingRequest()
+            ->withHeaders([
+                'X-Goog-Upload-Protocol' => 'resumable',
+                'X-Goog-Upload-Command' => 'start',
+                'X-Goog-Upload-Header-Content-Length' => (string) $size,
+                'X-Goog-Upload-Header-Content-Type' => self::DOCUMENT_MIME_TYPE,
+            ])
+            ->post(self::FILES_UPLOAD_URL, [
+                'file' => ['display_name' => "document-{$document->id}"],
+            ]);
+
+        $start->throw();
+
+        $uploadUrl = $start->header('x-goog-upload-url');
+
+        if ($uploadUrl === '') {
+            throw new \RuntimeException('A File API não devolveu a URL de upload (cabeçalho x-goog-upload-url ausente).');
+        }
+
+        $upload = $this->pendingRequest()
+            ->withHeaders([
+                'Content-Length' => (string) $size,
+                'X-Goog-Upload-Offset' => '0',
+                'X-Goog-Upload-Command' => 'upload, finalize',
+            ])
+            ->withBody($contents, self::DOCUMENT_MIME_TYPE)
+            ->post($uploadUrl);
+
+        $upload->throw();
+
+        /** @var array<string, mixed> $file */
+        $file = $upload->json('file') ?? [];
+
+        return $this->awaitActiveFile($file, $document);
+    }
+
+    /**
+     * Aguarda o arquivo sair de PROCESSING. Um PDF grande não fica utilizável
+     * imediatamente após o upload, e referenciá-lo antes da hora faz o
+     * `generateContent` falhar com 400.
+     *
+     * @param  array<string, mixed>  $file
+     * @return array{name: string, uri: string}
+     */
+    private function awaitActiveFile(array $file, Document $document): array
+    {
+        $name = (string) ($file['name'] ?? '');
+
+        if ($name === '') {
+            throw new \RuntimeException('A File API não devolveu o identificador do arquivo enviado.');
+        }
+
+        $deadline = microtime(true) + $this->fileActivationTimeout();
+
+        while (($file['state'] ?? '') === 'PROCESSING') {
+            if (microtime(true) >= $deadline) {
+                $this->deleteUploadedFile($name);
+
+                throw new \RuntimeException(
+                    "O documento {$document->id} continuou em processamento na File API além de {$this->fileActivationTimeout()}s."
+                );
+            }
+
+            Sleep::for(self::FILE_POLL_SECONDS)->seconds();
+
+            $poll = $this->pendingRequest()->get(self::BASE_URL.$name);
+            $poll->throw();
+
+            /** @var array<string, mixed> $file */
+            $file = $poll->json() ?? [];
+        }
+
+        $state = (string) ($file['state'] ?? '');
+
+        if ($state !== 'ACTIVE') {
+            $this->deleteUploadedFile($name);
+
+            throw new \RuntimeException("A File API devolveu o arquivo em estado '{$state}' para o documento {$document->id}.");
+        }
+
+        $uri = (string) ($file['uri'] ?? '');
+
+        if ($uri === '') {
+            $this->deleteUploadedFile($name);
+
+            throw new \RuntimeException('A File API não devolveu a URI do arquivo enviado.');
+        }
+
+        return ['name' => $name, 'uri' => $uri];
+    }
+
+    /**
+     * Remove a cópia do documento no processador. A falha é registrada mas não
+     * propagada: o arquivo expira sozinho em 48h e derrubar aqui descartaria uma
+     * extração que já foi concluída com sucesso.
+     */
+    private function deleteUploadedFile(string $name): void
+    {
+        try {
+            $this->pendingRequest()->delete(self::BASE_URL.$name)->throw();
+        } catch (\Throwable $e) {
+            Log::warning('GeminiService: falha ao remover arquivo da File API', [
+                'file' => $name,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function generateContentUrl(): string
+    {
+        return self::BASE_URL.'models/'.$this->model().':generateContent';
+    }
+
+    private function model(): string
+    {
+        return (string) config('services.gemini.model', 'gemini-3.7-flash');
+    }
+
+    private function inlineMaxBytes(): int
+    {
+        return (int) config('services.gemini.inline_max_bytes', 12 * 1024 * 1024);
+    }
+
+    private function fileActivationTimeout(): int
+    {
+        return (int) config('services.gemini.file_activation_timeout', 120);
+    }
+
+    /**
      * Cliente HTTP compartilhado pelas chamadas ao Gemini.
      *
      * A chave vai no cabeçalho `x-goog-api-key`, não na query string: uma chave
@@ -494,7 +921,9 @@ PROMPT;
      * os testes inspecionam.
      *
      * ATENÇÃO (LGPD): os métodos que usam este cliente enviam o documento
-     * integral em base64 para um processador fora do país. Só devem ser
+     * integral para um processador fora do país — embutido na requisição ou,
+     * acima de `inline_max_bytes`, pela File API, que o retém por até 48h (por
+     * isso `generateFromDocument` sempre apaga o upload ao final). Só devem ser
      * disparados por ação explícita do usuário sobre documentos cuja
      * transferência internacional esteja registrada no inventário de
      * tratamento — nunca de forma automática.

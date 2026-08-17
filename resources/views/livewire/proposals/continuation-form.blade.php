@@ -1137,6 +1137,9 @@
                                                         <flux:input wire:model.live.debounce.600ms="form.zipCode" mask="99999-999" inputmode="numeric" />
                                                         <flux:error name="form.zipCode" />
                                                         <flux:description wire:loading wire:target="form.zipCode">Buscando endereço pelo CEP...</flux:description>
+                                                        @if ($form->addressLookupMessage)
+                                                            <flux:description class="text-amber-700" role="status">{{ $form->addressLookupMessage }}</flux:description>
+                                                        @endif
                                                     </flux:field>
                                                 </div>
 
@@ -1577,6 +1580,7 @@
                                                 >
                                             </div>
                                             <flux:error name="form.uploads.*" />
+                                            <p class="text-[var(--muted)] text-sm mt-2">Formatos aceitos: PDF, Word, Excel, PNG e JPEG. Limite de {{ (int) ceil(config('uploads.proposal_continuation.max_kb') / 1024) }} MB por arquivo.</p>
                                             <p class="text-[var(--muted)] text-sm mt-1" wire:loading wire:target="form.uploads">Carregando arquivos para envio...</p>
 
                                         @if ($uploads !== [])
@@ -1598,16 +1602,18 @@
                                             <p class="text-[var(--muted)] mt-3 mb-3">Arquivos já enviados permanecem disponíveis abaixo. Novos uploads serão adicionados ao histórico da proposta.</p>
                                             <div class="d-flex flex-column gap-2">
                                                 @foreach ($attachmentSummaries as $attachment)
-                                                    <a
-                                                        class="flex items-center justify-between gap-4 p-[1.15rem_1.2rem] border border-[var(--border)] rounded-[10px] bg-[color-mix(in_oklab,var(--surface)_95%,var(--brand)_5%)] no-underline text-[var(--text)]"
-                                                        href="{{ $attachment['url'] }}"
-                                                    >
+                                                    <div class="flex items-center justify-between gap-4 p-[1.15rem_1.2rem] border border-[var(--border)] rounded-[10px] bg-[color-mix(in_oklab,var(--surface)_95%,var(--brand)_5%)] text-[var(--text)]">
                                                         <div>
                                                             <div class="text-[var(--brand)] font-bold">{{ $attachment['original_name'] }}</div>
                                                             <div class="text-[var(--muted)] small">{{ $attachment['meta'] }}</div>
+                                                            <div class="small fw-semibold mt-1">{{ $attachment['status'] }}</div>
                                                         </div>
-                                                        <span class="text-[var(--brand)] text-[0.88rem] font-bold whitespace-nowrap">Baixar arquivo</span>
-                                                    </a>
+                                                        @if ($attachment['downloadable'])
+                                                            <a class="text-[var(--brand)] text-[0.88rem] font-bold whitespace-nowrap" href="{{ $attachment['url'] }}">Baixar arquivo</a>
+                                                        @else
+                                                            <span class="text-[var(--muted)] text-[0.88rem] font-bold">Download indisponível</span>
+                                                        @endif
+                                                    </div>
                                                 @endforeach
                                             </div>
                                         @endif

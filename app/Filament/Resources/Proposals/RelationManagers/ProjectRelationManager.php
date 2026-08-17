@@ -2,7 +2,13 @@
 
 namespace App\Filament\Resources\Proposals\RelationManagers;
 
+use App\Actions\Proposals\CalculateRemainingProjectTerm;
+use App\Actions\Proposals\FetchAddressFromCep;
 use App\Models\ProposalProject;
+use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -17,7 +23,6 @@ use Filament\Support\RawJs;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Http;
 
 class ProjectRelationManager extends RelationManager
 {
@@ -77,12 +82,15 @@ class ProjectRelationManager extends RelationManager
                         DatePicker::make('delivery_forecast_date')
                             ->label('Previsão de Entrega')
                             ->required()
+                            ->rules(['after_or_equal:construction_start_date'])
                             ->live()
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::updateRemainingMonths($get, $set)),
                         Placeholder::make('remaining_months_display')
                             ->label('Prazo Remanescente')
                             ->columnSpan(2)
-                            ->content(fn (Get $get) => (int) $get('remaining_months').' meses'),
+                            ->content(fn (Get $get): string => $get('construction_start_date') && $get('delivery_forecast_date')
+                                ? ((int) $get('remaining_months')).' meses'
+                                : '—'),
                         Hidden::make('remaining_months')
                             ->default(0),
                     ])->columns(2),
@@ -100,23 +108,13 @@ class ProjectRelationManager extends RelationManager
                                     return;
                                 }
 
-                                $cep = preg_replace('/[^0-9]/', '', $state);
-                                if (strlen($cep) !== 8) {
-                                    return;
-                                }
+                                $result = app(FetchAddressFromCep::class)->handle($state);
 
-                                try {
-                                    $response = Http::get("https://viacep.com.br/ws/{$cep}/json/");
-
-                                    if ($response->ok() && ! isset($response->json()['erro'])) {
-                                        $data = $response->json();
-                                        $set('street', $data['logradouro'] ?? '');
-                                        $set('neighborhood', $data['bairro'] ?? '');
-                                        $set('city', $data['localidade'] ?? '');
-                                        $set('state', $data['uf'] ?? '');
-                                    }
-                                } catch (\Exception $e) {
-                                    // Fail silently
+                                if ($result['address'] !== null) {
+                                    $set('street', $result['address']['street']);
+                                    $set('neighborhood', $result['address']['neighborhood']);
+                                    $set('city', $result['address']['city']);
+                                    $set('state', $result['address']['state']);
                                 }
                             }),
                         TextInput::make('street')
@@ -427,48 +425,37 @@ class ProjectRelationManager extends RelationManager
                     ->sortable(),
             ])
             ->headerActions([
-                \Filament\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Novo Empreendimento')
                     ->icon('heroicon-o-plus-circle')
                     ->modalHeading('Cadastrar Novo Empreendimento'),
             ])
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\Action::make('generateReport')
+                EditAction::make(),
+                Action::make('generateReport')
                     ->label('Gerar Relatório')
                     ->icon('heroicon-o-document-text')
                     ->color('info')
                     ->url(fn ($record) => route('admin.projects.report', $record))
                     ->openUrlInNewTab(),
-                \Filament\Actions\Action::make('analyticalReport')
+                Action::make('analyticalReport')
                     ->label('Relatório Analítico')
                     ->icon('heroicon-o-chart-bar')
                     ->color('warning')
                     ->url(fn ($record) => route('admin.projects.analytical', $record))
                     ->openUrlInNewTab(),
-                \Filament\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ]);
     }
 
     public static function updateRemainingMonths(Get $get, Set $set): void
     {
-        try {
-            $start = $get('construction_start_date');
-            $end = $get('delivery_forecast_date');
+        $remainingMonths = app(CalculateRemainingProjectTerm::class)->handle(
+            $get('construction_start_date'),
+            $get('delivery_forecast_date'),
+        );
 
-            if ($start && $end) {
-                $startDate = \Illuminate\Support\Carbon::parse($start);
-                $endDate = \Illuminate\Support\Carbon::parse($end);
-
-                // Only perform math if years look sane (at least 4 digits while typing)
-                if ($startDate->year > 1000 && $endDate->year > 1000) {
-                    $months = $startDate->diffInMonths($endDate);
-                    $set('remaining_months', (int) abs($months));
-                }
-            }
-        } catch (\Throwable $e) {
-            // Silence all errors during live state updates to prevent 500s
-        }
+        $set('remaining_months', $remainingMonths ?? 0);
     }
 
     protected static function updateTechnicalTotalUnits(?array $unitTypes, Set $set): void

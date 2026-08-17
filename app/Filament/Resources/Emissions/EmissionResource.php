@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Emissions;
 
 use App\Filament\RelationManagers\ActivitiesRelationManager;
+use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteeDetectionsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationEvidencesRelationManager;
@@ -183,6 +184,7 @@ class EmissionResource extends Resource
             PuDailyCurvesRelationManager::class,
             IntegralizationHistoriesRelationManager::class,
             GuaranteesRelationManager::class,
+            GuaranteeDetectionsRelationManager::class,
             ObligationSuggestionsRelationManager::class,
             ObligationsRelationManager::class,
             ObligationEvidencesRelationManager::class,

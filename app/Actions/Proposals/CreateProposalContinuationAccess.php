@@ -34,7 +34,7 @@ class CreateProposalContinuationAccess
                 'sent_to_email' => $proposal->contact->email,
                 'code_hash' => Hash::make($code),
                 'code_encrypted' => Crypt::encryptString($code),
-                'sent_at' => now(),
+                'sent_at' => null,
                 'expires_at' => now()->addDays((int) config('proposals.continuation_access.expires_in_days', 7)),
             ]);
 

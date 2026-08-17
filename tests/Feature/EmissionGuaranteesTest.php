@@ -1,5 +1,9 @@
 <?php
 
+use App\Enums\GuaranteeCoverageStatus;
+use App\Enums\GuaranteeLegalStatus;
+use App\Enums\GuaranteeRequirementBasis;
+use App\Enums\GuaranteeType;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\GuaranteesRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
@@ -27,6 +31,14 @@ afterEach(function () {
     Carbon::setTestNow();
 });
 
+function guaranteesRelationManager(Emission $emission)
+{
+    return Livewire::test(GuaranteesRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ]);
+}
+
 it('shows the guarantees tab on the emission edit page', function () {
     $this->actingAs(makeAdminUser());
 
@@ -37,45 +49,42 @@ it('shows the guarantees tab on the emission edit page', function () {
         ->assertSee('Garantias');
 });
 
-it('renders the guarantees relation manager with the requested columns', function () {
+it('renders the guarantees relation manager with the operational columns', function () {
     $this->actingAs(makeAdminUser());
 
     $emission = Emission::factory()->create();
-    $olderGuarantee = Guarantee::factory()->create([
-        'emission_id' => $emission->id,
-        'validity_start_date' => '2026-01-10',
-    ]);
-    $latestGuarantee = Guarantee::factory()->create([
-        'emission_id' => $emission->id,
-        'validity_start_date' => '2026-03-15',
-    ]);
+    $guarantee = Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::RealEstateFiduciaryAlienation)
+        ->create(['emission_id' => $emission->id]);
 
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $emission,
-        'pageClass' => EditEmission::class,
-    ])
-        ->assertTableHeaderActionsExistInOrder(['create'])
-        ->assertCanSeeTableRecords([$latestGuarantee, $olderGuarantee], inOrder: true)
-        ->assertTableColumnExists('guarantee_type')
-        ->assertTableColumnExists('minimum_value')
-        ->assertTableColumnExists('validity_start_date')
+    guaranteesRelationManager($emission)
+        ->assertCanSeeTableRecords([$guarantee])
+        ->assertTableColumnExists('name')
+        ->assertTableColumnExists('identification')
+        ->assertTableColumnExists('requirement_basis')
+        ->assertTableColumnExists('contracted_value')
+        ->assertTableColumnExists('current_value')
+        ->assertTableColumnExists('eligible_value')
+        ->assertTableColumnExists('coverage')
         ->assertTableColumnExists('validity_end_date')
-        ->assertTableColumnExists('description')
-        ->assertTableColumnExists('evaluation_frequency');
+        ->assertTableColumnExists('value_source')
+        ->assertTableColumnExists('legal_status');
 });
 
-it('creates a guarantee from the emission relation manager', function () {
+it('creates a guarantee with its contractual rule from the relation manager', function () {
     $this->actingAs(makeAdminUser());
 
     $emission = Emission::factory()->create();
 
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $emission,
-        'pageClass' => EditEmission::class,
-    ])
+    guaranteesRelationManager($emission)
         ->callTableAction('create', data: [
-            'guarantee_type' => 'Alienacao fiduciaria',
-            'minimum_value' => 1500000.50,
+            'type' => GuaranteeType::ReceivablesFiduciaryAssignment->value,
+            'name' => 'Cessão Fiduciária de Recebíveis',
+            'legal_status' => GuaranteeLegalStatus::Active->value,
+            'requirement_basis' => GuaranteeRequirementBasis::Percentage->value,
+            'requirement_percentage' => 1.2,
+            'requirement_base' => 'outstanding_balance',
             'validity_start_date' => '2026-01-15',
             'validity_end_date' => '2027-01-15',
             'description' => 'Garantia principal da operacao.',
@@ -86,8 +95,11 @@ it('creates a guarantee from the emission relation manager', function () {
     $guarantee = Guarantee::query()->sole();
 
     expect($guarantee->emission_id)->toBe($emission->id)
-        ->and($guarantee->guarantee_type)->toBe('Alienacao fiduciaria')
-        ->and($guarantee->minimum_value)->toBe('1500000.50')
+        ->and($guarantee->type)->toBe(GuaranteeType::ReceivablesFiduciaryAssignment)
+        ->and($guarantee->name)->toBe('Cessão Fiduciária de Recebíveis')
+        ->and($guarantee->legal_status)->toBe(GuaranteeLegalStatus::Active)
+        ->and($guarantee->requirement_basis)->toBe(GuaranteeRequirementBasis::Percentage)
+        ->and((float) $guarantee->requirement_percentage)->toBe(1.2)
         ->and($guarantee->validity_start_date?->toDateString())->toBe('2026-01-15')
         ->and($guarantee->validity_end_date?->toDateString())->toBe('2027-01-15')
         ->and($guarantee->description)->toBe('Garantia principal da operacao.')
@@ -98,23 +110,18 @@ it('updates and deletes guarantees from the emission relation manager', function
     $this->actingAs(makeAdminUser());
 
     $emission = Emission::factory()->create();
-    $guarantee = Guarantee::factory()->create([
-        'emission_id' => $emission->id,
-        'guarantee_type' => 'Fianca',
-        'minimum_value' => 500000,
-        'validity_start_date' => '2026-02-01',
-        'validity_end_date' => '2027-02-01',
-        'description' => 'Cobertura inicial.',
-        'evaluation_frequency' => 'Trimestral',
-    ]);
+    $guarantee = Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::Surety)
+        ->create(['emission_id' => $emission->id]);
 
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $emission,
-        'pageClass' => EditEmission::class,
-    ])
+    guaranteesRelationManager($emission)
         ->callTableAction('edit', $guarantee, data: [
-            'guarantee_type' => 'Cessao fiduciaria',
-            'minimum_value' => 750000.25,
+            'type' => GuaranteeType::ReceivablesFiduciaryAssignment->value,
+            'name' => 'Cessao fiduciaria revisada',
+            'legal_status' => GuaranteeLegalStatus::Active->value,
+            'requirement_basis' => GuaranteeRequirementBasis::Absolute->value,
+            'requirement_value' => '750.000,25',
             'validity_start_date' => '2026-02-10',
             'validity_end_date' => '2027-03-10',
             'description' => 'Cobertura revisada.',
@@ -122,42 +129,30 @@ it('updates and deletes guarantees from the emission relation manager', function
         ])
         ->assertHasNoTableActionErrors();
 
-    expect($guarantee->refresh()->guarantee_type)->toBe('Cessao fiduciaria')
-        ->and($guarantee->minimum_value)->toBe('750000.25')
+    $guarantee->refresh();
+
+    expect($guarantee->type)->toBe(GuaranteeType::ReceivablesFiduciaryAssignment)
+        ->and($guarantee->name)->toBe('Cessao fiduciaria revisada')
+        ->and((float) $guarantee->requirement_value)->toBe(750000.25)
         ->and($guarantee->validity_start_date?->toDateString())->toBe('2026-02-10')
         ->and($guarantee->validity_end_date?->toDateString())->toBe('2027-03-10')
         ->and($guarantee->description)->toBe('Cobertura revisada.')
         ->and($guarantee->evaluation_frequency)->toBe('Semestral');
 
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $emission,
-        'pageClass' => EditEmission::class,
-    ])
-        ->callTableAction('delete', $guarantee);
+    guaranteesRelationManager($emission)->callTableAction('delete', $guarantee);
 
     expect(Guarantee::query()->count())->toBe(0);
 });
 
-it('uses the latest sales board from each construction up to the guarantee month', function () {
+it('uses the latest sales board from each construction up to the competence', function () {
     Carbon::setTestNow('2026-05-10 09:00:00');
 
     $this->actingAs(makeAdminUser());
 
     $emission = Emission::factory()->create();
 
-    GuaranteeSnapshot::factory()->create([
-        'emission_id' => $emission->id,
-        'reference_month' => '2026-04-01',
-        'quota_value' => 100000,
-        'outstanding_balance' => 200000,
-    ]);
-
-    $firstConstruction = Construction::factory()->create([
-        'emission_id' => $emission->id,
-    ]);
-    $secondConstruction = Construction::factory()->create([
-        'emission_id' => $emission->id,
-    ]);
+    $firstConstruction = Construction::factory()->create(['emission_id' => $emission->id]);
+    $secondConstruction = Construction::factory()->create(['emission_id' => $emission->id]);
 
     SalesBoard::factory()->forEmissionAndConstruction($emission, $firstConstruction)->create([
         'reference_month' => '2026-03-01',
@@ -168,11 +163,12 @@ it('uses the latest sales board from each construction up to the guarantee month
         'stock_value' => 2299300,
     ]);
 
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $emission,
-        'pageClass' => EditEmission::class,
-    ])
-        ->assertSee('R$ 15.822.300,00');
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::Inventory)
+        ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+
+    guaranteesRelationManager($emission)->assertSee('R$ 15.822.300,00');
 });
 
 it('calculates outstanding balance from the latest pu in the month and cumulative integralized quantity', function () {
@@ -181,13 +177,6 @@ it('calculates outstanding balance from the latest pu in the month and cumulativ
     $this->actingAs(makeAdminUser());
 
     $emission = Emission::factory()->create(['issued_quantity' => 100000]);
-
-    GuaranteeSnapshot::factory()->create([
-        'emission_id' => $emission->id,
-        'reference_month' => '2026-04-01',
-        'quota_value' => 100000,
-        'outstanding_balance' => 0,
-    ]);
 
     IntegralizationHistory::query()->create([
         'emission_id' => $emission->id,
@@ -199,7 +188,7 @@ it('calculates outstanding balance from the latest pu in the month and cumulativ
     ]);
     IntegralizationHistory::query()->create([
         'emission_id' => $emission->id,
-        'date' => '2026-04-15',
+        'date' => '2026-05-15',
         'quantity' => 50,
         'unit_value' => 10,
         'financial_value' => 500,
@@ -208,24 +197,20 @@ it('calculates outstanding balance from the latest pu in the month and cumulativ
 
     PuHistory::query()->create([
         'emission_id' => $emission->id,
-        'date' => '2026-04-10',
+        'date' => '2026-05-10',
         'unit_value' => 20,
     ]);
     PuHistory::query()->create([
         'emission_id' => $emission->id,
-        'date' => '2026-04-30',
+        'date' => '2026-05-30',
         'unit_value' => 25,
     ]);
 
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $emission,
-        'pageClass' => EditEmission::class,
-    ])
-        ->assertSee('R$ 3.750,00')
-        ->assertSee('2.667%');
+    // 150 cotas integralizadas × PU 25 (o último do mês) = R$ 3.750,00.
+    guaranteesRelationManager($emission)->assertSee('R$ 3.750,00');
 });
 
-it('stores monthly guarantee indicators without requiring a manual outstanding balance', function () {
+it('consolidates the competence and stores the snapshot from the relation manager', function () {
     Carbon::setTestNow('2026-05-10 09:00:00');
 
     $this->actingAs(makeAdminUser());
@@ -247,14 +232,8 @@ it('stores monthly guarantee indicators without requiring a manual outstanding b
         'unit_value' => 100,
     ]);
 
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $emission,
-        'pageClass' => EditEmission::class,
-    ])
-        ->callTableAction('update_monthly_snapshot', data: [
-            'reference_month' => '05/2026',
-            'quota_value' => '125.000,00',
-        ])
+    guaranteesRelationManager($emission)
+        ->callTableAction('update_competence')
         ->assertHasNoTableActionErrors();
 
     $snapshot = GuaranteeSnapshot::query()
@@ -262,96 +241,88 @@ it('stores monthly guarantee indicators without requiring a manual outstanding b
         ->whereDate('reference_month', '2026-05-01')
         ->sole();
 
-    expect($snapshot->quota_value)->toBe('125000.00')
-        ->and($snapshot->outstanding_balance)->toBe('100000.00');
+    expect((float) $snapshot->outstanding_balance)->toBe(100000.0)
+        ->and($snapshot->computed_at)->not->toBeNull();
 });
 
-it('colors the coverage index card according to the configured thresholds', function () {
+it('surfaces the coverage status instead of a bare index', function () {
     Carbon::setTestNow('2026-05-10 09:00:00');
 
     $this->actingAs(makeAdminUser());
 
-    $greenEmission = Emission::factory()->create(['issued_quantity' => 100000]);
-    GuaranteeSnapshot::factory()->create([
-        'emission_id' => $greenEmission->id,
-        'reference_month' => '2026-04-01',
-        'quota_value' => 131000,
-        'outstanding_balance' => 0,
-    ]);
+    $buildEmission = function (float $quotaValue): Emission {
+        $emission = Emission::factory()->create(['issued_quantity' => 100000]);
+
+        IntegralizationHistory::query()->create([
+            'emission_id' => $emission->id,
+            'date' => '2026-05-10',
+            'quantity' => 1000,
+            'unit_value' => 10,
+            'financial_value' => 10000,
+            'investor_fund' => 'Fundo A',
+        ]);
+        PuHistory::query()->create([
+            'emission_id' => $emission->id,
+            'date' => '2026-05-30',
+            'unit_value' => 100,
+        ]);
+
+        $guarantee = Guarantee::factory()
+            ->effectiveBetween()
+            ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
+            ->requiringPercentage(1.2)
+            ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
+
+        $guarantee->monthlyPositions()->create([
+            'emission_id' => $emission->id,
+            'reference_month' => '2026-05-01',
+            'current_value' => $quotaValue,
+            'value_source' => 'manual',
+            'value_status' => 'manual',
+        ]);
+
+        return $emission;
+    };
+
+    // Saldo devedor: 1000 × 100 = R$ 100.000. Mínimo contratual: 120%.
+    guaranteesRelationManager($buildEmission(131000))
+        ->assertSee(GuaranteeCoverageStatus::Compliant->label());
+
+    guaranteesRelationManager($buildEmission(123000))
+        ->assertSee(GuaranteeCoverageStatus::NearLimit->label());
+
+    guaranteesRelationManager($buildEmission(119000))
+        ->assertSee(GuaranteeCoverageStatus::NonCompliant->label());
+});
+
+it('reports a pending competence instead of a breach when a manual value is missing', function () {
+    Carbon::setTestNow('2026-05-10 09:00:00');
+
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create(['issued_quantity' => 100000]);
+
     IntegralizationHistory::query()->create([
-        'emission_id' => $greenEmission->id,
-        'date' => '2026-04-10',
+        'emission_id' => $emission->id,
+        'date' => '2026-05-10',
         'quantity' => 1000,
         'unit_value' => 10,
         'financial_value' => 10000,
         'investor_fund' => 'Fundo A',
     ]);
     PuHistory::query()->create([
-        'emission_id' => $greenEmission->id,
-        'date' => '2026-04-30',
+        'emission_id' => $emission->id,
+        'date' => '2026-05-30',
         'unit_value' => 100,
     ]);
 
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $greenEmission,
-        'pageClass' => EditEmission::class,
-    ])
-        ->assertSeeHtml('border-emerald-400/20 bg-emerald-500/10')
-        ->assertSee('131%');
+    Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::QuotaFiduciaryAlienation)
+        ->requiringPercentage(1.2)
+        ->create(['emission_id' => $emission->id, 'legal_status' => GuaranteeLegalStatus::Active]);
 
-    $yellowEmission = Emission::factory()->create(['issued_quantity' => 100000]);
-    GuaranteeSnapshot::factory()->create([
-        'emission_id' => $yellowEmission->id,
-        'reference_month' => '2026-04-01',
-        'quota_value' => 125000,
-        'outstanding_balance' => 0,
-    ]);
-    IntegralizationHistory::query()->create([
-        'emission_id' => $yellowEmission->id,
-        'date' => '2026-04-10',
-        'quantity' => 1000,
-        'unit_value' => 10,
-        'financial_value' => 10000,
-        'investor_fund' => 'Fundo A',
-    ]);
-    PuHistory::query()->create([
-        'emission_id' => $yellowEmission->id,
-        'date' => '2026-04-30',
-        'unit_value' => 100,
-    ]);
-
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $yellowEmission,
-        'pageClass' => EditEmission::class,
-    ])
-        ->assertSeeHtml('border-amber-400/20 bg-amber-500/10')
-        ->assertSee('125%');
-
-    $redEmission = Emission::factory()->create(['issued_quantity' => 100000]);
-    GuaranteeSnapshot::factory()->create([
-        'emission_id' => $redEmission->id,
-        'reference_month' => '2026-04-01',
-        'quota_value' => 119000,
-        'outstanding_balance' => 0,
-    ]);
-    IntegralizationHistory::query()->create([
-        'emission_id' => $redEmission->id,
-        'date' => '2026-04-10',
-        'quantity' => 1000,
-        'unit_value' => 10,
-        'financial_value' => 10000,
-        'investor_fund' => 'Fundo A',
-    ]);
-    PuHistory::query()->create([
-        'emission_id' => $redEmission->id,
-        'date' => '2026-04-30',
-        'unit_value' => 100,
-    ]);
-
-    Livewire::test(GuaranteesRelationManager::class, [
-        'ownerRecord' => $redEmission,
-        'pageClass' => EditEmission::class,
-    ])
-        ->assertSeeHtml('border-rose-400/20 bg-rose-500/10')
-        ->assertSee('119%');
+    guaranteesRelationManager($emission)
+        ->assertSee(GuaranteeCoverageStatus::PendingUpdate->label())
+        ->assertDontSee(GuaranteeCoverageStatus::NonCompliant->label());
 });

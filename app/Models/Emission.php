@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\CarbonInterface;
+use Database\Factories\EmissionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,7 +17,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Emission extends Model
 {
-    /** @use HasFactory<\Database\Factories\EmissionFactory> */
+    /** @use HasFactory<EmissionFactory> */
     use HasFactory, LogsActivity;
 
     protected static function booted(): void
@@ -240,7 +241,16 @@ class Emission extends Model
 
     public function documents(): BelongsToMany
     {
-        return $this->belongsToMany(Document::class, 'emission_document')->withTimestamps();
+        return $this->belongsToMany(Document::class, 'emission_document')
+            ->withPivot([
+                'legal_document_type',
+                'document_date',
+                'signed_at',
+                'amendment_order',
+                'amends_document_id',
+                'is_guarantee_source',
+            ])
+            ->withTimestamps();
     }
 
     public function payments(): HasMany
@@ -309,6 +319,45 @@ class Emission extends Model
     public function guaranteeSnapshots(): HasMany
     {
         return $this->hasMany(GuaranteeSnapshot::class);
+    }
+
+    public function guaranteeMonthlyPositions(): HasMany
+    {
+        return $this->hasMany(GuaranteeMonthlyPosition::class);
+    }
+
+    public function extractedGuarantees(): HasMany
+    {
+        return $this->hasMany(ExtractedGuarantee::class);
+    }
+
+    public function guaranteeGenerationRuns(): HasMany
+    {
+        return $this->hasMany(GuaranteeGenerationRun::class);
+    }
+
+    public function latestGuaranteeGenerationRun(): HasOne
+    {
+        return $this->hasOne(GuaranteeGenerationRun::class)->latestOfMany();
+    }
+
+    /**
+     * Documentos da emissão já classificados juridicamente, na ordem em que a
+     * cadeia documental deve ser lida: do mais antigo para o mais recente.
+     *
+     * Documentos sem data ficam no fim em vez de no começo — sem data não há
+     * como afirmar que precedem o Termo, e assumir que sim inverteria a
+     * prioridade documental (§35).
+     *
+     * @return BelongsToMany<Document, $this>
+     */
+    public function legalDocuments(): BelongsToMany
+    {
+        return $this->documents()
+            ->whereNotNull('emission_document.legal_document_type')
+            ->orderByRaw('emission_document.document_date IS NULL')
+            ->orderBy('emission_document.document_date')
+            ->orderBy('emission_document.amendment_order');
     }
 
     public function receivables(): HasMany

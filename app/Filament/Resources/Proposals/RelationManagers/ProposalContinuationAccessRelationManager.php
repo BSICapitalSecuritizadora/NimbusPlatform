@@ -56,6 +56,16 @@ class ProposalContinuationAccessRelationManager extends RelationManager
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable(),
+                TextColumn::make('mail_queued_at')
+                    ->label('Enfileirado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->sortable(),
+                TextColumn::make('mail_failed_at')
+                    ->label('Falha no Envio')
+                    ->dateTime('d/m/Y H:i')
+                    ->placeholder('—')
+                    ->sortable(),
                 TextColumn::make('first_accessed_at')
                     ->label('Primeiro Acesso')
                     ->dateTime('d/m/Y H:i')
@@ -84,7 +94,7 @@ class ProposalContinuationAccessRelationManager extends RelationManager
                         );
 
                         Notification::make()
-                            ->title('Novo link e código enviados com sucesso.')
+                            ->title('Novo link e código gerados; envio de e-mail enfileirado.')
                             ->success()
                             ->send();
                     }),
@@ -98,6 +108,6 @@ class ProposalContinuationAccessRelationManager extends RelationManager
                     ->openUrlInNewTab(),
             ])
             ->bulkActions([])
-            ->defaultSort('sent_at', 'desc');
+            ->defaultSort('created_at', 'desc');
     }
 }

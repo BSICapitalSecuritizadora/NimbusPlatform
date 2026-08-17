@@ -2,14 +2,15 @@
 
 namespace App\Observers;
 
+use App\Enums\ProposalStatus;
 use App\Models\Proposal;
+use App\Models\User;
 use Filament\Notifications\Notification;
 
 class ProposalObserver
 {
     public function created(Proposal $proposal): void
     {
-        // Se a proposta foi criada (geralmente via site), e já tem um responsável, notificá-lo.
         $this->notifyRepresentative($proposal, 'Nova proposta recebida', 'Uma nova proposta foi atribuída a você.');
     }
 
@@ -21,11 +22,8 @@ class ProposalObserver
             }
         }
 
-        if ($proposal->wasChanged('status')) {
-            // Se status mudou para algo que exija ação
-            if ($proposal->status === 'awaiting_complement' || $proposal->status === 'aguardando_complemento') {
-                $this->notifyRepresentative($proposal, 'Atenção na Proposta', 'A proposta foi marcada como aguardando complemento.');
-            }
+        if ($proposal->wasChanged('status') && ProposalStatus::fromValue($proposal->status) === ProposalStatus::AwaitingInformation) {
+            $this->notifyRepresentative($proposal, 'Atenção na Proposta', 'A proposta foi marcada como aguardando informações adicionais.');
         }
     }
 
@@ -34,11 +32,11 @@ class ProposalObserver
         $representative = $proposal->representative;
 
         if ($representative && $representative->user_id) {
-            $user = \App\Models\User::find($representative->user_id);
+            $user = User::query()->find($representative->user_id);
             if ($user) {
                 Notification::make()
                     ->title($title)
-                    ->body("{$body} Empresa: {$proposal->company?->company_name}")
+                    ->body("{$body} Empresa: {$proposal->company?->name}")
                     ->info()
                     ->sendToDatabase($user);
             }

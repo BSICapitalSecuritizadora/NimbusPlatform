@@ -16,13 +16,14 @@ class LookupNimbusCnpj
     public function handle(LookupNimbusCnpjDTO $dto): array
     {
         try {
-            $response = Http::timeout(8)
+            $response = Http::connectTimeout(3)
+                ->timeout(8)
                 ->acceptJson()
                 ->get("https://publica.cnpj.ws/cnpj/{$dto->cnpj}");
         } catch (\Throwable $exception) {
             Log::warning('Falha ao consultar CNPJ no portal Nimbus.', [
                 'cnpj_hash' => PiiPseudonymizer::document($dto->cnpj),
-                'message' => $exception->getMessage(),
+                'exception' => $exception::class,
             ]);
 
             return [

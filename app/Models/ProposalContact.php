@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PhoneNormalizer;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,8 @@ class ProposalContact extends Model
         'email',
         'phone_personal',
         'whatsapp',
+        'is_whatsapp',
+        'whatsapp_contact_consent',
         'phone_company',
         'cargo',
     ];
@@ -26,6 +29,8 @@ class ProposalContact extends Model
     {
         return [
             'whatsapp' => 'boolean',
+            'is_whatsapp' => 'boolean',
+            'whatsapp_contact_consent' => 'boolean',
         ];
     }
 
@@ -45,7 +50,7 @@ class ProposalContact extends Model
             get: function (): string {
                 $phones = collect([
                     $this->phone_personal
-                        ? 'Pessoal: '.$this->phone_personal.($this->whatsapp ? ' (WhatsApp)' : '')
+                        ? 'Pessoal: '.$this->phone_personal.($this->is_whatsapp === true ? ' (WhatsApp)' : '')
                         : null,
                     $this->phone_company ? 'Empresa: '.$this->phone_company : null,
                 ])->filter();
@@ -53,5 +58,38 @@ class ProposalContact extends Model
                 return $phones->isNotEmpty() ? $phones->implode(' | ') : '—';
             },
         );
+    }
+
+    protected function whatsappUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?string {
+                if ($this->is_whatsapp !== true) {
+                    return null;
+                }
+
+                $phone = PhoneNormalizer::forWhatsApp($this->phone_personal);
+
+                return $phone ? "https://wa.me/{$phone}" : null;
+            },
+        );
+    }
+
+    protected function whatsappAvailabilityLabel(): Attribute
+    {
+        return Attribute::make(get: fn (): string => match ($this->is_whatsapp) {
+            true => 'Sim',
+            false => 'Não',
+            null => 'Não informado (registro histórico)',
+        });
+    }
+
+    protected function whatsappConsentLabel(): Attribute
+    {
+        return Attribute::make(get: fn (): string => match ($this->whatsapp_contact_consent) {
+            true => 'Autorizado',
+            false => 'Não autorizado',
+            null => 'Não informado (registro histórico)',
+        });
     }
 }

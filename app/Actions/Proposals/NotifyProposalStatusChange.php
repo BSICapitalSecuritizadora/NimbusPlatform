@@ -50,7 +50,7 @@ class NotifyProposalStatusChange
             Log::warning('Falha ao notificar alteração de status da proposta.', [
                 'proposal_id' => $proposal->id,
                 'status' => $newStatus->value,
-                'message' => $exception->getMessage(),
+                'exception' => $exception::class,
             ]);
         }
     }

@@ -137,6 +137,18 @@ class ProposalResource extends Resource
                             ->placeholder('—'),
                         TextEntry::make('contact.email')
                             ->label('E-mail')
+                            ->placeholder('—')
+                            ->url(fn (?Proposal $record): ?string => $record?->contact_mailto_url),
+                        TextEntry::make('contact.phone_personal')
+                            ->label('Celular / WhatsApp')
+                            ->placeholder('—')
+                            ->url(fn (?Proposal $record): ?string => $record?->contact?->whatsapp_url)
+                            ->openUrlInNewTab(),
+                        TextEntry::make('contact.whatsapp_availability_label')
+                            ->label('Número possui WhatsApp')
+                            ->placeholder('—'),
+                        TextEntry::make('contact.whatsapp_consent_label')
+                            ->label('Consentimento para contato')
                             ->placeholder('—'),
                         TextEntry::make('contact.phone_summary')
                             ->label('Telefones')
@@ -214,7 +226,14 @@ class ProposalResource extends Resource
                             ->copyable(),
                         TextEntry::make('latestContinuationAccess.sent_at')
                             ->label('Data de Envio')
-                            ->state(fn (Proposal $record) => $record->latestContinuationAccess?->sent_at ?? $record->latestContinuationAccess?->created_at)
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.mail_queued_at')
+                            ->label('Data de Enfileiramento')
+                            ->dateTime('d/m/Y H:i')
+                            ->placeholder('—'),
+                        TextEntry::make('latestContinuationAccess.mail_failed_at')
+                            ->label('Falha Definitiva do Envio')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.expires_at')

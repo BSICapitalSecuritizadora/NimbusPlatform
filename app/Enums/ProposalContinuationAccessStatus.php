@@ -8,6 +8,8 @@ enum ProposalContinuationAccessStatus: string
     case Expired = 'expirado';
     case Verified = 'validado';
     case Accessed = 'acessado';
+    case Queued = 'aguardando_envio';
+    case MailFailed = 'falha_envio';
     case Sent = 'enviado';
 
     public function label(): string
@@ -17,6 +19,8 @@ enum ProposalContinuationAccessStatus: string
             self::Expired => 'Expirado',
             self::Verified => 'Validado',
             self::Accessed => 'Acessado',
+            self::Queued => 'Aguardando envio',
+            self::MailFailed => 'Falha no envio',
             self::Sent => 'Enviado',
         };
     }
@@ -28,6 +32,8 @@ enum ProposalContinuationAccessStatus: string
             self::Accessed => 'info',
             self::Expired => 'warning',
             self::Revoked => 'gray',
+            self::Queued => 'warning',
+            self::MailFailed => 'danger',
             self::Sent => 'primary',
         };
     }

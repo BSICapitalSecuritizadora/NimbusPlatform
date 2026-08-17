@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\Proposals\CalculateRemainingProjectTerm;
 use App\Concerns\MoneyFormatter;
 use App\Concerns\ProjectCalculator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,6 +32,10 @@ class ProposalProject extends Model
     protected static function booted(): void
     {
         static::saving(function (self $project): void {
+            $project->remaining_months = app(CalculateRemainingProjectTerm::class)->handle(
+                $project->construction_start_date,
+                $project->delivery_forecast_date,
+            ) ?? 0;
             $project->syncOverviewValues();
             $project->syncSalesMetrics();
             $project->syncSaleValues();

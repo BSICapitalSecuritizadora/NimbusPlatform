@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\DTOs\Nimbus\LookupNimbusCnpjDTO;
+use App\Rules\Cnpj;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
@@ -16,7 +17,7 @@ class LookupNimbusCnpjRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'cnpj' => ['required', 'digits:14'],
+            'cnpj' => ['required', 'digits:14', new Cnpj],
         ];
     }
 

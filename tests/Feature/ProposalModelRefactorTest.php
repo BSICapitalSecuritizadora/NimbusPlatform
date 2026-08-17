@@ -53,6 +53,7 @@ it('moves phone summary formatting to the proposal contact model', function () {
         'email' => 'maria@example.com',
         'phone_personal' => '(11) 99999-0000',
         'whatsapp' => true,
+        'is_whatsapp' => true,
         'phone_company' => '(11) 4000-0000',
     ]);
 

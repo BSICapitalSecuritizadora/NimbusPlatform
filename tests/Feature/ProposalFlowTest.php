@@ -195,6 +195,8 @@ it('requires the signed magic link plus cnpj and emailed code before continuing 
         ->assertSee('Tipo 2')
         ->assertSee('Fluxo de Pagamento')
         ->assertSee('Arquivos Anexados')
+        ->assertSee('Aguardando verificação')
+        ->assertDontSee('Baixar arquivo')
         ->assertDontSee('Indicadores Avançados')
         ->assertDontSee('Salvar Indicadores')
         ->assertDontSee('Analítico')

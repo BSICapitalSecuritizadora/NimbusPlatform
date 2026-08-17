@@ -6,11 +6,10 @@ use App\Models\Emission;
 use App\Models\Fund;
 use App\Models\FundBalanceHistory;
 use App\Models\GuaranteeSnapshot;
-use App\Models\IntegralizationHistory;
-use App\Models\PuHistory;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
-use Carbon\Carbon;
+use App\Services\Guarantees\OutstandingBalanceResolver;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class GuaranteeCoverageCalculator
@@ -28,7 +27,7 @@ class GuaranteeCoverageCalculator
      *     reference_month_label: string,
      *     total_guarantees_value: float,
      *     units_value: float,
-     *     updated_at: \Illuminate\Support\Carbon|null
+     *     updated_at: Carbon|null
      * }|null
      */
     public function buildLatestSummary(Emission $emission): ?array
@@ -49,7 +48,7 @@ class GuaranteeCoverageCalculator
      *     reference_month_label: string,
      *     total_guarantees_value: float,
      *     units_value: float,
-     *     updated_at: \Illuminate\Support\Carbon|null
+     *     updated_at: Carbon|null
      * }>
      */
     public function buildHistory(Emission $emission): Collection
@@ -105,7 +104,7 @@ class GuaranteeCoverageCalculator
      *     reference_month_label: string,
      *     total_guarantees_value: float,
      *     units_value: float,
-     *     updated_at: \Illuminate\Support\Carbon|null
+     *     updated_at: Carbon|null
      * }
      */
     private function buildSnapshotSummary(
@@ -223,51 +222,15 @@ class GuaranteeCoverageCalculator
     }
 
     /**
+     * Delega ao {@see OutstandingBalanceResolver}, que é a fonte única do saldo
+     * devedor (§16 do escopo). A regra continua sendo a mesma; o que deixou de
+     * existir foi a segunda cópia dela.
+     *
      * @return array{0: float, 1: bool}
      */
     private function resolveOutstandingBalanceValue(Emission $emission, string $referenceMonth): array
     {
-        $referenceStart = Carbon::parse($referenceMonth)->startOfMonth();
-        $referenceEnd = $referenceStart->copy()->endOfMonth();
-        $referenceEndString = $referenceEnd->toDateString();
-
-        $integralizedQuantity = round(
-            (float) $emission->integralizationHistories
-                ->filter(function (IntegralizationHistory $integralizationHistory) use ($referenceEndString): bool {
-                    $historyDate = $integralizationHistory->date?->toDateString();
-
-                    return filled($historyDate) && $historyDate <= $referenceEndString;
-                })
-                ->sum('quantity'),
-            4,
-        );
-
-        if ($integralizedQuantity <= 0) {
-            return [0.0, true];
-        }
-
-        $monthStartString = $referenceStart->toDateString();
-
-        /** @var PuHistory|null $latestPuHistory */
-        $latestPuHistory = $emission->puHistories
-            ->filter(function (PuHistory $puHistory) use ($monthStartString, $referenceEndString): bool {
-                $historyDate = $puHistory->date?->toDateString();
-
-                return filled($historyDate)
-                    && ($historyDate >= $monthStartString)
-                    && ($historyDate <= $referenceEndString);
-            })
-            ->sortByDesc(fn (PuHistory $puHistory): string => $puHistory->date?->toDateString() ?? '')
-            ->first();
-
-        if (! $latestPuHistory instanceof PuHistory) {
-            return [0.0, false];
-        }
-
-        return [
-            round((float) $latestPuHistory->unit_value * $integralizedQuantity, 2),
-            true,
-        ];
+        return app(OutstandingBalanceResolver::class)->resolve($emission, $referenceMonth);
     }
 
     /**

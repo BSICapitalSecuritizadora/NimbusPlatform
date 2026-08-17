@@ -23,6 +23,7 @@ class StoreProposalContinuationData
     public function __construct(
         protected UpdateProposalStatus $updateProposalStatus,
         protected DocumentStorageService $documentStorageService,
+        protected CalculateRemainingProjectTerm $calculateRemainingProjectTerm,
     ) {}
 
     /**
@@ -31,6 +32,8 @@ class StoreProposalContinuationData
     public function handle(Proposal $proposal, StoreProposalContinuationDataDTO $dto, array $files = []): void
     {
         DB::transaction(function () use ($proposal, $dto, $files): void {
+            $existingProjectIds = $proposal->projects()->pluck('id');
+            $retainedProjectIds = [];
             $sharedPayload = [
                 'development_name' => $dto->overview->developmentName,
                 'website_url' => $dto->overview->websiteUrl,
@@ -50,16 +53,22 @@ class StoreProposalContinuationData
                 'delivery_forecast_date' => $this->monthToDate($dto->overview->deliveryForecastDate),
             ];
 
-            $remainingMonths = $this->calculateRemainingMonths(
+            $remainingMonths = $this->calculateRemainingProjectTerm->handle(
                 $sharedPayload['construction_start_date'],
                 $sharedPayload['delivery_forecast_date'],
             );
+
+            if ($remainingMonths === null) {
+                throw ValidationException::withMessages([
+                    'deliveryForecastDate' => 'A previsão de entrega não pode ser anterior ao início das obras.',
+                ]);
+            }
 
             foreach ($dto->projects as $projectData) {
                 $project = $this->upsertProposalProject($proposal, $projectData, [
                     ...$sharedPayload,
                     'name' => $projectData->name,
-                    'remaining_months' => $dto->overview->remainingMonths ?? $remainingMonths,
+                    'remaining_months' => $remainingMonths,
                     'exchanged_units' => $projectData->exchangedUnits,
                     'paid_units' => $projectData->paidUnits,
                     'unpaid_units' => $projectData->unpaidUnits,
@@ -73,8 +82,16 @@ class StoreProposalContinuationData
                     'value_until_keys' => $projectData->valueUntilKeys,
                     'value_after_keys' => $projectData->valueAfterKeys,
                 ]);
+                $retainedProjectIds[] = $project->id;
 
                 $this->syncProjectCharacteristics($project, $dto->characteristics, $dto->unitTypes);
+            }
+
+            if ($existingProjectIds->isNotEmpty()) {
+                $proposal->projects()
+                    ->whereIn('id', $existingProjectIds)
+                    ->whereNotIn('id', $retainedProjectIds)
+                    ->delete();
             }
 
             if ($files !== []) {
@@ -104,11 +121,6 @@ class StoreProposalContinuationData
     protected function monthToDate(string $value): string
     {
         return Carbon::createFromFormat('Y-m', $value)->startOfMonth()->toDateString();
-    }
-
-    protected function calculateRemainingMonths(string $startDate, string $endDate): int
-    {
-        return Carbon::parse($startDate)->diffInMonths(Carbon::parse($endDate));
     }
 
     /**

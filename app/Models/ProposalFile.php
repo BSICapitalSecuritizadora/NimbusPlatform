@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MalwareScanStatus;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,5 +38,15 @@ class ProposalFile extends Model
     public function proposal(): BelongsTo
     {
         return $this->belongsTo(Proposal::class);
+    }
+
+    protected function scanStatusLabel(): Attribute
+    {
+        return Attribute::make(get: fn (): string => $this->scan_status->label());
+    }
+
+    protected function isDownloadable(): Attribute
+    {
+        return Attribute::make(get: fn (): bool => $this->scan_status === MalwareScanStatus::Clean);
     }
 }

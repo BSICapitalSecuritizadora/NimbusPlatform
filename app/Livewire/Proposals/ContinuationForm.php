@@ -9,6 +9,7 @@ use App\Models\ProposalContinuationAccess;
 use App\Models\ProposalFile;
 use App\Models\ProposalProject;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -185,7 +186,12 @@ class ContinuationForm extends Component
             ['label' => 'Lançamento das Vendas', 'value' => $firstProject->formatted_sales_launch_month],
             ['label' => 'Início das Obras', 'value' => $firstProject->formatted_construction_start_month],
             ['label' => 'Previsão de Entrega', 'value' => $firstProject->formatted_delivery_forecast_month],
-            ['label' => 'Prazo Remanescente', 'value' => ((int) $firstProject->remaining_months).' meses'],
+            [
+                'label' => 'Prazo Remanescente',
+                'value' => $firstProject->construction_start_date && $firstProject->delivery_forecast_date
+                    ? ((int) $firstProject->remaining_months).' meses'
+                    : '—',
+            ],
         ];
     }
 
@@ -266,8 +272,8 @@ class ContinuationForm extends Component
     }
 
     /**
-     * @param  \Illuminate\Database\Eloquent\Collection<int, ProposalFile>  $files
-     * @return array<int, array{original_name: string, meta: string, url: string}>
+     * @param  Collection<int, ProposalFile>  $files
+     * @return array<int, array{original_name: string, meta: string, status: string, downloadable: bool, url: ?string}>
      */
     protected function attachmentSummaries($files): array
     {
@@ -278,7 +284,11 @@ class ContinuationForm extends Component
                     $file->file_size ? number_format($file->file_size / 1024, 0, ',', '.').' KB' : null,
                     $file->created_at?->format('d/m/Y H:i'),
                 ])->filter()->implode(' • ') ?: 'Disponível para download.',
-                'url' => route('site.proposal.continuation.files.download', [$this->access(), $file]),
+                'status' => $file->scan_status->label(),
+                'downloadable' => $file->is_downloadable,
+                'url' => $file->is_downloadable
+                    ? route('site.proposal.continuation.files.download', [$this->access(), $file])
+                    : null,
             ];
         })->values()->all();
     }

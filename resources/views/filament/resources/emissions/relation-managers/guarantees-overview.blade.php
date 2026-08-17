@@ -1,149 +1,221 @@
 @php
-    /** @var array<string, mixed>|null $latestSummary */
-    $latestSummary ??= null;
-    $canManageGuarantees ??= false;
-    $canRegisterMonthlyIndicators ??= false;
-    $migrationPending ??= false;
-    $needsMonthlyUpdate ??= false;
+    use App\Enums\GuaranteeValueStatus;
 
-    $formatCurrency = static fn (mixed $value): string => 'R$ ' . \App\Concerns\MoneyFormatter::formatCurrencyForDisplay($value);
-    $formatRatio = static fn (?float $value): string => $value === null ? 'Nao disponivel' : number_format($value * 100, 0, ',', '.') . '%';
-    $coverageRatio = $latestSummary['coverage_ratio'] ?? null;
-    $coverageCardClasses = match (true) {
-        $coverageRatio === null => 'border-white/10 bg-white/[0.03]',
-        $coverageRatio > 1.3 => 'border-emerald-400/20 bg-emerald-500/10',
-        $coverageRatio >= 1.2 => 'border-amber-400/20 bg-amber-500/10',
-        default => 'border-rose-400/20 bg-rose-500/10',
+    /** @var \App\DTOs\Guarantees\EmissionGuaranteePositionData $position */
+    /** @var \Illuminate\Support\Collection $alerts */
+    /** @var \Illuminate\Support\Collection $history */
+
+    $alerts ??= collect();
+    $history ??= collect();
+    $pendingDetections ??= 0;
+    $canUpdateValues ??= false;
+    $canCloseCompetence ??= false;
+    $canCreate ??= false;
+    $isCompetenceClosed ??= false;
+
+    // Ausência é dita, nunca convertida em zero (§25 do escopo).
+    $money = static fn (?float $value): string => $value === null
+        ? 'Não informado'
+        : 'R$ ' . \App\Concerns\MoneyFormatter::formatCurrencyForDisplay($value);
+    $ratio = static fn (?float $value): string => $value === null
+        ? '—'
+        : number_format($value * 100, 2, ',', '.') . '%';
+
+    $statusClasses = match ($position->coverageStatus->color()) {
+        'success' => 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200',
+        'warning' => 'border-amber-400/20 bg-amber-500/10 text-amber-200',
+        'danger' => 'border-rose-400/20 bg-rose-500/10 text-rose-200',
+        default => 'border-white/10 bg-white/[0.03] text-gray-300',
     };
-    $coverageLabelClasses = match (true) {
-        $coverageRatio === null => 'text-gray-300',
-        $coverageRatio > 1.3 => 'text-emerald-200',
-        $coverageRatio >= 1.2 => 'text-amber-200',
-        default => 'text-rose-200',
-    };
-    $coverageDescriptionClasses = match (true) {
-        $coverageRatio === null => 'text-gray-300/80',
-        $coverageRatio > 1.3 => 'text-emerald-100/80',
-        $coverageRatio >= 1.2 => 'text-amber-100/80',
-        default => 'text-rose-100/80',
+
+    $coverageCardClasses = match ($position->coverageStatus->color()) {
+        'success' => 'border-emerald-400/20 bg-emerald-500/10',
+        'warning' => 'border-amber-400/20 bg-amber-500/10',
+        'danger' => 'border-rose-400/20 bg-rose-500/10',
+        default => 'border-white/10 bg-white/[0.03]',
     };
 @endphp
 
 <div class="mb-6 space-y-4">
+    {{-- 1. Resumo executivo --}}
     <section class="overflow-hidden rounded-3xl border border-white/10 bg-gray-950/70 shadow-2xl shadow-black/10">
         <div class="flex flex-col gap-4 border-b border-white/10 px-6 py-5 sm:px-8 xl:flex-row xl:items-start xl:justify-between">
             <div class="space-y-2">
                 <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Cobertura de garantias</span>
-                <div>
-                    <h3 class="text-xl font-semibold text-white">
-                        @if ($latestSummary)
-                            Competencia base: {{ $latestSummary['reference_month_label'] }}
-                        @else
-                            Nenhum indicador mensal cadastrado
-                        @endif
-                    </h3>
-                    <p class="mt-1 max-w-3xl text-sm leading-6 text-gray-400">
-                        Formula aplicada: (Valor das Quotas + Valor das Unidades + Recebiveis cedidos + Saldo das contas) / Saldo devedor.
-                    </p>
-                </div>
+                <h3 class="text-xl font-semibold text-white">
+                    Competência {{ $position->referenceMonthLabel() }}
+                </h3>
+                <p class="mt-1 max-w-3xl text-sm leading-6 text-gray-400">
+                    Cobertura = valor elegível das garantias vigentes ÷ saldo devedor da mesma competência.
+                    O mínimo contratual é a regra mais restritiva entre as garantias ativas.
+                </p>
+            </div>
 
-                @if ($canManageGuarantees)
-                    <div class="flex flex-wrap gap-3 pt-2">
-                        @if ($canRegisterMonthlyIndicators)
-                            <x-filament::button
-                                color="warning"
-                                icon="heroicon-o-chart-bar-square"
-                                size="sm"
-                                wire:click="mountTableAction('update_monthly_snapshot')"
-                            >
-                                Atualizar indicadores mensais
-                            </x-filament::button>
-                        @endif
+            <div class="flex flex-col items-start gap-3 xl:items-end">
+                <span class="rounded-full border px-4 py-1.5 text-sm font-semibold uppercase tracking-wide {{ $statusClasses }}">
+                    {{ $position->coverageStatus->label() }}
+                </span>
 
-                        <x-filament::button
-                            color="gray"
-                            icon="heroicon-o-plus"
-                            size="sm"
-                            wire:click="mountTableAction('create')"
-                        >
-                            Cadastrar garantia
-                        </x-filament::button>
-                    </div>
+                @if ($isCompetenceClosed)
+                    <span class="text-xs text-gray-400">Competência fechada — indicador imutável.</span>
                 @endif
             </div>
-
-            @if ($migrationPending)
-                <div class="rounded-2xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-                    A tabela de indicadores mensais ainda nao foi criada. Execute a migration pendente e recarregue a pagina.
-                </div>
-            @elseif ($needsMonthlyUpdate)
-                <div class="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                    Atualizacao mensal pendente. Informe o valor das quotas do mes atual.
-                </div>
-            @endif
         </div>
 
-        @if ($latestSummary)
-            <div class="grid gap-4 px-6 py-6 sm:px-8 md:grid-cols-2 xl:grid-cols-3">
-                <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Valor das quotas</span>
-                    <div class="mt-3 text-2xl font-semibold text-white">{{ $formatCurrency($latestSummary['quota_value']) }}</div>
-                    <p class="mt-2 text-sm text-gray-400">Informado manualmente em Garantias.</p>
-                </div>
-
-                <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Valor das unidades</span>
-                    <div class="mt-3 text-2xl font-semibold text-white">{{ $formatCurrency($latestSummary['units_value']) }}</div>
-                    <p class="mt-2 text-sm text-gray-400">Soma do valor em estoque de todos os empreendimentos da emissao.</p>
-                </div>
-
-                <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Recebiveis cedidos</span>
-                    <div class="mt-3 text-2xl font-semibold text-white">{{ $formatCurrency($latestSummary['receivables_value']) }}</div>
-                    <p class="mt-2 text-sm text-gray-400">Consolidado a partir do resumo mensal de recebiveis.</p>
-                </div>
-
-                <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Saldo das contas</span>
-                    <div class="mt-3 text-2xl font-semibold text-white">{{ $formatCurrency($latestSummary['account_balance_value']) }}</div>
-                    <p class="mt-2 text-sm text-gray-400">Soma dos fundos relacionados a emissao na mesma competencia.</p>
-                </div>
-
-                <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Saldo devedor</span>
-                    <div class="mt-3 text-2xl font-semibold text-white">{{ $formatCurrency($latestSummary['outstanding_balance_value']) }}</div>
-                    <p class="mt-2 text-sm text-gray-400">Calculado automaticamente com base no ultimo PU do mes e na quantidade integralizada acumulada.</p>
-                </div>
-
-                <div class="rounded-2xl border p-4 {{ $coverageCardClasses }}">
-                    <span class="text-xs font-semibold uppercase tracking-[0.18em] {{ $coverageLabelClasses }}">Indice de cobertura</span>
-                    <div class="mt-3 text-2xl font-semibold text-white">{{ $formatRatio($latestSummary['coverage_ratio']) }}</div>
-                    <p class="mt-2 text-sm {{ $coverageDescriptionClasses }}">Total de garantias: {{ $formatCurrency($latestSummary['total_guarantees_value']) }}</p>
-                </div>
+        <div class="grid gap-4 px-6 py-6 sm:px-8 md:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Valor das Garantias</span>
+                <div class="mt-3 text-2xl font-semibold text-white">{{ $money($position->totalEligibleValue) }}</div>
+                <p class="mt-2 text-sm text-gray-400">
+                    Bruto: {{ $money($position->totalGrossValue) }}
+                </p>
             </div>
 
-            @if (count($latestSummary['missing_sources']) > 0)
-                <div class="border-t border-white/10 px-6 py-4 sm:px-8">
-                    <div class="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                        Dados automaticos ausentes na competencia {{ $latestSummary['reference_month_label'] }}:
-                        {{ implode(', ', $latestSummary['missing_sources']) }}.
-                    </div>
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Saldo Devedor</span>
+                <div class="mt-3 text-2xl font-semibold text-white">{{ $money($position->outstandingBalance) }}</div>
+                <p class="mt-2 text-sm text-gray-400">Curva de PU da competência.</p>
+            </div>
+
+            <div class="rounded-2xl border p-4 {{ $coverageCardClasses }}">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-300">Cobertura</span>
+                <div class="mt-3 text-2xl font-semibold text-white">{{ $ratio($position->coverageRatio) }}</div>
+                <p class="mt-2 text-sm text-gray-300/80">
+                    Mínimo contratual: {{ $ratio($position->requiredRatio) }}
+                </p>
+            </div>
+
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
+                    {{ ($position->surplusDeficit !== null && $position->surplusDeficit < 0) ? 'Déficit' : 'Excedente' }}
+                </span>
+                <div class="mt-3 text-2xl font-semibold text-white">
+                    {{ $position->surplusDeficit === null ? 'Não apurado' : $money(abs($position->surplusDeficit)) }}
                 </div>
-            @endif
-        @else
+                <p class="mt-2 text-sm text-gray-400">
+                    {{ $position->activeGuaranteesCount }} garantia(s) ativa(s) · Exigido: {{ $money($position->totalRequiredValue) }}
+                </p>
+            </div>
+        </div>
+    </section>
+
+    {{-- 2. Pendências / alertas --}}
+    @if ($alerts->isNotEmpty())
+        <section class="overflow-hidden rounded-3xl border border-white/10 bg-gray-950/70">
+            <div class="border-b border-white/10 px-6 py-4 sm:px-8">
+                <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Pendências e alertas</span>
+                <h3 class="mt-1 text-lg font-semibold text-white">{{ $alerts->count() }} ponto(s) de atenção</h3>
+            </div>
+
+            <ul class="divide-y divide-white/10">
+                @foreach ($alerts as $alert)
+                    @php
+                        $alertClasses = match ($alert['severity']) {
+                            'danger' => 'bg-rose-500/10 text-rose-200',
+                            'warning' => 'bg-amber-500/10 text-amber-200',
+                            default => 'bg-white/[0.03] text-gray-300',
+                        };
+                    @endphp
+                    <li class="flex flex-col gap-1 px-6 py-4 sm:px-8">
+                        <div class="flex items-center gap-3">
+                            <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $alertClasses }}">
+                                {{ $alert['severity'] === 'danger' ? 'Crítico' : 'Atenção' }}
+                            </span>
+                            <span class="font-medium text-white">{{ $alert['title'] }}</span>
+                        </div>
+                        <p class="text-sm text-gray-400">{{ $alert['description'] }}</p>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
+
+    {{-- 3. Garantias detectadas --}}
+    @if ($pendingDetections > 0)
+        <section class="rounded-3xl border border-amber-400/20 bg-amber-500/10 px-6 py-5 sm:px-8">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-white">
+                        {{ $pendingDetections }} garantia(s) detectada(s) nos documentos
+                    </h3>
+                    <p class="mt-1 text-sm text-amber-100/80">
+                        Aguardam revisão na aba <span class="font-medium text-white">Garantias Detectadas</span>.
+                        Nenhuma integra a emissão até ser confirmada.
+                    </p>
+                </div>
+            </div>
+        </section>
+    @endif
+
+    {{-- 5. Posição da competência --}}
+    <section class="overflow-hidden rounded-3xl border border-white/10 bg-gray-950/70">
+        <div class="flex flex-col gap-2 border-b border-white/10 px-6 py-5 sm:px-8">
+            <span class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Posição da competência</span>
+            <div class="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+                <h3 class="text-lg font-semibold text-white">Componentes de {{ $position->referenceMonthLabel() }}</h3>
+                <p class="text-sm text-gray-400">
+                    O sistema consolida automaticamente o que consegue apurar; só o que não tem fonte é solicitado.
+                </p>
+            </div>
+        </div>
+
+        @if ($position->positions->isEmpty())
             <div class="px-6 py-6 sm:px-8">
                 <div class="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-5 text-sm text-gray-400">
-                    @if ($migrationPending)
-                        A consolidacao mensal ficara disponivel assim que a migration de <span class="font-medium text-white">guarantee snapshots</span> for aplicada.
-                    @else
-                        Use <span class="font-medium text-white">Atualizar indicadores mensais</span> para informar o valor das quotas da competencia. O sistema consolida automaticamente saldo devedor, unidades, recebiveis cedidos e saldo das contas.
-                    @endif
+                    Nenhuma garantia cadastrada nesta emissão ainda.
                 </div>
+            </div>
+        @else
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-white/10 text-sm">
+                    <thead class="bg-white/[0.03]">
+                        <tr class="text-left text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+                            <th class="px-4 py-3">Componente</th>
+                            <th class="px-4 py-3">Origem</th>
+                            <th class="px-4 py-3 text-right">Valor</th>
+                            <th class="px-4 py-3">Atualização</th>
+                            <th class="px-4 py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/10">
+                        @foreach ($position->positions as $row)
+                            <tr class="align-top text-gray-200">
+                                <td class="px-4 py-4">
+                                    <div class="font-medium text-white">{{ $row->guarantee->display_name }}</div>
+                                    <div class="mt-0.5 text-xs text-gray-400">
+                                        {{ \App\Enums\GuaranteeType::labelFor($row->guarantee->type) }}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4">{{ $row->value->source->label() }}</td>
+                                <td class="px-4 py-4 text-right">
+                                    <div class="font-medium text-white">{{ $money($row->currentValue()) }}</div>
+                                    @if ($row->eligibleValue !== null && $row->eligibilityFactor < 1.0)
+                                        <div class="mt-0.5 text-xs text-gray-400">
+                                            Elegível: {{ $money($row->eligibleValue) }}
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-4">{{ $row->value->status->label() }}</td>
+                                <td class="px-4 py-4">
+                                    @php
+                                        $rowStatusClasses = match ($row->coverageStatus->color()) {
+                                            'success' => 'bg-emerald-500/10 text-emerald-200',
+                                            'warning' => 'bg-amber-500/10 text-amber-200',
+                                            'danger' => 'bg-rose-500/10 text-rose-200',
+                                            default => 'bg-white/[0.05] text-gray-300',
+                                        };
+                                    @endphp
+                                    <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $rowStatusClasses }}">
+                                        {{ $row->coverageStatus->label() }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         @endif
     </section>
 
-    @include('filament.resources.emissions.relation-managers.guarantees-history', [
-        'history' => $history,
-    ])
+    @include('filament.resources.emissions.relation-managers.guarantees-history', ['history' => $history])
 </div>

@@ -20,6 +20,13 @@ class ViewProposal extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('proposal_report')
+                ->label('Relatório geral')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->visible(fn (): bool => ProposalResource::canView($this->record))
+                ->url(fn (): string => route('admin.proposals.report', $this->record))
+                ->openUrlInNewTab(),
             Action::make('mark_in_review')
                 ->label('Marcar como em análise')
                 ->icon('heroicon-o-magnifying-glass')
@@ -117,7 +124,7 @@ class ViewProposal extends ViewRecord
                     $this->record->refresh();
 
                     Notification::make()
-                        ->title('Novo link e código de acesso gerados com sucesso.')
+                        ->title('Novo link e código gerados; envio de e-mail enfileirado.')
                         ->success()
                         ->send();
                 }),

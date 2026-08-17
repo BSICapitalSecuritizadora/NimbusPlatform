@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ProposalStatus;
 use App\Observers\ProposalObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,7 @@ class Proposal extends Model
 
     protected $fillable = [
         'company_id',
+        'submission_token',
         'contact_id',
         'assigned_representative_id',
         'observations',
@@ -113,5 +115,23 @@ class Proposal extends Model
     public function canBeCompletedByRequester(): bool
     {
         return ProposalStatus::fromValue($this->status)?->canBeCompletedByRequester() ?? false;
+    }
+
+    protected function contactMailtoUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?string {
+                if (blank($this->contact?->email)) {
+                    return null;
+                }
+
+                $query = http_build_query([
+                    'subject' => "Proposta #{$this->id} — {$this->company?->name}",
+                    'body' => "Olá, {$this->contact?->name}.\n\nEntramos em contato sobre a proposta #{$this->id} enviada à BSI Capital.",
+                ], encoding_type: PHP_QUERY_RFC3986);
+
+                return "mailto:{$this->contact->email}?{$query}";
+            },
+        );
     }
 }

@@ -35,6 +35,13 @@ class CreateProposalForm extends Component
 
     public CreateProposalFormObject $form;
 
+    public function mount(): void
+    {
+        if ($this->form->submissionToken === '') {
+            $this->form->submissionToken = (string) Str::uuid();
+        }
+    }
+
     /**
      * @return Collection<int, ProposalSector>
      */
@@ -74,14 +81,13 @@ class CreateProposalForm extends Component
                 $assignProposalRepresentative,
                 $updateProposalStatus,
             );
-            $sendProposalContinuationLink->handle($proposal);
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (\Throwable $exception) {
             Log::error('Falha ao registrar proposta pública.', [
                 'email_hash' => PiiPseudonymizer::email($this->form->email),
                 'cnpj_hash' => PiiPseudonymizer::document($this->form->cnpj),
-                'message' => $exception->getMessage(),
+                'exception' => $exception::class,
             ]);
 
             $this->addError('submission', 'Não foi possível enviar sua solicitação agora. Tente novamente em alguns instantes ou entre em contato com a BSI Capital.');
@@ -89,9 +95,18 @@ class CreateProposalForm extends Component
             return;
         }
 
+        try {
+            $sendProposalContinuationLink->handle($proposal, forceNewAccess: false);
+        } catch (\Throwable $exception) {
+            Log::warning('Proposta salva, mas a comunicação de continuação não pôde ser enfileirada.', [
+                'proposal_id' => $proposal->id,
+                'exception' => $exception::class,
+            ]);
+        }
+
         session()->flash(
             'success',
-            'Solicitação registrada com sucesso. Encaminhamos ao e-mail informado um link seguro para o preenchimento das informações complementares da oportunidade. Nossa equipe dará sequência à análise após o recebimento dos dados.',
+            'Solicitação registrada com sucesso. Um link seguro para o preenchimento das informações complementares será enviado ao e-mail informado. Nossa equipe dará sequência à análise após o recebimento dos dados.',
         );
 
         $this->redirect(route('proposal.create'));

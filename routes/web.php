@@ -198,6 +198,7 @@ Route::get('/estudos-de-caso/{slug}', [CaseStudyController::class, 'show'])->nam
 Route::middleware(['auth', 'approved'])->group(function () {
     Route::get('/admin/projetos/{project}/relatorio', [ProjectReportController::class, 'generateReport'])->name('admin.projects.report');
     Route::get('/admin/projetos/{project}/analitico', [ProjectReportController::class, 'analyticalReport'])->name('admin.projects.analytical');
+    Route::get('/admin/propostas/{proposal}/relatorio', [ProjectReportController::class, 'proposalReport'])->name('admin.proposals.report');
     Route::get('/admin/candidaturas/{jobApplication}/curriculo', [JobApplicationResumeController::class, 'download'])->name('admin.job-applications.resume');
     Route::get('/admin/documents/{document}/download', AdminDocumentDownloadController::class)
         ->name('admin.documents.download')

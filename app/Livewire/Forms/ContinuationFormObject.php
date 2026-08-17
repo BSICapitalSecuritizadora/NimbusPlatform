@@ -2,15 +2,14 @@
 
 namespace App\Livewire\Forms;
 
+use App\Actions\Proposals\CalculateRemainingProjectTerm;
+use App\Actions\Proposals\FetchAddressFromCep;
 use App\Actions\Proposals\StoreProposalContinuationData;
 use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\Models\Proposal;
 use App\Models\ProposalProject;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Http;
+use App\Support\Proposals\ContinuationValidationRules;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Validator;
 use Livewire\Attributes\Validate;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\Form;
@@ -146,11 +145,9 @@ class ContinuationFormObject extends Form
     public array $unitTypes = [];
 
     /** @var array<int, TemporaryUploadedFile> */
-    #[Validate([
-        'uploads' => ['nullable', 'array'],
-        'uploads.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
-    ])]
     public array $uploads = [];
+
+    public ?string $addressLookupMessage = null;
 
     public function updated(string $property, mixed $value): void
     {
@@ -259,17 +256,7 @@ class ContinuationFormObject extends Form
             $this->syncUnitType($unitTypeIndex);
         }
 
-        $validated = $this
-            ->withValidator(function (Validator $validator): void {
-                if (
-                    filled($this->constructionStartDate)
-                    && filled($this->deliveryForecastDate)
-                    && ($this->deliveryForecastDate < $this->constructionStartDate)
-                ) {
-                    $validator->errors()->add('deliveryForecastDate', 'A previsão de entrega deve ser posterior ao início das obras.');
-                }
-            })
-            ->validate($this->saveRules($proposal->id), $this->saveMessages());
+        $validated = $this->validate($this->saveRules($proposal->id), $this->saveMessages());
 
         $storeProposalContinuationData->handle(
             $proposal,
@@ -366,22 +353,17 @@ class ContinuationFormObject extends Form
 
     protected function fetchAddress(): void
     {
-        $zipCode = Str::digitsOnly($this->zipCode);
+        $result = app(FetchAddressFromCep::class)->handle($this->zipCode);
+        $this->addressLookupMessage = $result['message'];
 
-        if (strlen($zipCode) !== 8) {
+        if ($result['address'] === null) {
             return;
         }
 
-        $response = Http::get("https://viacep.com.br/ws/{$zipCode}/json/");
-
-        if (! $response->successful() || $response->json('erro')) {
-            return;
-        }
-
-        $this->street = (string) ($response->json('logradouro') ?? '');
-        $this->neighborhood = (string) ($response->json('bairro') ?? '');
-        $this->city = (string) ($response->json('localidade') ?? '');
-        $this->state = Str::upper((string) ($response->json('uf') ?? ''));
+        $this->street = $result['address']['street'];
+        $this->neighborhood = $result['address']['neighborhood'];
+        $this->city = $result['address']['city'];
+        $this->state = $result['address']['state'];
     }
 
     protected function continuationData(array $validated): StoreProposalContinuationDataDTO
@@ -459,59 +441,7 @@ class ContinuationFormObject extends Form
      */
     protected function saveRules(int $proposalId): array
     {
-        return [
-            'developmentName' => ['required', 'string', 'max:255'],
-            'websiteUrl' => ['nullable', 'url', 'max:255'],
-            'requestedAmount' => ['required', 'string', 'max:50'],
-            'landMarketValue' => ['nullable', 'string', 'max:50'],
-            'landArea' => ['required', 'string', 'max:50'],
-            'launchDate' => ['required', 'date_format:Y-m'],
-            'salesLaunchDate' => ['required', 'date_format:Y-m'],
-            'constructionStartDate' => ['required', 'date_format:Y-m'],
-            'deliveryForecastDate' => ['required', 'date_format:Y-m'],
-            'remainingMonths' => ['nullable', 'integer', 'min:0'],
-            'zipCode' => ['required', 'string', 'max:9'],
-            'street' => ['required', 'string', 'max:255'],
-            'addressComplement' => ['nullable', 'string', 'max:255'],
-            'addressNumber' => ['required', 'string', 'max:50'],
-            'neighborhood' => ['required', 'string', 'max:255'],
-            'city' => ['required', 'string', 'max:255'],
-            'state' => ['required', 'string', 'size:2'],
-            'projects' => ['required', 'array', 'min:1'],
-            'projects.*.id' => [
-                'nullable',
-                'integer',
-                Rule::exists('proposal_projects', 'id')->where(
-                    fn ($query) => $query->where('proposal_id', $proposalId),
-                ),
-            ],
-            'projects.*.name' => ['required', 'string', 'max:255'],
-            'projects.*.exchangedUnits' => ['nullable', 'integer', 'min:0'],
-            'projects.*.paidUnits' => ['nullable', 'integer', 'min:0'],
-            'projects.*.unpaidUnits' => ['nullable', 'integer', 'min:0'],
-            'projects.*.stockUnits' => ['nullable', 'integer', 'min:0'],
-            'projects.*.incurredCost' => ['nullable', 'string', 'max:50'],
-            'projects.*.costToIncur' => ['nullable', 'string', 'max:50'],
-            'projects.*.paidSalesValue' => ['nullable', 'string', 'max:50'],
-            'projects.*.unpaidSalesValue' => ['nullable', 'string', 'max:50'],
-            'projects.*.stockSalesValue' => ['nullable', 'string', 'max:50'],
-            'projects.*.receivedValue' => ['nullable', 'string', 'max:50'],
-            'projects.*.valueUntilKeys' => ['nullable', 'string', 'max:50'],
-            'projects.*.valueAfterKeys' => ['nullable', 'string', 'max:50'],
-            'blockCount' => ['required', 'integer', 'min:1'],
-            'floorCount' => ['required', 'integer', 'min:1'],
-            'typicalFloorCount' => ['required', 'integer', 'min:1'],
-            'unitsPerFloor' => ['required', 'integer', 'min:1'],
-            'totalUnits' => ['nullable', 'integer', 'min:1'],
-            'unitTypes' => ['required', 'array', 'min:1'],
-            'unitTypes.*.totalUnits' => ['required', 'integer', 'min:1'],
-            'unitTypes.*.bedrooms' => ['required', 'string', 'max:255'],
-            'unitTypes.*.parkingSpaces' => ['required', 'string', 'max:255'],
-            'unitTypes.*.usableArea' => ['required', 'numeric', 'gt:0'],
-            'unitTypes.*.averagePrice' => ['required', 'string', 'max:50'],
-            'uploads' => ['nullable', 'array'],
-            'uploads.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg', 'max:10240'],
-        ];
+        return app(ContinuationValidationRules::class)->livewire($proposalId);
     }
 
     /**
@@ -520,6 +450,7 @@ class ContinuationFormObject extends Form
     protected function saveMessages(): array
     {
         return [
+            ...app(ContinuationValidationRules::class)->messages(),
             'developmentName.required' => 'A denominação principal do empreendimento é obrigatória.',
             'requestedAmount.required' => 'O valor solicitado para a operação é obrigatório.',
             'landArea.required' => 'A área do terreno é obrigatória.',
@@ -533,8 +464,6 @@ class ContinuationFormObject extends Form
             'deliveryForecastDate.date_format' => 'A previsão de entrega deve estar no formato mm/aaaa.',
             'projects.required' => 'Informe ao menos um empreendimento vinculado à operação.',
             'projects.*.name.required' => 'A identificação de cada empreendimento é obrigatória.',
-            'uploads.*.mimes' => 'Os arquivos anexados devem estar nos formatos PDF, DOC, DOCX, XLS, XLSX, PNG, JPG ou JPEG.',
-            'uploads.*.max' => 'Cada arquivo não pode exceder 10 MB.',
         ];
     }
 
@@ -656,22 +585,12 @@ class ContinuationFormObject extends Form
 
     protected function syncRemainingMonths(): void
     {
-        if (! $this->constructionStartDate || ! $this->deliveryForecastDate) {
-            $this->remainingMonths = '';
+        $remainingMonths = app(CalculateRemainingProjectTerm::class)->handle(
+            $this->constructionStartDate,
+            $this->deliveryForecastDate,
+        );
 
-            return;
-        }
-
-        try {
-            $startDate = Carbon::createFromFormat('Y-m', $this->constructionStartDate);
-            $endDate = Carbon::createFromFormat('Y-m', $this->deliveryForecastDate);
-        } catch (\Throwable) {
-            $this->remainingMonths = '';
-
-            return;
-        }
-
-        $this->remainingMonths = $startDate->diffInMonths($endDate);
+        $this->remainingMonths = $remainingMonths ?? '';
     }
 
     protected function syncTotalUnits(): void

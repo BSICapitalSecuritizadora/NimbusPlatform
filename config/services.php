@@ -50,8 +50,23 @@ return [
         'tenant' => env('AZURE_TENANT_ID', 'common'),
     ],
 
+    /*
+    | O modelo é configurável para permitir rollback sem deploy: os prompts de
+    | extração são calibrados para um modelo específico e uma troca pode
+    | degradar em silêncio (campo que vira null em vez de erro). Pine sempre uma
+    | versão explícita — aliases como `gemini-flash-latest` trocam o modelo sem
+    | aviso, e a extração de cláusula jurídica precisa ser reproduzível.
+    |
+    | `inline_max_bytes` decide entre mandar o PDF embutido em base64 e subir
+    | pela File API. A API rejeita requisições acima de ~20 MB e o base64 infla
+    | o arquivo em ~33%, então o teto do arquivo bruto fica em ~15 MB; 12 MB
+    | deixa margem para o prompt e o overhead do JSON.
+    */
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.7-flash'),
+        'inline_max_bytes' => (int) env('GEMINI_INLINE_MAX_BYTES', 12 * 1024 * 1024),
+        'file_activation_timeout' => (int) env('GEMINI_FILE_ACTIVATION_TIMEOUT', 120),
         'obligations_min_confidence' => (float) env('GEMINI_OBLIGATIONS_MIN_CONFIDENCE', 0.6),
     ],
 

@@ -5,10 +5,13 @@ use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
 use App\Models\ProposalProject;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Date;
 
 uses(RefreshDatabase::class);
 
 it('recalculates derived project sales and cost fields on create and update', function () {
+    Date::setTestNow('2026-08-15');
+
     $company = ProposalCompany::query()->create([
         'name' => 'Construtora Exemplo',
         'cnpj' => '12.345.678/0001-90',
@@ -32,6 +35,8 @@ it('recalculates derived project sales and cost fields on create and update', fu
         'requested_amount' => '26500000.00',
         'land_market_value' => '1850000.00',
         'land_area' => '2689.00',
+        'construction_start_date' => '2025-01-01',
+        'delivery_forecast_date' => '2031-01-01',
         'remaining_months' => '53',
         'unpaid_units' => 74,
         'paid_units' => 0,
@@ -129,6 +134,8 @@ it('recalculates derived project sales and cost fields on create and update', fu
             $project->value_after_keys,
         ))->toBe(150601.5)
         ->and((float) $project->work_stage_percentage)->toBe(0.0);
+
+    Date::setTestNow();
 });
 
 it('allows multiple named projects in the same proposal', function () {

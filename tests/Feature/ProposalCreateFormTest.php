@@ -79,6 +79,40 @@ it('hydrates company and address fields from cnpj and postal code lookups', func
         ->assertSet('form.state', 'SP');
 });
 
+it('selects an active state registration before inactive registrations', function () {
+    Http::fake([
+        'https://publica.cnpj.ws/cnpj/*' => Http::response([
+            'razao_social' => 'Empresa IE Ativa',
+            'estabelecimento' => [
+                'inscricoes_estaduais' => [
+                    ['inscricao_estadual' => 'IE-INATIVA', 'ativo' => false],
+                    ['inscricao_estadual' => 'IE-ATIVA', 'situacao' => 'Ativa'],
+                ],
+            ],
+        ]),
+    ]);
+
+    Livewire::test(CreateProposalForm::class)
+        ->set('form.cnpj', '11.257.352/0001-43')
+        ->assertSet('form.stateRegistration', 'IE-ATIVA');
+});
+
+it('rejects a cnpj with invalid check digits on the backend', function () {
+    $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
+    ProposalRepresentative::factory()->create(['queue_position' => 1]);
+    $state = proposalCreateFormState($sector);
+    $state['cnpj'] = '11.257.352/0001-44';
+    fakeProposalCreateLookups($state);
+
+    $component = Livewire::test(CreateProposalForm::class);
+    foreach ($state as $property => $value) {
+        $component->set("form.{$property}", $value);
+    }
+
+    $component->call('save')->assertHasErrors('form.cnpj');
+    expect(Proposal::query()->count())->toBe(0);
+});
+
 it('stores the initial proposal through the livewire component and sends the continuation link', function () {
     Mail::fake();
 
@@ -118,6 +152,8 @@ it('stores the initial proposal through the livewire component and sends the con
         ->and($proposal->contact->name)->toBe($state['contactName'])
         ->and($proposal->contact->email)->toBe($state['email'])
         ->and($proposal->contact->whatsapp)->toBeTrue()
+        ->and($proposal->contact->is_whatsapp)->toBeTrue()
+        ->and($proposal->contact->whatsapp_contact_consent)->toBeTrue()
         ->and($proposal->latestContinuationAccess)->not->toBeNull()
         ->and($proposal->statusHistories)->toHaveCount(1)
         ->and($proposal->assigned_representative_id)->not->toBeNull();
@@ -137,7 +173,7 @@ it('blocks the eleventh proposal from the same IP when identities are varied', f
 
     $stateForAttempt = function (int $attempt) use ($sector): array {
         $state = proposalCreateFormState($sector);
-        $state['cnpj'] = sprintf('12.345.%03d/0001-%02d', $attempt, $attempt);
+        $state['cnpj'] = validTestCnpj($attempt + 20);
         $state['companyName'] = "Construtora Rate Limit {$attempt}";
         $state['email'] = "rate-limit-{$attempt}@example.com";
 
@@ -174,7 +210,7 @@ it('offers the active sectors provisioned by the migrations, ordered by name', f
     $response = $this->get(route('proposal.create'));
 
     $response->assertSuccessful()
-        ->assertSee('Setor de Atuação')
+        ->assertSee('Setores de Atuação')
         ->assertSeeInOrder(['Agronegócio', 'Imobiliário', 'Infraestrutura', 'Outros'])
         ->assertDontSee('Setor Descontinuado')
         ->assertDontSee(CreateProposalForm::NO_SECTORS_MESSAGE);
@@ -189,9 +225,9 @@ it('rejects a sector that is no longer active', function () {
     $sector = ProposalSector::query()->create(['name' => 'Setor Descontinuado', 'is_active' => false]);
 
     Livewire::test(CreateProposalForm::class)
-        ->set('form.sectorId', (string) $sector->id)
+        ->set('form.sectorIds', [$sector->id])
         ->call('save')
-        ->assertHasErrors(['form.sectorId' => ['exists']])
+        ->assertHasErrors(['form.sectorIds.0' => ['exists']])
         ->assertSee('Selecione um setor de atuação válido.')
         ->assertNoRedirect();
 
@@ -205,7 +241,7 @@ it('explains the empty state and blocks submission when no sector is available',
 
     $this->get(route('proposal.create'))
         ->assertSuccessful()
-        ->assertSee('Setor de Atuação')
+        ->assertSee('Setores de Atuação')
         ->assertSee(CreateProposalForm::NO_SECTORS_MESSAGE);
 
     Livewire::test(CreateProposalForm::class)
@@ -224,7 +260,7 @@ it('validates the required fields before saving the proposal', function () {
         ->assertHasErrors([
             'form.cnpj' => ['required'],
             'form.companyName' => ['required'],
-            'form.sectorId' => ['required'],
+            'form.sectorIds' => ['required'],
             'form.postalCode' => ['required'],
             'form.street' => ['required'],
             'form.addressNumber' => ['required'],

@@ -43,7 +43,7 @@ class EditProposal extends EditRecord
                     $this->record->refresh();
 
                     Notification::make()
-                        ->title('Novo link e código de acesso gerados com sucesso.')
+                        ->title('Novo link e código gerados; envio de e-mail enfileirado.')
                         ->success()
                         ->send();
                 }),

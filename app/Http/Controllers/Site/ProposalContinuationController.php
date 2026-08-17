@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Site;
 
 use App\Actions\Proposals\StoreProposalContinuationData;
-use App\DTOs\Proposals\StoreProposalContinuationDataDTO;
 use App\Enums\MalwareScanStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreProposalContinuationRequest;
 use App\Http\Requests\VerifyProposalContinuationRequest;
 use App\Models\Proposal;
 use App\Models\ProposalContinuationAccess;
@@ -75,7 +75,7 @@ class ProposalContinuationController extends Controller
             ->with('success', 'Acesso validado. Você já pode continuar o preenchimento.');
     }
 
-    public function store(Request $request, ProposalContinuationAccess $access, StoreProposalContinuationData $storeProposalContinuationData): RedirectResponse
+    public function store(StoreProposalContinuationRequest $request, ProposalContinuationAccess $access, StoreProposalContinuationData $storeProposalContinuationData): RedirectResponse
     {
         $this->ensureAuthorizedContinuation($request, $access);
 
@@ -84,7 +84,7 @@ class ProposalContinuationController extends Controller
 
         $storeProposalContinuationData->handle(
             $proposal,
-            StoreProposalContinuationDataDTO::fromFlatPayload($request->all()),
+            $request->toDTO(),
             $request->file('arquivos', []),
         );
 

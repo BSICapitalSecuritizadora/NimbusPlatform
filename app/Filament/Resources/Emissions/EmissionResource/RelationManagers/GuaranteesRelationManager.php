@@ -3,15 +3,28 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Concerns\MoneyFormatter;
+use App\DTOs\Guarantees\EmissionGuaranteePositionData;
+use App\DTOs\Guarantees\GuaranteePositionData;
+use App\Enums\AccessPermission;
+use App\Enums\GuaranteeCategory;
+use App\Enums\GuaranteeType;
+use App\Enums\GuaranteeValuationBasis;
+use App\Enums\GuaranteeValueSource;
+use App\Filament\Resources\Emissions\Schemas\GuaranteeFormFields;
 use App\Models\Emission;
+use App\Models\Guarantee;
 use App\Models\GuaranteeSnapshot;
-use App\Services\GuaranteeCoverageCalculator;
+use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
+use App\Services\Guarantees\GuaranteeAlertBuilder;
+use App\Services\Guarantees\GuaranteeSnapshotWriter;
 use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -21,13 +34,23 @@ use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
+/**
+ * Aba de Garantias da emissão.
+ *
+ * A hierarquia segue §44 do escopo: resumo executivo, pendências, garantias
+ * detectadas, garantias vigentes, posição da competência e evolução histórica.
+ * Nenhum cálculo acontece aqui — a tela consome
+ * {@see EmissionGuaranteeCoverageEngine} e apenas apresenta o resultado.
+ */
 class GuaranteesRelationManager extends RelationManager
 {
     protected static string $relationship = 'guarantees';
 
-    protected static ?string $recordTitleAttribute = 'guarantee_type';
+    protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?string $title = 'Garantias';
 
@@ -35,36 +58,14 @@ class GuaranteesRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'Garantias';
 
-    /**
-     * @var array{
-     *     canManageGuarantees: bool,
-     *     canRegisterMonthlyIndicators: bool,
-     *     history: \Illuminate\Support\Collection<int, array<string, mixed>>,
-     *     latestSummary: array<string, mixed>|null,
-     *     migrationPending: bool,
-     *     needsMonthlyUpdate: bool
-     * }|null
-     */
-    protected ?array $coverageOverview = null;
+    protected ?EmissionGuaranteePositionData $positionCache = null;
 
-    public function mount(): void
+    /** @var Collection<int, GuaranteePositionData>|null */
+    protected ?Collection $positionsByGuarantee = null;
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        parent::mount();
-
-        if (! $this->getOwnerRecord() instanceof Emission) {
-            return;
-        }
-
-        if (! $this->getOwnerRecord()->requiresMonthlyGuaranteeSnapshotUpdate()) {
-            return;
-        }
-
-        Notification::make()
-            ->warning()
-            ->title('Atualizacao mensal de garantias pendente.')
-            ->body('Atualize o valor das quotas da competencia atual para manter a cobertura das garantias em dia.')
-            ->persistent()
-            ->send();
+        return auth()->user()?->can(AccessPermission::GuaranteesView->value) ?? false;
     }
 
     public static function getBadge(Model $ownerRecord, string $pageClass): ?string
@@ -78,11 +79,7 @@ class GuaranteesRelationManager extends RelationManager
 
     public static function getBadgeColor(Model $ownerRecord, string $pageClass): ?string
     {
-        if (! $ownerRecord instanceof Emission) {
-            return null;
-        }
-
-        return $ownerRecord->requiresMonthlyGuaranteeSnapshotUpdate() ? 'warning' : null;
+        return 'warning';
     }
 
     public static function getBadgeTooltip(Model $ownerRecord, string $pageClass): ?string
@@ -92,301 +89,416 @@ class GuaranteesRelationManager extends RelationManager
         }
 
         return $ownerRecord->requiresMonthlyGuaranteeSnapshotUpdate()
-            ? 'Atualize o valor das quotas do mes atual.'
+            ? 'A competência atual ainda não foi consolidada.'
             : null;
     }
 
     public function form(Schema $schema): Schema
     {
-        return $schema
-            ->schema([
-                TextInput::make('guarantee_type')
-                    ->label('Tipo de Garantia')
-                    ->required()
-                    ->maxLength(255)
-                    ->placeholder('Ex: Alienação Fiduciária'),
-                TextInput::make('minimum_value')
-                    ->label('Valor Mínimo')
-                    ->prefix('R$')
-                    ->numeric()
-                    ->required()
-                    ->placeholder('0,00'),
-                DatePicker::make('validity_start_date')
-                    ->label('Início da Validade')
-                    ->required(),
-                DatePicker::make('validity_end_date')
-                    ->label('Término da Validade')
-                    ->required(),
-                TextInput::make('evaluation_frequency')
-                    ->label('Periodicidade de Avaliação')
-                    ->required()
-                    ->maxLength(255)
-                    ->placeholder('Ex: Mensal'),
-                Textarea::make('description')
-                    ->label('Descrição')
-                    ->placeholder('Descreva detalhadamente a garantia')
-                    ->rows(4)
-                    ->columnSpanFull(),
-            ])
-            ->columns(2);
+        return $schema->schema(GuaranteeFormFields::make())->columns(1);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('guarantee_type')
-            ->description('Atualize mensalmente o valor das quotas para consolidar a cobertura da emissao.')
+            ->recordTitleAttribute('name')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['construction', 'fund', 'documentReferences']))
             ->columns([
-                TextColumn::make('guarantee_type')
-                    ->label('Tipo de Garantia')
+                TextColumn::make('name')
+                    ->label('Garantia')
+                    ->description(fn (Guarantee $record): string => GuaranteeType::labelFor($record->type))
+                    ->formatStateUsing(fn (?string $state, Guarantee $record): string => $record->display_name)
                     ->searchable()
-                    ->sortable(),
-                TextColumn::make('minimum_value')
-                    ->label('Valor Mínimo')
-                    ->money('BRL')
-                    ->sortable(),
-                TextColumn::make('validity_start_date')
-                    ->label('Início da Validade')
-                    ->date('d/m/Y')
-                    ->sortable(),
-                TextColumn::make('validity_end_date')
-                    ->label('Término da Validade')
-                    ->date('d/m/Y')
-                    ->sortable(),
-                TextColumn::make('evaluation_frequency')
-                    ->label('Periodicidade de Avaliação')
-                    ->sortable(),
-                TextColumn::make('description')
-                    ->label('Descrição')
-                    ->limit(50)
                     ->wrap(),
+                TextColumn::make('identification')
+                    ->label('Identificação')
+                    ->formatStateUsing(fn (mixed $state): string => $this->formatIdentification($state))
+                    ->placeholder('Não informada')
+                    ->wrap()
+                    ->toggleable(),
+                TextColumn::make('requirement_basis')
+                    ->label('Regra Contratual')
+                    ->formatStateUsing(fn (Guarantee $record): string => $this->requirementLabel($record))
+                    ->placeholder('Sem mínimo contratual')
+                    ->wrap(),
+                TextColumn::make('contracted_value')
+                    ->label('Valor na Contratação')
+                    ->formatStateUsing(fn (mixed $state): string => $this->money($state))
+                    ->alignEnd()
+                    ->toggleable(),
+                TextColumn::make('current_value')
+                    ->label('Valor Atual')
+                    ->state(fn (Guarantee $record): string => $this->money($this->positionFor($record)?->currentValue()))
+                    ->alignEnd(),
+                TextColumn::make('eligible_value')
+                    ->label('Valor Elegível')
+                    ->state(fn (Guarantee $record): string => $this->money($this->positionFor($record)?->eligibleValue))
+                    ->alignEnd()
+                    ->toggleable(),
+                TextColumn::make('coverage')
+                    ->label('Cobertura')
+                    ->state(fn (Guarantee $record): string => $this->ratio($this->positionFor($record)?->coverageRatio))
+                    ->alignEnd()
+                    ->toggleable(),
+                TextColumn::make('validity_end_date')
+                    ->label('Vigência')
+                    ->formatStateUsing(fn (mixed $state, Guarantee $record): string => $this->validityLabel($record))
+                    ->placeholder('Sem prazo definido')
+                    ->toggleable(),
+                TextColumn::make('value_source')
+                    ->label('Fonte')
+                    ->badge()
+                    ->color('gray')
+                    ->state(fn (Guarantee $record): string => $record->resolvedValueSource()->label())
+                    ->toggleable(),
+                TextColumn::make('legal_status')
+                    ->label('Status')
+                    ->badge()
+                    ->formatStateUsing(fn (Guarantee $record): string => $record->legal_status?->label() ?? '—')
+                    ->color(fn (Guarantee $record): string => $record->legal_status?->color() ?? 'gray'),
             ])
-            ->defaultSort('validity_start_date', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->headerActions([
-                $this->makeMonthlySnapshotAction(),
+                $this->makeUpdateCompetenceAction(),
+                $this->makeCloseCompetenceAction(),
                 CreateAction::make()
-                    ->label('Cadastrar Garantia')
-                    ->authorize(fn (): bool => $this->canManageGuarantees()),
+                    ->label('Cadastrar garantia')
+                    ->modalHeading('Cadastrar garantia')
+                    ->authorize(fn (): bool => $this->userCanCreate()),
             ])
             ->actions([
+                $this->makeViewDetailAction(),
+                $this->makeRecordValuationAction(),
+                $this->makeInformValueAction(),
                 EditAction::make()
-                    ->authorize(fn (): bool => $this->canManageGuarantees()),
+                    ->modalHeading('Editar garantia')
+                    ->authorize(fn (): bool => $this->userCanUpdate()),
                 DeleteAction::make()
-                    ->authorize(fn (): bool => $this->canManageGuarantees()),
+                    ->authorize(fn (): bool => $this->userCanDelete()),
             ])
             ->bulkActions([
-                \Filament\Actions\BulkActionGroup::make([
+                BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->authorize(fn (): bool => $this->canManageGuarantees()),
+                        ->authorize(fn (): bool => $this->userCanDelete()),
                 ]),
             ])
-            ->emptyStateHeading('Nenhuma garantia cadastrada');
+            ->emptyStateHeading('Nenhuma garantia cadastrada')
+            ->emptyStateDescription('Cadastre manualmente ou use "Identificar nos documentos" na aba Garantias Detectadas para importar do Termo e dos aditamentos.');
     }
 
     protected function getTableHeader(): ?View
     {
-        return view(
-            'filament.resources.emissions.relation-managers.guarantees-overview',
-            $this->getCoverageOverview(),
-        );
+        $emission = $this->getOwnerRecord();
+        $position = $this->position();
+
+        return view('filament.resources.emissions.relation-managers.guarantees-overview', [
+            'position' => $position,
+            'alerts' => app(GuaranteeAlertBuilder::class)->build($emission, $position),
+            'history' => app(EmissionGuaranteeCoverageEngine::class)->history($emission),
+            'pendingDetections' => $emission->extractedGuarantees()->pending()->count(),
+            'canUpdateValues' => $this->canUpdateValues(),
+            'canCloseCompetence' => $this->canCloseCompetence(),
+            'canCreate' => $this->userCanCreate(),
+            'isCompetenceClosed' => $this->isCompetenceClosed(),
+        ]);
     }
 
-    protected function makeMonthlySnapshotAction(): Action
+    /**
+     * Posição consolidada da competência corrente, apurada uma vez por request.
+     */
+    protected function position(): EmissionGuaranteePositionData
     {
-        return Action::make('update_monthly_snapshot')
-            ->label('Atualizar indicadores mensais')
-            ->icon('heroicon-o-chart-bar-square')
-            ->color('warning')
-            ->visible(fn (): bool => $this->canRegisterMonthlyIndicators())
-            ->authorize(fn (): bool => $this->canManageGuarantees())
-            ->modalWidth('2xl')
-            ->modalHeading('Atualizar indicadores mensais')
-            ->modalDescription('Informe manualmente o valor das quotas da competencia. O saldo devedor, as unidades, os recebiveis cedidos e o saldo das contas sao consolidados automaticamente a partir da emissao.')
-            ->fillForm(fn (): array => $this->getMonthlySnapshotDefaults())
-            ->form([
-                TextInput::make('reference_month')
-                    ->label('Mes')
-                    ->placeholder('MM/AAAA')
-                    ->mask('99/9999')
-                    ->required()
-                    ->formatStateUsing(fn (mixed $state): string => GuaranteeSnapshot::formatReferenceMonthForDisplay($state))
-                    ->dehydrateStateUsing(fn (mixed $state): ?string => GuaranteeSnapshot::normalizeReferenceMonth($state))
-                    ->mutateStateForValidationUsing(fn (mixed $state): ?string => GuaranteeSnapshot::normalizeReferenceMonth($state))
-                    ->validationMessages([
-                        'required' => 'Informe a competencia no formato MM/AAAA.',
+        return $this->positionCache ??= app(EmissionGuaranteeCoverageEngine::class)
+            ->buildPosition($this->getOwnerRecord());
+    }
+
+    protected function positionFor(Guarantee $guarantee): ?GuaranteePositionData
+    {
+        $this->positionsByGuarantee ??= $this->position()->positions
+            ->keyBy(fn (GuaranteePositionData $position): int => $position->guarantee->getKey());
+
+        return $this->positionsByGuarantee->get($guarantee->getKey());
+    }
+
+    protected function makeViewDetailAction(): Action
+    {
+        return Action::make('view_detail')
+            ->label('Detalhes')
+            ->icon('heroicon-o-eye')
+            ->color('gray')
+            ->modalHeading(fn (Guarantee $record): string => $record->display_name)
+            ->modalWidth('5xl')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Fechar')
+            ->modalContent(fn (Guarantee $record): View => view(
+                'filament.resources.emissions.relation-managers.guarantee-detail',
+                [
+                    'guarantee' => $record->load([
+                        'documentReferences.document',
+                        'events.documentReference',
+                        'valuations',
+                        'monthlyPositions',
+                        'construction',
+                        'fund',
                     ]),
-                $this->makeCurrencyInput('quota_value', 'Valor das quotas'),
+                    'position' => $this->positionFor($record),
+                ],
+            ));
+    }
+
+    /**
+     * Registro de avaliação (§20). É o que alimenta o valor atual das garantias
+     * cuja origem é laudo, e não dado operacional.
+     */
+    protected function makeRecordValuationAction(): Action
+    {
+        return Action::make('record_valuation')
+            ->label('Registrar avaliação')
+            ->icon('heroicon-o-scale')
+            ->color('gray')
+            ->visible(fn (Guarantee $record): bool => $record->resolvedValueSource() === GuaranteeValueSource::Valuation)
+            ->authorize(fn (): bool => $this->canManageValuations())
+            ->modalHeading('Registrar avaliação da garantia')
+            ->modalDescription('A avaliação vigente na competência analisada é a usada no cálculo. Laudos posteriores não alteram meses já apurados.')
+            ->form([
+                DatePicker::make('valuation_date')
+                    ->label('Data-base da avaliação')
+                    ->required()
+                    ->default(now()),
+                $this->currencyInput('value', 'Valor avaliado')->required(),
+                Select::make('basis')
+                    ->label('Critério')
+                    ->options(GuaranteeValuationBasis::options())
+                    ->default(GuaranteeValuationBasis::Appraisal->value)
+                    ->required(),
+                TextInput::make('appraiser')->label('Avaliador')->maxLength(255),
+                DatePicker::make('valid_until')->label('Válida até'),
+                Textarea::make('notes')->label('Observações')->rows(2),
             ])
-            ->action(function (array $data): void {
-                if (! Emission::hasGuaranteeSnapshotsTable()) {
-                    Notification::make()
-                        ->title('Indicadores indisponiveis')
-                        ->body('A tabela de indicadores mensais ainda nao foi criada. Execute a migration pendente e recarregue a pagina.')
-                        ->danger()
-                        ->persistent()
-                        ->send();
+            ->action(function (Guarantee $record, array $data): void {
+                $record->valuations()->create([
+                    'valuation_date' => $data['valuation_date'],
+                    'value' => MoneyFormatter::normalizeDecimalValue($data['value']),
+                    'basis' => $data['basis'],
+                    'appraiser' => $data['appraiser'] ?? null,
+                    'valid_until' => $data['valid_until'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'recorded_by' => auth()->id(),
+                ]);
 
-                    return;
-                }
+                $this->resetPositionCache();
 
-                $referenceMonth = GuaranteeSnapshot::normalizeReferenceMonth($data['reference_month'] ?? null);
-
-                if ($referenceMonth === null) {
-                    Notification::make()
-                        ->title('Indicadores nao atualizados')
-                        ->body('Informe a competencia no formato MM/AAAA.')
-                        ->danger()
-                        ->persistent()
-                        ->send();
-
-                    return;
-                }
-
-                $outstandingBalance = app(GuaranteeCoverageCalculator::class)
-                    ->calculateOutstandingBalanceForMonth($this->ownerRecord, $referenceMonth);
-
-                $this->ownerRecord->guaranteeSnapshots()->updateOrCreate(
-                    ['reference_month' => $referenceMonth],
-                    [
-                        'quota_value' => MoneyFormatter::normalizeDecimalValue($data['quota_value'] ?? null),
-                        'outstanding_balance' => $outstandingBalance,
-                    ],
-                );
-
-                $this->ownerRecord->unsetRelation('guaranteeSnapshots');
-                $this->coverageOverview = null;
-
-                Notification::make()
-                    ->title('Indicadores mensais atualizados com sucesso.')
-                    ->success()
-                    ->send();
+                Notification::make()->title('Avaliação registrada.')->success()->send();
             });
     }
 
     /**
-     * @return array{canManageGuarantees: bool, canRegisterMonthlyIndicators: bool, history: \Illuminate\Support\Collection<int, array<string, mixed>>, latestSummary: array<string, mixed>|null, migrationPending: bool, needsMonthlyUpdate: bool}
+     * Digitação do valor da competência, oferecida apenas onde o Nimbus não
+     * consegue apurar sozinho (§21 e §22).
      */
-    protected function getCoverageOverview(): array
+    protected function makeInformValueAction(): Action
     {
-        if ($this->coverageOverview !== null) {
-            return $this->coverageOverview;
+        return Action::make('inform_value')
+            ->label('Informar valor do mês')
+            ->icon('heroicon-o-pencil-square')
+            ->color('warning')
+            ->visible(fn (Guarantee $record): bool => $record->resolvedValueSource() === GuaranteeValueSource::Manual)
+            ->authorize(fn (): bool => $this->canUpdateValues())
+            ->modalHeading('Informar valor da competência')
+            ->fillForm(fn (): array => [
+                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(now()->startOfMonth()),
+            ])
+            ->form([
+                TextInput::make('reference_month')
+                    ->label('Competência')
+                    ->placeholder('MM/AAAA')
+                    ->mask('99/9999')
+                    ->required(),
+                $this->currencyInput('current_value', 'Valor da garantia')->required(),
+            ])
+            ->action(function (Guarantee $record, array $data): void {
+                app(GuaranteeSnapshotWriter::class)->recordManualValue(
+                    guarantee: $record,
+                    referenceMonth: $data['reference_month'],
+                    value: MoneyFormatter::normalizeDecimalValue($data['current_value']),
+                    actor: auth()->user(),
+                );
+
+                $this->resetPositionCache();
+
+                Notification::make()->title('Valor da competência atualizado.')->success()->send();
+            });
+    }
+
+    protected function makeUpdateCompetenceAction(): Action
+    {
+        return Action::make('update_competence')
+            ->label('Atualizar competência')
+            ->icon('heroicon-o-arrow-path')
+            ->color('warning')
+            ->authorize(fn (): bool => $this->canUpdateValues())
+            ->requiresConfirmation()
+            ->modalHeading('Atualizar a posição da competência')
+            ->modalDescription('O sistema consolida saldo devedor, recebíveis, estoque, contas e avaliações da competência atual e grava o snapshot. Valores sem fonte automática permanecem pendentes de digitação.')
+            ->modalSubmitActionLabel('Atualizar')
+            ->action(function (): void {
+                app(GuaranteeSnapshotWriter::class)->persist(
+                    emission: $this->getOwnerRecord(),
+                    actor: auth()->user(),
+                );
+
+                $this->resetPositionCache();
+
+                Notification::make()->title('Posição da competência atualizada.')->success()->send();
+            });
+    }
+
+    protected function makeCloseCompetenceAction(): Action
+    {
+        return Action::make('close_competence')
+            ->label('Fechar competência')
+            ->icon('heroicon-o-lock-closed')
+            ->color('gray')
+            ->authorize(fn (): bool => $this->canCloseCompetence())
+            ->visible(fn (): bool => ! $this->isCompetenceClosed())
+            ->requiresConfirmation()
+            ->modalHeading('Fechar a competência')
+            ->modalDescription('O indicador do mês passa a ser imutável e é o que os relatórios usarão. Reabrir depois exige permissão específica e fica registrado na auditoria.')
+            ->modalSubmitActionLabel('Fechar competência')
+            ->action(function (): void {
+                app(GuaranteeSnapshotWriter::class)->close(
+                    emission: $this->getOwnerRecord(),
+                    referenceMonth: $this->position()->referenceMonth,
+                    actor: auth()->user(),
+                );
+
+                $this->resetPositionCache();
+
+                Notification::make()->title('Competência fechada.')->success()->send();
+            });
+    }
+
+    protected function isCompetenceClosed(): bool
+    {
+        return $this->getOwnerRecord()
+            ->guaranteeSnapshots()
+            ->whereDate('reference_month', $this->position()->referenceMonth)
+            ->whereNotNull('closed_at')
+            ->exists();
+    }
+
+    protected function resetPositionCache(): void
+    {
+        $this->positionCache = null;
+        $this->positionsByGuarantee = null;
+        $this->getOwnerRecord()->unsetRelation('guaranteeSnapshots');
+    }
+
+    protected function formatIdentification(mixed $state): string
+    {
+        if (! is_array($state) || $state === []) {
+            return '—';
         }
 
-        if (! Emission::hasGuaranteeSnapshotsTable()) {
-            return $this->coverageOverview = [
-                'canManageGuarantees' => $this->canManageGuarantees(),
-                'canRegisterMonthlyIndicators' => false,
-                'latestSummary' => null,
-                'history' => collect(),
-                'migrationPending' => true,
-                'needsMonthlyUpdate' => false,
-            ];
+        return collect($state)
+            ->filter(fn (mixed $value): bool => filled($value))
+            ->take(3)
+            ->map(fn (mixed $value, string $key): string => sprintf('%s: %s', $this->identificationLabel($key), $value))
+            ->implode(' · ');
+    }
+
+    protected function identificationLabel(string $key): string
+    {
+        foreach (GuaranteeCategory::cases() as $category) {
+            $fields = $category->identificationFields();
+
+            if (isset($fields[$key])) {
+                return $fields[$key];
+            }
         }
 
-        /** @var Emission $emission */
-        $emission = $this->getOwnerRecord();
-        $calculator = app(GuaranteeCoverageCalculator::class);
-        $history = $calculator->buildHistory($emission);
+        return str($key)->replace('_', ' ')->title()->toString();
+    }
 
-        return $this->coverageOverview = [
-            'canManageGuarantees' => $this->canManageGuarantees(),
-            'canRegisterMonthlyIndicators' => $this->canRegisterMonthlyIndicators(),
-            'latestSummary' => $history->first(),
-            'history' => $history,
-            'migrationPending' => false,
-            'needsMonthlyUpdate' => $emission->requiresMonthlyGuaranteeSnapshotUpdate(),
-        ];
+    protected function requirementLabel(Guarantee $guarantee): string
+    {
+        $position = $this->positionFor($guarantee);
+
+        return $position?->requirement->description
+            ?? $guarantee->requirement_formula
+            ?? ($guarantee->requirement_value === null ? '—' : $this->money($guarantee->requirement_value));
+    }
+
+    protected function validityLabel(Guarantee $guarantee): string
+    {
+        $start = $guarantee->validity_start_date?->format('d/m/Y');
+        $end = $guarantee->validity_end_date?->format('d/m/Y');
+
+        return match (true) {
+            $start !== null && $end !== null => "{$start} — {$end}",
+            $start !== null => "Desde {$start}",
+            $end !== null => "Até {$end}",
+            default => '—',
+        };
     }
 
     /**
-     * @return array{quota_value: string|null, reference_month: string}
+     * Ausência é dita, não convertida em zero (§25).
      */
-    protected function getMonthlySnapshotDefaults(): array
+    protected function money(mixed $value): string
     {
-        if (! Emission::hasGuaranteeSnapshotsTable()) {
-            return [
-                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay(now()->startOfMonth()->toDateString()),
-                'quota_value' => null,
-            ];
+        if ($value === null || $value === '') {
+            return 'Não informado';
         }
 
-        $currentMonth = now()->startOfMonth()->toDateString();
-
-        $currentSnapshot = $this->ownerRecord->guaranteeSnapshots()
-            ->whereDate('reference_month', $currentMonth)
-            ->first();
-
-        if ($currentSnapshot instanceof GuaranteeSnapshot) {
-            return [
-                'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay($currentSnapshot->reference_month),
-                'quota_value' => $this->formatCurrency($currentSnapshot->quota_value),
-            ];
-        }
-
-        $latestSnapshot = $this->ownerRecord->guaranteeSnapshots()
-            ->latest('reference_month')
-            ->first();
-
-        return [
-            'reference_month' => GuaranteeSnapshot::formatReferenceMonthForDisplay($currentMonth),
-            'quota_value' => $this->formatCurrency($latestSnapshot?->quota_value),
-        ];
+        return 'R$ '.MoneyFormatter::formatCurrencyForDisplay($value);
     }
 
-    protected function makeCurrencyInput(string $name, string $label): TextInput
+    protected function ratio(?float $value): string
+    {
+        return $value === null ? '—' : number_format($value * 100, 2, ',', '.').'%';
+    }
+
+    protected function currencyInput(string $name, string $label): TextInput
     {
         return TextInput::make($name)
             ->label($label)
-            ->required()
             ->prefix('R$')
             ->inputMode('decimal')
             ->mask(RawJs::make(<<<'JS'
                 $money($input, ',', '.')
             JS))
-            ->formatStateUsing(fn (mixed $state): ?string => $this->formatCurrency($state))
-            ->dehydrateStateUsing(fn (mixed $state): ?float => $this->normalizeCurrency($state))
-            ->mutateStateForValidationUsing(fn (mixed $state): ?float => $this->normalizeCurrency($state))
             ->minValue(0)
-            ->placeholder('0,00')
-            ->validationMessages([
-                'required' => "Informe {$label}.",
-                'min' => "{$label} nao pode ser negativo.",
-            ]);
+            ->placeholder('0,00');
     }
 
-    protected function normalizeCurrency(mixed $state): ?float
+    protected function userCanCreate(): bool
     {
-        if ($state === null) {
-            return null;
-        }
-
-        if (is_string($state) && (trim($state) === '')) {
-            return null;
-        }
-
-        return MoneyFormatter::normalizeDecimalValue($state);
+        return auth()->user()?->can(AccessPermission::GuaranteesCreate->value) ?? false;
     }
 
-    protected function formatCurrency(mixed $state): ?string
+    protected function userCanUpdate(): bool
     {
-        if ($state === null) {
-            return null;
-        }
-
-        if (is_string($state) && (trim($state) === '')) {
-            return null;
-        }
-
-        return MoneyFormatter::formatCurrencyForDisplay($state);
+        return auth()->user()?->can(AccessPermission::GuaranteesUpdate->value) ?? false;
     }
 
-    protected function canManageGuarantees(): bool
+    protected function userCanDelete(): bool
     {
-        return auth()->user()?->can('emissions.update') ?? false;
+        return auth()->user()?->can(AccessPermission::GuaranteesDelete->value) ?? false;
     }
 
-    protected function canRegisterMonthlyIndicators(): bool
+    protected function canUpdateValues(): bool
     {
-        return $this->canManageGuarantees() && Emission::hasGuaranteeSnapshotsTable();
+        return auth()->user()?->can(AccessPermission::GuaranteesUpdateValue->value) ?? false;
+    }
+
+    protected function canCloseCompetence(): bool
+    {
+        return auth()->user()?->can(AccessPermission::GuaranteesCloseCompetence->value) ?? false;
+    }
+
+    protected function canManageValuations(): bool
+    {
+        return auth()->user()?->can(AccessPermission::GuaranteesManageValuations->value) ?? false;
     }
 }

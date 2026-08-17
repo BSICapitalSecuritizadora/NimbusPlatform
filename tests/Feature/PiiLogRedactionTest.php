@@ -5,6 +5,7 @@ use App\Actions\Proposals\SendProposalContinuationLink;
 use App\DTOs\Nimbus\LookupNimbusCnpjDTO;
 use App\Livewire\Forms\CreateProposalFormObject;
 use App\Livewire\Proposals\CreateProposalForm;
+use App\Models\Proposal;
 use App\Models\ProposalRepresentative;
 use App\Models\ProposalSector;
 use App\Services\Security\PiiPseudonymizer;
@@ -48,7 +49,7 @@ function writtenLogContents(string $logFile): string
     return (string) file_get_contents($logFile);
 }
 
-it('does not write the proponent e-mail or cnpj when the public proposal submission fails', function () {
+it('does not write the proponent e-mail or cnpj when continuation mail dispatch fails', function () {
     $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
 
     ProposalRepresentative::factory()->create([
@@ -58,7 +59,7 @@ it('does not write the proponent e-mail or cnpj when the public proposal submiss
 
     $state = proposalCreateFormState($sector);
     $state['email'] = 'proponente.sigiloso@example.com';
-    $state['cnpj'] = '12.345.678/0001-90';
+    $state['cnpj'] = '11.257.352/0001-43';
 
     fakeProposalCreateLookups($state);
 
@@ -76,17 +77,19 @@ it('does not write the proponent e-mail or cnpj when the public proposal submiss
         $component->set("form.{$property}", $value);
     }
 
-    $component->call('save')->assertHasErrors(['submission']);
+    $component->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('proposal.create'));
+
+    expect(Proposal::query()->count())->toBe(1);
 
     $log = writtenLogContents($this->logFile);
 
     expect($log)
-        ->toContain('Falha ao registrar proposta pública.')
+        ->toContain('Proposta salva, mas a comunicação de continuação não pôde ser enfileirada.')
         ->not->toContain('proponente.sigiloso@example.com')
-        ->not->toContain('12.345.678/0001-90')
-        ->not->toContain('12345678000190')
-        ->and($log)->toContain(PiiPseudonymizer::email('proponente.sigiloso@example.com'))
-        ->and($log)->toContain(PiiPseudonymizer::document('12.345.678/0001-90'));
+        ->not->toContain('11.257.352/0001-43')
+        ->not->toContain('11257352000143');
 });
 
 it('does not write the cnpj when the nimbus portal lookup fails', function () {

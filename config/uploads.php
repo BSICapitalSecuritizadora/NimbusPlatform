@@ -38,6 +38,15 @@ $parseAntivirusFlag = static function (bool $default): bool {
     return $parsed;
 };
 
+$proposalContinuationMaxKb = Env::get('UPLOAD_PROPOSAL_MAX_KB');
+
+if ($proposalContinuationMaxKb === null || $proposalContinuationMaxKb === '') {
+    $legacyProposalMaxBytes = (int) Env::get('UPLOAD_PROPOSAL_MAX_BYTES', 20 * 1024 * 1024);
+    $proposalContinuationMaxKb = (int) ceil($legacyProposalMaxBytes / 1024);
+}
+
+$proposalContinuationMaxKb = (int) $proposalContinuationMaxKb;
+
 return [
 
     /*
@@ -51,7 +60,9 @@ return [
     */
 
     'proposal_continuation' => [
-        'max_bytes' => (int) env('UPLOAD_PROPOSAL_MAX_BYTES', 20 * 1024 * 1024),
+        'max_kb' => $proposalContinuationMaxKb,
+        'max_bytes' => $proposalContinuationMaxKb * 1024,
+        'allowed_extensions' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'],
         'allowed_mimes' => [
             'application/pdf',
             'image/jpeg',
