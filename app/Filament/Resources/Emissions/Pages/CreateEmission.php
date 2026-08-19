@@ -16,6 +16,10 @@ class CreateEmission extends CreateRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Emissão cadastrada com sucesso.';

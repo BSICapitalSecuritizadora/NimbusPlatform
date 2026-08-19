@@ -17,6 +17,10 @@ class ViewProposal extends ViewRecord
 {
     protected static string $resource = ProposalResource::class;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-proposal-view-page',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

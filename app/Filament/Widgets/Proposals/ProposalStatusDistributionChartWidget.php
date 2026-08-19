@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets\Proposals;
 
-use App\Enums\ProposalStatus;
+use App\Filament\Resources\Proposals\ProposalResource;
 use App\Support\Proposals\ProposalDashboardData;
 use Filament\Widgets\ChartWidget;
 
@@ -10,9 +10,37 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
 {
     protected static bool $isDiscovered = false;
 
-    protected ?string $heading = 'Distribuição por Situação';
+    protected ?string $heading = 'Composição da Carteira';
 
-    protected ?string $description = 'Proporção da carteira comercial por etapa do processo.';
+    protected ?string $description = 'Distribuição por estágio operacional.';
+
+    protected string $view = 'filament.widgets.proposals.proposal-status-distribution-chart-widget';
+
+    protected int|string|array $columnSpan = [
+        'default' => 'full',
+        'xl' => 4,
+    ];
+
+    protected ?string $maxHeight = '160px';
+
+    /**
+     * @return array{
+     *     total: int,
+     *     items: array<int, array{status: string, label: string, count: int, percentage: float, color_hex: string, color_name: string}>,
+     *     active_items: array<int, array{status: string, label: string, count: int, percentage: float, color_hex: string, color_name: string}>,
+     *     inactive_items_count: int,
+     *     dominant_item: ?array{status: string, label: string, count: int, percentage: float}
+     * }
+     */
+    public function getDetails(): array
+    {
+        return app(ProposalDashboardData::class)->statusDistributionDetails();
+    }
+
+    public function getProposalsUrl(): string
+    {
+        return ProposalResource::getUrl('index');
+    }
 
     protected function getType(): string
     {
@@ -21,23 +49,27 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
 
     protected function getData(): array
     {
-        $distribution = app(ProposalDashboardData::class)->statusDistribution();
+        $details = $this->getDetails();
+
+        if ($details['total'] === 0) {
+            return [
+                'labels' => ['Sem propostas'],
+                'datasets' => [[
+                    'data' => [1],
+                    'backgroundColor' => ['#e2e8f0'],
+                    'borderWidth' => 0,
+                ]],
+            ];
+        }
 
         return [
-            'labels' => array_map(
-                fn (string $status): string => ProposalStatus::labelFor($status),
-                array_keys($distribution),
-            ),
+            'labels' => array_column($details['active_items'], 'label'),
             'datasets' => [[
-                'data' => array_values($distribution),
-                'backgroundColor' => [
-                    '#f59e0b',
-                    '#3b82f6',
-                    '#f97316',
-                    '#10b981',
-                    '#ef4444',
-                    '#64748b',
-                ],
+                'data' => array_column($details['active_items'], 'count'),
+                'backgroundColor' => array_column($details['active_items'], 'color_hex'),
+                'borderWidth' => 2,
+                'borderColor' => '#ffffff',
+                'hoverOffset' => 4,
             ]],
         ];
     }
@@ -45,9 +77,16 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
     protected function getOptions(): array
     {
         return [
+            'cutout' => '72%',
+            'maintainAspectRatio' => false,
             'plugins' => [
                 'legend' => [
-                    'position' => 'bottom',
+                    'display' => false,
+                ],
+                'tooltip' => [
+                    'padding' => 10,
+                    'boxPadding' => 4,
+                    'usePointStyle' => true,
                 ],
             ],
         ];

@@ -43,6 +43,7 @@ class Document extends Model
         'file_name',
         'mime_type',
         'file_size',
+        'checksum',
         'storage_disk',
         'is_published',
         'is_public',
@@ -80,6 +81,16 @@ class Document extends Model
     protected function storedFileMimeColumn(): string
     {
         return 'mime_type';
+    }
+
+    /**
+     * O SHA-256 é derivado do arquivo em disco a cada troca de `file_path`, o que
+     * sobrescreve qualquer valor vindo do formulário — o campo é preenchível só
+     * para que apareça no log de atividade, não para ser informado.
+     */
+    protected function storedFileChecksumColumn(): ?string
+    {
+        return 'checksum';
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Filament\Widgets\Dashboard\DeadlinesWidget;
 use App\Filament\Widgets\Dashboard\ExecutiveIndicatorsWidget;
 use App\Filament\Widgets\Dashboard\MyPendingsWidget;
 use App\Filament\Widgets\Dashboard\OperationalAlertsWidget;
+use App\Filament\Widgets\Dashboard\RecentActivitiesWidget;
 use App\Filament\Widgets\Dashboard\ShortcutsWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
 
@@ -13,12 +14,17 @@ class Dashboard extends BaseDashboard
 {
     protected static ?string $title = 'Cockpit Operacional';
 
+    protected ?string $subheading = 'Prioridades, indicadores e prazos reunidos para uma leitura operacional mais rápida.';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     public function getColumns(): int|array
     {
         return [
             'default' => 1,
-            'md' => 2,
-            'xl' => 2,
+            'xl' => 12,
         ];
     }
 
@@ -29,8 +35,8 @@ class Dashboard extends BaseDashboard
             ExecutiveIndicatorsWidget::class,
             OperationalAlertsWidget::class,
             MyPendingsWidget::class,
+            RecentActivitiesWidget::class,
             DeadlinesWidget::class,
-            \App\Filament\Widgets\Dashboard\RecentActivitiesWidget::class,
         ];
     }
 }

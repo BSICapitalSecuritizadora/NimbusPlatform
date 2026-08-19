@@ -7,6 +7,7 @@ use App\Filament\Resources\Investors\Pages\EditInvestor;
 use App\Filament\Resources\Investors\Pages\ListInvestors;
 use App\Models\Investor;
 use BackedEnum;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
@@ -17,9 +18,10 @@ use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Hash;
@@ -169,48 +171,71 @@ class InvestorResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (Investor $record): ?string => static::canEdit($record) ? InvestorResource::getUrl('edit', ['record' => $record]) : null)
+            ->searchPlaceholder('Buscar por investidor, CPF ou e-mail...')
+            ->defaultSort('name')
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->emptyStateHeading('Nenhum investidor cadastrado')
+            ->emptyStateDescription('Cadastre o primeiro investidor para começar a gerenciar seus acessos e relacionamento.')
+            ->emptyStateIcon('heroicon-o-users')
             ->columns([
                 TextColumn::make('name')
-                    ->label('Denominação do Investidor')
-                    ->searchable()
-                    ->sortable(),
+                    ->label('Investidor')
+                    ->description(fn (Investor $record): ?string => $record->cpf ? "CPF {$record->cpf}" : ($record->rg ? "RG {$record->rg}" : null))
+                    ->weight('semibold')
+                    ->wrap()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('cpf', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"))
+                    ->sortable()
+                    ->tooltip(fn (Investor $record): ?string => $record->name),
 
                 TextColumn::make('email')
-                    ->label('E-mail')
+                    ->label('Contato')
+                    ->description(fn (Investor $record): ?string => collect([$record->mobile, $record->phone])->filter()->implode(' · '))
+                    ->placeholder('Sem contato cadastrado')
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('phone')
-                    ->label('Telefone Fixo')
-                    ->toggleable(),
-
-                TextColumn::make('mobile')
-                    ->label('Telefone Celular')
-                    ->toggleable(),
-
-                TextColumn::make('cpf')
-                    ->label('CPF')
-                    ->toggleable(),
-
-                TextColumn::make('rg')
-                    ->label('RG')
-                    ->toggleable(),
-
-                IconColumn::make('is_active')
+                TextColumn::make('is_active')
                     ->label('Situação')
-                    ->boolean(),
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Ativo' : 'Inativo')
+                    ->color(fn (bool $state): string => $state ? 'success' : 'danger')
+                    ->alignCenter()
+                    ->sortable(),
 
                 TextColumn::make('last_login_at')
                     ->label('Último Acesso')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(),
+                    ->description(fn (Investor $record): ?string => $record->last_login_at?->diffForHumans())
+                    ->placeholder('Nunca acessou')
+                    ->sortable(),
+
+                TextColumn::make('phone')
+                    ->label('Telefone Fixo')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('mobile')
+                    ->label('Telefone Celular')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('cpf')
+                    ->label('CPF')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('rg')
+                    ->label('RG')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('last_portal_seen_at')
                     ->label('Última Interação')
                     ->dateTime('d/m/Y H:i')
+                    ->description(fn (Investor $record): ?string => $record->last_portal_seen_at?->diffForHumans())
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->label('Data de Registro')
@@ -218,14 +243,31 @@ class InvestorResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->actions([
-                EditAction::make()
-                    ->visible(fn (): bool => auth()->user()->can('investors.update')),
-
-                DeleteAction::make()
-                    ->visible(fn (): bool => auth()->user()->can('investors.delete')),
+            ->filtersFormWidth(Width::Small)
+            ->filtersFormMaxHeight('420px')
+            ->filters([
+                SelectFilter::make('is_active')
+                    ->label('Situação do Investidor')
+                    ->options([
+                        '1' => 'Ativo',
+                        '0' => 'Inativo',
+                    ]),
             ])
-            ->defaultSort('name');
+            ->actions([
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Editar Cadastro')
+                        ->icon('heroicon-o-pencil-square')
+                        ->visible(fn (Investor $record): bool => static::canEdit($record)),
+
+                    DeleteAction::make()
+                        ->label('Excluir Investidor')
+                        ->icon('heroicon-o-trash')
+                        ->visible(fn (Investor $record): bool => static::canDelete($record)),
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->tooltip('Ações do investidor'),
+            ]);
     }
 
     public static function canViewAny(): bool

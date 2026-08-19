@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Enums\MalwareScanStatus;
+use App\Exceptions\UploadScanUnavailableException;
 use App\Services\Security\ClamAvFileScanner;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -103,6 +104,13 @@ trait ScansUploadedFile
     }
 
     /**
+     * Antivírus fora do ar não é o mesmo que arquivo reprovado: o primeiro se
+     * resolve tentando de novo, o segundo não. A distinção sai no tipo da
+     * exceção — {@see UploadScanUnavailableException} estende
+     * `ValidationException`, então quem só trata o formulário não muda de
+     * comportamento, e quem processa vários arquivos consegue interromper o
+     * restante em vez de repetir o timeout arquivo a arquivo.
+     *
      * @throws ValidationException
      */
     protected function rejectUploadedFile(string $reason, string $path): never
@@ -113,6 +121,12 @@ trait ScansUploadedFile
             'disk' => $this->uploadedFileDisk(),
             'relative_path' => $path,
         ]);
+
+        if ($reason === 'antivirus_indisponivel') {
+            throw UploadScanUnavailableException::withMessages([
+                $this->uploadedFilePathColumn() => 'Não foi possível validar a segurança do arquivo no momento. Tente novamente mais tarde.',
+            ]);
+        }
 
         throw ValidationException::withMessages([
             $this->uploadedFilePathColumn() => $reason === 'malware_detectado'

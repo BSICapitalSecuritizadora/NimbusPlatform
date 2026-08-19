@@ -10,6 +10,10 @@ class ViewEmission extends ViewRecord
 {
     protected static string $resource = EmissionResource::class;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

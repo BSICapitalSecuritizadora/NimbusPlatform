@@ -2,6 +2,13 @@
 
 use App\Enums\ProposalStatus;
 use App\Filament\Pages\ProposalDashboard;
+use App\Filament\Widgets\Proposals\ProposalAttentionTableWidget;
+use App\Filament\Widgets\Proposals\ProposalOverviewStatsWidget;
+use App\Filament\Widgets\Proposals\ProposalRecentTableWidget;
+use App\Filament\Widgets\Proposals\ProposalRepresentativeLoadChartWidget;
+use App\Filament\Widgets\Proposals\ProposalShortcutsWidget;
+use App\Filament\Widgets\Proposals\ProposalStatusDistributionChartWidget;
+use App\Filament\Widgets\Proposals\ProposalVolumeChartWidget;
 use App\Models\Proposal;
 use App\Models\ProposalCompany;
 use App\Models\ProposalContact;
@@ -10,6 +17,7 @@ use App\Models\User;
 use App\Support\Proposals\ProposalDashboardData;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -69,6 +77,8 @@ it('builds proposal dashboard metrics according to the authenticated user scope'
         'completed' => 0,
         'attention' => 3,
         'received_last_30_days' => 4,
+        'active_pipeline' => 3,
+        'conversion_rate' => 100.0,
     ])
         ->and($adminSummary)->toMatchArray([
             'total' => 7,
@@ -80,13 +90,42 @@ it('builds proposal dashboard metrics according to the authenticated user scope'
             'completed' => 1,
             'attention' => 3,
             'received_last_30_days' => 7,
+            'active_pipeline' => 4,
+            'conversion_rate' => 66.7,
         ])
         ->and($dashboardData->attentionQuery($representativeUser)->pluck('id')->all())
-        ->toBe([$awaitingInformation->id, $awaitingCompletion->id, $staleReview->id])
+        ->toBe([$staleReview->id, $awaitingInformation->id, $awaitingCompletion->id])
+        ->and($dashboardData->attentionSeverity($staleReview))->toBe('critical')
+        ->and($dashboardData->attentionSeverityLabel($staleReview))->toBe('SLA Crítico')
+        ->and($dashboardData->attentionSeverityColor($staleReview))->toBe('danger')
+        ->and($dashboardData->attentionSeverity($awaitingInformation))->toBe('attention')
+        ->and($dashboardData->attentionSeverityLabel($awaitingInformation))->toBe('Atenção')
+        ->and($dashboardData->attentionSeverityColor($awaitingInformation))->toBe('warning')
+        ->and($dashboardData->attentionDiagnosis($staleReview))->toContain('Parado em análise')
+        ->and($dashboardData->attentionDiagnosis($awaitingInformation))->toContain('Aguardando cliente')
         ->and(array_sum($dashboardData->monthlyVolume(6, $adminUser)['received']))
         ->toBe(7)
         ->and(array_sum($dashboardData->monthlyVolume(6, $adminUser)['completed']))
         ->toBe(1)
+        ->and($dashboardData->monthlyVolumeMetrics(6, $adminUser))
+        ->toMatchArray([
+            'total_received' => 7,
+            'total_completed' => 1,
+            'conversion_rate' => 14.3,
+            'has_activity' => true,
+        ])
+        ->and($dashboardData->statusDistributionDetails($adminUser))
+        ->toMatchArray([
+            'total' => 7,
+            'inactive_items_count' => 0,
+        ])
+        ->and($dashboardData->representativeLoadDetails())
+        ->toMatchArray([
+            'total_representatives' => 2,
+            'total_active_proposals' => 5,
+            'average_load' => 2.5,
+            'has_activity' => true,
+        ])
         ->and($dashboardData->representativeLoad()->pluck('active_proposals_count', 'name')->all())
         ->toBe([
             $representative->name => 4,
@@ -115,7 +154,49 @@ it('renders the proposal dashboard only for users with proposal access', functio
     $this
         ->get(ProposalDashboard::getUrl(panel: 'admin'))
         ->assertSuccessful()
-        ->assertSee('Painel de Propostas');
+        ->assertSee('Painel de Propostas')
+        ->assertSee('bsi-cockpit-page', false);
+
+    Livewire::test(ProposalShortcutsWidget::class)
+        ->assertSee('Carteira de Propostas')
+        ->assertSee('Pendências e SLA')
+        ->assertSee('Taxa de Deferimento');
+
+    Livewire::test(ProposalOverviewStatsWidget::class)
+        ->assertSee('Total de Propostas')
+        ->assertSee('Fila Ativa')
+        ->assertSee('Taxa de Conversão')
+        ->assertSee('Atenção & SLA Crítico');
+
+    Livewire::test(ProposalVolumeChartWidget::class)
+        ->assertSee('Evolução e Formalização de Propostas')
+        ->assertSee('Total Captado')
+        ->assertSee('Formalizações')
+        ->assertSee('Conversão')
+        ->assertSee('Mês Destaque');
+
+    Livewire::test(ProposalStatusDistributionChartWidget::class)
+        ->assertSee('Composição da Carteira')
+        ->assertSee('Em Carteira')
+        ->assertSee('Em Análise Técnica');
+
+    Livewire::test(ProposalAttentionTableWidget::class)
+        ->assertSee('Propostas com Atenção / SLA Crítico');
+
+    Livewire::test(ProposalRecentTableWidget::class)
+        ->assertSee('Entradas e Movimentações Recentes');
+
+    $adminUser = User::factory()->withTwoFactor()->create([
+        'email' => 'admin-carga-fila@example.com',
+    ]);
+    $adminUser->assignRole('admin');
+
+    $this->actingAs($adminUser);
+
+    Livewire::test(ProposalRepresentativeLoadChartWidget::class)
+        ->assertSee('Carga Operacional da Fila Comercial')
+        ->assertSee('Gerenciar Fila')
+        ->assertSee($representative->name);
 
     $userWithoutPermission = User::factory()->create([
         'email' => 'sem-acesso-propostas@example.com',

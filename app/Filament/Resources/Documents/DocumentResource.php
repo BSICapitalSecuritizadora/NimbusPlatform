@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Documents;
 
+use App\Filament\Resources\Documents\Pages\BatchCreateDocuments;
 use App\Filament\Resources\Documents\Pages\CreateDocument;
 use App\Filament\Resources\Documents\Pages\EditDocument;
 use App\Filament\Resources\Documents\Pages\ListDocuments;
@@ -76,6 +77,7 @@ class DocumentResource extends Resource
         return [
             'index' => ListDocuments::route('/'),
             'create' => CreateDocument::route('/create'),
+            'batch' => BatchCreateDocuments::route('/lote'),
             'edit' => EditDocument::route('/{record}/edit'),
         ];
     }

@@ -3,6 +3,17 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
+@theme {
+    --color-bsi-gold-500: #b7832f;
+    --color-bsi-gold-600: #96651f;
+    --color-bsi-navy-800: #12313b;
+    --color-bsi-navy-900: #091b23;
+    --color-bsi-navy-950: #06151c;
+    --color-bsi-paper: #fbfaf8;
+    --color-bsi-stone-50: #f8f7f4;
+    --color-bsi-stone-100: #efede9;
+}
+
 :root {
     --color-white: #e6e4e4;
     --gray-50: #f6f3f2;
@@ -16,6 +27,360 @@
     --gray-800: #34302e;
     --gray-900: #221f1e;
     --gray-950: #151313;
+}
+
+.bsi-login-backdrop {
+    background:
+        radial-gradient(circle at 16% 28%, rgb(20 60 70 / 0.72), transparent 34%),
+        radial-gradient(circle at 82% 78%, rgb(183 131 47 / 0.1), transparent 30%),
+        linear-gradient(135deg, #06151c 0%, #0a2028 52%, #06151c 100%);
+}
+
+/* ── Institutional topbar ── */
+.fi-topbar {
+    position: relative;
+    min-height: 4.5rem;
+    padding-inline: 1.25rem;
+    background: linear-gradient(180deg, var(--color-bsi-navy-800) 0%, var(--color-bsi-navy-950) 100%);
+    box-shadow: 0 10px 28px rgb(4 14 19 / 0.16);
+    --tw-ring-shadow: 0 0 #0000;
+}
+
+.fi-topbar::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        rgb(183 131 47 / 0.08),
+        rgb(183 131 47 / 0.5) 24%,
+        rgb(230 228 228 / 0.14) 58%,
+        rgb(183 131 47 / 0.08)
+    );
+    content: '';
+    pointer-events: none;
+}
+
+.fi-topbar-start {
+    display: flex;
+    min-width: 0;
+    margin-inline-end: 1.5rem;
+}
+
+.fi-topbar-start .fi-logo {
+    height: 2.25rem !important;
+    max-width: 11rem;
+    margin-inline-start: 0;
+}
+
+.fi-topbar-start .fi-logo img {
+    width: auto;
+    height: 100%;
+    object-fit: contain;
+}
+
+.fi-topbar-end {
+    gap: 0.5rem;
+}
+
+.fi-topbar .fi-global-search-ctn {
+    width: 20rem;
+    transition: width 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fi-topbar .fi-global-search,
+.fi-topbar .fi-global-search-field {
+    width: 100%;
+}
+
+.fi-topbar .fi-global-search-field .fi-input-wrp {
+    min-height: 2.75rem;
+    overflow: hidden;
+    color: var(--color-bsi-paper);
+    background: rgb(251 250 248 / 0.07);
+    border: 1px solid rgb(251 250 248 / 0.14);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    --tw-ring-shadow: 0 0 #0000;
+}
+
+.fi-topbar .fi-global-search-field .fi-input-wrp:hover {
+    background: rgb(251 250 248 / 0.1);
+    border-color: rgb(251 250 248 / 0.22);
+}
+
+.fi-topbar .fi-global-search-field .fi-input-wrp:focus-within {
+    background: rgb(251 250 248 / 0.11);
+    border-color: var(--color-bsi-gold-500);
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.05),
+        0 0 0 3px rgb(183 131 47 / 0.2);
+    --tw-ring-shadow: 0 0 #0000;
+}
+
+.fi-topbar .fi-global-search-field input.fi-input {
+    min-height: 2.625rem;
+    color: var(--color-bsi-paper);
+    caret-color: var(--color-bsi-gold-500);
+}
+
+.fi-topbar .fi-global-search-field input.fi-input::placeholder {
+    color: rgb(251 250 248 / 0.62);
+}
+
+.fi-topbar .fi-global-search-field .fi-input-wrp-prefix > .fi-icon {
+    color: rgb(251 250 248 / 0.68);
+}
+
+.fi-topbar .fi-global-search-field .fi-input-wrp-suffix {
+    padding-inline-start: 0.375rem;
+    padding-inline-end: 0.625rem;
+}
+
+.fi-topbar .fi-global-search-field .fi-input-wrp-label {
+    padding: 0.25rem 0.375rem;
+    color: rgb(251 250 248 / 0.72);
+    background: rgb(251 250 248 / 0.07);
+    border: 1px solid rgb(251 250 248 / 0.14);
+    border-radius: 6px;
+    font-size: 0.625rem;
+    font-weight: 650;
+    line-height: 1;
+    letter-spacing: 0.035em;
+}
+
+.fi-topbar .fi-global-search-results-ctn {
+    overflow: hidden auto;
+    border: 1px solid rgb(9 27 35 / 0.12);
+    border-radius: 14px;
+    box-shadow: 0 18px 42px rgb(4 14 19 / 0.2);
+}
+
+.dark .fi-topbar .fi-global-search-results-ctn {
+    border-color: rgb(183 131 47 / 0.2);
+}
+
+.fi-topbar .fi-topbar-open-sidebar-btn,
+.fi-topbar .fi-topbar-close-sidebar-btn,
+.fi-topbar .fi-topbar-open-collapse-sidebar-btn,
+.fi-topbar .fi-topbar-close-collapse-sidebar-btn,
+.fi-topbar .fi-topbar-database-notifications-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0;
+    color: rgb(251 250 248 / 0.72);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+}
+
+.fi-topbar .fi-topbar-open-sidebar-btn:hover,
+.fi-topbar .fi-topbar-close-sidebar-btn:hover,
+.fi-topbar .fi-topbar-open-collapse-sidebar-btn:hover,
+.fi-topbar .fi-topbar-close-collapse-sidebar-btn:hover,
+.fi-topbar .fi-topbar-database-notifications-btn:hover,
+.fi-topbar .fi-user-menu-trigger:hover {
+    color: var(--color-bsi-paper);
+    background: rgb(251 250 248 / 0.08);
+    border-color: rgb(251 250 248 / 0.12);
+}
+
+.fi-topbar .fi-topbar-open-sidebar-btn:focus-visible,
+.fi-topbar .fi-topbar-close-sidebar-btn:focus-visible,
+.fi-topbar .fi-topbar-open-collapse-sidebar-btn:focus-visible,
+.fi-topbar .fi-topbar-close-collapse-sidebar-btn:focus-visible,
+.fi-topbar .fi-topbar-database-notifications-btn:focus-visible,
+.fi-topbar .fi-user-menu-trigger:focus-visible {
+    color: var(--color-bsi-paper);
+    border-color: var(--color-bsi-gold-500);
+    outline: 2px solid var(--color-bsi-gold-500);
+    outline-offset: 2px;
+    --tw-ring-shadow: 0 0 #0000;
+}
+
+.fi-topbar .fi-topbar-database-notifications-btn > .fi-icon-btn-badge-ctn {
+    top: 0.25rem;
+    background: transparent;
+}
+
+.fi-topbar .fi-topbar-database-notifications-btn .fi-badge {
+    min-width: 1.125rem;
+    min-height: 1.125rem;
+    padding: 0.125rem 0.3rem;
+    color: var(--color-bsi-navy-950);
+    background: color-mix(in srgb, var(--color-bsi-gold-500) 64%, var(--color-bsi-paper));
+    border-radius: 999px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1;
+    --tw-ring-color: var(--color-bsi-navy-950);
+}
+
+.bsi-topbar-user-context {
+    display: none;
+    min-width: 0;
+    max-width: 12rem;
+    justify-items: end;
+    padding-inline-start: 0.375rem;
+    line-height: 1.2;
+    text-align: end;
+}
+
+.bsi-topbar-user-name,
+.bsi-topbar-user-role {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bsi-topbar-user-name {
+    color: var(--color-bsi-paper);
+    font-size: 0.8125rem;
+    font-weight: 650;
+}
+
+.bsi-topbar-user-role {
+    margin-top: 0.15rem;
+    color: color-mix(in srgb, var(--color-bsi-gold-500) 74%, var(--color-bsi-paper));
+    font-size: 0.6875rem;
+    font-weight: 550;
+    letter-spacing: 0.025em;
+}
+
+.fi-topbar .fi-user-menu-trigger {
+    display: flex;
+    width: 3.25rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    color: rgb(251 250 248 / 0.58);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    outline: none;
+    transition:
+        color 150ms ease-out,
+        background-color 150ms ease-out,
+        border-color 150ms ease-out;
+}
+
+.fi-topbar .fi-user-menu-trigger::after {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    content: '';
+    transform: translateY(-0.125rem) rotate(45deg);
+}
+
+.fi-topbar .fi-user-avatar {
+    width: 2.125rem;
+    height: 2.125rem;
+    border: 1px solid rgb(213 170 103 / 0.72);
+    border-radius: 999px;
+    box-shadow: 0 0 0 2px rgb(183 131 47 / 0.12);
+}
+
+@media (min-width: 80rem) {
+    .bsi-topbar-user-context {
+        display: grid;
+    }
+}
+
+@media (min-width: 40rem) and (max-width: 79.999rem) {
+    .fi-topbar .fi-global-search-ctn {
+        width: clamp(11rem, 28vw, 16rem);
+    }
+}
+
+@media (max-width: 39.999rem) {
+    .fi-topbar {
+        min-height: 4rem;
+        gap: 0.25rem;
+        padding-inline: 0.75rem;
+    }
+
+    .fi-topbar-start {
+        flex: 1 1 auto;
+        margin-inline-end: 0.25rem;
+    }
+
+    .fi-topbar-start .fi-logo {
+        height: 1.625rem !important;
+        max-width: 7.25rem;
+    }
+
+    .fi-topbar-end {
+        flex: 0 0 auto;
+        gap: 0.25rem;
+    }
+
+    .fi-topbar .fi-global-search-ctn,
+    .fi-topbar .fi-global-search-field .fi-input-wrp {
+        width: 2.75rem;
+    }
+
+    .fi-topbar .fi-global-search-field {
+        position: relative;
+    }
+
+    .fi-topbar .fi-global-search-field .fi-input-wrp-content-ctn {
+        position: absolute;
+        inset: 0;
+    }
+
+    .fi-topbar .fi-global-search-field input.fi-input {
+        height: 100%;
+        padding: 0;
+        cursor: pointer;
+        opacity: 0;
+    }
+
+    .fi-topbar .fi-global-search-field .fi-input-wrp-suffix {
+        display: none;
+    }
+
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) > .fi-topbar-open-sidebar-btn,
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) > .fi-topbar-close-sidebar-btn,
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) > .fi-topbar-start,
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) .fi-topbar-database-notifications-btn,
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) .fi-user-menu {
+        display: none;
+    }
+
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) .fi-topbar-end,
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) .fi-global-search-ctn,
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) .fi-global-search-field .fi-input-wrp {
+        width: 100%;
+    }
+
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) .fi-topbar-end {
+        flex: 1 1 auto;
+    }
+
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) .fi-global-search-field .fi-input-wrp-content-ctn {
+        position: static;
+    }
+
+    .fi-topbar:has(.fi-global-search-ctn:focus-within) .fi-global-search-field input.fi-input {
+        padding-inline-end: 0.75rem;
+        cursor: text;
+        opacity: 1;
+    }
+
+    .fi-topbar .fi-user-menu-trigger {
+        width: 2.75rem;
+    }
+
+    .fi-topbar .fi-user-menu-trigger::after {
+        display: none;
+    }
 }
 
 /*
@@ -84,3 +449,684 @@
     border: 1px solid rgba(212, 175, 55, 0.25) !important;
     border-top: 3px solid #d4af37 !important;
 }
+
+/* ── Cockpit Operacional ── */
+.bsi-cockpit-page {
+    background: #f6f3f2;
+}
+
+.bsi-cockpit-page ::selection {
+    color: #091b23;
+    background: rgb(183 131 47 / 0.28);
+}
+
+.bsi-cockpit-page .fi-page {
+    gap: 1.5rem;
+}
+
+.bsi-cockpit-page .fi-header {
+    overflow: hidden;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    color: #fbfaf8;
+    background: linear-gradient(135deg, #091b23 0%, #12313b 100%);
+    border-radius: 16px;
+    box-shadow: 0 18px 42px rgb(9 27 35 / 0.2);
+}
+
+.bsi-cockpit-page .fi-header-heading {
+    color: #fbfaf8;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    letter-spacing: -0.025em;
+}
+
+.bsi-cockpit-page .fi-header-subheading {
+    max-width: 65ch;
+    color: rgb(251 250 248 / 0.72);
+    line-height: 1.6;
+}
+
+.bsi-cockpit-page .bsi-cockpit-widget > .fi-section {
+    background: #fbfaf8;
+    border: 1px solid #dbd5d3;
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+.bsi-cockpit-page .bsi-cockpit-widget > .fi-section > .fi-section-header {
+    background: #f8f7f4;
+}
+
+.bsi-cockpit-shortcut {
+    display: flex;
+    min-height: 5rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #fbfaf8;
+    border: 1px solid #dbd5d3;
+    border-radius: 12px;
+    transition:
+        background-color 200ms ease-out,
+        border-color 200ms ease-out;
+}
+
+.bsi-cockpit-shortcut:hover {
+    background: #f8f7f4;
+    border-color: #b7832f;
+}
+
+.bsi-cockpit-shortcut:focus-visible {
+    outline: 2px solid #96651f;
+    outline-offset: 3px;
+}
+
+.bsi-cockpit-action {
+    position: relative;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview-stat {
+    min-height: 7.75rem;
+    padding: 1rem;
+    background: #fbfaf8;
+    border: 1px solid #dbd5d3;
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+.bsi-cockpit-page a.fi-wi-stats-overview-stat {
+    transition:
+        background-color 200ms ease-out,
+        border-color 200ms ease-out;
+}
+
+.bsi-cockpit-page a.fi-wi-stats-overview-stat:hover {
+    background: #f8f7f4;
+    border-color: #b7832f;
+}
+
+.bsi-cockpit-page a.fi-wi-stats-overview-stat:focus-visible {
+    outline: 2px solid #96651f;
+    outline-offset: 3px;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview-stat-label-ctn {
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview-stat-label-ctn > .fi-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview-stat-value {
+    font-size: 1.75rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.025em;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview-stat-description {
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.bsi-activity-details > summary {
+    list-style: none;
+}
+
+.bsi-activity-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.bsi-activity-description {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.bsi-activity-details[open] .bsi-activity-description {
+    display: block;
+}
+
+.bsi-activity-collapse-label {
+    display: none;
+}
+
+.bsi-activity-details[open] .bsi-activity-expand-label {
+    display: none;
+}
+
+.bsi-activity-details[open] .bsi-activity-collapse-label {
+    display: inline;
+}
+
+.bsi-activity-expand-icon {
+    transition: transform 200ms ease-out;
+}
+
+.bsi-activity-details[open] .bsi-activity-expand-icon {
+    transform: rotate(180deg);
+}
+
+.bsi-cockpit-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #b7832f #efede9;
+}
+
+.bsi-cockpit-scroll::-webkit-scrollbar {
+    height: 0.5rem;
+}
+
+.bsi-cockpit-scroll::-webkit-scrollbar-track {
+    background: #efede9;
+    border-radius: 999px;
+}
+
+.bsi-cockpit-scroll::-webkit-scrollbar-thumb {
+    background: #b7832f;
+    border: 2px solid #efede9;
+    border-radius: 999px;
+}
+
+.dark .bsi-cockpit-page {
+    background: #06151c;
+}
+
+.dark .bsi-cockpit-page .bsi-cockpit-widget > .fi-section {
+    background: #0d252e;
+    border-color: rgb(183 131 47 / 0.24);
+}
+
+.dark .bsi-cockpit-page .bsi-cockpit-widget > .fi-section > .fi-section-header {
+    background: #0a2028;
+}
+
+.dark .bsi-cockpit-shortcut,
+.dark .bsi-cockpit-page .fi-wi-stats-overview-stat {
+    background: #0d252e;
+    border-color: rgb(183 131 47 / 0.24);
+}
+
+.dark .bsi-cockpit-shortcut:hover,
+.dark .bsi-cockpit-page a.fi-wi-stats-overview-stat:hover {
+    background: #12313b;
+    border-color: #b7832f;
+}
+
+.dark .bsi-cockpit-scroll {
+    scrollbar-color: #b7832f #12313b;
+}
+
+.dark .bsi-cockpit-scroll::-webkit-scrollbar-track {
+    background: #12313b;
+}
+
+.dark .bsi-cockpit-scroll::-webkit-scrollbar-thumb {
+    border-color: #12313b;
+}
+
+/* ── Cockpit Table Widgets (Full-width Cards) ── */
+/* ── Cockpit Unified Table Card Surface (Dark Teal & Gold) ── */
+.bsi-cockpit-page .fi-wi-table {
+    width: 100%;
+}
+
+.bsi-cockpit-page .fi-ta,
+.bsi-cockpit-page .fi-ta-ctn,
+.bsi-cockpit-page .fi-wi-table .fi-section,
+.bsi-cockpit-page .fi-section {
+    background: #fbfaf8;
+    border: 1px solid #dbd5d3;
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+.bsi-cockpit-page .fi-ta-header,
+.bsi-cockpit-page .fi-section-header,
+.bsi-cockpit-page thead.fi-ta-header {
+    background: #f8f7f4;
+}
+
+.dark .bsi-cockpit-page .fi-ta,
+.dark .bsi-cockpit-page .fi-ta-ctn,
+.dark .bsi-cockpit-page .fi-wi-table .fi-section,
+.dark .bsi-cockpit-page .fi-section {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.35) !important;
+}
+
+.dark .bsi-cockpit-page .fi-ta-header,
+.dark .bsi-cockpit-page .fi-section-header,
+.dark .bsi-cockpit-page thead.fi-ta-header {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(183, 131, 47, 0.15) !important;
+}
+
+.dark .bsi-cockpit-page thead.fi-ta-header th {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.bsi-cockpit-page .fi-ta-row {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dark .bsi-cockpit-page .fi-ta-row {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.dark .bsi-cockpit-page tr.fi-ta-row:hover {
+    background: rgba(18, 49, 59, 0.45) !important;
+}
+
+.dark .bsi-cockpit-page .fi-input-wrp {
+    background: #091b23 !important;
+    border-color: rgba(183, 131, 47, 0.2) !important;
+}
+
+.dark .bsi-cockpit-page .fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 1px #b7832f !important;
+}
+
+/* ── Table Action Button Group ── */
+.dark .bsi-cockpit-page .fi-ta-actions .fi-icon-btn {
+    color: rgba(251, 250, 248, 0.6);
+    border-radius: 8px;
+    transition: all 180ms ease;
+}
+
+.dark .bsi-cockpit-page .fi-ta-actions .fi-icon-btn:hover {
+    color: #b7832f;
+    background: rgba(18, 49, 59, 0.6);
+}
+
+/* ── Filter Dropdown Panel / Popover Floating Context ── */
+.fi-dropdown-panel {
+    z-index: 50 !important;
+}
+
+.dark .fi-dropdown-panel {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.28) !important;
+    box-shadow: 0 20px 45px rgba(4, 14, 19, 0.6) !important;
+    border-radius: 14px !important;
+}
+
+.dark .fi-ta-filters-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.5rem;
+}
+
+.dark .fi-ta-filters-heading {
+    color: #fbfaf8;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* ── Cockpit Tabs & Filter Navigation ── */
+.bsi-cockpit-page .fi-tabs {
+    border-radius: 12px;
+    padding: 0.25rem;
+    background: #efede9;
+    border: 1px solid #dbd5d3;
+}
+
+.dark .bsi-cockpit-page .fi-tabs {
+    background: #091b23;
+    border: 1px solid rgba(183, 131, 47, 0.18);
+}
+
+.dark .bsi-cockpit-page .fi-tabs-item-active {
+    background: #12313b !important;
+    color: #fbfaf8 !important;
+    border-radius: 8px;
+}
+
+/* ── Cockpit Table Pagination & Footer ── */
+.bsi-cockpit-page .fi-ta-pagination {
+    background: transparent !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+    padding: 0.75rem 1.25rem !important;
+}
+
+.dark .bsi-cockpit-page .fi-ta-pagination {
+    background: #0d252e !important;
+    border-top: 1px solid rgba(183, 131, 47, 0.14) !important;
+    color: rgba(251, 250, 248, 0.65) !important;
+}
+
+.dark .bsi-cockpit-page .fi-ta-pagination-records-per-page-select-ctn .fi-select-input {
+    background: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.2) !important;
+}
+
+/* ── BSI Semantic Badges (Subtle, Refined Banking Palette) ── */
+.dark .bsi-cockpit-page .fi-badge.fi-color-warning,
+.dark .bsi-cockpit-page .fi-badge[data-color="warning"] {
+    background: rgba(245, 158, 11, 0.12) !important;
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245, 158, 11, 0.28) !important;
+}
+
+.dark .bsi-cockpit-page .fi-badge.fi-color-info,
+.dark .bsi-cockpit-page .fi-badge[data-color="info"],
+.dark .bsi-cockpit-page .fi-badge.fi-color-primary,
+.dark .bsi-cockpit-page .fi-badge[data-color="primary"] {
+    background: rgba(14, 165, 233, 0.12) !important;
+    color: #38bdf8 !important;
+    border: 1px solid rgba(14, 165, 233, 0.28) !important;
+}
+
+.dark .bsi-cockpit-page .fi-badge.fi-color-success,
+.dark .bsi-cockpit-page .fi-badge[data-color="success"] {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #34d399 !important;
+    border: 1px solid rgba(16, 185, 129, 0.28) !important;
+}
+
+.dark .bsi-cockpit-page .fi-badge.fi-color-danger,
+.dark .bsi-cockpit-page .fi-badge[data-color="danger"] {
+    background: rgba(239, 68, 68, 0.12) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.28) !important;
+}
+
+.dark .bsi-cockpit-page .fi-badge.fi-color-gray,
+.dark .bsi-cockpit-page .fi-badge[data-color="gray"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(251, 250, 248, 0.65) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ── Resource List Pages Fine-Tuning (Carteira, Investidores, Representantes, Emissões) ── */
+.bsi-proposal-list-page .fi-page,
+.bsi-investors-list-page .fi-page,
+.bsi-representatives-list-page .fi-page,
+.bsi-emissions-list-page .fi-page {
+    gap: 0.75rem !important;
+}
+
+.bsi-proposal-list-page .fi-header,
+.bsi-investors-list-page .fi-header,
+.bsi-representatives-list-page .fi-header,
+.bsi-emissions-list-page .fi-header {
+    padding: 0.875rem 1.25rem !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, #091b23 0%, #12313b 100%) !important;
+    box-shadow: 0 8px 24px rgba(4, 14, 19, 0.3) !important;
+}
+
+.bsi-proposal-list-page .fi-header-heading,
+.bsi-investors-list-page .fi-header-heading,
+.bsi-representatives-list-page .fi-header-heading,
+.bsi-emissions-list-page .fi-header-heading {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+}
+
+.bsi-proposal-list-page .fi-header-subheading,
+.bsi-investors-list-page .fi-header-subheading,
+.bsi-representatives-list-page .fi-header-subheading,
+.bsi-emissions-list-page .fi-header-subheading {
+    font-size: 0.8125rem !important;
+    line-height: 1.35 !important;
+    color: rgba(251, 250, 248, 0.72) !important;
+    margin-top: 0.125rem !important;
+    max-width: 90ch !important;
+}
+
+.bsi-proposal-list-page .fi-breadcrumbs,
+.bsi-investors-list-page .fi-breadcrumbs,
+.bsi-representatives-list-page .fi-breadcrumbs,
+.bsi-emissions-list-page .fi-breadcrumbs {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.125rem !important;
+}
+
+.bsi-proposal-list-page .fi-ta-table,
+.bsi-investors-list-page .fi-ta-table,
+.bsi-representatives-list-page .fi-ta-table,
+.bsi-emissions-list-page .fi-ta-table {
+    width: 100% !important;
+    min-width: 100% !important;
+    table-layout: auto !important;
+}
+
+.bsi-proposal-list-page .fi-ta-cell .fi-badge,
+.bsi-investors-list-page .fi-ta-cell .fi-badge,
+.bsi-representatives-list-page .fi-ta-cell .fi-badge,
+.bsi-emissions-list-page .fi-ta-cell .fi-badge {
+    white-space: normal !important;
+    text-align: center !important;
+    line-height: 1.25 !important;
+    padding: 0.25rem 0.625rem !important;
+    font-size: 0.75rem !important;
+    max-width: 100% !important;
+    display: inline-flex !important;
+}
+
+.bsi-proposal-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-emissions-list-page .fi-tabs-item .fi-badge[data-color="gray"] {
+    opacity: 0.45 !important;
+}
+
+@media (min-width: 768px) {
+    .bsi-proposal-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-investors-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-representatives-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-emissions-list-page .fi-ta-header-toolbar .fi-input-wrp {
+        min-width: 22rem;
+    }
+}
+
+/* ── Cockpit Header Primary Action Button (Institutional BSI Gold) ── */
+.bsi-cockpit-page .fi-header .fi-btn-color-primary,
+.bsi-cockpit-page .fi-header .fi-btn[data-color="primary"],
+.bsi-cockpit-page .fi-header a.fi-btn,
+.bsi-cockpit-page .fi-header button.fi-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.375rem !important;
+    min-height: 2.25rem !important;
+    padding: 0.4375rem 0.9375rem !important;
+    background: linear-gradient(180deg, #b7832f 0%, #a06e28 100%) !important;
+    color: #ffffff !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+    border: 1px solid rgba(245, 208, 137, 0.3) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 6px rgba(4, 14, 19, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+    transition: all 180ms ease-out !important;
+}
+
+.bsi-cockpit-page .fi-header .fi-btn:hover {
+    background: linear-gradient(180deg, #c48f38 0%, #ad762c 100%) !important;
+    border-color: rgba(245, 208, 137, 0.5) !important;
+    box-shadow: 0 4px 14px rgba(160, 110, 40, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+    transform: translateY(-1px) !important;
+}
+
+.bsi-cockpit-page .fi-header .fi-btn:active {
+    background: #96651f !important;
+    transform: translateY(0) !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.bsi-cockpit-page .fi-header .fi-btn:focus-visible {
+    outline: 2px solid #b7832f !important;
+    outline-offset: 2px !important;
+}
+
+.bsi-cockpit-page .fi-header .fi-btn:disabled,
+.bsi-cockpit-page .fi-header .fi-btn[disabled] {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.bsi-cockpit-page .fi-header .fi-btn .fi-icon,
+.bsi-cockpit-page .fi-header .fi-btn svg {
+    width: 1rem !important;
+    height: 1rem !important;
+    color: #ffffff !important;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2)) !important;
+}
+
+@media (max-width: 640px) {
+    .bsi-cockpit-page .fi-page {
+        gap: 1.25rem;
+    }
+
+    .bsi-cockpit-page .fi-header {
+        border-radius: 14px;
+    }
+
+    .bsi-cockpit-page .fi-wi-stats-overview-stat {
+        min-height: 8.5rem;
+        padding: 0.875rem;
+    }
+
+    .bsi-cockpit-page .fi-wi-stats-overview-stat-value {
+        font-size: 1.5rem;
+    }
+
+    .bsi-cockpit-action {
+        min-height: 7rem;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.875rem;
+    }
+
+    .bsi-cockpit-action-arrow {
+        position: absolute;
+        top: 0.875rem;
+        right: 0.875rem;
+    }
+}
+
+/* ── Painel Operacional de PU ── */
+.bsi-pu-dashboard .fi-page {
+    gap: 1.25rem;
+}
+
+/* Superficie dos blocos proprios do painel (banner de saude e recorte ativo). */
+.bsi-pu-panel {
+    box-shadow: none;
+}
+
+/* Cartoes de indicador e estagios da esteira compartilham a mesma metrica. */
+.bsi-pu-card {
+    min-height: 9.25rem;
+    box-shadow: none;
+}
+
+.bsi-pu-stage {
+    min-height: 5rem;
+}
+
+/* Texto auxiliar dos cartoes: duas linhas, para manter a altura uniforme.
+   As notas de rodape das secoes nunca sao truncadas. */
+.bsi-pu-card-note {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+/* A tabela e o alvo do recorte: reserva espaco sob a topbar fixa ao rolar. */
+#pu-curvas-por-emissao {
+    scroll-margin-top: 6rem;
+}
+
+.dark .bsi-pu-dashboard .bsi-pu-panel {
+    box-shadow: 0 10px 30px rgb(4 14 19 / 0.28);
+}
+
+.dark .bsi-pu-dashboard .bsi-pu-card,
+.dark .bsi-pu-dashboard .bsi-pu-stage {
+    border-color: rgb(183 131 47 / 0.16);
+}
+
+.dark .bsi-pu-dashboard .bsi-pu-card--active,
+.dark .bsi-pu-dashboard .bsi-pu-stage--active {
+    border-color: var(--color-bsi-gold-500);
+}
+
+/* Filament pinta o cabecalho da secao; aqui ele fica no mesmo tom das tabelas. */
+.bsi-pu-dashboard .bsi-pu-summary .fi-section-header {
+    padding-block: 0.875rem;
+}
+
+@media (max-width: 640px) {
+    .bsi-pu-card {
+        min-height: 8rem;
+    }
+
+    .bsi-pu-card-note {
+        -webkit-line-clamp: 3;
+    }
+
+    .bsi-pu-dashboard .bsi-pu-summary .fi-section-content {
+        padding-inline: 1rem;
+    }
+}
+
+/* ── Indicadores Executivos do Fluxo Comercial ── */
+.bsi-proposal-overview-widget .fi-section-header {
+    padding-block: 1rem;
+}
+
+.bsi-proposal-stat-card {
+    min-height: 8.75rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+}
+
+.bsi-proposal-stat-card:hover {
+    box-shadow: 0 10px 25px -5px rgb(9 27 35 / 0.08), 0 8px 10px -6px rgb(9 27 35 / 0.04);
+}
+
+.dark .bsi-proposal-stat-card {
+    background-color: #0d252e;
+    border-color: rgb(183 131 47 / 0.18);
+    box-shadow: 0 4px 20px rgb(4 14 19 / 0.2);
+}
+
+.dark .bsi-proposal-stat-card:hover {
+    background-color: #12313b;
+    border-color: #b7832f;
+    box-shadow: 0 12px 28px rgb(4 14 19 / 0.4);
+}
+
+@media (max-width: 640px) {
+    .bsi-proposal-stat-card {
+        min-height: 7.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fi-topbar .fi-global-search-ctn,
+    .fi-topbar .fi-user-menu-trigger,
+    .bsi-cockpit-shortcut,
+    .bsi-cockpit-page a.fi-wi-stats-overview-stat,
+    .bsi-proposal-stat-card,
+    .bsi-activity-expand-icon,
+    .bsi-pu-card,
+    .bsi-pu-stage {
+        transition: none;
+    }
+}
+

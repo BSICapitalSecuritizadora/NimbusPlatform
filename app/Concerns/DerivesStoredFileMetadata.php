@@ -51,6 +51,19 @@ trait DerivesStoredFileMetadata
     }
 
     /**
+     * Coluna que guarda o SHA-256 do arquivo, ou `null` para não derivá-lo.
+     *
+     * Só vale a pena onde a identidade do conteúdo é usada — hoje, a detecção de
+     * documentos iguais no cadastro em lote. Calcular o hash exige ler o arquivo
+     * inteiro, o que em disco remoto é uma transferência completa; por isso é
+     * opcional e não o padrão.
+     */
+    protected function storedFileChecksumColumn(): ?string
+    {
+        return null;
+    }
+
+    /**
      * Coluna do nome de exibição, ou `null` para não derivá-lo.
      *
      * Só faz sentido derivar quando o nome exibido é o do arquivo em disco. Onde
@@ -83,12 +96,14 @@ trait DerivesStoredFileMetadata
         $mimeColumn = $this->storedFileMimeColumn();
         $sizeColumn = $this->storedFileSizeColumn();
         $nameColumn = $this->storedFileNameColumn();
+        $checksumColumn = $this->storedFileChecksumColumn();
 
         $watchedColumns = array_values(array_filter([
             $pathColumn,
             $mimeColumn,
             $sizeColumn,
             $nameColumn,
+            $checksumColumn,
         ]));
 
         if (! $this->isDirty($watchedColumns)) {
@@ -100,6 +115,8 @@ trait DerivesStoredFileMetadata
         if ($path === '') {
             return;
         }
+
+        $this->syncStoredFileChecksum($path, $checksumColumn);
 
         $metadata = rescue(
             fn (): array => app(DocumentStorageService::class)->metadata($path, $this->storedFileMetadataDisk()),
@@ -126,6 +143,30 @@ trait DerivesStoredFileMetadata
         if (is_int($metadata['size_bytes'])) {
             $this->setAttribute($sizeColumn, $metadata['size_bytes']);
         }
+    }
+
+    /**
+     * O checksum vem sempre do arquivo em disco, nunca do payload: um valor
+     * enviado pelo cliente transformaria a detecção de duplicidade em algo que o
+     * remetente controla.
+     *
+     * Diferente do MIME e do tamanho, aqui a falha de leitura grava `null` em vez
+     * de preservar o valor anterior. O hash antigo pertence ao arquivo antigo:
+     * mantê-lo depois de uma troca de arquivo faria o sistema afirmar que dois
+     * documentos são idênticos quando não são. `null` significa "desconhecido",
+     * que é o que de fato se sabe, e o `documents:backfill-checksums` recalcula
+     * depois.
+     */
+    protected function syncStoredFileChecksum(string $path, ?string $checksumColumn): void
+    {
+        if ($checksumColumn === null) {
+            return;
+        }
+
+        $this->setAttribute(
+            $checksumColumn,
+            app(DocumentStorageService::class)->checksum($path, $this->storedFileMetadataDisk()),
+        );
     }
 
     /**

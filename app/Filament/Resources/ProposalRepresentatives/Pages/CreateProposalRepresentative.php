@@ -8,4 +8,8 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateProposalRepresentative extends CreateRecord
 {
     protected static string $resource = ProposalRepresentativeResource::class;
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
 }

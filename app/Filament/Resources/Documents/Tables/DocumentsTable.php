@@ -135,6 +135,7 @@ class DocumentsTable
                             'file_name',
                             'mime_type',
                             'file_size',
+                            'checksum',
                             'storage_disk',
                             'version',
                             'parent_document_id',

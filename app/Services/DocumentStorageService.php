@@ -205,6 +205,33 @@ class DocumentStorageService
     }
 
     /**
+     * SHA-256 do arquivo gravado, lido em fluxo para não carregar o conteúdo
+     * inteiro na memória. Devolve `null` quando o arquivo não pode ser lido —
+     * em disco remoto isto é uma chamada de rede e pode falhar.
+     */
+    public function checksum(string $path, ?string $disk = null): ?string
+    {
+        $stream = rescue(
+            fn () => $this->filesystem($disk ?? self::privateDisk())->readStream($path),
+            null,
+            report: false,
+        );
+
+        if (! is_resource($stream)) {
+            return null;
+        }
+
+        try {
+            $hash = hash_init('sha256');
+            hash_update_stream($hash, $stream);
+
+            return hash_final($hash);
+        } finally {
+            fclose($stream);
+        }
+    }
+
+    /**
      * @return array{mime_type: ?string, size_bytes: ?int}
      */
     public function metadata(string $path, ?string $disk = null): array

@@ -2,8 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\PuCalculator\PuCurveOperationalSummaryWidget;
 use App\Filament\Widgets\PuCalculator\PuCurveOperationalTableWidget;
-use App\Filament\Widgets\PuCalculator\PuCurveOverviewStatsWidget;
 use Filament\Facades\Filament;
 use Filament\Pages\Dashboard;
 use Filament\Support\Icons\Heroicon;
@@ -22,6 +22,10 @@ class PuCurveOperationalDashboard extends Dashboard
 
     protected static ?int $navigationSort = 0;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-pu-dashboard',
+    ];
+
     public static function canAccess(): bool
     {
         return (bool) Filament::auth()->user()?->can('pu.dashboard.view');
@@ -35,13 +39,13 @@ class PuCurveOperationalDashboard extends Dashboard
     public function getWidgets(): array
     {
         return [
-            PuCurveOverviewStatsWidget::class,
+            PuCurveOperationalSummaryWidget::class,
             PuCurveOperationalTableWidget::class,
         ];
     }
 
     public function getSubheading(): ?string
     {
-        return 'Estado consolidado das curvas de PU de todas as emissões: status, validações, homologações, CDI faltante e saúde da fila.';
+        return 'Monitoramento consolidado das curvas de PU: posição na esteira operacional, exceções que exigem ação, cobertura de índice e saúde da fila de processamento.';
     }
 }

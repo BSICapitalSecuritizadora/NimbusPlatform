@@ -10,6 +10,10 @@ class EditProposalRepresentative extends EditRecord
 {
     protected static string $resource = ProposalRepresentativeResource::class;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

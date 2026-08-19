@@ -91,6 +91,49 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cadastro de documentos em lote
+    |--------------------------------------------------------------------------
+    |
+    | O Livewire envia todos os arquivos de um `FileUpload` múltiplo numa única
+    | requisição, então o lote inteiro trafega de uma vez: os limites abaixo
+    | precisam caber no que o nginx e o PHP aceitam por requisição, e não apenas
+    | no que cada documento individual aceita.
+    |
+    | - `max_files` = 20 acompanha o padrão do PHP `max_file_uploads`; acima
+    |   disso o PHP descarta os excedentes em silêncio.
+    | - `max_kb` (por arquivo) é deliberadamente menor que o do cadastro
+    |   individual (`uploads.document.max_kb`): 20 arquivos no limite individual
+    |   estourariam qualquer `client_max_body_size` razoável.
+    | - `total_max_kb` = 80 MB deixa folga sob o `NGINX_CLIENT_MAX_BODY_SIZE`
+    |   padrão do startup.sh (110 MB) para o overhead do multipart e o restante
+    |   do formulário.
+    | - `time_budget_seconds` limita o tempo de processamento no servidor. A
+    |   varredura antivírus é síncrona (`ScansUploadedFile`) e tem timeout
+    |   próprio por arquivo, então um clamd travado multiplicaria esse timeout
+    |   pelo número de arquivos. O padrão fica abaixo do menor teto da
+    |   requisição — `max_execution_time = 120` do `public/.user.ini`, mais
+    |   apertado que o `fastcgi_read_timeout` (420s) do startup.sh — para que a
+    |   degradação seja sempre a nossa, com resumo e reenvio, e nunca a do PHP,
+    |   que mataria a requisição sem resposta. Ao esgotar o orçamento, os
+    |   arquivos restantes são reportados como não processados e podem ser
+    |   reenviados pela própria tela.
+    |
+    | Nenhum destes valores precisa ser definido no ambiente: os padrões já cabem
+    | na configuração de produção. `max_files` não pode passar de 20 sem alterar
+    | o `max_file_uploads` do PHP, que é PHP_INI_SYSTEM e não aceita override em
+    | `.user.ini`.
+    |
+    */
+
+    'document_batch' => [
+        'max_files' => (int) env('UPLOAD_DOCUMENT_BATCH_MAX_FILES', 20),
+        'max_kb' => (int) env('UPLOAD_DOCUMENT_BATCH_MAX_KB', 25600),
+        'total_max_kb' => (int) env('UPLOAD_DOCUMENT_BATCH_TOTAL_MAX_KB', 81920),
+        'time_budget_seconds' => (int) env('UPLOAD_DOCUMENT_BATCH_TIME_BUDGET_SECONDS', 90),
+    ],
+
     'receivables_import' => [
         'allowed_mimes' => [
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

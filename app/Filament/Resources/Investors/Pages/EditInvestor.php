@@ -10,6 +10,10 @@ class EditInvestor extends EditRecord
 {
     protected static string $resource = InvestorResource::class;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
+use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveExportService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
@@ -22,16 +23,17 @@ use App\Models\EmissionPuDailyCurve;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Component;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Notifications\Notification;
-use Filament\Resources\Pages\EditRecord;
 // Filament v5: closures de schema recebem Filament\Schemas\Components\Utilities\Get (NAO Filament\Forms\Get).
 // Usar o import errado quebra o mount do formulario configurePuCalculation (campo CDI com Select->live()).
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Cache;
@@ -45,6 +47,10 @@ class EditEmission extends EditRecord
     protected static ?string $title = 'Editar Emissao';
 
     protected Width|string|null $maxContentWidth = Width::Full;
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
 
     public bool $isExtractingClauses = false;
 
@@ -211,7 +217,7 @@ class EditEmission extends EditRecord
                 ->action(function (): void {
                     try {
                         $version = app(HomologatePuCurve::class)->handle($this->getRecord(), null, auth()->id());
-                    } catch (\InvalidArgumentException|\App\Domain\PuCalculator\Exceptions\PuMakerCheckerException $exception) {
+                    } catch (\InvalidArgumentException|PuMakerCheckerException $exception) {
                         Notification::make()->title('Nao foi possivel homologar.')->body($exception->getMessage())->danger()->persistent()->send();
 
                         return;
@@ -567,7 +573,7 @@ class EditEmission extends EditRecord
     }
 
     /**
-     * @return array<int, \Filament\Forms\Components\Component>
+     * @return array<int, Component>
      */
     private function getGeneratePuCurveForm(): array
     {
@@ -587,7 +593,7 @@ class EditEmission extends EditRecord
     }
 
     /**
-     * @return array<int, \Filament\Forms\Components\Component>
+     * @return array<int, Component>
      */
     private function getPuCalculationForm(): array
     {

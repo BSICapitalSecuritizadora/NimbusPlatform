@@ -8,4 +8,8 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateInvestor extends CreateRecord
 {
     protected static string $resource = InvestorResource::class;
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
 }
