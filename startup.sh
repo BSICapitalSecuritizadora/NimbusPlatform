@@ -166,5 +166,5 @@ php artisan storage:link --force --no-interaction || true
 # um processo em segundo plano que termine. Sem os laços abaixo o `queue:work`
 # encerra por `--max-time` após uma hora e o agendador nunca roda — as duas
 # coisas param em silêncio até o próximo deploy.
-while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=420 --max-time=3600; sleep 5; done &
+while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=600 --max-time=3600; sleep 5; done &
 while true; do php artisan schedule:work; sleep 5; done &

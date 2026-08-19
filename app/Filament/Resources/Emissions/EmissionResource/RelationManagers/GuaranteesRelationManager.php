@@ -102,7 +102,7 @@ class GuaranteesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('name')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['construction', 'fund', 'documentReferences']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['construction', 'fund', 'documentReferences', 'pendingDetections']))
             ->columns([
                 TextColumn::make('name')
                     ->label('Garantia')
@@ -150,6 +150,13 @@ class GuaranteesRelationManager extends RelationManager
                     ->badge()
                     ->color('gray')
                     ->state(fn (Guarantee $record): string => $record->resolvedValueSource()->label())
+                    ->toggleable(),
+                TextColumn::make('documentation_status')
+                    ->label('Documentação')
+                    ->badge()
+                    ->state(fn (Guarantee $record): string => $record->documentationStatus()->shortLabel())
+                    ->color(fn (Guarantee $record): string => $record->documentationStatus()->color())
+                    ->tooltip(fn (Guarantee $record): string => $record->documentationStatus()->label())
                     ->toggleable(),
                 TextColumn::make('legal_status')
                     ->label('Status')

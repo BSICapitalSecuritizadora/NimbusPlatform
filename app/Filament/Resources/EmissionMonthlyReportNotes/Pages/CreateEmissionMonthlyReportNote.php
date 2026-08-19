@@ -9,13 +9,13 @@ class CreateEmissionMonthlyReportNote extends CreateRecord
 {
     protected static string $resource = EmissionMonthlyReportNoteResource::class;
 
-    protected static ?string $title = 'Cadastrar Comentário do Relatório';
+    protected static ?string $title = 'Cadastrar Nota Explicativa';
 
     protected static ?string $breadcrumb = 'Cadastrar';
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return 'Comentário cadastrado com sucesso.';
+        return 'Nota explicativa cadastrada com sucesso.';
     }
 
     /**

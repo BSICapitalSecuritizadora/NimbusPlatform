@@ -9,6 +9,7 @@ use App\Models\ObligationNotification;
 use App\Services\Obligations\ObligationHistoryRecorder;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -113,10 +114,14 @@ class SendObligationDueNotificationsAction
                         continue;
                     }
 
-                    if ($this->dispatchNotification($obligation, $milestone, $type, $recipient)) {
+                    $dispatchResult = $this->dispatchNotification($obligation, $milestone, $type, $recipient);
+
+                    if ($dispatchResult === true) {
                         $sent++;
-                    } else {
+                    } elseif ($dispatchResult === false) {
                         $failed++;
+                    } else {
+                        $ignored++;
                     }
                 }
             });
@@ -191,8 +196,13 @@ class SendObligationDueNotificationsAction
         string $milestone,
         string $type,
         string $recipient,
-    ): bool {
+    ): ?bool {
         $actionUrl = $this->resolveActionUrl($obligation);
+        $notification = $this->claimNotification($obligation, $milestone, $type, $recipient);
+
+        if ($notification === null) {
+            return null;
+        }
 
         try {
             Mail::mailer((string) config('mail.default', 'log'))
@@ -206,12 +216,7 @@ class SendObligationDueNotificationsAction
                 'message' => $exception->getMessage(),
             ]);
 
-            ObligationNotification::create([
-                'obligation_id' => $obligation->id,
-                'emission_id' => $obligation->emission_id,
-                'notification_type' => $type,
-                'milestone' => $milestone,
-                'recipient' => $recipient,
+            $notification->update([
                 'status' => ObligationNotification::STATUS_FAILED,
                 'error_message' => Str::limit($exception->getMessage(), 500),
             ]);
@@ -221,19 +226,60 @@ class SendObligationDueNotificationsAction
             return false;
         }
 
-        ObligationNotification::create([
-            'obligation_id' => $obligation->id,
-            'emission_id' => $obligation->emission_id,
-            'notification_type' => $type,
-            'milestone' => $milestone,
-            'recipient' => $recipient,
+        $notification->update([
             'status' => ObligationNotification::STATUS_SENT,
             'sent_at' => now(),
+            'error_message' => null,
         ]);
 
         $this->historyRecorder->recordNotificationSent($obligation, $milestone, $type, $recipient);
 
         return true;
+    }
+
+    protected function claimNotification(
+        Obligation $obligation,
+        string $milestone,
+        string $type,
+        string $recipient,
+    ): ?ObligationNotification {
+        $deduplicationKey = hash('sha256', implode('|', [
+            $obligation->id,
+            $milestone,
+            mb_strtolower($recipient),
+        ]));
+
+        try {
+            return ObligationNotification::create([
+                'obligation_id' => $obligation->id,
+                'emission_id' => $obligation->emission_id,
+                'notification_type' => $type,
+                'milestone' => $milestone,
+                'deduplication_key' => $deduplicationKey,
+                'recipient' => $recipient,
+                'status' => ObligationNotification::STATUS_PROCESSING,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            $claimed = ObligationNotification::query()
+                ->where('deduplication_key', $deduplicationKey)
+                ->where(function ($query): void {
+                    $query
+                        ->where('status', ObligationNotification::STATUS_FAILED)
+                        ->orWhere(function ($processingQuery): void {
+                            $processingQuery
+                                ->where('status', ObligationNotification::STATUS_PROCESSING)
+                                ->where('updated_at', '<=', now()->subHour());
+                        });
+                })
+                ->update([
+                    'status' => ObligationNotification::STATUS_PROCESSING,
+                    'error_message' => null,
+                ]);
+
+            return $claimed === 1
+                ? ObligationNotification::query()->where('deduplication_key', $deduplicationKey)->first()
+                : null;
+        }
     }
 
     protected function resolveActionUrl(Obligation $obligation): string

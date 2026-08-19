@@ -48,6 +48,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'guarantees.view', 'guarantees.create', 'guarantees.update',
             'guarantees.generate', 'guarantees.review_suggestions',
             'guarantees.approve_suggestion', 'guarantees.reject_suggestion',
+            'guarantees.complement_guarantee',
             'guarantees.reprocess_documents', 'guarantees.update_value',
             'guarantees.close_competence', 'guarantees.manage_valuations',
             'legal-instruments.view', 'legal-instruments.create', 'legal-instruments.update',

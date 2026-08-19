@@ -114,7 +114,7 @@ it('groups the emission monthly report resources under Emissões', function () {
             'Quadro de Vendas',
             'Negociações',
             'Relatório Mensal',
-            'Comentários do Relatório',
+            'Notas Explicativas',
         ]);
 });
 

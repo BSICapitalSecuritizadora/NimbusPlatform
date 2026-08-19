@@ -2,16 +2,21 @@
 
 namespace App\Services\Guarantees;
 
+use App\DTOs\Guarantees\GuaranteeConsolidationPlan;
+use App\DTOs\Guarantees\GuaranteeFieldDelta;
 use App\Enums\AccessPermission;
 use App\Enums\GuaranteeConfidenceLevel;
 use App\Enums\GuaranteeDetectionStatus;
 use App\Enums\GuaranteeDocumentReferenceType;
 use App\Enums\GuaranteeEventType;
 use App\Enums\GuaranteeLegalStatus;
+use App\Enums\GuaranteeRequirementBasis;
+use App\Enums\GuaranteeReviewTransition;
 use App\Models\ExtractedGuarantee;
 use App\Models\Guarantee;
 use App\Models\GuaranteeDocumentReference;
 use App\Models\GuaranteeEvent;
+use App\Models\LegalInstrumentField;
 use App\Models\User;
 use App\Services\Obligations\ObligationSuggestionReviewService;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -28,6 +33,13 @@ use InvalidArgumentException;
  * garantias: a confirmação pode criar uma garantia nova ou aplicar um evento
  * (alteração, reforço, substituição, liberação) a uma já existente, sempre
  * preservando a posição anterior no histórico jurídico.
+ *
+ * São três saídas, não duas. Quando a candidata corresponde a uma garantia já
+ * cadastrada, {@see self::complement()} enriquece a existente — é a saída
+ * principal, porque a mesma garantia aparece em vários instrumentos e cada
+ * documento novo acrescenta uma parte dela. {@see self::approve()} continua
+ * disponível para o caso em que são mesmo duas garantias distintas, e
+ * {@see self::reject()} para quando a candidata não deve virar nada.
  */
 class GuaranteeSuggestionReviewService
 {
@@ -37,9 +49,19 @@ class GuaranteeSuggestionReviewService
 
     public const EVENT_REJECTED = 'guarantee_suggestion_rejected';
 
+    public const EVENT_COMPLEMENTED = 'guarantee_existing_complemented';
+
     public const TRANSITION_APPROVE = 'approve';
 
     public const TRANSITION_REJECT = 'reject';
+
+    public const TRANSITION_COMPLEMENT = 'complement';
+
+    /** O revisor manteve o valor que já estava cadastrado. */
+    public const DECISION_KEEP = 'keep';
+
+    /** O revisor aceitou o valor do documento, versionando o anterior. */
+    public const DECISION_UPDATE = 'update';
 
     /**
      * Campos da garantia que um evento documental pode alterar. Um aditamento
@@ -66,6 +88,23 @@ class GuaranteeSuggestionReviewService
         'evaluation_frequency',
     ];
 
+    /**
+     * Dados bancários que pertencem ao fundo, não à garantia.
+     *
+     * Havendo fundo cadastrado com a mesma conta, a garantia aponta para ele em
+     * vez de guardar uma segunda cópia — o saldo e a conta são atualizados num
+     * lugar só (§16 do escopo de consolidação). A proveniência documental
+     * desses valores não se perde: ela vai para o versionamento por campo.
+     *
+     * @var list<string>
+     */
+    private const FUND_OWNED_IDENTIFICATION_KEYS = ['bank', 'agency', 'account'];
+
+    public function __construct(
+        private readonly GuaranteeConsolidationPlanner $planner,
+        private readonly GuaranteeFieldVersionWriter $fieldVersionWriter,
+    ) {}
+
     public function canUserReview(?User $user, string $transition): bool
     {
         if (! $this->canAccessReviewWorkspace($user)) {
@@ -81,16 +120,33 @@ class GuaranteeSuggestionReviewService
             return false;
         }
 
-        return $suggestion->isPending();
+        if (! $suggestion->isPending()) {
+            return false;
+        }
+
+        // Complementar exige alvo: sem garantia correspondente não há o que
+        // enriquecer, e a saída certa é criar a garantia.
+        return $transition !== self::TRANSITION_COMPLEMENT || $suggestion->related_guarantee_id !== null;
+    }
+
+    /**
+     * O que acontecerá se esta candidata for aplicada à garantia
+     * correspondente — recalculado contra o cadastro do momento.
+     */
+    public function planFor(ExtractedGuarantee $suggestion): GuaranteeConsolidationPlan
+    {
+        return $this->planner->plan($suggestion, $suggestion->relatedGuarantee);
     }
 
     public function permissionForTransition(string $transition): AccessPermission
     {
-        return match ($transition) {
-            self::TRANSITION_APPROVE => AccessPermission::GuaranteesApproveSuggestion,
-            self::TRANSITION_REJECT => AccessPermission::GuaranteesRejectSuggestion,
-            default => throw new InvalidArgumentException("Unsupported guarantee review transition [{$transition}]."),
-        };
+        $resolved = GuaranteeReviewTransition::tryFrom($transition);
+
+        if ($resolved === null) {
+            throw new InvalidArgumentException("Unsupported guarantee review transition [{$transition}].");
+        }
+
+        return $resolved->permission();
     }
 
     /**
@@ -156,6 +212,306 @@ class GuaranteeSuggestionReviewService
         });
     }
 
+    /**
+     * Enriquece a garantia já cadastrada com o que o novo documento acrescenta.
+     *
+     * É a saída principal quando a candidata corresponde a uma garantia
+     * existente: um documento novo não é uma garantia nova, e a mesma reserva
+     * de obras citada no Termo, na CCB e no aditamento tem de continuar sendo
+     * uma só posição consolidada.
+     *
+     * O que a operação faz e o que ela deliberadamente não faz:
+     *
+     * - campo vazio recebe o valor do documento (complemento);
+     * - campo com o mesmo valor não vira alteração — ganha só mais uma fonte (§10);
+     * - campo divergente só muda se o revisor mandar, e a posição anterior fica
+     *   no evento como valor anterior (§2 e §11);
+     * - a origem documental é registrada em qualquer um dos casos (§4).
+     *
+     * @param  array<string, string>  $divergenceDecisions  campo => `keep`|`update`, para cada divergência
+     */
+    public function complement(
+        ExtractedGuarantee $suggestion,
+        User $actor,
+        array $divergenceDecisions = [],
+        ?string $reviewNotes = null,
+    ): Guarantee {
+        $this->authorizeTransition($actor, self::TRANSITION_COMPLEMENT);
+
+        if (! $suggestion->isPending()) {
+            $this->throwTransitionException('Esta garantia detectada não pode ser complementada no status atual.');
+        }
+
+        $normalizedNotes = $this->normalizeText($reviewNotes);
+        $reviewedAt = now();
+
+        return DB::transaction(function () use ($suggestion, $actor, $divergenceDecisions, $normalizedNotes, $reviewedAt): Guarantee {
+            $suggestion->refresh();
+
+            if (! $suggestion->isPending()) {
+                $this->throwTransitionException('Esta garantia detectada já foi revisada.');
+            }
+
+            // A correspondência gravada na detecção é o caminho normal. Quando
+            // ela não existe, a garantia pode ter sido cadastrada depois — e aí
+            // vale a correspondência recalculada agora, não a ausência de então.
+            $targetId = $suggestion->related_guarantee_id
+                ?? $this->planner->plan($suggestion)->guarantee?->getKey();
+
+            if ($targetId === null) {
+                $this->throwTransitionException('Nenhuma garantia cadastrada foi identificada como correspondente a esta candidata.');
+            }
+
+            /** @var Guarantee $guarantee */
+            $guarantee = Guarantee::query()->whereKey($targetId)->lockForUpdate()->firstOrFail();
+
+            // O plano é montado dentro da transação, contra a garantia já
+            // travada: entre a detecção e esta confirmação alguém pode ter
+            // editado o cadastro, e aplicar um plano velho escreveria por cima
+            // de decisão mais recente.
+            $plan = $this->planner->plan($suggestion, $guarantee);
+
+            $previousValues = $this->comparableValues($guarantee);
+
+            $application = $this->applyPlan($guarantee, $plan, $divergenceDecisions, $suggestion);
+            $appliedDivergences = $application['divergences'];
+
+            // A vigência por campo é gravada com o valor efetivamente adotado:
+            // divergência que o revisor manteve não abre versão nova.
+            $fieldVersions = $this->fieldVersionWriter->record(
+                $guarantee,
+                array_merge($plan->complements, $appliedDivergences),
+                $suggestion,
+                $actor,
+            );
+
+            $eventType = $this->complementEventType($suggestion, $plan, $appliedDivergences);
+
+            $reference = $this->createDocumentReference(
+                $guarantee,
+                $suggestion,
+                $this->referenceTypeFor($eventType),
+                $actor,
+            );
+
+            $this->recordEvent(
+                guarantee: $guarantee,
+                reference: $reference,
+                eventType: $eventType,
+                effectiveDate: $suggestion->effective_date?->toDateString() ?? $suggestion->document_date?->toDateString(),
+                title: $this->complementEventTitle($eventType, $plan),
+                description: $suggestion->source_excerpt,
+                previousValues: $previousValues,
+                newValues: $this->comparableValues($guarantee->refresh()),
+                actor: $actor,
+            );
+
+            $suggestion->forceFill([
+                'status' => GuaranteeDetectionStatus::Approved,
+                'guarantee_id' => $guarantee->getKey(),
+                'related_guarantee_id' => $guarantee->getKey(),
+                'has_conflict' => false,
+                'review_notes' => $normalizedNotes,
+                'reviewed_by' => $actor->id,
+                'reviewed_at' => $reviewedAt,
+            ])->save();
+
+            $this->recordAudit(
+                self::EVENT_COMPLEMENTED,
+                sprintf('Garantia "%s" complementada por documento', $guarantee->display_name),
+                $suggestion,
+                $actor,
+                [
+                    'old_status' => GuaranteeDetectionStatus::Suggested->value,
+                    'new_status' => GuaranteeDetectionStatus::Approved->value,
+                    'guarantee_id' => $guarantee->getKey(),
+                    'outcome' => $plan->outcome->value,
+                    'event_type' => $eventType->value,
+                    'match_score' => $suggestion->match_score,
+                    'match_evidence' => $suggestion->match_evidence,
+                    'added_fields' => array_map(
+                        static fn (GuaranteeFieldDelta $delta): array => $delta->toArray(),
+                        $plan->complements,
+                    ),
+                    'updated_fields' => array_map(
+                        static fn (GuaranteeFieldDelta $delta): array => $delta->toArray(),
+                        $appliedDivergences,
+                    ),
+                    'confirmed_fields' => array_map(
+                        static fn (GuaranteeFieldDelta $delta): string => $delta->label,
+                        $plan->confirmations,
+                    ),
+                    'kept_fields' => array_map(
+                        static fn (GuaranteeFieldDelta $delta): string => $delta->label,
+                        array_values(array_udiff(
+                            $plan->divergences,
+                            $appliedDivergences,
+                            static fn (GuaranteeFieldDelta $a, GuaranteeFieldDelta $b): int => strcmp($a->field, $b->field),
+                        )),
+                    ),
+                    'linked_fund_id' => $plan->linkedFund?->getKey(),
+                    'fields_kept_in_fund' => array_map(
+                        static fn (GuaranteeFieldDelta $delta): string => $delta->label,
+                        $application['delegated'],
+                    ),
+                    'versioned_fields' => array_map(
+                        static fn (LegalInstrumentField $version): ?string => $version->field_key?->label(),
+                        $fieldVersions,
+                    ),
+                    'source' => array_filter([
+                        'document' => $suggestion->document?->title,
+                        'clause' => $suggestion->source_clause,
+                        'page' => $suggestion->source_page,
+                    ], static fn (mixed $value): bool => filled($value)),
+                    'review_notes' => $normalizedNotes,
+                    'reviewed_at' => $reviewedAt->toDateTimeString(),
+                ],
+            );
+
+            return $guarantee;
+        });
+    }
+
+    /**
+     * Escreve o plano na garantia.
+     *
+     * Divergência sem decisão explícita do revisor é mantida como está: o
+     * padrão nunca sobrescreve o que já foi cadastrado (§2 do escopo).
+     *
+     * @param  array<string, string>  $divergenceDecisions
+     * @return array{divergences: list<GuaranteeFieldDelta>, delegated: list<GuaranteeFieldDelta>}
+     */
+    private function applyPlan(
+        Guarantee $guarantee,
+        GuaranteeConsolidationPlan $plan,
+        array $divergenceDecisions,
+        ExtractedGuarantee $suggestion,
+    ): array {
+        $attributes = [];
+        $identification = $guarantee->identification ?? [];
+        $applied = [];
+        $delegated = [];
+
+        $belongsToFund = fn (GuaranteeFieldDelta $delta): bool => $plan->linkedFund !== null
+            && $delta->isIdentification
+            && in_array($delta->field, self::FUND_OWNED_IDENTIFICATION_KEYS, true);
+
+        foreach ($plan->complements as $delta) {
+            if ($belongsToFund($delta)) {
+                $delegated[] = $delta;
+
+                continue;
+            }
+
+            if ($delta->isIdentification) {
+                $identification[$delta->field] = $delta->newValue;
+
+                continue;
+            }
+
+            $attributes[$delta->field] = $delta->newValue;
+        }
+
+        foreach ($plan->divergences as $delta) {
+            if (($divergenceDecisions[$delta->field] ?? self::DECISION_KEEP) !== self::DECISION_UPDATE) {
+                continue;
+            }
+
+            $applied[] = $delta;
+
+            if ($belongsToFund($delta)) {
+                $delegated[] = $delta;
+
+                continue;
+            }
+
+            if ($delta->isIdentification) {
+                $identification[$delta->field] = $delta->newValue;
+            } else {
+                $attributes[$delta->field] = $delta->newValue;
+            }
+        }
+
+        // A conta passou a ser do fundo: a cópia que a garantia carregava sai
+        // de cena, para não haver duas respostas para "qual é a conta".
+        if ($plan->linkedFund !== null) {
+            $identification = array_diff_key($identification, array_flip(self::FUND_OWNED_IDENTIFICATION_KEYS));
+        }
+
+        if ($identification !== ($guarantee->identification ?? [])) {
+            $attributes['identification'] = $identification;
+        }
+
+        // A garantia passa a apontar para o fundo já cadastrado em vez de
+        // carregar uma segunda cópia dos dados bancários (§16).
+        if ($plan->linkedFund !== null && $guarantee->fund_id === null) {
+            $attributes['fund_id'] = $plan->linkedFund->getKey();
+        }
+
+        // Garantia digitada à mão ganha o instrumento que a fundamenta (§13).
+        if ($guarantee->legal_instrument_id === null && $suggestion->legal_instrument_id !== null) {
+            $attributes['legal_instrument_id'] = $suggestion->legal_instrument_id;
+        }
+
+        if ($guarantee->constituted_at === null && $plan->providesFirstDocumentarySource) {
+            $attributes['constituted_at'] = $suggestion->effective_date ?? $suggestion->document_date;
+        }
+
+        if ($attributes !== []) {
+            $guarantee->fill($attributes)->save();
+        }
+
+        return ['divergences' => $applied, 'delegated' => $delegated];
+    }
+
+    /**
+     * Evento que representa o que o documento fez com a garantia.
+     *
+     * Uma garantia cadastrada à mão que só agora encontra sua fundamentação
+     * documental recebe `Constitution`: o documento não constitui uma segunda
+     * garantia, ele comprova a constituição da que já existia (§12).
+     *
+     * @param  list<GuaranteeFieldDelta>  $appliedDivergences
+     */
+    private function complementEventType(
+        ExtractedGuarantee $suggestion,
+        GuaranteeConsolidationPlan $plan,
+        array $appliedDivergences,
+    ): GuaranteeEventType {
+        $candidateEvent = $suggestion->event_type ?? GuaranteeEventType::Constitution;
+
+        if ($plan->providesFirstDocumentarySource && $candidateEvent === GuaranteeEventType::Constitution) {
+            return GuaranteeEventType::Constitution;
+        }
+
+        if ($appliedDivergences !== []) {
+            return $candidateEvent === GuaranteeEventType::Constitution
+                ? GuaranteeEventType::Amendment
+                : $candidateEvent;
+        }
+
+        // Nada mudou de valor: o documento entra como comprovação, não como
+        // alteração fictícia que poluiria o histórico.
+        return $plan->hasComplements()
+            ? GuaranteeEventType::Amendment
+            : GuaranteeEventType::DocumentaryEvidence;
+    }
+
+    private function complementEventTitle(GuaranteeEventType $eventType, GuaranteeConsolidationPlan $plan): string
+    {
+        if ($eventType === GuaranteeEventType::Constitution) {
+            return 'Constituição comprovada documentalmente';
+        }
+
+        if ($eventType === GuaranteeEventType::DocumentaryEvidence) {
+            return 'Comprovação documental';
+        }
+
+        return $plan->hasComplements() && $plan->divergences === []
+            ? 'Informações complementares'
+            : $eventType->label();
+    }
+
     public function reject(ExtractedGuarantee $suggestion, User $actor, ?string $rejectionReason): ExtractedGuarantee
     {
         $this->authorizeTransition($actor, self::TRANSITION_REJECT);
@@ -215,7 +571,10 @@ class GuaranteeSuggestionReviewService
             'identification' => $suggestion->identification,
             'contracted_value' => $suggestion->contracted_value,
             'documentary_value' => $suggestion->documentary_value,
-            'requirement_basis' => $suggestion->requirement_basis,
+            // A coluna é NOT NULL com default 'none', e um NULL explícito não
+            // aciona o default do banco. Candidatas vindas de instrumento não
+            // trazem regra contratual: ausência de regra é `None`, não nulo.
+            'requirement_basis' => $suggestion->requirement_basis ?? GuaranteeRequirementBasis::None,
             'requirement_value' => $suggestion->requirement_value,
             'requirement_percentage' => $suggestion->requirement_percentage,
             'requirement_base' => $suggestion->requirement_base,
@@ -352,6 +711,7 @@ class GuaranteeSuggestionReviewService
             GuaranteeEventType::Substitution => GuaranteeDocumentReferenceType::Substitution,
             GuaranteeEventType::Release => GuaranteeDocumentReferenceType::Release,
             GuaranteeEventType::Registration => GuaranteeDocumentReferenceType::Registration,
+            GuaranteeEventType::DocumentaryEvidence => GuaranteeDocumentReferenceType::Evidence,
             default => GuaranteeDocumentReferenceType::Amendment,
         };
     }

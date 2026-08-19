@@ -12,6 +12,8 @@
     $date = static fn (mixed $value): string => $value === null ? '—' : $value->format('d/m/Y');
 
     $identificationLabels = $guarantee->type?->category()->identificationFields() ?? [];
+
+    $fieldTimeline = app(\App\Services\Guarantees\GuaranteeFieldVersionWriter::class)->timeline($guarantee);
 @endphp
 
 <div class="space-y-6 text-sm">
@@ -34,9 +36,20 @@
                 </div>
             @endif
             @if ($guarantee->fund)
+                {{-- A conta vem do fundo, não de uma segunda cópia dentro da
+                     garantia: é o fundo que tem o saldo e é ele que é atualizado. --}}
                 <div>
                     <dt class="text-gray-400">Conta vinculada</dt>
-                    <dd class="font-medium">{{ $guarantee->fund->trade_name }}</dd>
+                    <dd class="font-medium">
+                        {{ $guarantee->fund->trade_name ?? $guarantee->fund->fundName?->name ?? 'Fundo cadastrado' }}
+                    </dd>
+                    <dd class="text-xs text-gray-400">
+                        {{ collect([
+                            $guarantee->fund->bank?->name,
+                            filled($guarantee->fund->agency) ? 'Ag. ' . $guarantee->fund->agency : null,
+                            filled($guarantee->fund->account) ? 'C/C ' . $guarantee->fund->account : null,
+                        ])->filter()->join(' · ') ?: 'Dados bancários não informados no fundo' }}
+                    </dd>
                 </div>
             @endif
             @foreach (($guarantee->identification ?? []) as $key => $value)
@@ -173,6 +186,54 @@
         @endif
     </section>
 
+    {{-- Vigência por campo --}}
+    @if ($fieldTimeline->isNotEmpty())
+        <section>
+            <h4 class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Vigência por campo</h4>
+            <p class="mt-1 text-xs text-gray-500">
+                Cada valor guarda desde quando vale e qual documento o estabeleceu. O valor anterior não é
+                apagado: ele deixa de vigorar na data em que o seguinte passa a valer.
+            </p>
+
+            <div class="mt-3 space-y-3">
+                @foreach ($fieldTimeline as $entry)
+                    <div class="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+                        <div class="text-xs font-semibold uppercase tracking-[0.14em] text-gray-400">
+                            {{ $entry['key']?->label() ?? 'Campo' }}
+                        </div>
+
+                        <ul class="mt-2 space-y-2">
+                            @foreach ($entry['versions'] as $version)
+                                <li class="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs">
+                                    <span class="font-medium {{ $version['is_current'] ? 'text-gray-100' : 'text-gray-400 line-through decoration-white/30' }}">
+                                        {{ $version['field']->formatted_value }}
+                                    </span>
+
+                                    @if ($version['is_current'])
+                                        <span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-200">
+                                            Vigente desde {{ $date($version['valid_from']) }}
+                                        </span>
+                                    @else
+                                        <span class="rounded-full bg-white/[0.05] px-2 py-0.5 text-gray-400">
+                                            {{ $date($version['valid_from']) }} até {{ $date($version['valid_until']) }}
+                                        </span>
+                                    @endif
+
+                                    <span class="text-gray-500">
+                                        {{ $version['field']->document_label }}
+                                        @if ($version['field']->source_label)
+                                            · {{ $version['field']->source_label }}
+                                        @endif
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     {{-- Histórico jurídico --}}
     <section>
         <h4 class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Histórico jurídico</h4>
@@ -191,10 +252,10 @@
                         @endif
                         @foreach ($event->change_summary as $change)
                             <p class="mt-1 text-xs text-gray-300">
-                                {{ \Illuminate\Support\Str::of($change['field'])->replace('_', ' ')->title() }}:
-                                <span class="text-gray-400">{{ $change['from'] ?? '—' }}</span>
+                                {{ $change['label'] }}:
+                                <span class="text-gray-400">{{ $change['from_display'] ?? 'Não informado' }}</span>
                                 →
-                                <span class="font-medium">{{ $change['to'] ?? '—' }}</span>
+                                <span class="font-medium">{{ $change['to_display'] ?? '—' }}</span>
                             </p>
                         @endforeach
                         @if ($event->documentReference)

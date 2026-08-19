@@ -10,6 +10,13 @@ use Illuminate\Validation\ValidationException;
 
 class CustomLogin extends BaseLogin
 {
+    protected static string $layout = 'filament-panels::components.layout.base';
+
+    public function getTitle(): string|Htmlable
+    {
+        return 'Acesso Administrativo - BSI Capital';
+    }
+
     public function getHeading(): string|Htmlable
     {
         return 'Entrar no sistema';

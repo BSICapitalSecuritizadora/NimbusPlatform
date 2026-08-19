@@ -37,7 +37,7 @@ enum GuaranteeDocumentReferenceType: string
             self::Substitution => GuaranteeEventType::Substitution,
             self::Release => GuaranteeEventType::Release,
             self::Registration => GuaranteeEventType::Registration,
-            self::Evidence => GuaranteeEventType::StatusChange,
+            self::Evidence => GuaranteeEventType::DocumentaryEvidence,
         };
     }
 

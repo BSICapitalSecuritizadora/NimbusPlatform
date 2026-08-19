@@ -9,6 +9,7 @@ use App\Models\ObligationHistoryEntry;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Closure;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class ObligationHistoryRecorder
@@ -57,6 +58,32 @@ class ObligationHistoryRecorder
     public function recordCreated(Obligation $obligation): ObligationHistoryEntry
     {
         $snapshot = $this->snapshot($obligation);
+
+        if ($obligation->obligation_series_id !== null) {
+            $isOnDemand = $obligation->generation_source === Obligation::GENERATION_SOURCE_ON_DEMAND;
+
+            return $this->record(
+                $obligation,
+                $isOnDemand
+                    ? ObligationHistoryEntry::EVENT_GENERATED_ON_DEMAND
+                    : ObligationHistoryEntry::EVENT_GENERATED_FROM_SERIES,
+                $isOnDemand
+                    ? ObligationHistoryEntry::SOURCE_MANUAL
+                    : $this->currentSource(),
+                $isOnDemand ? 'Ocorrência sob demanda criada' : 'Competência gerada automaticamente',
+                sprintf(
+                    'Ocorrência da competência %s criada a partir da série recorrente.',
+                    $obligation->competence_label ?? 'não informada',
+                ),
+                newValues: $snapshot,
+                metadata: [
+                    'obligation_series_id' => $obligation->obligation_series_id,
+                    'obligation_series_rule_id' => $obligation->obligation_series_rule_id,
+                    'competence_date' => $obligation->competence_date?->toDateString(),
+                    'generation_source' => $obligation->generation_source,
+                ],
+            );
+        }
 
         if ($obligation->extracted_obligation_id !== null) {
             return $this->record(
@@ -443,7 +470,7 @@ class ObligationHistoryRecorder
 
     protected function formatDate(string $value): string
     {
-        return \Illuminate\Support\Carbon::parse($value)->format('d/m/Y');
+        return Carbon::parse($value)->format('d/m/Y');
     }
 
     protected function userName(mixed $userId): string
@@ -462,6 +489,8 @@ class ObligationHistoryRecorder
     {
         return [
             'title' => $obligation->title,
+            'obligation_series_id' => $obligation->obligation_series_id,
+            'competence_date' => $this->normalize('competence_date', $obligation->competence_date),
             'status' => $obligation->status,
             'priority' => $obligation->priority,
             'due_date' => $this->normalize('due_date', $obligation->due_date),

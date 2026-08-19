@@ -10,7 +10,7 @@ class EditEmissionMonthlyReportNote extends EditRecord
 {
     protected static string $resource = EmissionMonthlyReportNoteResource::class;
 
-    protected static ?string $title = 'Editar Comentário do Relatório';
+    protected static ?string $title = 'Editar Nota Explicativa';
 
     protected static ?string $breadcrumb = 'Editar';
 
@@ -23,7 +23,7 @@ class EditEmissionMonthlyReportNote extends EditRecord
 
     protected function getSavedNotificationTitle(): ?string
     {
-        return 'Comentário atualizado com sucesso.';
+        return 'Nota explicativa atualizada com sucesso.';
     }
 
     /**

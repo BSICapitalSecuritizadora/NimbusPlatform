@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
+use App\Enums\ObligationFrequency;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
+use App\Filament\Resources\Emissions\Schemas\ObligationSeriesFormFields;
 use App\Jobs\GenerateEmissionObligationsJob;
+use App\Models\Document;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
 use App\Models\ObligationGenerationRun;
@@ -16,8 +19,11 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -25,6 +31,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
 
 class ObligationSuggestionsRelationManager extends RelationManager
@@ -75,7 +82,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->recordTitleAttribute('title')
             ->poll($this->shouldPollGeneration() ? '4s' : null)
             ->description(fn (): string|Htmlable => $this->generationDescription())
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['responsibleUser', 'reviewer', 'obligation']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['responsibleUser', 'reviewer', 'obligation', 'obligationSeries']))
             ->columns([
                 TextColumn::make('title')
                     ->label('Título')
@@ -90,12 +97,14 @@ class ObligationSuggestionsRelationManager extends RelationManager
                         ExtractedObligation::STATUS_REJECTED => 'danger',
                         default => 'warning',
                     }),
-                TextColumn::make('obligation.title')
-                    ->label('Obrigação criada')
+                TextColumn::make('consolidated_target')
+                    ->label('Destino criado')
+                    ->state(fn (ExtractedObligation $record): ?string => $record->obligation?->operational_title
+                        ?? ($record->obligationSeries !== null ? 'Série: '.$record->obligationSeries->title : null))
                     ->placeholder('Ainda não criada')
                     ->limit(50)
                     ->wrap()
-                    ->url(fn (ExtractedObligation $record): ?string => $record->obligation?->id
+                    ->url(fn (ExtractedObligation $record): ?string => $record->obligation?->id || $record->obligationSeries?->id
                         ? EmissionResource::getUrl('edit', ['record' => $record->emission_id])
                         : null)
                     ->openUrlInNewTab()
@@ -168,7 +177,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
                     ->color('gray')
                     ->url(fn (ExtractedObligation $record): string => EmissionResource::getUrl('edit', ['record' => $record->emission_id]))
                     ->openUrlInNewTab()
-                    ->visible(fn (ExtractedObligation $record): bool => filled($record->obligation?->id))
+                    ->visible(fn (ExtractedObligation $record): bool => filled($record->obligation?->id) || filled($record->obligationSeries?->id))
                     ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false),
                 EditAction::make()
                     ->label('Editar')
@@ -289,21 +298,56 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->icon('heroicon-o-check')
             ->color('success')
             ->modalHeading('Aprovar sugestão')
-            ->modalDescription('A sugestão será aprovada e uma obrigação será criada nesta emissão.')
+            ->modalDescription(fn (ExtractedObligation $record): string => $this->isRecurringSuggestion($record)
+                ? 'Confirme a regra executável. A aprovação criará uma série e materializará competências independentes dentro da janela configurada.'
+                : 'A sugestão será aprovada e uma obrigação única será criada nesta emissão.')
             ->modalSubmitActionLabel('Aprovar sugestão')
-            ->form([
+            ->form(fn (ExtractedObligation $record): array => [
                 Textarea::make('review_notes')
                     ->label('Observação da revisão')
                     ->rows(4)
                     ->maxLength(2000)
-                    ->placeholder('Observação opcional sobre a aprovação da sugestão.'),
+                    ->placeholder('Observação opcional sobre a aprovação da sugestão.')
+                    ->columnSpanFull(),
+                Toggle::make('activate_series')
+                    ->label('Confirmar e ativar a regra recorrente agora')
+                    ->helperText('Desmarcado: cria a série aguardando configuração e preserva a obrigação sugerida como ocorrência candidata, sem inventar competência ou datas futuras.')
+                    ->default(false)
+                    ->live()
+                    ->visible($this->isRecurringSuggestion($record))
+                    ->columnSpanFull(),
+                ...($this->isRecurringSuggestion($record) ? [
+                    Section::make('Regra executável confirmada')
+                        ->description('Estes dados controlam a geração automática e ficam separados do texto jurídico extraído.')
+                        ->schema(ObligationSeriesFormFields::configurationFields($record->emission?->maturity_date?->toDateString()))
+                        ->visible(fn (Get $get): bool => (bool) $get('activate_series'))
+                        ->columnSpanFull(),
+                ] : []),
+            ])
+            ->fillForm(fn (ExtractedObligation $record): array => [
+                'activate_series' => false,
+                'frequency' => ObligationFrequency::fromLegacyLabel($record->recurrence)?->value,
+                'starts_on' => now()->startOfMonth()->toDateString(),
+                'ends_on' => $record->emission?->maturity_date?->toDateString(),
+                'due_offset_months' => 1,
+                'generation_horizon_days' => (int) config('obligations.recurrence.generation_horizon_days', 90),
+                'calendar_code' => 'B3',
             ])
             ->visible(fn (ExtractedObligation $record): bool => $this->canReviewSuggestion($record, ObligationSuggestionReviewService::TRANSITION_APPROVE))
             ->authorize(fn (ExtractedObligation $record): bool => $this->canReviewSuggestion($record, ObligationSuggestionReviewService::TRANSITION_APPROVE))
             ->action(function (ExtractedObligation $record, array $data): void {
-                $this->reviewService()->approve($record, auth()->user(), $data['review_notes'] ?? null);
+                $seriesConfiguration = $this->isRecurringSuggestion($record) && ($data['activate_series'] ?? false)
+                    ? Arr::except($data, ['review_notes', 'activate_series'])
+                    : null;
+
+                $this->reviewService()->approve(
+                    $record,
+                    auth()->user(),
+                    $data['review_notes'] ?? null,
+                    $seriesConfiguration,
+                );
             })
-            ->successNotificationTitle('Sugestão aprovada e obrigação criada com sucesso.');
+            ->successNotificationTitle('Sugestão aprovada e destino operacional criado com sucesso.');
     }
 
     protected function makeRejectAction(): Action
@@ -331,7 +375,7 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->successNotificationTitle('Sugestão rejeitada com sucesso.');
     }
 
-    protected function findSecuritizationTerm(): ?\App\Models\Document
+    protected function findSecuritizationTerm(): ?Document
     {
         return $this->getOwnerRecord()->documents()
             ->where('category', 'documentos_operacao')
@@ -357,6 +401,12 @@ class ObligationSuggestionsRelationManager extends RelationManager
     protected function reviewService(): ObligationSuggestionReviewService
     {
         return app(ObligationSuggestionReviewService::class);
+    }
+
+    protected function isRecurringSuggestion(ExtractedObligation $suggestion): bool
+    {
+        return filled($suggestion->recurrence)
+            && ObligationFrequency::fromLegacyLabel($suggestion->recurrence) !== ObligationFrequency::Once;
     }
 
     protected function readOnlySuggestionHint(): string

@@ -72,8 +72,12 @@ enum LegalInstrumentFieldKey: string
 
     // Conta vinculada
     case Bank = 'bank';
+    case Agency = 'agency';
     case AccountNumber = 'account_number';
     case AccountRules = 'account_rules';
+
+    // Garantia
+    case GuaranteeValue = 'guarantee_value';
 
     public function label(): string
     {
@@ -120,8 +124,10 @@ enum LegalInstrumentFieldKey: string
             self::AssignedPercentage => 'Percentual cedido',
             self::EligibilityRules => 'Regras de elegibilidade',
             self::Bank => 'Banco',
+            self::Agency => 'Agência',
             self::AccountNumber => 'Conta',
             self::AccountRules => 'Regras da conta',
+            self::GuaranteeValue => 'Valor da garantia',
         };
     }
 
@@ -149,7 +155,8 @@ enum LegalInstrumentFieldKey: string
     public function valueType(): LegalInstrumentFieldValueType
     {
         return match ($this) {
-            self::OriginalAmount, self::PrincipalAmount, self::PropertyValue => LegalInstrumentFieldValueType::Money,
+            self::OriginalAmount, self::PrincipalAmount, self::PropertyValue,
+            self::GuaranteeValue => LegalInstrumentFieldValueType::Money,
             self::InterestRate, self::Spread, self::MinimumCoverage,
             self::QuotaPercentage, self::AssignedPercentage => LegalInstrumentFieldValueType::Percentage,
             self::QuotaQuantity => LegalInstrumentFieldValueType::Number,
@@ -170,7 +177,8 @@ enum LegalInstrumentFieldKey: string
             self::OriginalAmount, self::PrincipalAmount, self::MaturityDate,
             self::MinimumCoverage, self::PropertyRegistration, self::QuotaPercentage,
             self::AssignedPercentage, self::Issuer, self::Creditor,
-            self::Guarantors, self::Avalists => true,
+            self::Guarantors, self::Avalists, self::AccountNumber,
+            self::GuaranteeValue => true,
             default => false,
         };
     }

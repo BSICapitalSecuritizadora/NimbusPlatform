@@ -69,6 +69,32 @@ class ExtractedGuaranteeFactory extends Factory
         ]);
     }
 
+    /**
+     * Candidata de fundo de obras vinda de uma CCB: traz banco, agência e
+     * conta, que é o que a garantia cadastrada à mão costuma não ter.
+     *
+     * @param  array<string, mixed>  $identification
+     */
+    public function worksFund(array $identification = []): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'type' => GuaranteeType::WorksFund,
+            'name' => 'Fundo de Obras',
+            'identification' => array_merge([
+                'bank' => 'Banco Bradesco S.A. (cód. 237)',
+                'agency' => '7748',
+                'account' => '185187-P',
+            ], $identification),
+            'contracted_value' => null,
+            'requirement_basis' => null,
+            'document_type' => LegalDocumentType::GuaranteeInstrument,
+            'source_clause' => '10.3 (a)',
+            'source_page' => 23,
+            'source_excerpt' => '(a) constituir a reserva de obras na conta corrente nº 185187-P, agência nº 7748, mantida junto ao Banco Bradesco S.A. (cód. 237) ("Conta do Patrimônio Separado")',
+            'confidence_score' => 1.0,
+        ]);
+    }
+
     /** Candidata que altera uma garantia já confirmada, vinda de aditamento. */
     public function amending(Guarantee $guarantee, GuaranteeEventType $eventType = GuaranteeEventType::Amendment): static
     {

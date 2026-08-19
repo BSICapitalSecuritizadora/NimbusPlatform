@@ -7,6 +7,8 @@ use App\Enums\GuaranteeDetectionStatus;
 use App\Enums\GuaranteeEventType;
 use App\Enums\GuaranteeEvidenceLevel;
 use App\Enums\GuaranteeLegalStatus;
+use App\Enums\GuaranteeMatchLevel;
+use App\Enums\GuaranteeReconciliationOutcome;
 use App\Enums\GuaranteeRequirementBase;
 use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
@@ -67,6 +69,10 @@ class ExtractedGuarantee extends Model
         'field_confidences',
         'has_conflict',
         'conflict_reason',
+        'reconciliation_outcome',
+        'match_score',
+        'match_level',
+        'match_evidence',
         'review_notes',
         'reviewed_by',
         'reviewed_at',
@@ -82,6 +88,10 @@ class ExtractedGuarantee extends Model
             'requirement_basis' => GuaranteeRequirementBasis::class,
             'requirement_base' => GuaranteeRequirementBase::class,
             'document_type' => LegalDocumentType::class,
+            'reconciliation_outcome' => GuaranteeReconciliationOutcome::class,
+            'match_level' => GuaranteeMatchLevel::class,
+            'match_evidence' => 'array',
+            'match_score' => 'float',
             'identification' => 'array',
             'field_evidence' => 'array',
             'field_confidences' => 'array',
@@ -201,6 +211,67 @@ class ExtractedGuarantee extends Model
     {
         return $this->related_guarantee_id !== null
             && $this->event_type !== GuaranteeEventType::Constitution;
+    }
+
+    /**
+     * A candidata corresponde a uma garantia já cadastrada?
+     *
+     * Vale tanto para o aditamento que altera quanto para a constituição que
+     * apenas documenta o que já existia — os dois enriquecem a garantia
+     * existente em vez de criar uma segunda (§1 do escopo de consolidação).
+     */
+    public function matchesExistingGuarantee(): bool
+    {
+        return $this->related_guarantee_id !== null
+            && ($this->reconciliation_outcome?->pointsToExistingGuarantee() ?? $this->amendsExistingGuarantee());
+    }
+
+    public function outcome(): GuaranteeReconciliationOutcome
+    {
+        return $this->reconciliation_outcome
+            ?? ($this->has_conflict
+                ? GuaranteeReconciliationOutcome::Conflict
+                : GuaranteeReconciliationOutcome::NewGuarantee);
+    }
+
+    public function matchPercent(): ?string
+    {
+        return $this->match_score === null ? null : round($this->match_score * 100).'%';
+    }
+
+    /**
+     * A candidata no formato que o comparador e o matcher consomem.
+     *
+     * O mesmo formato que a extração produz, para que detecção e revisão
+     * percorram exatamente o mesmo código de comparação — se divergissem, o
+     * impacto exibido na revisão não seria o impacto aplicado.
+     *
+     * @return array<string, mixed>
+     */
+    public function toProposalArray(): array
+    {
+        return [
+            'type' => $this->type,
+            'name' => $this->name,
+            'description' => $this->description,
+            'event_type' => $this->event_type,
+            'identification' => $this->identification,
+            'contracted_value' => $this->contracted_value,
+            'documentary_value' => $this->documentary_value,
+            'requirement_basis' => $this->requirement_basis,
+            'requirement_value' => $this->requirement_value,
+            'requirement_percentage' => $this->requirement_percentage,
+            'requirement_base' => $this->requirement_base,
+            'requirement_multiplier' => $this->requirement_multiplier,
+            'requirement_formula' => $this->requirement_formula,
+            'requirement_conditions' => $this->requirement_conditions,
+            'validity_start_date' => $this->validity_start_date,
+            'validity_end_date' => $this->validity_end_date,
+            'evaluation_frequency' => $this->evaluation_frequency,
+            'effective_date' => $this->effective_date,
+            'document_date' => $this->document_date,
+            'legal_instrument_id' => $this->legal_instrument_id,
+        ];
     }
 
     /**

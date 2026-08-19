@@ -14,7 +14,7 @@
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Obrigação</p>
-                    <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $obligation->title }}</p>
+                    <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $obligation->operational_title }}</p>
                 </div>
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</p>

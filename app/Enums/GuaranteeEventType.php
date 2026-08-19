@@ -7,6 +7,11 @@ namespace App\Enums;
  *
  * O histórico é aditivo: nenhum evento sobrescreve o anterior, o que permite
  * reconstruir a posição jurídica da garantia em qualquer data.
+ *
+ * `DocumentaryEvidence` é o evento que não muda nada: registra que outro
+ * documento passou a comprovar a garantia. Sem ele, um documento que apenas
+ * confirma o cadastro teria de virar uma "alteração" fictícia para deixar
+ * rastro — poluindo o histórico com mudanças que nunca houve (§10).
  */
 enum GuaranteeEventType: string
 {
@@ -20,6 +25,7 @@ enum GuaranteeEventType: string
     case Suspension = 'suspension';
     case Termination = 'termination';
     case StatusChange = 'status_change';
+    case DocumentaryEvidence = 'documentary_evidence';
 
     public function label(): string
     {
@@ -34,6 +40,7 @@ enum GuaranteeEventType: string
             self::Suspension => 'Suspensão',
             self::Termination => 'Encerramento',
             self::StatusChange => 'Alteração de situação',
+            self::DocumentaryEvidence => 'Comprovação documental',
         };
     }
 
@@ -58,6 +65,7 @@ enum GuaranteeEventType: string
         return match ($this) {
             self::Constitution, self::Registration, self::Reinforcement => 'success',
             self::Amendment, self::Revaluation, self::StatusChange => 'info',
+            self::DocumentaryEvidence => 'gray',
             self::Substitution, self::Suspension => 'warning',
             self::Release, self::Termination => 'gray',
         };

@@ -2,18 +2,23 @@
 
 namespace App\Models;
 
+use Database\Factories\ObligationHistoryEntryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ObligationHistoryEntry extends Model
 {
-    /** @use HasFactory<\Database\Factories\ObligationHistoryEntryFactory> */
+    /** @use HasFactory<ObligationHistoryEntryFactory> */
     use HasFactory;
 
     public const EVENT_CREATED = 'created';
 
     public const EVENT_GENERATED_FROM_TERM = 'generated_from_term';
+
+    public const EVENT_GENERATED_FROM_SERIES = 'generated_from_series';
+
+    public const EVENT_GENERATED_ON_DEMAND = 'generated_on_demand';
 
     public const EVENT_UPDATED = 'updated';
 
@@ -79,6 +84,8 @@ class ObligationHistoryEntry extends Model
     public const EVENT_LABELS = [
         self::EVENT_CREATED => 'Obrigação criada',
         self::EVENT_GENERATED_FROM_TERM => 'Gerada pelo Termo',
+        self::EVENT_GENERATED_FROM_SERIES => 'Competência gerada automaticamente',
+        self::EVENT_GENERATED_ON_DEMAND => 'Ocorrência sob demanda criada',
         self::EVENT_UPDATED => 'Obrigação atualizada',
         self::EVENT_STATUS_CHANGED => 'Status alterado',
         self::EVENT_DUE_DATE_CHANGED => 'Vencimento alterado',

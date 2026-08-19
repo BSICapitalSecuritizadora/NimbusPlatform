@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets\Obligations;
 
 use App\Enums\AccessPermission;
+use App\Enums\ObligationFrequency;
 use App\Filament\Exports\ObligationExporter;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
@@ -58,10 +59,16 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->url($emissionUrl),
             TextColumn::make('title')
                 ->label('Obrigação')
+                ->state(fn (Obligation $record): string => $record->operational_title)
                 ->searchable()
                 ->wrap()
                 ->limit(70)
                 ->url($obligationUrl),
+            TextColumn::make('competence_date')
+                ->label('Competência')
+                ->date('m/Y')
+                ->placeholder('Única')
+                ->sortable(),
             TextColumn::make('status')
                 ->label('Status')
                 ->badge()
@@ -131,7 +138,11 @@ class ObligationOperationalTableWidget extends TableWidget
         $columns[] = TextColumn::make('source')
             ->label('Origem')
             ->badge()
-            ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual')
+            ->state(fn (Obligation $record): string => match (true) {
+                $record->obligation_series_id !== null => 'Série recorrente',
+                $record->extracted_obligation_id !== null => 'Gerada pelo Termo',
+                default => 'Manual',
+            })
             ->color(fn (string $state): string => $state === 'Manual' ? 'gray' : 'info')
             ->toggleable();
 
@@ -144,6 +155,17 @@ class ObligationOperationalTableWidget extends TableWidget
             SelectFilter::make('status')
                 ->label('Status')
                 ->options(Obligation::STATUS_OPTIONS),
+            SelectFilter::make('obligation_series_id')
+                ->label('Série')
+                ->relationship('series', 'title')
+                ->searchable()
+                ->preload(),
+            SelectFilter::make('series_frequency')
+                ->label('Recorrência')
+                ->options(ObligationFrequency::seriesOptions())
+                ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
+                    ? $query->whereHas('series', fn (Builder $seriesQuery): Builder => $seriesQuery->where('frequency', $data['value']))
+                    : $query),
             SelectFilter::make('responsible_user_id')
                 ->label('Responsável')
                 ->relationship('responsibleUser', 'name')
@@ -187,8 +209,9 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->options(ObligationDashboardData::SOURCE_FILTER_OPTIONS)
                 ->query(function (Builder $query, array $data): Builder {
                     return match ($data['value'] ?? null) {
-                        'term' => $query->whereNotNull('extracted_obligation_id'),
-                        'manual' => $query->whereNull('extracted_obligation_id'),
+                        'series' => $query->whereNotNull('obligation_series_id'),
+                        'term' => $query->whereNull('obligation_series_id')->whereNotNull('extracted_obligation_id'),
+                        'manual' => $query->whereNull('obligation_series_id')->whereNull('extracted_obligation_id'),
                         default => $query,
                     };
                 }),
@@ -206,7 +229,7 @@ class ObligationOperationalTableWidget extends TableWidget
                 filters: $pageFilters,
                 includeConcludedWithoutApprovedEvidence: $canViewEvidence,
             ))
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['emission', 'responsibleUser']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['emission', 'responsibleUser', 'series']))
             ->recordUrl($obligationUrl)
             ->description('Os filtros do topo recortam todo o painel. Use os filtros desta tabela apenas para refinar a fila operacional exibida abaixo.')
             ->defaultPaginationPageOption(10)

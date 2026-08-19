@@ -23,11 +23,11 @@ class EmissionMonthlyReportNoteResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
 
-    protected static ?string $navigationLabel = 'Comentários do Relatório';
+    protected static ?string $navigationLabel = 'Notas Explicativas';
 
-    protected static ?string $modelLabel = 'Comentário do Relatório';
+    protected static ?string $modelLabel = 'Nota Explicativa';
 
-    protected static ?string $pluralModelLabel = 'Comentários do Relatório';
+    protected static ?string $pluralModelLabel = 'Notas Explicativas';
 
     protected static ?string $recordTitleAttribute = 'title';
 

@@ -252,7 +252,7 @@ it('flags a conflict when an amendment targets no known guarantee', function ():
     $candidate = ExtractedGuarantee::query()->sole();
 
     expect($candidate->has_conflict)->toBeTrue()
-        ->and($candidate->conflict_reason)->toContain('nenhuma garantia confirmada corresponde');
+        ->and($candidate->conflict_reason)->toContain('nenhuma garantia cadastrada corresponde');
 });
 
 it('flags a conflict when an amendment document proposes a brand new constitution', function (): void {

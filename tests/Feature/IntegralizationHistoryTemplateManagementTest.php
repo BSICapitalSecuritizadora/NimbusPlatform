@@ -74,7 +74,7 @@ it('renders the settings page and allows replacing the integralization history t
     $this->actingAs($user)
         ->get(Settings::getUrl(panel: 'admin'))
         ->assertSuccessful()
-        ->assertSee('Template do histórico de integralizações')
+        ->assertSee('Histórico de integralizações')
         ->assertSee('Salvar template');
 
     Livewire::test(Settings::class)

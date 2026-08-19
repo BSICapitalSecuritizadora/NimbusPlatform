@@ -2,6 +2,8 @@
 
 use App\Enums\GuaranteeDetectionStatus;
 use App\Enums\GuaranteeLegalStatus;
+use App\Enums\GuaranteeMatchLevel;
+use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
 use App\Enums\LegalInstrumentDocumentRole;
 use App\Enums\LegalInstrumentDocumentStatus;
@@ -97,7 +99,14 @@ it('links the confirmed guarantee to the instrument that revealed it', function 
         ->and($instrumentDocument->instrument->fresh()->guarantees)->toHaveCount(1);
 });
 
-it('flags a guarantee already registered as a possible duplicate', function (): void {
+/**
+ * A mesma garantia citada em outro instrumento não é uma garantia nova.
+ *
+ * Antes, a matrícula coincidente virava "conflito documental" e a revisão só
+ * oferecia criar outra ou rejeitar. Agora a candidata aponta para a garantia
+ * existente com correspondência forte, e a revisão parte de complementá-la.
+ */
+it('recognises a guarantee already registered instead of proposing a duplicate', function (): void {
     $emission = Emission::factory()->create();
     $instrumentDocument = ccbDocument($emission);
 
@@ -127,9 +136,11 @@ it('flags a guarantee already registered as a possible duplicate', function (): 
 
     $candidate = ExtractedGuarantee::query()->sole();
 
-    expect($candidate->has_conflict)->toBeTrue()
-        ->and($candidate->conflict_reason)->toContain('Possível mesma garantia')
-        ->and($candidate->related_guarantee_id)->not->toBeNull();
+    expect($candidate->has_conflict)->toBeFalse()
+        ->and($candidate->related_guarantee_id)->not->toBeNull()
+        ->and($candidate->reconciliation_outcome->pointsToExistingGuarantee())->toBeTrue()
+        ->and($candidate->match_level)->toBe(GuaranteeMatchLevel::High)
+        ->and($candidate->match_evidence)->toContain('Mesma matrícula');
 });
 
 it('suggests obligations found in the instrument without creating them', function (): void {
@@ -355,4 +366,45 @@ it('requeues a failed document without discarding confirmed information', functi
         ->and($confirmed->refresh()->status)->toBe(LegalInstrumentFieldStatus::Confirmed);
 
     Queue::assertPushed(ProcessLegalInstrumentDocumentJob::class);
+});
+
+/**
+ * Regressão: confirmação de candidata vinda do coletor.
+ *
+ * O bloco de garantias do instrumento não traz regra contratual, então a
+ * candidata nasce sem `requirement_basis`. A coluna em `guarantees` é NOT NULL
+ * com default, e um NULL explícito não aciona o default do banco.
+ *
+ * O teste anterior desta suíte criava a candidata pela factory, que sempre
+ * preenche o campo — por isso o caminho real nunca era exercitado.
+ */
+it('confirms a candidate produced by the collector, without a contractual rule', function (): void {
+    $instrumentDocument = ccbDocument();
+    $actor = makeAdminUser();
+
+    $this->mock(GeminiService::class)
+        ->shouldReceive('extractFromDocumentWithPrompt')
+        ->once()
+        ->andReturn([
+            'guarantees' => [[
+                'type' => 'fundo_obras',
+                'event' => 'constitution',
+                'name' => 'Reserva de Obras',
+                'identification' => ['account' => '185187-P', 'company' => 'Banco Bradesco S.A.'],
+                'excerpt' => 'Fica constituída a reserva de obras na conta 185187-P.',
+            ]],
+        ]);
+
+    (new ProcessLegalInstrumentDocumentJob($instrumentDocument->id))->handle(app(InstrumentDocumentExtractor::class));
+
+    $candidate = ExtractedGuarantee::query()->sole();
+
+    expect($candidate->requirement_basis)->toBeNull();
+
+    $guarantee = app(GuaranteeSuggestionReviewService::class)->approve($candidate, $actor);
+
+    expect($guarantee->exists)->toBeTrue()
+        ->and($guarantee->requirement_basis)->toBe(GuaranteeRequirementBasis::None)
+        ->and($guarantee->type)->toBe(GuaranteeType::WorksFund)
+        ->and($guarantee->legal_instrument_id)->toBe($instrumentDocument->legal_instrument_id);
 });

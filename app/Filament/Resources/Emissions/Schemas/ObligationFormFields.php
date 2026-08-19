@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\Emissions\Schemas;
 
+use App\Enums\ObligationFrequency;
 use App\Models\ExtractedObligation;
 use App\Models\Obligation;
+use Filament\Forms\Components\Component;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -40,18 +42,8 @@ class ObligationFormFields
         'Outro' => 'Outro',
     ];
 
-    public const RECURRENCE_OPTIONS = [
-        'Única' => 'Única',
-        'Mensal' => 'Mensal',
-        'Trimestral' => 'Trimestral',
-        'Semestral' => 'Semestral',
-        'Anual' => 'Anual',
-        'Sob demanda' => 'Sob demanda',
-        'Outro' => 'Outro',
-    ];
-
     /**
-     * @return array<int, \Filament\Forms\Components\Component>
+     * @return array<int, Component>
      */
     public static function make(string $mode = 'obligation'): array
     {
@@ -93,7 +85,22 @@ class ObligationFormFields
 
             Select::make('recurrence')
                 ->label('Recorrência')
-                ->options(self::RECURRENCE_OPTIONS),
+                ->options(function (Obligation|ExtractedObligation|null $record): array {
+                    if ($record === null) {
+                        return [ObligationFrequency::Once->label() => ObligationFrequency::Once->label()];
+                    }
+
+                    return collect([
+                        $record->recurrence,
+                        ObligationFrequency::Once->label(),
+                    ])->filter()->mapWithKeys(fn (string $label): array => [$label => $label])->all();
+                })
+                ->default(ObligationFrequency::Once->label())
+                ->disabled(fn (Obligation|ExtractedObligation|null $record): bool => $record?->series !== null)
+                ->dehydrated()
+                ->helperText(fn (Obligation|ExtractedObligation|null $record): string => $record?->series !== null
+                    ? 'A recorrência é controlada pela série. Esta edição afeta somente esta competência.'
+                    : 'Para obrigações recorrentes, use a aba Recorrências.'),
 
             TextInput::make('due_rule')
                 ->label('Regra de vencimento')
@@ -110,6 +117,11 @@ class ObligationFormFields
         ];
 
         if ($mode === 'obligation') {
+            $fields[] = Placeholder::make('competence_summary')
+                ->label('Competência')
+                ->content(fn (?Obligation $record): string => $record?->competence_label ?? 'Obrigação única')
+                ->visible(fn (?Obligation $record): bool => $record?->series !== null);
+
             $fields[] = Placeholder::make('status_summary')
                 ->label('Status atual')
                 ->content(fn (?Obligation $record): string => $record?->status_label ?? (Obligation::STATUS_OPTIONS['em_dia'] ?? 'Em dia'));

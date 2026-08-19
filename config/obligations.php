@@ -2,6 +2,14 @@
 
 return [
 
+    'recurrence' => [
+        'generation_horizon_days' => (int) env('OBLIGATIONS_RECURRENCE_GENERATION_HORIZON_DAYS', 90),
+
+        'calendar_options' => [
+            'B3' => 'B3 / ANBIMA',
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Notificações de vencimento de obrigações

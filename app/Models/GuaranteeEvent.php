@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Enums\GuaranteeEventType;
+use BackedEnum;
 use Database\Factories\GuaranteeEventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /**
  * Um acontecimento na vida jurídica da garantia (§8 do escopo).
@@ -26,6 +28,9 @@ class GuaranteeEvent extends Model
     public const SOURCE_DOCUMENT = 'document';
 
     public const SOURCE_SYSTEM = 'system';
+
+    /** Campo cujo conteúdo é um JSON de sub-campos, e não um valor só. */
+    private const IDENTIFICATION_FIELD = 'identification';
 
     protected $fillable = [
         'guarantee_id',
@@ -70,7 +75,16 @@ class GuaranteeEvent extends Model
      * tempo. Só compara chaves presentes nos dois lados: um campo que não
      * existia antes é inclusão, não alteração.
      *
-     * @return array<int, array{field: string, from: mixed, to: mixed}>
+     * `identification` é aberto chave a chave. Guardado como um único JSON, ele
+     * apareceria na linha do tempo como "Identification: Array → Array", que
+     * não responde a pergunta que o histórico existe para responder — de onde
+     * veio esta conta bancária (§4 do escopo de consolidação).
+     *
+     * `from`/`to` continuam sendo os valores crus — é o que permite comparar
+     * números no histórico. `from_display`/`to_display` são a versão segura
+     * para a tela, porque nem todo valor gravado é escalar.
+     *
+     * @return array<int, array{field: string, label: string, from: mixed, to: mixed, from_display: string|null, to_display: string|null}>
      */
     public function getChangeSummaryAttribute(): array
     {
@@ -88,13 +102,78 @@ class GuaranteeEvent extends Model
                 continue;
             }
 
+            if ($field === self::IDENTIFICATION_FIELD) {
+                $summary = array_merge($summary, $this->identificationChanges($previous[$field], $value));
+
+                continue;
+            }
+
             $summary[] = [
                 'field' => $field,
+                'label' => $this->labelForField($field),
                 'from' => $previous[$field],
                 'to' => $value,
+                'from_display' => $this->displayValue($previous[$field]),
+                'to_display' => $this->displayValue($value),
             ];
         }
 
         return $summary;
+    }
+
+    /**
+     * Diferenças dentro do JSON de identificação, uma linha por chave.
+     *
+     * @return array<int, array{field: string, label: string, from: mixed, to: mixed, from_display: string|null, to_display: string|null}>
+     */
+    private function identificationChanges(mixed $previous, mixed $new): array
+    {
+        $previous = is_array($previous) ? $previous : [];
+        $new = is_array($new) ? $new : [];
+
+        $labels = $this->guarantee?->type?->category()?->identificationFields() ?? [];
+        $changes = [];
+
+        foreach (array_keys($previous + $new) as $key) {
+            $from = $previous[$key] ?? null;
+            $to = $new[$key] ?? null;
+
+            if ($from === $to) {
+                continue;
+            }
+
+            $changes[] = [
+                'field' => (string) $key,
+                'label' => $labels[(string) $key] ?? $this->labelForField((string) $key),
+                'from' => $from,
+                'to' => $to,
+                'from_display' => $this->displayValue($from),
+                'to_display' => $this->displayValue($to),
+            ];
+        }
+
+        return $changes;
+    }
+
+    private function labelForField(string $field): string
+    {
+        return Str::of($field)->replace('_', ' ')->title()->value();
+    }
+
+    /**
+     * Valor pronto para a tela. Estrutura aninhada vira null em vez de quebrar
+     * a renderização — o histórico não é o lugar de despejar JSON.
+     */
+    private function displayValue(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof BackedEnum) {
+            return (string) $value->value;
+        }
+
+        return is_scalar($value) ? (string) $value : null;
     }
 }

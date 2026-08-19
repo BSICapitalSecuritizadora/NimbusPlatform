@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\GuaranteeCategory;
+use App\Enums\GuaranteeDetectionStatus;
+use App\Enums\GuaranteeDocumentationStatus;
 use App\Enums\GuaranteeLegalStatus;
 use App\Enums\GuaranteeRequirementBase;
 use App\Enums\GuaranteeRequirementBasis;
@@ -167,6 +169,48 @@ class Guarantee extends Model
     public function category(): ?GuaranteeCategory
     {
         return $this->type?->category();
+    }
+
+    /**
+     * Quão amparada em documento está a garantia (§14 do escopo).
+     *
+     * Derivado em vez de armazenado: a resposta muda a cada documento
+     * processado e a cada revisão, e uma coluna espelhando isso ficaria
+     * desatualizada exatamente nos casos em que a tela precisa dela.
+     *
+     * Uma candidata pendente marcada como conflito prevalece sobre as demais
+     * leituras: enquanto existe contradição por resolver, dizer que a garantia
+     * está confirmada documentalmente seria falso.
+     */
+    public function documentationStatus(): GuaranteeDocumentationStatus
+    {
+        // Candidatas pendentes apontam pela `related_guarantee_id`; a relação
+        // `extractedGuarantees` só traz as já confirmadas nesta garantia.
+        $pendingCandidates = $this->pendingDetections;
+
+        if ($pendingCandidates->contains(fn (ExtractedGuarantee $candidate): bool => (bool) $candidate->has_conflict)) {
+            return GuaranteeDocumentationStatus::DocumentaryConflict;
+        }
+
+        if ($this->documentReferences->isNotEmpty()) {
+            return GuaranteeDocumentationStatus::DocumentedlyConfirmed;
+        }
+
+        if ($pendingCandidates->isNotEmpty()) {
+            return GuaranteeDocumentationStatus::DocumentationIdentified;
+        }
+
+        return GuaranteeDocumentationStatus::ManuallyRegistered;
+    }
+
+    /**
+     * Candidatas pendentes que apontam para esta garantia — o que ainda está em
+     * revisão a seu respeito.
+     */
+    public function pendingDetections(): HasMany
+    {
+        return $this->hasMany(ExtractedGuarantee::class, 'related_guarantee_id')
+            ->where('status', GuaranteeDetectionStatus::Suggested->value);
     }
 
     /**

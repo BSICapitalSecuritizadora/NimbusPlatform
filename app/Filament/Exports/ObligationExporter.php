@@ -29,6 +29,21 @@ class ObligationExporter extends Exporter
                 ->label('Código da emissão'),
             ExportColumn::make('title')
                 ->label('Título da obrigação'),
+            ExportColumn::make('series.title')
+                ->label('Série'),
+            ExportColumn::make('competence_date')
+                ->label('Competência')
+                ->state(fn (Obligation $record): ?string => $record->competence_date?->format('m/Y')),
+            ExportColumn::make('recurrence')
+                ->label('Recorrência'),
+            ExportColumn::make('generation_source')
+                ->label('Forma de geração')
+                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    Obligation::GENERATION_SOURCE_AUTOMATIC => 'Automática',
+                    Obligation::GENERATION_SOURCE_ON_DEMAND => 'Sob demanda',
+                    Obligation::GENERATION_SOURCE_LEGACY => 'Legado',
+                    default => 'Manual',
+                }),
             ExportColumn::make('description')
                 ->label('Descrição / resumo')
                 ->state(fn (Obligation $record): ?string => filled($record->description) ? Str::squish((string) $record->description) : null),
@@ -50,7 +65,11 @@ class ObligationExporter extends Exporter
                 ->formatStateUsing(fn (?string $state): string => Obligation::PRIORITY_OPTIONS[$state] ?? (string) $state),
             ExportColumn::make('source')
                 ->label('Origem')
-                ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual'),
+                ->state(fn (Obligation $record): string => match (true) {
+                    $record->obligation_series_id !== null => 'Série recorrente',
+                    $record->extracted_obligation_id !== null => 'Gerada pelo Termo',
+                    default => 'Manual',
+                }),
             ExportColumn::make('created_at')
                 ->label('Criada em')
                 ->state(fn (Obligation $record): ?string => self::formatDateTimeValue($record->created_at)),

@@ -33,6 +33,8 @@ class Settings extends Page
 
     protected static ?string $title = "Configura\u{00E7}\u{00F5}es";
 
+    protected ?string $subheading = 'Gerencie os templates de planilhas utilizados nos fluxos operacionais das emissões.';
+
     public static function canAccess(): bool
     {
         return auth()->user()?->can('settings.view') ?? false;
@@ -258,6 +260,70 @@ class Settings extends Page
         return $this->hasCustomIntegralizationHistoryTemplate()
             ? 'O arquivo atual foi enviado manualmente nesta área de configurações.'
             : 'O histórico de integralizações está usando o template padrão versionado no sistema.';
+    }
+
+    /**
+     * @return array<int, array{
+     *     key: string,
+     *     property: string,
+     *     input_id: string,
+     *     title: string,
+     *     context: string,
+     *     status_label: string,
+     *     status_classes: string,
+     *     description: string,
+     *     download_url: ?string,
+     *     save_method: string,
+     *     restore_method: string,
+     *     restore_confirmation: string
+     * }>
+     */
+    public function templateSections(): array
+    {
+        return [
+            [
+                'key' => 'payment',
+                'property' => 'paymentTemplateFile',
+                'input_id' => 'payment-template-file',
+                'title' => 'Fluxo de pagamentos',
+                'context' => 'Planilha de importação de pagamentos da emissão',
+                'status_label' => $this->getPaymentTemplateStatusLabel(),
+                'status_classes' => $this->getPaymentTemplateStatusClasses(),
+                'description' => $this->getPaymentTemplateDescription(),
+                'download_url' => $this->hasPaymentTemplate() ? $this->getPaymentTemplateDownloadUrl() : null,
+                'save_method' => 'savePaymentTemplate',
+                'restore_method' => 'restoreDefaultPaymentTemplate',
+                'restore_confirmation' => 'Restaurar o template padrão do fluxo de pagamentos? O arquivo personalizado atual deixará de ser usado.',
+            ],
+            [
+                'key' => 'pu-history',
+                'property' => 'puHistoryTemplateFile',
+                'input_id' => 'pu-history-template-file',
+                'title' => 'Histórico de PU',
+                'context' => 'Planilha de importação do histórico de PU da emissão',
+                'status_label' => $this->getPuHistoryTemplateStatusLabel(),
+                'status_classes' => $this->getPuHistoryTemplateStatusClasses(),
+                'description' => $this->getPuHistoryTemplateDescription(),
+                'download_url' => $this->hasPuHistoryTemplate() ? $this->getPuHistoryTemplateDownloadUrl() : null,
+                'save_method' => 'savePuHistoryTemplate',
+                'restore_method' => 'restoreDefaultPuHistoryTemplate',
+                'restore_confirmation' => 'Restaurar o template padrão do histórico de PU? O arquivo personalizado atual deixará de ser usado.',
+            ],
+            [
+                'key' => 'integralization-history',
+                'property' => 'integralizationHistoryTemplateFile',
+                'input_id' => 'integralization-history-template-file',
+                'title' => 'Histórico de integralizações',
+                'context' => 'Planilha de importação do histórico de integralizações da emissão',
+                'status_label' => $this->getIntegralizationHistoryTemplateStatusLabel(),
+                'status_classes' => $this->getIntegralizationHistoryTemplateStatusClasses(),
+                'description' => $this->getIntegralizationHistoryTemplateDescription(),
+                'download_url' => $this->hasIntegralizationHistoryTemplate() ? $this->getIntegralizationHistoryTemplateDownloadUrl() : null,
+                'save_method' => 'saveIntegralizationHistoryTemplate',
+                'restore_method' => 'restoreDefaultIntegralizationHistoryTemplate',
+                'restore_confirmation' => 'Restaurar o template padrão do histórico de integralizações? O arquivo personalizado atual deixará de ser usado.',
+            ],
+        ];
     }
 
     protected function paymentSpreadsheetTemplate(): PaymentSpreadsheetTemplate

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
+use App\Models\Obligation;
 use App\Models\ObligationEvidence;
 use App\Services\Obligations\ObligationEvidenceReviewService;
 use App\Services\Obligations\ObligationEvidenceService;
@@ -117,10 +118,11 @@ class ObligationEvidencesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('original_name')
             ->description($this->evidencesTableDescription())
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['uploader', 'obligation', 'reviewer']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['uploader', 'obligation.series', 'reviewer']))
             ->columns([
                 TextColumn::make('obligation.title')
                     ->label('Obrigação')
+                    ->state(fn (ObligationEvidence $record): string => $record->obligation->operational_title)
                     ->searchable()
                     ->wrap()
                     ->limit(50),
@@ -185,7 +187,7 @@ class ObligationEvidencesRelationManager extends RelationManager
             ->filters([
                 SelectFilter::make('obligation_id')
                     ->label('Obrigação')
-                    ->options(fn (): array => $this->getOwnerRecord()->obligations()->orderBy('title')->pluck('title', 'id')->all())
+                    ->options(fn (): array => $this->obligationOptions())
                     ->searchable(),
                 SelectFilter::make('status')
                     ->label('Status')
@@ -201,7 +203,7 @@ class ObligationEvidencesRelationManager extends RelationManager
                     ->schema([
                         Select::make('obligation_id')
                             ->label('Obrigação')
-                            ->options(fn (): array => $this->getOwnerRecord()->obligations()->orderBy('title')->pluck('title', 'id')->all())
+                            ->options(fn (): array => $this->obligationOptions())
                             ->searchable()
                             ->required(),
                         FileUpload::make('file')
@@ -265,6 +267,18 @@ class ObligationEvidencesRelationManager extends RelationManager
             ])
             ->emptyStateHeading('Nenhuma evidência anexada')
             ->emptyStateDescription('Anexe comprovantes e documentos de suporte às obrigações desta emissão. Apenas evidência aprovada conta como comprovação válida.');
+    }
+
+    /** @return array<int, string> */
+    protected function obligationOptions(): array
+    {
+        return $this->getOwnerRecord()->obligations()
+            ->with('series')
+            ->orderBy('title')
+            ->orderBy('competence_date')
+            ->get()
+            ->mapWithKeys(fn (Obligation $obligation): array => [$obligation->id => $obligation->operational_title])
+            ->all();
     }
 
     protected function makeApproveAction(): Action

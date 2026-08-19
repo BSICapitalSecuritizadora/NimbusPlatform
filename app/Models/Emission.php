@@ -471,6 +471,11 @@ class Emission extends Model
         return $this->hasMany(Obligation::class);
     }
 
+    public function obligationSeries(): HasMany
+    {
+        return $this->hasMany(ObligationSeries::class);
+    }
+
     public function obligationEvidences(): HasManyThrough
     {
         return $this->hasManyThrough(ObligationEvidence::class, Obligation::class);

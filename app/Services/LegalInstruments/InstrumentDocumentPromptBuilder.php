@@ -151,7 +151,13 @@ class InstrumentDocumentPromptBuilder
         GARANTIAS: identifique as garantias que o documento constitui, altera, reforça, substitui ou libera.
         Use `type` com um destes valores: af_imovel, af_quotas, cf_recebiveis, cf_direitos_creditorios, promessa_cessao_fiduciaria, hipoteca, penhor, aval, fianca, fundo_reserva, fundo_juros, fundo_obras, conta_reserva, conta_vinculada, recebiveis, estoque, unidades, carta_fianca, seguro_garantia, aplicacao_financeira, outra.
         Use `event` com um destes: constitution, amendment, reinforcement, substitution, release.
-        Em `identification`, informe os identificadores fortes que o documento trouxer (registration_number, registry_office, tax_id, company, account, portfolio).
+        Em `identification`, use as chaves da família da garantia, apenas com o que o documento trouxer:
+        - Imóvel: registration_number (matrícula), registry_office (cartório), city, state, owner, construction, unit
+        - Quotas: company, tax_id (CNPJ), quota_quantity, pledged_percentage, grantor
+        - Recebíveis: portfolio, construction, contracts, assigned_percentage, receiving_account
+        - Fundos e contas vinculadas: fund_type, bank (nome do banco), agency (agência), account (conta), composition_rule
+        - Pessoais e seguros: guarantor, tax_id, issuer, policy_number
+        NUNCA use `registry_office` para agência nem `company` para banco: cartório e sociedade são outra coisa, e a troca impede o sistema de reconhecer a conta já cadastrada.
         PROMPT;
     }
 

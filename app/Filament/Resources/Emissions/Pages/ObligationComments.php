@@ -52,13 +52,13 @@ class ObligationComments extends Page
 
     public function getTitle(): string
     {
-        return 'Comentários internos';
+        return 'Comentários — '.$this->obligation()->operational_title;
     }
 
     public function obligation(): Obligation
     {
         return Obligation::query()
-            ->with('responsibleUser')
+            ->with(['responsibleUser', 'series'])
             ->where('emission_id', $this->getRecord()->id)
             ->findOrFail($this->obligationId);
     }

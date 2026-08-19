@@ -44,6 +44,11 @@ Schedule::job(SyncContaAzulExpensesJob::class)
     ->name('conta-azul-expenses-sync')
     ->withoutOverlapping();
 
+Schedule::command('obligations:generate-occurrences')
+    ->dailyAt('05:45')
+    ->name('obligations-generate-occurrences')
+    ->withoutOverlapping();
+
 Schedule::command('obligations:recalculate-statuses')
     ->dailyAt('06:00')
     ->name('obligations-recalculate-statuses')

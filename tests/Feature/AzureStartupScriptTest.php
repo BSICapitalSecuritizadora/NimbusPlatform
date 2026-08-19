@@ -83,7 +83,7 @@ it('keeps the queue worker and the scheduler alive under supervision loops', fun
     $startupScript = File::get(base_path('startup.sh'));
 
     expect($startupScript)
-        ->toContain('while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=420 --max-time=3600; sleep 5; done &')
+        ->toContain('while true; do php artisan queue:work --sleep=3 --tries=1 --timeout=600 --max-time=3600; sleep 5; done &')
         ->toContain('while true; do php artisan schedule:work; sleep 5; done &');
 });
 

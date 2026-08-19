@@ -58,12 +58,12 @@ class EmissionMonthlyReportNoteForm
                         ->columnSpanFull(),
 
                     Textarea::make('content')
-                        ->label('Comentário')
+                        ->label('Nota Explicativa')
                         ->required()
                         ->rows(5)
                         ->columnSpanFull()
                         ->validationMessages([
-                            'required' => 'Escreva o comentário/nota.',
+                            'required' => 'Escreva a nota explicativa.',
                         ]),
 
                     Toggle::make('is_visible_on_report')

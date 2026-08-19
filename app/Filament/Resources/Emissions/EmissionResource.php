@@ -9,6 +9,7 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\Instrumen
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\IntegralizationHistoriesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\LegalInstrumentsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationEvidencesRelationManager;
+use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSeriesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSuggestionsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager;
@@ -190,6 +191,7 @@ class EmissionResource extends Resource
             GuaranteesRelationManager::class,
             GuaranteeDetectionsRelationManager::class,
             ObligationSuggestionsRelationManager::class,
+            ObligationSeriesRelationManager::class,
             ObligationsRelationManager::class,
             ObligationEvidencesRelationManager::class,
             ActivitiesRelationManager::class,

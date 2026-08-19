@@ -36,8 +36,14 @@
                     </tr>
                     <tr>
                         <td style="padding:8px 0;color:#6b7280;">Obrigação</td>
-                        <td style="padding:8px 0;font-weight:600;">{{ $obligation->title }}</td>
+                        <td style="padding:8px 0;font-weight:600;">{{ $obligation->operational_title }}</td>
                     </tr>
+                    @if ($obligation->competence_date !== null)
+                        <tr>
+                            <td style="padding:8px 0;color:#6b7280;">Competência</td>
+                            <td style="padding:8px 0;font-weight:600;">{{ $obligation->competence_label }}</td>
+                        </tr>
+                    @endif
                     @if (filled($obligation->description))
                         <tr>
                             <td style="padding:8px 0;color:#6b7280;">Resumo</td>

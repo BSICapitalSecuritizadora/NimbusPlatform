@@ -10,13 +10,13 @@ class ListEmissionMonthlyReportNotes extends ListRecords
 {
     protected static string $resource = EmissionMonthlyReportNoteResource::class;
 
-    protected static ?string $title = 'Comentários do Relatório';
+    protected static ?string $title = 'Notas Explicativas';
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('Cadastrar Comentário')
+                ->label('Cadastrar Nota Explicativa')
                 ->icon('heroicon-o-plus-circle'),
         ];
     }

@@ -4,11 +4,12 @@ namespace App\Services\LegalInstruments;
 
 use App\Enums\GuaranteeDetectionStatus;
 use App\Enums\GuaranteeEventType;
+use App\Enums\GuaranteeReconciliationOutcome;
 use App\Enums\GuaranteeType;
 use App\Models\ExtractedGuarantee;
-use App\Models\Guarantee;
 use App\Models\LegalInstrumentDocument;
 use App\Services\Guarantees\GuaranteeConflictDetector;
+use App\Services\Guarantees\GuaranteeIdentificationNormalizer;
 use App\Services\Guarantees\GuaranteeSuggestionReviewService;
 use Illuminate\Support\Collection;
 
@@ -21,16 +22,20 @@ use Illuminate\Support\Collection;
  * o vínculo com o instrumento, para que a garantia confirmada nasça pendurada
  * na CCB (§14 do escopo).
  *
- * A detecção de duplicidade (§18) usa os identificadores fortes que o
- * {@see GuaranteeConflictDetector} já sabe comparar — matrícula, CNPJ, conta,
- * carteira. A mesma matrícula aparecendo no Termo, na CCB e no contrato de AFI
- * não vira três garantias: vira uma candidata marcada como possível duplicata,
- * apontando para a garantia existente.
+ * A detecção de duplicidade (§18) é do {@see GuaranteeConflictDetector}, que
+ * compara identificadores fortes, tipo e finalidade econômica. A mesma
+ * matrícula aparecendo no Termo, na CCB e no contrato de AFI não vira três
+ * garantias: vira uma candidata apontando para a existente, classificada pelo
+ * que o documento de fato acrescenta a ela.
+ *
+ * O contador `duplicates` conta correspondências com garantia já cadastrada —
+ * candidatas cuja revisão deve terminar em complemento, não em cadastro novo.
  */
 class InstrumentGuaranteeCollector
 {
     public function __construct(
         private readonly GuaranteeConflictDetector $conflictDetector,
+        private readonly GuaranteeIdentificationNormalizer $identificationNormalizer,
     ) {}
 
     /**
@@ -70,14 +75,13 @@ class InstrumentGuaranteeCollector
             }
 
             $analysis = $this->conflictDetector->analyse(
-                proposal: $proposal,
+                proposal: array_merge($proposal, ['legal_instrument_id' => $instrument->getKey()]),
                 existingGuarantees: $existing,
                 documentType: null,
                 documentDate: $instrumentDocument->document_date?->toDateString(),
             );
 
-            $isDuplicate = $analysis['related_guarantee_id'] !== null
-                && $proposal['event_type'] === GuaranteeEventType::Constitution->value;
+            $outcome = GuaranteeReconciliationOutcome::from($analysis['reconciliation_outcome']);
 
             ExtractedGuarantee::create(array_merge($proposal, [
                 'emission_id' => $emission->getKey(),
@@ -88,29 +92,18 @@ class InstrumentGuaranteeCollector
                 'document_date' => $instrumentDocument->document_date,
                 'related_guarantee_id' => $analysis['related_guarantee_id'],
                 'has_conflict' => $analysis['has_conflict'],
-                'conflict_reason' => $isDuplicate
-                    ? $this->duplicateReason($existing, $analysis['related_guarantee_id'])
-                    : $analysis['conflict_reason'],
+                'conflict_reason' => $analysis['conflict_reason'],
+                'reconciliation_outcome' => $outcome->value,
+                'match_score' => $analysis['match_score'],
+                'match_level' => $analysis['match_level'],
+                'match_evidence' => $analysis['match_evidence'],
             ]));
 
             $created++;
-            $duplicates += $isDuplicate ? 1 : 0;
+            $duplicates += $outcome->pointsToExistingGuarantee() ? 1 : 0;
         }
 
         return ['created' => $created, 'duplicates' => $duplicates, 'skipped' => $skipped];
-    }
-
-    /**
-     * @param  Collection<int, Guarantee>  $existing
-     */
-    private function duplicateReason(Collection $existing, ?int $relatedGuaranteeId): string
-    {
-        $match = $existing->firstWhere('id', $relatedGuaranteeId);
-
-        return sprintf(
-            'Possível mesma garantia já registrada como "%s". Confirme apenas se for constituição distinta; caso contrário, rejeite e associe a referência documental à garantia existente.',
-            $match?->display_name ?? 'garantia existente',
-        );
     }
 
     /**
@@ -180,7 +173,10 @@ class InstrumentGuaranteeCollector
             'type' => $type?->value,
             'name' => mb_substr($name, 0, 255),
             'event_type' => $event->value,
-            'identification' => is_array($raw['identification'] ?? null) ? $raw['identification'] : null,
+            'identification' => $this->identificationNormalizer->normalize(
+                is_array($raw['identification'] ?? null) ? $raw['identification'] : null,
+                $type,
+            ),
             'effective_date' => $this->date($raw['effective_date'] ?? null)
                 ?? $instrumentDocument->document_date?->toDateString(),
             'source_clause' => $this->text($raw['clause'] ?? null, 255),

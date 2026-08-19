@@ -8,6 +8,7 @@ use App\Enums\GuaranteeRequirementBase;
 use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
 use App\Models\Document;
+use App\Services\Guarantees\GuaranteeIdentificationNormalizer;
 use App\Services\LegalInstruments\InstrumentDocumentPromptBuilder;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -279,15 +280,10 @@ Se o documento não previr garantias, retorne: {"guarantees": []}
 Não adicione texto antes ou depois do JSON.
 PROMPT;
 
-    /**
-     * Identifica as garantias previstas num documento jurídico da operação.
-     *
-     * O retorno é proposta de cadastro, nunca garantia oficial: cada item ainda
-     * passa por revisão humana antes de existir como garantia da emissão (§4 do
-     * escopo do módulo).
-     *
-     * @return array<int, array<string, mixed>>
-     */
+    public function __construct(
+        private readonly GuaranteeIdentificationNormalizer $identificationNormalizer,
+    ) {}
+
     /**
      * Roda um prompt montado pelo domínio contra um documento do dossiê.
      *
@@ -304,6 +300,15 @@ PROMPT;
         return $this->generateFromDocument($prompt, $document);
     }
 
+    /**
+     * Identifica as garantias previstas num documento jurídico da operação.
+     *
+     * O retorno é proposta de cadastro, nunca garantia oficial: cada item ainda
+     * passa por revisão humana antes de existir como garantia da emissão (§4 do
+     * escopo do módulo).
+     *
+     * @return array<int, array<string, mixed>>
+     */
     public function extractGuarantees(Document $document): array
     {
         $json = $this->generateFromDocument(self::GUARANTEES_PROMPT, $document);
@@ -362,7 +367,10 @@ PROMPT;
             'type' => $this->enumValue($item['type'] ?? null, GuaranteeType::class, null),
             'name' => mb_substr($name, 0, 255),
             'description' => $this->nullableString($item['description'] ?? null),
-            'identification' => is_array($item['identification'] ?? null) ? $item['identification'] : null,
+            'identification' => $this->identificationNormalizer->normalize(
+                is_array($item['identification'] ?? null) ? $item['identification'] : null,
+                GuaranteeType::tryFrom((string) $this->enumValue($item['type'] ?? null, GuaranteeType::class, null)),
+            ),
             'contracted_value' => $this->nullableNumber($item['contracted_value'] ?? null),
             'documentary_value' => $this->nullableNumber($item['documentary_value'] ?? null),
             'requirement_basis' => $this->enumValue($item['requirement_basis'] ?? null, GuaranteeRequirementBasis::class, GuaranteeRequirementBasis::None->value),

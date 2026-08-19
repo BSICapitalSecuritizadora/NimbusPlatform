@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Enums\AccessPermission;
+use App\Enums\ObligationFrequency;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Filament\Widgets\Obligations\ObligationEvidenceOverviewStatsWidget;
 use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
@@ -15,9 +16,11 @@ use App\Filament\Widgets\Obligations\ObligationsByResponsibleChartWidget;
 use App\Filament\Widgets\Obligations\ObligationStatusDistributionChartWidget;
 use App\Models\Emission;
 use App\Models\Obligation;
+use App\Models\ObligationSeries;
 use App\Models\User;
 use App\Services\Obligations\ObligationDashboardData;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Dashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
@@ -91,6 +94,23 @@ class ObligationDashboard extends Dashboard
                     ->orderBy('name')
                     ->pluck('name', 'id')
                     ->all()),
+            Select::make('obligation_series_id')
+                ->label('Série')
+                ->placeholder('Todas')
+                ->searchable()
+                ->options(fn (): array => ObligationSeries::query()
+                    ->orderBy('title')
+                    ->pluck('title', 'id')
+                    ->all()),
+            Select::make('frequency')
+                ->label('Recorrência')
+                ->placeholder('Todas')
+                ->options(ObligationFrequency::seriesOptions()),
+            DatePicker::make('competence_from')
+                ->label('Competência desde'),
+            DatePicker::make('competence_to')
+                ->label('Competência até')
+                ->afterOrEqual('competence_from'),
             Select::make('status')
                 ->label('Status')
                 ->placeholder('Todos')

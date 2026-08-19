@@ -2,6 +2,7 @@
 
 namespace App\Services\Obligations;
 
+use App\Enums\ObligationFrequency;
 use App\Models\Emission;
 use App\Models\Obligation;
 use App\Models\ObligationEvidence;
@@ -53,6 +54,7 @@ class ObligationDashboardData
      * @var array<string, string>
      */
     public const SOURCE_FILTER_OPTIONS = [
+        'series' => 'Série recorrente',
         'term' => 'Gerada pelo Termo',
         'manual' => 'Manual',
     ];
@@ -599,6 +601,10 @@ SQL,
         $filters = collect($filters ?? [])
             ->only([
                 'emission_id',
+                'obligation_series_id',
+                'frequency',
+                'competence_from',
+                'competence_to',
                 'status',
                 'responsible_user_id',
                 'responsible_area',
@@ -617,6 +623,10 @@ SQL,
 
         if (filled($filters['source'] ?? null) && ! array_key_exists((string) $filters['source'], self::SOURCE_FILTER_OPTIONS)) {
             unset($filters['source']);
+        }
+
+        if (filled($filters['frequency'] ?? null) && ! array_key_exists((string) $filters['frequency'], ObligationFrequency::seriesOptions())) {
+            unset($filters['frequency']);
         }
 
         if (filled($filters['operational_focus'] ?? null) && ! array_key_exists((string) $filters['operational_focus'], self::OPERATIONAL_FOCUS_OPTIONS)) {
@@ -794,6 +804,22 @@ SQL,
             $query->where('emission_id', $filters['emission_id']);
         }
 
+        if (filled($filters['obligation_series_id'] ?? null)) {
+            $query->where('obligation_series_id', $filters['obligation_series_id']);
+        }
+
+        if (filled($filters['frequency'] ?? null)) {
+            $query->whereHas('series', fn (Builder $seriesQuery): Builder => $seriesQuery->where('frequency', $filters['frequency']));
+        }
+
+        if (filled($filters['competence_from'] ?? null)) {
+            $query->whereDate('competence_date', '>=', $filters['competence_from']);
+        }
+
+        if (filled($filters['competence_to'] ?? null)) {
+            $query->whereDate('competence_date', '<=', $filters['competence_to']);
+        }
+
         if (filled($filters['status'] ?? null)) {
             $query->where('status', $filters['status']);
         }
@@ -816,8 +842,9 @@ SQL,
 
         if (filled($filters['source'] ?? null)) {
             match ($filters['source']) {
-                'term' => $query->whereNotNull('extracted_obligation_id'),
-                'manual' => $query->whereNull('extracted_obligation_id'),
+                'series' => $query->whereNotNull('obligation_series_id'),
+                'term' => $query->whereNull('obligation_series_id')->whereNotNull('extracted_obligation_id'),
+                'manual' => $query->whereNull('obligation_series_id')->whereNull('extracted_obligation_id'),
                 default => null,
             };
         }

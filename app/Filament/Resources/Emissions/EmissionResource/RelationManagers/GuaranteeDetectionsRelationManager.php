@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
 use App\Enums\GuaranteeDetectionStatus;
+use App\Enums\GuaranteeReconciliationOutcome;
 use App\Enums\GuaranteeRequirementBase;
 use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
@@ -15,11 +16,13 @@ use App\Models\ExtractedGuarantee;
 use App\Models\GuaranteeGenerationRun;
 use App\Services\Guarantees\GuaranteeSuggestionReviewService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -51,6 +54,14 @@ class GuaranteeDetectionsRelationManager extends RelationManager
     protected ?GuaranteeGenerationRun $generationRunCache = null;
 
     protected bool $generationRunResolved = false;
+
+    /**
+     * Prefixo dos campos de decisão por divergência.
+     *
+     * Os nomes dos campos da garantia não podem ir crus para o formulário: um
+     * campo chamado `name` colidiria com o do próprio registro.
+     */
+    private const DIVERGENCE_FIELD_PREFIX = 'divergence__';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -124,12 +135,16 @@ class GuaranteeDetectionsRelationManager extends RelationManager
                     ->badge()
                     ->formatStateUsing(fn (ExtractedGuarantee $record): string => $record->confidenceLevel()?->label() ?? '—')
                     ->color(fn (ExtractedGuarantee $record): string => $record->confidenceLevel()?->color() ?? 'gray'),
-                TextColumn::make('has_conflict')
-                    ->label('Conflito')
+                TextColumn::make('reconciliation_outcome')
+                    ->label('O que o documento traz')
                     ->badge()
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'Revisão necessária' : 'Sem conflito')
-                    ->color(fn (bool $state): string => $state ? 'danger' : 'gray')
-                    ->toggleable(),
+                    ->formatStateUsing(fn (ExtractedGuarantee $record): string => $record->outcome()->label())
+                    ->color(fn (ExtractedGuarantee $record): string => $record->outcome()->color())
+                    ->description(fn (ExtractedGuarantee $record): ?string => $record->relatedGuarantee === null
+                        ? null
+                        : $record->relatedGuarantee->display_name)
+                    ->tooltip(fn (ExtractedGuarantee $record): ?string => $record->conflict_reason)
+                    ->wrap(),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -145,12 +160,16 @@ class GuaranteeDetectionsRelationManager extends RelationManager
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(GuaranteeDetectionStatus::options()),
+                SelectFilter::make('reconciliation_outcome')
+                    ->label('O que o documento traz')
+                    ->options(GuaranteeReconciliationOutcome::options()),
             ])
             ->headerActions([
                 $this->makeGenerateAction(),
             ])
             ->actions([
                 $this->makeReviewAction(),
+                $this->makeComplementAction(),
                 $this->makeApproveAction(),
                 $this->makeRejectAction(),
                 Action::make('open_document')
@@ -184,19 +203,124 @@ class GuaranteeDetectionsRelationManager extends RelationManager
             ->modalCancelActionLabel('Fechar')
             ->modalContent(fn (ExtractedGuarantee $record): View => view(
                 'filament.resources.emissions.relation-managers.guarantee-detection-review',
-                ['candidate' => $record->load(['document', 'relatedGuarantee'])],
+                [
+                    'candidate' => $record->load(['document', 'relatedGuarantee']),
+                    'plan' => app(GuaranteeSuggestionReviewService::class)->planFor($record),
+                ],
             ));
+    }
+
+    /**
+     * Ação principal quando a candidata corresponde a uma garantia já
+     * cadastrada: enriquecê-la em vez de criar uma segunda.
+     *
+     * O modal mostra o impacto exato antes de escrever, e cada divergência
+     * exige escolha explícita — nada vigente é sobrescrito por omissão.
+     */
+    protected function makeComplementAction(): Action
+    {
+        return Action::make('complement')
+            ->label('Complementar garantia existente')
+            ->icon('heroicon-o-arrows-pointing-in')
+            ->color('success')
+            ->modalHeading(fn (ExtractedGuarantee $record): string => sprintf(
+                'Complementar %s?',
+                $record->relatedGuarantee?->display_name ?? 'garantia existente',
+            ))
+            ->modalDescription('As informações abaixo são aplicadas à garantia já cadastrada, com a origem documental preservada. Nenhuma garantia nova é criada.')
+            ->modalSubmitActionLabel('Confirmar e complementar garantia')
+            ->modalWidth('4xl')
+            ->form(fn (ExtractedGuarantee $record): array => $this->complementFormSchema($record))
+            // A visibilidade usa a correspondência já gravada: recalcular o
+            // pareamento por linha custaria uma varredura das garantias da
+            // emissão a cada listagem, e a revisão em si recalcula tudo.
+            ->visible(fn (ExtractedGuarantee $record): bool => $this->canReview($record, GuaranteeSuggestionReviewService::TRANSITION_COMPLEMENT))
+            ->authorize(fn (ExtractedGuarantee $record): bool => $this->canReview($record, GuaranteeSuggestionReviewService::TRANSITION_COMPLEMENT))
+            ->action(function (ExtractedGuarantee $record, array $data): void {
+                $decisions = [];
+
+                foreach ($data as $key => $value) {
+                    if (str_starts_with($key, self::DIVERGENCE_FIELD_PREFIX) && is_string($value)) {
+                        $decisions[substr($key, strlen(self::DIVERGENCE_FIELD_PREFIX))] = $value;
+                    }
+                }
+
+                $guarantee = app(GuaranteeSuggestionReviewService::class)->complement(
+                    suggestion: $record,
+                    actor: auth()->user(),
+                    divergenceDecisions: $decisions,
+                    reviewNotes: $data['review_notes'] ?? null,
+                );
+
+                Notification::make()
+                    ->title(sprintf('Garantia "%s" complementada.', $guarantee->display_name))
+                    ->body('A origem documental foi registrada e o histórico preservado.')
+                    ->success()
+                    ->send();
+            });
+    }
+
+    /**
+     * Campos do modal de complemento: o impacto calculado, uma decisão por
+     * divergência e a observação da revisão.
+     *
+     * @return array<int, mixed>
+     */
+    protected function complementFormSchema(ExtractedGuarantee $record): array
+    {
+        $plan = app(GuaranteeSuggestionReviewService::class)->planFor($record);
+
+        $schema = [
+            SchemaView::make('filament.resources.emissions.relation-managers.guarantee-complement-impact')
+                ->viewData(['plan' => $plan, 'candidate' => $record])
+                ->columnSpanFull(),
+        ];
+
+        foreach ($plan->divergences as $delta) {
+            $schema[] = Radio::make(self::DIVERGENCE_FIELD_PREFIX.$delta->field)
+                ->label($delta->label)
+                ->helperText(sprintf('Cadastrado: %s · Documento: %s', $delta->currentDisplay, $delta->newDisplay))
+                ->options([
+                    GuaranteeSuggestionReviewService::DECISION_KEEP => sprintf('Manter o atual (%s)', $delta->currentDisplay),
+                    GuaranteeSuggestionReviewService::DECISION_UPDATE => sprintf('Atualizar para o do documento (%s)', $delta->newDisplay),
+                ])
+                ->default(GuaranteeSuggestionReviewService::DECISION_KEEP)
+                ->required()
+                ->columnSpanFull();
+        }
+
+        $schema[] = Textarea::make('review_notes')
+            ->label('Observação da revisão')
+            ->rows(3)
+            ->maxLength(2000)
+            ->columnSpanFull();
+
+        return $schema;
     }
 
     protected function makeApproveAction(): Action
     {
         return Action::make('approve')
-            ->label('Confirmar')
+            // Havendo correspondência, criar deixa de ser a ação óbvia e passa
+            // a ser a exceção que o rótulo precisa nomear: são duas garantias
+            // distintas, não a mesma vista em dois documentos.
+            ->label(fn (ExtractedGuarantee $record): string => $record->matchesExistingGuarantee()
+                ? 'Criar como garantia distinta'
+                : 'Confirmar')
             ->icon('heroicon-o-check')
-            ->color('success')
-            ->modalHeading('Confirmar garantia detectada')
-            ->modalDescription('A garantia passa a integrar oficialmente a emissão, com a origem documental preservada. Ajuste os campos abaixo antes de confirmar, se necessário.')
-            ->modalSubmitActionLabel('Confirmar garantia')
+            ->color(fn (ExtractedGuarantee $record): string => $record->matchesExistingGuarantee() ? 'gray' : 'success')
+            ->modalHeading(fn (ExtractedGuarantee $record): string => $record->matchesExistingGuarantee()
+                ? 'Criar como garantia distinta'
+                : 'Confirmar garantia detectada')
+            ->modalDescription(fn (ExtractedGuarantee $record): string => $record->matchesExistingGuarantee()
+                ? sprintf(
+                    'Um novo cadastro será criado, separado de "%s". Use apenas se forem mesmo duas garantias diferentes.',
+                    $record->relatedGuarantee?->display_name ?? 'garantia existente',
+                )
+                : 'A garantia passa a integrar oficialmente a emissão, com a origem documental preservada. Ajuste os campos abaixo antes de confirmar, se necessário.')
+            ->modalSubmitActionLabel(fn (ExtractedGuarantee $record): string => $record->matchesExistingGuarantee()
+                ? 'Criar garantia distinta'
+                : 'Confirmar garantia')
             ->fillForm(fn (ExtractedGuarantee $record): array => [
                 'name' => $record->name,
                 'requirement_percentage' => $record->requirement_percentage,
@@ -242,7 +366,7 @@ class GuaranteeDetectionsRelationManager extends RelationManager
     protected function makeRejectAction(): Action
     {
         return Action::make('reject')
-            ->label('Rejeitar')
+            ->label('Ignorar / Rejeitar')
             ->icon('heroicon-o-x-mark')
             ->color('danger')
             ->modalHeading('Rejeitar garantia detectada')

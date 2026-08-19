@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ExtractedObligationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ExtractedObligation extends Model
 {
-    /** @use HasFactory<\Database\Factories\ExtractedObligationFactory> */
+    /** @use HasFactory<ExtractedObligationFactory> */
     use HasFactory;
 
     public const STATUS_SUGGESTED = 'suggested';
@@ -108,5 +109,10 @@ class ExtractedObligation extends Model
     public function obligation(): HasOne
     {
         return $this->hasOne(Obligation::class);
+    }
+
+    public function obligationSeries(): HasOne
+    {
+        return $this->hasOne(ObligationSeries::class);
     }
 }

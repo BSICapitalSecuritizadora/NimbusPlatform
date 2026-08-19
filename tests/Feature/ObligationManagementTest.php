@@ -402,6 +402,28 @@ it('keeps suggestion review available to super admins', function () {
     expect($suggestion->fresh()->status)->toBe(ExtractedObligation::STATUS_APPROVED);
 });
 
+it('opens the edit form for a suggestion without a type error', function () {
+    $emission = Emission::factory()->create();
+    $suggestion = ExtractedObligation::factory()->for($emission)->create([
+        'status' => ExtractedObligation::STATUS_SUGGESTED,
+        'recurrence' => 'Mensal',
+    ]);
+
+    $this->actingAs(makeSuggestionReviewer([
+        AccessPermission::ObligationsCreate->value,
+    ]));
+
+    // O formulário de sugestão recebe um ExtractedObligation como $record; antes
+    // os closures do campo "Recorrência" tipavam ?Obligation e o mount estourava
+    // um TypeError. O mount abaixo é justamente onde eles são avaliados.
+    Livewire::test(ObligationSuggestionsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->mountTableAction('edit', $suggestion)
+        ->assertSuccessful();
+});
+
 it('shows the generate obligations action on the suggestions tab', function () {
     $user = User::factory()->create();
     $user->givePermissionTo([

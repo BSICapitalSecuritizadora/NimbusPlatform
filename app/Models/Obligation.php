@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\ObligationObserver;
+use Database\Factories\ObligationFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 #[ObservedBy(ObligationObserver::class)]
 class Obligation extends Model
 {
-    /** @use HasFactory<\Database\Factories\ObligationFactory> */
+    /** @use HasFactory<ObligationFactory> */
     use HasFactory, LogsActivity;
 
     public const STATUS_OPTIONS = [
@@ -33,8 +34,19 @@ class Obligation extends Model
         'critical' => 'Crítica',
     ];
 
+    public const GENERATION_SOURCE_AUTOMATIC = 'automatic';
+
+    public const GENERATION_SOURCE_ON_DEMAND = 'on_demand';
+
+    public const GENERATION_SOURCE_LEGACY = 'legacy';
+
     protected $fillable = [
         'emission_id',
+        'obligation_series_id',
+        'obligation_series_rule_id',
+        'competence_date',
+        'generation_source',
+        'generated_at',
         'extracted_obligation_id',
         'responsible_user_id',
         'title',
@@ -70,6 +82,8 @@ class Obligation extends Model
     protected function casts(): array
     {
         return [
+            'competence_date' => 'date',
+            'generated_at' => 'datetime',
             'due_date' => 'date',
             'source_page' => 'integer',
             'completed_at' => 'datetime',
@@ -101,9 +115,36 @@ class Obligation extends Model
         return self::PRIORITY_OPTIONS[$this->priority] ?? $this->priority;
     }
 
+    public function getCompetenceLabelAttribute(): ?string
+    {
+        return $this->competence_date?->format('m/Y');
+    }
+
+    public function getOperationalTitleAttribute(): string
+    {
+        return $this->competence_label !== null
+            ? $this->title.' — '.$this->competence_label
+            : $this->title;
+    }
+
+    public function getIsRecurringOccurrenceAttribute(): bool
+    {
+        return $this->obligation_series_id !== null && $this->competence_date !== null;
+    }
+
     public function emission(): BelongsTo
     {
         return $this->belongsTo(Emission::class);
+    }
+
+    public function series(): BelongsTo
+    {
+        return $this->belongsTo(ObligationSeries::class, 'obligation_series_id');
+    }
+
+    public function seriesRule(): BelongsTo
+    {
+        return $this->belongsTo(ObligationSeriesRule::class, 'obligation_series_rule_id');
     }
 
     public function extractedObligation(): BelongsTo

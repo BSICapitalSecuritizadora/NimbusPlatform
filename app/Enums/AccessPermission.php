@@ -66,6 +66,7 @@ enum AccessPermission: string
     case GuaranteesReviewSuggestions = 'guarantees.review_suggestions';
     case GuaranteesApproveSuggestion = 'guarantees.approve_suggestion';
     case GuaranteesRejectSuggestion = 'guarantees.reject_suggestion';
+    case GuaranteesComplementGuarantee = 'guarantees.complement_guarantee';
     case GuaranteesReprocessDocuments = 'guarantees.reprocess_documents';
     case GuaranteesUpdateValue = 'guarantees.update_value';
     case GuaranteesCloseCompetence = 'guarantees.close_competence';
@@ -285,6 +286,7 @@ enum AccessPermission: string
             self::GuaranteesReviewSuggestions => 'Garantias: revisar garantias detectadas',
             self::GuaranteesApproveSuggestion => 'Garantias: confirmar garantia detectada',
             self::GuaranteesRejectSuggestion => 'Garantias: rejeitar garantia detectada',
+            self::GuaranteesComplementGuarantee => 'Garantias: complementar garantia existente',
             self::GuaranteesReprocessDocuments => 'Garantias: reprocessar documentos',
             self::GuaranteesUpdateValue => 'Garantias: atualizar valor da competência',
             self::GuaranteesCloseCompetence => 'Garantias: fechar competência',
@@ -474,6 +476,7 @@ enum AccessPermission: string
                 self::GuaranteesReviewSuggestions,
                 self::GuaranteesApproveSuggestion,
                 self::GuaranteesRejectSuggestion,
+                self::GuaranteesComplementGuarantee,
                 self::GuaranteesReprocessDocuments,
                 self::GuaranteesUpdateValue,
                 self::GuaranteesCloseCompetence,

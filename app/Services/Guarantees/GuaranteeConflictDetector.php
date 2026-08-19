@@ -2,28 +2,41 @@
 
 namespace App\Services\Guarantees;
 
+use App\DTOs\Guarantees\GuaranteeMatch;
 use App\Enums\GuaranteeEventType;
+use App\Enums\GuaranteeReconciliationOutcome;
 use App\Enums\LegalDocumentType;
 use App\Models\Guarantee;
-use App\Models\GuaranteeDocumentReference;
 use Illuminate\Support\Collection;
 
 /**
- * Liga uma garantia detectada às garantias já confirmadas e sinaliza conflito
- * quando a relação não é clara (§34 e §35 do escopo).
+ * Liga uma garantia detectada às garantias já confirmadas e classifica o que o
+ * documento representa para elas (§34 e §35 do escopo).
  *
- * O módulo nunca escolhe sozinho entre duas informações divergentes: ou a
- * relação documental é evidente — e vira evolução histórica —, ou o caso vai
- * para revisão marcado como conflito.
+ * Antes, encontrar uma garantia parecida bastava para marcar conflito, e a
+ * revisão só oferecia criar outra ou rejeitar — as duas saídas perdiam
+ * informação, e a mesma garantia citada em Termo, CCB e aditamento virava três
+ * cadastros. Agora a correspondência é procurada primeiro
+ * ({@see GuaranteeMatcher}) e o que o documento acrescenta é classificado
+ * ({@see GuaranteeConsolidationPlanner}): complemento, confirmação, alteração
+ * ou — só então — conflito.
+ *
+ * O módulo continua sem escolher sozinho entre duas informações divergentes: o
+ * que mudou é que divergência deixou de ser o caso comum.
  */
 class GuaranteeConflictDetector
 {
+    public function __construct(
+        private readonly GuaranteeMatcher $matcher,
+        private readonly GuaranteeConsolidationPlanner $planner,
+    ) {}
+
     /**
      * Resultado da análise de uma candidata.
      *
      * @param  array<string, mixed>  $proposal
      * @param  Collection<int, Guarantee>  $existingGuarantees
-     * @return array{related_guarantee_id: int|null, has_conflict: bool, conflict_reason: string|null}
+     * @return array{related_guarantee_id: int|null, has_conflict: bool, conflict_reason: string|null, reconciliation_outcome: string, match_score: float|null, match_level: string|null, match_evidence: array<int, string>|null}
      */
     public function analyse(
         array $proposal,
@@ -31,193 +44,135 @@ class GuaranteeConflictDetector
         ?LegalDocumentType $documentType,
         ?string $documentDate,
     ): array {
-        $eventType = GuaranteeEventType::tryFrom((string) ($proposal['event_type'] ?? ''))
-            ?? GuaranteeEventType::Constitution;
+        $eventType = $this->resolveEventType($proposal['event_type'] ?? null);
 
-        $match = $this->findMatchingGuarantee($proposal, $existingGuarantees);
+        $proposal['document_date'] ??= $documentDate;
 
-        // Aditamento que propõe constituir garantia do zero: ou o extrator
-        // classificou mal o evento, ou a garantia original nunca foi
-        // confirmada. Nos dois casos alguém precisa olhar.
-        if (
-            $eventType === GuaranteeEventType::Constitution
-            && $documentType !== null
-            && ! $documentType->canConstituteGuarantees()
-        ) {
-            return [
-                'related_guarantee_id' => $match?->getKey(),
-                'has_conflict' => true,
-                'conflict_reason' => sprintf(
-                    'O documento é %s e não constitui garantias por si só, mas a extração propôs uma constituição.',
-                    $documentType->label(),
-                ),
-            ];
+        $match = $this->matcher->match($proposal, $this->consolidatable($existingGuarantees));
+
+        if ($match?->suggestsConsolidation() === true) {
+            return $this->analyseAgainstMatch($proposal, $match);
         }
 
-        if ($eventType === GuaranteeEventType::Constitution) {
-            // Constituição que colide com garantia já confirmada do mesmo tipo
-            // e mesma identificação é provável duplicata.
-            if ($match !== null) {
-                return [
-                    'related_guarantee_id' => $match->getKey(),
-                    'has_conflict' => true,
-                    'conflict_reason' => sprintf(
-                        'Já existe a garantia confirmada "%s" com a mesma identificação. Verifique se é constituição nova ou duplicata.',
-                        $match->display_name,
-                    ),
-                ];
-            }
-
-            return ['related_guarantee_id' => null, 'has_conflict' => false, 'conflict_reason' => null];
+        // Sem correspondência utilizável, o que resta é decidir se a candidata
+        // pode virar garantia nova. Um aditamento que altera, reforça ou libera
+        // sem garantia correspondente não pode: criar uma garantia a partir
+        // dele inverteria a cadeia documental.
+        if ($eventType !== GuaranteeEventType::Constitution) {
+            return $this->conflict($match, sprintf(
+                'O documento indica %s, mas nenhuma garantia cadastrada corresponde à identificação extraída.',
+                mb_strtolower($eventType->label()),
+            ));
         }
 
-        // Alteração, reforço, substituição ou liberação sem garantia
-        // correspondente: não há o que alterar, e criar uma garantia nova a
-        // partir de um aditamento inverteria a cadeia documental.
-        if ($match === null) {
-            return [
-                'related_guarantee_id' => null,
-                'has_conflict' => true,
-                'conflict_reason' => sprintf(
-                    'O documento indica %s, mas nenhuma garantia confirmada corresponde à identificação extraída.',
-                    mb_strtolower($eventType->label()),
-                ),
-            ];
-        }
-
-        $precedenceConflict = $this->detectPrecedenceConflict($match, $documentType, $documentDate);
-
-        if ($precedenceConflict !== null) {
-            return [
-                'related_guarantee_id' => $match->getKey(),
-                'has_conflict' => true,
-                'conflict_reason' => $precedenceConflict,
-            ];
+        if ($documentType !== null && ! $documentType->canConstituteGuarantees()) {
+            return $this->conflict($match, sprintf(
+                'O documento é %s e não constitui garantias por si só, mas a extração propôs uma constituição.',
+                $documentType->label(),
+            ));
         }
 
         return [
-            'related_guarantee_id' => $match->getKey(),
+            'related_guarantee_id' => $match?->guarantee->getKey(),
             'has_conflict' => false,
             'conflict_reason' => null,
+            'reconciliation_outcome' => GuaranteeReconciliationOutcome::NewGuarantee->value,
+            'match_score' => $match?->score,
+            'match_level' => $match?->level->value,
+            'match_evidence' => $match?->evidence,
         ];
     }
 
     /**
-     * Garantia confirmada que a candidata parece afetar.
-     *
-     * A identificação pesa mais que o nome: duas alienações fiduciárias de
-     * imóvel só são a mesma garantia se a matrícula coincidir.
+     * Classifica a candidata contra a garantia correspondente.
      *
      * @param  array<string, mixed>  $proposal
-     * @param  Collection<int, Guarantee>  $existingGuarantees
+     * @return array{related_guarantee_id: int|null, has_conflict: bool, conflict_reason: string|null, reconciliation_outcome: string, match_score: float|null, match_level: string|null, match_evidence: array<int, string>|null}
      */
-    private function findMatchingGuarantee(array $proposal, Collection $existingGuarantees): ?Guarantee
+    private function analyseAgainstMatch(array $proposal, GuaranteeMatch $match): array
     {
-        $type = $proposal['type'] ?? null;
-        $identification = is_array($proposal['identification'] ?? null) ? $proposal['identification'] : [];
+        $outcome = $this->planner->planForProposal($proposal, $match->guarantee, $match)->outcome;
 
-        $sameType = $existingGuarantees->filter(
-            fn (Guarantee $guarantee): bool => $guarantee->type?->value === $type,
-        );
-
-        if ($sameType->isEmpty()) {
-            return null;
-        }
-
-        foreach ($this->identityKeys() as $key) {
-            $candidateValue = $this->normalizeIdentityValue($identification[$key] ?? null);
-
-            if ($candidateValue === null) {
-                continue;
-            }
-
-            $match = $sameType->first(function (Guarantee $guarantee) use ($key, $candidateValue): bool {
-                $existingValue = $this->normalizeIdentityValue(($guarantee->identification ?? [])[$key] ?? null);
-
-                return $existingValue !== null && $existingValue === $candidateValue;
-            });
-
-            if ($match instanceof Guarantee) {
-                return $match;
-            }
-        }
-
-        // Sem identificação comparável, um único candidato do mesmo tipo é
-        // correspondência aceitável; mais de um seria adivinhação.
-        return $sameType->count() === 1 ? $sameType->first() : null;
-    }
-
-    /**
-     * Conflito de prioridade documental (§35): o documento que propõe a
-     * alteração é anterior ao que já fundamenta a garantia.
-     *
-     * "Documento mais novo vence" não é presumido — o que se recusa aqui é o
-     * inverso: deixar um instrumento antigo sobrescrever um mais recente sem
-     * que ninguém perceba.
-     */
-    private function detectPrecedenceConflict(
-        Guarantee $guarantee,
-        ?LegalDocumentType $documentType,
-        ?string $documentDate,
-    ): ?string {
-        if ($documentDate === null) {
-            return null;
-        }
-
-        $latestReference = $guarantee->documentReferences
-            ->filter(fn (GuaranteeDocumentReference $reference): bool => $reference->document_date !== null)
-            ->sortByDesc(fn (GuaranteeDocumentReference $reference): string => $reference->document_date->toDateString())
-            ->first();
-
-        if (! $latestReference instanceof GuaranteeDocumentReference) {
-            return null;
-        }
-
-        $latestDate = $latestReference->document_date->toDateString();
-
-        if ($documentDate > $latestDate) {
-            return null;
-        }
-
-        if ($documentDate === $latestDate) {
-            $incomingWeight = $documentType?->specificityWeight() ?? 0;
-            $existingWeight = $latestReference->document_type?->specificityWeight() ?? 0;
-
-            return $incomingWeight >= $existingWeight
-                ? null
-                : 'Outro documento de mesma data e maior especificidade já fundamenta esta garantia.';
-        }
-
-        return sprintf(
-            'O documento é de %s, anterior a %s, que fundamenta a posição vigente da garantia.',
-            $documentDate,
-            $latestDate,
-        );
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function identityKeys(): array
-    {
         return [
-            'registration_number',
-            'tax_id',
-            'account',
-            'portfolio',
-            'policy_number',
-            'company',
+            'related_guarantee_id' => $match->guarantee->getKey(),
+            'has_conflict' => $outcome === GuaranteeReconciliationOutcome::Conflict,
+            'conflict_reason' => $this->describe($outcome, $match),
+            'reconciliation_outcome' => $outcome->value,
+            'match_score' => $match->score,
+            'match_level' => $match->level->value,
+            'match_evidence' => $match->evidence,
         ];
     }
 
-    private function normalizeIdentityValue(mixed $value): ?string
+    /**
+     * Frase curta que a listagem mostra. O detalhe do impacto é recalculado na
+     * revisão, contra o cadastro do momento — congelar aqui o que será aplicado
+     * depois arriscaria descrever um estado que já mudou.
+     */
+    private function describe(GuaranteeReconciliationOutcome $outcome, GuaranteeMatch $match): string
     {
-        if (! is_scalar($value)) {
-            return null;
+        $name = $match->guarantee->display_name;
+
+        return match ($outcome) {
+            GuaranteeReconciliationOutcome::Complement => sprintf(
+                'Provavelmente é a garantia já cadastrada "%s". O documento traz informações que ainda não constam no cadastro.',
+                $name,
+            ),
+            GuaranteeReconciliationOutcome::Confirmation => sprintf(
+                'Confirma, em novo documento, informações já cadastradas na garantia "%s".',
+                $name,
+            ),
+            GuaranteeReconciliationOutcome::Change => sprintf(
+                'O documento altera informação vigente da garantia "%s". A posição anterior é preservada no histórico.',
+                $name,
+            ),
+            GuaranteeReconciliationOutcome::Conflict => sprintf(
+                'O documento diverge do que está cadastrado na garantia "%s" sem indicar alteração. Decida antes de aplicar.',
+                $name,
+            ),
+            GuaranteeReconciliationOutcome::NewGuarantee => 'Nenhuma garantia cadastrada corresponde à identificada neste documento.',
+        };
+    }
+
+    /**
+     * @return array{related_guarantee_id: int|null, has_conflict: bool, conflict_reason: string|null, reconciliation_outcome: string, match_score: float|null, match_level: string|null, match_evidence: array<int, string>|null}
+     */
+    private function conflict(?GuaranteeMatch $match, string $reason): array
+    {
+        return [
+            'related_guarantee_id' => $match?->guarantee->getKey(),
+            'has_conflict' => true,
+            'conflict_reason' => $reason,
+            'reconciliation_outcome' => GuaranteeReconciliationOutcome::Conflict->value,
+            'match_score' => $match?->score,
+            'match_level' => $match?->level->value,
+            'match_evidence' => $match?->evidence,
+        ];
+    }
+
+    /**
+     * Garantias elegíveis a receber a candidata.
+     *
+     * Liberadas, substituídas e encerradas ficam de fora: um documento novo não
+     * ressuscita garantia extinta, e apontar para ela faria a revisão sugerir
+     * complementar o que já saiu da operação.
+     *
+     * @param  Collection<int, Guarantee>  $guarantees
+     * @return Collection<int, Guarantee>
+     */
+    private function consolidatable(Collection $guarantees): Collection
+    {
+        return $guarantees
+            ->reject(fn (Guarantee $guarantee): bool => $guarantee->legal_status?->isClosed() ?? false)
+            ->values();
+    }
+
+    private function resolveEventType(mixed $value): GuaranteeEventType
+    {
+        if ($value instanceof GuaranteeEventType) {
+            return $value;
         }
 
-        $normalized = preg_replace('/[^\p{L}\p{N}]/u', '', mb_strtolower(trim((string) $value)));
-
-        return ($normalized === null || $normalized === '') ? null : $normalized;
+        return GuaranteeEventType::tryFrom((string) $value) ?? GuaranteeEventType::Constitution;
     }
 }

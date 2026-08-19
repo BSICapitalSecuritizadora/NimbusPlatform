@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\ObligationNotificationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ObligationNotification extends Model
 {
-    /** @use HasFactory<\Database\Factories\ObligationNotificationFactory> */
+    /** @use HasFactory<ObligationNotificationFactory> */
     use HasFactory;
 
     public const TYPE_DUE_SOON = 'due_soon';
@@ -21,11 +22,14 @@ class ObligationNotification extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    public const STATUS_PROCESSING = 'processing';
+
     protected $fillable = [
         'obligation_id',
         'emission_id',
         'notification_type',
         'milestone',
+        'deduplication_key',
         'recipient',
         'status',
         'error_message',

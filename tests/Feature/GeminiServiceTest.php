@@ -231,6 +231,23 @@ it('stops after the configured number of attempts and surfaces the failure', fun
 });
 
 /**
+ * O default do serviço é o orçamento de retry que produção usa quando o
+ * `.env` não sobrescreve. Um 503 sustentado do Gemini precisa de mais do que
+ * uma repetição para ser vencido, então o padrão são 4 tentativas — travar
+ * esse número evita que uma mudança silenciosa encurte a resiliência.
+ */
+it('defaults to four attempts before giving up', function (): void {
+    Http::fake([
+        'https://generativelanguage.googleapis.com/v1beta/models/*' => Http::response(geminiOverloadedBody(), 503),
+    ]);
+
+    expect(fn () => app(GeminiService::class)->extractSecuritizationClauses(fakeDocument()))
+        ->toThrow(RequestException::class);
+
+    Http::assertSentCount(4);
+});
+
+/**
  * Um pedido malformado volta o mesmo erro em toda tentativa. Repetir só atrasa
  * o diagnóstico e multiplica o envio do documento ao processador.
  */

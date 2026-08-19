@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
+use App\Enums\ObligationFrequency;
 use App\Filament\Exports\ObligationExporter;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
+use App\Services\Obligations\ObligationSeriesService;
 use App\Services\Obligations\ObligationWorkflowService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -20,6 +22,7 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Component;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -33,6 +36,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class ObligationsRelationManager extends RelationManager
 {
@@ -90,6 +94,13 @@ class ObligationsRelationManager extends RelationManager
                             ->label('Prazo / Vencimento')
                             ->date('d/m/Y')
                             ->placeholder('Sem prazo definido'),
+                        TextEntry::make('competence_label')
+                            ->label('Competência')
+                            ->placeholder('Obrigação única'),
+                        TextEntry::make('recurrence')
+                            ->label('Recorrência')
+                            ->badge()
+                            ->placeholder('Única'),
                         TextEntry::make('responsibleUser.name')
                             ->label('Responsável')
                             ->placeholder('Não atribuído'),
@@ -98,8 +109,12 @@ class ObligationsRelationManager extends RelationManager
                             ->placeholder('—'),
                         TextEntry::make('source')
                             ->label('Origem')
-                            ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual')
+                            ->state(fn (Obligation $record): string => $this->sourceLabel($record))
                             ->placeholder('—'),
+                        TextEntry::make('series.rule_summary')
+                            ->label('Regra da série')
+                            ->placeholder('Não se aplica')
+                            ->columnSpan(2),
                         TextEntry::make('next_action')
                             ->label('Próxima Ação Recomendada')
                             ->state(fn (Obligation $record): string => match ($record->status) {
@@ -133,8 +148,14 @@ class ObligationsRelationManager extends RelationManager
         $columns = [
             TextColumn::make('title')
                 ->label('Título')
+                ->state(fn (Obligation $record): string => $record->operational_title)
                 ->searchable()
                 ->wrap(),
+            TextColumn::make('competence_date')
+                ->label('Competência')
+                ->date('m/Y')
+                ->placeholder('Única')
+                ->sortable(),
             TextColumn::make('status')
                 ->label('Status')
                 ->badge()
@@ -172,8 +193,12 @@ class ObligationsRelationManager extends RelationManager
             TextColumn::make('source')
                 ->label('Origem')
                 ->badge()
-                ->state(fn (Obligation $record): string => $record->extracted_obligation_id !== null ? 'Gerada pelo Termo' : 'Manual')
+                ->state(fn (Obligation $record): string => $this->sourceLabel($record))
                 ->color(fn (string $state): string => $state === 'Manual' ? 'gray' : 'info')
+                ->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('recurrence')
+                ->label('Recorrência')
+                ->badge()
                 ->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('obligation_category')
                 ->label('Categoria')
@@ -214,6 +239,17 @@ class ObligationsRelationManager extends RelationManager
             SelectFilter::make('priority')
                 ->label('Prioridade')
                 ->options(Obligation::PRIORITY_OPTIONS),
+            SelectFilter::make('obligation_series_id')
+                ->label('Série')
+                ->relationship('series', 'title')
+                ->searchable()
+                ->preload(),
+            SelectFilter::make('series_frequency')
+                ->label('Recorrência')
+                ->options(ObligationFrequency::seriesOptions())
+                ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
+                    ? $query->whereHas('series', fn (Builder $seriesQuery): Builder => $seriesQuery->where('frequency', $data['value']))
+                    : $query),
             SelectFilter::make('due_window')
                 ->label('Janela de vencimento')
                 ->options(ObligationDashboardData::DUE_WINDOW_OPTIONS)
@@ -233,8 +269,9 @@ class ObligationsRelationManager extends RelationManager
                 ->options(ObligationDashboardData::SOURCE_FILTER_OPTIONS)
                 ->query(function (Builder $query, array $data): Builder {
                     return match ($data['value'] ?? null) {
-                        'term' => $query->whereNotNull('extracted_obligation_id'),
-                        'manual' => $query->whereNull('extracted_obligation_id'),
+                        'series' => $query->whereNotNull('obligation_series_id'),
+                        'term' => $query->whereNull('obligation_series_id')->whereNotNull('extracted_obligation_id'),
+                        'manual' => $query->whereNull('obligation_series_id')->whereNull('extracted_obligation_id'),
                         default => $query,
                     };
                 }),
@@ -251,7 +288,7 @@ class ObligationsRelationManager extends RelationManager
             ->recordTitleAttribute('title')
             ->description($this->obligationsTableDescription())
             ->modifyQueryUsing(function (Builder $query) use ($canViewEvidence): Builder {
-                $query->with('responsibleUser');
+                $query->with(['responsibleUser', 'series']);
 
                 if (! $canViewEvidence) {
                     return $query;
@@ -280,6 +317,7 @@ class ObligationsRelationManager extends RelationManager
             ->actions([
                 ViewAction::make()
                     ->label('Abrir dossiê')
+                    ->modalHeading(fn (Obligation $record): string => 'Visualizar '.$record->operational_title)
                     ->color('info')
                     ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false)
                     ->extraModalFooterActions(fn (Obligation $record) => [
@@ -295,14 +333,15 @@ class ObligationsRelationManager extends RelationManager
                 $this->makeMarkNotApplicableAction(),
                 $this->makeReopenAction(),
                 EditAction::make()
-                    ->label('Editar obrigação')
-                    ->tooltip('Editar obrigação')
+                    ->label(fn (Obligation $record): string => $record->is_recurring_occurrence ? 'Editar esta competência' : 'Editar obrigação')
+                    ->tooltip(fn (Obligation $record): string => $record->is_recurring_occurrence ? 'Editar somente esta competência' : 'Editar obrigação')
                     ->iconButton()
                     ->authorize(fn (): bool => $this->canEditObligations()),
                 DeleteAction::make()
                     ->label('Remover obrigação')
                     ->tooltip('Remover obrigação')
                     ->iconButton()
+                    ->visible(fn (Obligation $record): bool => ! $record->is_recurring_occurrence)
                     ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsDelete->value) ?? false),
             ])
             ->bulkActions([
@@ -410,13 +449,13 @@ class ObligationsRelationManager extends RelationManager
     protected function makeCompleteAction(): Action
     {
         return Action::make('complete_obligation')
-            ->label('Concluir obrigação')
+            ->label(fn (Obligation $record): string => $record->is_recurring_occurrence ? 'Concluir competência' : 'Concluir obrigação')
             ->icon('heroicon-o-check-badge')
             ->color('success')
             ->modalWidth(Width::Large)
-            ->modalHeading('Concluir obrigação')
-            ->modalDescription('Esta ação encerrará a obrigação como concluída. Apenas evidência aprovada conta como comprovação válida; se não houver uma aprovada, a conclusão é excepcional e exige justificativa e confirmação explícita.')
-            ->modalSubmitActionLabel('Concluir obrigação')
+            ->modalHeading(fn (Obligation $record): string => $record->is_recurring_occurrence ? 'Concluir competência '.$record->competence_label : 'Concluir obrigação')
+            ->modalDescription('Esta ação conclui somente o item operacional exibido. Em recorrências, as demais competências permanecem independentes. Apenas evidência aprovada conta como comprovação válida; sem uma aprovada, a conclusão exige justificativa e confirmação explícita.')
+            ->modalSubmitActionLabel('Concluir')
             ->form(fn (Obligation $record): array => $this->completeActionForm($record))
             ->visible(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_COMPLETE))
             ->authorize(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_COMPLETE))
@@ -441,7 +480,16 @@ class ObligationsRelationManager extends RelationManager
             ->modalHeading('Marcar obrigação como não aplicável')
             ->modalDescription('Isto encerrará a obrigação sem exigir cumprimento, mantendo o motivo registrado para auditoria.')
             ->modalSubmitActionLabel('Marcar como não aplicável')
-            ->form([
+            ->form(fn (Obligation $record): array => [
+                Select::make('scope')
+                    ->label('Escopo')
+                    ->options(fn (): array => array_filter([
+                        'occurrence' => 'Somente esta competência',
+                        'series' => $this->canEditObligations() ? 'Esta competência e encerrar toda a série' : null,
+                    ]))
+                    ->default('occurrence')
+                    ->required()
+                    ->visible($record->is_recurring_occurrence),
                 Textarea::make('reason')
                     ->label('Motivo')
                     ->rows(4)
@@ -452,7 +500,13 @@ class ObligationsRelationManager extends RelationManager
             ->visible(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE))
             ->authorize(fn (Obligation $record): bool => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE))
             ->action(function (Obligation $record, array $data): void {
-                $this->workflow()->markNotApplicable($record, auth()->user(), $data['reason'] ?? null);
+                DB::transaction(function () use ($record, $data): void {
+                    $this->workflow()->markNotApplicable($record, auth()->user(), $data['reason'] ?? null);
+
+                    if (($data['scope'] ?? 'occurrence') === 'series' && $record->series !== null) {
+                        $this->seriesService()->close($record->series, auth()->user(), $data['reason'] ?? null);
+                    }
+                });
             })
             ->successNotificationTitle('Obrigação marcada como não aplicável.');
     }
@@ -533,6 +587,20 @@ class ObligationsRelationManager extends RelationManager
     protected function workflow(): ObligationWorkflowService
     {
         return app(ObligationWorkflowService::class);
+    }
+
+    protected function seriesService(): ObligationSeriesService
+    {
+        return app(ObligationSeriesService::class);
+    }
+
+    protected function sourceLabel(Obligation $obligation): string
+    {
+        return match (true) {
+            $obligation->obligation_series_id !== null => 'Série recorrente',
+            $obligation->extracted_obligation_id !== null => 'Gerada pelo Termo',
+            default => 'Manual',
+        };
     }
 
     protected function obligationsTableDescription(): string

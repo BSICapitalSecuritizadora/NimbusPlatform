@@ -73,7 +73,7 @@ it('renders the settings page and allows replacing the pu history template', fun
     $this->actingAs($user)
         ->get(Settings::getUrl(panel: 'admin'))
         ->assertSuccessful()
-        ->assertSee('Template do histórico de PU')
+        ->assertSee('Histórico de PU')
         ->assertSee('Salvar template');
 
     Livewire::test(Settings::class)

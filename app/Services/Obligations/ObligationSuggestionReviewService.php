@@ -3,8 +3,10 @@
 namespace App\Services\Obligations;
 
 use App\Enums\AccessPermission;
+use App\Enums\ObligationFrequency;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\ExtractedObligation;
+use App\Models\Obligation;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +24,10 @@ class ObligationSuggestionReviewService
     public const TRANSITION_APPROVE = 'approve';
 
     public const TRANSITION_REJECT = 'reject';
+
+    public function __construct(
+        private readonly ObligationSeriesService $seriesService,
+    ) {}
 
     public function canUserReview(?User $user, string $transition): bool
     {
@@ -60,7 +66,8 @@ class ObligationSuggestionReviewService
             return false;
         }
 
-        return ! $suggestion->obligation()->exists();
+        return ! $suggestion->obligation()->exists()
+            && ! $suggestion->obligationSeries()->exists();
     }
 
     public function canReject(ExtractedObligation $suggestion): bool
@@ -68,29 +75,50 @@ class ObligationSuggestionReviewService
         return $suggestion->status === ExtractedObligation::STATUS_SUGGESTED;
     }
 
-    public function approve(ExtractedObligation $suggestion, User $actor, ?string $reviewNotes = null): ExtractedObligation
-    {
+    /**
+     * @param  array<string, mixed>|null  $seriesConfiguration
+     */
+    public function approve(
+        ExtractedObligation $suggestion,
+        User $actor,
+        ?string $reviewNotes = null,
+        ?array $seriesConfiguration = null,
+    ): ExtractedObligation {
         $this->authorizeTransition($actor, self::TRANSITION_APPROVE);
 
         if ($suggestion->status !== ExtractedObligation::STATUS_SUGGESTED) {
             $this->throwTransitionException('Esta sugestão não pode ser aprovada no status atual.');
         }
 
-        if ($suggestion->obligation()->exists()) {
+        if ($suggestion->obligation()->exists() || $suggestion->obligationSeries()->exists()) {
             $this->throwTransitionException('Esta sugestão já foi consolidada em uma obrigação.');
         }
 
         $normalizedNotes = $this->normalizeText($reviewNotes);
         $reviewedAt = now();
 
-        return DB::transaction(function () use ($suggestion, $actor, $normalizedNotes, $reviewedAt): ExtractedObligation {
-            if ($suggestion->obligation()->exists()) {
+        return DB::transaction(function () use ($suggestion, $actor, $normalizedNotes, $reviewedAt, $seriesConfiguration): ExtractedObligation {
+            if ($suggestion->obligation()->exists() || $suggestion->obligationSeries()->exists()) {
                 $this->throwTransitionException('Esta sugestão já foi consolidada em uma obrigação.');
             }
 
-            $obligation = $suggestion->emission->obligations()->create(
-                ObligationFormFields::mapSuggestionToObligation($suggestion),
-            );
+            $frequency = ObligationFrequency::fromLegacyLabel($suggestion->recurrence);
+            $isSeries = filled($suggestion->recurrence) && $frequency !== ObligationFrequency::Once;
+            $series = $isSeries
+                ? $this->seriesService->createFromSuggestion($suggestion, $actor, $seriesConfiguration)
+                : null;
+            $candidateOccurrence = $series !== null && $seriesConfiguration === null
+                ? $suggestion->emission->obligations()->create(array_merge(
+                    ObligationFormFields::mapSuggestionToObligation($suggestion),
+                    [
+                        'obligation_series_id' => $series->id,
+                        'generation_source' => Obligation::GENERATION_SOURCE_LEGACY,
+                    ],
+                ))
+                : null;
+            $obligation = $series === null
+                ? $suggestion->emission->obligations()->create(ObligationFormFields::mapSuggestionToObligation($suggestion))
+                : ($candidateOccurrence ?? $series->occurrences()->oldest('competence_date')->first());
 
             $suggestion->forceFill([
                 'status' => ExtractedObligation::STATUS_APPROVED,
@@ -109,7 +137,9 @@ class ObligationSuggestionReviewService
                     'new_status' => ExtractedObligation::STATUS_APPROVED,
                     'review_notes' => $normalizedNotes,
                     'reviewed_at' => $reviewedAt->toDateTimeString(),
-                    'obligation_id' => $obligation->id,
+                    'obligation_id' => $obligation?->id,
+                    'obligation_series_id' => $series?->id,
+                    'series_status' => $series?->status?->value,
                     'confidence_score' => $suggestion->confidence_score,
                 ],
             );

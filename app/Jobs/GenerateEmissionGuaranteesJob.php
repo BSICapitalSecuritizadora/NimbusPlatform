@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\GuaranteeDetectionStatus;
+use App\Enums\GuaranteeReconciliationOutcome;
 use App\Enums\LegalDocumentType;
 use App\Models\Document;
 use App\Models\Emission;
@@ -27,7 +28,14 @@ class GenerateEmissionGuaranteesJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 420;
+    /**
+     * Orçamento de tempo do job. Precisa comportar o pior caso do retry do
+     * Gemini (`services.gemini.max_attempts` tentativas, cada uma podendo levar
+     * minutos sob sobrecarga) e ficar ABAIXO do `retry_after` da fila (900s),
+     * senão o Redis reentrega o job ao segundo worker enquanto o primeiro ainda
+     * roda e a extração grava as garantias duas vezes.
+     */
+    public int $timeout = 600;
 
     public int $tries = 1;
 
@@ -66,6 +74,7 @@ class GenerateEmissionGuaranteesJob implements ShouldQueue
 
             $detected = 0;
             $conflicts = 0;
+            $consolidations = 0;
 
             foreach ($proposals as $proposal) {
                 $analysis = $conflictDetector->analyse(
@@ -85,10 +94,16 @@ class GenerateEmissionGuaranteesJob implements ShouldQueue
                         'related_guarantee_id' => $analysis['related_guarantee_id'],
                         'has_conflict' => $analysis['has_conflict'],
                         'conflict_reason' => $analysis['conflict_reason'],
+                        'reconciliation_outcome' => $analysis['reconciliation_outcome'],
+                        'match_score' => $analysis['match_score'],
+                        'match_level' => $analysis['match_level'],
+                        'match_evidence' => $analysis['match_evidence'],
                     ]));
 
                     $detected++;
                     $conflicts += $analysis['has_conflict'] ? 1 : 0;
+                    $outcome = GuaranteeReconciliationOutcome::from($analysis['reconciliation_outcome']);
+                    $consolidations += $outcome->pointsToExistingGuarantee() ? 1 : 0;
                 } catch (\Throwable $e) {
                     Log::warning('GenerateEmissionGuaranteesJob: candidata ignorada', [
                         'emission_id' => $this->emissionId,
@@ -102,7 +117,7 @@ class GenerateEmissionGuaranteesJob implements ShouldQueue
             $this->updateRun([
                 'status' => GuaranteeGenerationRun::STATUS_COMPLETED,
                 'current_step' => 'completed',
-                'message' => $this->buildCompletionMessage($detected, $conflicts),
+                'message' => $this->buildCompletionMessage($detected, $conflicts, $consolidations),
                 'detected_count' => $detected,
                 'conflict_count' => $conflicts,
                 'finished_at' => now(),
@@ -162,13 +177,24 @@ class GenerateEmissionGuaranteesJob implements ShouldQueue
         return $pivot?->document_date ?? $pivot?->signed_at;
     }
 
-    private function buildCompletionMessage(int $detected, int $conflicts): string
+    /**
+     * Resumo da execução.
+     *
+     * Correspondência com garantia já cadastrada é dita separadamente do
+     * conflito: são situações diferentes, e a maioria delas termina em
+     * complemento, não em disputa.
+     */
+    private function buildCompletionMessage(int $detected, int $conflicts, int $consolidations): string
     {
         if ($detected === 0) {
             return 'Nenhuma garantia identificada neste documento.';
         }
 
         $message = "{$detected} garantia(s) identificada(s) e pendente(s) de revisão.";
+
+        if ($consolidations > 0) {
+            $message .= " {$consolidations} corresponde(m) a garantia(s) já cadastrada(s).";
+        }
 
         return $conflicts > 0
             ? $message." {$conflicts} exige(m) atenção por conflito documental."

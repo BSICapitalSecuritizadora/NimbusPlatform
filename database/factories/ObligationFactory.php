@@ -20,6 +20,11 @@ class ObligationFactory extends Factory
     {
         return [
             'emission_id' => Emission::factory(),
+            'obligation_series_id' => null,
+            'obligation_series_rule_id' => null,
+            'competence_date' => null,
+            'generation_source' => null,
+            'generated_at' => null,
             'extracted_obligation_id' => null,
             'title' => fake()->sentence(4),
             'obligation_type' => 'Relatório Periódico',
