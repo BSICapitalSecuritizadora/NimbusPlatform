@@ -10,6 +10,9 @@ final readonly class PuIndexCoverageReport
      * @param  list<string>  $missingCalendarDates
      * @param  list<string>  $missingIndexDates
      * @param  list<string>  $projectedIndexDates
+     * @param  list<string>  $missingIndexMessages
+     * @param  list<string>  $pendingIndexDates
+     * @param  list<string>  $pendingIndexMessages
      */
     public function __construct(
         public bool $hasParameter,
@@ -20,6 +23,9 @@ final readonly class PuIndexCoverageReport
         public array $missingIndexDates,
         public array $projectedIndexDates,
         public ?string $lastAvailableIndexDate,
+        public array $missingIndexMessages = [],
+        public array $pendingIndexDates = [],
+        public array $pendingIndexMessages = [],
     ) {}
 
     public function hasBlockingGaps(): bool
@@ -30,6 +36,11 @@ final readonly class PuIndexCoverageReport
     public function usesProjectedIndex(): bool
     {
         return $this->projectedIndexDates !== [];
+    }
+
+    public function awaitsIndexPublication(): bool
+    {
+        return $this->pendingIndexDates !== [];
     }
 
     /**
@@ -46,6 +57,10 @@ final readonly class PuIndexCoverageReport
             'missing_index_dates' => $this->missingIndexDates,
             'projected_index_dates' => $this->projectedIndexDates,
             'last_available_index_date' => $this->lastAvailableIndexDate,
+            'missing_index_messages' => $this->missingIndexMessages,
+            'pending_index_dates' => $this->pendingIndexDates,
+            'pending_index_messages' => $this->pendingIndexMessages,
+            'awaits_index_publication' => $this->awaitsIndexPublication(),
             'has_blocking_gaps' => $this->hasBlockingGaps(),
         ];
     }

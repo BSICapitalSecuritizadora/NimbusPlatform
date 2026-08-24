@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\PuIndexCoverageReport;
-use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\EmissionPuParameter;
@@ -17,9 +16,8 @@ class PuIndexCoverageService
     private const PROJECTED_SOURCE_REFERENCE = 'forward_projection';
 
     public function __construct(
-        private readonly BusinessDayCalendarService $businessDayCalendar,
-        private readonly IndexRateService $indexRateService,
         private readonly BusinessCalendarCoverageService $calendarCoverage,
+        private readonly PuIndexRateRequirementResolver $indexRateRequirementResolver,
     ) {}
 
     public function report(Emission $emission): PuIndexCoverageReport
@@ -64,7 +62,13 @@ class PuIndexCoverageService
         }
 
         $missingCalendarDates = $this->missingCalendarDates($startDate, $endDate, (string) $parameter->calendar_code);
-        [$missingIndexDates, $projectedIndexDates] = $this->indexCoverage($parameter, $startDate, $endDate);
+        [
+            $missingIndexDates,
+            $projectedIndexDates,
+            $missingIndexMessages,
+            $pendingIndexDates,
+            $pendingIndexMessages,
+        ] = $this->indexCoverage($parameter, $startDate, $endDate);
 
         return new PuIndexCoverageReport(
             hasParameter: true,
@@ -75,6 +79,9 @@ class PuIndexCoverageService
             missingIndexDates: $missingIndexDates,
             projectedIndexDates: $projectedIndexDates,
             lastAvailableIndexDate: $lastAvailable,
+            missingIndexMessages: $missingIndexMessages,
+            pendingIndexDates: $pendingIndexDates,
+            pendingIndexMessages: $pendingIndexMessages,
         );
     }
 
@@ -108,70 +115,75 @@ class PuIndexCoverageService
     }
 
     /**
-     * @return array{0: list<string>, 1: list<string>}
+     * @return array{0: list<string>, 1: list<string>, 2: list<string>, 3: list<string>, 4: list<string>}
      */
     private function indexCoverage(EmissionPuParameter $parameter, CarbonImmutable $startDate, CarbonImmutable $endDate): array
     {
         $missing = [];
         $projected = [];
+        $missingMessages = [];
+        $pending = [];
+        $pendingMessages = [];
+        $lastResolvedDate = null;
 
         for ($currentDate = $startDate->addDay(); $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
             try {
-                $lookupDate = $this->requiredIndexLookupDate($parameter, $currentDate);
-            } catch (\Throwable) {
-                $missing[] = $currentDate->toDateString();
+                $rateRequirement = $this->indexRateRequirementResolver->resolve($parameter, $currentDate);
+            } catch (\Throwable $exception) {
+                $dateKey = $currentDate->toDateString();
+                $missing[$dateKey] = $dateKey;
+                $missingMessages[$dateKey] = sprintf(
+                    'Nao foi possivel resolver a Taxa DI requerida para a data da curva %s. Modo: %s. Calendario: %s. Lag: %d dia(s) util(eis). Motivo: %s',
+                    $dateKey,
+                    $parameter->index_rate_lookup_mode_enum->name,
+                    (string) $parameter->calendar_code,
+                    (int) $parameter->index_rate_lag_business_days,
+                    $exception->getMessage(),
+                );
 
                 continue;
             }
 
-            if ($lookupDate === null) {
+            if (! $rateRequirement->isRequiredForCalculation()) {
                 continue;
             }
 
-            $snapshot = match ($parameter->index_rate_lookup_mode_enum) {
-                PuIndexRateLookupMode::PreviousAvailableBusinessDay => $this->indexRateService->rateForDate(
-                    $parameter->indexer_enum,
-                    $currentDate,
-                ),
-                PuIndexRateLookupMode::PreviousCalendarDayExact,
-                PuIndexRateLookupMode::BusinessDayLagExact => $this->indexRateService->exactRateForDate(
-                    $parameter->indexer_enum,
-                    $lookupDate,
-                ),
-            };
+            $snapshot = $rateRequirement->rate;
+            $requiredRateDate = $rateRequirement->requiredRateDate();
+            $dateKey = $requiredRateDate?->toDateString() ?? $currentDate->toDateString();
 
             if ($snapshot === null) {
-                $missing[] = $currentDate->toDateString();
+                if ($this->indexRateRequirementResolver->isAwaitingPublication(
+                    $parameter,
+                    $rateRequirement,
+                    $lastResolvedDate !== null,
+                )) {
+                    $pending[$dateKey] = $dateKey;
+                    $pendingMessages[$dateKey] = "Taxa DI aguardando publicação para a cauda futura da curva.\n\n{$rateRequirement->missingRateMessage()}";
+
+                    break;
+                }
+
+                $missing[$dateKey] = $dateKey;
+                $missingMessages[$dateKey] ??= $rateRequirement->missingRateMessage();
 
                 continue;
             }
 
+            $lastResolvedDate = $currentDate;
+
             if ($snapshot->isProjected) {
-                $projected[] = $currentDate->toDateString();
+                $projected[$dateKey] = $dateKey;
             }
         }
 
-        return [$missing, $projected];
-    }
-
-    private function requiredIndexLookupDate(EmissionPuParameter $parameter, CarbonImmutable $currentDate): ?CarbonImmutable
-    {
-        $calendarCode = (string) $parameter->calendar_code;
-        $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $calendarCode);
-
-        return match ($parameter->index_rate_lookup_mode_enum) {
-            PuIndexRateLookupMode::PreviousAvailableBusinessDay => $isBusinessDay ? $currentDate : null,
-            PuIndexRateLookupMode::PreviousCalendarDayExact => $this->businessDayCalendar->isBusinessDay($currentDate->subDay(), $calendarCode)
-                ? $currentDate->subDay()
-                : null,
-            PuIndexRateLookupMode::BusinessDayLagExact => $isBusinessDay
-                ? $this->businessDayCalendar->shiftBusinessDays(
-                    $currentDate,
-                    (int) $parameter->index_rate_lag_business_days,
-                    $calendarCode,
-                )
-                : null,
-        };
+        return [
+            array_values($missing),
+            array_values($projected),
+            array_values($missingMessages),
+            array_values($pending),
+            array_values($pendingMessages),
+        ];
     }
 
     private function lastAvailableIndexDate(?string $indexer): ?string

@@ -27,6 +27,13 @@ use Spatie\SimpleExcel\SimpleExcelReader;
  * Lookups are batched per chunk instead of per row, so a file with hundreds of
  * contracts costs a handful of queries rather than thousands.
  *
+ * The classification happens in two passes. The first judges each row on its
+ * own -- fields, references, dates, and the comparison against the contract it
+ * matched. The second, {@see ContractBatchProjection}, judges the file as a
+ * whole, because whether a unit ends up with exactly one contract holding it is
+ * not a property of any single line: a distrato on one row is what makes room
+ * for the new contract on another, wherever in the file the two happen to be.
+ *
  * Reported line numbers count the header plus the data rows returned by the
  * reader. Fully blank rows are dropped by the reader itself, so a file with
  * blank rows in the middle reports the lines below them shifted up.
@@ -67,14 +74,27 @@ class AnalyzeContractSpreadsheet
     private array $seenCodes = [];
 
     /**
-     * Unit id => line of the earlier row that already sells it.
+     * Unit id => contracts holding it right now, read once per unit and kept for
+     * the whole file. The batch projection needs the position of every unit the
+     * spreadsheet touches at the same time, which a per-chunk map cannot give:
+     * whether a distrato on line 900 frees the unit a new contract on line 3
+     * wants has nothing to do with where the chunk boundary fell.
      *
-     * @var array<int, int>
+     * @var array<int, list<array{id: int, code: string, status: ContractStatus, client: string|null}>>
      */
-    private array $seenLiveUnits = [];
+    private array $unitOccupants = [];
+
+    /**
+     * Units already looked up, including the ones nobody holds -- an empty
+     * answer is an answer and must not be asked for again.
+     *
+     * @var array<int, true>
+     */
+    private array $loadedUnitOccupants = [];
 
     public function __construct(
         private readonly ContractReconciler $reconciler = new ContractReconciler,
+        private readonly ContractBatchProjection $projection = new ContractBatchProjection,
     ) {}
 
     public function handle(string $path): ContractSpreadsheetAnalysis
@@ -116,7 +136,15 @@ class AnalyzeContractSpreadsheet
                 }
             });
 
-        return new ContractSpreadsheetAnalysis($analyzedRows);
+        /**
+         * Only now, with every row classified, can occupancy be decided: the
+         * file is a position, not a sequence, and a distrato anywhere in it
+         * frees the unit for a new contract anywhere else.
+         */
+        ['rows' => $analyzedRows, 'occupancies' => $occupancies] = $this->projection
+            ->resolve($analyzedRows, $this->unitOccupants);
+
+        return new ContractSpreadsheetAnalysis($analyzedRows, unitOccupancies: $occupancies);
     }
 
     /**
@@ -178,11 +206,14 @@ class AnalyzeContractSpreadsheet
     }
 
     /**
-     * Units, clients, taken codes and live contracts for the whole chunk, in one
-     * query each.
+     * Units, clients and taken codes for the whole chunk, in one query each.
+     *
+     * The contracts holding each unit are read here too, but they are kept on
+     * the instance rather than returned: they belong to the file, not to the
+     * chunk, and the projection at the end needs all of them at once.
      *
      * @param  list<array<string, mixed>>  $parsedRows
-     * @return array{clients: array<string, Client>, codes: array<string, Contract>, occupied: array<int, Contract>}
+     * @return array{clients: array<string, Client>, codes: array<string, Contract>}
      */
     private function loadChunkContext(array $parsedRows): array
     {
@@ -219,18 +250,12 @@ class AnalyzeContractSpreadsheet
                 ->whereIn('code_normalized', $codes->all())
                 ->get();
 
-        $unitIds = $rows
+        $this->loadUnitOccupants($rows
             ->map(fn (array $row): ?int => $this->findUnitId($this->resolveConstructionId($row), $row['block'], $row['unit']))
             ->filter()
             ->unique()
-            ->values();
-
-        $occupied = $unitIds->isEmpty()
-            ? collect()
-            : Contract::query()
-                ->whereIn('construction_unit_id', $unitIds->all())
-                ->whereIn('status', ContractStatus::occupyingValues())
-                ->get(['id', 'construction_unit_id', 'code', 'status']);
+            ->values()
+            ->all());
 
         return [
             'clients' => $clients->keyBy('document')->all(),
@@ -239,8 +264,45 @@ class AnalyzeContractSpreadsheet
                     self::codeKey($contract->construction_id, $contract->code_normalized) => $contract,
                 ])
                 ->all(),
-            'occupied' => $occupied->keyBy('construction_unit_id')->all(),
         ];
+    }
+
+    /**
+     * The contracts currently holding each unit, kept as a list rather than one
+     * per unit. The unique index allows only one, but reading the position is
+     * not the place to assume it: a list is what lets the projection report a
+     * unit that somehow holds two instead of silently dropping one of them.
+     *
+     * @param  list<int>  $unitIds
+     */
+    private function loadUnitOccupants(array $unitIds): void
+    {
+        $pending = array_values(array_filter(
+            $unitIds,
+            fn (int $unitId): bool => ! isset($this->loadedUnitOccupants[$unitId]),
+        ));
+
+        if ($pending === []) {
+            return;
+        }
+
+        foreach ($pending as $unitId) {
+            $this->loadedUnitOccupants[$unitId] = true;
+        }
+
+        Contract::query()
+            ->with('client:id,name')
+            ->whereIn('construction_unit_id', $pending)
+            ->whereIn('status', ContractStatus::occupyingValues())
+            ->get(['id', 'client_id', 'construction_unit_id', 'code', 'status'])
+            ->each(function (Contract $contract): void {
+                $this->unitOccupants[(int) $contract->construction_unit_id][] = [
+                    'id' => (int) $contract->getKey(),
+                    'code' => (string) $contract->code,
+                    'status' => $contract->status,
+                    'client' => $contract->client?->name,
+                ];
+            });
     }
 
     /**
@@ -274,8 +336,13 @@ class AnalyzeContractSpreadsheet
     }
 
     /**
+     * Every check that can be made on the row alone. Whether the unit ends up
+     * with one holder is deliberately not one of them -- that depends on the
+     * rest of the file and is settled by {@see ContractBatchProjection} once
+     * every row has been read.
+     *
      * @param  array<string, mixed>  $row
-     * @param  array{clients: array<string, Client>, codes: array<string, Contract>, occupied: array<int, Contract>}  $context
+     * @param  array{clients: array<string, Client>, codes: array<string, Contract>}  $context
      * @return array<string, mixed>
      */
     private function classifyRow(array $row, array $context): array
@@ -299,6 +366,7 @@ class AnalyzeContractSpreadsheet
             'sale_value' => null,
             'contract_status' => null,
             'cancellation_date' => null,
+            'releases_unit' => false,
         ];
 
         if ($this->isBlankRow($row)) {
@@ -414,10 +482,6 @@ class AnalyzeContractSpreadsheet
          * contract legitimately holds the unit it is already sold on.
          */
         if ($existing !== null) {
-            if ($status->occupiesUnit()) {
-                $this->seenLiveUnits[$unitId] = $row['line'];
-            }
-
             if ($existing->trashed()) {
                 return [
                     ...$base,
@@ -435,32 +499,6 @@ class AnalyzeContractSpreadsheet
                 'outcome' => $comparison->outcome(),
                 'message' => $comparison->isUnchanged() ? null : $comparison->summary(),
             ];
-        }
-
-        if ($status->occupiesUnit()) {
-            if (isset($this->seenLiveUnits[$unitId])) {
-                return [
-                    ...$base,
-                    'outcome' => ReconciliationOutcome::DuplicatedInFile,
-                    'message' => "Esta unidade já recebe um contrato ativo na linha {$this->seenLiveUnits[$unitId]} da planilha.",
-                ];
-            }
-
-            $occupying = $context['occupied'][$unitId] ?? null;
-
-            if ($occupying !== null) {
-                return [
-                    ...$base,
-                    'outcome' => ReconciliationOutcome::Conflict,
-                    'message' => sprintf(
-                        'Esta unidade já possui um contrato %s (%s). Registre o distrato antes de importar um novo contrato.',
-                        mb_strtolower($occupying->status->label()),
-                        $occupying->code,
-                    ),
-                ];
-            }
-
-            $this->seenLiveUnits[$unitId] = $row['line'];
         }
 
         return [...$base, 'outcome' => ReconciliationOutcome::New, 'message' => null];

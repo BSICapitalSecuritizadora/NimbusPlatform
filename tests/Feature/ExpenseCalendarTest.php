@@ -9,6 +9,7 @@ use App\Models\ExpenseServiceProvider;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -187,6 +188,88 @@ it('ignores invalid calendar context from the query string', function () {
         ->test(ExpenseCalendar::class)
         ->assertSet('selectedCategory', null)
         ->assertSet('selectedEmissionId', null);
+});
+
+it('marks calendar events with temporal status relative to today', function () {
+    $this->travelTo(Carbon::parse('2026-08-10'));
+
+    $emission = Emission::factory()->create();
+    $serviceProvider = ExpenseServiceProvider::factory()->create();
+
+    Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Cartório',
+        'amount' => 100,
+        'period' => Expense::PERIOD_SINGLE,
+        'start_date' => '2026-08-05',
+    ]);
+    Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Engenharia',
+        'amount' => 200,
+        'period' => Expense::PERIOD_SINGLE,
+        'start_date' => '2026-08-12',
+    ]);
+    Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Auditoria',
+        'amount' => 300,
+        'period' => Expense::PERIOD_SINGLE,
+        'start_date' => '2026-08-25',
+    ]);
+
+    $events = collect(app(BuildExpenseCalendar::class)->handle('2026-08')['weeks'])
+        ->flatten(1)
+        ->flatMap(fn (array $day): array => $day['events'])
+        ->keyBy('date');
+
+    expect($events->get('2026-08-05')['is_overdue'])->toBeTrue()
+        ->and($events->get('2026-08-05')['is_due_soon'])->toBeFalse()
+        ->and($events->get('2026-08-12')['is_overdue'])->toBeFalse()
+        ->and($events->get('2026-08-12')['is_due_soon'])->toBeTrue()
+        ->and($events->get('2026-08-25')['is_overdue'])->toBeFalse()
+        ->and($events->get('2026-08-25')['is_due_soon'])->toBeFalse();
+});
+
+it('shows a single notice instead of per-day empty states when the month has no events', function () {
+    $this->actingAs(makeExpenseCalendarAdminUser());
+
+    Livewire::test(ExpenseCalendar::class)
+        ->set('visibleMonth', '2026-04')
+        ->assertSee('Nenhum pagamento previsto')
+        ->assertDontSee('Sem pagamentos previstos');
+});
+
+it('collapses busy days behind an overflow link and lists every event in the day modal', function () {
+    $this->actingAs(makeExpenseCalendarAdminUser());
+
+    $serviceProvider = ExpenseServiceProvider::factory()->create();
+
+    foreach (['CRI Alpha', 'CRI Beta', 'CRI Gamma'] as $emissionName) {
+        Expense::factory()->create([
+            'emission_id' => Emission::factory()->create(['name' => $emissionName])->id,
+            'expense_service_provider_id' => $serviceProvider->id,
+            'category' => 'Cartório',
+            'amount' => 500,
+            'period' => Expense::PERIOD_SINGLE,
+            'start_date' => '2026-04-15',
+        ]);
+    }
+
+    Livewire::test(ExpenseCalendar::class)
+        ->set('visibleMonth', '2026-04')
+        ->assertSee('+1 pagamento')
+        ->call('openDay', '2026-04-15')
+        ->assertSet('selectedDate', '2026-04-15')
+        ->assertSee('CRI Alpha')
+        ->assertSee('CRI Beta')
+        ->assertSee('CRI Gamma')
+        ->assertSee('3 pagamentos previstos')
+        ->call('closeDay')
+        ->assertSet('selectedDate', null);
 });
 
 function makeExpenseCalendarAdminUser(): User

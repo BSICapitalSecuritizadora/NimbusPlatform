@@ -9,6 +9,7 @@ use App\Models\Expense;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\Page;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 
 class ExpenseCalendar extends Page
@@ -21,11 +22,19 @@ class ExpenseCalendar extends Page
 
     protected string $view = 'filament.resources.expenses.pages.expense-calendar';
 
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-expense-calendar-page',
+    ];
+
     public string $visibleMonth = '';
 
     public ?string $selectedEmissionId = null;
 
     public ?string $selectedCategory = null;
+
+    public ?string $selectedDate = null;
 
     public function mount(): void
     {
@@ -62,7 +71,10 @@ class ExpenseCalendar extends Page
      *             category: string,
      *             service_provider: string,
      *             amount_label: string,
-     *             period_label: string
+     *             period_label: string,
+     *             url: ?string,
+     *             is_overdue: bool,
+     *             is_due_soon: bool
      *         }>
      *     }>>
      * }
@@ -117,6 +129,26 @@ class ExpenseCalendar extends Page
     {
         $this->selectedEmissionId = null;
         $this->selectedCategory = null;
+    }
+
+    public function openDay(string $date): void
+    {
+        $this->selectedDate = $date;
+    }
+
+    public function closeDay(): void
+    {
+        $this->selectedDate = null;
+    }
+
+    public function hasActiveFilters(): bool
+    {
+        return filled($this->selectedEmissionId) || filled($this->selectedCategory);
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Visualize vencimentos e pagamentos previstos por competência.';
     }
 
     protected function getHeaderActions(): array

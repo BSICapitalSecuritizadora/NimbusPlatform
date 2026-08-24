@@ -6,6 +6,7 @@ use App\Actions\Contracts\AnalyzeContractSpreadsheet;
 use App\Actions\Contracts\ContractSpreadsheetAnalysis;
 use App\Actions\Contracts\ImportContractsFromSpreadsheet;
 use App\Enums\ReconciliationOutcome;
+use App\Exceptions\ContractImportConcurrencyException;
 use App\Filament\Resources\Contracts\ContractResource;
 use App\Models\ImportRun;
 use Filament\Actions\Action;
@@ -109,7 +110,24 @@ class ListContracts extends ListRecords
                     return;
                 }
 
-                $result = app(ImportContractsFromSpreadsheet::class)->handle($analysis);
+                /**
+                 * The position may have moved between the conference and this
+                 * click. Nothing was written when that happens -- the check runs
+                 * inside the transaction, before the first statement -- so the
+                 * run is not recorded either.
+                 */
+                try {
+                    $result = app(ImportContractsFromSpreadsheet::class)->handle($analysis);
+                } catch (ContractImportConcurrencyException $exception) {
+                    Notification::make()
+                        ->danger()
+                        ->title('Importação não realizada.')
+                        ->body($exception->getMessage())
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
 
                 $path = $this->resolvePath($data['file'] ?? null);
 
@@ -180,6 +198,10 @@ class ListContracts extends ListRecords
             'Sem alteração: <b>'.$analysis->unchangedCount().'</b>',
             'Conflitos: <b>'.($analysis->conflictCount() + $analysis->errorCount() + $analysis->duplicatedInFileCount()).'</b>',
         ];
+
+        if ($analysis->resaleCount() > 0) {
+            $lines[] = 'Revendas na mesma unidade: <b>'.$analysis->resaleCount().'</b>';
+        }
 
         if ($analysis->emptyLineCount() > 0) {
             $lines[] = 'Linhas vazias ignoradas: <b>'.$analysis->emptyLineCount().'</b>';

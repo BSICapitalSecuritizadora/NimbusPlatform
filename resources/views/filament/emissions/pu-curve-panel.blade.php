@@ -96,6 +96,10 @@
                         <p>Datas sem CDI obrigatorio ({{ count($coverage->missingIndexDates) }}): {{ implode(', ', array_slice($coverage->missingIndexDates, 0, 10)) }}{{ count($coverage->missingIndexDates) > 10 ? '…' : '' }}</p>
                     @endif
                 </div>
+            @elseif ($coverage->awaitsIndexPublication())
+                <p class="mt-3 text-sm text-warning-700 dark:text-warning-400">
+                    Parte realizada coberta. Taxa DI aguardando publicação para {{ implode(', ', array_slice($coverage->pendingIndexDates, 0, 10)) }}{{ count($coverage->pendingIndexDates) > 10 ? '…' : '' }}; a cauda futura entrará na próxima sincronização.
+                </p>
             @else
                 <p class="mt-3 text-sm text-success-700 dark:text-success-300">Cobertura de indices completa para o periodo.</p>
             @endif

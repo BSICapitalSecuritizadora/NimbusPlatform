@@ -2,6 +2,7 @@
 
 namespace App\Actions\Expenses;
 
+use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Models\Expense;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -29,7 +30,10 @@ class BuildExpenseCalendar
      *             category: string,
      *             service_provider: string,
      *             amount_label: string,
-     *             period_label: string
+     *             period_label: string,
+     *             url: ?string,
+     *             is_overdue: bool,
+     *             is_due_soon: bool
      *         }>
      *     }>>
      * }
@@ -67,7 +71,7 @@ class BuildExpenseCalendar
         }
 
         return [
-            'month_label' => mb_convert_case($monthStart->locale('pt_BR')->translatedFormat('F \d\e Y'), MB_CASE_TITLE, 'UTF-8'),
+            'month_label' => ucfirst($monthStart->locale('pt_BR')->translatedFormat('F \d\e Y')),
             'visible_month' => $monthStart->format('Y-m'),
             'summary' => [
                 'event_count' => $events->count(),
@@ -127,7 +131,10 @@ class BuildExpenseCalendar
      *     category: string,
      *     service_provider: string,
      *     amount_label: string,
-     *     period_label: string
+     *     period_label: string,
+     *     url: ?string,
+     *     is_overdue: bool,
+     *     is_due_soon: bool
      * }>
      */
     protected function buildExpenseEvents(Expense $expense, CarbonImmutable $monthStart, CarbonImmutable $monthEnd): array
@@ -138,6 +145,8 @@ class BuildExpenseCalendar
             return [];
         }
 
+        $today = now();
+
         return [[
             'id' => "expense-{$expense->getKey()}-{$occurrenceDate->format('Ymd')}",
             'date' => $occurrenceDate->toDateString(),
@@ -147,6 +156,12 @@ class BuildExpenseCalendar
             'service_provider' => (string) ($expense->serviceProvider?->name ?? 'Prestador não informado'),
             'amount_label' => $this->formatCurrency($expense->amount),
             'period_label' => Expense::PERIOD_OPTIONS[$expense->period] ?? $expense->period,
+            'url' => ExpenseResource::canEdit($expense)
+                ? ExpenseResource::getUrl('edit', ['record' => $expense])
+                : null,
+            'is_overdue' => $occurrenceDate->lt($today->startOfDay()),
+            'is_due_soon' => $occurrenceDate->gte($today->startOfDay())
+                && $occurrenceDate->lte($today->addDays(7)->endOfDay()),
         ]];
     }
 

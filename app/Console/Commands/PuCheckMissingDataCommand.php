@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Domain\PuCalculator\Services\PuIndexCoverageService;
 use App\Models\Emission;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 
 class PuCheckMissingDataCommand extends Command
 {
@@ -34,11 +35,16 @@ class PuCheckMissingDataCommand extends Command
 
             $this->renderDateList('Datas de calendario faltantes', $report->missingCalendarDates);
             $this->renderDateList('Datas sem CDI obrigatorio', $report->missingIndexDates);
+            $this->renderIndexMessages($report->missingIndexMessages);
+            $this->renderDateList('Datas aguardando publicacao do CDI', $report->pendingIndexDates, isWarningOnly: true);
+            $this->renderIndexMessages($report->pendingIndexMessages, isWarningOnly: true);
             $this->renderDateList('Datas usando CDI projetado', $report->projectedIndexDates, isWarningOnly: true);
 
             if ($report->hasBlockingGaps()) {
                 $hasBlockingGaps = true;
                 $this->error('=> Geracao bloqueada: faltam dados obrigatorios.');
+            } elseif ($report->awaitsIndexPublication()) {
+                $this->warn('=> Parte realizada coberta; a cauda futura aguarda publicacao do CDI.');
             } else {
                 $this->info('=> Cobertura completa para geracao.');
             }
@@ -48,9 +54,9 @@ class PuCheckMissingDataCommand extends Command
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, Emission>
+     * @return Collection<int, Emission>
      */
-    private function resolveEmissions(): \Illuminate\Support\Collection
+    private function resolveEmissions(): Collection
     {
         $emissionId = $this->argument('emission');
 
@@ -87,5 +93,29 @@ class PuCheckMissingDataCommand extends Command
         }
 
         $this->error($message);
+    }
+
+    /**
+     * @param  list<string>  $messages
+     */
+    private function renderIndexMessages(array $messages, bool $isWarningOnly = false): void
+    {
+        foreach (array_slice($messages, 0, 10) as $message) {
+            foreach (explode("\n", $message) as $line) {
+                if ($line === '') {
+                    $this->newLine();
+
+                    continue;
+                }
+
+                if ($isWarningOnly) {
+                    $this->warn($line);
+
+                    continue;
+                }
+
+                $this->error($line);
+            }
+        }
     }
 }

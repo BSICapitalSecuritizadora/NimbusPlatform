@@ -42,6 +42,7 @@ class ExpenseServiceProviderForm
                 ->columnSpan([
                     'default' => 1,
                     'sm' => 7,
+                    'md' => 7,
                     'lg' => 7,
                 ])
                 ->getSearchResultsUsing(
@@ -93,10 +94,11 @@ class ExpenseServiceProviderForm
                 ->columnSpan([
                     'default' => 1,
                     'sm' => 5,
+                    'md' => 5,
                     'lg' => 5,
                 ])
                 ->extraInputAttributes([
-                    'class' => 'font-mono tabular-nums tracking-wide',
+                    'class' => 'font-mono tabular-nums',
                 ])
                 ->unique(
                     table: ExpenseServiceProvider::class,
@@ -135,6 +137,8 @@ class ExpenseServiceProviderForm
                 ->columns([
                     'default' => 1,
                     'sm' => 12,
+                    'md' => 12,
+                    'lg' => 12,
                 ]),
         ]);
     }

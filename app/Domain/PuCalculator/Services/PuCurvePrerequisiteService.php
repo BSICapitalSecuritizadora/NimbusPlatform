@@ -13,7 +13,6 @@ use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\Emission;
 use App\Models\EmissionPuParameter;
-use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
 
 class PuCurvePrerequisiteService
@@ -22,6 +21,7 @@ class PuCurvePrerequisiteService
         private readonly BusinessDayCalendarService $businessDayCalendar,
         private readonly IndexRateService $indexRateService,
         private readonly BusinessCalendarCoverageService $calendarCoverage,
+        private readonly PuIndexRateRequirementResolver $indexRateRequirementResolver,
     ) {}
 
     public function handle(Emission $emission): PuCurvePrerequisiteCheckResult
@@ -288,34 +288,28 @@ class PuCurvePrerequisiteService
 
         for ($currentDate = $startDate->addDay(); $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
             try {
-                $lookupDate = $this->requiredIndexLookupDate($parameter, $currentDate);
+                $rateRequirement = $this->indexRateRequirementResolver->resolve($parameter, $currentDate);
             } catch (\Throwable) {
                 $issues[] = PuCurvePrerequisiteIssue::blocking(
                     'index_rates',
                     sprintf(
-                        'Nao foi possivel resolver a defasagem do CDI para a data %s. Revise o calendario e as taxas disponiveis.',
+                        'Nao foi possivel resolver a Taxa DI requerida para a data da curva %s. Modo: %s. Calendario: %s. Lag: %d dia(s) util(eis). Revise o calendario e as taxas disponiveis.',
                         $currentDate->toDateString(),
+                        $parameter->index_rate_lookup_mode_enum->name,
+                        (string) $parameter->calendar_code,
+                        (int) $parameter->index_rate_lag_business_days,
                     ),
                 );
 
                 return;
             }
 
-            if ($lookupDate === null) {
+            if (! $rateRequirement->isRequiredForCalculation()) {
                 continue;
             }
 
-            $snapshot = match ($parameter->index_rate_lookup_mode_enum) {
-                PuIndexRateLookupMode::PreviousAvailableBusinessDay => $this->indexRateService->rateForDate(
-                    $parameter->indexer_enum,
-                    $currentDate,
-                ),
-                PuIndexRateLookupMode::PreviousCalendarDayExact,
-                PuIndexRateLookupMode::BusinessDayLagExact => $this->indexRateService->exactRateForDate(
-                    $parameter->indexer_enum,
-                    $lookupDate,
-                ),
-            };
+            $snapshot = $rateRequirement->rate;
+            $lookupDate = $rateRequirement->requiredRateDate();
 
             if ($snapshot !== null) {
                 $lastResolvedDate = $currentDate;
@@ -328,16 +322,22 @@ class PuCurvePrerequisiteService
             // próxima sincronização. Um buraco DENTRO do período já publicado continua sendo bloqueante.
             if (
                 $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
-                && $lastResolvedDate !== null
-                && $this->isBeyondPublishedCdi($lookupDate)
+                && $this->indexRateRequirementResolver->isAwaitingPublication(
+                    $parameter,
+                    $rateRequirement,
+                    $lastResolvedDate !== null,
+                )
             ) {
                 $issues[] = PuCurvePrerequisiteIssue::warning(
                     'index_rates',
                     sprintf(
-                        'Somente a parte realizada da curva sera gerada, ate %s. As datas a partir de %s aguardam a publicacao do CDI (lookup em %s) e entrarao automaticamente na proxima sincronizacao do indice.',
+                        "Somente a parte realizada da curva sera gerada, ate %s. As datas a partir de %s aguardam a publicacao do CDI (lookup em %s) e entrarao automaticamente na proxima sincronizacao do indice.\n\nModo: %s\nRegra: %s\nData requerida: %s",
                         $lastResolvedDate->toDateString(),
                         $currentDate->toDateString(),
-                        $lookupDate->toDateString(),
+                        $lookupDate?->toDateString() ?? 'não resolvida',
+                        $rateRequirement->lookupMode->name,
+                        $rateRequirement->ruleDescription(),
+                        $lookupDate?->toDateString() ?? 'não resolvida',
                     ),
                 );
 
@@ -346,25 +346,11 @@ class PuCurvePrerequisiteService
 
             $issues[] = PuCurvePrerequisiteIssue::blocking(
                 'index_rates',
-                sprintf(
-                    'Nao existe CDI suficiente para o periodo. Primeira data sem indice resolvido: %s (lookup em %s). Sincronize o CDI publicado (pu:index-rates:sync --indexer=cdi) ou importe-o manualmente.',
-                    $currentDate->toDateString(),
-                    $lookupDate->toDateString(),
-                ),
+                "Nao existe CDI suficiente para o periodo.\n\n{$rateRequirement->missingRateMessage()}\n\nSincronize o CDI publicado (pu:index-rates:sync --indexer=cdi) ou importe-o manualmente.",
             );
 
             return;
         }
-    }
-
-    private function isBeyondPublishedCdi(CarbonImmutable $lookupDate): bool
-    {
-        $lastPublished = IndexRate::query()
-            ->forIndexer(PuIndexer::Cdi)
-            ->max('rate_date');
-
-        return $lastPublished === null
-            || $lookupDate->gt(CarbonImmutable::parse((string) $lastPublished));
     }
 
     /**
@@ -464,25 +450,5 @@ class PuCurvePrerequisiteService
         ksort($months);
 
         return $months;
-    }
-
-    private function requiredIndexLookupDate(EmissionPuParameter $parameter, CarbonImmutable $currentDate): ?CarbonImmutable
-    {
-        $calendarCode = (string) $parameter->calendar_code;
-        $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $calendarCode);
-
-        return match ($parameter->index_rate_lookup_mode_enum) {
-            PuIndexRateLookupMode::PreviousAvailableBusinessDay => $isBusinessDay ? $currentDate : null,
-            PuIndexRateLookupMode::PreviousCalendarDayExact => $this->businessDayCalendar->isBusinessDay($currentDate->subDay(), $calendarCode)
-                ? $currentDate->subDay()
-                : null,
-            PuIndexRateLookupMode::BusinessDayLagExact => $isBusinessDay
-                ? $this->businessDayCalendar->shiftBusinessDays(
-                    $currentDate,
-                    (int) $parameter->index_rate_lag_business_days,
-                    $calendarCode,
-                )
-                : null,
-        };
     }
 }

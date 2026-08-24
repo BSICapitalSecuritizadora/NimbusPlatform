@@ -2966,10 +2966,10 @@ html:not(.dark) .fi-activity-card:hover {
     }
 }
 
-/* ── Prestadores de Serviço (Cadastro e Edição): Ficha Administrativa Corporativa Ampla (780px - 920px) ── */
+/* ── Prestadores de Serviço (Cadastro e Edição): Ficha Institucional Ampla de Largura Total (100%) ── */
 .bsi-service-provider-form-page form.fi-sc-form {
     width: 100% !important;
-    max-width: 58rem !important; /* 928px (~780 a 920px no desktop) */
+    max-width: 100% !important;
     margin-inline: 0 !important;
 }
 
@@ -2984,10 +2984,25 @@ html:not(.dark) .fi-activity-card:hover {
     box-sizing: border-box !important;
 }
 
-/* Cabeçalho do Card interno */
+/* Superfície e Bordas do Card: 100% alinhado com o cabeçalho superior */
+.bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    background: #fbfaf8 !important;
+    border: 1px solid #dbd5d3 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 3px rgba(9, 27, 35, 0.04) !important;
+    overflow: visible !important;
+}
+
+.dark .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    background: #0d252e !important;
+    border-color: rgba(183, 131, 47, 0.24) !important;
+    box-shadow: 0 1px 4px rgba(4, 14, 19, 0.3) !important;
+}
+
+/* Cabeçalho do Card interno: ampla extensão horizontal e descrição fluida */
 .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
-    padding-block: 1rem !important;
-    padding-inline: 1.5rem !important;
+    padding-block: 1.125rem 1.25rem !important;
+    padding-inline: 2rem !important;
     background: #f8f7f4 !important;
     border-bottom: 1px solid #dbd5d3 !important;
     border-top-left-radius: 13px !important;
@@ -3003,19 +3018,43 @@ html:not(.dark) .fi-activity-card:hover {
     font-size: 1.0625rem !important;
     font-weight: 650 !important;
     letter-spacing: -0.01em !important;
+    color: #221f1e !important;
+}
+
+.dark .bsi-service-provider-form-page form.fi-sc-form .fi-section-header-heading {
+    color: #fbfaf8 !important;
 }
 
 .bsi-service-provider-form-page form.fi-sc-form .fi-section-header-description {
     font-size: 0.8125rem !important;
-    line-height: 1.45 !important;
-    margin-top: 0.25rem !important;
+    line-height: 1.5 !important;
+    margin-top: 0.3125rem !important;
+    max-width: 100% !important;
+    white-space: normal !important;
+    color: #64748b !important;
 }
 
-/* Conteúdo do Card interno e Campos: espaçamento correto e equilibrado */
+.dark .bsi-service-provider-form-page form.fi-sc-form .fi-section-header-description {
+    color: rgba(251, 250, 248, 0.68) !important;
+}
+
+/* Conteúdo do Card: respiro generoso e cadência equilibrada */
 .bsi-service-provider-form-page form.fi-sc-form .fi-section-content,
 .bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn {
-    padding-block: 1.25rem 1.5rem !important;
-    padding-inline: 1.5rem !important;
+    padding-top: 1.75rem !important;
+    padding-inline: 2rem !important;
+    padding-bottom: 2rem !important;
+    overflow: visible !important;
+}
+
+/* Grid do Formulário: largura total com proporções 58% / 42% na linha 1 e 100% na linha 2 */
+.bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-sc,
+.bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn .fi-sc,
+.bsi-service-provider-form-page form.fi-sc-form .fi-section-content .fi-sc {
+    width: 100% !important;
+    max-width: 100% !important;
+    column-gap: 2rem !important;   /* Separação horizontal ampla e confortável */
+    row-gap: 1.5rem !important;    /* Separação vertical nítida */
 }
 
 /* Prevenção de restrição indevida do CSS Grid e sub-wrappers */
@@ -3029,20 +3068,32 @@ html:not(.dark) .fi-activity-card:hover {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+    position: relative;
+}
+
+/* Labels: identificáveis com respiro vertical agradável */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-label-ctn {
+    margin-bottom: 0.5rem !important;
 }
 
 .bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-label {
     font-size: 0.875rem !important;
     font-weight: 600 !important;
-    padding-bottom: 0.375rem !important;
+    padding-bottom: 0 !important;
+    color: #34302e !important;
 }
 
-/* Wrapper unificado de Inputs e Selects */
+.dark .bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-label {
+    color: rgba(251, 250, 248, 0.9) !important;
+}
+
+/* Wrapper unificado de Inputs e Selects: altura controlada e ergonômica */
 .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp {
     display: flex !important;
     align-items: center !important;
-    min-height: 2.75rem !important;
-    padding-inline: 0.5rem 0.375rem !important;
+    min-height: 2.9375rem !important;
+    height: 2.9375rem !important;
+    padding-inline: 0.625rem 0.5rem !important;
     border-radius: 10px !important;
     width: 100% !important;
     min-width: 0 !important;
@@ -3055,6 +3106,7 @@ html:not(.dark) .fi-activity-card:hover {
     min-width: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    height: 100% !important;
     display: flex !important;
     align-items: center !important;
     overflow: hidden !important;
@@ -3063,39 +3115,46 @@ html:not(.dark) .fi-activity-card:hover {
 /* Inputs de texto gerais */
 .bsi-service-provider-form-page form.fi-sc-form .fi-input {
     font-size: 0.9375rem !important;
-    padding-inline: 0.75rem !important;
-    padding-block: 0.625rem !important;
+    padding-inline: 0.875rem !important;
+    padding-block: 0.6875rem !important;
+    min-height: 2.8125rem !important;
+    height: 100% !important;
     width: 100% !important;
     min-width: 0 !important;
     line-height: 1.5 !important;
     box-sizing: border-box !important;
 }
 
-/* CNPJ: largura total no grid de 5 colunas, algarismos tabulares e sem truncamento */
+/* CNPJ: largura total no bloco de 41.7%, dígitos integrais visíveis sem corte */
 .bsi-service-provider-form-page form.fi-sc-form input.fi-input[id*="cnpj"],
 .bsi-service-provider-form-page form.fi-sc-form input[name*="cnpj"] {
     white-space: nowrap !important;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
     font-variant-numeric: tabular-nums !important;
-    letter-spacing: 0.025em !important;
+    letter-spacing: 0.01em !important;
     text-overflow: clip !important;
+    padding-inline: 0.875rem !important;
 }
 
-/* Nome: largura total na linha 2 sem cortes ou truncamentos artificiais */
+/* Nome: largura 100% na linha 2 com protagonismo e espaço amplo para razões sociais longas */
 .bsi-service-provider-form-page form.fi-sc-form input.fi-input[id*="name"],
 .bsi-service-provider-form-page form.fi-sc-form input[name*="name"] {
     width: 100% !important;
     min-width: 0 !important;
+    font-size: 0.9375rem !important;
+    font-weight: 500 !important;
+    padding-inline: 0.875rem !important;
     text-overflow: clip !important;
     white-space: nowrap !important;
 }
 
-/* ── Select (Tipo): exibição unilinear definitiva e imune a quebra vertical ── */
+/* ── Select (Tipo): exibição unilinear e suporte a textos longos (Devedor, Banco Liquidante, Escritório de Advocacia, etc.) ── */
 .bsi-service-provider-form-page form.fi-sc-form .fi-select-input,
 .bsi-service-provider-form-page form.fi-sc-form .choices {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
+    height: 100% !important;
     margin-bottom: 0 !important;
     position: relative !important;
 }
@@ -3106,7 +3165,8 @@ html:not(.dark) .fi-activity-card:hover {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
-    min-height: 2.625rem !important;
+    min-height: 2.8125rem !important;
+    height: 100% !important;
     padding: 0 0.5rem !important;
     background: transparent !important;
     border: none !important;
@@ -3122,6 +3182,7 @@ html:not(.dark) .fi-activity-card:hover {
     min-width: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    height: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: hidden !important;
@@ -3160,46 +3221,53 @@ html:not(.dark) .fi-activity-card:hover {
     padding: 0 !important;
 }
 
-/* ── Ações laterais do Select (Cadastrar tipo, Editar tipo, Limpar, Dropdown) ── */
+/* ── Ações laterais do Select: [ valor selecionado ] [×] [⌄] | [+] [✎] ── */
 .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix {
     display: inline-flex !important;
     align-items: center !important;
     flex-shrink: 0 !important;
-    margin-inline-start: 0.375rem !important;
+    margin-inline-start: 0.5rem !important;
     padding-inline: 0 !important;
+    gap: 0.25rem !important;
 }
 
 .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions {
-    gap: 0.25rem !important;
+    gap: 0.375rem !important;
     display: inline-flex !important;
     align-items: center !important;
     flex-shrink: 0 !important;
-    padding-inline-start: 0.25rem !important;
+    padding-inline-start: 0.5rem !important;
+    margin-inline-start: 0.375rem !important;
+    border-left: 1px solid rgba(148, 163, 184, 0.25) !important;
+}
+
+.dark .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions {
+    border-left-color: rgba(183, 131, 47, 0.3) !important;
 }
 
 .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
 .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button {
-    width: 1.75rem !important;
-    height: 1.75rem !important;
-    min-width: 1.75rem !important;
-    max-width: 1.75rem !important;
+    width: 1.875rem !important;
+    height: 1.875rem !important;
+    min-width: 1.875rem !important;
+    max-width: 1.875rem !important;
     flex-shrink: 0 !important;
     padding: 0 !important;
-    border-radius: 6px !important;
+    border-radius: 7px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    color: rgba(251, 250, 248, 0.65) !important;
-    background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid rgba(148, 163, 184, 0.15) !important;
+    color: rgba(251, 250, 248, 0.7) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
     transition: all 150ms ease !important;
 }
 
 .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
 .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button:hover {
     color: #fbfaf8 !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-    border-color: rgba(148, 163, 184, 0.35) !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(183, 131, 47, 0.45) !important;
 }
 
 /* Light mode icon buttons inside select actions */
@@ -3213,19 +3281,19 @@ html:not(.dark) .fi-activity-card:hover {
 :not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
 :not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button:hover {
     color: #1a1918 !important;
-    background: rgba(0, 0, 0, 0.07) !important;
-    border-color: rgba(0, 0, 0, 0.2) !important;
+    background: rgba(0, 0, 0, 0.08) !important;
+    border-color: rgba(0, 0, 0, 0.22) !important;
 }
 
-/* ── Ações do Formulário (Salvar alterações / Cancelar) ── */
+/* ── Ações do Formulário (Salvar alterações / Cancelar): alinhadas à esquerda do card 100% ── */
 .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions {
-    margin-top: 1rem !important;
+    margin-top: 1.5rem !important;
     width: 100% !important;
-    max-width: 58rem !important;
+    max-width: 100% !important;
 }
 
 .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
-    gap: 0.75rem !important;
+    gap: 0.875rem !important;
     display: flex !important;
     flex-wrap: wrap !important;
     align-items: center !important;
@@ -3233,9 +3301,9 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
-    min-height: 2.75rem !important;
-    padding-inline: 1.5rem !important;
-    padding-block: 0.5625rem !important;
+    min-height: 2.875rem !important;
+    padding-inline: 1.625rem !important;
+    padding-block: 0.625rem !important;
     font-size: 0.875rem !important;
     font-weight: 600 !important;
     border-radius: 10px !important;
@@ -3246,7 +3314,7 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* Breadcrumb com nome corporativo longo protegido contra quebra brusca */
 .bsi-service-provider-form-page .fi-breadcrumbs .fi-breadcrumbs-item-label {
-    max-width: 28rem !important;
+    max-width: 32rem !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
@@ -3254,21 +3322,78 @@ html:not(.dark) .fi-activity-card:hover {
     vertical-align: bottom !important;
 }
 
+/* ── Responsividade: Tablet (641px - 1023px) ── */
+@media (min-width: 641px) and (max-width: 1023px) {
+    .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
+        padding-inline: 1.5rem !important;
+        padding-block: 1rem 1.125rem !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content,
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn {
+        padding-top: 1.5rem !important;
+        padding-inline: 1.5rem !important;
+        padding-bottom: 1.75rem !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-sc,
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn .fi-sc,
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content .fi-sc {
+        column-gap: 1.5rem !important;
+        row-gap: 1.375rem !important;
+    }
+}
+
+/* ── Responsividade: Mobile (<= 640px) ── */
 @media (max-width: 640px) {
     .bsi-service-provider-form-page form.fi-sc-form {
         max-width: 100% !important;
     }
 
+    .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
+        padding-inline: 1.125rem !important;
+        padding-block: 0.875rem 1rem !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content,
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn {
+        padding-top: 1.25rem !important;
+        padding-inline: 1.125rem !important;
+        padding-bottom: 1.5rem !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-sc,
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn .fi-sc,
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content .fi-sc {
+        column-gap: 0 !important;
+        row-gap: 1.25rem !important;
+    }
+
     .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions {
         max-width: 100% !important;
+        margin-top: 1.25rem !important;
     }
 
     .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
         flex-direction: column !important;
         align-items: stretch !important;
+        gap: 0.625rem !important;
     }
 
     .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
         width: 100% !important;
     }
+}
+
+/* ── Calendário de pagamentos (Despesas) ── */
+.bsi-expense-calendar-page {
+    background: #f6f3f2;
+}
+
+.dark .bsi-expense-calendar-page {
+    background: #06151c;
+}
+
+.bsi-expense-calendar-page .fi-page {
+    max-width: 110rem;
 }

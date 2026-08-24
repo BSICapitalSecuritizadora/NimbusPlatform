@@ -14,10 +14,12 @@ class ContractSpreadsheetAnalysis
     /**
      * @param  list<array<string, mixed>>  $rows
      * @param  list<string>  $fileErrors
+     * @param  array<int, ProjectedUnitOccupancy>  $unitOccupancies  unit id => what the file leaves behind
      */
     public function __construct(
         public readonly array $rows = [],
         public readonly array $fileErrors = [],
+        public readonly array $unitOccupancies = [],
     ) {}
 
     /**
@@ -120,6 +122,19 @@ class ContractSpreadsheetAnalysis
         return $this->criticalUpdateCount() > 0;
     }
 
+    /**
+     * Units the file distrata and sells again in one go. Shown on the preview so
+     * the operator can see why a new contract on an occupied unit stopped being
+     * a conflict; not recorded anywhere.
+     */
+    public function resaleCount(): int
+    {
+        return count(array_filter(
+            $this->unitOccupancies,
+            static fn (ProjectedUnitOccupancy $occupancy): bool => $occupancy->isResale(),
+        ));
+    }
+
     public function canImport(): bool
     {
         return ($this->fileErrors === [])
@@ -138,12 +153,23 @@ class ContractSpreadsheetAnalysis
     }
 
     /**
+     * Updates in the order the database can accept them: the ones that free a
+     * unit first.
+     *
+     * This is not a presentation detail. A resale writes a distrato and a new
+     * contract for the same unit, and the unique index behind
+     * `occupied_unit_lock` refuses the second holder even for the instant
+     * between two statements of the same transaction. Freeing first is what
+     * makes the constraint never see an impossible state -- so the order is
+     * decided here, once, instead of being remembered at every call site.
+     *
      * @return Collection<int, array<string, mixed>>
      */
     public function rowsToUpdate(): Collection
     {
         return $this->collect()
             ->filter(fn (array $row): bool => $row['outcome']->isUpdate())
+            ->sortByDesc(fn (array $row): int => ($row['releases_unit'] ?? false) ? 1 : 0)
             ->values();
     }
 

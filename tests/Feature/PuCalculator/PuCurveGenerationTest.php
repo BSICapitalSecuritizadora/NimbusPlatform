@@ -4,6 +4,7 @@ use App\Actions\Emissions\GeneratePuDailyCurve;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\DecimalRounder;
+use App\Domain\PuCalculator\Services\PuCurveGenerationService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
@@ -233,21 +234,22 @@ it('applies CDI on saturday only when configured to use the exact previous calen
         'legacy_projection_enabled' => false,
     ]);
 
-    app(GeneratePuDailyCurve::class)->handle($emission, syncLegacyProjections: false);
+    $result = app(PuCurveGenerationService::class)->handle($emission);
+    $rowsByDate = collect($result->rows)->keyBy(fn ($row): string => $row->date->toDateString());
 
-    $saturday = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-10')->sole();
-    $sunday = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-11')->sole();
-    $monday = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-12')->sole();
-    $tuesday = $emission->puDailyCurves()->whereDate('curve_date', '2026-01-13')->sole();
+    $saturday = $rowsByDate->get('2026-01-10');
+    $sunday = $rowsByDate->get('2026-01-11');
+    $monday = $rowsByDate->get('2026-01-12');
+    $tuesday = $rowsByDate->get('2026-01-13');
 
-    expect(bccomp((string) $saturday->factor_di, '1', 8))->toBe(1)
-        ->and($saturday->index_rate_date?->toDateString())->toBe('2026-01-09')
-        ->and((string) $sunday->factor_di)->toBe('1.0000000000000000')
-        ->and($sunday->index_rate_date)->toBeNull()
-        ->and((string) $monday->factor_di)->toBe('1.0000000000000000')
-        ->and($monday->index_rate_date)->toBeNull()
-        ->and(bccomp((string) $tuesday->factor_di, '1', 8))->toBe(1)
-        ->and($tuesday->index_rate_date?->toDateString())->toBe('2026-01-12');
+    expect(bccomp($saturday->factorDi, '1', 8))->toBe(1)
+        ->and($saturday->indexRateDate?->toDateString())->toBe('2026-01-09')
+        ->and($sunday->factorDi)->toBe('1.0000000000000000')
+        ->and($sunday->indexRateDate)->toBeNull()
+        ->and($monday->factorDi)->toBe('1.0000000000000000')
+        ->and($monday->indexRateDate)->toBeNull()
+        ->and(bccomp($tuesday->factorDi, '1', 8))->toBe(1)
+        ->and($tuesday->indexRateDate?->toDateString())->toBe('2026-01-12');
 });
 
 it('uses lagged business-day CDI lookup and stores DUP/DUT with business-day semantics', function () {

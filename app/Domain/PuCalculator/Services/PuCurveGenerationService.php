@@ -4,7 +4,6 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Calculators\DailyFactorCalculator;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
-use App\Domain\PuCalculator\Contracts\IndexRateProvider;
 use App\Domain\PuCalculator\DTOs\IndexRateData;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
@@ -18,13 +17,14 @@ use App\Models\EmissionPuParameter;
 use App\Models\IntegralizationHistory;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
 class PuCurveGenerationService
 {
     public function __construct(
         private readonly BusinessDayCalendar $businessDayCalendar,
-        private readonly IndexRateProvider $indexRateProvider,
+        private readonly PuIndexRateRequirementResolver $indexRateRequirementResolver,
         private readonly DailyFactorCalculator $dailyFactorCalculator,
         private readonly DecimalRounder $rounder,
     ) {}
@@ -60,7 +60,8 @@ class PuCurveGenerationService
 
             $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $parameter->calendar_code);
             $quantity = $this->quantityForDate($quantityTimeline, $currentDate);
-            $rateSnapshot = $this->resolveRateSnapshot($parameter, $currentDate, $isBusinessDay);
+            $rateRequirement = $this->indexRateRequirementResolver->resolve($parameter, $currentDate);
+            $rateSnapshot = $rateRequirement->rate;
 
             if ($this->reachedRealizedTail($parameter, $currentDate, $startDate, $isBusinessDay, $rateSnapshot)) {
                 break;
@@ -85,15 +86,9 @@ class PuCurveGenerationService
                     );
                 }
 
-                $shouldApplyDi = $this->shouldApplyDi(
-                    $parameter,
-                    $isBusinessDay,
-                    $rateSnapshot,
-                );
-
                 $factorDi = $this->dailyFactorCalculator->factorDiForDay(
                     $rateSnapshot?->value,
-                    $shouldApplyDi,
+                    $rateRequirement->shouldApplyRate(),
                     (int) $parameter->business_day_basis,
                     DecimalRounder::CALCULATION_SCALE,
                 );
@@ -305,7 +300,7 @@ class PuCurveGenerationService
 
     /**
      * @param  EloquentCollection<int, EmissionPuEvent>  $events
-     * @return array<string, \Illuminate\Support\Collection<int, EmissionPuEvent>>
+     * @return array<string, Collection<int, EmissionPuEvent>>
      */
     private function groupEventsByDate(EloquentCollection $events): array
     {
@@ -449,47 +444,5 @@ class PuCurveGenerationService
             $this->rounder->round($factorSpreadDi, 9),
             DecimalRounder::CALCULATION_SCALE,
         );
-    }
-
-    private function resolveRateSnapshot(
-        EmissionPuParameter $parameter,
-        CarbonImmutable $currentDate,
-        bool $isBusinessDay,
-    ): ?IndexRateData {
-        $lookupMode = $parameter->index_rate_lookup_mode_enum;
-
-        return match ($lookupMode) {
-            PuIndexRateLookupMode::PreviousAvailableBusinessDay => $isBusinessDay
-                ? $this->indexRateProvider->rateForDate($parameter->indexer_enum, $currentDate)
-                : null,
-            PuIndexRateLookupMode::PreviousCalendarDayExact => $this->indexRateProvider->exactRateForDate(
-                $parameter->indexer_enum,
-                $currentDate->subDay(),
-            ),
-            PuIndexRateLookupMode::BusinessDayLagExact => $this->indexRateProvider->exactRateForDate(
-                $parameter->indexer_enum,
-                $this->businessDayCalendar->shiftBusinessDays(
-                    $currentDate,
-                    (int) $parameter->index_rate_lag_business_days,
-                    $parameter->calendar_code,
-                ),
-            ),
-        };
-    }
-
-    private function shouldApplyDi(
-        EmissionPuParameter $parameter,
-        bool $isBusinessDay,
-        ?IndexRateData $rateSnapshot,
-    ): bool {
-        if ($rateSnapshot === null) {
-            return false;
-        }
-
-        return match ($parameter->index_rate_lookup_mode_enum) {
-            PuIndexRateLookupMode::PreviousCalendarDayExact => true,
-            PuIndexRateLookupMode::PreviousAvailableBusinessDay,
-            PuIndexRateLookupMode::BusinessDayLagExact => $isBusinessDay,
-        };
     }
 }
