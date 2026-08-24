@@ -8,11 +8,6 @@ use Tests\TestCase;
 uses(TestCase::class);
 
 it('stores private files on the local disk under the nimbus docs prefix', function () {
-    Storage::set('local', Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-
     $storedFile = app(DocumentStorageService::class)->storePrivateFile(
         UploadedFile::fake()->create('contrato-social.pdf', 128, 'application/pdf'),
         'submissions/42',

@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\Measurements\Pages;
 
 use App\Filament\Resources\Measurements\MeasurementResource;
+use App\Models\Measurement;
+use App\Models\Operation;
 use App\Services\MeasurementWorkflow;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\Gate;
 
 class CreateMeasurement extends CreateRecord
 {
@@ -30,6 +33,9 @@ class CreateMeasurement extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $operation = Operation::query()->findOrFail($data['operation_id'] ?? null);
+        Gate::authorize('createForOperation', [Measurement::class, $operation]);
+
         $data['uploaded_by'] = auth()->id();
         $data['uploaded_at'] = now();
         $data['status'] = 'pending';
@@ -40,7 +46,7 @@ class CreateMeasurement extends CreateRecord
 
     protected function afterCreate(): void
     {
-        app(MeasurementWorkflow::class)->startReview($this->record->refresh());
+        app(MeasurementWorkflow::class)->startReview($this->record->refresh(), auth()->user());
     }
 
     protected function getCreateFormAction(): Action

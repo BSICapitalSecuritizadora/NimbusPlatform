@@ -6,6 +6,8 @@ use App\Concerns\MoneyFormatter;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanSet;
+use App\Models\User;
+use App\Services\DocumentStorageService;
 use App\Services\MeasurementWorkflow;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -39,6 +41,7 @@ class ViewMeasurement extends ViewRecord
             $this->resumeAction(),
             $this->registerPaymentAction(),
             $this->attachReceiptAction(),
+            $this->deleteReceiptAction(),
             $this->returnToStageAction(),
             $this->finalizeAction(),
         ];
@@ -49,35 +52,18 @@ class ViewMeasurement extends ViewRecord
         return app(MeasurementWorkflow::class);
     }
 
-    private function isUnderReview(): bool
-    {
-        return in_array($this->record->status, ['pending', 'in_review'], true);
-    }
-
     private function stage(): int
     {
         return $this->workflow()->unifiedStage($this->record);
     }
 
-    /**
-     * Only the user responsible for the given workflow stage (1–5), or a super admin,
-     * may validate it.
-     */
-    private function canValidateStage(int $stage): bool
+    private function actor(): User
     {
         $user = auth()->user();
 
-        if ($user === null) {
-            return false;
-        }
+        abort_unless($user instanceof User, 403);
 
-        if ($user->hasRole('super-admin')) {
-            return true;
-        }
-
-        $responsibleId = $this->record->operation?->stageResponsibleId($stage);
-
-        return $responsibleId !== null && (int) $user->id === (int) $responsibleId;
+        return $user;
     }
 
     private function notify(string $message): void
@@ -93,14 +79,11 @@ class ViewMeasurement extends ViewRecord
             ->label('Aprovar Etapa')
             ->icon('heroicon-o-check-circle')
             ->color('success')
-            ->visible(fn (): bool => $this->isUnderReview() && $this->canValidateStage((int) $this->record->current_stage))
+            ->visible(fn (): bool => $this->workflow()->canApprove($this->record, $this->actor()))
             ->schema(fn (): array => $this->approveSchema())
             ->action(function (array $data): void {
-                if ($this->record->current_stage === self::ENGINEERING_STAGE && isset($data['realized']) && is_array($data['realized'])) {
-                    $this->workflow()->recordRealizedProgress($this->record, $data['realized']);
-                }
-
-                $this->workflow()->approve($this->record, auth()->user(), $data['notes'] ?? null);
+                $progress = isset($data['realized']) && is_array($data['realized']) ? $data['realized'] : [];
+                $this->workflow()->approve($this->record, $this->actor(), $data['notes'] ?? null, $progress);
                 $this->notify('Etapa aprovada.');
             });
     }
@@ -140,7 +123,8 @@ class ViewMeasurement extends ViewRecord
                 ->label($label)
                 ->numeric()
                 ->suffix('%')
-                ->minValue(0)
+                ->required()
+                ->minValue(0.01)
                 ->maxValue(100)
                 ->default($currentMonthly !== null ? (float) $currentMonthly : null);
         })->all();
@@ -196,13 +180,13 @@ class ViewMeasurement extends ViewRecord
             ->modalDescription(fn (): string => $this->stage() <= MeasurementWorkflow::STAGE_ENGINEERING
                 ? 'Recusar na Engenharia encerra a medição e notifica os responsáveis por recusa.'
                 : 'A medição voltará para a etapa anterior para correção.')
-            ->visible(fn (): bool => in_array($this->stage(), [1, 2, 3, MeasurementWorkflow::STAGE_PAYMENT], true) && $this->canValidateStage($this->stage()))
+            ->visible(fn (): bool => $this->workflow()->canReject($this->record, $this->actor()))
             ->schema([
                 Textarea::make('notes')->label('Motivo da recusa')->required()->rows(3),
             ])
             ->action(function (array $data): void {
                 $terminal = $this->stage() <= MeasurementWorkflow::STAGE_ENGINEERING;
-                $this->workflow()->reject($this->record, auth()->user(), $data['notes']);
+                $this->workflow()->reject($this->record, $this->actor(), $data['notes']);
                 $this->notify($terminal ? 'Medição recusada e encerrada.' : 'Medição devolvida para a etapa anterior.');
             });
     }
@@ -213,12 +197,12 @@ class ViewMeasurement extends ViewRecord
             ->label('Pausar')
             ->icon('heroicon-o-pause-circle')
             ->color('warning')
-            ->visible(fn (): bool => $this->record->status !== 'paused' && in_array($this->stage(), [2, 3, MeasurementWorkflow::STAGE_PAYMENT], true) && $this->canValidateStage($this->stage()))
+            ->visible(fn (): bool => $this->workflow()->canPause($this->record, $this->actor()))
             ->schema([
                 Textarea::make('reason')->label('Motivo da pausa')->required()->rows(3),
             ])
             ->action(function (array $data): void {
-                $this->workflow()->pause($this->record, auth()->user(), $data['reason']);
+                $this->workflow()->pause($this->record, $this->actor(), $data['reason']);
                 $this->notify('Medição pausada.');
             });
     }
@@ -230,9 +214,9 @@ class ViewMeasurement extends ViewRecord
             ->icon('heroicon-o-play-circle')
             ->color('info')
             ->requiresConfirmation()
-            ->visible(fn (): bool => $this->record->status === 'paused' && $this->canValidateStage($this->stage()))
+            ->visible(fn (): bool => $this->workflow()->canResume($this->record, $this->actor()))
             ->action(function (): void {
-                $this->workflow()->resume($this->record, auth()->user());
+                $this->workflow()->resume($this->record, $this->actor());
                 $this->notify('Análise retomada.');
             });
     }
@@ -244,7 +228,7 @@ class ViewMeasurement extends ViewRecord
             ->icon('heroicon-o-banknotes')
             ->color('success')
             ->modalWidth('2xl')
-            ->visible(fn (): bool => $this->record->status === 'awaiting_payment' && $this->canValidateStage(MeasurementWorkflow::STAGE_PAYMENT))
+            ->visible(fn (): bool => $this->workflow()->canRegisterPayment($this->record, $this->actor()))
             ->schema(fn (): array => $this->registerPaymentSchema())
             ->action(function (array $data): void {
                 $rows = collect($data['payments'] ?? [])
@@ -257,7 +241,7 @@ class ViewMeasurement extends ViewRecord
                     ])
                     ->all();
 
-                $created = $this->workflow()->registerPayments($this->record, auth()->user(), $rows);
+                $created = $this->workflow()->registerPayments($this->record, $this->actor(), $rows);
 
                 if ($created->isEmpty()) {
                     Notification::make()->warning()->title('Informe ao menos um valor de pagamento.')->send();
@@ -266,8 +250,8 @@ class ViewMeasurement extends ViewRecord
                 }
 
                 $this->notify($created->count() > 1
-                    ? "{$created->count()} pagamentos registrados. Aguardando comprovantes."
-                    : 'Pagamento registrado. Aguardando comprovante.');
+                    ? "{$created->count()} pagamentos registrados. A etapa Pagamento ainda precisa ser aprovada."
+                    : 'Pagamento registrado. A etapa Pagamento ainda precisa ser aprovada.');
             });
     }
 
@@ -317,7 +301,7 @@ class ViewMeasurement extends ViewRecord
             ->icon('heroicon-o-paper-clip')
             ->color('info')
             ->modalWidth('2xl')
-            ->visible(fn (): bool => $this->record->status === 'awaiting_receipt' && $this->canValidateStage(MeasurementWorkflow::STAGE_PAYMENT) && $this->pendingReceiptPayments()->isNotEmpty())
+            ->visible(fn (): bool => $this->workflow()->canManageReceipts($this->record, $this->actor()) && $this->pendingReceiptPayments()->isNotEmpty())
             ->schema(fn (): array => $this->attachReceiptSchema())
             ->action(function (array $data): void {
                 $attached = 0;
@@ -330,7 +314,12 @@ class ViewMeasurement extends ViewRecord
                     $payment = $this->record->payments()->whereKey($row['payment_id'] ?? null)->first();
 
                     if ($payment instanceof MeasurementPayment) {
-                        $this->workflow()->attachReceipt($payment, $row['receipt']);
+                        $this->workflow()->attachReceipt(
+                            $payment,
+                            $this->actor(),
+                            $row['receipt'],
+                            DocumentStorageService::privateDisk(),
+                        );
                         $attached++;
                     }
                 }
@@ -376,8 +365,8 @@ class ViewMeasurement extends ViewRecord
                         ->dehydrated(false),
                     FileUpload::make('receipt')
                         ->label('Comprovante')
-                        ->disk('public')
-                        ->directory('measurements/receipts')
+                        ->disk(DocumentStorageService::privateDisk())
+                        ->directory(DocumentStorageService::PRIVATE_PREFIX.'/measurements/receipts')
                         ->acceptedFileTypes((array) config('uploads.measurement_receipt.allowed_mimes', [])),
                 ]),
         ];
@@ -394,6 +383,42 @@ class ViewMeasurement extends ViewRecord
             ->get();
     }
 
+    private function deleteReceiptAction(): Action
+    {
+        return Action::make('deleteReceipt')
+            ->label('Remover Comprovante')
+            ->icon('heroicon-o-trash')
+            ->color('danger')
+            ->visible(fn (): bool => $this->workflow()->canManageReceipts($this->record, $this->actor()) && $this->receiptPayments()->isNotEmpty())
+            ->schema([
+                Select::make('payment_id')
+                    ->label('Pagamento')
+                    ->options(fn (): array => $this->receiptPayments()
+                        ->mapWithKeys(fn (MeasurementPayment $payment): array => [
+                            $payment->getKey() => sprintf('%s — R$ %s', $payment->pay_date?->format('d/m/Y'), number_format((float) $payment->amount, 2, ',', '.')),
+                        ])
+                        ->all())
+                    ->required(),
+            ])
+            ->requiresConfirmation()
+            ->action(function (array $data): void {
+                $payment = $this->record->payments()->whereKey($data['payment_id'])->firstOrFail();
+                $this->workflow()->deleteReceipt($payment, $this->actor());
+                $this->notify('Comprovante removido. A medição voltou a aguardar o documento.');
+            });
+    }
+
+    /**
+     * @return Collection<int, MeasurementPayment>
+     */
+    private function receiptPayments(): Collection
+    {
+        return $this->record->payments()
+            ->whereNotNull('receipt_path')
+            ->orderBy('id')
+            ->get();
+    }
+
     private function finalizeAction(): Action
     {
         return Action::make('finalize')
@@ -403,9 +428,9 @@ class ViewMeasurement extends ViewRecord
             ->requiresConfirmation()
             ->modalHeading('Finalizar medição')
             ->modalDescription('Após finalizar, a medição não poderá mais ser alterada.')
-            ->visible(fn (): bool => in_array($this->record->status, ['awaiting_payment', 'awaiting_receipt'], true) && $this->canValidateStage(MeasurementWorkflow::STAGE_FINALIZATION))
+            ->visible(fn (): bool => $this->workflow()->canFinalize($this->record, $this->actor()))
             ->action(function (): void {
-                $this->workflow()->finalize($this->record, auth()->user());
+                $this->workflow()->finalize($this->record, $this->actor());
                 $this->notify('Medição finalizada.');
             });
     }
@@ -416,7 +441,7 @@ class ViewMeasurement extends ViewRecord
             ->label('Devolver para Etapa')
             ->icon('heroicon-o-arrow-uturn-left')
             ->color('warning')
-            ->visible(fn (): bool => in_array($this->record->status, ['awaiting_payment', 'awaiting_receipt'], true) && $this->canValidateStage(MeasurementWorkflow::STAGE_FINALIZATION))
+            ->visible(fn (): bool => $this->workflow()->canReturnFromFinalization($this->record, $this->actor()))
             ->schema([
                 Select::make('target_stage')
                     ->label('Etapa de destino')
@@ -424,13 +449,13 @@ class ViewMeasurement extends ViewRecord
                         1 => 'Etapa 1 — Engenharia',
                         2 => 'Etapa 2 — Gestão',
                         3 => 'Etapa 3 — Compliance',
-                        MeasurementWorkflow::STAGE_PAYMENT => 'Etapa 4 — Pagamentos e Comprovantes',
+                        MeasurementWorkflow::STAGE_PAYMENT => 'Etapa 4 — Pagamento',
                     ])
                     ->required(),
-                Textarea::make('reason')->label('Motivo (opcional)')->rows(2),
+                Textarea::make('reason')->label('Motivo')->required()->rows(2),
             ])
             ->action(function (array $data): void {
-                $this->workflow()->returnToStage($this->record, auth()->user(), (int) $data['target_stage'], $data['reason'] ?? null);
+                $this->workflow()->returnToStage($this->record, $this->actor(), (int) $data['target_stage'], $data['reason']);
                 $this->notify('Medição devolvida para a etapa selecionada.');
             });
     }

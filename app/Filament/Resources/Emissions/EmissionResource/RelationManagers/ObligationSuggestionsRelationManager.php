@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
+use App\Enums\ObligationDueRuleType;
 use App\Enums\ObligationFrequency;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
@@ -393,15 +394,36 @@ class ObligationSuggestionsRelationManager extends RelationManager
                         ->columnSpanFull(),
                 ] : []),
             ])
-            ->fillForm(fn (ExtractedObligation $record): array => [
-                'activate_series' => false,
-                'frequency' => ObligationFrequency::fromLegacyLabel($record->recurrence)?->value,
-                'starts_on' => now()->startOfMonth()->toDateString(),
-                'ends_on' => $record->emission?->maturity_date?->toDateString(),
-                'due_offset_months' => 1,
-                'generation_horizon_days' => (int) config('obligations.recurrence.generation_horizon_days', 90),
-                'calendar_code' => 'B3',
-            ])
+            ->fillForm(function (ExtractedObligation $record): array {
+                $schedule = $record->schedule_suggestion ?? [];
+                $suggestsBusinessDayOffset = ($schedule['unit'] ?? null) === 'business_days'
+                    && in_array($schedule['direction'] ?? null, ['before', 'after'], true)
+                    && filled($schedule['anchor_description'] ?? null);
+
+                return [
+                    'activate_series' => false,
+                    'frequency' => ObligationFrequency::fromLegacyLabel($record->recurrence)?->value,
+                    'starts_on' => now()->startOfMonth()->toDateString(),
+                    'ends_on' => $record->emission?->maturity_date?->toDateString(),
+                    'due_rule_type' => $suggestsBusinessDayOffset
+                        ? ObligationDueRuleType::BusinessDaysRelativeToEvent->value
+                        : null,
+                    'due_offset_months' => 1,
+                    'relative_offset_quantity' => $suggestsBusinessDayOffset ? ($schedule['quantity'] ?? null) : null,
+                    'relative_offset_unit' => $suggestsBusinessDayOffset ? 'business_days' : null,
+                    'relative_offset_direction' => $suggestsBusinessDayOffset ? ($schedule['direction'] ?? null) : null,
+                    'anchor_description' => $suggestsBusinessDayOffset ? ($schedule['anchor_description'] ?? null) : null,
+                    'initial_date_inclusion' => in_array($schedule['initial_date_inclusion'] ?? null, ['included', 'excluded'], true)
+                        ? $schedule['initial_date_inclusion']
+                        : null,
+                    'calendar_code' => null,
+                    'calendar_evidence_clause_reference' => $record->source_clause,
+                    'calendar_evidence_page_reference' => $record->source_page,
+                    'calendar_evidence_excerpt' => $record->source_excerpt,
+                    'calendar_evidence_notes' => $schedule['business_day_definition'] ?? null,
+                    'generation_horizon_days' => (int) config('obligations.recurrence.generation_horizon_days', 90),
+                ];
+            })
             ->visible(fn (ExtractedObligation $record): bool => $this->canReviewSuggestion($record, ObligationSuggestionReviewService::TRANSITION_APPROVE))
             ->authorize(fn (ExtractedObligation $record): bool => $this->canReviewSuggestion($record, ObligationSuggestionReviewService::TRANSITION_APPROVE))
             ->action(function (ExtractedObligation $record, array $data): void {

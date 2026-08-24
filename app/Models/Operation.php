@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\OperationFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +14,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Operation extends Model
 {
-    /** @use HasFactory<\Database\Factories\OperationFactory> */
+    /** @use HasFactory<OperationFactory> */
     use HasFactory, LogsActivity;
 
     public const STATUS_OPTIONS = [
@@ -41,6 +43,7 @@ class Operation extends Model
         'stage2_reviewer_user_id',
         'stage3_reviewer_user_id',
         'payment_manager_user_id',
+        'payment_receipt_uploader_user_id',
         'payment_finalizer_user_id',
     ];
 
@@ -113,6 +116,11 @@ class Operation extends Model
     public function paymentManager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'payment_manager_user_id');
+    }
+
+    public function paymentReceiptUploader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payment_receipt_uploader_user_id');
     }
 
     public function paymentFinalizer(): BelongsTo
@@ -228,7 +236,7 @@ class Operation extends Model
 
     /**
      * Maps the full measurement workflow stage (1–5) to the user responsible for it:
-     * 1 Engenharia, 2 Gestão, 3 Compliance, 4 Pagamentos e Comprovantes, 5 Finalização.
+     * 1 Engenharia, 2 Gestão, 3 Compliance, 4 Pagamento, 5 Finalização.
      */
     public function stageResponsibleId(int $stage): ?int
     {
@@ -240,6 +248,45 @@ class Operation extends Model
             5 => $this->payment_finalizer_user_id,
             default => null,
         };
+    }
+
+    public function hasParticipant(User $user): bool
+    {
+        $participantIds = [
+            $this->assigned_user_id,
+            $this->responsible_user_id,
+            $this->stage2_reviewer_user_id,
+            $this->stage3_reviewer_user_id,
+            $this->payment_manager_user_id,
+            $this->payment_receipt_uploader_user_id,
+            $this->payment_finalizer_user_id,
+        ];
+
+        return in_array((int) $user->getKey(), array_map('intval', array_filter($participantIds)), true)
+            || $this->rejectionNotifyUsers()->whereKey($user->getKey())->exists();
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->hasAnyRole(['super-admin', 'admin'])) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $participantQuery) use ($user): void {
+            $participantQuery
+                ->where('assigned_user_id', $user->getKey())
+                ->orWhere('responsible_user_id', $user->getKey())
+                ->orWhere('stage2_reviewer_user_id', $user->getKey())
+                ->orWhere('stage3_reviewer_user_id', $user->getKey())
+                ->orWhere('payment_manager_user_id', $user->getKey())
+                ->orWhere('payment_receipt_uploader_user_id', $user->getKey())
+                ->orWhere('payment_finalizer_user_id', $user->getKey())
+                ->orWhereHas('rejectionNotifyUsers', fn (Builder $users): Builder => $users->whereKey($user->getKey()));
+        });
     }
 
     private static function generateCode(self $operation): string

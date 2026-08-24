@@ -30,7 +30,7 @@ beforeEach(function () {
  */
 function unitSpreadsheet(array $rows, ?array $headers = null): string
 {
-    $path = tempnam(sys_get_temp_dir(), 'units-import-').'.xlsx';
+    $path = temporaryTestFilePath('units-import');
     $headers ??= ConstructionUnitSpreadsheetColumns::headers();
 
     $writer = SimpleExcelWriter::create($path)->addHeader($headers);

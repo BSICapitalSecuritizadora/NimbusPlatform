@@ -58,6 +58,7 @@ class InstrumentObligationCollector
                 'description' => $this->text($raw['description'] ?? null),
                 'recurrence' => $this->text($raw['recurrence'] ?? null, 255),
                 'due_rule' => $this->text($raw['due_rule'] ?? null),
+                'schedule_suggestion' => $this->scheduleSuggestion($raw['schedule_suggestion'] ?? null),
                 'priority' => 'medium',
                 'status' => ExtractedObligation::STATUS_SUGGESTED,
                 'source_clause' => $this->text($raw['clause'] ?? null, 255),
@@ -116,5 +117,37 @@ class InstrumentObligationCollector
         }
 
         return $maxLength === null ? $value : mb_substr($value, 0, $maxLength);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function scheduleSuggestion(mixed $suggestion): ?array
+    {
+        if (! is_array($suggestion)) {
+            return null;
+        }
+
+        $normalized = [
+            'quantity' => is_numeric($suggestion['quantity'] ?? null)
+                ? max(0, (int) $suggestion['quantity'])
+                : null,
+            'unit' => in_array($suggestion['unit'] ?? null, ['business_days', 'calendar_days'], true)
+                ? $suggestion['unit']
+                : null,
+            'direction' => in_array($suggestion['direction'] ?? null, ['before', 'after'], true)
+                ? $suggestion['direction']
+                : null,
+            'anchor_description' => $this->text($suggestion['anchor_description'] ?? null, 255),
+            'initial_date_inclusion' => in_array(
+                $suggestion['initial_date_inclusion'] ?? null,
+                ['included', 'excluded', 'unresolved'],
+                true,
+            ) ? $suggestion['initial_date_inclusion'] : null,
+            'business_day_definition' => $this->text($suggestion['business_day_definition'] ?? null),
+            'calendar_code' => null,
+        ];
+
+        return collect($normalized)->except('calendar_code')->filter(fn (mixed $value): bool => $value !== null)->isEmpty()
+            ? null
+            : $normalized;
     }
 }

@@ -11,10 +11,39 @@ use App\Models\ExpenseServiceProviderType;
 use App\Models\ProposalSector;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 uses(TestCase::class)->in('Feature');
+
+/**
+ * Caminho físico, dentro do disco isolado da suíte, para um arquivo que o
+ * componente sob teste precisa abrir do filesystem -- planilhas que o parser lê
+ * do disco, CSVs de importação, gabaritos.
+ *
+ * Substitui `tempnam(sys_get_temp_dir(), $prefixo).$extensao`, que tinha três
+ * defeitos: deixava dois arquivos por chamada (o do `tempnam`, vazio, e o do
+ * sufixo), não tinha limpeza, e apontava para um diretório compartilhado por
+ * todos os processos da máquina. Aqui o arquivo nasce dentro da raiz falsa do
+ * disco `local`, que o TestCase apaga ao fim de cada teste e que já é
+ * separada por processo sob `--parallel`.
+ *
+ * O nome segue uma sequência, não um valor aleatório: o conteúdo do arquivo é
+ * que precisa ser determinístico para checksum, e um contador mantém o nome
+ * reproduzível de uma execução para a outra.
+ */
+function temporaryTestFilePath(string $prefix, string $extension = 'xlsx'): string
+{
+    static $sequence = 0;
+
+    $sequence++;
+
+    $disk = Storage::disk('local');
+    $disk->makeDirectory('tests-tmp');
+
+    return $disk->path("tests-tmp/{$prefix}-{$sequence}.{$extension}");
+}
 
 function puValidationSpreadsheetPath(string $keyword): string
 {

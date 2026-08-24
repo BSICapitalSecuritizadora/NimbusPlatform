@@ -62,7 +62,7 @@ function makeAnbimaWorkbook(array $rows, string $format = 'xls', bool $lastDateA
 
     $sheet->setCellValue('A'.($line + 1), 'O calendario nao inclui os feriados municipais nem eleicoes.');
 
-    $path = tempnam(sys_get_temp_dir(), 'anbima_test_').'.'.$format;
+    $path = temporaryTestFilePath('anbima-workbook', $format);
     $writer = $format === 'xlsx' ? new Xlsx($spreadsheet) : new Xls($spreadsheet);
     $writer->save($path);
     $spreadsheet->disconnectWorksheets();
@@ -84,12 +84,6 @@ function importer(): AnbimaHolidayImporter
 {
     return app(AnbimaHolidayImporter::class);
 }
-
-afterEach(function () {
-    foreach (glob(sys_get_temp_dir().'/anbima_test_*') ?: [] as $file) {
-        @unlink($file);
-    }
-});
 
 it('imports holidays from a local .xls file and applies them to the calendar', function () {
     $path = makeAnbimaWorkbook(sampleHolidays(), 'xls');
@@ -190,7 +184,7 @@ it('keeps the last applied calendar and audits an unavailable external source', 
 });
 
 it('throws a clear exception for an invalid/unreadable file', function () {
-    $path = tempnam(sys_get_temp_dir(), 'anbima_test_').'.xls';
+    $path = temporaryTestFilePath('anbima-invalid', 'xls');
     file_put_contents($path, 'this is not a spreadsheet');
 
     importer()->importFromFile($path, 'B3');

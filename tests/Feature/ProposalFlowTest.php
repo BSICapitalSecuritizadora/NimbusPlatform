@@ -104,12 +104,6 @@ it('stores each proposal company as an immutable snapshot even when the cnpj rep
 
 it('requires the signed magic link plus cnpj and emailed code before continuing the Nimbus-style form', function () {
     Mail::fake();
-    config()->set('filesystems.disks.local.root', storage_path('framework/testing/disks/local-'.uniqid()));
-    Storage::set('local', Storage::createLocalDriver([
-        'root' => config('filesystems.disks.local.root'),
-        'throw' => false,
-    ]));
-
     $sector = ProposalSector::query()->create(['name' => 'Incorporação']);
     ProposalRepresentative::factory()->create([
         'name' => 'Representante Comercial',

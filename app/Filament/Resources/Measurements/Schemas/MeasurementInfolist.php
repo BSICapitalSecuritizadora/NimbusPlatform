@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Measurements\Schemas;
 
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
+use App\Models\MeasurementPayment;
 use App\Models\MeasurementReview;
 use App\Services\MeasurementWorkflow;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -11,7 +12,6 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Storage;
 
 class MeasurementInfolist
 {
@@ -35,6 +35,15 @@ class MeasurementInfolist
                     TextEntry::make('uploadedByUser.name')->label('Enviada por')->placeholder('—'),
                     TextEntry::make('uploaded_at')->label('Enviada em')->dateTime('d/m/Y H:i')->placeholder('—'),
                     TextEntry::make('notes')->label('Observações')->placeholder('—')->columnSpanFull(),
+                    TextEntry::make('storage_path')
+                        ->label('Arquivo principal legado')
+                        ->state(fn (Measurement $record): ?string => filled($record->storage_path) ? 'Abrir arquivo' : null)
+                        ->url(fn (Measurement $record): ?string => filled($record->storage_path)
+                            ? route('admin.measurements.file.download', $record)
+                            : null)
+                        ->openUrlInNewTab()
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->placeholder('—'),
                 ]),
 
             Section::make('Arquivos por Empreendimento')
@@ -47,11 +56,34 @@ class MeasurementInfolist
                             TextEntry::make('storage_path')
                                 ->label('Arquivo')
                                 ->state(fn (MeasurementAsset $record): ?string => filled($record->storage_path) ? 'Abrir arquivo' : null)
-                                ->url(fn (MeasurementAsset $record): ?string => filled($record->storage_path) ? Storage::disk('public')->url($record->storage_path) : null)
+                                ->url(fn (MeasurementAsset $record): ?string => filled($record->storage_path)
+                                    ? route('admin.measurements.assets.download', $record)
+                                    : null)
                                 ->openUrlInNewTab()
                                 ->icon('heroicon-o-arrow-down-tray')
                                 ->color('primary')
                                 ->placeholder('—'),
+                        ]),
+                ]),
+
+            Section::make('Pagamentos e Comprovantes')
+                ->schema([
+                    RepeatableEntry::make('payments')
+                        ->label('')
+                        ->columns(4)
+                        ->schema([
+                            TextEntry::make('pay_date')->label('Data')->date('d/m/Y'),
+                            TextEntry::make('planSet.construction.development_name')->label('Empreendimento')->placeholder('—'),
+                            TextEntry::make('amount')->label('Valor')->money('BRL'),
+                            TextEntry::make('receipt_path')
+                                ->label('Comprovante')
+                                ->state(fn (MeasurementPayment $record): ?string => $record->hasReceipt() ? 'Abrir comprovante' : null)
+                                ->url(fn (MeasurementPayment $record): ?string => $record->hasReceipt()
+                                    ? route('admin.measurements.receipts.download', $record)
+                                    : null)
+                                ->openUrlInNewTab()
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->placeholder('Pendente'),
                         ]),
                 ]),
 

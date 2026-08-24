@@ -2,14 +2,21 @@
 
 namespace App\Models;
 
+use App\Concerns\DerivesStoredFileMetadata;
+use App\Services\DocumentStorageService;
+use Database\Factories\MeasurementAssetFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MeasurementAsset extends Model
 {
-    /** @use HasFactory<\Database\Factories\MeasurementAssetFactory> */
-    use HasFactory;
+    /** @use HasFactory<MeasurementAssetFactory> */
+    use DerivesStoredFileMetadata, HasFactory;
+
+    protected $attributes = [
+        'storage_disk' => DocumentStorageService::DEFAULT_PRIVATE_DISK,
+    ];
 
     protected $fillable = [
         'measurement_id',
@@ -17,6 +24,9 @@ class MeasurementAsset extends Model
         'plan_line_id',
         'filename',
         'storage_path',
+        'storage_disk',
+        'sha256',
+        'mime_type',
         'size',
         'uploaded_at',
     ];
@@ -55,5 +65,40 @@ class MeasurementAsset extends Model
     public function planLine(): BelongsTo
     {
         return $this->belongsTo(MeasurementPlanLine::class, 'plan_line_id');
+    }
+
+    public function getResolvedStorageDiskAttribute(): string
+    {
+        return $this->storage_disk ?: 'public';
+    }
+
+    protected function storedFilePathColumn(): string
+    {
+        return 'storage_path';
+    }
+
+    protected function storedFileMimeColumn(): string
+    {
+        return 'mime_type';
+    }
+
+    protected function storedFileSizeColumn(): string
+    {
+        return 'size';
+    }
+
+    protected function storedFileChecksumColumn(): ?string
+    {
+        return 'sha256';
+    }
+
+    protected function storedFileNameColumn(): ?string
+    {
+        return 'filename';
+    }
+
+    protected function storedFileMetadataDisk(): string
+    {
+        return $this->resolved_storage_disk;
     }
 }

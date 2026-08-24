@@ -347,6 +347,152 @@ it('allows a resale once the previous contract is distratado', function () {
         ->and($unit->activeContract()->first()->client_id)->toBe($buyer->id);
 });
 
+/**
+ * `occupied_unit_lock` says a unit is held by at most one contract *now*; it can
+ * say nothing about a period that has already closed. The timeline says the same
+ * thing about the whole history, and it has to hold on every way in -- a history
+ * the monthly reconciliation refuses to write must not be reachable by typing it
+ * by hand.
+ */
+describe('coerência temporal da unidade', function () {
+    /**
+     * A unit whose contract ran from 10/03/2024 to the distrato on 15/08/2026,
+     * plus the next buyer.
+     *
+     * @return array{0: Emission, 1: Construction, 2: ConstructionUnit, 3: Client, 4: Contract}
+     */
+    function timelineScenario(): array
+    {
+        [$emission, $construction, $unit, $client] = contractScenario();
+        $buyer = Client::factory()->create(['name' => 'Maria Oliveira']);
+
+        $previous = Contract::factory()->forUnit($unit)->forClient($client)->create([
+            'code' => 'CVC-00001',
+            'sale_date' => '2024-03-10',
+            'status' => ContractStatus::Cancelled,
+            'cancellation_date' => '2026-08-15',
+        ]);
+
+        return [$emission, $construction, $unit, $buyer, $previous];
+    }
+
+    it('accepts a sale opened on the day the previous distrato took effect', function () {
+        $this->actingAs(makeAdminUser());
+
+        [$emission, $construction, $unit, $buyer] = timelineScenario();
+
+        Livewire::test(CreateContract::class)
+            ->fillForm(fillContractForm($emission, $construction, $unit, $buyer, [
+                'code' => 'CVC-00002',
+                'sale_date' => '2026-08-15',
+            ]))
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        expect($unit->activeContract()->first()->code)->toBe('CVC-00002');
+    });
+
+    it('refuses a sale opened before the previous distrato took effect', function () {
+        $this->actingAs(makeAdminUser());
+
+        [$emission, $construction, $unit, $buyer] = timelineScenario();
+
+        Livewire::test(CreateContract::class)
+            ->fillForm(fillContractForm($emission, $construction, $unit, $buyer, [
+                'code' => 'CVC-00002',
+                'sale_date' => '2026-08-05',
+            ]))
+            ->call('create')
+            ->assertHasFormErrors(['sale_date']);
+
+        expect(Contract::query()->count())->toBe(1);
+    });
+
+    it('refuses moving a distrato forward over a sale that already followed it', function () {
+        $this->actingAs(makeAdminUser());
+
+        [, , $unit, $buyer, $previous] = timelineScenario();
+
+        Contract::factory()->forUnit($unit)->forClient($buyer)->create([
+            'code' => 'CVC-00002',
+            'sale_date' => '2026-08-20',
+        ]);
+
+        // Editing only the distrato date would swallow two days of a contract
+        // that is already on record -- the same overlap seen from the other side.
+        // The date is deliberately in the past, so only the timeline can refuse it.
+        Livewire::test(EditContract::class, ['record' => $previous->getRouteKey()])
+            ->fillForm(['cancellation_date' => '2026-08-22'])
+            ->call('save')
+            ->assertHasFormErrors(['cancellation_date']);
+
+        expect($previous->fresh()->cancellation_date->toDateString())->toBe('2026-08-15');
+    });
+
+    it('still accepts moving a distrato within the gap before the next sale', function () {
+        $this->actingAs(makeAdminUser());
+
+        [, , $unit, $buyer, $previous] = timelineScenario();
+
+        Contract::factory()->forUnit($unit)->forClient($buyer)->create([
+            'code' => 'CVC-00002',
+            'sale_date' => '2026-08-20',
+        ]);
+
+        Livewire::test(EditContract::class, ['record' => $previous->getRouteKey()])
+            ->fillForm(['cancellation_date' => '2026-08-18'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        expect($previous->fresh()->cancellation_date->toDateString())->toBe('2026-08-18');
+    });
+
+    it('refuses a distrato dated in the future', function () {
+        $this->actingAs(makeAdminUser());
+
+        [$emission, $construction, $unit, $buyer] = contractScenario();
+
+        // Until the distrato happens the contract is ativo and holds its unit.
+        // Recording one in advance would leave it released by the status and
+        // still occupying by the timeline.
+        Livewire::test(CreateContract::class)
+            ->fillForm(fillContractForm($emission, $construction, $unit, $buyer, [
+                'status' => ContractStatus::Cancelled->value,
+                'cancellation_date' => now()->addMonth()->toDateString(),
+            ]))
+            ->call('create')
+            ->assertHasFormErrors(['cancellation_date']);
+
+        expect(Contract::query()->count())->toBe(0);
+    });
+
+    it('leaves an untouched pair of historical contracts alone', function () {
+        $this->actingAs(makeAdminUser());
+
+        [$emission, $construction, $unit, $buyer] = timelineScenario();
+
+        // Two contracts already on record that overlap each other. Nobody is
+        // editing them, so saving a third coherent contract is not the moment to
+        // refuse an inconsistency this operation did not create.
+        Contract::factory()->forUnit($unit)->create([
+            'code' => 'CVC-00000',
+            'sale_date' => '2024-06-01',
+            'status' => ContractStatus::Cancelled,
+            'cancellation_date' => '2025-01-01',
+        ]);
+
+        Livewire::test(CreateContract::class)
+            ->fillForm(fillContractForm($emission, $construction, $unit, $buyer, [
+                'code' => 'CVC-00002',
+                'sale_date' => '2026-08-20',
+            ]))
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        expect($unit->activeContract()->first()->code)->toBe('CVC-00002');
+    });
+});
+
 it('rejects a code already used inside the same development', function () {
     $this->actingAs(makeAdminUser());
 

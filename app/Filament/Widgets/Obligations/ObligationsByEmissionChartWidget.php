@@ -5,6 +5,8 @@ namespace App\Filament\Widgets\Obligations;
 use App\Enums\AccessPermission;
 use App\Models\Emission;
 use App\Services\Obligations\ObligationDashboardData;
+use Filament\Support\Icons\Heroicon;
+use Filament\Support\RawJs;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
@@ -18,9 +20,30 @@ class ObligationsByEmissionChartWidget extends ChartWidget
 
     protected ?string $description = 'Volume operacional por emissão, com atrasos e fila documental quando permitido.';
 
+    protected int|string|array $columnSpan = [
+        'default' => 12,
+        'xl' => 6,
+    ];
+
+    protected ?string $maxHeight = '320px';
+
+    protected ?string $emptyStateHeading = 'Nenhuma emissão com pendências';
+
+    protected ?string $emptyStateDescription = 'Não foram encontradas emissões com obrigações em aberto no recorte de filtros.';
+
+    protected string|\BackedEnum|null $emptyStateIcon = Heroicon::OutlinedBuildingOffice2;
+
     protected function getType(): string
     {
         return 'bar';
+    }
+
+    public function isEmpty(): bool
+    {
+        $data = $this->getCachedData();
+        $labels = $data['labels'] ?? [];
+
+        return empty($labels);
     }
 
     protected function getData(): array
@@ -38,7 +61,8 @@ class ObligationsByEmissionChartWidget extends ChartWidget
                         (int) $emission->pending_obligations_count - (int) $emission->overdue_obligations_count
                     ))
                     ->all(),
-                'backgroundColor' => '#3b82f6',
+                'backgroundColor' => '#38bdf8',
+                'borderRadius' => 6,
             ],
             [
                 'label' => 'Vencidas',
@@ -46,6 +70,7 @@ class ObligationsByEmissionChartWidget extends ChartWidget
                     ->map(fn (Emission $emission): int => (int) $emission->overdue_obligations_count)
                     ->all(),
                 'backgroundColor' => '#ef4444',
+                'borderRadius' => 6,
             ],
         ];
 
@@ -56,6 +81,7 @@ class ObligationsByEmissionChartWidget extends ChartWidget
                     ->map(fn (Emission $emission): int => (int) $emission->pending_evidence_obligations_count)
                     ->all(),
                 'backgroundColor' => '#f59e0b',
+                'borderRadius' => 6,
             ];
         }
 
@@ -67,20 +93,50 @@ class ObligationsByEmissionChartWidget extends ChartWidget
         ];
     }
 
-    protected function getOptions(): array
+    protected function getOptions(): RawJs|array
     {
-        return [
-            'scales' => [
-                'x' => ['stacked' => true],
-                'y' => [
-                    'stacked' => true,
-                    'beginAtZero' => true,
-                    'ticks' => ['precision' => 0],
-                ],
-            ],
-            'plugins' => [
-                'legend' => ['position' => 'bottom'],
-            ],
-        ];
+        return RawJs::make(<<<'JS'
+        {
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { display: false },
+                    ticks: {
+                        maxRotation: 35,
+                        minRotation: 0,
+                        font: { size: 11 }
+                    }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { precision: 0, font: { size: 11 } },
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 14,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        boxWidth: 10,
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label || '';
+                            const value = context.raw || 0;
+                            return ` ${label}: ${value}`;
+                        }
+                    }
+                }
+            },
+            maintainAspectRatio: false
+        }
+        JS);
     }
 }

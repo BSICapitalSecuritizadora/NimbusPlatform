@@ -158,6 +158,10 @@ class DocumentStorageService
 
     public function exists(string $path, ?string $disk = null): bool
     {
+        if (! $this->isSafeRelativePath($path)) {
+            return false;
+        }
+
         return $this->filesystem($disk ?? self::privateDisk())->exists($path);
     }
 
@@ -166,6 +170,8 @@ class DocumentStorageService
         string $downloadName,
         ?string $disk = null,
     ): StreamedResponse {
+        $this->assertSafeRelativePath($path);
+
         return $this->filesystem($disk ?? self::privateDisk())->download($path, $downloadName);
     }
 
@@ -175,6 +181,8 @@ class DocumentStorageService
         ?string $downloadName = null,
         ?string $disk = null,
     ): BinaryFileResponse|StreamedResponse {
+        $this->assertSafeRelativePath($path);
+
         $resolvedDisk = $disk ?? self::privateDisk();
         $isInlineSafe = in_array($mimeType, self::INLINE_SAFE_MIMES, true);
         $resolvedMime = $isInlineSafe ? (string) $mimeType : 'application/octet-stream';
@@ -211,6 +219,10 @@ class DocumentStorageService
      */
     public function checksum(string $path, ?string $disk = null): ?string
     {
+        if (! $this->isSafeRelativePath($path)) {
+            return null;
+        }
+
         $stream = rescue(
             fn () => $this->filesystem($disk ?? self::privateDisk())->readStream($path),
             null,
@@ -238,7 +250,7 @@ class DocumentStorageService
     {
         $disk ??= self::privateDisk();
 
-        if (! $this->exists($path, $disk)) {
+        if (! $this->isSafeRelativePath($path) || ! $this->exists($path, $disk)) {
             return [
                 'mime_type' => null,
                 'size_bytes' => null,
@@ -255,6 +267,8 @@ class DocumentStorageService
 
     public function absolutePath(string $path, ?string $disk = null): string
     {
+        $this->assertSafeRelativePath($path);
+
         return Storage::disk($this->normalizeDisk($disk ?? self::privateDisk()))->path($path);
     }
 
@@ -290,5 +304,21 @@ class DocumentStorageService
         }
 
         return $disk;
+    }
+
+    private function isSafeRelativePath(string $path): bool
+    {
+        return $path !== ''
+            && ! str_contains($path, "\0")
+            && ! str_starts_with($path, '/')
+            && ! str_starts_with($path, '\\')
+            && preg_match('#(^|[\\\\/])\.\.?(?:[\\\\/]|$)#', $path) !== 1;
+    }
+
+    private function assertSafeRelativePath(string $path): void
+    {
+        if (! $this->isSafeRelativePath($path)) {
+            throw new InvalidArgumentException('Invalid storage path.');
+        }
     }
 }

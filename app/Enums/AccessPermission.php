@@ -134,6 +134,7 @@ enum AccessPermission: string
     case MeasurementsDelete = 'measurements.delete';
     case MeasurementsReview = 'measurements.review';
     case MeasurementsPay = 'measurements.pay';
+    case MeasurementsReceipts = 'measurements.receipts';
     case MeasurementsFinalize = 'measurements.finalize';
     case RecruitmentVacanciesView = 'recruitment.vacancies.view';
     case RecruitmentVacanciesCreate = 'recruitment.vacancies.create';
@@ -368,7 +369,8 @@ enum AccessPermission: string
             self::MeasurementsUpdate => 'Medições: editar',
             self::MeasurementsDelete => 'Medições: excluir',
             self::MeasurementsReview => 'Medições: analisar (aprovar/recusar/pausar)',
-            self::MeasurementsPay => 'Medições: registrar pagamento e comprovante',
+            self::MeasurementsPay => 'Medições: registrar e analisar pagamentos',
+            self::MeasurementsReceipts => 'Medições: anexar e remover comprovantes',
             self::MeasurementsFinalize => 'Medições: finalizar',
             self::RecruitmentVacanciesView => 'Vagas: visualizar',
             self::RecruitmentVacanciesCreate => 'Vagas: criar',
@@ -564,6 +566,7 @@ enum AccessPermission: string
                 self::MeasurementsDelete,
                 self::MeasurementsReview,
                 self::MeasurementsPay,
+                self::MeasurementsReceipts,
                 self::MeasurementsFinalize,
             ], true) => 'Gestão',
             default => 'Outros',

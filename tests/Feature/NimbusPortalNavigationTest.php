@@ -29,13 +29,6 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    Storage::set(DocumentStorageService::privateDisk(), Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-});
-
 it('renders working Nimbus portal navigation and dashboard actions', function () {
     $portalUser = PortalUser::query()->create([
         'full_name' => 'Teste Portal',
@@ -161,15 +154,6 @@ it('renders the Nimbus submission and document pages with CSP-compatible scripts
 it('serves Nimbus documents from the private disk even when the default filesystem is public', function () {
     config()->set('filesystems.default', 'public');
 
-    Storage::set('local', Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-    Storage::set('public', Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/public-'.uniqid()),
-        'throw' => false,
-    ]));
-
     $adminUser = User::factory()->create();
     $portalUser = PortalUser::query()->create([
         'full_name' => 'Teste Documentos Privados',
@@ -232,11 +216,6 @@ it('serves Nimbus documents from the private disk even when the default filesyst
 });
 
 it('serves document previews and downloads through the renamed admin URLs', function () {
-    Storage::set('local', Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-
     $adminUser = User::factory()->withTwoFactor()->create([
         'email' => 'admin.documentos.externos@example.com',
     ]);
@@ -964,8 +943,6 @@ it('allows the portal user to send a correction comment and replacement file whe
         ->assertSee('Documento Complementar')
         ->assertDontSee('Ação Necessária')
         ->assertDontSee('Enviar Correção');
-
-    Storage::disk('local')->deleteDirectory("nimbus/submissions/{$submission->id}/corrections");
 });
 
 it('renders only the authenticated portal user documents', function () {
@@ -1090,11 +1067,6 @@ it('allows the portal user to download only their own documents', function () {
     $this->actingAs($portalUser, 'nimbus')
         ->get(route('nimbus.documents.download', $restrictedDocument))
         ->assertNotFound();
-
-    Storage::disk('local')->delete([
-        'nimbus/portal-documents/contrato-social.pdf',
-        'nimbus/portal-documents/arquivo-restrito.pdf',
-    ]);
 });
 
 it('stacks the portal user form cards vertically', function () {

@@ -10,7 +10,11 @@ class EditExpense extends EditRecord
 {
     protected static string $resource = ExpenseResource::class;
 
-    protected static ?string $title = 'Editar Despesa';
+    protected static ?string $title = 'Editar despesa';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-fund-form-page bsi-expense-form-page',
+    ];
 
     /**
      * @param  array<string, mixed>  $data

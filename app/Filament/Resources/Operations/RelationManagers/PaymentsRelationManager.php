@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Operations\RelationManagers;
 
+use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -41,6 +42,14 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Comprovante')
                     ->boolean()
                     ->state(fn ($record): bool => filled($record->receipt_path)),
+            ])
+            ->recordActions([
+                Action::make('downloadReceipt')
+                    ->label('Baixar comprovante')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->url(fn ($record): string => route('admin.measurements.receipts.download', $record))
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record): bool => filled($record->receipt_path)),
             ])
             ->defaultSort('pay_date', 'desc');
     }

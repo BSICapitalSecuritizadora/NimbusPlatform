@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ObligationDueDateCalculationStatus;
 use App\Observers\ObligationObserver;
 use Database\Factories\ObligationFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -40,10 +41,13 @@ class Obligation extends Model
 
     public const GENERATION_SOURCE_LEGACY = 'legacy';
 
+    public const GENERATION_SOURCE_ANCHOR_EVENT = 'anchor_event';
+
     protected $fillable = [
         'emission_id',
         'obligation_series_id',
         'obligation_series_rule_id',
+        'obligation_anchor_event_id',
         'competence_date',
         'generation_source',
         'generated_at',
@@ -58,6 +62,8 @@ class Obligation extends Model
         'recurrence',
         'due_rule',
         'due_date',
+        'due_date_resolution',
+        'due_date_calculation_status',
         'priority',
         'status',
         'required_evidence',
@@ -85,6 +91,8 @@ class Obligation extends Model
             'competence_date' => 'date',
             'generated_at' => 'datetime',
             'due_date' => 'date',
+            'due_date_resolution' => 'array',
+            'due_date_calculation_status' => ObligationDueDateCalculationStatus::class,
             'source_page' => 'integer',
             'completed_at' => 'datetime',
             'submitted_for_review_at' => 'datetime',
@@ -145,6 +153,11 @@ class Obligation extends Model
     public function seriesRule(): BelongsTo
     {
         return $this->belongsTo(ObligationSeriesRule::class, 'obligation_series_rule_id');
+    }
+
+    public function anchorEvent(): BelongsTo
+    {
+        return $this->belongsTo(ObligationAnchorEvent::class, 'obligation_anchor_event_id');
     }
 
     public function extractedObligation(): BelongsTo

@@ -125,6 +125,15 @@ it('parses and normalizes obligations returned by the GeminiService', function (
             'responsible_area' => 'Gestão',
             'recurrence' => 'Mensal',
             'due_rule' => 'até o 10º dia útil de cada mês',
+            'schedule_suggestion' => [
+                'quantity' => 10,
+                'unit' => 'business_days',
+                'direction' => 'after',
+                'anchor_description' => 'início do mês',
+                'initial_date_inclusion' => 'unresolved',
+                'business_day_definition' => null,
+                'calendar_code' => 'B3',
+            ],
             'due_date' => 'data inválida',
             'priority' => 'urgentíssima',
             'source_excerpt' => 'a Emissora elaborará relatório mensal de acompanhamento',
@@ -141,7 +150,15 @@ it('parses and normalizes obligations returned by the GeminiService', function (
         ->and($proposals[0]['priority'])->toBe('medium')
         ->and($proposals[0]['due_date'])->toBeNull()
         ->and($proposals[0]['source_page'])->toBe(12)
-        ->and($proposals[0]['confidence_score'])->toBe(0.91);
+        ->and($proposals[0]['confidence_score'])->toBe(0.91)
+        ->and($proposals[0]['schedule_suggestion'])->toMatchArray([
+            'quantity' => 10,
+            'unit' => 'business_days',
+            'direction' => 'after',
+            'anchor_description' => 'início do mês',
+            'initial_date_inclusion' => 'unresolved',
+            'calendar_code' => null,
+        ]);
 });
 
 it('stores suggestions and replaces previous pending ones when the job runs', function () {

@@ -44,6 +44,8 @@ class GenerateObligationOccurrences extends Command
         $this->info("Séries analisadas: {$result['series_analyzed']}");
         $this->info("Ocorrências criadas: {$result['created']}");
         $this->info("Ocorrências já existentes: {$result['existing']}");
+        $this->info("Vencimentos pendentes resolvidos: {$result['resolved']}");
+        $this->info("Ocorrências aguardando calendário: {$result['pending']}");
         $this->info("Regras ignoradas: {$result['skipped']}");
 
         return self::SUCCESS;

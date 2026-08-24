@@ -7,15 +7,6 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    $disk = Document::defaultStorageDisk();
-
-    Storage::set($disk, Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/'.$disk.'-'.uniqid()),
-        'throw' => false,
-    ]));
-});
-
 it('downloads a public published document', function () {
     $document = Document::factory()->public()->create(['category' => 'governanca']);
     Storage::disk($document->resolved_storage_disk)->put($document->file_path, 'fake-pdf-content');

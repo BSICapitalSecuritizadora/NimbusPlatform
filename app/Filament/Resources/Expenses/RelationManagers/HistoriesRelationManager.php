@@ -26,6 +26,8 @@ class HistoriesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('due_date')
+            ->heading('Histórico de pagamentos')
+            ->description('Visualização dos pagamentos registrados para esta despesa.')
             ->columns([
                 TextColumn::make('due_date')
                     ->label('Data de vencimento')
@@ -35,6 +37,8 @@ class HistoriesRelationManager extends RelationManager
                 TextColumn::make('amount')
                     ->label('Valor')
                     ->money('BRL')
+                    ->weight('semibold')
+                    ->alignEnd()
                     ->sortable(),
 
                 TextColumn::make('conta_azul_bill_id')
@@ -46,6 +50,8 @@ class HistoriesRelationManager extends RelationManager
             ->headerActions([])
             ->actions([])
             ->bulkActions([])
-            ->emptyStateHeading('Nenhum histórico de pagamento registrado');
+            ->emptyStateHeading('Nenhum histórico de pagamento registrado')
+            ->emptyStateDescription('Os pagamentos registrados para esta despesa aparecerão aqui.')
+            ->emptyStateIcon('heroicon-o-banknotes');
     }
 }

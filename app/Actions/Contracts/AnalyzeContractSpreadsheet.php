@@ -10,6 +10,7 @@ use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
 use App\Models\Emission;
+use App\Support\Reconciliation\ValueComparator;
 use Carbon\Carbon;
 use DateTime;
 use DateTimeInterface;
@@ -74,23 +75,26 @@ class AnalyzeContractSpreadsheet
     private array $seenCodes = [];
 
     /**
-     * Unit id => contracts holding it right now, read once per unit and kept for
-     * the whole file. The batch projection needs the position of every unit the
-     * spreadsheet touches at the same time, which a per-chunk map cannot give:
-     * whether a distrato on line 900 frees the unit a new contract on line 3
-     * wants has nothing to do with where the chunk boundary fell.
+     * Unit id => every contract of that unit, read once per unit and kept for the
+     * whole file.
      *
-     * @var array<int, list<array{id: int, code: string, status: ContractStatus, client: string|null}>>
+     * All of them, not only the ones holding the unit: the projection needs the
+     * position of every unit at once -- whether a distrato on line 900 frees the
+     * unit a new contract on line 3 wants has nothing to do with where the chunk
+     * boundary fell -- and the timeline check needs the periods that have already
+     * closed, which the holders alone cannot tell it.
+     *
+     * @var array<int, list<array{id: int, code: string, status: ContractStatus, client: string|null, sale_date: string|null, cancellation_date: string|null}>>
      */
-    private array $unitOccupants = [];
+    private array $unitContracts = [];
 
     /**
-     * Units already looked up, including the ones nobody holds -- an empty
-     * answer is an answer and must not be asked for again.
+     * Units already looked up, including the ones with no contract at all -- an
+     * empty answer is an answer and must not be asked for again.
      *
      * @var array<int, true>
      */
-    private array $loadedUnitOccupants = [];
+    private array $loadedUnitContracts = [];
 
     public function __construct(
         private readonly ContractReconciler $reconciler = new ContractReconciler,
@@ -142,7 +146,7 @@ class AnalyzeContractSpreadsheet
          * frees the unit for a new contract anywhere else.
          */
         ['rows' => $analyzedRows, 'occupancies' => $occupancies] = $this->projection
-            ->resolve($analyzedRows, $this->unitOccupants);
+            ->resolve($analyzedRows, $this->unitContracts);
 
         return new ContractSpreadsheetAnalysis($analyzedRows, unitOccupancies: $occupancies);
     }
@@ -208,9 +212,9 @@ class AnalyzeContractSpreadsheet
     /**
      * Units, clients and taken codes for the whole chunk, in one query each.
      *
-     * The contracts holding each unit are read here too, but they are kept on
-     * the instance rather than returned: they belong to the file, not to the
-     * chunk, and the projection at the end needs all of them at once.
+     * The contracts of each unit are read here too, but they are kept on the
+     * instance rather than returned: they belong to the file, not to the chunk,
+     * and the projection at the end needs all of them at once.
      *
      * @param  list<array<string, mixed>>  $parsedRows
      * @return array{clients: array<string, Client>, codes: array<string, Contract>}
@@ -250,7 +254,7 @@ class AnalyzeContractSpreadsheet
                 ->whereIn('code_normalized', $codes->all())
                 ->get();
 
-        $this->loadUnitOccupants($rows
+        $this->loadUnitContracts($rows
             ->map(fn (array $row): ?int => $this->findUnitId($this->resolveConstructionId($row), $row['block'], $row['unit']))
             ->filter()
             ->unique()
@@ -268,18 +272,18 @@ class AnalyzeContractSpreadsheet
     }
 
     /**
-     * The contracts currently holding each unit, kept as a list rather than one
-     * per unit. The unique index allows only one, but reading the position is
-     * not the place to assume it: a list is what lets the projection report a
-     * unit that somehow holds two instead of silently dropping one of them.
+     * Every contract of each unit, kept as a list. Which of them holds the unit
+     * is derived by the projection from the status, so this reads the position
+     * once and answers both questions it has to answer -- who holds the unit now,
+     * and who held it before.
      *
      * @param  list<int>  $unitIds
      */
-    private function loadUnitOccupants(array $unitIds): void
+    private function loadUnitContracts(array $unitIds): void
     {
         $pending = array_values(array_filter(
             $unitIds,
-            fn (int $unitId): bool => ! isset($this->loadedUnitOccupants[$unitId]),
+            fn (int $unitId): bool => ! isset($this->loadedUnitContracts[$unitId]),
         ));
 
         if ($pending === []) {
@@ -287,20 +291,21 @@ class AnalyzeContractSpreadsheet
         }
 
         foreach ($pending as $unitId) {
-            $this->loadedUnitOccupants[$unitId] = true;
+            $this->loadedUnitContracts[$unitId] = true;
         }
 
         Contract::query()
             ->with('client:id,name')
             ->whereIn('construction_unit_id', $pending)
-            ->whereIn('status', ContractStatus::occupyingValues())
-            ->get(['id', 'client_id', 'construction_unit_id', 'code', 'status'])
+            ->get(['id', 'client_id', 'construction_unit_id', 'code', 'status', 'sale_date', 'cancellation_date'])
             ->each(function (Contract $contract): void {
-                $this->unitOccupants[(int) $contract->construction_unit_id][] = [
+                $this->unitContracts[(int) $contract->construction_unit_id][] = [
                     'id' => (int) $contract->getKey(),
                     'code' => (string) $contract->code,
                     'status' => $contract->status,
                     'client' => $contract->client?->name,
+                    'sale_date' => ValueComparator::date($contract->sale_date),
+                    'cancellation_date' => ValueComparator::date($contract->cancellation_date),
                 ];
             });
     }
@@ -536,6 +541,10 @@ class AnalyzeContractSpreadsheet
 
         if ($cancellationDate < $saleDate) {
             return ['date' => null, 'error' => 'A data do distrato não pode ser anterior à data da venda.'];
+        }
+
+        if (! Contract::cancellationDateHasTakenEffect($cancellationDate)) {
+            return ['date' => null, 'error' => 'A data do distrato não pode ser futura: enquanto o distrato não ocorrer, o contrato permanece ativo.'];
         }
 
         return ['date' => $cancellationDate, 'error' => null];

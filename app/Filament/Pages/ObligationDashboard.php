@@ -19,12 +19,18 @@ use App\Models\Obligation;
 use App\Models\ObligationSeries;
 use App\Models\User;
 use App\Services\Obligations\ObligationDashboardData;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Dashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\EmbeddedSchema;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 
 class ObligationDashboard extends Dashboard
@@ -43,6 +49,10 @@ class ObligationDashboard extends Dashboard
 
     protected static ?int $navigationSort = 0;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-obligation-dashboard',
+    ];
+
     public static function canAccess(): bool
     {
         $user = Filament::auth()->user();
@@ -54,8 +64,8 @@ class ObligationDashboard extends Dashboard
     public function getColumns(): int|array
     {
         return [
-            'md' => 2,
-            'xl' => 2,
+            'default' => 1,
+            'xl' => 12,
         ];
     }
 
@@ -79,12 +89,34 @@ class ObligationDashboard extends Dashboard
         return 'Visão operacional das obrigações de todas as emissões. Os filtros do topo recortam indicadores, gráficos e tabela; a situação documental considera que apenas evidência aprovada vale como comprovação válida.';
     }
 
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->columns(1)
+            ->components([
+                $this->getFiltersFormContentComponent(),
+                $this->getWidgetsContentComponent(),
+            ]);
+    }
+
+    public function getFiltersFormContentComponent(): Component
+    {
+        return EmbeddedSchema::make('filtersForm')
+            ->columnSpanFull();
+    }
+
+    public function resetFilters(): void
+    {
+        $this->filters = [];
+    }
+
     public function filtersForm(Schema $schema): Schema
     {
         $canViewEvidence = (bool) Filament::auth()->user()?->can(AccessPermission::ObligationsViewEvidence->value);
         $dashboardData = app(ObligationDashboardData::class);
+        $hasActiveFilters = filled(array_filter($this->filters ?? []));
 
-        $fields = [
+        $primaryFields = [
             Select::make('emission_id')
                 ->label('Emissão')
                 ->placeholder('Todas')
@@ -94,27 +126,14 @@ class ObligationDashboard extends Dashboard
                     ->orderBy('name')
                     ->pluck('name', 'id')
                     ->all()),
-            Select::make('obligation_series_id')
-                ->label('Série')
-                ->placeholder('Todas')
-                ->searchable()
-                ->options(fn (): array => ObligationSeries::query()
-                    ->orderBy('title')
-                    ->pluck('title', 'id')
-                    ->all()),
-            Select::make('frequency')
-                ->label('Recorrência')
-                ->placeholder('Todas')
-                ->options(ObligationFrequency::seriesOptions()),
-            DatePicker::make('competence_from')
-                ->label('Competência desde'),
-            DatePicker::make('competence_to')
-                ->label('Competência até')
-                ->afterOrEqual('competence_from'),
             Select::make('status')
                 ->label('Status')
                 ->placeholder('Todos')
                 ->options(Obligation::STATUS_OPTIONS),
+            Select::make('due_window')
+                ->label('Janela de vencimento')
+                ->placeholder('Todas')
+                ->options(ObligationDashboardData::DUE_WINDOW_OPTIONS),
             Select::make('responsible_user_id')
                 ->label('Responsável')
                 ->placeholder('Todos')
@@ -135,18 +154,34 @@ class ObligationDashboard extends Dashboard
                     ->orderBy('responsible_area')
                     ->pluck('responsible_area', 'responsible_area')
                     ->all())->union(ObligationFormFields::AREA_OPTIONS)->all()),
-            Select::make('priority')
-                ->label('Prioridade')
-                ->placeholder('Todas')
-                ->options(Obligation::PRIORITY_OPTIONS),
-            Select::make('due_window')
-                ->label('Janela de vencimento')
-                ->placeholder('Todos')
-                ->options(ObligationDashboardData::DUE_WINDOW_OPTIONS),
             Select::make('operational_focus')
                 ->label('Fila operacional')
                 ->placeholder('Todas')
                 ->options($dashboardData->operationalFocusOptions($canViewEvidence)),
+        ];
+
+        $advancedFields = [
+            Select::make('obligation_series_id')
+                ->label('Série')
+                ->placeholder('Todas')
+                ->searchable()
+                ->options(fn (): array => ObligationSeries::query()
+                    ->orderBy('title')
+                    ->pluck('title', 'id')
+                    ->all()),
+            Select::make('frequency')
+                ->label('Recorrência')
+                ->placeholder('Todas')
+                ->options(ObligationFrequency::seriesOptions()),
+            DatePicker::make('competence_from')
+                ->label('Competência desde'),
+            DatePicker::make('competence_to')
+                ->label('Competência até')
+                ->afterOrEqual('competence_from'),
+            Select::make('priority')
+                ->label('Prioridade')
+                ->placeholder('Todas')
+                ->options(Obligation::PRIORITY_OPTIONS),
             Select::make('source')
                 ->label('Origem')
                 ->placeholder('Todas')
@@ -154,12 +189,59 @@ class ObligationDashboard extends Dashboard
         ];
 
         if ($canViewEvidence) {
-            $fields[] = Select::make('evidence_state')
+            $advancedFields[] = Select::make('evidence_state')
                 ->label('Situação documental')
                 ->placeholder('Todos')
                 ->options(ObligationDashboardData::EVIDENCE_FILTER_OPTIONS);
         }
 
-        return $schema->schema($fields);
+        return $schema
+            ->columns(1)
+            ->schema([
+                Section::make('Filtros da Carteira')
+                    ->description('Recorte os indicadores executivos, gráficos e fila operacional por parâmetros da emissão e situação contratual.')
+                    ->icon(Heroicon::OutlinedFunnel)
+                    ->iconColor('primary')
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => 'bsi-obligation-filters-section',
+                    ])
+                    ->headerActions([
+                        Action::make('clearFilters')
+                            ->label('Limpar filtros')
+                            ->icon(Heroicon::OutlinedXMark)
+                            ->color($hasActiveFilters ? 'warning' : 'gray')
+                            ->size(Size::Small)
+                            ->action(fn () => $this->resetFilters()),
+                    ])
+                    ->schema([
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'md' => 2,
+                            'lg' => 3,
+                            'xl' => 4,
+                            '2xl' => 6,
+                        ])->schema($primaryFields),
+
+                        Section::make('Mais filtros')
+                            ->description('Filtros secundários por série recorrente, competência, prioridade e comprovação documental.')
+                            ->collapsed()
+                            ->compact()
+                            ->columnSpanFull()
+                            ->extraAttributes([
+                                'class' => 'bsi-obligation-advanced-filters-section',
+                            ])
+                            ->schema([
+                                Grid::make([
+                                    'default' => 1,
+                                    'sm' => 2,
+                                    'md' => 2,
+                                    'lg' => 3,
+                                    'xl' => 4,
+                                ])->schema($advancedFields),
+                            ]),
+                    ]),
+            ]);
     }
 }

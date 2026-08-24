@@ -2,19 +2,11 @@
 
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
-use App\Services\DocumentStorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
-
-beforeEach(function () {
-    Storage::set(DocumentStorageService::privateDisk(), Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-});
 
 it('stores a nimbus submission using the current database schema', function () {
     $portalUser = PortalUser::query()->create([
@@ -101,8 +93,6 @@ it('stores a nimbus submission using the current database schema', function () {
             ->and($file->storage_path)->toStartWith('nimbus_docs/submissions/'.$submission->id.'/')
             ->and(Storage::disk('local')->exists($file->storage_path))->toBeTrue();
     }
-
-    Storage::disk('local')->deleteDirectory('nimbus_docs/submissions/'.$submission->id);
 });
 
 it('rejects submissions when shareholder participation does not total 100 percent', function () {

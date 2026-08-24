@@ -48,7 +48,7 @@ beforeEach(function () {
  */
 function installmentSpreadsheet(array $rows, ?array $headers = null): string
 {
-    $path = tempnam(sys_get_temp_dir(), 'contract-installments-import-').'.xlsx';
+    $path = temporaryTestFilePath('contract-installments-import');
     $headers ??= ContractInstallmentSpreadsheetColumns::headers();
 
     $writer = SimpleExcelWriter::create($path)->addHeader($headers);

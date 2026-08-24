@@ -121,8 +121,9 @@ it('confirms every database path once the files are in the public root', functio
 });
 
 it('refuses to run while both roots point at the same directory', function () {
-    $root = sys_get_temp_dir().'/split-public-root-same';
+    $root = sys_get_temp_dir().'/split-public-root-same-'.uniqid();
     File::ensureDirectoryExists($root);
+    test()->beforeApplicationDestroyed(fn () => File::deleteDirectory($root));
 
     config([
         'filesystems.disks.local.root' => $root,
@@ -132,8 +133,6 @@ it('refuses to run while both roots point at the same directory', function () {
     $this->artisan('storage:split-public-root')
         ->expectsOutputToContain('Corrija PUBLIC_STORAGE_ROOT antes de rodar este comando.')
         ->assertFailed();
-
-    File::deleteDirectory($root);
 });
 
 /**
@@ -142,7 +141,7 @@ it('refuses to run while both roots point at the same directory', function () {
  */
 it('refuses a public root inside the deploy folder', function () {
     config([
-        'filesystems.disks.local.root' => sys_get_temp_dir().'/split-public-root-private',
+        'filesystems.disks.local.root' => sys_get_temp_dir().'/split-public-root-private-'.uniqid(),
         'filesystems.disks.public.root' => storage_path('app/public'),
     ]);
 

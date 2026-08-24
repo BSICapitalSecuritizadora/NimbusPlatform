@@ -20,6 +20,7 @@ class ExpenseForm
     {
         return $schema->components([
             Section::make('Dados da despesa')
+                ->description('Informações financeiras e classificação da despesa.')
                 ->columnSpanFull()
                 ->columns([
                     'default' => 1,
@@ -31,12 +32,19 @@ class ExpenseForm
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()
-                        ->required(),
+                        ->placeholder('Selecione a operação...')
+                        ->required()
+                        ->validationMessages([
+                            'required' => 'Selecione a operação.',
+                        ]),
 
                     Select::make('category')
                         ->label('Categoria')
                         ->options(Expense::CATEGORY_OPTIONS)
-                        ->required(),
+                        ->required()
+                        ->validationMessages([
+                            'required' => 'Selecione a categoria.',
+                        ]),
 
                     Select::make('expense_service_provider_id')
                         ->label('Prestador de serviço')
@@ -82,6 +90,7 @@ class ExpenseForm
                         })
                         ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
                         ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
+                        ->extraInputAttributes(['class' => 'bsi-expense-amount-input'])
                         ->validationMessages([
                             'required' => 'Informe o valor da despesa.',
                         ])
@@ -89,10 +98,11 @@ class ExpenseForm
                 ]),
 
             Section::make('Periodicidade e datas')
+                ->description('Defina quando a despesa ocorre e, se aplicável, sua recorrência.')
                 ->columnSpanFull()
                 ->columns([
                     'default' => 1,
-                    'xl' => 3,
+                    'xl' => fn (Get $get): int => Expense::isRecurringPeriod($get('period')) ? 3 : 2,
                 ])
                 ->schema([
                     Select::make('period')
@@ -101,6 +111,9 @@ class ExpenseForm
                         ->default(Expense::PERIOD_SINGLE)
                         ->required()
                         ->live()
+                        ->validationMessages([
+                            'required' => 'Selecione o período.',
+                        ])
                         ->afterStateUpdated(function (Set $set, ?string $state): void {
                             if ($state === Expense::PERIOD_SINGLE) {
                                 $set('end_date', null);
@@ -108,14 +121,20 @@ class ExpenseForm
                         }),
 
                     DatePicker::make('start_date')
-                        ->label('Data de início')
-                        ->required(),
+                        ->label(fn (Get $get): string => Expense::isRecurringPeriod($get('period'))
+                            ? 'Data de início'
+                            : 'Data de vencimento')
+                        ->required()
+                        ->validationMessages([
+                            'required' => 'Informe a data da despesa.',
+                        ]),
 
                     DatePicker::make('end_date')
                         ->label('Data de fim')
                         ->visible(fn (Get $get): bool => Expense::isRecurringPeriod($get('period')))
                         ->required(fn (Get $get): bool => Expense::isRecurringPeriod($get('period')))
                         ->afterOrEqual('start_date')
+                        ->extraFieldWrapperAttributes(['class' => 'bsi-expense-conditional-field'])
                         ->validationMessages([
                             'required' => 'Informe a data de fim para períodos recorrentes.',
                             'after_or_equal' => 'A data de fim deve ser igual ou posterior à data de início.',

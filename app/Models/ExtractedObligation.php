@@ -44,6 +44,7 @@ class ExtractedObligation extends Model
         'responsible_area',
         'recurrence',
         'due_rule',
+        'schedule_suggestion',
         'due_date',
         'priority',
         'status',
@@ -61,6 +62,7 @@ class ExtractedObligation extends Model
     {
         return [
             'due_date' => 'date',
+            'schedule_suggestion' => 'array',
             'reviewed_at' => 'datetime',
             'confidence_score' => 'float',
             'source_page' => 'integer',

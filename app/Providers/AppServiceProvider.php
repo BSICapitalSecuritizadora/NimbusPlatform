@@ -15,12 +15,16 @@ use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\ContractInstallment;
 use App\Models\Document;
 use App\Models\JobApplication;
+use App\Models\Measurement;
 use App\Models\Nimbus\Submission;
+use App\Models\Operation;
 use App\Models\Vacancy;
 use App\Policies\ContractInstallmentPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\JobApplicationPolicy;
+use App\Policies\MeasurementPolicy;
 use App\Policies\Nimbus\SubmissionPolicy;
+use App\Policies\OperationPolicy;
 use App\Policies\VacancyPolicy;
 use App\Services\ConstructionProgressProvider;
 use App\Services\MeasurementPlanProgressProvider;
@@ -86,6 +90,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(Vacancy::class, VacancyPolicy::class);
         Gate::policy(JobApplication::class, JobApplicationPolicy::class);
+        Gate::policy(Operation::class, OperationPolicy::class);
+        Gate::policy(Measurement::class, MeasurementPolicy::class);
 
         Gate::before(function ($user, $ability) {
             return (method_exists($user, 'hasRole') && $user->hasRole('super-admin')) ? true : null;

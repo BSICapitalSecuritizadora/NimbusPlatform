@@ -3,10 +3,14 @@
 namespace App\Services\Obligations;
 
 use App\Actions\Emissions\GenerateObligationOccurrencesAction;
+use App\Domain\PuCalculator\Services\BusinessCalendarSelectionEvidenceService;
 use App\Enums\AccessPermission;
+use App\Enums\ObligationDueDateCalculationStatus;
 use App\Enums\ObligationDueRuleType;
 use App\Enums\ObligationFrequency;
+use App\Enums\ObligationInitialDateInclusion;
 use App\Enums\ObligationInvalidDayPolicy;
+use App\Enums\ObligationOffsetDirection;
 use App\Enums\ObligationSeriesStatus;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
@@ -50,6 +54,11 @@ class ObligationSeriesService
         'due_day',
         'due_offset_months',
         'due_offset_days',
+        'relative_offset_quantity',
+        'relative_offset_unit',
+        'relative_offset_direction',
+        'anchor_description',
+        'initial_date_inclusion',
         'invalid_day_policy',
         'calendar_code',
         'generation_horizon_days',
@@ -58,6 +67,8 @@ class ObligationSeriesService
     public function __construct(
         private readonly GenerateObligationOccurrencesAction $generateOccurrences,
         private readonly ObligationScheduleCalculator $scheduleCalculator,
+        private readonly ObligationCalendarGuard $calendarGuard,
+        private readonly BusinessCalendarSelectionEvidenceService $calendarEvidence,
     ) {}
 
     /**
@@ -116,7 +127,13 @@ class ObligationSeriesService
         return $this->createConfiguredWithoutAuthorization(
             $suggestion->emission,
             $actor,
-            array_merge($definition, $data, [
+            array_merge($definition, [
+                'calendar_evidence_clause_reference' => $suggestion->source_clause,
+                'calendar_evidence_page_reference' => $suggestion->source_page === null
+                    ? null
+                    : (string) $suggestion->source_page,
+                'calendar_evidence_excerpt' => $suggestion->source_excerpt ?? $suggestion->due_rule,
+            ], $data, [
                 'extracted_obligation_id' => $suggestion->id,
             ]),
         );
@@ -128,7 +145,10 @@ class ObligationSeriesService
     public function configure(ObligationSeries $series, User $actor, array $data): ObligationSeries
     {
         $this->authorize($actor, AccessPermission::ObligationsUpdate);
-        $configuration = $this->validatedConfiguration(array_merge($series->only(self::DEFINITION_FIELDS), $data));
+        $configuration = $this->validatedConfiguration(
+            array_merge($series->only(self::DEFINITION_FIELDS), $data),
+            $series,
+        );
 
         $configuredSeries = DB::transaction(function () use ($series, $actor, $configuration): ObligationSeries {
             $lockedSeries = ObligationSeries::query()->lockForUpdate()->findOrFail($series->getKey());
@@ -155,6 +175,7 @@ class ObligationSeriesService
             ));
 
             $rule = $this->createRule($lockedSeries, $actor, $configuration, 1, $lockedSeries->starts_on, 'Configuração inicial confirmada.');
+            $this->recordCalendarEvidence($rule, $actor, $configuration);
             $this->configureLegacyOccurrence($lockedSeries, $rule);
 
             $this->recordEvent(
@@ -237,6 +258,12 @@ class ObligationSeriesService
             throw ValidationException::withMessages(['series' => 'Somente uma série pausada pode ser reativada.']);
         }
 
+        $latestRule = $series->latestRule()->first();
+
+        if ($latestRule instanceof ObligationSeriesRule) {
+            $this->calendarGuard->validateForReactivation($series, $latestRule);
+        }
+
         $series->update([
             'status' => ObligationSeriesStatus::Active,
             'paused_at' => null,
@@ -278,7 +305,11 @@ class ObligationSeriesService
     {
         $this->authorize($actor, AccessPermission::ObligationsCreate);
 
-        if ($series->status !== ObligationSeriesStatus::Active || $series->frequency !== ObligationFrequency::OnDemand) {
+        if (
+            $series->status !== ObligationSeriesStatus::Active
+            || $series->frequency !== ObligationFrequency::OnDemand
+            || $series->due_rule_type?->dependsOnAnchorEvent()
+        ) {
             throw ValidationException::withMessages([
                 'series' => 'A geração manual só está disponível para uma recorrência sob demanda ativa.',
             ]);
@@ -326,6 +357,93 @@ class ObligationSeriesService
     /**
      * @param  array<string, mixed>  $data
      */
+    public function recordAnchorEvent(ObligationSeries $series, User $actor, array $data): Obligation
+    {
+        $this->authorize($actor, AccessPermission::ObligationsCreate);
+
+        $validated = Validator::make($data, [
+            'event_name' => ['required', 'string', 'max:255'],
+            'occurred_on' => ['required', 'date'],
+            'notes' => ['nullable', 'string'],
+        ], [
+            'event_name.required' => 'Informe o evento contratual ocorrido.',
+            'occurred_on.required' => 'Informe a data em que o evento ocorreu.',
+        ])->validate();
+        $occurredOn = CarbonImmutable::parse($validated['occurred_on'])->startOfDay();
+
+        if (
+            $series->status !== ObligationSeriesStatus::Active
+            || ! $series->due_rule_type?->dependsOnAnchorEvent()
+        ) {
+            throw ValidationException::withMessages([
+                'series' => 'O registro de evento só está disponível para uma série ativa com prazo relativo a evento.',
+            ]);
+        }
+
+        if (
+            $series->starts_on === null
+            || $series->ends_on === null
+            || $occurredOn->lt($series->starts_on->startOfDay())
+            || $occurredOn->gt($series->ends_on->endOfDay())
+        ) {
+            throw ValidationException::withMessages([
+                'occurred_on' => 'A data do evento deve estar dentro da vigência da recorrência.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($series, $actor, $validated, $occurredOn): Obligation {
+            $lockedSeries = ObligationSeries::query()->lockForUpdate()->findOrFail($series->getKey());
+            $rule = $lockedSeries->rules()
+                ->whereDate('effective_from', '<=', $occurredOn->startOfMonth())
+                ->reorder('effective_from', 'desc')
+                ->orderByDesc('version')
+                ->first();
+
+            if (! $rule instanceof ObligationSeriesRule || ! $rule->due_rule_type?->dependsOnAnchorEvent()) {
+                throw ValidationException::withMessages([
+                    'series' => 'Não existe uma regra relativa a evento vigente para a data informada.',
+                ]);
+            }
+
+            $anchorEvent = $lockedSeries->anchorEvents()->create([
+                'obligation_series_rule_id' => $rule->id,
+                'event_name' => $validated['event_name'],
+                'occurred_on' => $occurredOn->toDateString(),
+                'notes' => $validated['notes'] ?? null,
+                'recorded_by' => $actor->id,
+            ]);
+            $resolution = $this->scheduleCalculator->resolveDueDateWithExplanation($rule, $occurredOn);
+            $calculationStatus = $resolution->dueDate === null
+                ? ObligationDueDateCalculationStatus::AwaitingCalendar
+                : ObligationDueDateCalculationStatus::Calculated;
+            $obligation = Obligation::create($this->occurrenceSnapshot($lockedSeries, $rule, [
+                'obligation_anchor_event_id' => $anchorEvent->id,
+                'competence_date' => $occurredOn->toDateString(),
+                'generation_source' => Obligation::GENERATION_SOURCE_ANCHOR_EVENT,
+                'due_date' => $resolution->dueDate?->toDateString(),
+                'due_date_resolution' => $resolution->toArray(),
+                'due_date_calculation_status' => $calculationStatus->value,
+            ]));
+
+            $this->recordEvent(
+                $lockedSeries,
+                $actor,
+                'anchor_event_recorded',
+                sprintf('Evento contratual registrado em %s.', $occurredOn->format('d/m/Y')),
+                [
+                    'anchor_event_id' => $anchorEvent->id,
+                    'obligation_id' => $obligation->id,
+                    'rule_version' => $rule->version,
+                ],
+            );
+
+            return $obligation->load(['seriesRule', 'anchorEvent']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
     public function reviseRuleFrom(ObligationSeries $series, User $actor, array $data): ObligationSeries
     {
         $this->authorize($actor, AccessPermission::ObligationsUpdate);
@@ -348,7 +466,7 @@ class ObligationSeriesService
             $data,
         );
         $revisionData['starts_on'] = $series->starts_on;
-        $configuration = $this->validatedConfiguration($revisionData);
+        $configuration = $this->validatedConfiguration($revisionData, $series);
         $effectiveFrom = CarbonImmutable::parse($data['effective_from'])->startOfMonth();
         $reason = $this->requiredReason($data['change_reason'] ?? null, 'change_reason', 'Informe o motivo da alteração da regra.');
 
@@ -369,6 +487,7 @@ class ObligationSeriesService
 
             $version = ((int) $lockedSeries->rules()->max('version')) + 1;
             $rule = $this->createRule($lockedSeries, $actor, $configuration, $version, $effectiveFrom, $reason);
+            $this->recordCalendarEvidence($rule, $actor, $configuration);
             $lockedSeries->update(Arr::only($configuration, self::CONFIGURATION_FIELDS));
 
             $recalculableOccurrences = $lockedSeries->occurrences()
@@ -426,6 +545,7 @@ class ObligationSeriesService
             ));
 
             $rule = $this->createRule($series, $actor, $configuration, 1, $series->starts_on, 'Configuração inicial confirmada.');
+            $this->recordCalendarEvidence($rule, $actor, $configuration);
             $this->recordEvent(
                 $series,
                 $actor,
@@ -446,9 +566,15 @@ class ObligationSeriesService
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    private function validatedConfiguration(array $data): array
+    private function validatedConfiguration(array $data, ?ObligationSeries $existingSeries = null): array
     {
-        foreach (['frequency', 'due_rule_type', 'invalid_day_policy'] as $field) {
+        foreach ([
+            'frequency',
+            'due_rule_type',
+            'invalid_day_policy',
+            'relative_offset_direction',
+            'initial_date_inclusion',
+        ] as $field) {
             if (($data[$field] ?? null) instanceof \BackedEnum) {
                 $data[$field] = $data[$field]->value;
             }
@@ -487,8 +613,27 @@ class ObligationSeriesService
                 'between:1,3650',
                 'required_if:due_rule_type,calendar_days_after_competence_end',
             ],
+            'relative_offset_quantity' => ['nullable', 'integer', 'between:1,3650', 'required_if:due_rule_type,business_days_relative_to_event'],
+            'relative_offset_unit' => ['nullable', 'string', Rule::in(['business_days']), 'required_if:due_rule_type,business_days_relative_to_event'],
+            'relative_offset_direction' => ['nullable', Rule::enum(ObligationOffsetDirection::class), 'required_if:due_rule_type,business_days_relative_to_event'],
+            'anchor_description' => ['nullable', 'string', 'max:255', 'required_if:due_rule_type,business_days_relative_to_event'],
+            'initial_date_inclusion' => ['nullable', Rule::enum(ObligationInitialDateInclusion::class), 'required_if:due_rule_type,business_days_relative_to_event'],
             'invalid_day_policy' => ['nullable', Rule::enum(ObligationInvalidDayPolicy::class), 'required_if:due_rule_type,fixed_day'],
-            'calendar_code' => ['nullable', 'string', Rule::in(array_keys((array) config('obligations.recurrence.calendar_options', ['B3' => 'B3']))), 'required_if:due_rule_type,nth_business_day'],
+            'calendar_code' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::requiredIf(fn (): bool => ObligationDueRuleType::tryFrom((string) ($data['due_rule_type'] ?? ''))?->requiresBusinessCalendar() ?? false),
+            ],
+            'calendar_evidence_source_document' => ['nullable', 'string', 'max:255'],
+            'calendar_evidence_clause_reference' => ['nullable', 'string', 'max:255'],
+            'calendar_evidence_page_reference' => ['nullable', 'string', 'max:255'],
+            'calendar_evidence_excerpt' => [
+                'nullable',
+                'string',
+                Rule::requiredIf(fn (): bool => ObligationDueRuleType::tryFrom((string) ($data['due_rule_type'] ?? ''))?->requiresBusinessCalendar() ?? false),
+            ],
+            'calendar_evidence_notes' => ['nullable', 'string'],
             'generation_horizon_days' => ['required', 'integer', 'between:30,730'],
         ], [
             'ends_on.required' => 'Informe o término da recorrência.',
@@ -496,8 +641,13 @@ class ObligationSeriesService
             'due_rule_type.required_unless' => 'Confirme a regra executável de vencimento.',
             'due_day.required_if' => 'Informe o dia utilizado pela regra executável.',
             'due_offset_days.required_if' => 'Informe quantos dias corridos devem ser contados após o encerramento da competência.',
+            'relative_offset_quantity.required_if' => 'Informe a quantidade de dias úteis.',
+            'relative_offset_direction.required_if' => 'Informe a direção da contagem.',
+            'anchor_description.required_if' => 'Descreva o evento contratual de referência.',
+            'initial_date_inclusion.required_if' => 'Confirme se a data inicial participa da contagem.',
             'invalid_day_policy.required_if' => 'Defina o comportamento quando o dia não existir no mês.',
-            'calendar_code.required_if' => 'Selecione o calendário de dias úteis.',
+            'calendar_code.required' => 'Selecione o calendário de dias úteis.',
+            'calendar_evidence_excerpt.required' => 'Registre o trecho contratual que sustenta a escolha do calendário.',
         ])->validate();
 
         $startsOn = CarbonImmutable::parse($validated['starts_on'])->startOfMonth();
@@ -514,11 +664,8 @@ class ObligationSeriesService
         $validated['due_offset_months'] ??= 0;
         $validated['due_offset_days'] ??= null;
 
-        if ($validated['frequency'] === ObligationFrequency::OnDemand->value) {
-            $validated['due_rule_type'] = null;
-        }
-
         $dueRuleType = $validated['due_rule_type'] ?? null;
+        $dueRule = ObligationDueRuleType::tryFrom((string) $dueRuleType);
 
         if ($dueRuleType === ObligationDueRuleType::CalendarDaysAfterCompetenceEnd->value) {
             $validated['due_offset_months'] = 0;
@@ -534,9 +681,21 @@ class ObligationSeriesService
             $validated['invalid_day_policy'] = null;
         }
 
-        if ($dueRuleType !== ObligationDueRuleType::NthBusinessDay->value) {
+        if (! $dueRule?->requiresBusinessCalendar()) {
             $validated['calendar_code'] = null;
         }
+
+        if ($dueRuleType !== ObligationDueRuleType::BusinessDaysRelativeToEvent->value) {
+            $validated['relative_offset_quantity'] = null;
+            $validated['relative_offset_unit'] = null;
+            $validated['relative_offset_direction'] = null;
+            $validated['anchor_description'] = null;
+            $validated['initial_date_inclusion'] = null;
+        } else {
+            $validated['relative_offset_unit'] = 'business_days';
+        }
+
+        $this->calendarGuard->validateForConfiguration($validated, $existingSeries);
 
         return $validated;
     }
@@ -560,6 +719,11 @@ class ObligationSeriesService
             'due_day' => $configuration['due_day'] ?? null,
             'due_offset_months' => $configuration['due_offset_months'],
             'due_offset_days' => $configuration['due_offset_days'] ?? null,
+            'relative_offset_quantity' => $configuration['relative_offset_quantity'] ?? null,
+            'relative_offset_unit' => $configuration['relative_offset_unit'] ?? null,
+            'relative_offset_direction' => $configuration['relative_offset_direction'] ?? null,
+            'anchor_description' => $configuration['anchor_description'] ?? null,
+            'initial_date_inclusion' => $configuration['initial_date_inclusion'] ?? null,
             'invalid_day_policy' => $configuration['invalid_day_policy'] ?? null,
             'calendar_code' => $configuration['calendar_code'] ?? null,
             'created_by' => $actor->id,
@@ -569,6 +733,10 @@ class ObligationSeriesService
 
     private function configureLegacyOccurrence(ObligationSeries $series, ObligationSeriesRule $rule): void
     {
+        if ($series->is_legacy_backfill) {
+            return;
+        }
+
         $legacyOccurrence = $series->occurrences()
             ->whereNull('competence_date')
             ->oldest('id')
@@ -602,7 +770,9 @@ class ObligationSeriesService
         ObligationSeriesRule $rule,
         array $overrides,
     ): array {
-        $dueDate = CarbonImmutable::parse($overrides['due_date']);
+        $dueDate = filled($overrides['due_date'] ?? null)
+            ? CarbonImmutable::parse($overrides['due_date'])
+            : null;
 
         return array_merge([
             'emission_id' => $series->emission_id,
@@ -622,12 +792,40 @@ class ObligationSeriesService
             'recurrence' => $rule->frequency->label(),
             'due_rule' => $series->due_rule,
             'priority' => $series->priority,
-            'status' => $dueDate->lt(now()->startOfDay()) ? 'vencida' : 'a_vencer',
+            'status' => $dueDate?->lt(now()->startOfDay()) === true ? 'vencida' : 'a_vencer',
             'required_evidence' => $series->required_evidence,
             'source_clause' => $series->source_clause,
             'source_page' => $series->source_page,
             'source_excerpt' => $series->source_excerpt,
         ], $overrides);
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     */
+    private function recordCalendarEvidence(
+        ObligationSeriesRule $rule,
+        User $actor,
+        array $configuration,
+    ): void {
+        if (! $rule->due_rule_type?->requiresBusinessCalendar() || blank($rule->calendar_code)) {
+            return;
+        }
+
+        $this->calendarEvidence->record(
+            $rule,
+            ObligationSeriesRule::CALENDAR_EVIDENCE_CONTEXT,
+            (string) $rule->calendar_code,
+            [
+                'source_document' => $configuration['calendar_evidence_source_document'] ?? null,
+                'clause_reference' => $configuration['calendar_evidence_clause_reference'] ?? null,
+                'page_reference' => $configuration['calendar_evidence_page_reference'] ?? null,
+                'excerpt' => $configuration['calendar_evidence_excerpt'] ?? null,
+                'notes' => $configuration['calendar_evidence_notes'] ?? null,
+            ],
+            $actor->id,
+            true,
+        );
     }
 
     private function requiredReason(?string $reason, string $field, string $message): string

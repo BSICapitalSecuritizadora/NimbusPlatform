@@ -172,16 +172,6 @@ it('recalculates project and unit type metrics reactively', function () {
 
 it('stores the continuation payload through the livewire component', function () {
     Mail::fake();
-    config()->set('filesystems.disks.tmp-for-tests', [
-        'driver' => 'local',
-        'root' => storage_path('framework/testing/disks/tmp-for-tests-'.uniqid()),
-        'throw' => false,
-    ]);
-    Storage::set('local', Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-
     [$proposal, $access] = createProposalContinuationContext($this);
     $payload = proposalContinuationComponentState();
 
@@ -244,16 +234,6 @@ it('uses the shared 20 MB upload limit in the livewire flow', function (int $siz
     expect(config('uploads.proposal_continuation.max_kb'))->toBe(20480)
         ->and(config('uploads.proposal_continuation.max_bytes'))->toBe(20 * 1024 * 1024);
 
-    config()->set('filesystems.disks.tmp-for-tests', [
-        'driver' => 'local',
-        'root' => storage_path('framework/testing/disks/tmp-for-tests-'.uniqid()),
-        'throw' => false,
-    ]);
-    Storage::set('local', Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-
     [$proposal, $access] = createProposalContinuationContext($this);
     seedProposalContinuationSession($access);
     $component = Livewire::test(ContinuationForm::class, ['access' => $access]);
@@ -283,15 +263,6 @@ it('uses the shared 20 MB upload limit in the livewire flow', function (int $siz
 it('downloads continuation files from the private disk even if the stored disk says public', function () {
     Mail::fake();
     config()->set('filesystems.default', 'public');
-
-    Storage::set('local', Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-    Storage::set('public', Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/public-'.uniqid()),
-        'throw' => false,
-    ]));
 
     [$proposal, $access] = createProposalContinuationContext($this);
 

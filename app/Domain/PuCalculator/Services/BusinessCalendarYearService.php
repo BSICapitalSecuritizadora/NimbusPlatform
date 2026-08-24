@@ -3,6 +3,7 @@
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
+use App\Models\BusinessCalendar;
 use App\Models\BusinessCalendarDate;
 use App\Models\BusinessCalendarImportRun;
 use App\Models\BusinessCalendarOverride;
@@ -48,11 +49,14 @@ final class BusinessCalendarYearService
     }
 
     /**
-     * @return array{state:string,status:?string,expected_days:int,covered_days:int,missing_days:int,confirmed:bool,revision:int,source_is_official:bool,source_documented:bool}
+     * @return array{year:int,calendar_year_id:?int,state:string,status:?string,coverage_status:string,governance_status:?string,coverage_basis:string,expected_days:int,covered_days:int,missing_days:int,confirmed:bool,revision:int,checksum:?string,source_revision:?string,source_is_official:bool,source_documented:bool,confirmed_at:?string}
      */
     public function coverage(string $calendarCode, int $year): array
     {
         $calendarCode = BusinessCalendarRegistry::normalize($calendarCode);
+        $calendar = BusinessCalendar::query()->where('code', $calendarCode)->first();
+        $coverageBasis = $calendar?->coverageBasis()
+            ?? BusinessCalendar::COVERAGE_BASIS_EXPLICIT_DATES;
         $expectedDays = CarbonImmutable::create($year, 1, 1)->isLeapYear() ? 366 : 365;
         $coveredDays = BusinessCalendarDate::query()
             ->where('calendar_code', $calendarCode)
@@ -61,39 +65,66 @@ final class BusinessCalendarYearService
         $calendarYear = BusinessCalendarYear::query()
             ->where('calendar_code', $calendarCode)
             ->where('year', $year)
-            ->first(['status', 'revision', 'source_is_official', 'source_document']);
+            ->first([
+                'id', 'status', 'revision', 'checksum', 'source_revision',
+                'source_is_official', 'source_document', 'confirmed_at',
+            ]);
+        $latestAppliedRun = $coveredDays < $expectedDays
+            && $coverageBasis === BusinessCalendar::COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS
+                ? BusinessCalendarImportRun::query()
+                    ->where('calendar_code', $calendarCode)
+                    ->where('year', $year)
+                    ->where('dry_run', false)
+                    ->latest('started_at')
+                    ->latest('id')
+                    ->first()
+                : null;
         $sourceIsOfficial = (bool) ($calendarYear?->source_is_official ?? false);
         $sourceDocumented = filled($calendarYear?->source_document);
-        $state = $this->resolveCoverageState(
+        $coverageStatus = $this->resolveCoverageStatus(
+            $coverageBasis,
             $coveredDays,
             $expectedDays,
+            $calendarYear,
+            $latestAppliedRun,
+        );
+        $state = $this->resolveCoverageState(
+            $coverageStatus,
             $calendarYear?->status,
             $sourceIsOfficial,
             $sourceDocumented,
         );
 
         return [
+            'year' => $year,
+            'calendar_year_id' => $calendarYear?->id,
             'state' => $state,
             'status' => $calendarYear?->status,
+            'coverage_status' => $coverageStatus,
+            'governance_status' => $calendarYear?->status,
+            'coverage_basis' => $coverageBasis,
             'expected_days' => $expectedDays,
             'covered_days' => $coveredDays,
             'missing_days' => max(0, $expectedDays - $coveredDays),
             'confirmed' => $state === 'confirmed',
             'revision' => (int) ($calendarYear?->revision ?? 0),
+            'checksum' => $calendarYear?->checksum,
+            'source_revision' => $calendarYear?->source_revision,
             'source_is_official' => $sourceIsOfficial,
             'source_documented' => $sourceDocumented,
+            'confirmed_at' => $calendarYear?->confirmed_at?->toIso8601String(),
         ];
     }
 
     /**
-     * @return array<int, array{year:int,state:string,status:?string,expected_days:int,covered_days:int,missing_days:int,confirmed:bool,revision:int,source_is_official:bool,source_documented:bool}>
+     * @return array<int, array{year:int,calendar_year_id:?int,state:string,status:?string,coverage_status:string,governance_status:?string,coverage_basis:string,expected_days:int,covered_days:int,missing_days:int,confirmed:bool,revision:int,checksum:?string,source_revision:?string,source_is_official:bool,source_documented:bool,confirmed_at:?string}>
      */
     public function coverageForRange(string $calendarCode, CarbonImmutable $from, CarbonImmutable $to): array
     {
         $coverage = [];
 
         for ($year = $from->year; $year <= $to->year; $year++) {
-            $coverage[$year] = ['year' => $year, ...$this->coverage($calendarCode, $year)];
+            $coverage[$year] = $this->coverage($calendarCode, $year);
         }
 
         return $coverage;
@@ -200,6 +231,7 @@ final class BusinessCalendarYearService
         $definitions = $this->catalog->definitions();
 
         foreach (array_keys($definitions) as $calendarCode) {
+            $calendar = $this->catalog->findOrFail($calendarCode);
             $calendarYears = BusinessCalendarYear::query()
                 ->with('confirmedBy:id,name')
                 ->where('calendar_code', $calendarCode)
@@ -270,9 +302,15 @@ final class BusinessCalendarYearService
                 $lastApplied = $latestAppliedRuns->get($year);
                 $expectedDays = CarbonImmutable::create((int) $year, 1, 1)->isLeapYear() ? 366 : 365;
                 $coveredDays = (int) ($statistics?->covered_days ?? 0);
-                $state = $this->resolveCoverageState(
+                $coverageStatus = $this->resolveCoverageStatus(
+                    $calendar->coverageBasis(),
                     $coveredDays,
                     $expectedDays,
+                    $calendarYear,
+                    $lastApplied,
+                );
+                $state = $this->resolveCoverageState(
+                    $coverageStatus,
                     $calendarYear?->status,
                     (bool) ($calendarYear?->source_is_official ?? false),
                     filled($calendarYear?->source_document),
@@ -285,6 +323,9 @@ final class BusinessCalendarYearService
                     'year' => $year,
                     'state' => $state,
                     'status' => $calendarYear?->status,
+                    'coverage_status' => $coverageStatus,
+                    'governance_status' => $calendarYear?->status,
+                    'coverage_basis' => $calendar->coverageBasis(),
                     'expected_days' => $expectedDays,
                     'covered_days' => $coveredDays,
                     'missing_days' => max(0, $expectedDays - $coveredDays),
@@ -315,17 +356,51 @@ final class BusinessCalendarYearService
         return sprintf('business-calendar:mutation:%s', strtoupper($calendarCode));
     }
 
-    private function resolveCoverageState(
+    private function resolveCoverageStatus(
+        string $coverageBasis,
         int $coveredDays,
         int $expectedDays,
+        ?BusinessCalendarYear $calendarYear,
+        ?BusinessCalendarImportRun $latestAppliedRun,
+    ): string {
+        if ($coveredDays === $expectedDays) {
+            return 'complete';
+        }
+
+        $hasCompleteOfficialExceptionSet = $coverageBasis === BusinessCalendar::COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS
+            && $calendarYear instanceof BusinessCalendarYear
+            && $calendarYear->source_is_official
+            && filled($calendarYear->source_document)
+            && filled($calendarYear->checksum)
+            && $latestAppliedRun instanceof BusinessCalendarImportRun
+            && $latestAppliedRun->source_is_official
+            && $latestAppliedRun->result === BusinessCalendarImportRun::RESULT_SUCCEEDED
+            && (int) $latestAppliedRun->conflicts_detected === 0
+            && (int) $latestAppliedRun->removals_detected === 0
+            && ($latestAppliedRun->errors ?? []) === []
+            && hash_equals((string) $calendarYear->checksum, (string) $latestAppliedRun->checksum);
+
+        if ($hasCompleteOfficialExceptionSet) {
+            return 'complete';
+        }
+
+        $hasAnyCoverageEvidence = $coveredDays > 0
+            || $calendarYear instanceof BusinessCalendarYear
+            || $latestAppliedRun instanceof BusinessCalendarImportRun;
+
+        return $hasAnyCoverageEvidence ? 'partial' : 'none';
+    }
+
+    private function resolveCoverageState(
+        string $coverageStatus,
         ?string $yearStatus,
         bool $sourceIsOfficial,
         bool $sourceDocumented,
     ): string {
         return match (true) {
-            $coveredDays === 0 => 'missing',
+            $coverageStatus === 'none' => 'missing',
+            $coverageStatus === 'partial' => 'partial',
             $yearStatus === BusinessCalendarYear::STATUS_STALE => 'stale',
-            $coveredDays < $expectedDays => 'partial',
             $yearStatus === BusinessCalendarYear::STATUS_CONFIRMED && $sourceIsOfficial && $sourceDocumented => 'confirmed',
             $yearStatus === BusinessCalendarYear::STATUS_CONFIRMED => 'stale',
             default => 'provisional',

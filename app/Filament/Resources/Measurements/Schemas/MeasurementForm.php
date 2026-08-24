@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Measurements\Schemas;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
+use App\Services\DocumentStorageService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -16,6 +17,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 
@@ -33,7 +35,13 @@ class MeasurementForm
                         Select::make('operation_id')
                             ->label('Operação')
                             ->placeholder('Selecione a operação...')
-                            ->relationship('operation', 'title')
+                            ->relationship(
+                                'operation',
+                                'title',
+                                modifyQueryUsing: fn (Builder $query): Builder => auth()->user() === null
+                                    ? $query->whereRaw('1 = 0')
+                                    : $query->visibleTo(auth()->user()),
+                            )
                             ->getOptionLabelFromRecordUsing(fn (Operation $record): string => trim(($record->code ? $record->code.' — ' : '').$record->title))
                             ->searchable(['title', 'code'])
                             ->preload()
@@ -123,12 +131,10 @@ class MeasurementForm
 
                                 FileUpload::make('storage_path')
                                     ->label('Arquivo da Medição')
-                                    ->disk('public')
-                                    ->directory('measurements')
+                                    ->disk(DocumentStorageService::privateDisk())
+                                    ->directory(DocumentStorageService::PRIVATE_PREFIX.'/measurements/assets')
                                     ->acceptedFileTypes((array) config('uploads.measurement.allowed_mimes', ['application/pdf']))
                                     ->maxSize(51200)
-                                    ->downloadable()
-                                    ->openable()
                                     ->required()
                                     ->helperText('Formato PDF ou documento aprovado (máx. 50 MB).')
                                     ->validationMessages([

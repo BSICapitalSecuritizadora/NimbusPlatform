@@ -16,6 +16,7 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Grid;
@@ -228,6 +229,7 @@ class ObligationSeriesRelationManager extends RelationManager
             ])
             ->actions([
                 $this->makeConfigureAction(),
+                $this->makeAnchorEventAction(),
                 $this->makeOnDemandOccurrenceAction(),
                 Action::make('occurrences')
                     ->label('Competências')
@@ -364,10 +366,46 @@ class ObligationSeriesRelationManager extends RelationManager
             ->fillForm(fn (ObligationSeries $record): array => [
                 'responsible_user_id' => $record->responsible_user_id,
             ])
-            ->visible(fn (ObligationSeries $record): bool => $record->status === ObligationSeriesStatus::Active && $record->frequency === ObligationFrequency::OnDemand && $this->canCreateSeries())
+            ->visible(fn (ObligationSeries $record): bool => $record->status === ObligationSeriesStatus::Active
+                && $record->frequency === ObligationFrequency::OnDemand
+                && ! $record->due_rule_type?->dependsOnAnchorEvent()
+                && $this->canCreateSeries())
             ->authorize(fn (): bool => $this->canCreateSeries())
             ->action(fn (ObligationSeries $record, array $data) => $this->seriesService()->createOnDemandOccurrence($record, auth()->user(), $data))
             ->successNotificationTitle('Ocorrência sob demanda criada.');
+    }
+
+    protected function makeAnchorEventAction(): Action
+    {
+        return Action::make('record_anchor_event')
+            ->label('Registrar evento')
+            ->icon('heroicon-o-bolt')
+            ->color('success')
+            ->modalHeading('Registrar evento contratual')
+            ->modalDescription('Informe quando a âncora contratual ocorreu. O vencimento será calculado com a versão da regra vigente nessa data.')
+            ->schema([
+                TextInput::make('event_name')
+                    ->label('Evento ocorrido')
+                    ->required()
+                    ->maxLength(255),
+                DatePicker::make('occurred_on')
+                    ->label('Data do evento')
+                    ->required(),
+                Textarea::make('notes')
+                    ->label('Observações')
+                    ->rows(3)
+                    ->columnSpanFull(),
+            ])
+            ->fillForm(fn (ObligationSeries $record): array => [
+                'event_name' => $record->anchor_description,
+                'occurred_on' => now()->toDateString(),
+            ])
+            ->visible(fn (ObligationSeries $record): bool => $record->status === ObligationSeriesStatus::Active
+                && $record->due_rule_type?->dependsOnAnchorEvent()
+                && $this->canCreateSeries())
+            ->authorize(fn (): bool => $this->canCreateSeries())
+            ->action(fn (ObligationSeries $record, array $data) => $this->seriesService()->recordAnchorEvent($record, auth()->user(), $data))
+            ->successNotificationTitle('Evento registrado e prazo materializado.');
     }
 
     protected function makePauseAction(): Action
@@ -448,6 +486,8 @@ class ObligationSeriesRelationManager extends RelationManager
         return array_merge($series->attributesToArray(), [
             'frequency' => $series->frequency?->value,
             'due_rule_type' => $series->due_rule_type?->value,
+            'relative_offset_direction' => $series->relative_offset_direction?->value,
+            'initial_date_inclusion' => $series->initial_date_inclusion?->value,
             'invalid_day_policy' => $series->invalid_day_policy?->value,
             'starts_on' => $series->starts_on?->toDateString(),
             'ends_on' => $series->ends_on?->toDateString(),

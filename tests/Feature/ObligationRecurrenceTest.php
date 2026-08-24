@@ -11,7 +11,9 @@ use App\Enums\ObligationSeriesStatus;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSeriesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
+use App\Models\BusinessCalendar;
 use App\Models\BusinessCalendarDate;
+use App\Models\BusinessCalendarYear;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
 use App\Models\Obligation;
@@ -92,6 +94,44 @@ function recurrenceUserWithPermissions(array $permissions): User
     return $user;
 }
 
+function createConfirmedRecurrenceCalendar(string $code, int $year): void
+{
+    BusinessCalendar::factory()->create([
+        'code' => $code,
+        'available_for_new_configurations' => true,
+        'financial_use_allowed' => true,
+        'is_legacy' => false,
+        'is_homologation' => false,
+    ]);
+    $calendarYear = BusinessCalendarYear::factory()->create([
+        'calendar_code' => $code,
+        'year' => $year,
+        'status' => BusinessCalendarYear::STATUS_CONFIRMED,
+        'source_is_official' => true,
+        'source_document' => 'Contrato confirmado.pdf',
+        'confirmed_at' => now(),
+    ]);
+    $date = CarbonImmutable::create($year, 1, 1);
+    $rows = [];
+
+    while ($date->year === $year) {
+        $rows[] = [
+            'calendar_code' => $code,
+            'business_calendar_year_id' => $calendarYear->id,
+            'calendar_date' => $date->toDateString(),
+            'is_business_day' => ! $date->isWeekend(),
+            'description' => $date->isWeekend() ? 'Final de semana' : 'Dia útil confirmado',
+            'source_is_official' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+        $date = $date->addDay();
+    }
+
+    BusinessCalendarDate::query()->insert($rows);
+    app(BusinessCalendarService::class)->flushCache();
+}
+
 it('creates the recurrence schema with explicit competence uniqueness', function () {
     expect(Schema::hasTable('obligation_series'))->toBeTrue()
         ->and(Schema::hasTable('obligation_series_rules'))->toBeTrue()
@@ -129,6 +169,7 @@ it('materializes a monthly 90 day window idempotently', function () {
 });
 
 it('activates a recurring document suggestion only with a reviewer-confirmed structured rule', function () {
+    createConfirmedRecurrenceCalendar('CONTRACT_REVIEW', 2026);
     $emission = Emission::factory()->create(['maturity_date' => '2030-12-15']);
     $suggestion = ExtractedObligation::factory()->for($emission)->create([
         'recurrence' => 'Mensal',
@@ -148,11 +189,11 @@ it('activates a recurring document suggestion only with a reviewer-confirmed str
         [
             'frequency' => ObligationFrequency::Monthly->value,
             'starts_on' => '2026-08-01',
-            'ends_on' => '2030-12-15',
+            'ends_on' => '2026-10-31',
             'due_rule_type' => ObligationDueRuleType::NthBusinessDay->value,
             'due_day' => 10,
             'due_offset_months' => 1,
-            'calendar_code' => 'B3',
+            'calendar_code' => 'CONTRACT_REVIEW',
             'generation_horizon_days' => 90,
         ],
     );
@@ -435,7 +476,7 @@ it('versions a rule from a competence and preserves touched or historical occurr
         'starts_on' => '2026-07-01',
         'ends_on' => '2026-12-31',
         'due_offset_months' => 0,
-        'generation_horizon_days' => 180,
+        'generation_horizon_days' => 90,
     ]);
     app(GenerateObligationOccurrencesAction::class)
         ->generateForSeries($series, CarbonImmutable::parse('2026-07-01'));
@@ -465,7 +506,7 @@ it('versions a rule from a competence and preserves touched or historical occurr
         ->and($september->fresh()->due_date->toDateString())->toBe('2026-09-10')
         ->and($september->fresh()->evidences()->count())->toBe(1)
         ->and($series->occurrences()->whereDate('competence_date', '2026-10-01')->firstOrFail()->due_date->toDateString())->toBe('2026-10-15')
-        ->and($series->occurrences()->whereDate('competence_date', '2026-12-01')->firstOrFail()->due_date->toDateString())->toBe('2026-12-15');
+        ->and($series->occurrences()->whereDate('competence_date', '2026-11-01')->firstOrFail()->due_date->toDateString())->toBe('2026-11-15');
 });
 
 it('uses the B3 calendar for nth business day across weekends holidays and year boundaries', function () {
@@ -563,6 +604,47 @@ it('backfills legacy recurring records conservatively without inventing competen
         ->and(ObligationSeries::query()->where('is_legacy_backfill', true)->count())->toBe(2);
 });
 
+it('does not rewrite an existing legacy occurrence when its awaiting series is configured', function () {
+    $series = ObligationSeries::factory()->create([
+        'status' => ObligationSeriesStatus::AwaitingConfiguration,
+        'is_legacy_backfill' => true,
+    ]);
+    $legacyOccurrence = Obligation::factory()->for($series->emission)->create([
+        'obligation_series_id' => $series->id,
+        'obligation_series_rule_id' => null,
+        'competence_date' => null,
+        'generation_source' => Obligation::GENERATION_SOURCE_LEGACY,
+        'due_date' => '2026-07-10',
+        'status' => 'concluida',
+        'completed_at' => '2026-07-09 12:00:00',
+    ]);
+    $trackedFields = [
+        'obligation_series_rule_id',
+        'competence_date',
+        'generation_source',
+        'due_date',
+        'status',
+        'completed_at',
+    ];
+    $before = collect($legacyOccurrence->attributesToArray())->only($trackedFields)->all();
+    $actor = recurrenceUserWithPermissions([AccessPermission::ObligationsUpdate->value]);
+
+    app(ObligationSeriesService::class)->configure($series, $actor, [
+        'frequency' => ObligationFrequency::Monthly->value,
+        'starts_on' => '2026-08-01',
+        'ends_on' => '2026-10-31',
+        'due_rule_type' => ObligationDueRuleType::FixedDay->value,
+        'due_day' => 15,
+        'due_offset_months' => 0,
+        'invalid_day_policy' => ObligationInvalidDayPolicy::LastValidDay->value,
+        'generation_horizon_days' => 90,
+    ]);
+
+    expect(collect($legacyOccurrence->fresh()->attributesToArray())->only($trackedFields)->all())->toEqual($before)
+        ->and($series->fresh()->status)->toBe(ObligationSeriesStatus::Active)
+        ->and($series->rules()->count())->toBe(1);
+});
+
 it('sends one alert per occurrence and does not duplicate it on reprocessing', function () {
     Mail::fake();
     config()->set('obligations.notifications.due_soon_days', [3]);
@@ -631,4 +713,40 @@ it('renders the series administration with its operational occurrences', functio
     ])
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$series]);
+});
+
+it('shows the anchor event action instead of manual due date for relative rules', function () {
+    $this->actingAs(makeAdminUser());
+    [$series] = createTestObligationSeries([
+        'frequency' => ObligationFrequency::OnDemand,
+        'due_rule_type' => ObligationDueRuleType::BusinessDaysRelativeToEvent,
+        'due_day' => null,
+        'due_offset_months' => 0,
+        'relative_offset_quantity' => 5,
+        'relative_offset_unit' => 'business_days',
+        'relative_offset_direction' => 'after',
+        'anchor_description' => 'recebimento da solicitação',
+        'initial_date_inclusion' => 'excluded',
+        'invalid_day_policy' => null,
+        'calendar_code' => 'B3',
+    ], [
+        'frequency' => ObligationFrequency::OnDemand,
+        'due_rule_type' => ObligationDueRuleType::BusinessDaysRelativeToEvent,
+        'due_day' => null,
+        'due_offset_months' => 0,
+        'relative_offset_quantity' => 5,
+        'relative_offset_unit' => 'business_days',
+        'relative_offset_direction' => 'after',
+        'anchor_description' => 'recebimento da solicitação',
+        'initial_date_inclusion' => 'excluded',
+        'invalid_day_policy' => null,
+        'calendar_code' => 'B3',
+    ]);
+
+    Livewire::test(ObligationSeriesRelationManager::class, [
+        'ownerRecord' => $series->emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertTableActionVisible('record_anchor_event', $series)
+        ->assertTableActionHidden('create_on_demand_occurrence', $series);
 });

@@ -12,13 +12,6 @@ use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    Storage::set(DocumentStorageService::privateDisk(), Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-});
-
 // ── A-4: metadados de arquivo derivados no servidor ──────────────────────────
 
 it('derives file metadata from the stored file instead of the submitted payload (A-4)', function () {

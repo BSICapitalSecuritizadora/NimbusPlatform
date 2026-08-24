@@ -11,17 +11,11 @@ uses(RefreshDatabase::class);
 
 function writeIndexCsv(string $contents): string
 {
-    $path = tempnam(sys_get_temp_dir(), 'idx_').'.csv';
+    $path = temporaryTestFilePath('index-rates', 'csv');
     file_put_contents($path, $contents);
 
     return $path;
 }
-
-afterEach(function () {
-    foreach (glob(sys_get_temp_dir().'/idx_*.csv') ?: [] as $file) {
-        @unlink($file);
-    }
-});
 
 it('imports published CDI rates from a CSV keeping the exact date', function () {
     $user = User::factory()->create();

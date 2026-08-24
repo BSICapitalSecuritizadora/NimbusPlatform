@@ -34,7 +34,7 @@ beforeEach(function () {
  */
 function clientSpreadsheet(array $rows, ?array $headers = null): string
 {
-    $path = tempnam(sys_get_temp_dir(), 'clients-import-').'.xlsx';
+    $path = temporaryTestFilePath('clients-import');
     $headers ??= ClientSpreadsheetColumns::headers();
 
     $writer = SimpleExcelWriter::create($path)->addHeader($headers);

@@ -29,6 +29,7 @@ class ExtractedObligationFactory extends Factory
             'responsible_area' => 'Gestão',
             'recurrence' => 'Mensal',
             'due_rule' => 'até o 10º dia útil de cada mês',
+            'schedule_suggestion' => null,
             'due_date' => null,
             'priority' => 'medium',
             'status' => 'suggested',

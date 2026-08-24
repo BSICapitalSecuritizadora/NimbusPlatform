@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
+use App\Enums\ObligationDueDateCalculationStatus;
 use App\Enums\ObligationFrequency;
 use App\Filament\Exports\ObligationExporter;
 use App\Filament\Resources\Emissions\EmissionResource;
@@ -93,7 +94,12 @@ class ObligationsRelationManager extends RelationManager
                             }),
                         TextEntry::make('due_date')
                             ->label('Prazo / Vencimento')
-                            ->date('d/m/Y')
+                            ->state(fn (Obligation $record): string => $record->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar
+                                ? 'Aguardando cobertura do calendário'
+                                : ($record->due_date?->format('d/m/Y') ?? 'Sem prazo definido'))
+                            ->color(fn (Obligation $record): string => $record->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar
+                                ? 'warning'
+                                : 'gray')
                             ->placeholder('Sem prazo definido'),
                         TextEntry::make('competence_label')
                             ->label('Competência')
@@ -118,12 +124,14 @@ class ObligationsRelationManager extends RelationManager
                             ->columnSpan(2),
                         TextEntry::make('next_action')
                             ->label('Próxima Ação Recomendada')
-                            ->state(fn (Obligation $record): string => match ($record->status) {
-                                'a_vencer', 'vencida' => 'Anexe evidências e conclua a obrigação quando houver comprovação suficiente.',
-                                'em_analise' => 'Revise as evidências anexadas. Apenas evidência aprovada conta como comprovação válida.',
-                                'em_dia', 'concluida' => 'Nenhuma ação operacional pendente.',
-                                default => 'Defina responsável e organize a comprovação necessária.',
-                            })
+                            ->state(fn (Obligation $record): string => $record->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar
+                                ? 'Reavalie a ocorrência quando os anos necessários do calendário estiverem confirmados. O evento e a competência já foram preservados.'
+                                : match ($record->status) {
+                                    'a_vencer', 'vencida' => 'Anexe evidências e conclua a obrigação quando houver comprovação suficiente.',
+                                    'em_analise' => 'Revise as evidências anexadas. Apenas evidência aprovada conta como comprovação válida.',
+                                    'em_dia', 'concluida' => 'Nenhuma ação operacional pendente.',
+                                    default => 'Defina responsável e organize a comprovação necessária.',
+                                })
                             ->color('primary')
                             ->weight('bold')
                             ->columnSpan(2),
@@ -194,7 +202,15 @@ class ObligationsRelationManager extends RelationManager
                 }),
             TextColumn::make('due_date')
                 ->label('Vencimento')
-                ->date('d/m/Y')
+                ->state(fn (Obligation $record): string => $record->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar
+                    ? 'Aguardando calendário'
+                    : ($record->due_date?->format('d/m/Y') ?? '—'))
+                ->description(fn (Obligation $record): ?string => $record->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar
+                    ? ($record->due_date_resolution['blocking_reason'] ?? 'Cobertura temporal pendente')
+                    : null)
+                ->color(fn (Obligation $record): string => $record->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar
+                    ? 'warning'
+                    : 'gray')
                 ->placeholder('—')
                 ->sortable(),
             TextColumn::make('priority')

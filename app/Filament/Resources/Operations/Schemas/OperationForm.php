@@ -144,7 +144,8 @@ class OperationForm
                             static::userField('responsible_user_id', '1 · Engenharia', 'responsibleUser', 'Vistoria e laudo técnico da medição.'),
                             static::userField('stage2_reviewer_user_id', '2 · Gestão', 'stage2Reviewer', 'Análise gerencial e custos da obra.'),
                             static::userField('stage3_reviewer_user_id', '3 · Compliance', 'stage3Reviewer', 'Checagem de conformidade e certidões.'),
-                            static::userField('payment_manager_user_id', '4 · Pagamentos e Comprovantes', 'paymentManager', 'Liquidação e comprovantes financeiros.'),
+                            static::userField('payment_manager_user_id', '4 · Pagamentos', 'paymentManager', 'Registro e aprovação formal dos pagamentos.'),
+                            static::userField('payment_receipt_uploader_user_id', 'Comprovantes', 'paymentReceiptUploader', 'Envio e remoção dos comprovantes financeiros.'),
                             static::userField('payment_finalizer_user_id', '5 · Finalização', 'paymentFinalizer', 'Encerramento e liberação final do ciclo.'),
                         ])
                         ->columnSpanFull(),

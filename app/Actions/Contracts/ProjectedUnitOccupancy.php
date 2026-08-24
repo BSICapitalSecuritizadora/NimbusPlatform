@@ -3,6 +3,7 @@
 namespace App\Actions\Contracts;
 
 use App\Enums\ContractStatus;
+use App\Support\Contracts\ContractOccupancyTimeline;
 use App\Support\Reconciliation\ValueComparator;
 
 /**
@@ -118,9 +119,10 @@ final class ProjectedUnitOccupancy
      * What to show next to the new contract of a resale, so the conference
      * screen says why it stopped being a conflict.
      *
-     * The date note is deliberately not a rule: a distrato is routinely
-     * formalized after the commercial fact, so a sale dated before it is
-     * reported and left for a person to judge, never refused.
+     * Nothing is said here about the dates lining up. Whether the two contracts
+     * would hold the unit at the same time is settled before this is ever
+     * reached, by {@see ContractOccupancyTimeline}, and
+     * a resale that got here is one whose history is coherent.
      */
     public function resaleNoteFor(int $line): ?string
     {
@@ -130,7 +132,7 @@ final class ProjectedUnitOccupancy
 
         $release = $this->releases[0];
 
-        $note = sprintf(
+        return sprintf(
             'Revenda: o contrato %s (%s) é distratado nesta mesma planilha%s.',
             $release['code'],
             $release['client'] ?? 'cliente não identificado',
@@ -138,10 +140,6 @@ final class ProjectedUnitOccupancy
                 ? ''
                 : ' em '.ValueComparator::formatDate($release['cancellation_date']),
         );
-
-        $overlap = $this->overlapNoteFor($line, $release);
-
-        return $overlap === null ? $note : $note.' '.$overlap;
     }
 
     /**
@@ -172,34 +170,6 @@ final class ProjectedUnitOccupancy
             $this->occupants,
             static fn (array $occupant): bool => $occupant['line'] === null,
         ));
-    }
-
-    /**
-     * @param  Release  $release
-     */
-    private function overlapNoteFor(int $line, array $release): ?string
-    {
-        $saleDate = null;
-
-        foreach ($this->occupants as $occupant) {
-            if ($occupant['line'] === $line) {
-                $saleDate = $occupant['sale_date'];
-            }
-        }
-
-        if (blank($saleDate) || blank($release['cancellation_date'])) {
-            return null;
-        }
-
-        if ($saleDate >= $release['cancellation_date']) {
-            return null;
-        }
-
-        return sprintf(
-            'Atenção: a venda em %s é anterior ao distrato em %s.',
-            ValueComparator::formatDate($saleDate),
-            ValueComparator::formatDate($release['cancellation_date']),
-        );
     }
 
     /**

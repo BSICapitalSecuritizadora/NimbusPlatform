@@ -126,14 +126,7 @@ it('filters the AMANI validation analysis to the requested date range', function
 
 function createSyntheticWorkbook(array $rows): string
 {
-    $path = tempnam(sys_get_temp_dir(), 'pu-ref-');
-
-    if ($path === false) {
-        throw new RuntimeException('Unable to create temporary workbook path.');
-    }
-
-    unlink($path);
-    $path .= '.xlsx';
+    $path = temporaryTestFilePath('pu-reference');
 
     $zip = new ZipArchive;
     $result = $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);

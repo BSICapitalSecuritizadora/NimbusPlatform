@@ -152,6 +152,7 @@ CAMPOS:
 - responsible_area: uma de: "Jurídico", "Gestão", "Emissões", "Financeiro", "Escrituração", "Compliance", "Risco", "Engenharia", "Outro".
 - recurrence: uma de: "Única", "Mensal", "Trimestral", "Semestral", "Anual", "Sob demanda", "Outro".
 - due_rule: prazo literal do texto-fonte ou null.
+- schedule_suggestion: decomposição sugerida do prazo, sem ativação automática. Quando o texto permitir, informe quantity, unit ("business_days" ou "calendar_days"), direction ("before" ou "after"), anchor_description, initial_date_inclusion ("included", "excluded" ou "unresolved") e business_day_definition. calendar_code deve ser sempre null: a expressão "Dia Útil" não autoriza escolher ANBIMA ou B3.
 - due_date: data fixa no formato YYYY-MM-DD ou null.
 - priority: "low", "medium", "high" ou "critical".
 - required_evidence: evidência exigida explicitamente ou null.
@@ -174,6 +175,15 @@ Retorne SOMENTE um JSON com a estrutura:
       "responsible_area": "string",
       "recurrence": "string",
       "due_rule": "string|null",
+      "schedule_suggestion": {
+        "quantity": 0,
+        "unit": "business_days|calendar_days|null",
+        "direction": "before|after|null",
+        "anchor_description": "string|null",
+        "initial_date_inclusion": "included|excluded|unresolved|null",
+        "business_day_definition": "string|null",
+        "calendar_code": null
+      },
       "due_date": "YYYY-MM-DD|null",
       "priority": "low|medium|high|critical",
       "required_evidence": "string|null",
@@ -765,6 +775,7 @@ PROMPT;
             'responsible_area' => $this->nullableString($item['responsible_area'] ?? null, 255),
             'recurrence' => $this->nullableString($item['recurrence'] ?? null, 255),
             'due_rule' => $this->nullableString($item['due_rule'] ?? null),
+            'schedule_suggestion' => $this->normalizeObligationScheduleSuggestion($item['schedule_suggestion'] ?? null),
             'due_date' => $dueDate,
             'priority' => $priority,
             'required_evidence' => $this->nullableString($item['required_evidence'] ?? null),
@@ -789,6 +800,42 @@ PROMPT;
         }
 
         return $maxLength === null ? $value : mb_substr($value, 0, $maxLength);
+    }
+
+    /** @return array<string, mixed>|null */
+    private function normalizeObligationScheduleSuggestion(mixed $suggestion): ?array
+    {
+        if (! is_array($suggestion)) {
+            return null;
+        }
+
+        $unit = in_array($suggestion['unit'] ?? null, ['business_days', 'calendar_days'], true)
+            ? $suggestion['unit']
+            : null;
+        $direction = in_array($suggestion['direction'] ?? null, ['before', 'after'], true)
+            ? $suggestion['direction']
+            : null;
+        $initialDateInclusion = in_array(
+            $suggestion['initial_date_inclusion'] ?? null,
+            ['included', 'excluded', 'unresolved'],
+            true,
+        ) ? $suggestion['initial_date_inclusion'] : null;
+        $quantity = is_numeric($suggestion['quantity'] ?? null)
+            ? max(0, (int) $suggestion['quantity'])
+            : null;
+        $normalized = [
+            'quantity' => $quantity,
+            'unit' => $unit,
+            'direction' => $direction,
+            'anchor_description' => $this->nullableString($suggestion['anchor_description'] ?? null, 255),
+            'initial_date_inclusion' => $initialDateInclusion,
+            'business_day_definition' => $this->nullableString($suggestion['business_day_definition'] ?? null),
+            'calendar_code' => null,
+        ];
+
+        return collect($normalized)->except('calendar_code')->filter(fn (mixed $value): bool => $value !== null)->isEmpty()
+            ? null
+            : $normalized;
     }
 
     /**

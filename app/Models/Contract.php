@@ -4,7 +4,10 @@ namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
+use App\Support\Contracts\ContractOccupancyPeriod;
+use App\Support\Contracts\ContractOccupancyTimeline;
 use App\Support\IdentifierNormalizer;
+use App\Support\Reconciliation\ValueComparator;
 use Database\Factories\ContractFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -212,6 +215,55 @@ class Contract extends Model
         }
 
         return ConstructionUnit::query()->whereKey($constructionUnitId)->value('construction_id');
+    }
+
+    /**
+     * Whether the distrato can already have happened on that date.
+     *
+     * A distrato is a fact, not a schedule. Recording one dated in the future
+     * would put the contract in a state the two halves of the domain read
+     * differently: {@see ContractStatus::occupiesUnit()} would consider the unit
+     * free and let another contract be opened, while
+     * {@see ContractOccupancyPeriod} would still see the unit held until that
+     * date -- and the resale would be refused for overlapping something that has
+     * not happened yet. Until the distrato takes effect the contract is ativo and
+     * holds its unit.
+     *
+     * Registering a distrato today with effect later is a different feature, and
+     * it needs a column of its own -- a date of record apart from a date of
+     * effect -- not a future value in this one.
+     */
+    public static function cancellationDateHasTakenEffect(mixed $date): bool
+    {
+        $date = ValueComparator::date($date);
+
+        return ($date !== null) && ($date <= now()->toDateString());
+    }
+
+    /**
+     * How the unit has been held over time, for
+     * {@see ContractOccupancyTimeline}. Every contract
+     * of the unit, not only the one holding it now: an overlap is a question
+     * about periods that have already closed.
+     *
+     * Soft deleted contracts are left out. A deleted contract keeps reserving its
+     * code -- that is a rule about identity -- but it holds nothing.
+     *
+     * @return list<ContractOccupancyPeriod>
+     */
+    public static function occupancyPeriodsFor(mixed $constructionUnitId, mixed $ignoreId = null): array
+    {
+        if (blank($constructionUnitId)) {
+            return [];
+        }
+
+        return self::query()
+            ->with('client:id,name')
+            ->where('construction_unit_id', $constructionUnitId)
+            ->when($ignoreId, fn (Builder $query): Builder => $query->whereKeyNot($ignoreId))
+            ->get(['id', 'client_id', 'code', 'sale_date', 'cancellation_date', 'status'])
+            ->map(fn (self $contract): ContractOccupancyPeriod => ContractOccupancyPeriod::fromContract($contract))
+            ->all();
     }
 
     /**

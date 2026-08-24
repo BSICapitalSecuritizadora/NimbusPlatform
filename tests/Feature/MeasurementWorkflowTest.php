@@ -6,28 +6,77 @@ use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
+use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementWorkflow;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    $this->seed(RolesAndPermissionsSeeder::class);
+    Storage::fake('local');
+    Notification::fake();
+});
+
+function workflowTestActor(): User
+{
+    $user = User::factory()->create();
+    $user->assignRole('admin');
+
+    return $user;
+}
+
+function startWorkflowTestReview(Measurement $measurement, User $actor): void
+{
+    app(MeasurementWorkflow::class)->startReview($measurement, $actor);
+}
+
+/** @return array<int, float> */
+function workflowEngineeringProgress(Measurement $measurement): array
+{
+    return $measurement->operation->planSets()->pluck('id')->mapWithKeys(fn (int $id): array => [$id => 10.0])->all();
+}
 
 function makeWorkflowMeasurement(array $operationOverrides = []): Measurement
 {
     $operation = Operation::factory()->create($operationOverrides);
-
-    return Measurement::factory()->create([
+    $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    $line = MeasurementPlanLine::factory()->create([
+        'plan_set_id' => $planSet->id,
         'operation_id' => $operation->id,
+        'measurement_date' => '2026-08-01',
+        'realized_monthly_percent' => 0,
+        'realized_cumulative_percent' => 0,
+    ]);
+    $measurement = Measurement::factory()->create([
+        'operation_id' => $operation->id,
+        'reference_month' => '2026-08-01',
+        'storage_path' => null,
         'status' => 'pending',
         'current_stage' => 1,
     ]);
+    $path = "nimbus_docs/measurements/workflow/{$measurement->id}.pdf";
+    Storage::disk('local')->put($path, 'workflow-test');
+    $measurement->assets()->create([
+        'plan_set_id' => $planSet->id,
+        'plan_line_id' => $line->id,
+        'storage_path' => $path,
+        'storage_disk' => 'local',
+    ]);
+
+    return $measurement;
 }
 
 it('opens the first stage review when review starts', function () {
-    $reviewer = User::factory()->create();
+    $reviewer = workflowTestActor();
     $measurement = makeWorkflowMeasurement(['responsible_user_id' => $reviewer->id]);
 
-    app(MeasurementWorkflow::class)->startReview($measurement);
+    startWorkflowTestReview($measurement, $reviewer);
     $measurement->refresh();
 
     expect($measurement->status)->toBe('in_review')
@@ -37,9 +86,9 @@ it('opens the first stage review when review starts', function () {
 });
 
 it('advances to the next configured stage on approval', function () {
-    $stage1 = User::factory()->create();
-    $stage2 = User::factory()->create();
-    $actor = User::factory()->create();
+    $stage1 = workflowTestActor();
+    $stage2 = workflowTestActor();
+    $actor = workflowTestActor();
     $measurement = makeWorkflowMeasurement([
         'responsible_user_id' => $stage1->id,
         'stage2_reviewer_user_id' => $stage2->id,
@@ -47,8 +96,8 @@ it('advances to the next configured stage on approval', function () {
     ]);
 
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->startReview($measurement);
-    $workflow->approve($measurement->fresh(), $actor);
+    $workflow->startReview($measurement, $actor);
+    $workflow->approve($measurement->fresh(), $actor, engineeringProgress: workflowEngineeringProgress($measurement));
 
     $measurement->refresh();
 
@@ -59,12 +108,19 @@ it('advances to the next configured stage on approval', function () {
 });
 
 it('moves to awaiting payment when the last stage is approved', function () {
-    $stage1 = User::factory()->create();
-    $actor = User::factory()->create();
-    $measurement = makeWorkflowMeasurement(['responsible_user_id' => $stage1->id]);
+    $stage1 = workflowTestActor();
+    $actor = workflowTestActor();
+    $measurement = makeWorkflowMeasurement([
+        'responsible_user_id' => $stage1->id,
+        'stage2_reviewer_user_id' => $actor->id,
+        'stage3_reviewer_user_id' => $actor->id,
+        'payment_manager_user_id' => $actor->id,
+    ]);
 
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->startReview($measurement);
+    $workflow->startReview($measurement, $actor);
+    $workflow->approve($measurement->fresh(), $actor, engineeringProgress: workflowEngineeringProgress($measurement));
+    $workflow->approve($measurement->fresh(), $actor);
     $workflow->approve($measurement->fresh(), $actor);
 
     expect($measurement->fresh()->status)->toBe('awaiting_payment');
@@ -73,13 +129,13 @@ it('moves to awaiting payment when the last stage is approved', function () {
 it('closes the measurement when the engineering stage rejects it', function () {
     Notification::fake();
 
-    $actor = User::factory()->create();
-    $notified = User::factory()->create();
+    $actor = workflowTestActor();
+    $notified = workflowTestActor();
     $measurement = makeWorkflowMeasurement(['responsible_user_id' => $actor->id]);
     $measurement->operation->rejectionNotifyUsers()->attach($notified->id);
 
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->startReview($measurement);
+    $workflow->startReview($measurement, $actor);
     $workflow->reject($measurement->fresh(), $actor, 'Documentação incompleta');
 
     $measurement->refresh();
@@ -92,16 +148,16 @@ it('closes the measurement when the engineering stage rejects it', function () {
 });
 
 it('returns to the previous stage when a later stage rejects', function () {
-    $stage1 = User::factory()->create();
-    $stage2 = User::factory()->create();
+    $stage1 = workflowTestActor();
+    $stage2 = workflowTestActor();
     $measurement = makeWorkflowMeasurement([
         'responsible_user_id' => $stage1->id,
         'stage2_reviewer_user_id' => $stage2->id,
     ]);
 
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->startReview($measurement);
-    $workflow->approve($measurement->fresh(), $stage1); // now at stage 2
+    $workflow->startReview($measurement, $stage1);
+    $workflow->approve($measurement->fresh(), $stage1, engineeringProgress: workflowEngineeringProgress($measurement)); // now at stage 2
     expect($measurement->fresh()->current_stage)->toBe(2);
 
     $workflow->reject($measurement->fresh(), $stage2, 'Faltam documentos');
@@ -114,9 +170,10 @@ it('returns to the previous stage when a later stage rejects', function () {
 });
 
 it('returns the payment stage to compliance on rejection', function () {
-    $actor = User::factory()->create();
-    $measurement = makeWorkflowMeasurement(['responsible_user_id' => $actor->id]);
-    $measurement->forceFill(['status' => 'awaiting_payment', 'current_stage' => 3])->save();
+    $actor = workflowTestActor();
+    $measurement = makeWorkflowMeasurement(['payment_manager_user_id' => $actor->id]);
+    $measurement->forceFill(['status' => 'awaiting_payment', 'current_stage' => 4])->save();
+    $measurement->reviews()->create(['stage' => 4, 'reviewer_user_id' => $actor->id, 'status' => 'pending']);
 
     app(MeasurementWorkflow::class)->reject($measurement->fresh(), $actor, 'Valor divergente');
     $measurement->refresh();
@@ -127,9 +184,10 @@ it('returns the payment stage to compliance on rejection', function () {
 });
 
 it('lets the finalization stage send the measurement back to any stage', function () {
-    $actor = User::factory()->create();
-    $measurement = makeWorkflowMeasurement(['responsible_user_id' => $actor->id]);
-    $measurement->forceFill(['status' => 'awaiting_receipt', 'current_stage' => 3])->save();
+    $actor = workflowTestActor();
+    $measurement = makeWorkflowMeasurement(['payment_finalizer_user_id' => $actor->id]);
+    $measurement->forceFill(['status' => 'awaiting_receipt', 'current_stage' => 5])->save();
+    $measurement->reviews()->create(['stage' => 5, 'reviewer_user_id' => $actor->id, 'status' => 'pending']);
 
     app(MeasurementWorkflow::class)->returnToStage($measurement->fresh(), $actor, 1, 'Revisar engenharia');
     $measurement->refresh();
@@ -140,11 +198,11 @@ it('lets the finalization stage send the measurement back to any stage', functio
 });
 
 it('pauses and resumes restoring the previous status', function () {
-    $actor = User::factory()->create();
+    $actor = workflowTestActor();
     $measurement = makeWorkflowMeasurement(['responsible_user_id' => $actor->id]);
 
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->startReview($measurement);
+    $workflow->startReview($measurement, $actor);
     $workflow->pause($measurement->fresh(), $actor, 'Aguardando esclarecimento');
 
     $measurement->refresh();
@@ -196,9 +254,17 @@ it('propagates the realized progress reported during validation to the schedule 
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'reference_month' => '2026-07-01',
+        'storage_path' => null,
+    ]);
+    Storage::disk('local')->put('measurements/progress.pdf', 'progress');
+    $measurement->assets()->create([
+        'plan_set_id' => $planSet->id,
+        'plan_line_id' => $line3->id,
+        'storage_path' => 'measurements/progress.pdf',
+        'storage_disk' => 'local',
     ]);
 
-    app(MeasurementWorkflow::class)->recordRealizedProgress($measurement, [
+    app(MeasurementEngineeringService::class)->validateAndRecord($measurement, [
         $planSet->id => 18,
     ]);
 
@@ -230,19 +296,21 @@ it('targets the schedule line chosen on each development asset', function () {
         'realized_monthly_percent' => 0,
     ]);
 
-    // Reference month points elsewhere, but the asset explicitly chose $chosenLine.
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
-        'reference_month' => '2026-06-01',
+        'reference_month' => '2026-05-01',
+        'storage_path' => null,
     ]);
+    Storage::disk('local')->put('measurements/a.pdf', 'chosen-line');
     $measurement->assets()->create([
         'plan_set_id' => $planSet->id,
         'plan_line_id' => $chosenLine->id,
         'storage_path' => 'measurements/a.pdf',
+        'storage_disk' => 'local',
         'filename' => 'a.pdf',
     ]);
 
-    app(MeasurementWorkflow::class)->recordRealizedProgress($measurement, [
+    app(MeasurementEngineeringService::class)->validateAndRecord($measurement, [
         $planSet->id => 12,
     ]);
 
@@ -252,16 +320,18 @@ it('targets the schedule line chosen on each development asset', function () {
 });
 
 it('registers one payment per development', function () {
-    $actor = User::factory()->create();
-    $operation = Operation::factory()->create(['responsible_user_id' => $actor->id]);
+    $actor = workflowTestActor();
+    $operation = Operation::factory()->create(['payment_manager_user_id' => $actor->id]);
     $planA = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
     $planB = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
 
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
+        'storage_path' => null,
         'status' => 'awaiting_payment',
-        'current_stage' => 1,
+        'current_stage' => 4,
     ]);
+    $measurement->reviews()->create(['stage' => 4, 'reviewer_user_id' => $actor->id, 'status' => 'pending']);
 
     $payments = app(MeasurementWorkflow::class)->registerPayments($measurement, $actor, [
         ['plan_set_id' => $planA->id, 'amount' => 100000, 'pay_date' => '2026-05-10', 'method' => 'PIX'],
@@ -269,22 +339,24 @@ it('registers one payment per development', function () {
     ]);
 
     expect($payments)->toHaveCount(2)
-        ->and($measurement->fresh()->status)->toBe('awaiting_receipt')
+        ->and($measurement->fresh()->status)->toBe('awaiting_payment')
         ->and($measurement->payments()->where('plan_set_id', $planA->id)->value('amount'))->toBe('100000.00')
         ->and($measurement->payments()->where('plan_set_id', $planB->id)->value('amount'))->toBe('50000.00');
 });
 
 it('ignores payment rows without an amount', function () {
-    $actor = User::factory()->create();
-    $operation = Operation::factory()->create(['responsible_user_id' => $actor->id]);
+    $actor = workflowTestActor();
+    $operation = Operation::factory()->create(['payment_manager_user_id' => $actor->id]);
     $planA = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
     $planB = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
 
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
+        'storage_path' => null,
         'status' => 'awaiting_payment',
-        'current_stage' => 1,
+        'current_stage' => 4,
     ]);
+    $measurement->reviews()->create(['stage' => 4, 'reviewer_user_id' => $actor->id, 'status' => 'pending']);
 
     $payments = app(MeasurementWorkflow::class)->registerPayments($measurement, $actor, [
         ['plan_set_id' => $planA->id, 'amount' => 100000, 'pay_date' => '2026-05-10'],
@@ -296,11 +368,20 @@ it('ignores payment rows without an amount', function () {
 });
 
 it('registers a payment then attaches a receipt and finalizes', function () {
-    $actor = User::factory()->create();
-    $measurement = makeWorkflowMeasurement(['responsible_user_id' => $actor->id]);
+    $actor = workflowTestActor();
+    $measurement = makeWorkflowMeasurement([
+        'responsible_user_id' => $actor->id,
+        'stage2_reviewer_user_id' => $actor->id,
+        'stage3_reviewer_user_id' => $actor->id,
+        'payment_manager_user_id' => $actor->id,
+        'payment_receipt_uploader_user_id' => $actor->id,
+        'payment_finalizer_user_id' => $actor->id,
+    ]);
 
     $workflow = app(MeasurementWorkflow::class);
-    $workflow->startReview($measurement);
+    $workflow->startReview($measurement, $actor);
+    $workflow->approve($measurement->fresh(), $actor, engineeringProgress: workflowEngineeringProgress($measurement));
+    $workflow->approve($measurement->fresh(), $actor);
     $workflow->approve($measurement->fresh(), $actor);
 
     $payment = $workflow->registerPayment($measurement->fresh(), $actor, [
@@ -309,11 +390,13 @@ it('registers a payment then attaches a receipt and finalizes', function () {
         'method' => 'PIX',
     ]);
 
-    expect($measurement->fresh()->status)->toBe('awaiting_receipt')
+    expect($measurement->fresh()->status)->toBe('awaiting_payment')
         ->and($payment->operation_id)->toBe($measurement->operation_id)
         ->and($payment->created_by)->toBe($actor->id);
 
-    $workflow->attachReceipt($payment, 'receipts/test.pdf');
+    $workflow->approve($measurement->fresh(), $actor);
+    Storage::disk('local')->put('receipts/test.pdf', 'receipt');
+    $workflow->attachReceipt($payment, $actor, 'receipts/test.pdf', 'local');
     expect($payment->fresh()->hasReceipt())->toBeTrue();
 
     $workflow->finalize($measurement->fresh(), $actor);

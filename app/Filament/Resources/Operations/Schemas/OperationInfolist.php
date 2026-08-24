@@ -36,6 +36,7 @@ class OperationInfolist
                     TextEntry::make('stage2Reviewer.name')->label('Etapa 2 — Gestão')->placeholder('—'),
                     TextEntry::make('stage3Reviewer.name')->label('Etapa 3 — Jurídico/Risco')->placeholder('—'),
                     TextEntry::make('paymentManager.name')->label('Pagamentos')->placeholder('—'),
+                    TextEntry::make('paymentReceiptUploader.name')->label('Comprovantes')->placeholder('—'),
                     TextEntry::make('paymentFinalizer.name')->label('Finalizador')->placeholder('—'),
                     TextEntry::make('assignedUser.name')->label('Responsável Geral')->placeholder('—'),
                 ])

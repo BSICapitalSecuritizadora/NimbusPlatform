@@ -8,6 +8,7 @@ enum ObligationDueRuleType: string
     case LastDay = 'last_day';
     case NthBusinessDay = 'nth_business_day';
     case CalendarDaysAfterCompetenceEnd = 'calendar_days_after_competence_end';
+    case BusinessDaysRelativeToEvent = 'business_days_relative_to_event';
 
     /** @return array<string, string> */
     public static function options(): array
@@ -24,6 +25,17 @@ enum ObligationDueRuleType: string
             self::LastDay => 'Último dia do mês',
             self::NthBusinessDay => 'Nº dia útil do mês',
             self::CalendarDaysAfterCompetenceEnd => 'N dias corridos após o fim da competência',
+            self::BusinessDaysRelativeToEvent => 'N dias úteis antes ou após um evento',
         };
+    }
+
+    public function requiresBusinessCalendar(): bool
+    {
+        return in_array($this, [self::NthBusinessDay, self::BusinessDaysRelativeToEvent], true);
+    }
+
+    public function dependsOnAnchorEvent(): bool
+    {
+        return $this === self::BusinessDaysRelativeToEvent;
     }
 }

@@ -6,6 +6,7 @@ use App\Concerns\MoneyFormatter;
 use App\Models\Measurement;
 use App\Models\MeasurementPause;
 use App\Models\MeasurementPayment;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Spatie\Activitylog\Models\Activity;
 
@@ -16,7 +17,7 @@ class MeasurementTimeline
      * (approvals, rejections and returns from the activity log), pauses/resumes and
      * payments/receipts.
      *
-     * @return Collection<int, array{at: \Illuminate\Support\Carbon, title: string, detail: ?string, actor: ?string, color: string, icon: string}>
+     * @return Collection<int, array{at: Carbon, title: string, detail: ?string, actor: ?string, color: string, icon: string}>
      */
     public function for(Measurement $measurement): Collection
     {
@@ -75,6 +76,15 @@ class MeasurementTimeline
      */
     private function mapTransition(Activity $activity): ?array
     {
+        if ($activity->description === 'measurement_stage_approved'
+            && (int) $activity->properties->get('stage') === MeasurementWorkflow::STAGE_PAYMENT) {
+            return [
+                'title' => 'Etapa 4 aprovada — avançou para Finalização',
+                'color' => 'success',
+                'icon' => 'heroicon-o-check-circle',
+            ];
+        }
+
         $attributes = $activity->properties['attributes'] ?? [];
         $old = $activity->properties['old'] ?? [];
 
@@ -144,7 +154,7 @@ class MeasurementTimeline
      */
     private function pushPayments(Measurement $measurement, Collection $events): void
     {
-        foreach ($measurement->payments()->with(['planSet.construction', 'createdByUser'])->get() as $payment) {
+        foreach ($measurement->payments()->with(['planSet.construction', 'createdByUser', 'receiptUploadedByUser'])->get() as $payment) {
             /** @var MeasurementPayment $payment */
             $development = $payment->planSet?->construction?->development_name ?? $payment->planSet?->name;
             $amount = MoneyFormatter::formatCurrencyForDisplay($payment->amount);
@@ -163,7 +173,7 @@ class MeasurementTimeline
                     'at' => $payment->receipt_uploaded_at,
                     'title' => 'Comprovante anexado'.($development ? ' — '.$development : ''),
                     'detail' => null,
-                    'actor' => $payment->createdByUser?->name,
+                    'actor' => $payment->receiptUploadedByUser?->name,
                     'color' => 'info',
                     'icon' => 'heroicon-o-paper-clip',
                 ]);

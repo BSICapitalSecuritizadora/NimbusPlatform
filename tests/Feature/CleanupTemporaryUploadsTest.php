@@ -5,15 +5,10 @@ use Illuminate\Support\Facades\Storage;
 
 $tmpDir = DocumentStorageService::PRIVATE_PREFIX.'/'.DocumentStorageService::TMP_DIRECTORY;
 
-// Ensure the staging directory starts clean and is removed after each test,
-// mirroring the pattern used by NimbusSubmissionStoreTest.
-beforeEach(function () use ($tmpDir) {
-    Storage::disk(DocumentStorageService::privateDisk())->deleteDirectory($tmpDir);
-});
-
-afterEach(function () use ($tmpDir) {
-    Storage::disk(DocumentStorageService::privateDisk())->deleteDirectory($tmpDir);
-});
+// Sem hooks de limpeza: o disco privado já nasce vazio a cada teste (TestCase o
+// substitui por uma raiz descartável). Os `deleteDirectory` que existiam aqui
+// rodavam contra o disco real e apagavam o diretório de uploads temporários da
+// aplicação junto com o cenário do teste.
 
 it('deletes staged files older than 24 hours and preserves recent ones', function () use ($tmpDir) {
     $disk = Storage::disk(DocumentStorageService::privateDisk());

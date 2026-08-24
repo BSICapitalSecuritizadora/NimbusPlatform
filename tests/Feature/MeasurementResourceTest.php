@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -322,7 +323,7 @@ it('persists one asset per development with its file and starts the review', fun
         ['plan_set_id' => $planA->id, 'storage_path' => 'measurements/a.pdf', 'filename' => 'a.pdf'],
         ['plan_set_id' => $planB->id, 'storage_path' => 'measurements/b.pdf', 'filename' => 'b.pdf'],
     ]);
-    app(MeasurementWorkflow::class)->startReview($measurement);
+    app(MeasurementWorkflow::class)->startReview($measurement, $admin);
 
     expect($measurement->fresh()->assets()->count())->toBe(2)
         ->and($measurement->fresh()->assets()->pluck('plan_set_id')->sort()->values()->all())
@@ -343,36 +344,57 @@ it('exposes the review actions to the stage reviewer and approves a stage', func
     $this->actingAs($reviewer);
 
     $operation = Operation::factory()->create(['responsible_user_id' => $reviewer->id]);
+    $planSet = MeasurementPlanSet::factory()->create(['operation_id' => $operation->id]);
+    $line = MeasurementPlanLine::factory()->create([
+        'operation_id' => $operation->id,
+        'plan_set_id' => $planSet->id,
+        'measurement_date' => '2026-07-01',
+        'realized_monthly_percent' => 0,
+        'realized_cumulative_percent' => 0,
+    ]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
+        'reference_month' => '2026-07-01',
         'status' => 'pending',
         'current_stage' => 1,
     ]);
-    app(MeasurementWorkflow::class)->startReview($measurement);
+    Storage::fake('local');
+    Storage::disk('local')->put('measurements/test.pdf', 'measurement');
+    $measurement->assets()->create([
+        'plan_set_id' => $planSet->id,
+        'plan_line_id' => $line->id,
+        'storage_path' => 'measurements/test.pdf',
+    ]);
+    app(MeasurementWorkflow::class)->startReview($measurement, $reviewer);
 
     Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->assertSuccessful()
         ->assertActionVisible('approve')
         ->assertActionVisible('reject')
-        ->assertActionHidden('pause')
+        ->assertActionVisible('pause')
         ->assertActionHidden('resume')
-        ->callAction('approve', data: ['notes' => 'Ok']);
+        ->callAction('approve', data: ['notes' => 'Ok', 'realized' => [$planSet->id => 10]]);
 
-    expect($measurement->fresh()->status)->toBe('awaiting_payment');
+    expect($measurement->fresh()->status)->toBe('in_review')
+        ->and($measurement->fresh()->current_stage)->toBe(2);
 });
 
 it('hides the validation from users who are not responsible for the stage', function () {
     $reviewer = makeMeasurementAdminUser();
-    $bystander = makeMeasurementAdminUser();
+    $bystander = User::factory()->withTwoFactor()->create();
+    $bystander->assignRole('editor');
     $this->actingAs($bystander);
 
-    $operation = Operation::factory()->create(['responsible_user_id' => $reviewer->id]);
+    $operation = Operation::factory()->create([
+        'assigned_user_id' => $bystander->id,
+        'responsible_user_id' => $reviewer->id,
+    ]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'status' => 'pending',
         'current_stage' => 1,
     ]);
-    app(MeasurementWorkflow::class)->startReview($measurement);
+    app(MeasurementWorkflow::class)->startReview($measurement, $reviewer);
 
     Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->assertSuccessful()
@@ -393,7 +415,7 @@ it('lets a super admin validate any stage', function () {
         'status' => 'pending',
         'current_stage' => 1,
     ]);
-    app(MeasurementWorkflow::class)->startReview($measurement);
+    app(MeasurementWorkflow::class)->startReview($measurement, $superAdmin);
 
     Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->assertSuccessful()
@@ -411,15 +433,18 @@ it('shows payment to the payment manager and finalize to the finalizer', functio
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'status' => 'awaiting_payment',
-        'current_stage' => 1,
+        'current_stage' => MeasurementWorkflow::STAGE_PAYMENT,
+    ]);
+    $measurement->reviews()->create([
+        'stage' => MeasurementWorkflow::STAGE_PAYMENT,
+        'reviewer_user_id' => $manager->id,
+        'status' => 'pending',
     ]);
 
     Livewire::test(ViewMeasurement::class, ['record' => $measurement->getRouteKey()])
         ->assertActionVisible('registerPayment')
-        ->assertActionVisible('finalize')
-        ->callAction('finalize');
-
-    expect($measurement->fresh()->status)->toBe('finalized');
+        ->assertActionHidden('attachReceipt')
+        ->assertActionHidden('finalize');
 });
 
 it('renders the create measurement page with custom subheading and two-panel sections', function () {

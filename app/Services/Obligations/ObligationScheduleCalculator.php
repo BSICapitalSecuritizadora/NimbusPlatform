@@ -3,8 +3,12 @@
 namespace App\Services\Obligations;
 
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
+use App\Enums\ObligationDueDateCalculationStatus;
 use App\Enums\ObligationDueRuleType;
+use App\Enums\ObligationInitialDateInclusion;
 use App\Enums\ObligationInvalidDayPolicy;
+use App\Enums\ObligationOffsetDirection;
+use App\Exceptions\ObligationCalendarCoverageException;
 use App\Models\ObligationSeries;
 use App\Models\ObligationSeriesRule;
 use Carbon\CarbonImmutable;
@@ -16,10 +20,11 @@ class ObligationScheduleCalculator
 
     public function __construct(
         private readonly BusinessDayCalendar $businessDayCalendar,
+        private readonly ObligationCalendarGuard $calendarGuard,
     ) {}
 
     /**
-     * @return list<array{competence_date: CarbonImmutable, due_date: CarbonImmutable, rule: ObligationSeriesRule}>
+     * @return list<array{competence_date: CarbonImmutable, due_date: ?CarbonImmutable, due_date_resolution: array<string, mixed>, rule: ObligationSeriesRule}>
      */
     public function occurrencesForRule(
         ObligationSeries $series,
@@ -29,7 +34,7 @@ class ObligationScheduleCalculator
     ): array {
         $intervalInMonths = $rule->frequency->intervalInMonths();
 
-        if ($intervalInMonths === null || $series->ends_on === null) {
+        if ($intervalInMonths === null || $series->ends_on === null || $rule->due_rule_type?->dependsOnAnchorEvent()) {
             return [];
         }
 
@@ -52,15 +57,24 @@ class ObligationScheduleCalculator
                 break;
             }
 
-            $dueDate = $this->resolveDueDate($rule, $competenceDate);
+            $resolution = $this->resolveDueDateWithExplanation($rule, $competenceDate);
+            $dueDate = $resolution->dueDate;
 
-            if ($dueDate === null || $dueDate->gt($horizon)) {
+            if (
+                $dueDate === null
+                && $resolution->calculationStatus !== ObligationDueDateCalculationStatus::AwaitingCalendar
+            ) {
+                continue;
+            }
+
+            if ($dueDate?->gt($horizon)) {
                 continue;
             }
 
             $occurrences[] = [
                 'competence_date' => $competenceDate,
                 'due_date' => $dueDate,
+                'due_date_resolution' => $resolution->toArray(),
                 'rule' => $rule,
             ];
         }
@@ -72,21 +86,39 @@ class ObligationScheduleCalculator
         ObligationSeriesRule $rule,
         CarbonInterface $competenceDate,
     ): ?CarbonImmutable {
-        $targetMonth = CarbonImmutable::instance($competenceDate)
+        return $this->resolveDueDateWithExplanation($rule, $competenceDate)->dueDate;
+    }
+
+    public function resolveDueDateWithExplanation(
+        ObligationSeriesRule $rule,
+        CarbonInterface $referenceDate,
+    ): ObligationDueDateResolution {
+        $referenceDate = CarbonImmutable::instance($referenceDate)->startOfDay();
+        $targetMonth = $referenceDate
             ->startOfMonth()
             ->addMonthsNoOverflow($rule->due_offset_months);
 
         return match ($rule->due_rule_type) {
-            ObligationDueRuleType::FixedDay => $this->resolveFixedDay($rule, $targetMonth),
-            ObligationDueRuleType::LastDay => $targetMonth->endOfMonth()->startOfDay(),
+            ObligationDueRuleType::FixedDay => new ObligationDueDateResolution(
+                $this->resolveFixedDay($rule, $targetMonth),
+                'Dia fixo do mês.',
+            ),
+            ObligationDueRuleType::LastDay => new ObligationDueDateResolution(
+                $targetMonth->endOfMonth()->startOfDay(),
+                'Último dia calendário do mês.',
+            ),
             ObligationDueRuleType::NthBusinessDay => $this->resolveNthBusinessDay($rule, $targetMonth),
-            ObligationDueRuleType::CalendarDaysAfterCompetenceEnd => $this->resolveCalendarDaysAfterCompetenceEnd($rule, $competenceDate),
-            default => null,
+            ObligationDueRuleType::CalendarDaysAfterCompetenceEnd => new ObligationDueDateResolution(
+                $this->resolveCalendarDaysAfterCompetenceEnd($rule, $referenceDate),
+                sprintf('%d dia(s) corrido(s) após o fim da competência.', $rule->due_offset_days),
+            ),
+            ObligationDueRuleType::BusinessDaysRelativeToEvent => $this->resolveBusinessDaysRelativeToEvent($rule, $referenceDate),
+            default => new ObligationDueDateResolution(null, 'Regra sem resolução automática.'),
         };
     }
 
     /**
-     * @return array{competence_date: CarbonImmutable, due_date: CarbonImmutable, rule: ObligationSeriesRule}|null
+     * @return array{competence_date: CarbonImmutable, due_date: CarbonImmutable, due_date_resolution: array<string, mixed>, rule: ObligationSeriesRule}|null
      */
     public function nextOccurrence(
         ObligationSeries $series,
@@ -115,7 +147,8 @@ class ObligationScheduleCalculator
         }
 
         return $candidates
-            ->filter(fn (array $candidate): bool => $candidate['due_date']->gte($referenceDate))
+            ->filter(fn (array $candidate): bool => $candidate['due_date'] instanceof CarbonImmutable
+                && $candidate['due_date']->gte($referenceDate))
             ->sortBy(fn (array $candidate): string => $candidate['due_date']->toDateString())
             ->first();
     }
@@ -140,28 +173,180 @@ class ObligationScheduleCalculator
     private function resolveNthBusinessDay(
         ObligationSeriesRule $rule,
         CarbonImmutable $targetMonth,
-    ): ?CarbonImmutable {
+    ): ObligationDueDateResolution {
         if ($rule->due_day === null || $rule->due_day < 1) {
-            return null;
+            return new ObligationDueDateResolution(null, 'Número do dia útil inválido.');
         }
 
         $businessDayNumber = 0;
+        $skippedDates = [];
 
         for ($day = 1; $day <= $targetMonth->daysInMonth; $day++) {
             $candidate = $targetMonth->setDay($day);
 
-            if (! $this->businessDayCalendar->isBusinessDay($candidate, $rule->calendar_code)) {
+            try {
+                $this->calendarGuard->assertDateCovered($rule, $candidate);
+            } catch (ObligationCalendarCoverageException $exception) {
+                return new ObligationDueDateResolution(
+                    dueDate: null,
+                    rule: sprintf('%dº dia útil do mês.', $rule->due_day),
+                    calendarCode: $rule->calendar_code,
+                    quantity: $rule->due_day,
+                    skippedDates: $skippedDates,
+                    calculationStatus: ObligationDueDateCalculationStatus::AwaitingCalendar,
+                    calculationPeriodFrom: $targetMonth->startOfMonth(),
+                    calculationPeriodTo: $targetMonth->endOfMonth(),
+                    calendarYears: $this->calendarGuard->calendarSnapshotForRange(
+                        $rule,
+                        $targetMonth->startOfMonth(),
+                        $targetMonth->endOfMonth(),
+                    ),
+                    blockingReason: $exception->getMessage(),
+                    requiredCalendarDate: $exception->requiredDate,
+                );
+            }
+
+            $decision = $this->businessDayCalendar->explain($candidate, $rule->calendar_code);
+
+            if (! $decision->isBusinessDay) {
+                $skippedDates[] = [
+                    'date' => $candidate->toDateString(),
+                    'reason' => $decision->reason,
+                ];
+
                 continue;
             }
 
             $businessDayNumber++;
 
             if ($businessDayNumber === $rule->due_day) {
-                return $candidate;
+                return new ObligationDueDateResolution(
+                    dueDate: $candidate,
+                    rule: sprintf('%dº dia útil do mês.', $rule->due_day),
+                    calendarCode: $rule->calendar_code,
+                    quantity: $rule->due_day,
+                    skippedDates: $skippedDates,
+                    calculationPeriodFrom: $targetMonth->startOfMonth(),
+                    calculationPeriodTo: $candidate,
+                    calendarYears: $this->calendarGuard->calendarSnapshotForRange(
+                        $rule,
+                        $targetMonth->startOfMonth(),
+                        $candidate,
+                    ),
+                );
             }
         }
 
-        return null;
+        return new ObligationDueDateResolution(
+            dueDate: null,
+            rule: sprintf('%dº dia útil não encontrado no mês.', $rule->due_day),
+            calendarCode: $rule->calendar_code,
+            quantity: $rule->due_day,
+            skippedDates: $skippedDates,
+        );
+    }
+
+    private function resolveBusinessDaysRelativeToEvent(
+        ObligationSeriesRule $rule,
+        CarbonImmutable $anchorDate,
+    ): ObligationDueDateResolution {
+        $quantity = (int) $rule->relative_offset_quantity;
+        $direction = $rule->relative_offset_direction;
+        $initialDateInclusion = $rule->initial_date_inclusion;
+
+        if (
+            $quantity < 1
+            || ! $direction instanceof ObligationOffsetDirection
+            || ! $initialDateInclusion instanceof ObligationInitialDateInclusion
+            || blank($rule->calendar_code)
+        ) {
+            return new ObligationDueDateResolution(null, 'Parâmetros do deslocamento em dias úteis incompletos.');
+        }
+
+        $candidate = $initialDateInclusion === ObligationInitialDateInclusion::Included
+            ? $anchorDate
+            : $anchorDate->addDays($direction->step());
+        $remaining = $quantity;
+        $skippedDates = [];
+
+        for ($attempt = 0; $attempt < 3700; $attempt++) {
+            try {
+                $this->calendarGuard->assertDateCovered($rule, $candidate);
+            } catch (ObligationCalendarCoverageException $exception) {
+                return new ObligationDueDateResolution(
+                    dueDate: null,
+                    rule: sprintf(
+                        '%d dia(s) útil(eis) %s evento.',
+                        $quantity,
+                        $direction === ObligationOffsetDirection::After ? 'após o' : 'antes do',
+                    ),
+                    anchorDate: $anchorDate,
+                    calendarCode: $rule->calendar_code,
+                    quantity: $quantity,
+                    direction: $direction->value,
+                    initialDateInclusion: $initialDateInclusion->value,
+                    skippedDates: $skippedDates,
+                    calculationStatus: ObligationDueDateCalculationStatus::AwaitingCalendar,
+                    calculationPeriodFrom: $anchorDate->min($candidate),
+                    calculationPeriodTo: $anchorDate->max($candidate),
+                    calendarYears: $this->calendarGuard->calendarSnapshotForRange(
+                        $rule,
+                        $anchorDate->min($candidate),
+                        $anchorDate->max($candidate),
+                    ),
+                    blockingReason: $exception->getMessage(),
+                    requiredCalendarDate: $exception->requiredDate,
+                );
+            }
+
+            $decision = $this->businessDayCalendar->explain($candidate, $rule->calendar_code);
+
+            if ($decision->isBusinessDay) {
+                $remaining--;
+
+                if ($remaining === 0) {
+                    return new ObligationDueDateResolution(
+                        dueDate: $candidate,
+                        rule: sprintf(
+                            '%d dia(s) útil(eis) %s evento.',
+                            $quantity,
+                            $direction === ObligationOffsetDirection::After ? 'após o' : 'antes do',
+                        ),
+                        anchorDate: $anchorDate,
+                        calendarCode: $rule->calendar_code,
+                        quantity: $quantity,
+                        direction: $direction->value,
+                        initialDateInclusion: $initialDateInclusion->value,
+                        skippedDates: $skippedDates,
+                        calculationPeriodFrom: $anchorDate->min($candidate),
+                        calculationPeriodTo: $anchorDate->max($candidate),
+                        calendarYears: $this->calendarGuard->calendarSnapshotForRange(
+                            $rule,
+                            $anchorDate->min($candidate),
+                            $anchorDate->max($candidate),
+                        ),
+                    );
+                }
+            } else {
+                $skippedDates[] = [
+                    'date' => $candidate->toDateString(),
+                    'reason' => $decision->reason,
+                ];
+            }
+
+            $candidate = $candidate->addDays($direction->step());
+        }
+
+        return new ObligationDueDateResolution(
+            dueDate: null,
+            rule: 'Não foi possível resolver o deslocamento dentro do limite operacional.',
+            anchorDate: $anchorDate,
+            calendarCode: $rule->calendar_code,
+            quantity: $quantity,
+            direction: $direction->value,
+            initialDateInclusion: $initialDateInclusion->value,
+            skippedDates: $skippedDates,
+        );
     }
 
     private function resolveCalendarDaysAfterCompetenceEnd(

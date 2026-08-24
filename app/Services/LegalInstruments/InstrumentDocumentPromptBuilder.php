@@ -164,6 +164,8 @@ class InstrumentDocumentPromptBuilder
     private function outputContract(): string
     {
         return <<<'PROMPT'
+        Para prazos de obrigação, use `schedule_suggestion` somente quando o documento permitir identificar quantidade, unidade, direção e âncora. Copie em `business_day_definition` a definição contratual de Dia Útil, se houver. Nunca escolha ANBIMA, B3 ou outro calendário apenas pela expressão "Dia Útil": `calendar_code` deve permanecer null e a sugestão nunca será ativada automaticamente.
+
         Retorne SOMENTE um JSON com esta estrutura:
 
         {
@@ -197,6 +199,15 @@ class InstrumentDocumentPromptBuilder
             {
               "title": "Reavaliar o imóvel anualmente",
               "recurrence": "Anual",
+              "schedule_suggestion": {
+                "quantity": 5,
+                "unit": "business_days",
+                "direction": "after",
+                "anchor_description": "recebimento da solicitação",
+                "initial_date_inclusion": "unresolved",
+                "business_day_definition": null,
+                "calendar_code": null
+              },
               "clause": "6.4",
               "page": 9,
               "excerpt": "citação literal"

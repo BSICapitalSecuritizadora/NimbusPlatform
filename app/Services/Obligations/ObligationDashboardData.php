@@ -2,6 +2,7 @@
 
 namespace App\Services\Obligations;
 
+use App\Enums\ObligationDueDateCalculationStatus;
 use App\Enums\ObligationFrequency;
 use App\Models\Emission;
 use App\Models\Obligation;
@@ -440,6 +441,7 @@ SQL,
         $rejectedCount = $this->evidenceCountFromRecord($obligation, 'rejected_evidences_count', fn (): int => $obligation->evidences()->rejected()->count());
 
         return match (true) {
+            $obligation->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar => 'Aguardando cobertura do calendário',
             $obligation->due_date !== null && $obligation->due_date->isBefore($today) && $obligation->priority === 'critical' => 'Críticas vencidas',
             $obligation->due_date !== null && $obligation->due_date->isSameDay($today) => 'Vencem Hoje',
             $obligation->due_date !== null && $obligation->due_date->between($today->copy()->addDay(), $today->copy()->addDays(7)) => 'Próximos 7 Dias',
@@ -460,7 +462,7 @@ SQL,
     {
         return match ($this->operationalFocusLabelFor($obligation, $referenceDate)) {
             'Críticas vencidas', 'Vencidas', 'Evidência Rejeitada', 'Concluídas sem evidência aprovada' => 'danger',
-            'Vencem Hoje', 'Próximos 7 Dias', 'Em Análise', 'Em análise com evidência pendente', 'Sem anexo', 'Sem Responsável' => 'warning',
+            'Vencem Hoje', 'Próximos 7 Dias', 'Em Análise', 'Em análise com evidência pendente', 'Sem anexo', 'Sem Responsável', 'Aguardando cobertura do calendário' => 'warning',
             'Próximos 30 Dias' => 'info',
             default => 'gray',
         };

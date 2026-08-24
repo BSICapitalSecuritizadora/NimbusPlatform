@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BusinessCalendar extends Model
 {
+    public const COVERAGE_BASIS_EXPLICIT_DATES = 'explicit_dates';
+
+    public const COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS = 'weekday_with_official_exceptions';
+
     /** @use HasFactory<BusinessCalendarFactory> */
     use HasFactory;
 
@@ -58,5 +62,14 @@ class BusinessCalendar extends Model
     public function selectionLabel(): string
     {
         return sprintf('%s — %s', $this->code, $this->name);
+    }
+
+    public function coverageBasis(): string
+    {
+        if ($this->accepts_anbima && $this->is_official && $this->import_mode === 'official_spreadsheet') {
+            return self::COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS;
+        }
+
+        return self::COVERAGE_BASIS_EXPLICIT_DATES;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Domain\PuCalculator\Services;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\DTOs\BusinessCalendarDecision;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
+use App\Models\BusinessCalendar;
 use App\Models\BusinessCalendarDate;
 use App\Models\BusinessCalendarOverride;
 use App\Models\BusinessCalendarYear;
@@ -23,6 +24,9 @@ class BusinessCalendarService implements BusinessDayCalendar
     /** @var array<string, bool> */
     private array $warnedRevisions = [];
 
+    /** @var array<string, string> */
+    private array $coverageBases = [];
+
     public function __construct(
         private readonly BusinessCalendarRevisionService $revisionService,
         private readonly BusinessCalendarYearService $yearService,
@@ -33,6 +37,7 @@ class BusinessCalendarService implements BusinessDayCalendar
         $this->cache = [];
         $this->loadedYears = [];
         $this->warnedRevisions = [];
+        $this->coverageBases = [];
     }
 
     public function isBusinessDay(CarbonImmutable $date, ?string $calendarCode = null): bool
@@ -118,15 +123,20 @@ class BusinessCalendarService implements BusinessDayCalendar
         }
 
         $isWeekend = $date->isWeekend();
+        $usesOfficialBaseRule = $this->coverageBasis($resolvedCalendarCode)
+            === BusinessCalendar::COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS;
 
         return new BusinessCalendarDecision(
             isBusinessDay: ! $isWeekend,
-            reason: $isWeekend
-                ? 'Dia não útil inferido exclusivamente por ser final de semana.'
-                : 'Dia útil inferido pela ausência de exceção persistida (fallback legado).',
+            reason: match (true) {
+                $usesOfficialBaseRule && $isWeekend => 'Dia não útil derivado da regra-base oficial de segunda a sexta, complementada pelas exceções do calendário.',
+                $usesOfficialBaseRule => 'Dia útil derivado da regra-base oficial de segunda a sexta; nenhuma exceção oficial incide nesta data.',
+                $isWeekend => 'Dia não útil inferido exclusivamente por ser final de semana.',
+                default => 'Dia útil inferido pela ausência de exceção persistida (fallback legado).',
+            },
             calendarCode: $resolvedCalendarCode,
             calendarLabel: BusinessCalendarRegistry::label($resolvedCalendarCode),
-            source: 'inferred',
+            source: $usesOfficialBaseRule ? 'calendar_base_rule' : 'inferred',
             revision: (int) ($calendarYear?->revision ?? 0),
             document: $calendarYear?->source_document,
             sourceRevision: $calendarYear?->source_revision,
@@ -231,5 +241,13 @@ class BusinessCalendarService implements BusinessDayCalendar
         }
 
         $this->warnedRevisions[$warningKey] = true;
+    }
+
+    private function coverageBasis(string $calendarCode): string
+    {
+        return $this->coverageBases[$calendarCode] ??= BusinessCalendar::query()
+            ->where('code', $calendarCode)
+            ->first()
+            ?->coverageBasis() ?? BusinessCalendar::COVERAGE_BASIS_EXPLICIT_DATES;
     }
 }

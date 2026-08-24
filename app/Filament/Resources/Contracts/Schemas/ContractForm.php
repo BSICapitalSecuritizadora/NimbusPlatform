@@ -10,6 +10,9 @@ use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
 use App\Models\Emission;
+use App\Support\Contracts\ContractOccupancyOverlap;
+use App\Support\Contracts\ContractOccupancyPeriod;
+use App\Support\Contracts\ContractOccupancyTimeline;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -244,6 +247,22 @@ class ContractForm
             ->native(false)
             ->displayFormat('d/m/Y')
             ->maxDate(now()->endOfDay())
+            /**
+             * The sale cannot begin while the unit is still held by the contract
+             * before it. Reported here when this contract is the one starting
+             * too early; the mirror case lands on the distrato date instead.
+             */
+            ->rule(static fn (Get $get, ?Contract $record = null): Closure => static function (
+                string $attribute,
+                mixed $value,
+                Closure $fail,
+            ) use ($get, $record): void {
+                $overlap = self::findOverlap($get, $record, $value, $get('cancellation_date'));
+
+                if (($overlap !== null) && $overlap->later->isSubject) {
+                    $fail($overlap->describe(self::unitLabel($get)));
+                }
+            })
             ->validationMessages([
                 'required' => 'Informe a data da venda.',
                 'max' => 'A data da venda não pode ser futura.',
@@ -282,16 +301,85 @@ class ContractForm
             ->visible(fn (Get $get): bool => self::requiresCancellationDate($get))
             ->required(fn (Get $get): bool => self::requiresCancellationDate($get))
             ->afterOrEqual('sale_date')
+            /**
+             * A distrato is a fact, never a schedule. The rule and the reason
+             * live on {@see Contract::cancellationDateHasTakenEffect()}, which is
+             * what the import checks; `maxDate` states the same bound in the
+             * vocabulary the picker understands, so the calendar cannot even
+             * offer a day the rule would refuse.
+             */
+            ->maxDate(now()->endOfDay())
+            /**
+             * Moving a distrato forward can swallow a sale that came after it,
+             * which is the same overlap seen from the other side.
+             */
+            ->rule(static fn (Get $get, ?Contract $record = null): Closure => static function (
+                string $attribute,
+                mixed $value,
+                Closure $fail,
+            ) use ($get, $record): void {
+                $overlap = self::findOverlap($get, $record, $get('sale_date'), $value);
+
+                if (($overlap !== null) && $overlap->earlier->isSubject) {
+                    $fail($overlap->describe(self::unitLabel($get)));
+                }
+            })
             ->helperText('Preenchida apenas em contratos distratados.')
             ->validationMessages([
                 'required' => 'Informe a data do distrato.',
                 'after_or_equal' => 'A data do distrato não pode ser anterior à data da venda.',
+                'before_or_equal' => 'A data do distrato não pode ser futura: enquanto o distrato não ocorrer, o contrato permanece ativo.',
             ]);
     }
 
     private static function requiresCancellationDate(Get $get): bool
     {
         return ContractStatus::tryFrom((string) $get('status'))?->requiresCancellationDate() ?? false;
+    }
+
+    /**
+     * Whether saving this contract would leave the unit held by two contracts at
+     * once at some point in time.
+     *
+     * The rule itself lives in {@see ContractOccupancyTimeline}, shared with the
+     * spreadsheet import: a history the monthly reconciliation refuses to write
+     * must not be reachable by typing it in by hand either.
+     */
+    private static function findOverlap(
+        Get $get,
+        ?Contract $record,
+        mixed $saleDate,
+        mixed $cancellationDate,
+    ): ?ContractOccupancyOverlap {
+        $unitId = $get('construction_unit_id');
+        $status = ContractStatus::tryFrom((string) $get('status'));
+
+        if (blank($unitId) || ($status === null) || blank($saleDate)) {
+            return null;
+        }
+
+        $subject = ContractOccupancyPeriod::fromValues(
+            code: (string) $get('code'),
+            clientName: null,
+            saleDate: $saleDate,
+            cancellationDate: $cancellationDate,
+            status: $status,
+        );
+
+        if ($subject === null) {
+            return null;
+        }
+
+        return ContractOccupancyTimeline::of([
+            ...Contract::occupancyPeriodsFor($unitId, $record?->getKey()),
+            $subject,
+        ])->firstOverlap();
+    }
+
+    private static function unitLabel(Get $get): string
+    {
+        return ConstructionUnit::query()->whereKey($get('construction_unit_id'))->first()?->display_name
+            ?? 'selecionada';
     }
 
     /**

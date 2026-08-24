@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\Measurement;
 use App\Services\MeasurementWorkflow;
 use Illuminate\Bus\Queueable;
@@ -17,13 +18,16 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
     public const EVENT_LABELS = [
         'submitted' => 'Nova medição para análise',
         'advanced' => 'Medição avançou de etapa',
-        'awaiting_payment' => 'Medição aprovada — aguardando pagamento',
+        'awaiting_payment' => 'Medição encaminhada à etapa Pagamento',
+        'payment_registered' => 'Pagamento registrado — aguardando aprovação',
+        'payment_approved' => 'Etapa Pagamento aprovada — envie os comprovantes',
+        'ready_to_finalize' => 'Medição pronta para Finalização',
         'rejected' => 'Medição recusada',
         'returned' => 'Medição devolvida para etapa anterior',
         'paused' => 'Análise de medição pausada',
         'resumed' => 'Análise de medição retomada',
-        'awaiting_receipt' => 'Pagamento registrado — aguardando comprovante',
-        'receipt_attached' => 'Comprovante anexado — pronto para finalização',
+        'awaiting_receipt' => 'Pagamento aprovado — aguardando comprovante',
+        'receipt_attached' => 'Comprovante anexado',
         'finalized' => 'Medição finalizada',
     ];
 
@@ -35,8 +39,11 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
     public const EVENT_DESCRIPTIONS = [
         'submitted' => 'Uma nova medição foi enviada e aguarda sua análise na etapa de Engenharia.',
         'advanced' => 'A medição avançou e aguarda sua análise nesta etapa.',
-        'awaiting_payment' => 'A medição foi aprovada na revisão e está liberada para registro do pagamento.',
-        'awaiting_receipt' => 'O pagamento foi registrado. Anexe o(s) comprovante(s) para seguir à finalização.',
+        'awaiting_payment' => 'A medição chegou à etapa Pagamento. Registre os lançamentos e aprove formalmente esta etapa.',
+        'payment_registered' => 'Os pagamentos foram registrados. A etapa Pagamento continua pendente de aprovação formal.',
+        'payment_approved' => 'A etapa Pagamento foi aprovada. Anexe todos os comprovantes para liberar a Finalização.',
+        'ready_to_finalize' => 'Todos os pagamentos e comprovantes foram validados. A medição pode ser finalizada.',
+        'awaiting_receipt' => 'A etapa Pagamento foi aprovada. Anexe o(s) comprovante(s) para seguir à Finalização.',
         'rejected' => 'A medição foi recusada na etapa de Engenharia e foi encerrada.',
         'returned' => 'A medição foi devolvida para esta etapa e precisa ser reavaliada.',
         'receipt_attached' => 'O comprovante de pagamento foi anexado. A medição está pronta para ser finalizada.',
@@ -65,6 +72,9 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
         'submitted' => ['tone' => 'info', 'icon' => '&#128196;'],
         'advanced' => ['tone' => 'info', 'icon' => '&#10145;'],
         'awaiting_payment' => ['tone' => 'success', 'icon' => '&#128176;'],
+        'payment_registered' => ['tone' => 'info', 'icon' => '&#128179;'],
+        'payment_approved' => ['tone' => 'gold', 'icon' => '&#129534;'],
+        'ready_to_finalize' => ['tone' => 'success', 'icon' => '&#10004;'],
         'rejected' => ['tone' => 'danger', 'icon' => '&#10006;'],
         'returned' => ['tone' => 'warning', 'icon' => '&#8617;'],
         'paused' => ['tone' => 'warning', 'icon' => '&#9208;'],
@@ -84,7 +94,7 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -131,7 +141,7 @@ class MeasurementWorkflowNotification extends Notification implements ShouldQueu
     private function resolveUrl(): ?string
     {
         try {
-            return \App\Filament\Resources\Measurements\MeasurementResource::getUrl('view', [
+            return MeasurementResource::getUrl('view', [
                 'record' => $this->measurement->getKey(),
             ]);
         } catch (\Throwable) {

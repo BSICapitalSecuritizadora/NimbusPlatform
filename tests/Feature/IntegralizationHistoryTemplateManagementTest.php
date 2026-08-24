@@ -15,25 +15,6 @@ use Spatie\Permission\PermissionRegistrar;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $temporaryUploadRoot = storage_path('framework/testing/disks/tmp-for-tests-'.uniqid());
-    $localDiskRoot = storage_path('framework/testing/disks/local-'.uniqid());
-
-    config()->set('filesystems.disks.tmp-for-tests', [
-        'driver' => 'local',
-        'root' => $temporaryUploadRoot,
-        'throw' => false,
-    ]);
-    config()->set('livewire.temporary_file_upload.disk', 'tmp-for-tests');
-
-    Storage::set('tmp-for-tests', Storage::createLocalDriver([
-        'root' => $temporaryUploadRoot,
-        'throw' => false,
-    ]));
-    Storage::set('local', Storage::createLocalDriver([
-        'root' => $localDiskRoot,
-        'throw' => false,
-    ]));
-
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->seed(RolesAndPermissionsSeeder::class);
 });

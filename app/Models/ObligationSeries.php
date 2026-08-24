@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Enums\ObligationDueRuleType;
 use App\Enums\ObligationFrequency;
+use App\Enums\ObligationInitialDateInclusion;
 use App\Enums\ObligationInvalidDayPolicy;
+use App\Enums\ObligationOffsetDirection;
 use App\Enums\ObligationSeriesStatus;
 use Database\Factories\ObligationSeriesFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -44,6 +46,11 @@ class ObligationSeries extends Model
         'due_day',
         'due_offset_months',
         'due_offset_days',
+        'relative_offset_quantity',
+        'relative_offset_unit',
+        'relative_offset_direction',
+        'anchor_description',
+        'initial_date_inclusion',
         'invalid_day_policy',
         'calendar_code',
         'generation_horizon_days',
@@ -77,6 +84,9 @@ class ObligationSeries extends Model
             'due_day' => 'integer',
             'due_offset_months' => 'integer',
             'due_offset_days' => 'integer',
+            'relative_offset_quantity' => 'integer',
+            'relative_offset_direction' => ObligationOffsetDirection::class,
+            'initial_date_inclusion' => ObligationInitialDateInclusion::class,
             'invalid_day_policy' => ObligationInvalidDayPolicy::class,
             'generation_horizon_days' => 'integer',
             'status' => ObligationSeriesStatus::class,
@@ -96,6 +106,8 @@ class ObligationSeries extends Model
                 'title', 'responsible_user_id', 'responsible_area', 'priority',
                 'frequency', 'starts_on', 'ends_on', 'due_rule_type', 'due_day',
                 'due_offset_months', 'due_offset_days', 'invalid_day_policy', 'calendar_code', 'status',
+                'relative_offset_quantity', 'relative_offset_unit', 'relative_offset_direction',
+                'anchor_description', 'initial_date_inclusion',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
@@ -127,11 +139,26 @@ class ObligationSeries extends Model
         return match ($this->due_rule_type) {
             ObligationDueRuleType::FixedDay => sprintf('Dia %d %s', $this->due_day, $monthOffset),
             ObligationDueRuleType::LastDay => sprintf('Último dia %s', $monthOffset),
-            ObligationDueRuleType::NthBusinessDay => sprintf('%dº dia útil %s (%s)', $this->due_day, $monthOffset, $this->calendar_code ?? 'B3'),
+            ObligationDueRuleType::NthBusinessDay => $this->calendar_code === null
+                ? sprintf('%dº dia útil %s — calendário pendente', $this->due_day, $monthOffset)
+                : sprintf('%dº dia útil %s (%s)', $this->due_day, $monthOffset, $this->calendar_code),
             ObligationDueRuleType::CalendarDaysAfterCompetenceEnd => sprintf(
                 '%d %s após o encerramento da competência',
                 $this->due_offset_days,
                 $this->due_offset_days === 1 ? 'dia corrido' : 'dias corridos',
+            ),
+            ObligationDueRuleType::BusinessDaysRelativeToEvent => sprintf(
+                '%d %s %s %s (%s; %s)',
+                $this->relative_offset_quantity,
+                $this->relative_offset_quantity === 1 ? 'dia útil' : 'dias úteis',
+                match ($this->relative_offset_direction) {
+                    ObligationOffsetDirection::Before => 'antes de',
+                    ObligationOffsetDirection::After => 'após',
+                    default => 'em relação a',
+                },
+                $this->anchor_description ?? 'evento não descrito',
+                $this->calendar_code ?? 'calendário pendente',
+                $this->initial_date_inclusion?->label() ?? 'contagem inicial pendente',
             ),
             default => 'Regra executável ainda não configurada.',
         };
@@ -185,5 +212,10 @@ class ObligationSeries extends Model
     public function occurrences(): HasMany
     {
         return $this->hasMany(Obligation::class)->orderBy('competence_date');
+    }
+
+    public function anchorEvents(): HasMany
+    {
+        return $this->hasMany(ObligationAnchorEvent::class);
     }
 }

@@ -7,7 +7,10 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\Obligatio
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Widgets\Obligations\ObligationEvidenceOverviewStatsWidget;
 use App\Filament\Widgets\Obligations\ObligationOperationalTableWidget;
+use App\Filament\Widgets\Obligations\ObligationOverdueAgingChartWidget;
 use App\Filament\Widgets\Obligations\ObligationOverviewStatsWidget;
+use App\Filament\Widgets\Obligations\ObligationPriorityDistributionChartWidget;
+use App\Filament\Widgets\Obligations\ObligationStatusDistributionChartWidget;
 use App\Models\Emission;
 use App\Models\ExtractedObligation;
 use App\Models\Obligation;
@@ -737,4 +740,66 @@ it('prioritizes the main operational queues in the table ordering', function () 
         $withoutResponsible->id,
         $regularOverdue->id,
     ]);
+});
+
+it('configures the obligation dashboard with executive styling and clear filter toolbar', function () {
+    $dashboard = app(ObligationDashboard::class);
+
+    expect($dashboard->getExtraBodyAttributes())
+        ->toMatchArray(['class' => 'bsi-cockpit-page bsi-obligation-dashboard'])
+        ->and($dashboard->getColumns())
+        ->toBe([
+            'default' => 1,
+            'xl' => 12,
+        ]);
+
+    $dashboard->filters = ['status' => 'vencida'];
+    $dashboard->resetFilters();
+    expect($dashboard->filters)->toBe([]);
+});
+
+it('renders the executive alerts and 3-tier KPI structure on the obligation overview widget', function () {
+    $user = makeAdminUser();
+    $this->actingAs($user);
+
+    $critical = makeDashboardObligation('vencida', '2026-06-10', null, [
+        'priority' => 'critical',
+        'title' => 'Crítica vencida',
+        'responsible_user_id' => null,
+    ]);
+
+    $component = Livewire::test(ObligationOverviewStatsWidget::class);
+
+    $component
+        ->assertSee('Visão Operacional')
+        ->assertSee('Indicadores Críticos de Operação')
+        ->assertSee('Indicadores de Acompanhamento')
+        ->assertSee('Pontos de Atenção Imediata')
+        ->assertSee('Vencidas')
+        ->assertSee('Vencem Hoje')
+        ->assertSee('Próximos 7 Dias')
+        ->assertSee('Total de Obrigações')
+        ->assertSee('Críticas vencidas')
+        ->assertSee('Sem Responsável')
+        ->assertSee('Próximos 30 Dias')
+        ->assertSee('Concluídas')
+        ->assertSee('Não Aplicáveis')
+        ->assertSee('Sem Data de Vencimento');
+});
+
+it('handles empty states gracefully across chart widgets when no data is present', function () {
+    $user = makeAdminUser();
+    $this->actingAs($user);
+
+    $agingWidget = Livewire::test(ObligationOverdueAgingChartWidget::class);
+    expect($agingWidget->instance()->isEmpty())->toBeTrue();
+    $agingWidget->assertSee('Nenhuma obrigação vencida para análise de aging');
+
+    $statusWidget = Livewire::test(ObligationStatusDistributionChartWidget::class);
+    expect($statusWidget->instance()->isEmpty())->toBeTrue();
+    $statusWidget->assertSee('Nenhuma obrigação no recorte atual');
+
+    $priorityWidget = Livewire::test(ObligationPriorityDistributionChartWidget::class);
+    expect($priorityWidget->instance()->isEmpty())->toBeTrue();
+    $priorityWidget->assertSee('Nenhuma pendência por prioridade');
 });

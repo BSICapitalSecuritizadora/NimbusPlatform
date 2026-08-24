@@ -13,13 +13,6 @@ use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    Storage::set(DocumentStorageService::privateDisk(), Storage::createLocalDriver([
-        'root' => storage_path('framework/testing/disks/local-'.uniqid()),
-        'throw' => false,
-    ]));
-});
-
 it('successfully uploads and processes a submission file (Happy Path)', function () {
     // 1. Setup Models
     $portalUser = PortalUser::query()->create([

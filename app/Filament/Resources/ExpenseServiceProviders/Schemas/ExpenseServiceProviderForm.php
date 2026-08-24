@@ -133,6 +133,7 @@ class ExpenseServiceProviderForm
         return $schema->components([
             Section::make('Dados do prestador')
                 ->description('Informe a classificação, documento e a razão social ou nome empresarial do prestador.')
+                ->columnSpanFull()
                 ->schema(static::fields())
                 ->columns([
                     'default' => 1,

@@ -27,6 +27,8 @@ class MonthlyConsolidatedRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('due_date')
+            ->heading('Consolidado mensal')
+            ->description('Soma mensal dos pagamentos registrados para esta despesa.')
             ->modifyQueryUsing(
                 fn (Builder $query): Builder => $query
                     ->selectRaw("DATE_FORMAT(due_date, '%Y-%m-01') as due_date")
@@ -51,6 +53,8 @@ class MonthlyConsolidatedRelationManager extends RelationManager
                 TextColumn::make('amount')
                     ->label('Valor total')
                     ->money('BRL')
+                    ->weight('semibold')
+                    ->alignEnd()
                     ->sortable(),
             ])
             ->defaultSort('due_date', 'desc')
@@ -59,6 +63,8 @@ class MonthlyConsolidatedRelationManager extends RelationManager
             ->actions([])
             ->bulkActions([])
             ->paginated(false)
-            ->emptyStateHeading('Nenhum histórico de pagamento registrado');
+            ->emptyStateHeading('Nenhum histórico de pagamento registrado')
+            ->emptyStateDescription('Os pagamentos registrados para esta despesa aparecerão aqui.')
+            ->emptyStateIcon('heroicon-o-banknotes');
     }
 }

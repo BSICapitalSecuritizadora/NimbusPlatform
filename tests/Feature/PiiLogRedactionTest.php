@@ -18,11 +18,10 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->logFile = storage_path('logs/pii-redaction-test.log');
-
-    if (file_exists($this->logFile)) {
-        unlink($this->logFile);
-    }
+    // Fora de `storage/logs`: o log real da aplicação não é área de rascunho da
+    // suíte, e um nome fixo lá colidiria entre processos sob `--parallel`. O
+    // caminho abaixo nasce dentro do disco isolado, que some no fim do teste.
+    $this->logFile = temporaryTestFilePath('pii-redaction', 'log');
 
     config([
         'logging.default' => 'pii_redaction_test',
@@ -34,12 +33,6 @@ beforeEach(function () {
     ]);
 
     Log::forgetChannel();
-});
-
-afterEach(function () {
-    if (file_exists($this->logFile)) {
-        unlink($this->logFile);
-    }
 });
 
 function writtenLogContents(string $logFile): string

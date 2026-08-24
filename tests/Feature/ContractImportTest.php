@@ -47,7 +47,7 @@ beforeEach(function () {
  */
 function contractSpreadsheet(array $rows, ?array $headers = null): string
 {
-    $path = tempnam(sys_get_temp_dir(), 'contracts-import-').'.xlsx';
+    $path = temporaryTestFilePath('contracts-import');
     $headers ??= ContractSpreadsheetColumns::headers();
 
     $writer = SimpleExcelWriter::create($path)->addHeader($headers);
@@ -564,7 +564,7 @@ describe('reconciliação mensal', function () {
 
         $analysis = analyzeContractSpreadsheet([contractRow([
             'status' => 'Distratado',
-            'cancellation_date' => '15/09/2026',
+            'cancellation_date' => '15/07/2026',
         ])]);
 
         expect($analysis->updateCount())->toBe(1)
@@ -581,14 +581,14 @@ describe('reconciliação mensal', function () {
         $contract = Contract::query()->sole();
 
         expect($contract->status)->toBe(ContractStatus::Cancelled)
-            ->and($contract->cancellation_date->toDateString())->toBe('2026-09-15');
+            ->and($contract->cancellation_date->toDateString())->toBe('2026-07-15');
     });
 
     it('flags a distratado contract going back to ativo as a critical update', function () {
         contractImportScenario();
 
         app(ImportContractsFromSpreadsheet::class)->handle(analyzeContractSpreadsheet([
-            contractRow(['status' => 'Distratado', 'cancellation_date' => '15/09/2026']),
+            contractRow(['status' => 'Distratado', 'cancellation_date' => '15/07/2026']),
         ]));
 
         $analysis = analyzeContractSpreadsheet([contractRow()]);
@@ -631,7 +631,7 @@ describe('reconciliação mensal', function () {
         app(ImportContractsFromSpreadsheet::class)->handle(analyzeContractSpreadsheet([contractRow()]));
 
         app(ImportContractsFromSpreadsheet::class)->handle(analyzeContractSpreadsheet([
-            contractRow(['status' => 'Distratado', 'cancellation_date' => '15/09/2026']),
+            contractRow(['status' => 'Distratado', 'cancellation_date' => '15/07/2026']),
         ]));
 
         $activity = Activity::query()
@@ -641,7 +641,7 @@ describe('reconciliação mensal', function () {
 
         expect($activity->properties['old']['status'])->toBe('ativo')
             ->and($activity->properties['attributes']['status'])->toBe('distratado')
-            ->and($activity->properties['attributes']['cancellation_date'])->toStartWith('2026-09-15');
+            ->and($activity->properties['attributes']['cancellation_date'])->toStartWith('2026-07-15');
     });
 
     it('leaves a contract absent from the file completely alone', function () {
@@ -791,25 +791,86 @@ describe('distrato e revenda no mesmo lote', function () {
         expect($resale['message'])->toBe('Revenda: o contrato CVC-00001 (João da Silva) é distratado nesta mesma planilha em 15/08/2026.');
     });
 
-    it('reports a sale predating the distrato without refusing it', function () {
+    it('refuses a sale that begins before the previous distrato', function () {
         [$unit305] = resaleScenario();
 
-        // A distrato is routinely signed after the commercial fact, so the dates
-        // overlapping is worth seeing and not worth refusing.
+        // Structurally the unit ends up with one holder, so occupancy is happy.
+        // The ten days the two contracts would share it are not.
         $analysis = analyzeContractSpreadsheet([
             distratoRow(['cancellation_date' => '20/08/2026']),
             revendaRow(['sale_date' => '10/08/2026']),
         ]);
 
-        $resale = $analysis->collect()->firstWhere('code', 'CVC-00002');
+        $message = 'Sobreposição de 10 dia(s) na unidade 01 - 305: CVC-00001 (João da Silva) só foi distratado em 20/08/2026, mas CVC-00002 (Maria Oliveira) já foi vendido em 10/08/2026. Revise as datas antes de continuar.';
+
+        // Both rows are accused: which of the two dates is the wrong one is not
+        // something the system can know.
+        expect($analysis->canImport())->toBeFalse()
+            ->and($analysis->conflictCount())->toBe(2)
+            ->and($analysis->collect()->firstWhere('code', 'CVC-00002')['message'])->toBe($message)
+            ->and($analysis->collect()->firstWhere('code', 'CVC-00001')['message'])->toBe($message);
+
+        expect(fn () => app(ImportContractsFromSpreadsheet::class)->handle($analysis))
+            ->toThrow(RuntimeException::class);
+
+        expect(Contract::query()->count())->toBe(1)
+            ->and($unit305->activeContract()->first()->code)->toBe('CVC-00001');
+    });
+
+    it('allows the resale to begin on the very day of the distrato', function () {
+        [$unit305] = resaleScenario();
+
+        // [venda, distrato) is half open: the unit changes hands that day and is
+        // held by exactly one buyer at every instant of it.
+        $analysis = analyzeContractSpreadsheet([
+            distratoRow(['cancellation_date' => '20/08/2026']),
+            revendaRow(['sale_date' => '20/08/2026']),
+        ]);
 
         expect($analysis->canImport())->toBeTrue()
-            ->and($resale['outcome'])->toBe(ReconciliationOutcome::New)
-            ->and($resale['message'])->toContain('Atenção: a venda em 10/08/2026 é anterior ao distrato em 20/08/2026.');
+            ->and($analysis->conflictCount())->toBe(0);
 
         app(ImportContractsFromSpreadsheet::class)->handle($analysis);
 
         expect($unit305->activeContract()->first()->code)->toBe('CVC-00002');
+    });
+
+    it('reaches the same temporal verdict whichever row comes first', function () {
+        resaleScenario();
+
+        $overlapping = [distratoRow(['cancellation_date' => '20/08/2026']), revendaRow(['sale_date' => '10/08/2026'])];
+
+        $inOrder = analyzeContractSpreadsheet($overlapping);
+        $reversed = analyzeContractSpreadsheet(array_reverse($overlapping));
+
+        $verdicts = fn (ContractSpreadsheetAnalysis $analysis): array => $analysis
+            ->collect()
+            ->mapWithKeys(fn (array $row): array => [$row['code'] => $row['outcome']->value.'|'.$row['message']])
+            ->sortKeys()
+            ->all();
+
+        expect($reversed->canImport())->toBeFalse()
+            ->and($verdicts($reversed))->toBe($verdicts($inOrder));
+    });
+
+    it('refuses a distrato dated in the future', function () {
+        resaleScenario();
+
+        // Until it happens, the contract is ativo and holds its unit. A distrato
+        // already recorded but not yet in effect would be released by the status
+        // and still occupying by the timeline.
+        $analysis = analyzeContractSpreadsheet([
+            distratoRow(['cancellation_date' => now()->addMonth()->format('d/m/Y')]),
+            revendaRow(),
+        ]);
+
+        expect($analysis->canImport())->toBeFalse()
+            ->and($analysis->collect()->firstWhere('code', 'CVC-00001')['outcome'])->toBe(ReconciliationOutcome::Error)
+            ->and($analysis->collect()->firstWhere('code', 'CVC-00001')['message'])
+            ->toBe('A data do distrato não pode ser futura: enquanto o distrato não ocorrer, o contrato permanece ativo.')
+            // And a distrato that cannot be applied frees nothing.
+            ->and($analysis->collect()->firstWhere('code', 'CVC-00002')['message'])
+            ->toContain('já possui um contrato ativo (CVC-00001)');
     });
 
     it('refuses a resale when the previous contract only becomes quitado', function () {
@@ -886,10 +947,22 @@ describe('distrato e revenda no mesmo lote', function () {
     it('ignores contracts distratados long ago when judging the unit', function () {
         [$unit305, $existing] = resaleScenario();
 
-        // Two distratos already on the unit's history. Occupancy is about who
-        // holds it, never about how many contracts it has had.
-        Contract::factory()->forUnit($unit305)->cancelled()->create(['code' => 'CVC-90001']);
-        Contract::factory()->forUnit($unit305)->cancelled()->create(['code' => 'CVC-90002']);
+        // Two distratos already on the unit's history, in a coherent sequence
+        // that ends well before the current contract. Occupancy is about who
+        // holds the unit, never about how many contracts it has had -- and a
+        // history that already lines up is not re-litigated by the file.
+        Contract::factory()->forUnit($unit305)->create([
+            'code' => 'CVC-90001',
+            'sale_date' => '2020-01-10',
+            'status' => ContractStatus::Cancelled,
+            'cancellation_date' => '2021-05-10',
+        ]);
+        Contract::factory()->forUnit($unit305)->create([
+            'code' => 'CVC-90002',
+            'sale_date' => '2021-06-01',
+            'status' => ContractStatus::Cancelled,
+            'cancellation_date' => '2023-02-01',
+        ]);
 
         $analysis = analyzeContractSpreadsheet([distratoRow(), revendaRow()]);
 
@@ -1065,17 +1138,19 @@ describe('distrato e revenda no mesmo lote', function () {
     it('frees the unit before the contract taking it back is written', function () {
         [$unit305, $existing] = resaleScenario();
 
-        // An older contract of the same unit, distratado, that the file brings
-        // back to ativo. Writing it before CVC-00001 lets go of the unit would
-        // put two holders on it for the length of one statement, which is
-        // exactly what the unique index refuses.
+        // A short-lived contract of the same unit, distratado, that the file
+        // brings back to ativo. Its period sits after CVC-00001 lets go, so the
+        // history stays coherent -- what is at stake here is the order of the
+        // statements, not the dates. Writing it before CVC-00001 releases the
+        // unit would put two holders on it for the length of one statement,
+        // which is exactly what the unique index refuses.
         $returning = Contract::factory()->forUnit($unit305)->create([
             'code' => 'CVC-00050',
             'client_id' => Client::query()->where('document', '11144477735')->value('id'),
-            'sale_date' => '2023-01-20',
+            'sale_date' => '2026-08-16',
             'sale_value' => '700000.00',
             'status' => ContractStatus::Cancelled,
-            'cancellation_date' => '2024-03-01',
+            'cancellation_date' => '2026-08-18',
         ]);
 
         $analysis = analyzeContractSpreadsheet([
@@ -1084,7 +1159,7 @@ describe('distrato e revenda no mesmo lote', function () {
             contractRow([
                 'document' => '11144477735',
                 'code' => 'CVC-00050',
-                'sale_date' => '20/01/2023',
+                'sale_date' => '16/08/2026',
                 'sale_value' => '700000.00',
                 'status' => 'Ativo',
             ]),

@@ -70,32 +70,35 @@ class OperationResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['emission', 'construction', 'planSets.construction']);
+        $query = parent::getEloquentQuery()->with(['emission', 'construction', 'planSets.construction']);
+        $user = auth()->user();
+
+        return $user === null ? $query->whereRaw('1 = 0') : $query->visibleTo($user);
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('operations.view') ?? false;
+        return auth()->user()?->can('viewAny', Operation::class) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('operations.create') ?? false;
+        return auth()->user()?->can('create', Operation::class) ?? false;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->can('operations.update') ?? false;
+        return auth()->user()?->can('update', $record) ?? false;
     }
 
     public static function canView(Model $record): bool
     {
-        return auth()->user()?->can('operations.view') ?? false;
+        return auth()->user()?->can('view', $record) ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->can('operations.delete') ?? false;
+        return auth()->user()?->can('delete', $record) ?? false;
     }
 
     public static function getPages(): array
