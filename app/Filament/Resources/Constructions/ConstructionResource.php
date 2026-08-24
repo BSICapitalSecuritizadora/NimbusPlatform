@@ -8,6 +8,7 @@ use App\Filament\Resources\Constructions\Pages\ListConstructions;
 use App\Filament\Resources\Constructions\Schemas\ConstructionForm;
 use App\Filament\Resources\Constructions\Tables\ConstructionsTable;
 use App\Models\Construction;
+use App\Models\Contract;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -75,9 +76,15 @@ class ConstructionResource extends Resource
         return auth()->user()?->can('emissions.update') ?? false;
     }
 
+    /**
+     * Excluir a obra removeria em cascata as unidades dela; se alguma já tiver
+     * contrato, isso apagaria histórico comercial. Nesse caso a exclusão não é
+     * oferecida -- o banco também a recusaria.
+     */
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->can('emissions.delete') ?? false;
+        return (auth()->user()?->can('emissions.delete') ?? false)
+            && ! ($record instanceof Construction && Contract::withTrashed()->where('construction_id', $record->getKey())->exists());
     }
 
     public static function getPages(): array

@@ -17,6 +17,7 @@ class FundApplicationForm
         return [
             TextInput::make('name')
                 ->label('Nome')
+                ->placeholder('Informe o nome da aplicação')
                 ->required()
                 ->maxLength(255)
                 ->unique(ignoreRecord: true, table: FundApplication::class)
@@ -31,6 +32,7 @@ class FundApplicationForm
     {
         return $schema->components([
             Section::make('Dados da aplicação')
+                ->description('Defina o nome utilizado para identificar a aplicação nos fundos cadastrados.')
                 ->schema(static::fields()),
         ]);
     }

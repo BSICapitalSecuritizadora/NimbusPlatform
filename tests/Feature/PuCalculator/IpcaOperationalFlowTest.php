@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Emissions\HomologatePuCurve;
 use App\Domain\PuCalculator\Enums\IndexProjectionSeriesStatus;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuIndexer;
@@ -183,7 +184,7 @@ it('keeps the IPCA engine flag false but flips contextual homologation only afte
 
     expect($status->isOperationallyHomologated($emission->fresh()))->toBeFalse();
 
-    app(\App\Actions\Emissions\HomologatePuCurve::class)->handle($emission->fresh(), null, $checker->id);
+    app(HomologatePuCurve::class)->handle($emission->fresh(), null, $checker->id);
 
     expect(PuIndexer::Ipca->isHomologated())->toBeFalse()
         ->and(EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->homologated()->exists())->toBeTrue()

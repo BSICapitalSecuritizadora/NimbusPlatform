@@ -1,10 +1,12 @@
 <?php
 
+use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -14,7 +16,7 @@ function fakeCdi(array $rows): void
     Http::fake(['api.bcb.gov.br/*' => Http::response($rows, 200)]);
 }
 
-function syncCdi(string $from = '2024-01-01', string $to = '2024-01-31', ?string $policy = null): \App\Domain\PuCalculator\DTOs\IndexRateSyncResult
+function syncCdi(string $from = '2024-01-01', string $to = '2024-01-31', ?string $policy = null): IndexRateSyncResult
 {
     return app(IndexRateSyncService::class)->sync(
         PuIndexer::Cdi,
@@ -208,10 +210,10 @@ it('records a completed last-sync status even when every IPCA record already exi
     ], 200)]);
 
     app(IndexRateSyncService::class)->sync(PuIndexer::Ipca, CarbonImmutable::parse('2024-01-01'), CarbonImmutable::parse('2024-01-31'));
-    \Illuminate\Support\Facades\Cache::flush();
+    Cache::flush();
     app(IndexRateSyncService::class)->sync(PuIndexer::Ipca, CarbonImmutable::parse('2024-01-01'), CarbonImmutable::parse('2024-01-31'));
 
-    $status = \Illuminate\Support\Facades\Cache::get('pu_index_sync_ipca_status');
+    $status = Cache::get('pu_index_sync_ipca_status');
 
     expect($status)->toMatchArray(['status' => 'completed'])
         ->and($status['synced_at'] ?? null)->not->toBeNull();

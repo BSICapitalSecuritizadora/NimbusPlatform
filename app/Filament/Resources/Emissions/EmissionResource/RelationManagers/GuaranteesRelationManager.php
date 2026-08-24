@@ -7,6 +7,7 @@ use App\DTOs\Guarantees\EmissionGuaranteePositionData;
 use App\DTOs\Guarantees\GuaranteePositionData;
 use App\Enums\AccessPermission;
 use App\Enums\GuaranteeCategory;
+use App\Enums\GuaranteeLegalStatus;
 use App\Enums\GuaranteeType;
 use App\Enums\GuaranteeValuationBasis;
 use App\Enums\GuaranteeValueSource;
@@ -32,6 +33,8 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -106,29 +109,46 @@ class GuaranteesRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('name')
                     ->label('Garantia')
-                    ->description(fn (Guarantee $record): string => GuaranteeType::labelFor($record->type))
                     ->formatStateUsing(fn (?string $state, Guarantee $record): string => $record->display_name)
+                    ->description(function (Guarantee $record): ?string {
+                        $parts = [];
+                        if ($record->construction?->name) {
+                            $parts[] = $record->construction->name;
+                        } elseif ($record->fund?->display_name) {
+                            $parts[] = $record->fund->display_name;
+                        }
+                        $type = GuaranteeType::labelFor($record->type);
+                        if ($type && $type !== $record->display_name) {
+                            $parts[] = $type;
+                        }
+
+                        return ! empty($parts) ? implode(' · ', $parts) : null;
+                    })
                     ->searchable()
+                    ->weight('bold')
+                    ->tooltip(fn (Guarantee $record): string => $record->display_name)
                     ->wrap(),
                 TextColumn::make('identification')
                     ->label('Identificação')
                     ->formatStateUsing(fn (mixed $state): string => $this->formatIdentification($state))
-                    ->placeholder('Não informada')
+                    ->placeholder('—')
                     ->wrap()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('requirement_basis')
                     ->label('Regra Contratual')
                     ->formatStateUsing(fn (Guarantee $record): string => $this->requirementLabel($record))
-                    ->placeholder('Sem mínimo contratual')
-                    ->wrap(),
+                    ->placeholder('—')
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('contracted_value')
-                    ->label('Valor na Contratação')
+                    ->label('Valor Contratação')
                     ->formatStateUsing(fn (mixed $state): string => $this->money($state))
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('current_value')
                     ->label('Valor Atual')
                     ->state(fn (Guarantee $record): string => $this->money($this->positionFor($record)?->currentValue()))
+                    ->weight('semibold')
                     ->alignEnd(),
                 TextColumn::make('eligible_value')
                     ->label('Valor Elegível')
@@ -138,26 +158,33 @@ class GuaranteesRelationManager extends RelationManager
                 TextColumn::make('coverage')
                     ->label('Cobertura')
                     ->state(fn (Guarantee $record): string => $this->ratio($this->positionFor($record)?->coverageRatio))
+                    ->color(fn (Guarantee $record): ?string => match ($this->positionFor($record)?->coverageStatus?->color()) {
+                        'success' => 'success',
+                        'warning' => 'warning',
+                        'danger' => 'danger',
+                        default => null,
+                    })
+                    ->weight('semibold')
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('validity_end_date')
                     ->label('Vigência')
                     ->formatStateUsing(fn (mixed $state, Guarantee $record): string => $this->validityLabel($record))
-                    ->placeholder('Sem prazo definido')
+                    ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('value_source')
                     ->label('Fonte')
                     ->badge()
                     ->color('gray')
                     ->state(fn (Guarantee $record): string => $record->resolvedValueSource()->label())
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('documentation_status')
                     ->label('Documentação')
                     ->badge()
                     ->state(fn (Guarantee $record): string => $record->documentationStatus()->shortLabel())
                     ->color(fn (Guarantee $record): string => $record->documentationStatus()->color())
                     ->tooltip(fn (Guarantee $record): string => $record->documentationStatus()->label())
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('legal_status')
                     ->label('Status')
                     ->badge()
@@ -165,6 +192,21 @@ class GuaranteesRelationManager extends RelationManager
                     ->color(fn (Guarantee $record): string => $record->legal_status?->color() ?? 'gray'),
             ])
             ->defaultSort('created_at', 'desc')
+            ->searchPlaceholder('Buscar por garantia...')
+            ->filters([
+                SelectFilter::make('type')
+                    ->label('Tipo de garantia')
+                    ->options(GuaranteeType::options()),
+                SelectFilter::make('legal_status')
+                    ->label('Status jurídico')
+                    ->options(GuaranteeLegalStatus::options()),
+            ])
+            ->groups([
+                Group::make('type')
+                    ->label('Tipo de garantia')
+                    ->getTitleFromRecordUsing(fn (Guarantee $record): string => GuaranteeType::labelFor($record->type))
+                    ->collapsible(),
+            ])
             ->headerActions([
                 $this->makeUpdateCompetenceAction(),
                 $this->makeCloseCompetenceAction(),
@@ -455,7 +497,7 @@ class GuaranteesRelationManager extends RelationManager
     protected function money(mixed $value): string
     {
         if ($value === null || $value === '') {
-            return 'Não informado';
+            return '—';
         }
 
         return 'R$ '.MoneyFormatter::formatCurrencyForDisplay($value);

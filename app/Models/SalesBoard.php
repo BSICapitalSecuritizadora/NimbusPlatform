@@ -3,18 +3,23 @@
 namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
+use App\Observers\SalesBoardObserver;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Database\Factories\SalesBoardFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+#[ObservedBy(SalesBoardObserver::class)]
 class SalesBoard extends Model
 {
-    /** @use HasFactory<\Database\Factories\SalesBoardFactory> */
+    /** @use HasFactory<SalesBoardFactory> */
     use HasFactory, LogsActivity;
 
     protected const TRACKED_VALUE_FIELDS = [
@@ -28,6 +33,12 @@ class SalesBoard extends Model
         'paid_value',
         'exchanged_value',
     ];
+
+    /**
+     * Justification for the version about to be recorded. Transient: it belongs
+     * to the history entry, not to the board itself.
+     */
+    public ?string $changeReason = null;
 
     protected $fillable = [
         'emission_id',
@@ -91,6 +102,65 @@ class SalesBoard extends Model
         return $this->hasMany(SalesBoardHistory::class);
     }
 
+    /**
+     * Position captured when the emission left the "Em Elaboração" status.
+     * Later monthly updates never touch it.
+     */
+    public function initialPosition(): HasOne
+    {
+        return $this->hasOne(SalesBoardHistory::class)->where('is_initial', true);
+    }
+
+    public function hasInitialPosition(): bool
+    {
+        return $this->initialPosition()->exists();
+    }
+
+    /**
+     * Latest recorded version, i.e. the position currently in force.
+     */
+    public function currentVersion(): HasOne
+    {
+        return $this->hasOne(SalesBoardHistory::class)->latestOfMany();
+    }
+
+    /**
+     * Fields whose change produces a new version in the history log.
+     *
+     * @return list<string>
+     */
+    public static function versionedFields(): array
+    {
+        return ['reference_month', ...self::TRACKED_VALUE_FIELDS];
+    }
+
+    public function hasVersionableChanges(): bool
+    {
+        return $this->isDirty(self::versionedFields());
+    }
+
+    /**
+     * A competence already registered for this construction can only be changed
+     * again with a justification -- but only once the emission has left the
+     * "Em Elaboração" phase, during which the board is freely editable.
+     */
+    public function requiresChangeReason(): bool
+    {
+        if ($this->emission?->isInDraft() ?? true) {
+            return false;
+        }
+
+        $referenceMonth = self::normalizeReferenceMonth($this->reference_month);
+
+        if ($referenceMonth === null) {
+            return false;
+        }
+
+        return $this->valueHistories()
+            ->whereDate('reference_month', $referenceMonth)
+            ->exists();
+    }
+
     public function calculateTotalUnits(): int
     {
         return (int) $this->stock_units
@@ -116,9 +186,18 @@ class SalesBoard extends Model
         return false;
     }
 
-    public function snapshotTrackedValues(): SalesBoardHistory
+    /**
+     * @param  bool  $asInitialPosition  Flags the entry as the emission's consolidation
+     *                                   position, which must never be recreated or overwritten.
+     */
+    public function snapshotTrackedValues(bool $asInitialPosition = false): SalesBoardHistory
     {
-        return $this->valueHistories()->create($this->trackedValueSnapshotData());
+        return $this->valueHistories()->create([
+            ...$this->trackedValueSnapshotData(),
+            'is_initial' => $asInitialPosition,
+            'changed_by_id' => auth()->id(),
+            'change_reason' => $this->changeReason,
+        ]);
     }
 
     public function getFormattedReferenceMonthAttribute(): string

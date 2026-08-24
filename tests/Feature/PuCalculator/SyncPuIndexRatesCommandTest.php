@@ -2,7 +2,9 @@
 
 use App\Domain\PuCalculator\Jobs\SyncIndexRatesFromBcbJob;
 use App\Models\IndexRate;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -53,11 +55,11 @@ it('runs the async job idempotently and stores a status', function () {
     app()->call([new SyncIndexRatesFromBcbJob('cdi', '2024-01-01', '2024-01-31'), 'handle']);
 
     expect(IndexRate::query()->where('indexer', 'CDI')->count())->toBe(1)
-        ->and(\Illuminate\Support\Facades\Cache::get('pu_index_sync_cdi_status'))->toMatchArray(['status' => 'completed']);
+        ->and(Cache::get('pu_index_sync_cdi_status'))->toMatchArray(['status' => 'completed']);
 });
 
 it('registers the BCB sync schedules with the correct recurrence', function () {
-    $events = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events());
+    $events = collect(app(Schedule::class)->events());
 
     $cdi = $events->first(fn ($event) => $event->description === 'pu-index-sync-cdi');
     $ipca = $events->first(fn ($event) => $event->description === 'pu-index-sync-ipca');

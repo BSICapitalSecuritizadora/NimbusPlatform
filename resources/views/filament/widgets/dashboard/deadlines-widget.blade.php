@@ -100,10 +100,10 @@
                         @endphp
 
                         <section
-                            class="self-start overflow-hidden rounded-xl border border-t border-gray-200 bg-gray-50/70 {{ $toneBorderClasses }} dark:border-gray-700 dark:bg-white/3"
+                            class="self-start overflow-hidden rounded-xl border border-gray-200/90 bg-gray-50/50 {{ $toneBorderClasses }} dark:border-bsi-gold-500/15 dark:bg-[#071820]/70"
                             aria-labelledby="deadline-group-{{ $group['key'] }}"
                         >
-                            <header class="flex items-start justify-between gap-3 px-3.5 py-3">
+                            <header class="flex items-start justify-between gap-3 border-b border-gray-200/80 bg-gray-100/40 px-3.5 py-3 dark:border-bsi-gold-500/12 dark:bg-[#05131a]/50">
                                 <div class="flex min-w-0 items-start gap-2.5">
                                     <x-dynamic-component :component="$group['icon']" class="mt-0.5 size-4 shrink-0 {{ $toneTextClasses }}" aria-hidden="true" />
                                     <div class="min-w-0">
@@ -116,49 +116,53 @@
                                 </span>
                             </header>
 
-                            <ul
-                                @class([
-                                    'grid gap-px border-t border-gray-200 bg-gray-200 dark:border-white/10 dark:bg-white/10',
-                                    'sm:grid-cols-2 xl:grid-cols-3' => $activeUrgentGroups->count() === 1,
-                                ])
-                                aria-label="Obrigações em {{ mb_strtolower($group['title']) }}"
-                            >
-                                @foreach($group['items'] as $item)
-                                    <li wire:key="deadline-{{ $group['key'] }}-{{ $item['id'] }}" class="min-w-0 bg-bsi-paper dark:bg-gray-900">
-                                        <a
-                                            href="{{ $item['url'] }}"
-                                            class="group/item flex min-h-24 items-start gap-3 p-3 transition-colors duration-200 ease-out hover:bg-primary-50/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none dark:hover:bg-primary-500/8"
-                                            aria-label="Abrir obrigação: {{ $item['title'] }}"
-                                        >
-                                            <span class="min-w-0 flex-1">
-                                                <span class="line-clamp-2 text-sm font-semibold leading-snug text-gray-950 dark:text-white" title="{{ $item['title'] }}">{{ $item['title'] }}</span>
-                                                <span class="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                                                    <x-heroicon-m-building-office-2 class="size-3.5 shrink-0 text-gray-400" aria-hidden="true" />
-                                                    <span class="truncate" title="{{ $item['operation'] }}">{{ $item['operation'] }}</span>
-                                                </span>
-                                                <span class="mt-2 flex flex-wrap items-center gap-2">
+                            <div class="p-2.5">
+                                <ul
+                                    @class([
+                                        'grid gap-2.5',
+                                        'sm:grid-cols-2 xl:grid-cols-3' => $activeUrgentGroups->count() === 1,
+                                    ])
+                                    aria-label="Obrigações em {{ mb_strtolower($group['title']) }}"
+                                >
+                                    @foreach($group['items'] as $item)
+                                        <li wire:key="deadline-{{ $group['key'] }}-{{ $item['id'] }}" class="min-w-0">
+                                            <a
+                                                href="{{ $item['url'] }}"
+                                                class="group/item flex min-h-24 flex-col justify-between rounded-lg border border-gray-200/90 bg-white p-3 shadow-xs transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-bsi-gold-500/60 hover:bg-white hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-bsi-gold-500/15 dark:bg-[#091f28]/75 dark:shadow-[0_1px_3px_rgba(4,14,19,0.25)] dark:hover:border-bsi-gold-500/50 dark:hover:bg-[#0e2c38] dark:hover:shadow-[0_4px_14px_rgba(4,14,19,0.4)]"
+                                                aria-label="Abrir obrigação: {{ $item['title'] }}"
+                                            >
+                                                <div>
+                                                    <div class="flex items-start justify-between gap-1.5">
+                                                        <span class="line-clamp-2 text-sm font-semibold leading-snug text-gray-950 dark:text-white" title="{{ $item['title'] }}">{{ $item['title'] }}</span>
+                                                        <x-heroicon-o-chevron-right class="mt-0.5 size-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-out group-hover/item:translate-x-0.5 group-hover/item:text-bsi-gold-500 motion-reduce:transition-none dark:text-gray-500 dark:group-hover/item:text-bsi-gold-400" aria-hidden="true" />
+                                                    </div>
+                                                    <span class="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                                        <x-heroicon-m-building-office-2 class="size-3.5 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+                                                        <span class="truncate" title="{{ $item['operation'] }}">{{ $item['operation'] }}</span>
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 border-t border-gray-100 pt-2 dark:border-white/6">
                                                     <span class="inline-flex items-center gap-1 text-xs font-medium {{ $toneTextClasses }}">
                                                         <x-heroicon-m-calendar-days class="size-3.5 shrink-0" aria-hidden="true" />
                                                         {{ $item['deadline'] }}
                                                     </span>
                                                     <span @class([
-                                                        'rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium',
-                                                        'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300' => $item['priorityTone'] === 'danger',
-                                                        'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-200' => $item['priorityTone'] === 'warning',
-                                                        'bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300' => $item['priorityTone'] === 'neutral',
+                                                        'rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium tracking-wide',
+                                                        'bg-danger-50 text-danger-700 border border-danger-200/60 dark:bg-danger-500/12 dark:text-danger-300 dark:border-danger-500/25' => $item['priorityTone'] === 'danger',
+                                                        'bg-amber-50 text-amber-800 border border-amber-200/60 dark:bg-amber-500/12 dark:text-amber-300 dark:border-amber-500/25' => $item['priorityTone'] === 'warning',
+                                                        'bg-gray-100 text-gray-600 border border-gray-200/60 dark:bg-white/6 dark:text-gray-300 dark:border-white/8' => $item['priorityTone'] === 'neutral',
                                                     ])>
                                                         {{ $item['priority'] }}
                                                     </span>
-                                                </span>
-                                            </span>
-                                            <x-heroicon-o-chevron-right class="mt-0.5 size-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-out group-hover/item:translate-x-0.5 group-hover/item:text-primary-600 motion-reduce:transition-none dark:group-hover/item:text-primary-300" aria-hidden="true" />
-                                        </a>
-                                    </li>
-                                @endforeach
-                            </ul>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
 
                             @if($group['count'] > 5 && $group['dashboardUrl'])
-                                <div class="border-t border-gray-200 px-3 py-2.5 dark:border-white/10">
+                                <div class="border-t border-gray-200/80 bg-gray-100/30 px-3.5 py-2.5 dark:border-bsi-gold-500/12 dark:bg-[#05131a]/40">
                                     <x-filament::link
                                         :href="$group['dashboardUrl']"
                                         icon="heroicon-m-arrow-right"
@@ -177,18 +181,18 @@
             @if($withoutDeadlineGroup['count'] > 0)
                 <section
                     data-without-deadline-count="{{ $withoutDeadlineGroup['count'] }}"
-                    class="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-gray-50/60 dark:border-gray-700 dark:bg-white/3"
+                    class="mt-4 overflow-hidden rounded-xl border border-gray-200/90 bg-gray-50/50 dark:border-bsi-gold-500/15 dark:bg-[#071820]/70"
                     aria-labelledby="deadline-group-without-deadline"
                 >
-                    <header class="flex flex-col gap-3 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <header class="flex flex-col gap-3 border-b border-gray-200/80 bg-gray-100/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-bsi-gold-500/12 dark:bg-[#05131a]/50">
                         <div class="flex min-w-0 items-start gap-2.5">
-                            <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300">
+                            <span class="flex size-8 shrink-0 items-center justify-center rounded-lg border border-gray-200/80 bg-white text-gray-700 shadow-xs dark:border-bsi-gold-500/20 dark:bg-bsi-navy-900/80 dark:text-bsi-gold-400">
                                 <x-heroicon-o-calendar-date-range class="size-4" aria-hidden="true" />
                             </span>
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <h3 id="deadline-group-without-deadline" class="text-sm font-semibold text-gray-950 dark:text-white">Sem prazo</h3>
-                                    <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-gray-700 dark:bg-white/8 dark:text-gray-200">
+                                    <span class="rounded-full border border-gray-200/80 bg-white px-2.5 py-0.5 text-xs font-semibold tabular-nums text-gray-800 shadow-xs dark:border-bsi-gold-500/20 dark:bg-bsi-navy-900/90 dark:text-gray-200">
                                         {{ $withoutDeadlineGroup['count'] }}
                                     </span>
                                 </div>
@@ -209,40 +213,45 @@
                         @endif
                     </header>
 
-                    <ul class="grid gap-px border-t border-gray-200 bg-gray-200 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 dark:border-white/10 dark:bg-white/10" aria-label="Prévia das obrigações sem prazo">
-                        @foreach($withoutDeadlineGroup['items'] as $item)
-                            <li wire:key="deadline-without-deadline-{{ $item['id'] }}" class="min-w-0 bg-bsi-paper dark:bg-gray-900">
-                                <a
-                                    href="{{ $item['url'] }}"
-                                    class="group/item flex min-h-24 items-start gap-3 p-3 transition-colors duration-200 ease-out hover:bg-primary-50/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none dark:hover:bg-primary-500/8"
-                                    aria-label="Abrir obrigação: {{ $item['title'] }}"
-                                >
-                                    <span class="min-w-0 flex-1">
-                                        <span class="line-clamp-2 text-sm font-semibold leading-snug text-gray-950 dark:text-white" title="{{ $item['title'] }}">{{ $item['title'] }}</span>
-                                        <span class="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                                            <x-heroicon-m-building-office-2 class="size-3.5 shrink-0 text-gray-400" aria-hidden="true" />
-                                            <span class="truncate" title="{{ $item['operation'] }}">{{ $item['operation'] }}</span>
-                                        </span>
-                                        <span class="mt-2 flex flex-wrap items-center gap-2">
+                    <div class="p-3">
+                        <ul class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" aria-label="Prévia das obrigações sem prazo">
+                            @foreach($withoutDeadlineGroup['items'] as $item)
+                                <li wire:key="deadline-without-deadline-{{ $item['id'] }}" class="min-w-0">
+                                    <a
+                                        href="{{ $item['url'] }}"
+                                        class="group/item flex min-h-24 flex-col justify-between rounded-lg border border-gray-200/90 bg-white p-3 shadow-xs transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-bsi-gold-500/60 hover:bg-white hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-bsi-gold-500/15 dark:bg-[#091f28]/75 dark:shadow-[0_1px_3px_rgba(4,14,19,0.25)] dark:hover:border-bsi-gold-500/50 dark:hover:bg-[#0e2c38] dark:hover:shadow-[0_4px_14px_rgba(4,14,19,0.4)]"
+                                        aria-label="Abrir obrigação: {{ $item['title'] }}"
+                                    >
+                                        <div>
+                                            <div class="flex items-start justify-between gap-1.5">
+                                                <span class="line-clamp-2 text-sm font-semibold leading-snug text-gray-950 dark:text-white" title="{{ $item['title'] }}">{{ $item['title'] }}</span>
+                                                <x-heroicon-o-chevron-right class="mt-0.5 size-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-out group-hover/item:translate-x-0.5 group-hover/item:text-bsi-gold-500 motion-reduce:transition-none dark:text-gray-500 dark:group-hover/item:text-bsi-gold-400" aria-hidden="true" />
+                                            </div>
+                                            <span class="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+                                                <x-heroicon-m-building-office-2 class="size-3.5 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+                                                <span class="truncate" title="{{ $item['operation'] }}">{{ $item['operation'] }}</span>
+                                            </span>
+                                        </div>
+
+                                        <div class="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 border-t border-gray-100 pt-2 dark:border-white/6">
                                             <span class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                                 <x-heroicon-m-calendar-days class="size-3.5 shrink-0" aria-hidden="true" />
                                                 {{ $item['deadline'] }}
                                             </span>
                                             <span @class([
-                                                'rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium',
-                                                'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300' => $item['priorityTone'] === 'danger',
-                                                'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-200' => $item['priorityTone'] === 'warning',
-                                                'bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300' => $item['priorityTone'] === 'neutral',
+                                                'rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium tracking-wide',
+                                                'bg-danger-50 text-danger-700 border border-danger-200/60 dark:bg-danger-500/12 dark:text-danger-300 dark:border-danger-500/25' => $item['priorityTone'] === 'danger',
+                                                'bg-amber-50 text-amber-800 border border-amber-200/60 dark:bg-amber-500/12 dark:text-amber-300 dark:border-amber-500/25' => $item['priorityTone'] === 'warning',
+                                                'bg-gray-100 text-gray-600 border border-gray-200/60 dark:bg-white/6 dark:text-gray-300 dark:border-white/8' => $item['priorityTone'] === 'neutral',
                                             ])>
                                                 {{ $item['priority'] }}
                                             </span>
-                                        </span>
-                                    </span>
-                                    <x-heroicon-o-chevron-right class="mt-0.5 size-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-out group-hover/item:translate-x-0.5 group-hover/item:text-primary-600 motion-reduce:transition-none dark:group-hover/item:text-primary-300" aria-hidden="true" />
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
+                                        </div>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
                 </section>
             @endif
         @endif

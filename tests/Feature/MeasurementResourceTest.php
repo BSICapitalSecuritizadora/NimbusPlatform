@@ -4,7 +4,11 @@ use App\Filament\Resources\Measurements\Pages\CreateMeasurement;
 use App\Filament\Resources\Measurements\Pages\ListMeasurements;
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
 use App\Filament\Resources\Operations\Pages\CreateOperation;
+use App\Filament\Resources\Operations\Pages\EditOperation;
 use App\Filament\Resources\Operations\Pages\ListOperations;
+use App\Filament\Resources\Operations\Pages\ViewOperation;
+use App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager;
+use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\Measurement;
@@ -151,9 +155,9 @@ it('renders the measurement plan editor (schedule) relation manager', function (
     $this->actingAs(makeMeasurementAdminUser());
     $operation = Operation::factory()->create();
 
-    Livewire::test(\App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager::class, [
+    Livewire::test(PlanSetsRelationManager::class, [
         'ownerRecord' => $operation,
-        'pageClass' => \App\Filament\Resources\Operations\Pages\EditOperation::class,
+        'pageClass' => EditOperation::class,
     ])->assertSuccessful();
 });
 
@@ -168,9 +172,9 @@ it('renders the read-only schedule monitoring with the plan lines', function () 
         'realized_cumulative_percent' => 55,
     ]);
 
-    Livewire::test(\App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager::class, [
+    Livewire::test(PlanLinesRelationManager::class, [
         'ownerRecord' => $operation,
-        'pageClass' => \App\Filament\Resources\Operations\Pages\ViewOperation::class,
+        'pageClass' => ViewOperation::class,
     ])
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$line]);
@@ -190,9 +194,9 @@ it('edits the planned monthly and cumulative progress from the monitoring grid',
         'planned_cumulative_percent' => 0,
     ]);
 
-    Livewire::test(\App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager::class, [
+    Livewire::test(PlanLinesRelationManager::class, [
         'ownerRecord' => $operation,
-        'pageClass' => \App\Filament\Resources\Operations\Pages\ViewOperation::class,
+        'pageClass' => ViewOperation::class,
     ])
         ->callTableAction('editPlanned', $line, data: [
             'planned_monthly_percent' => 15,
@@ -215,9 +219,9 @@ it('no longer exposes manual realized entry in the monitoring grid', function ()
         'operation_id' => $operation->id,
     ]);
 
-    Livewire::test(\App\Filament\Resources\Operations\RelationManagers\PlanLinesRelationManager::class, [
+    Livewire::test(PlanLinesRelationManager::class, [
         'ownerRecord' => $operation,
-        'pageClass' => \App\Filament\Resources\Operations\Pages\ViewOperation::class,
+        'pageClass' => ViewOperation::class,
     ])
         ->assertTableActionExists('editPlanned')
         ->assertTableActionDoesNotExist('registerActual');
@@ -227,6 +231,26 @@ it('renders the measurements list page', function () {
     $this->actingAs(makeMeasurementAdminUser());
 
     Livewire::test(ListMeasurements::class)->assertSuccessful();
+});
+
+it('shows a contextual empty state when no measurement exists', function () {
+    $this->actingAs(makeMeasurementAdminUser());
+
+    Livewire::test(ListMeasurements::class)
+        ->assertSee('Nenhuma medição cadastrada')
+        ->assertSee('Criar primeira medição')
+        ->assertDontSee('Nenhuma medição corresponde aos filtros selecionados');
+});
+
+it('distinguishes the filtered empty state from the empty base', function () {
+    $this->actingAs(makeMeasurementAdminUser());
+    Measurement::factory()->create();
+
+    Livewire::test(ListMeasurements::class)
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhuma medição corresponde aos filtros selecionados')
+        ->assertSee('Limpar filtros')
+        ->assertDontSee('Nenhuma medição cadastrada');
 });
 
 it('offers a per-development measurement slot when the operation is selected', function () {
@@ -396,4 +420,20 @@ it('shows payment to the payment manager and finalize to the finalizer', functio
         ->callAction('finalize');
 
     expect($measurement->fresh()->status)->toBe('finalized');
+});
+
+it('renders the create measurement page with custom subheading and two-panel sections', function () {
+    $this->actingAs(makeMeasurementAdminUser());
+
+    Livewire::test(CreateMeasurement::class)
+        ->assertOk()
+        ->assertSee('Envie os arquivos da competência para cada empreendimento vinculado à operação.')
+        ->assertSee('Dados da Medição')
+        ->assertSee('Identifique a operação e confirme a competência do envio.')
+        ->assertSee('Arquivo por Empreendimento')
+        ->assertSee('Associe a medição prevista e envie o arquivo correspondente para cada empreendimento.')
+        ->assertSee('Selecione uma operação no painel à esquerda para listar os empreendimentos vinculados')
+        ->assertFormFieldExists('operation_id')
+        ->assertFormFieldExists('reference_month')
+        ->assertFormFieldExists('notes');
 });

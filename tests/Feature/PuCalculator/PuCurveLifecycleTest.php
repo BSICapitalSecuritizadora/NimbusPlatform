@@ -3,6 +3,7 @@
 use App\Actions\Emissions\HomologatePuCurve;
 use App\Actions\Emissions\InvalidatePuCurve;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
@@ -63,7 +64,7 @@ it('logs an audit entry when the PU parameters are updated through the screen', 
             'spread_rate' => '6.50000000',
             'indexer' => 'CDI',
             'business_day_basis' => 252,
-            'calendar_code' => 'B3',
+            'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
             'index_rate_lookup_mode' => 'previous_available_business_day',
             'index_rate_lag_business_days' => 1,
             'legacy_projection_enabled' => true,

@@ -2,6 +2,10 @@
 
 use App\Http\Controllers\Admin\AdminDocumentDownloadController;
 use App\Http\Controllers\Admin\AdminDocumentPreviewController;
+use App\Http\Controllers\Admin\ClientTemplateDownloadController;
+use App\Http\Controllers\Admin\ConstructionUnitTemplateDownloadController;
+use App\Http\Controllers\Admin\ContractInstallmentTemplateDownloadController;
+use App\Http\Controllers\Admin\ContractTemplateDownloadController;
 use App\Http\Controllers\Admin\EmissionMonthlyReportController;
 use App\Http\Controllers\Admin\EmissionPuCurveExportController;
 use App\Http\Controllers\Admin\EmissionPuHomologationReportController;
@@ -125,7 +129,7 @@ Route::get('/proposta/continuar/{access}/arquivos/{file}', [ProposalContinuation
 // Recruitment (Trabalhe Conosco)
 Route::get('/trabalhe-conosco', [JobController::class, 'index'])->name('site.vacancies.index');
 Route::get('/trabalhe-conosco/{slug}', [JobController::class, 'show'])->name('site.vacancies.show');
-Route::post('/trabalhe-conosco/{id}/candidatar', [JobController::class, 'apply'])
+Route::post('/trabalhe-conosco/{vacancy}/candidatar', [JobController::class, 'apply'])
     ->middleware('throttle:site-job-apply')
     ->name('site.vacancies.apply');
 
@@ -224,6 +228,18 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(fu
         ->middleware('throttle:60,1');
     Route::get('/admin/integralization-histories/template/download', IntegralizationHistoryTemplateDownloadController::class)
         ->name('admin.integralization-histories.template.download')
+        ->middleware('throttle:60,1');
+    Route::get('/admin/construction-units/template/download', ConstructionUnitTemplateDownloadController::class)
+        ->name('admin.construction-units.template.download')
+        ->middleware('throttle:60,1');
+    Route::get('/admin/clients/template/download', ClientTemplateDownloadController::class)
+        ->name('admin.clients.template.download')
+        ->middleware('throttle:60,1');
+    Route::get('/admin/contracts/template/download', ContractTemplateDownloadController::class)
+        ->name('admin.contracts.template.download')
+        ->middleware('throttle:60,1');
+    Route::get('/admin/contract-installments/template/download', ContractInstallmentTemplateDownloadController::class)
+        ->name('admin.contract-installments.template.download')
         ->middleware('throttle:60,1');
     Route::get('/admin/emissions/{emission}/pu-curves/export', EmissionPuCurveExportController::class)
         ->name('admin.emissions.pu-curves.export')

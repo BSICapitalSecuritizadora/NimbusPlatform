@@ -7,6 +7,7 @@ use App\Domain\PuCalculator\Exceptions\BcbSgsException;
 use App\Domain\PuCalculator\Services\BusinessCalendarCoverageService;
 use App\Domain\PuCalculator\Services\IndexRateImportService;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\IndexRates\IndexRateResource;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
@@ -172,16 +173,17 @@ class ListIndexRates extends ListRecords
         $now = CarbonImmutable::now();
 
         return Action::make('seedBusinessCalendar')
-            ->label('Completar calendário B3')
+            ->label('Completar calendário (legado)')
             ->icon('heroicon-o-calendar-days')
             ->color('gray')
             ->visible(fn (): bool => auth()->user()?->can('pu.calendar.manage') ?? false)
             ->modalHeading('Completar calendário de dias úteis')
-            ->modalDescription('Gera as datas faltantes do período (fim de semana = não útil; dia de semana = útil), de forma idempotente. Não sobrescreve datas já cadastradas — feriados B3 lançados manualmente são preservados.')
+            ->modalDescription('Atalho legado. Gera datas faltantes por inferência e não confirma oficialmente o ano. ANBIMA bancário e sessões de negociação B3 são calendários distintos.')
             ->form([
-                TextInput::make('calendar_code')
+                Select::make('calendar_code')
                     ->label('Calendário')
-                    ->default('B3')
+                    ->options(BusinessCalendarRegistry::options())
+                    ->default(BusinessCalendarRegistry::LEGACY_B3)
                     ->required(),
                 DatePicker::make('from')
                     ->label('De')

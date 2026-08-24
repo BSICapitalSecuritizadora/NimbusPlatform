@@ -10,10 +10,24 @@ class ListMeasurements extends ListRecords
 {
     protected static string $resource = MeasurementResource::class;
 
+    protected static ?string $title = 'Medições';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-measurements-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Acompanhamento das medições enviadas para as operações e empreendimentos vinculados às obras.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Enviar Medição')
+                ->icon('heroicon-m-plus')
+                ->color('primary'),
         ];
     }
 }

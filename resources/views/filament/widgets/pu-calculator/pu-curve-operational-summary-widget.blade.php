@@ -167,14 +167,14 @@
                         Esteira operacional
                     </p>
 
-                    <ol class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                    <ol class="mt-3 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:gap-0">
                         @foreach ($pipeline as $stage)
                             @php
                                 $stageTone = $toneClasses[$stage['tone']] ?? $toneClasses['neutral'];
                                 $isStageActive = $focusedState === $stage['focus'];
                             @endphp
 
-                            <li class="relative" wire:key="pu-stage-{{ $stage['key'] }}">
+                            <li class="w-[calc(50%-0.25rem)] sm:w-[calc(33.333%-0.35rem)] lg:w-auto lg:flex-1 lg:min-w-0" wire:key="pu-stage-{{ $stage['key'] }}">
                                 <button
                                     type="button"
                                     wire:click="focusState('{{ $stage['focus'] }}')"
@@ -196,14 +196,16 @@
                                         {{ $stage['label'] }}
                                     </span>
                                 </button>
+                            </li>
 
-                                @unless ($loop->last)
+                            @unless ($loop->last)
+                                <li class="pointer-events-none hidden shrink-0 items-center justify-center px-1.5 lg:flex" aria-hidden="true">
                                     <x-heroicon-m-chevron-right
-                                        class="absolute top-1/2 -right-[0.8125rem] hidden size-3.5 -translate-y-1/2 text-gray-300 lg:block dark:text-gray-600"
+                                        class="size-3.5 text-gray-400/80 dark:text-gray-600"
                                         aria-hidden="true"
                                     />
-                                @endunless
-                            </li>
+                                </li>
+                            @endunless
                         @endforeach
                     </ol>
 

@@ -15,6 +15,16 @@ class EditFund extends EditRecord
 
     protected static ?string $title = 'Editar fundo';
 
+    protected static ?string $breadcrumb = 'Editar';
+
+    protected ?string $subheading = 'Atualize a classificação, os dados bancários e os limites financeiros do fundo.';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-construction-form-page bsi-fund-form-page',
+    ];
+
+    protected ?bool $hasUnsavedDataChangesAlert = true;
+
     public function mount(int|string $record): void
     {
         parent::mount($record);
@@ -22,8 +32,8 @@ class EditFund extends EditRecord
         if ($this->getRecord()->requiresMonthlyBalanceUpdate()) {
             Notification::make()
                 ->warning()
-                ->title('Atualizacao mensal de saldo pendente.')
-                ->body('Confirme e salve o saldo deste fundo. O valor do mes anterior sera preservado automaticamente no historico.')
+                ->title('Atualização mensal de saldo pendente.')
+                ->body('Confirme e salve o saldo deste fundo. O valor do mês anterior será preservado automaticamente no histórico.')
                 ->persistent()
                 ->send();
         }
@@ -32,7 +42,8 @@ class EditFund extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->label('Excluir fundo'),
         ];
     }
 
@@ -62,7 +73,7 @@ class EditFund extends EditRecord
 
         Notification::make()
             ->warning()
-            ->title('Atencao: o saldo informado esta abaixo do valor minimo definido.')
+            ->title('Atenção: o saldo informado está abaixo do valor mínimo definido.')
             ->send();
     }
 

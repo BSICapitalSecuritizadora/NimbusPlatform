@@ -12,6 +12,7 @@ use App\Services\Obligations\ObligationDashboardData;
 use App\Services\Obligations\ObligationSeriesService;
 use App\Services\Obligations\ObligationWorkflowService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -147,14 +148,38 @@ class ObligationsRelationManager extends RelationManager
 
         $columns = [
             TextColumn::make('title')
-                ->label('Título')
-                ->state(fn (Obligation $record): string => $record->operational_title)
-                ->searchable()
+                ->label('Obrigação')
+                ->state(fn (Obligation $record): string => $record->title)
+                ->description(function (Obligation $record): ?string {
+                    $parts = [];
+                    if (filled($record->obligation_category)) {
+                        $parts[] = $record->obligation_category;
+                    } elseif (filled($record->obligation_type)) {
+                        $parts[] = $record->obligation_type;
+                    } else {
+                        $parts[] = $this->sourceLabel($record);
+                    }
+
+                    if ($record->is_recurring_occurrence && $record->series?->rule_summary) {
+                        $parts[] = $record->series->rule_summary;
+                    }
+
+                    return ! empty($parts) ? implode(' · ', $parts) : null;
+                })
+                ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(function (Builder $q) use ($search): void {
+                    $q->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('obligation_category', 'like', "%{$search}%")
+                        ->orWhere('obligation_type', 'like', "%{$search}%");
+                }))
+                ->weight('bold')
+                ->tooltip(fn (Obligation $record): string => $record->operational_title)
                 ->wrap(),
             TextColumn::make('competence_date')
                 ->label('Competência')
                 ->date('m/Y')
                 ->placeholder('Única')
+                ->alignCenter()
                 ->sortable(),
             TextColumn::make('status')
                 ->label('Status')
@@ -184,12 +209,18 @@ class ObligationsRelationManager extends RelationManager
                 }),
             TextColumn::make('responsibleUser.name')
                 ->label('Responsável')
-                ->placeholder('Sem responsável')
+                ->placeholder('Não atribuído')
+                ->description(fn (Obligation $record): ?string => $record->responsible_area)
+                ->tooltip(fn (Obligation $record): string => $record->responsibleUser?->name
+                    ? ($record->responsibleUser->name.($record->responsible_area ? " · {$record->responsible_area}" : ''))
+                    : ($record->responsible_area ? "Área: {$record->responsible_area}" : 'Sem responsável atribuído')
+                )
+                ->searchable()
                 ->toggleable(),
             TextColumn::make('responsible_area')
                 ->label('Área')
-                ->placeholder('Sem área')
-                ->toggleable(),
+                ->placeholder('—')
+                ->toggleable(isToggledHiddenByDefault: true),
             TextColumn::make('source')
                 ->label('Origem')
                 ->badge()
@@ -210,14 +241,29 @@ class ObligationsRelationManager extends RelationManager
             $columns[] = TextColumn::make('document_status')
                 ->label('Situação documental')
                 ->state(fn (Obligation $record): string => $dashboardData->documentStatusFor($record))
+                ->description(fn (Obligation $record): ?string => match (true) {
+                    (int) ($record->evidences_count ?? 0) === 0 => null,
+                    (int) ($record->evidences_count ?? 0) === 1 => '1 anexo',
+                    default => sprintf('%d anexos', (int) $record->evidences_count),
+                })
                 ->badge()
                 ->color(fn (Obligation $record): string => $dashboardData->documentStatusColorFor($record))
-                ->wrap();
+                ->tooltip(fn (Obligation $record): string => sprintf(
+                    '%s · %d anexo(s) (%d aprovado(s), %d pendente(s), %d rejeitado(s))',
+                    $dashboardData->documentStatusFor($record),
+                    (int) ($record->evidences_count ?? 0),
+                    (int) ($record->approved_evidences_count ?? 0),
+                    (int) ($record->pending_evidences_count ?? 0),
+                    (int) ($record->rejected_evidences_count ?? 0),
+                ));
+
             $columns[] = TextColumn::make('evidences_count')
                 ->label('Evidências anexadas')
                 ->state(fn (Obligation $record): int => (int) ($record->evidences_count ?? 0))
                 ->badge()
-                ->color('gray');
+                ->color('gray')
+                ->alignCenter()
+                ->toggleable();
         }
 
         $filters = [
@@ -286,6 +332,9 @@ class ObligationsRelationManager extends RelationManager
 
         return $table
             ->recordTitleAttribute('title')
+            ->recordAction('view')
+            ->searchPlaceholder('Buscar por título, categoria ou responsável...')
+            ->searchDebounce('400ms')
             ->description($this->obligationsTableDescription())
             ->modifyQueryUsing(function (Builder $query) use ($canViewEvidence): Builder {
                 $query->with(['responsibleUser', 'series']);
@@ -303,13 +352,18 @@ class ObligationsRelationManager extends RelationManager
             })
             ->columns($columns)
             ->defaultSort('due_date', 'asc')
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50])
             ->filters($filters)
             ->headerActions([
                 CreateAction::make()
                     ->label('Cadastrar obrigação')
+                    ->color('primary')
                     ->authorize(fn (): bool => $this->canCreateObligations()),
                 ExportAction::make()
                     ->label('Exportar obrigações desta emissão')
+                    ->color('gray')
+                    ->outlined()
                     ->authorize(fn (): bool => $this->canExportObligations())
                     ->columnMapping(false)
                     ->exporter(ObligationExporter::class),
@@ -319,6 +373,9 @@ class ObligationsRelationManager extends RelationManager
                     ->label('Abrir dossiê')
                     ->modalHeading(fn (Obligation $record): string => 'Visualizar '.$record->operational_title)
                     ->color('info')
+                    ->icon('heroicon-o-eye')
+                    ->iconButton()
+                    ->tooltip('Abrir dossiê da obrigação')
                     ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false)
                     ->extraModalFooterActions(fn (Obligation $record) => [
                         $this->makeSubmitForReviewAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_SUBMIT_FOR_REVIEW)),
@@ -326,23 +383,27 @@ class ObligationsRelationManager extends RelationManager
                         $this->makeMarkNotApplicableAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_MARK_NOT_APPLICABLE)),
                         $this->makeReopenAction()->record($record)->visible(fn () => $this->canRunWorkflowAction($record, ObligationWorkflowService::TRANSITION_REOPEN)),
                     ]),
-                $this->makeCommentsAction(),
-                $this->makeHistoryAction(),
-                $this->makeSubmitForReviewAction(),
-                $this->makeCompleteAction(),
-                $this->makeMarkNotApplicableAction(),
-                $this->makeReopenAction(),
-                EditAction::make()
-                    ->label(fn (Obligation $record): string => $record->is_recurring_occurrence ? 'Editar esta competência' : 'Editar obrigação')
-                    ->tooltip(fn (Obligation $record): string => $record->is_recurring_occurrence ? 'Editar somente esta competência' : 'Editar obrigação')
+                ActionGroup::make([
+                    $this->makeSubmitForReviewAction(),
+                    $this->makeCompleteAction(),
+                    $this->makeMarkNotApplicableAction(),
+                    $this->makeReopenAction(),
+                    $this->makeCommentsAction(),
+                    $this->makeHistoryAction(),
+                    EditAction::make()
+                        ->label(fn (Obligation $record): string => $record->is_recurring_occurrence ? 'Editar esta competência' : 'Editar obrigação')
+                        ->tooltip(fn (Obligation $record): string => $record->is_recurring_occurrence ? 'Editar somente esta competência' : 'Editar obrigação')
+                        ->authorize(fn (): bool => $this->canEditObligations()),
+                    DeleteAction::make()
+                        ->label('Remover obrigação')
+                        ->tooltip('Remover obrigação')
+                        ->visible(fn (Obligation $record): bool => ! $record->is_recurring_occurrence)
+                        ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsDelete->value) ?? false),
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical')
                     ->iconButton()
-                    ->authorize(fn (): bool => $this->canEditObligations()),
-                DeleteAction::make()
-                    ->label('Remover obrigação')
-                    ->tooltip('Remover obrigação')
-                    ->iconButton()
-                    ->visible(fn (Obligation $record): bool => ! $record->is_recurring_occurrence)
-                    ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsDelete->value) ?? false),
+                    ->tooltip('Ações e workflow')
+                    ->color('gray'),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -351,7 +412,8 @@ class ObligationsRelationManager extends RelationManager
                 ]),
             ])
             ->emptyStateHeading('Nenhuma obrigação consolidada')
-            ->emptyStateDescription('Aprove sugestões na aba "Obrigações Sugeridas" ou cadastre manualmente.');
+            ->emptyStateDescription('Aprove sugestões na aba "Obrigações Sugeridas" ou cadastre manualmente.')
+            ->emptyStateIcon('heroicon-o-clipboard-document-list');
     }
 
     protected function makeHistoryAction(): Action
@@ -360,8 +422,7 @@ class ObligationsRelationManager extends RelationManager
             ->label('Histórico')
             ->icon('heroicon-o-clock')
             ->color('gray')
-            ->tooltip('Histórico')
-            ->iconButton()
+            ->tooltip('Histórico da obrigação')
             ->modalHeading('Histórico da Obrigação')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Fechar')
@@ -384,7 +445,6 @@ class ObligationsRelationManager extends RelationManager
             ->icon('heroicon-o-chat-bubble-left-right')
             ->color('gray')
             ->tooltip('Comentários internos')
-            ->iconButton()
             ->url(fn (Obligation $record): string => EmissionResource::getUrl('obligation-comments', [
                 'record' => $record->emission_id,
                 'obligation' => $record->id,

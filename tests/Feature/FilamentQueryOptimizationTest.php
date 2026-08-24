@@ -179,7 +179,7 @@ function filamentTableQuery(object $component): Builder
         return $table->getQuery();
     }
 
-    $method = new \ReflectionMethod($component, 'getTable');
+    $method = new ReflectionMethod($component, 'getTable');
     $method->setAccessible(true);
 
     /** @var Table $table */

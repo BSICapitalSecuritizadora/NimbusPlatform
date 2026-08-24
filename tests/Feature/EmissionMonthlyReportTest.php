@@ -3,6 +3,7 @@
 use App\DTOs\ConstructionProgressData;
 use App\Filament\Pages\Reports;
 use App\Filament\Resources\EmissionMonthlyReportNotes\EmissionMonthlyReportNoteResource;
+use App\Filament\Resources\EmissionMonthlyReportNotes\Pages\CreateEmissionMonthlyReportNote;
 use App\Filament\Resources\EmissionMonthlyReportNotes\Pages\ListEmissionMonthlyReportNotes;
 use App\Models\Construction;
 use App\Models\Emission;
@@ -223,6 +224,70 @@ it('lets admins manage report notes through the Filament resource', function () 
         ->and(EmissionMonthlyReportNoteResource::canCreate())->toBeTrue();
 
     Livewire::test(ListEmissionMonthlyReportNotes::class)->assertOk();
+});
+
+it('shows a contextual empty state when there are no report notes', function () {
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(ListEmissionMonthlyReportNotes::class)
+        ->assertOk()
+        ->assertSee('Gestão das observações complementares utilizadas na composição dos relatórios das emissões.')
+        ->assertSee('Nenhuma nota explicativa cadastrada')
+        ->assertSee('Cadastre a primeira nota explicativa para organizar observações complementares por emissão e competência.')
+        ->assertDontSee('Nenhuma nota corresponde aos filtros selecionados');
+});
+
+it('distinguishes no results from an empty base and offers to clear filters', function () {
+    $this->actingAs(makeAdminUser());
+
+    EmissionMonthlyReportNote::factory()->for(Emission::factory())->create([
+        'title' => 'Nota de Maio',
+    ]);
+
+    Livewire::test(ListEmissionMonthlyReportNotes::class)
+        ->assertSee('Buscar por título ou emissão...')
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhuma nota corresponde aos filtros selecionados')
+        ->assertSee('Limpar filtros')
+        ->assertDontSee('Nenhuma nota explicativa cadastrada');
+});
+
+it('presents the report visibility as a scannable badge', function () {
+    $this->actingAs(makeAdminUser());
+
+    EmissionMonthlyReportNote::factory()->for(Emission::factory())->create([
+        'title' => 'Nota visível',
+        'is_visible_on_report' => true,
+    ]);
+
+    EmissionMonthlyReportNote::factory()->for(Emission::factory())->hidden()->create([
+        'title' => 'Nota oculta',
+    ]);
+
+    Livewire::test(ListEmissionMonthlyReportNotes::class)
+        ->assertSee('Incluída')
+        ->assertSee('Oculta');
+});
+
+it('renders the create form as an editorial flow with a publication section', function () {
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(CreateEmissionMonthlyReportNote::class)
+        ->assertOk()
+        ->assertSee('Registre observações complementares vinculadas à emissão e à competência do relatório.')
+        ->assertSee('Identificação')
+        ->assertSee('Conteúdo da Nota')
+        ->assertSee('Publicação')
+        ->assertSee('A nota será incluída no relatório da competência selecionada.');
+});
+
+it('adapts the publication helper to the toggle state', function () {
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(CreateEmissionMonthlyReportNote::class)
+        ->assertSee('A nota será incluída no relatório da competência selecionada.')
+        ->set('data.is_visible_on_report', false)
+        ->assertSee('A nota permanecerá apenas como registro interno, sem exibição no PDF.');
 });
 
 it('builds the monthly analysis (paid vs unpaid) from receivable data', function () {
@@ -685,10 +750,63 @@ it('renders the reports page with the generation form', function () {
 
     Livewire::test(Reports::class)
         ->assertOk()
+        ->assertSee('Geração do relatório institucional mensal das emissões.')
         ->assertSee('Relatório mensal por emissão')
+        ->assertSee('Competência inicial')
+        ->assertSee('Competência final')
         ->assertSee('aria-describedby="report-generation-help"', false)
         ->assertSee('disabled', false)
         ->assertDontSee('href="#"', false);
+});
+
+it('summarizes the monthly report once emission and competence are selected', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'name' => 'CRI Alto Bellevue',
+        'if_code' => null,
+        'isin_code' => null,
+    ]);
+
+    Livewire::test(Reports::class)
+        ->set('emissionId', $emission->id)
+        ->set('referenceMonth', '2026-08')
+        ->assertSee('Relatório mensal')
+        ->assertSee('CRI Alto Bellevue · Agosto de 2026')
+        ->assertSee('target="_blank"', false);
+});
+
+it('summarizes a consolidated report when a final competence is selected', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'name' => 'CRI Alto Bellevue',
+        'if_code' => null,
+        'isin_code' => null,
+    ]);
+
+    Livewire::test(Reports::class)
+        ->set('emissionId', $emission->id)
+        ->set('referenceMonth', '2026-01')
+        ->set('referenceMonthEnd', '2026-08')
+        ->assertSee('Relatório consolidado')
+        ->assertSee('CRI Alto Bellevue · Janeiro de 2026 a Agosto de 2026');
+});
+
+it('blocks generation and explains when the final competence precedes the initial one', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'if_code' => null,
+        'isin_code' => null,
+    ]);
+
+    Livewire::test(Reports::class)
+        ->set('emissionId', $emission->id)
+        ->set('referenceMonth', '2026-08')
+        ->set('referenceMonthEnd', '2026-06')
+        ->assertSee('A competência final deve ser igual ou posterior à competência inicial.')
+        ->assertDontSee('target="_blank"', false);
 });
 
 it('builds the Resumo da Operação saldo devedor from the PU history at the data-base times the integralized quantity', function () {

@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\BusinessCalendarDate;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\BusinessCalendarDate>
+ * @extends Factory<BusinessCalendarDate>
  */
 class BusinessCalendarDateFactory extends Factory
 {
@@ -19,6 +20,9 @@ class BusinessCalendarDateFactory extends Factory
             'calendar_date' => $calendarDate->toDateString(),
             'is_business_day' => ! $calendarDate->isWeekend(),
             'description' => null,
+            'data_origin' => 'inferred',
+            'source' => 'calendar_inference',
+            'source_is_official' => false,
         ];
     }
 }

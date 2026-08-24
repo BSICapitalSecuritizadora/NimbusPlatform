@@ -25,20 +25,22 @@ class FundForm
     {
         return $schema->components([
             Section::make('Classificação')
-                ->description('Defina a operação e as características do fundo.')
+                ->description('Defina a operação e as características institucionais do fundo.')
                 ->schema([
                     Select::make('emission_id')
-                        ->label('Operacao')
+                        ->label('Operação')
+                        ->placeholder('Selecione a operação...')
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()
                         ->required()
                         ->validationMessages([
-                            'required' => 'Selecione a operacao.',
+                            'required' => 'Selecione a operação.',
                         ]),
 
                     Select::make('fund_type_id')
                         ->label('Tipo de fundo')
+                        ->placeholder('Selecione o tipo de fundo...')
                         ->relationship('fundType', 'name')
                         ->searchable()
                         ->preload()
@@ -57,18 +59,21 @@ class FundForm
                         ->createOptionAction(
                             fn (Action $action): Action => $action
                                 ->label('Cadastrar tipo')
+                                ->tooltip('Cadastrar tipo de fundo')
                                 ->modalHeading('Cadastrar tipo de fundo')
                                 ->modalWidth('2xl'),
                         )
                         ->editOptionAction(
                             fn (Action $action): Action => $action
                                 ->label('Editar tipo')
+                                ->tooltip('Editar tipo de fundo')
                                 ->modalHeading('Editar tipo de fundo')
                                 ->modalWidth('2xl'),
                         ),
 
                     Select::make('fund_name_id')
                         ->label('Nome do fundo')
+                        ->placeholder('Selecione o nome do fundo...')
                         ->relationship(
                             name: 'fundName',
                             titleAttribute: 'name',
@@ -81,7 +86,7 @@ class FundForm
                         ->preload()
                         ->required()
                         ->disabled(fn (Get $get): bool => blank($get('fund_type_id')))
-                        ->helperText('Selecione primeiro o tipo de fundo para listar apenas os nomes compativeis.')
+                        ->helperText('Selecione primeiro o tipo de fundo para listar apenas os nomes compatíveis.')
                         ->validationMessages([
                             'required' => 'Selecione o nome do fundo.',
                         ])
@@ -96,42 +101,48 @@ class FundForm
                         ->createOptionAction(
                             fn (Action $action): Action => $action
                                 ->label('Cadastrar nome')
+                                ->tooltip('Cadastrar nome do fundo')
                                 ->modalHeading('Cadastrar nome do fundo')
                                 ->modalWidth('2xl'),
                         )
                         ->editOptionAction(
                             fn (Action $action): Action => $action
                                 ->label('Editar nome')
+                                ->tooltip('Editar nome do fundo')
                                 ->modalHeading('Editar nome do fundo')
                                 ->modalWidth('2xl'),
                         ),
 
                     Select::make('fund_application_id')
-                        ->label('Aplicacao')
+                        ->label('Aplicação')
+                        ->placeholder('Selecione a aplicação...')
                         ->relationship('fundApplication', 'name')
                         ->searchable()
                         ->preload()
                         ->required()
                         ->validationMessages([
-                            'required' => 'Selecione a aplicacao.',
+                            'required' => 'Selecione a aplicação.',
                         ])
                         ->createOptionForm(FundApplicationForm::fields())
                         ->editOptionForm(FundApplicationForm::fields())
                         ->createOptionAction(
                             fn (Action $action): Action => $action
-                                ->label('Cadastrar aplicacao')
-                                ->modalHeading('Cadastrar aplicacao')
+                                ->label('Cadastrar aplicação')
+                                ->tooltip('Cadastrar aplicação')
+                                ->modalHeading('Cadastrar aplicação')
                                 ->modalWidth('2xl'),
                         )
                         ->editOptionAction(
                             fn (Action $action): Action => $action
-                                ->label('Editar aplicacao')
-                                ->modalHeading('Editar aplicacao')
+                                ->label('Editar aplicação')
+                                ->tooltip('Editar aplicação')
+                                ->modalHeading('Editar aplicação')
                                 ->modalWidth('2xl'),
                         ),
 
                     TextInput::make('trade_name')
                         ->label('Nome fantasia')
+                        ->placeholder('Informe o nome fantasia ou denominação comercial (opcional)...')
                         ->maxLength(255)
                         ->columnSpanFull(),
                 ])
@@ -139,10 +150,11 @@ class FundForm
                 ->columnSpanFull(),
 
             Section::make('Dados Bancários')
-                ->description('Informações da conta e integração financeira.')
+                ->description('Informações da instituição financeira, agência, conta e integração técnica.')
                 ->schema([
                     Select::make('bank_id')
                         ->label('Banco')
+                        ->placeholder('Selecione o banco...')
                         ->relationship('bank', 'name')
                         ->searchable()
                         ->preload()
@@ -155,32 +167,36 @@ class FundForm
                         ->createOptionAction(
                             fn (Action $action): Action => $action
                                 ->label('Cadastrar banco')
+                                ->tooltip('Cadastrar banco')
                                 ->modalHeading('Cadastrar banco')
                                 ->modalWidth('2xl'),
                         )
                         ->editOptionAction(
                             fn (Action $action): Action => $action
                                 ->label('Editar banco')
+                                ->tooltip('Editar banco')
                                 ->modalHeading('Editar banco')
                                 ->modalWidth('2xl'),
                         ),
 
                     TextInput::make('agency')
-                        ->label('Agencia')
+                        ->label('Agência')
                         ->required()
                         ->maxLength(6)
                         ->mask('9999-9')
                         ->placeholder('1234-5')
+                        ->extraInputAttributes(['class' => 'font-mono'])
                         ->rule('regex:/^\d{4}-\d$/')
                         ->validationMessages([
-                            'required' => 'Informe a agencia.',
-                            'regex' => 'Informe a agencia no formato 1234-5.',
+                            'required' => 'Informe a agência.',
+                            'regex' => 'Informe a agência no formato 1234-5.',
                         ]),
 
                     TextInput::make('account')
                         ->label('Conta Corrente')
                         ->required()
                         ->maxLength(11)
+                        ->extraInputAttributes(['class' => 'font-mono'])
                         ->mask(RawJs::make(<<<'JS'
                             (() => {
                                 const digits = $input.replace(/\D/g, '');
@@ -217,14 +233,15 @@ class FundForm
                         )
                         ->validationMessages([
                             'required' => 'Informe a conta corrente.',
-                            'regex' => 'Informe a conta corrente no formato 12345-6 ate 123456789-0.',
-                            'unique' => 'Ja existe um fundo cadastrado com esta combinacao de operacao, aplicacao e conta.',
+                            'regex' => 'Informe a conta corrente no formato 12345-6 até 123456789-0.',
+                            'unique' => 'Já existe um fundo cadastrado com esta combinação de operação, aplicação e conta.',
                         ]),
 
                     TextInput::make('conta_azul_account_id')
                         ->label('ID da conta no Conta Azul')
                         ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-                        ->helperText('UUID da conta financeira correspondente no Conta Azul. Execute php /tmp/conta_azul_accounts.php para listar os IDs disponíveis.')
+                        ->extraInputAttributes(['class' => 'font-mono'])
+                        ->helperText('UUID da conta financeira correspondente integrada no Conta Azul.')
                         ->unique(table: Fund::class, column: 'conta_azul_account_id', ignoreRecord: true)
                         ->validationMessages([
                             'unique' => 'Este ID já está vinculado a outro fundo.',
@@ -235,13 +252,14 @@ class FundForm
                 ->columnSpanFull(),
 
             Section::make('Saldos e Limites')
-                ->description('Controle de saldo atual e valor mínimo exigido.')
+                ->description('Controle financeiro do saldo atual e valor mínimo exigido para notificações e relatórios.')
                 ->schema([
                     TextInput::make('balance')
                         ->label('Saldo')
                         ->required()
                         ->prefix('R$')
                         ->inputMode('decimal')
+                        ->extraInputAttributes(['class' => 'font-mono text-right tabular-nums'])
                         ->mask(RawJs::make(<<<'JS'
                             $money($input, ',', '.')
                         JS))
@@ -251,20 +269,22 @@ class FundForm
                         ->validationMessages([
                             'required' => 'Informe o saldo do fundo.',
                         ])
-                        ->placeholder('1.000,00')
-                        ->helperText('Atualize o saldo no primeiro dia de cada mes. O valor do mes anterior sera salvo automaticamente no historico de saldo. Se o saldo ficar abaixo do valor minimo, um aviso sera exibido apos o salvamento e o alerta por e-mail sera enviado aos investidores vinculados a emissao.'),
+                        ->placeholder('0,00')
+                        ->helperText('Atualize o saldo no primeiro dia de cada mês. O valor do mês anterior será salvo automaticamente no histórico de saldo. Se o saldo ficar abaixo do valor mínimo, um alerta será exibido e enviado por e-mail aos investidores vinculados.'),
 
                     TextInput::make('minimum_balance')
-                        ->label('Valor minimo')
+                        ->label('Valor mínimo')
                         ->prefix('R$')
                         ->inputMode('decimal')
+                        ->extraInputAttributes(['class' => 'font-mono text-right tabular-nums'])
                         ->mask(RawJs::make(<<<'JS'
                             $money($input, ',', '.')
                         JS))
                         ->formatStateUsing(fn (mixed $state): ?string => self::formatCurrencyForDisplay($state))
                         ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
                         ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
-                        ->placeholder('1.000,00'),
+                        ->helperText('Piso financeiro operacional exigido para monitoramento de conformidade.')
+                        ->placeholder('0,00'),
                 ])
                 ->columns(2)
                 ->columnSpanFull(),

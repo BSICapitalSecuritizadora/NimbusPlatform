@@ -5,11 +5,13 @@ use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Services\PuSpreadsheetReferenceReader;
 use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuDailyCurvesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuEventsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Jobs\GeneratePuDailyCurveJob;
 use App\Models\BusinessCalendarDate;
+use App\Models\BusinessCalendarSelectionEvidence;
 use App\Models\Emission;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\IndexRate;
@@ -69,7 +71,7 @@ it('accepts a negative business day lag on the PU calculation parameters form', 
             'indexer' => PuIndexer::Cdi->value,
             'spread_rate' => '6.50',
             'business_day_basis' => 252,
-            'calendar_code' => 'B3',
+            'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
             'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
             'index_rate_lag_business_days' => -5,
             'legacy_projection_enabled' => true,
@@ -77,6 +79,90 @@ it('accepts a negative business day lag on the PU calculation parameters form', 
         ->assertHasNoActionErrors();
 
     expect($emission->fresh()->puParameter?->index_rate_lag_business_days)->toBe(-5);
+});
+
+it('requires an explicit calendar for a new PU configuration', function () {
+    $this->actingAs(makeAdminUser());
+    $emission = Emission::factory()->create();
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->callAction('configurePuCalculation', [
+            'curve_start_date' => '2026-01-01',
+            'curve_end_date' => '2026-01-31',
+            'initial_unit_value' => '1000.00',
+            'indexer' => PuIndexer::Cdi->value,
+            'spread_rate' => '6.50',
+            'business_day_basis' => 252,
+            'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+            'legacy_projection_enabled' => true,
+        ])
+        ->assertHasActionErrors(['calendar_code' => 'required']);
+
+    expect($emission->fresh()->puParameter)->toBeNull();
+});
+
+it('keeps B3 available when editing an existing legacy PU configuration', function () {
+    $this->actingAs(makeAdminUser());
+    $emission = Emission::factory()->create();
+    $emission->puParameter()->create([
+        'curve_start_date' => '2026-01-01',
+        'curve_end_date' => '2026-01-31',
+        'initial_unit_value' => '1000.0000000000000000',
+        'spread_rate' => '6.50000000',
+        'indexer' => PuIndexer::Cdi->value,
+        'business_day_basis' => 252,
+        'calendar_code' => BusinessCalendarRegistry::LEGACY_B3,
+        'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+        'legacy_projection_enabled' => true,
+    ]);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->callAction('configurePuCalculation', [
+            'curve_start_date' => '2026-01-01',
+            'curve_end_date' => '2026-01-31',
+            'initial_unit_value' => '1000.00',
+            'indexer' => PuIndexer::Cdi->value,
+            'spread_rate' => '6.50',
+            'business_day_basis' => 252,
+            'calendar_code' => BusinessCalendarRegistry::LEGACY_B3,
+            'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+            'legacy_projection_enabled' => true,
+        ])
+        ->assertHasNoActionErrors();
+
+    expect($emission->fresh()->puParameter?->calendar_code)->toBe(BusinessCalendarRegistry::LEGACY_B3);
+});
+
+it('records the optional evidence when the administrator confirms a new calendar choice', function () {
+    $admin = makeAdminUser();
+    $this->actingAs($admin);
+    $emission = Emission::factory()->create();
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->callAction('configurePuCalculation', [
+            'curve_start_date' => '2026-01-01',
+            'curve_end_date' => '2026-01-31',
+            'initial_unit_value' => '1000.00',
+            'indexer' => PuIndexer::Cdi->value,
+            'spread_rate' => '6.50',
+            'business_day_basis' => 252,
+            'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+            'calendar_evidence_document' => 'Termo de Securitização',
+            'calendar_evidence_clause' => 'Cláusula 5.1',
+            'calendar_evidence_page' => '42',
+            'calendar_evidence_excerpt' => 'Calendário bancário aplicável.',
+            'calendar_evidence_confirmed' => true,
+            'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
+            'legacy_projection_enabled' => true,
+        ])
+        ->assertHasNoActionErrors();
+
+    $evidence = BusinessCalendarSelectionEvidence::query()->sole();
+
+    expect($evidence->calendar_code)->toBe(BusinessCalendarRegistry::BR_BANKING_ANBIMA)
+        ->and($evidence->source_document)->toBe('Termo de Securitização')
+        ->and($evidence->confirmed_by)->toBe($admin->id)
+        ->and($evidence->confirmed_at)->not->toBeNull();
 });
 
 it('stores PU calculation parameters on the emission model using the same payload expected by the page action', function () {

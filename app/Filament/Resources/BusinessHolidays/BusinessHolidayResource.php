@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\BusinessHolidays;
 
+use App\Filament\Resources\BusinessHolidays\Pages\CompareBusinessCalendars;
 use App\Filament\Resources\BusinessHolidays\Pages\ListBusinessHolidays;
 use App\Filament\Resources\BusinessHolidays\Tables\BusinessHolidaysTable;
 use App\Models\BusinessHoliday;
@@ -19,11 +20,11 @@ class BusinessHolidayResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDateRange;
 
-    protected static ?string $navigationLabel = 'Feriados (Calendário B3)';
+    protected static ?string $navigationLabel = 'Calendários de dias úteis';
 
     protected static ?string $modelLabel = 'Feriado';
 
-    protected static ?string $pluralModelLabel = 'Feriados';
+    protected static ?string $pluralModelLabel = 'Feriados e calendários';
 
     protected static string|UnitEnum|null $navigationGroup = 'Dados de Mercado';
 
@@ -67,6 +68,7 @@ class BusinessHolidayResource extends Resource
     {
         return [
             'index' => ListBusinessHolidays::route('/'),
+            'compare' => CompareBusinessCalendars::route('/compare'),
         ];
     }
 }

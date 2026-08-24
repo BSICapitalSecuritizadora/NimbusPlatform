@@ -6,12 +6,13 @@ use App\Models\Emission;
 use App\Models\Obligation;
 use App\Models\ObligationNotification;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 
 uses(RefreshDatabase::class);
 
-function makeObligationFor(string $status, ?Carbon\CarbonInterface $dueDate, ?User $responsible = null): Obligation
+function makeObligationFor(string $status, ?CarbonInterface $dueDate, ?User $responsible = null): Obligation
 {
     $emission = Emission::factory()->create(['name' => 'Emissão Teste']);
 

@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\MalwareScanStatus;
+use App\Observers\EmissionObserver;
 use Carbon\CarbonInterface;
 use Database\Factories\EmissionFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -16,6 +18,7 @@ use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+#[ObservedBy(EmissionObserver::class)]
 class Emission extends Model
 {
     /** @use HasFactory<EmissionFactory> */
@@ -69,6 +72,9 @@ class Emission extends Model
         'Prefixado' => 'Prefixado',
     ];
 
+    /** Status in which the emission is still being structured. */
+    public const STATUS_DRAFT = 'draft';
+
     public const STATUS_OPTIONS = [
         'draft' => 'Em Elaboração',
         'default' => 'Default',
@@ -82,6 +88,9 @@ class Emission extends Model
         'Adimplente' => 'Adimplente',
         'Falência' => 'Falência',
     ];
+
+    /** Público alvo padrão das operações, preenchido automaticamente no cadastro. */
+    public const DEFAULT_TARGET_AUDIENCE = 'Investidores Profissionais';
 
     /** Categoria do acervo que reúne os instrumentos jurídicos da operação. */
     public const GUARANTEE_SOURCE_DOCUMENT_CATEGORY = 'documentos_operacao';
@@ -305,9 +314,24 @@ class Emission extends Model
         ])->saveQuietly();
     }
 
+    public function isInDraft(): bool
+    {
+        return $this->status === self::STATUS_DRAFT;
+    }
+
     public function constructions(): HasMany
     {
         return $this->hasMany(Construction::class);
+    }
+
+    /**
+     * Units of every construction of the operation.
+     *
+     * @return HasManyThrough<ConstructionUnit, Construction, $this>
+     */
+    public function constructionUnits(): HasManyThrough
+    {
+        return $this->hasManyThrough(ConstructionUnit::class, Construction::class);
     }
 
     public function salesBoards(): HasMany

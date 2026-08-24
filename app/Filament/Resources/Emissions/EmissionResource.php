@@ -62,100 +62,196 @@ class EmissionResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Dossiê Operacional')
-                ->schema([
-                    Grid::make(4)->schema([
-                        TextEntry::make('name')
-                            ->label('Denominação da Operação')
-                            ->weight('bold')
-                            ->size('lg'),
-                        TextEntry::make('type')
-                            ->label('Tipo')
-                            ->badge()
-                            ->color(fn (?string $state): string|array => match ($state) {
-                                'CRI' => Color::hex('#D4AF37'),
-                                'CRA' => Color::hex('#0D9488'),
-                                'CR' => Color::hex('#4F46E5'),
-                                default => 'gray',
-                            }),
-                        TextEntry::make('status')
-                            ->label('Status da Operação')
-                            ->badge()
-                            ->formatStateUsing(fn (?string $state): string => Emission::STATUS_OPTIONS[$state] ?? (string) $state)
-                            ->color(fn (?string $state): string => match ($state) {
-                                'draft' => 'gray',
-                                'default' => 'danger',
-                                'active' => 'success',
-                                'closed' => 'danger',
-                                default => 'gray',
-                            }),
-                        TextEntry::make('issuer')
-                            ->label('Emissor')
-                            ->placeholder('—'),
-                        TextEntry::make('issue_date')
-                            ->label('Data de Emissão')
-                            ->date('d/m/Y')
-                            ->placeholder('—'),
-                        TextEntry::make('maturity_date')
-                            ->label('Data de Vencimento')
-                            ->date('d/m/Y')
-                            ->placeholder('—'),
-                        TextEntry::make('series')
-                            ->label('Série / Número')
-                            ->state(fn (Emission $record) => trim("{$record->emission_number} / {$record->series}", ' /'))
-                            ->placeholder('—'),
-                        TextEntry::make('issued_volume')
-                            ->label('Volume Total Emitido')
-                            ->formatStateUsing(fn ($state) => $state !== null ? 'R$ '.number_format((float) $state, 2, ',', '.') : '—'),
-                        TextEntry::make('next_action')
-                            ->label('Próxima Ação / Criticidade')
-                            ->state(fn (Emission $record): string => match ($record->status) {
-                                'draft' => 'Atenção: Concluir preenchimento de dados e ativar a operação.',
-                                'active' => 'Baixa: Monitorar obrigações e eventos de PU.',
-                                'default' => 'Crítica: Acompanhar inadimplência e notificar responsáveis.',
-                                'closed' => 'Concluída: Nenhuma ação. Operação encerrada.',
-                                default => 'Atenção: Aguardando atualização de status.',
-                            })
-                            ->color(fn (Emission $record): string => match ($record->status) {
-                                'draft' => 'warning',
-                                'active' => 'info',
-                                'default' => 'danger',
-                                'closed' => 'success',
-                                default => 'warning',
-                            })
-                            ->icon(fn (Emission $record): string => match ($record->status) {
-                                'draft' => 'heroicon-m-exclamation-triangle',
-                                'active' => 'heroicon-m-information-circle',
-                                'default' => 'heroicon-m-exclamation-circle',
-                                'closed' => 'heroicon-m-check-circle',
-                                default => 'heroicon-m-exclamation-triangle',
-                            })
-                            ->weight('bold')
-                            ->columnSpan(4),
+        return $schema
+            ->columns(1)
+            ->components([
+                // ── 1. Dossiê Operacional (Resumo Executivo da Emissão) ──
+                Section::make('Dossiê Operacional')
+                    ->icon('heroicon-o-presentation-chart-line')
+                    ->columnSpanFull()
+                    ->schema([
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'lg' => 4,
+                        ])->schema([
+                            TextEntry::make('name')
+                                ->label('Denominação da Operação')
+                                ->weight('bold')
+                                ->size('lg')
+                                ->tooltip(fn (?Emission $record): ?string => $record?->name)
+                                ->helperText(fn (?Emission $record): ?string => $record?->if_code ? "Código IF: {$record->if_code}" : null),
+
+                            TextEntry::make('type')
+                                ->label('Tipo de Emissão')
+                                ->badge()
+                                ->color(fn (?string $state): string|array => match ($state) {
+                                    'CRI' => Color::hex('#D4AF37'),
+                                    'CRA' => Color::hex('#0D9488'),
+                                    'CR' => Color::hex('#4F46E5'),
+                                    default => 'gray',
+                                }),
+
+                            TextEntry::make('status')
+                                ->label('Status da Operação')
+                                ->badge()
+                                ->formatStateUsing(fn (?string $state): string => Emission::STATUS_OPTIONS[$state] ?? (string) $state)
+                                ->color(fn (?string $state): string => match ($state) {
+                                    'draft' => 'gray',
+                                    'default' => 'danger',
+                                    'active' => 'success',
+                                    'closed' => 'danger',
+                                    default => 'gray',
+                                }),
+
+                            TextEntry::make('issued_volume')
+                                ->label('Volume Total Emitido')
+                                ->weight('bold')
+                                ->size('lg')
+                                ->color('primary')
+                                ->formatStateUsing(fn ($state) => $state !== null ? 'R$ '.number_format((float) $state, 2, ',', '.') : '—')
+                                ->helperText(fn (?Emission $record): ?string => $record?->issued_quantity ? number_format($record->issued_quantity, 0, ',', '.').' títulos' : null),
+
+                            TextEntry::make('issue_date')
+                                ->label('Data de Emissão')
+                                ->date('d/m/Y')
+                                ->icon('heroicon-m-calendar')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('maturity_date')
+                                ->label('Data de Vencimento')
+                                ->date('d/m/Y')
+                                ->icon('heroicon-m-clock')
+                                ->iconColor('gray')
+                                ->weight('medium')
+                                ->placeholder('—'),
+
+                            TextEntry::make('series')
+                                ->label('Série / Número')
+                                ->state(fn (?Emission $record) => $record ? trim("{$record->emission_number} / {$record->series}", ' /') : '—')
+                                ->icon('heroicon-m-hashtag')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('issuer')
+                                ->label('Emissor')
+                                ->icon('heroicon-m-building-office-2')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('next_action')
+                                ->label('Próxima Ação / Criticidade')
+                                ->state(fn (?Emission $record): string => match ($record?->status) {
+                                    'draft' => 'Atenção: Concluir preenchimento de dados e ativar a operação.',
+                                    'active' => 'Baixa: Monitorar obrigações e eventos de PU.',
+                                    'default' => 'Crítica: Acompanhar inadimplência e notificar responsáveis.',
+                                    'closed' => 'Concluída: Nenhuma ação. Operação encerrada.',
+                                    default => 'Atenção: Aguardando atualização de status.',
+                                })
+                                ->badge()
+                                ->color(fn (?Emission $record): string => match ($record?->status) {
+                                    'draft' => 'warning',
+                                    'active' => 'info',
+                                    'default' => 'danger',
+                                    'closed' => 'success',
+                                    default => 'warning',
+                                })
+                                ->icon(fn (?Emission $record): string => match ($record?->status) {
+                                    'draft' => 'heroicon-m-exclamation-triangle',
+                                    'active' => 'heroicon-m-information-circle',
+                                    'default' => 'heroicon-m-exclamation-circle',
+                                    'closed' => 'heroicon-m-check-circle',
+                                    default => 'heroicon-m-exclamation-triangle',
+                                })
+                                ->columnSpanFull(),
+                        ]),
                     ]),
-                ]),
 
-            Grid::make(2)->schema([
-                Section::make('Participantes')
+                // ── 2. Participantes da Operação ──
+                Section::make('Participantes da Operação')
+                    ->icon('heroicon-o-user-group')
+                    ->columnSpanFull()
                     ->schema([
-                        TextEntry::make('lead_coordinator')->label('Coordenador Líder')->placeholder('—'),
-                        TextEntry::make('settlement_bank')->label('Banco Liquidante')->placeholder('—'),
-                        TextEntry::make('registrar')->label('Escriturador')->placeholder('—'),
-                        TextEntry::make('distributor')->label('Distribuidor')->placeholder('—'),
-                        TextEntry::make('trustee_agent')->label('Agente Fiduciário')->placeholder('—'),
-                        TextEntry::make('debtor')->label('Devedor')->placeholder('—'),
-                    ])->columns(2),
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'lg' => 3,
+                        ])->schema([
+                            TextEntry::make('lead_coordinator')
+                                ->label('Coordenador Líder')
+                                ->icon('heroicon-m-briefcase')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
 
-                Section::make('Estrutura e Taxas')
+                            TextEntry::make('settlement_bank')
+                                ->label('Banco Liquidante')
+                                ->icon('heroicon-m-building-library')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('registrar')
+                                ->label('Escriturador')
+                                ->icon('heroicon-m-document-check')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('distributor')
+                                ->label('Distribuidor')
+                                ->icon('heroicon-m-arrow-path-rounded-square')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('trustee_agent')
+                                ->label('Agente Fiduciário')
+                                ->icon('heroicon-m-shield-check')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('debtor')
+                                ->label('Devedor')
+                                ->icon('heroicon-m-building-office')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+                        ]),
+                    ]),
+
+                // ── 3. Estrutura e Condições Financeiras ──
+                Section::make('Estrutura e Condições Financeiras')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->columnSpanFull()
                     ->schema([
-                        TextEntry::make('remuneration_indexer')->label('Indexador')->placeholder('—'),
-                        TextEntry::make('remuneration_rate')->label('Taxa de Remuneração')->suffix('%')->placeholder('—'),
-                        TextEntry::make('interest_payment_frequency')->label('Pagamento de Juros')->placeholder('—'),
-                        TextEntry::make('amortization_frequency')->label('Amortização')->placeholder('—'),
-                    ])->columns(2),
-            ]),
-        ]);
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'lg' => 4,
+                        ])->schema([
+                            TextEntry::make('remuneration_indexer')
+                                ->label('Indexador')
+                                ->badge()
+                                ->color('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('remuneration_rate')
+                                ->label('Taxa de Remuneração')
+                                ->state(fn (?Emission $record): string => $record?->remuneration_rate !== null ? number_format((float) $record->remuneration_rate, 2, ',', '.').'%' : '—')
+                                ->weight('bold')
+                                ->color('primary'),
+
+                            TextEntry::make('interest_payment_frequency')
+                                ->label('Pagamento de Juros')
+                                ->icon('heroicon-m-calendar-days')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+
+                            TextEntry::make('amortization_frequency')
+                                ->label('Amortização')
+                                ->icon('heroicon-m-banknotes')
+                                ->iconColor('gray')
+                                ->placeholder('—'),
+                        ]),
+                    ]),
+            ]);
     }
 
     public static function table(Table $table): Table

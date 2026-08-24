@@ -5,6 +5,7 @@ use App\Filament\Resources\Expenses\Pages\CreateExpense;
 use App\Filament\Resources\Expenses\Pages\EditExpense;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Filament\Resources\ExpenseServiceProviders\Pages\CreateExpenseServiceProvider;
+use App\Filament\Resources\ExpenseServiceProviders\Pages\ListExpenseServiceProviders;
 use App\Models\Emission;
 use App\Models\Expense;
 use App\Models\ExpenseServiceProvider;
@@ -31,11 +32,12 @@ it('shows the create expense action on the expenses list page', function () {
 
     Livewire::test(ListExpenses::class)
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Cadastrar Despesa');
+        ->assertActionHasLabel('create', 'Cadastrar despesa');
 });
 
 it('shows filters for operation and category on the expenses list page', function () {
     $this->actingAs(makeExpenseAdminUser());
+    Expense::factory()->create();
 
     Livewire::test(ListExpenses::class)
         ->assertTableFilterExists('emission_id', function (SelectFilter $filter): bool {
@@ -473,6 +475,135 @@ it('uses the trade name first and falls back to the legal name during cnpj looku
         ],
     ], 'Fornecedor Sem Fantasia S/A'],
 ]);
+
+it('renders the expenses list page with custom subheading and contextual empty state', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    Livewire::test(ListExpenses::class)
+        ->assertOk()
+        ->assertSee('Acompanhamento das despesas previstas, recorrentes e vencimentos das operações.')
+        ->assertSee('Nenhuma despesa cadastrada')
+        ->assertSee('Cadastrar primeira despesa')
+        ->assertDontSee('Nenhuma despesa corresponde aos filtros selecionados');
+});
+
+it('distinguishes the filtered empty state from the empty base on the expenses list', function () {
+    $this->actingAs(makeExpenseAdminUser());
+    Expense::factory()->create();
+
+    Livewire::test(ListExpenses::class)
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhuma despesa corresponde aos filtros selecionados')
+        ->assertSee('Limpar filtros')
+        ->assertDontSee('Nenhuma despesa cadastrada');
+});
+
+it('shows Sem término only for recurring expenses without an end date', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $recurring = Expense::factory()->create([
+        'category' => 'Cartório',
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-01-10',
+        'end_date' => null,
+    ]);
+
+    $single = Expense::factory()->create([
+        'category' => 'Auditoria',
+        'period' => Expense::PERIOD_SINGLE,
+        'start_date' => '2026-02-10',
+        'end_date' => null,
+    ]);
+
+    Livewire::test(ListExpenses::class)
+        ->assertCanSeeTableRecords([$recurring, $single])
+        ->assertSee('Sem término');
+});
+
+it('renders the service providers list page with subheading and primary CTA', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    Livewire::test(ListExpenseServiceProviders::class)
+        ->assertOk()
+        ->assertSee('Gerencie as empresas e instituições utilizadas como prestadores e participantes das operações.')
+        ->assertActionExists('create')
+        ->assertActionHasLabel('create', 'Cadastrar prestador')
+        ->assertSee('Nenhum prestador cadastrado')
+        ->assertSee('Cadastrar primeiro prestador');
+});
+
+it('displays service provider combined protagonist cell and formatted cnpj in table', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $type = ExpenseServiceProviderType::factory()->create(['name' => 'Engenharia']);
+    $provider = ExpenseServiceProvider::factory()->create([
+        'name' => 'CONSTRUTORA E INCORPORADORA EXEMPLAR LTDA',
+        'cnpj' => '60345993000165',
+        'expense_service_provider_type_id' => $type->id,
+    ]);
+
+    Livewire::test(ListExpenseServiceProviders::class)
+        ->assertCanSeeTableRecords([$provider])
+        ->assertSee('CONSTRUTORA E INCORPORADORA EXEMPLAR LTDA')
+        ->assertSee('60.345.993/0001-65')
+        ->assertSee('Engenharia');
+});
+
+it('displays humanized linked expenses counters on service providers list', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $providerZero = ExpenseServiceProvider::factory()->create(['name' => 'Prestador Sem Despesa']);
+    $providerOne = ExpenseServiceProvider::factory()->create(['name' => 'Prestador Uma Despesa']);
+    $providerMany = ExpenseServiceProvider::factory()->create(['name' => 'Prestador Tres Despesas']);
+
+    Expense::factory()->create(['expense_service_provider_id' => $providerOne->id]);
+    Expense::factory()->count(3)->create(['expense_service_provider_id' => $providerMany->id]);
+
+    Livewire::test(ListExpenseServiceProviders::class)
+        ->assertSee('0 despesas')
+        ->assertSee('1 despesa')
+        ->assertSee('3 despesas');
+});
+
+it('filters service providers by type and searches by unformatted cnpj', function () {
+    $this->actingAs(makeExpenseAdminUser());
+
+    $typeLaw = ExpenseServiceProviderType::factory()->create(['name' => 'Escritório de Advocacia']);
+    $typeEng = ExpenseServiceProviderType::factory()->create(['name' => 'Engenharia Especializada']);
+
+    $providerA = ExpenseServiceProvider::factory()->create([
+        'name' => 'ADVOCACIA SILVA & SANTOS SOCIEDADE DE ADVOGADOS',
+        'cnpj' => '11222333000144',
+        'expense_service_provider_type_id' => $typeLaw->id,
+    ]);
+
+    $providerB = ExpenseServiceProvider::factory()->create([
+        'name' => 'ENGTECH PROJETOS E OBRAS LTDA',
+        'cnpj' => '55666777000188',
+        'expense_service_provider_type_id' => $typeEng->id,
+    ]);
+
+    Livewire::test(ListExpenseServiceProviders::class)
+        ->set('tableFilters.expense_service_provider_type_id.value', $typeLaw->id)
+        ->assertCanSeeTableRecords([$providerA])
+        ->assertCanNotSeeTableRecords([$providerB]);
+
+    Livewire::test(ListExpenseServiceProviders::class)
+        ->set('tableSearch', '55666777000188')
+        ->assertCanSeeTableRecords([$providerB])
+        ->assertCanNotSeeTableRecords([$providerA]);
+});
+
+it('distinguishes search empty state on the service providers list', function () {
+    $this->actingAs(makeExpenseAdminUser());
+    ExpenseServiceProvider::factory()->create();
+
+    Livewire::test(ListExpenseServiceProviders::class)
+        ->set('tableSearch', 'busca-sem-resultado-xyz')
+        ->assertSee('Nenhum prestador encontrado')
+        ->assertSee('Limpar filtros')
+        ->assertDontSee('Nenhum prestador cadastrado');
+});
 
 function makeExpenseAdminUser(): User
 {

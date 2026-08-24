@@ -9,6 +9,8 @@ use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
+use App\Domain\PuCalculator\Services\BusinessCalendarCatalogService;
+use App\Domain\PuCalculator\Services\BusinessCalendarSelectionEvidenceService;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveExportService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
@@ -28,6 +30,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 // Filament v5: closures de schema recebem Filament\Schemas\Components\Utilities\Get (NAO Filament\Forms\Get).
@@ -36,6 +39,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
@@ -108,9 +112,36 @@ class EditEmission extends EditRecord
                 ->fillForm(fn (): array => $this->getPuCalculationDefaults())
                 ->form($this->getPuCalculationForm())
                 ->action(function (array $data): void {
-                    $before = $this->getRecord()->puParameter?->only(array_keys($data)) ?? [];
+                    $evidenceKeys = [
+                        'calendar_evidence_document',
+                        'calendar_evidence_clause',
+                        'calendar_evidence_page',
+                        'calendar_evidence_excerpt',
+                        'calendar_evidence_notes',
+                        'calendar_evidence_confirmed',
+                    ];
+                    $evidence = Arr::only($data, $evidenceKeys);
+                    $parameterData = Arr::except($data, $evidenceKeys);
+                    $before = $this->getRecord()->puParameter?->only(array_keys($parameterData)) ?? [];
 
-                    $this->getRecord()->puParameter()->updateOrCreate([], $data);
+                    $parameter = $this->getRecord()->puParameter()->updateOrCreate([], $parameterData);
+
+                    if ($this->shouldRecordCalendarEvidence($evidence)) {
+                        app(BusinessCalendarSelectionEvidenceService::class)->record(
+                            $parameter,
+                            'pu_business_day_calendar',
+                            (string) $parameterData['calendar_code'],
+                            [
+                                'source_document' => $evidence['calendar_evidence_document'] ?? null,
+                                'clause_reference' => $evidence['calendar_evidence_clause'] ?? null,
+                                'page_reference' => $evidence['calendar_evidence_page'] ?? null,
+                                'excerpt' => $evidence['calendar_evidence_excerpt'] ?? null,
+                                'notes' => $evidence['calendar_evidence_notes'] ?? null,
+                            ],
+                            auth()->id(),
+                            (bool) ($evidence['calendar_evidence_confirmed'] ?? false),
+                        );
+                    }
 
                     $this->getRecord()->unsetRelation('puParameter');
                     $this->getRecord()->load('puParameter');
@@ -118,7 +149,7 @@ class EditEmission extends EditRecord
                     app(PuAuditLogService::class)->logParametersUpdated(
                         $this->getRecord(),
                         $before,
-                        $data,
+                        $parameterData,
                         auth()->id(),
                     );
 
@@ -666,10 +697,31 @@ class EditEmission extends EditRecord
                 ->numeric()
                 ->default(252)
                 ->required(),
-            TextInput::make('calendar_code')
-                ->label('Calendario')
-                ->default('B3')
+            Select::make('calendar_code')
+                ->label('Calendário de dias úteis')
+                ->options(fn (): array => app(BusinessCalendarCatalogService::class)->optionsForNewConfiguration(
+                    $this->getRecord()->puParameter?->calendar_code,
+                ))
+                ->helperText('Seleção explícita obrigatória. B3 legado só permanece disponível quando já está gravado; calendários HML não aparecem aqui.')
+                ->searchable()
                 ->required(),
+            TextInput::make('calendar_evidence_document')
+                ->label('Documento que fundamenta o calendário')
+                ->helperText('Opcional. Informe somente quando houver evidência contratual ou normativa aplicável.'),
+            TextInput::make('calendar_evidence_clause')
+                ->label('Cláusula / item da regra'),
+            TextInput::make('calendar_evidence_page')
+                ->label('Página(s)'),
+            Textarea::make('calendar_evidence_excerpt')
+                ->label('Observação / excerto')
+                ->rows(3),
+            Textarea::make('calendar_evidence_notes')
+                ->label('Notas internas sobre a escolha')
+                ->rows(2),
+            Toggle::make('calendar_evidence_confirmed')
+                ->label('Confirmo que revisei a evidência desta escolha')
+                ->helperText('Ao marcar, usuário e data da confirmação ficam registrados. Não é necessário para salvar uma configuração ainda em análise.')
+                ->default(false),
             Select::make('index_rate_lookup_mode')
                 ->label('Modo de consulta do CDI')
                 ->options([
@@ -715,7 +767,13 @@ class EditEmission extends EditRecord
             'correction_frequency' => $parameter?->correction_frequency ?? 'monthly',
             'index_projection_policy' => $parameter?->index_projection_policy ?? IpcaProjectionPolicy::PublishedOnly->value,
             'business_day_basis' => $parameter?->business_day_basis ?? 252,
-            'calendar_code' => $parameter?->calendar_code ?? 'B3',
+            'calendar_code' => $parameter?->calendar_code,
+            'calendar_evidence_document' => null,
+            'calendar_evidence_clause' => null,
+            'calendar_evidence_page' => null,
+            'calendar_evidence_excerpt' => null,
+            'calendar_evidence_notes' => null,
+            'calendar_evidence_confirmed' => false,
             'index_rate_lookup_mode' => $parameter?->index_rate_lookup_mode ?? PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
             'index_rate_lag_business_days' => $parameter?->index_rate_lag_business_days ?? -1,
             'legacy_projection_enabled' => $parameter?->legacy_projection_enabled ?? true,
@@ -733,6 +791,16 @@ class EditEmission extends EditRecord
             ->pluck('calculation_version', 'calculation_version')
             ->unique()
             ->all();
+    }
+
+    /** @param  array<string, mixed>  $evidence */
+    private function shouldRecordCalendarEvidence(array $evidence): bool
+    {
+        return collect($evidence)
+            ->filter(fn (mixed $value, string $key): bool => $key === 'calendar_evidence_confirmed'
+                ? (bool) $value
+                : filled($value))
+            ->isNotEmpty();
     }
 
     private function defaultSpreadsheetSelection(): ?string

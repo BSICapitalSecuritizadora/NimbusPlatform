@@ -4,22 +4,25 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\AccessPermission;
+use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasAvatar
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, LogsActivity, Notifiable, TwoFactorAuthenticatable;
 
     /**
@@ -33,6 +36,9 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'cargo',
         'departamento',
+        'avatar_path',
+        'phone',
+        'bio',
         'approved_at',
         'is_active',
         'last_login_at',
@@ -90,6 +96,25 @@ class User extends Authenticatable implements FilamentUser
             ->implode('');
     }
 
+    public function getFilamentAvatarUrl(): ?string
+    {
+        return $this->avatarUrl();
+    }
+
+    public function avatarUrl(): ?string
+    {
+        if (blank($this->avatar_path)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->avatar_path);
+    }
+
+    public function hasAvatar(): bool
+    {
+        return filled($this->avatar_path) && Storage::disk('public')->exists($this->avatar_path);
+    }
+
     public function proposalRepresentative(): HasOne
     {
         return $this->hasOne(ProposalRepresentative::class);
@@ -117,7 +142,7 @@ class User extends Authenticatable implements FilamentUser
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'cargo', 'departamento', 'is_active', 'approved_at', 'azure_id', 'invited_by'])
+            ->logOnly(['name', 'email', 'cargo', 'departamento', 'avatar_path', 'phone', 'bio', 'is_active', 'approved_at', 'azure_id', 'invited_by'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }

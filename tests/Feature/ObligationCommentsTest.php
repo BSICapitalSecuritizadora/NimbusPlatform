@@ -15,6 +15,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -39,7 +40,7 @@ function makeCommentUserWithPermissions(array $permissions): User
     return $user;
 }
 
-function commentsPageTest(Emission $emission, Obligation $obligation): \Livewire\Features\SupportTesting\Testable
+function commentsPageTest(Emission $emission, Obligation $obligation): Testable
 {
     return Livewire::test(ObligationComments::class, [
         'record' => $emission->getRouteKey(),

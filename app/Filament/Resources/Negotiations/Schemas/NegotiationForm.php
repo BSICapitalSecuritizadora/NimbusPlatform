@@ -19,10 +19,12 @@ class NegotiationForm
     {
         return $schema->components([
             Section::make('Dados da Negociação')
+                ->description('Identifique a operação, o empreendimento e a competência deste lançamento.')
                 ->columnSpanFull()
                 ->schema([
                     Select::make('emission_id')
                         ->label('Operação')
+                        ->placeholder('Selecione uma operação')
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()
@@ -33,12 +35,14 @@ class NegotiationForm
                                 $set('construction_id', null);
                             }
                         })
+                        ->columnSpan(['lg' => 2])
                         ->validationMessages([
                             'required' => 'Selecione a operação.',
                         ]),
 
                     Select::make('construction_id')
                         ->label('Empreendimento')
+                        ->placeholder('Selecione um empreendimento')
                         ->relationship(
                             name: 'construction',
                             titleAttribute: 'development_name',
@@ -51,7 +55,9 @@ class NegotiationForm
                         ->preload()
                         ->required()
                         ->disabled(fn (Get $get): bool => blank($get('emission_id')))
-                        ->helperText('Selecione primeiro a operação para listar apenas os empreendimentos vinculados.')
+                        ->helperText(fn (Get $get): ?string => blank($get('emission_id'))
+                            ? 'Selecione primeiro a operação para listar os empreendimentos vinculados.'
+                            : null)
                         ->rule(static function (Get $get): Closure {
                             return static function (string $attribute, mixed $value, Closure $fail) use ($get): void {
                                 if (blank($value) || blank($get('emission_id'))) {
@@ -68,12 +74,13 @@ class NegotiationForm
                                 }
                             };
                         })
+                        ->columnSpan(['lg' => 2])
                         ->validationMessages([
                             'required' => 'Selecione o empreendimento.',
                         ]),
 
                     TextInput::make('reference_month')
-                        ->label('Mês')
+                        ->label('Competência')
                         ->placeholder('MM/AAAA')
                         ->mask('99/9999')
                         ->required()
@@ -96,30 +103,33 @@ class NegotiationForm
                                     ->exists();
 
                                 if ($exists) {
-                                    $fail('Já existe uma negociação para esta operação, empreendimento e Mês.');
+                                    $fail('Já existe uma negociação para esta operação, empreendimento e competência.');
                                 }
                             };
                         })
+                        ->columnSpan(['lg' => 1])
                         ->validationMessages([
-                            'required' => 'Informe a Mês no formato MM/AAAA.',
+                            'required' => 'Informe a competência no formato MM/AAAA.',
                         ]),
                 ])
-                ->columns(3),
+                ->columns(['default' => 1, 'md' => 2, 'lg' => 5]),
 
             Section::make('Negociações do Mês')
+                ->description('Informe a quantidade de unidades vendidas e distratadas nesta competência.')
                 ->columnSpanFull()
                 ->schema([
-                    static::quantityField('sales', 'Vendas'),
-                    static::quantityField('cancellations', 'Distratos'),
+                    static::quantityField('sales', 'Vendas', 'Quantidade de novas vendas no mês.'),
+                    static::quantityField('cancellations', 'Distratos', 'Quantidade de distratos no mês.'),
                 ])
-                ->columns(2),
+                ->columns(['default' => 1, 'md' => 2, 'lg' => 4]),
         ]);
     }
 
-    protected static function quantityField(string $name, string $label): TextInput
+    protected static function quantityField(string $name, string $label, string $helperText): TextInput
     {
         return TextInput::make($name)
             ->label($label)
+            ->helperText($helperText)
             ->required()
             ->default(0)
             ->numeric()

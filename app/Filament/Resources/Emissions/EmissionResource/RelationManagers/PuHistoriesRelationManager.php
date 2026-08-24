@@ -5,6 +5,12 @@ namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 use App\Actions\Emissions\ImportPuHistoriesFromSpreadsheet;
 use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
 use App\Filament\Pages\Settings as SettingsPage;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
@@ -47,36 +53,46 @@ class PuHistoriesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('date')
+            ->searchPlaceholder('Buscar por data...')
             ->columns([
                 TextColumn::make('date')
                     ->label('Data')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('unit_value')
                     ->label('Valor Unitário (PU)')
                     ->numeric(6, ',', '.')
+                    ->prefix('R$ ')
+                    ->alignEnd()
                     ->sortable(),
             ])
             ->defaultSort('date', 'desc')
             ->headerActions([
-                \Filament\Actions\Action::make('download_template')
+                Action::make('download_template')
                     ->label('Download do Template')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
+                    ->tooltip('Baixar modelo de planilha para preenchimento')
                     ->url(fn (): string => route('admin.pu-histories.template.download'))
                     ->visible(fn (): bool => app(PuHistorySpreadsheetTemplate::class)->exists()),
-                \Filament\Actions\Action::make('manage_template')
+                Action::make('manage_template')
                     ->label('Configurar Template')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->color('gray')
+                    ->tooltip('Configurar mapeamento de colunas do template')
                     ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
-                \Filament\Actions\Action::make('import')
+                Action::make('import')
                     ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
+                    ->color('primary')
+                    ->tooltip('Importar histórico de PU via planilha (.xlsx / .csv)')
+                    ->modalHeading('Importar Planilha de Preço Unitário')
+                    ->modalSubmitActionLabel('Importar Dados')
                     ->form([
                         FileUpload::make('file')
-                            ->label('Planilha de Preços (.xlsx)')
+                            ->label('Planilha de Preços (.xlsx / .csv)')
                             ->disk('local')
                             ->directory('imports')
                             ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
@@ -102,18 +118,62 @@ class PuHistoriesRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-                \Filament\Actions\CreateAction::make()
-                    ->label('Lançar PU'),
+                CreateAction::make()
+                    ->label('Lançar PU')
+                    ->icon('heroicon-m-plus')
+                    ->tooltip('Cadastrar valor de PU manualmente'),
             ])
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('Nenhum registro de PU cadastrado');
+            ->emptyStateIcon('heroicon-o-arrow-trending-up')
+            ->emptyStateHeading('Nenhum histórico de PU cadastrado')
+            ->emptyStateDescription('Importe uma planilha (.xlsx / .csv) ou lance manualmente os valores para acompanhar a evolução do preço unitário desta emissão.')
+            ->emptyStateActions([
+                Action::make('empty_import')
+                    ->label('Importar Dados')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('primary')
+                    ->modalHeading('Importar Planilha de Preço Unitário')
+                    ->modalSubmitActionLabel('Importar Dados')
+                    ->form([
+                        FileUpload::make('file')
+                            ->label('Planilha de Preços (.xlsx / .csv)')
+                            ->disk('local')
+                            ->directory('imports')
+                            ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
+                            ->required(),
+                    ])
+                    ->action(function (array $data, RelationManager $livewire): void {
+                        $path = Storage::disk('local')->path($data['file']);
+
+                        try {
+                            $count = app(ImportPuHistoriesFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
+                        } catch (\Throwable) {
+                            Notification::make()
+                                ->title('Erro ao processar o arquivo')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Importação concluída com sucesso!')
+                            ->body("{$count} registros foram processados.")
+                            ->success()
+                            ->send();
+                    }),
+                CreateAction::make('empty_create')
+                    ->label('Lançar PU')
+                    ->icon('heroicon-m-plus')
+                    ->color('gray'),
+            ]);
     }
 }

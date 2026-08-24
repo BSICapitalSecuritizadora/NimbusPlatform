@@ -30,6 +30,18 @@ class ExpenseCalendar extends Page
     public function mount(): void
     {
         $this->visibleMonth = now()->format('Y-m');
+
+        $category = request()->query('category');
+
+        if (is_string($category) && array_key_exists($category, Expense::CATEGORY_OPTIONS)) {
+            $this->selectedCategory = $category;
+        }
+
+        $emissionId = request()->query('emission_id');
+
+        if (is_string($emissionId) && Emission::query()->whereKey($emissionId)->exists()) {
+            $this->selectedEmissionId = $emissionId;
+        }
     }
 
     /**

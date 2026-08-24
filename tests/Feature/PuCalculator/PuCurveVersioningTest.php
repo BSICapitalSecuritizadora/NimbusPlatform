@@ -9,6 +9,7 @@ use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
@@ -116,6 +117,6 @@ it('blocks reprocessing a homologated curve without explicit confirmation', func
     app()->call([new GeneratePuDailyCurveJob($emission->id, $user->id, false), 'handle']);
 
     expect(EmissionPuCurveVersion::query()->where('emission_id', $emission->id)->count())->toBe(1)
-        ->and(\Illuminate\Support\Facades\Cache::get("pu_curve_generation_{$emission->id}_status"))
+        ->and(Cache::get("pu_curve_generation_{$emission->id}_status"))
         ->toMatchArray(['status' => 'failed']);
 });

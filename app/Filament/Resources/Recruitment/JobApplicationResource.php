@@ -19,6 +19,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 
 class JobApplicationResource extends Resource
@@ -161,21 +162,21 @@ class JobApplicationResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->can('recruitment.applications.view') ?? false;
+        return Gate::allows('viewAny', JobApplication::class);
     }
 
     public static function canView(Model $record): bool
     {
-        return auth()->user()?->can('recruitment.applications.view') ?? false;
+        return Gate::allows('view', $record);
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->can('recruitment.applications.update') ?? false;
+        return Gate::allows('update', $record);
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->can('recruitment.applications.delete') ?? false;
+        return Gate::allows('delete', $record);
     }
 }

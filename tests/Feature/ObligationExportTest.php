@@ -16,6 +16,7 @@ use Filament\Actions\Exports\Models\Export as FilamentExport;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -42,7 +43,7 @@ function makeObligationExportUser(array $permissions): User
     return $user;
 }
 
-function obligationExportRelationManager(Emission $emission): \Livewire\Features\SupportTesting\Testable
+function obligationExportRelationManager(Emission $emission): Testable
 {
     return Livewire::test(ObligationsRelationManager::class, [
         'ownerRecord' => $emission,

@@ -36,13 +36,14 @@ it('stores new applications with the default recruitment pipeline status', funct
         'is_active' => true,
     ]);
 
-    $response = $this->post(route('site.vacancies.apply', $vacancy->id), [
+    $response = $this->post(route('site.vacancies.apply', $vacancy->slug), [
         'name' => 'Maria Souza',
         'email' => 'maria@example.com',
         'phone' => '(11) 99999-0000',
         'linkedin_url' => 'https://linkedin.com/in/mariasouza',
         'resume' => UploadedFile::fake()->create('curriculo.pdf', 256, 'application/pdf'),
         'message' => 'Tenho experiência no mercado de capitais.',
+        'lgpd_consent' => '1',
     ]);
 
     $response

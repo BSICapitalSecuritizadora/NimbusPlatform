@@ -23,6 +23,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Support\Carbon;
 
 class PlanSetsRelationManager extends RelationManager
 {
@@ -86,8 +87,8 @@ class PlanSetsRelationManager extends RelationManager
                             TextInput::make('measurement_date')
                                 ->label('Data prevista (mês/ano)')
                                 ->type('month')
-                                ->formatStateUsing(fn (mixed $state): ?string => filled($state) ? \Illuminate\Support\Carbon::parse($state)->format('Y-m') : null)
-                                ->dehydrateStateUsing(fn (mixed $state): ?string => filled($state) ? \Illuminate\Support\Carbon::parse($state.'-01')->toDateString() : null),
+                                ->formatStateUsing(fn (mixed $state): ?string => filled($state) ? Carbon::parse($state)->format('Y-m') : null)
+                                ->dehydrateStateUsing(fn (mixed $state): ?string => filled($state) ? Carbon::parse($state.'-01')->toDateString() : null),
                         ]),
                 ]),
         ]);
@@ -155,7 +156,7 @@ class PlanSetsRelationManager extends RelationManager
                     ])
                     ->action(function (array $data, MeasurementPlanSet $record): void {
                         $count = (int) $data['count'];
-                        $startDate = \Illuminate\Support\Carbon::parse($data['start_date'].'-01');
+                        $startDate = Carbon::parse($data['start_date'].'-01');
 
                         $lastSequence = $record->lines()->max('sequence_number') ?? 0;
 

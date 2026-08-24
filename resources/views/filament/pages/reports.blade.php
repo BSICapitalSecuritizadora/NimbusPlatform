@@ -2,14 +2,14 @@
     <x-filament::section>
         <x-slot name="heading">Relatório mensal por emissão</x-slot>
         <x-slot name="description">
-            Gera o PDF do relatório por emissão. Informe apenas o mês de referência para o relatório
-            mensal, ou também um mês final para gerar um PDF consolidado multi-mês da mesma emissão.
+            Gere o relatório mensal de uma emissão ou informe uma competência final para consolidar
+            vários meses em um único PDF.
         </x-slot>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-4 md:items-end">
-            <div class="md:col-span-1">
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-12 xl:items-end">
+            <div class="md:col-span-2 xl:col-span-4">
                 <label for="emissionId" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Emissão
+                    Emissão <span class="text-danger-600 dark:text-danger-400">*</span>
                 </label>
                 <x-filament::input.wrapper>
                     <x-filament::input.select wire:model.live="emissionId" id="emissionId">
@@ -21,25 +21,34 @@
                 </x-filament::input.wrapper>
             </div>
 
-            <div>
-                <label for="referenceMonth" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Mês de referência
-                </label>
-                <x-filament::input.wrapper>
-                    <x-filament::input type="month" wire:model.live="referenceMonth" id="referenceMonth" />
-                </x-filament::input.wrapper>
+            <div class="md:col-span-2 xl:col-span-5">
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_auto_1fr] sm:items-end sm:gap-3">
+                    <div>
+                        <label for="referenceMonth" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Competência inicial <span class="text-danger-600 dark:text-danger-400">*</span>
+                        </label>
+                        <x-filament::input.wrapper>
+                            <x-filament::input type="month" wire:model.live="referenceMonth" id="referenceMonth" />
+                        </x-filament::input.wrapper>
+                    </div>
+
+                    <div class="hidden pb-2.5 text-gray-400 dark:text-gray-500 sm:block" aria-hidden="true">
+                        <x-filament::icon icon="heroicon-o-arrow-right" class="h-4 w-4" />
+                    </div>
+
+                    <div>
+                        <label for="referenceMonthEnd" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                            Competência final
+                            <span class="font-normal text-gray-500 dark:text-gray-400">(opcional)</span>
+                        </label>
+                        <x-filament::input.wrapper>
+                            <x-filament::input type="month" wire:model.live="referenceMonthEnd" id="referenceMonthEnd" />
+                        </x-filament::input.wrapper>
+                    </div>
+                </div>
             </div>
 
-            <div>
-                <label for="referenceMonthEnd" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Mês final (opcional)
-                </label>
-                <x-filament::input.wrapper>
-                    <x-filament::input type="month" wire:model.live="referenceMonthEnd" id="referenceMonthEnd" />
-                </x-filament::input.wrapper>
-            </div>
-
-            <div>
+            <div class="md:col-span-2 xl:col-span-3">
                 @php($url = $this->reportUrl())
                 @if ($url)
                     <x-filament::button
@@ -64,14 +73,25 @@
             </div>
         </div>
 
-        @if ($this->reportUrl() === null)
-            <p id="report-generation-help" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                Selecione uma emissão e o mês de referência para habilitar a geração do relatório.
+        @if ($this->hasInvalidRange())
+            <p id="report-generation-help" class="mt-4 flex items-center gap-1.5 text-sm text-danger-600 dark:text-danger-400">
+                <x-filament::icon icon="heroicon-o-exclamation-circle" class="h-4 w-4" />
+                A competência final deve ser igual ou posterior à competência inicial.
             </p>
+        @elseif (($summary = $this->reportSummary()) !== null)
+            <div
+                id="report-generation-help"
+                class="mt-4 flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
+            >
+                <x-filament::icon icon="heroicon-o-document-text" class="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <span class="text-gray-500 dark:text-gray-400">
+                    {{ $this->isConsolidated() ? 'Relatório consolidado' : 'Relatório mensal' }}
+                </span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ $summary }}</span>
+            </div>
         @else
-            <p id="report-generation-help" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                Deixe o campo “Mês final” em branco para o relatório mensal. Ao preenchê-lo, será gerado um PDF
-                consolidado de {{ $referenceMonth }} até {{ $referenceMonthEnd ?: $referenceMonth }}.
+            <p id="report-generation-help" class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                Selecione uma emissão e a competência inicial para habilitar a geração do relatório.
             </p>
         @endif
     </x-filament::section>

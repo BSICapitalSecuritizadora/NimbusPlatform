@@ -92,8 +92,13 @@ Schedule::command('proposals:check-stale')
 // Retenção de dados pessoais (LGPD art. 15 e 16). Os prazos ficam em
 // config/privacy.php; rodam mensalmente porque a eliminação é por idade do
 // registro, não por evento — cadência diária só geraria ruído no log.
+Schedule::command('vacancies:auto-close')
+    ->dailyAt('01:00')
+    ->name('vacancies-auto-close')
+    ->withoutOverlapping();
+
 Schedule::command('lgpd:purge-job-applications')
-    ->monthlyOn(1, '01:00')
+    ->monthlyOn(1, '01:05')
     ->name('lgpd-purge-job-applications')
     ->withoutOverlapping();
 

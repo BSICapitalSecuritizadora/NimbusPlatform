@@ -32,13 +32,33 @@ it('shows the create and view actions with the expected filters on the list page
 
     Livewire::test(ListNegotiations::class)
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Cadastrar Negociação')
+        ->assertActionHasLabel('create', 'Nova Negociação')
         ->assertTableActionExists('view', null, $negotiation)
         ->assertTableActionHasLabel('view', 'Visualizar')
         ->assertTableActionHasUrl('view', NegotiationResource::getUrl('view', ['record' => $negotiation]), $negotiation)
         ->assertTableFilterExists('emission_id')
         ->assertTableFilterExists('construction_id')
         ->assertTableFilterExists('reference_month');
+});
+
+it('differentiates the empty state when no negotiations exist from when filters match nothing', function () {
+    $this->actingAs(makeNegotiationAdminUser());
+
+    Livewire::test(ListNegotiations::class)
+        ->assertSee('Nenhuma negociação cadastrada')
+        ->assertSee('Cadastrar negociação')
+        ->assertDontSee('Nenhuma negociação corresponde aos filtros selecionados');
+
+    [$emission, $construction] = makeNegotiationEmissionAndConstruction();
+    Negotiation::factory()->forEmissionAndConstruction($emission, $construction)->create();
+    $otherEmission = Emission::factory()->create(['name' => 'CRA Sem Negociações']);
+
+    Livewire::test(ListNegotiations::class)
+        ->filterTable('emission_id', $otherEmission->id)
+        ->call('applyTableFilters')
+        ->assertSee('Nenhuma negociação corresponde aos filtros selecionados')
+        ->assertSee('Limpar filtros')
+        ->assertDontSee('Nenhuma negociação cadastrada');
 });
 
 it('renders each negotiation form section on its own row', function () {
@@ -51,6 +71,17 @@ it('renders each negotiation form section on its own row', function () {
         'Dados da Negociação',
         'Negociações do Mês',
     ]);
+
+    expect($sections['Dados da Negociação']->getColumns())->toBe(['default' => 1, 'md' => 2, 'lg' => 5])
+        ->and($sections['Negociações do Mês']->getColumns())->toBe(['default' => 1, 'md' => 2, 'lg' => 4]);
+
+    $identificationFields = collect($sections['Dados da Negociação']->getChildComponents())
+        ->keyBy(fn (mixed $field): string => $field->getName());
+
+    expect($identificationFields['emission_id']->getColumnSpan())->toMatchArray(['lg' => 2])
+        ->and($identificationFields['construction_id']->getColumnSpan())->toMatchArray(['lg' => 2])
+        ->and($identificationFields['reference_month']->getColumnSpan())->toMatchArray(['lg' => 1])
+        ->and($identificationFields['reference_month']->getLabel())->toBe('Competência');
 });
 
 it('creates a monthly negotiation linked to emission and construction', function () {

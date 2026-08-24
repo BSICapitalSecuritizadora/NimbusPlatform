@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\SalesBoardHistoryFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,11 +12,14 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class SalesBoardHistory extends Model
 {
-    /** @use HasFactory<\Database\Factories\SalesBoardHistoryFactory> */
+    /** @use HasFactory<SalesBoardHistoryFactory> */
     use HasFactory, LogsActivity;
 
     protected $fillable = [
         'sales_board_id',
+        'is_initial',
+        'changed_by_id',
+        'change_reason',
         'reference_month',
         'stock_units',
         'financed_units',
@@ -30,6 +35,7 @@ class SalesBoardHistory extends Model
     protected function casts(): array
     {
         return [
+            'is_initial' => 'boolean',
             'reference_month' => 'date',
             'stock_units' => 'integer',
             'financed_units' => 'integer',
@@ -46,7 +52,7 @@ class SalesBoardHistory extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['sales_board_id', 'reference_month', 'stock_units', 'financed_units', 'paid_units', 'exchanged_units', 'stock_value', 'financed_value', 'paid_value', 'exchanged_value'])
+            ->logOnly(['sales_board_id', 'is_initial', 'changed_by_id', 'change_reason', 'reference_month', 'stock_units', 'financed_units', 'paid_units', 'exchanged_units', 'stock_value', 'financed_value', 'paid_value', 'exchanged_value'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
@@ -54,5 +60,23 @@ class SalesBoardHistory extends Model
     public function salesBoard(): BelongsTo
     {
         return $this->belongsTo(SalesBoard::class);
+    }
+
+    /**
+     * @param  Builder<SalesBoardHistory>  $query
+     */
+    public function scopeInitial(Builder $query): void
+    {
+        $query->where('is_initial', true);
+    }
+
+    public function changedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'changed_by_id');
+    }
+
+    public function hasChangeReason(): bool
+    {
+        return filled($this->change_reason);
     }
 }

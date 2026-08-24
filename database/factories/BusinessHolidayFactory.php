@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\BusinessHoliday;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\BusinessHoliday>
+ * @extends Factory<BusinessHoliday>
  */
 class BusinessHolidayFactory extends Factory
 {
@@ -27,7 +28,10 @@ class BusinessHolidayFactory extends Factory
                 'Independência do Brasil',
             ]),
             'source' => 'anbima',
+            'data_origin' => 'imported',
+            'source_is_official' => true,
             'source_file' => 'feriados_nacionais.xls',
+            'source_document' => 'https://www.anbima.com.br/feriados/',
             'imported_at' => now(),
             'imported_by' => null,
             'notes' => null,

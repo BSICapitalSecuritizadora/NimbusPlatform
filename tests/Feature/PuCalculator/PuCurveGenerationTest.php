@@ -10,6 +10,7 @@ use App\Models\Emission;
 use App\Models\IndexRate;
 use App\Models\Payment;
 use App\Models\PuHistory;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -398,7 +399,7 @@ it('still blocks generation when the CDI has a gap inside the already published 
 
 function seedBusinessCalendar(string $startDate, string $endDate): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         BusinessCalendarDate::query()->create([
             'calendar_code' => 'B3',
             'calendar_date' => $date->toDateString(),
@@ -410,12 +411,12 @@ function seedBusinessCalendar(string $startDate, string $endDate): void
 
 function seedFixedCdiRates(string $startDate, string $endDate, string $rateValue): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         if ($date->isWeekend()) {
             continue;
         }
 
-        \App\Models\IndexRate::query()->create([
+        IndexRate::query()->create([
             'indexer' => 'CDI',
             'rate_date' => $date->toDateString(),
             'rate_value' => $rateValue,

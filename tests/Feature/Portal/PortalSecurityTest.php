@@ -71,7 +71,7 @@ it('docs públicos só aparecem se publicados (regra do site público)', functio
         'file_path' => 'documents/tests/no.pdf',
     ]);
 
-    $visibleIds = \App\Models\Document::query()->published()->public()->pluck('id')->all();
+    $visibleIds = Document::query()->published()->public()->pluck('id')->all();
 
     expect($visibleIds)->toContain($ok->id);
     expect($visibleIds)->not->toContain($no->id);

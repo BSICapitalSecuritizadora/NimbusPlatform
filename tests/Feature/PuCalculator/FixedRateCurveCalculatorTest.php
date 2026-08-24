@@ -8,13 +8,14 @@ use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\IndexRate;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 function seedPrefixedCalendar(string $startDate, string $endDate): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         BusinessCalendarDate::query()->create([
             'calendar_code' => 'B3',
             'calendar_date' => $date->toDateString(),

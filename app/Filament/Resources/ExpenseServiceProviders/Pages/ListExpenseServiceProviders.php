@@ -12,11 +12,24 @@ class ListExpenseServiceProviders extends ListRecords
 
     protected static ?string $title = 'Prestadores de serviço';
 
+    protected static ?string $breadcrumb = 'Listar';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-expense-service-providers-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Gerencie as empresas e instituições utilizadas como prestadores e participantes das operações.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('Cadastrar prestador'),
+                ->label('Cadastrar prestador')
+                ->icon('heroicon-m-plus')
+                ->color('primary'),
         ];
     }
 }

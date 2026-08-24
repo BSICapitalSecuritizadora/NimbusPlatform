@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\Calculators\IpcaCurveCalculator;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteIssue;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\Emission;
 use App\Models\EmissionPuParameter;
 use App\Models\IndexRate;
@@ -201,7 +203,41 @@ class PuCurvePrerequisiteService
             return;
         }
 
+        $this->warnWhenCalendarIsNotConfirmed($issues, $startDate, $endDate, $calendarCode);
         $this->warnWhenWeekendOnly($issues, $startDate, $endDate, $calendarCode, $indexer);
+    }
+
+    /**
+     * @param  list<PuCurvePrerequisiteIssue>  $issues
+     */
+    private function warnWhenCalendarIsNotConfirmed(
+        array &$issues,
+        CarbonImmutable $startDate,
+        CarbonImmutable $endDate,
+        string $calendarCode,
+    ): void {
+        $unconfirmedYears = array_filter(
+            $this->calendarCoverage->annualCoverage($calendarCode, $startDate, $endDate),
+            static fn (array $coverage): bool => ! $coverage['confirmed'],
+        );
+
+        if ($unconfirmedYears === []) {
+            return;
+        }
+
+        $details = implode(', ', array_map(
+            static fn (array $coverage): string => sprintf('%d (%s)', $coverage['year'], $coverage['state']),
+            array_values($unconfirmedYears),
+        ));
+
+        $issues[] = PuCurvePrerequisiteIssue::warning(
+            'business_calendar_confirmation',
+            sprintf(
+                'O cálculo continuará por compatibilidade, mas o calendário %s possui ano(s) não confirmado(s): %s. Revise a cobertura e confirme a fonte oficial antes de tratar o resultado como definitivo.',
+                $calendarCode,
+                $details,
+            ),
+        );
     }
 
     /**
@@ -229,11 +265,13 @@ class PuCurvePrerequisiteService
 
         $issues[] = PuCurvePrerequisiteIssue::warning(
             'business_calendar_holidays',
-            sprintf(
-                'O calendario %s esta apenas com fins de semana (nenhum feriado importado para o periodo da curva). Para maxima precisao na base 252, clique em "Importar feriados ANBIMA" ou rode "php artisan pu:holidays:import-anbima --calendar=%s".',
-                $calendarCode,
-                $calendarCode,
-            ),
+            BusinessCalendarRegistry::normalize($calendarCode) === BusinessCalendarRegistry::B3_LISTED_TRADING
+                ? 'O calendário B3_LISTED_TRADING está apenas com finais de semana. Cadastre e confirme o calendário oficial de sessões da B3; o arquivo ANBIMA bancário não é aplicável a este calendário.'
+                : sprintf(
+                    'O calendario %s esta apenas com fins de semana (nenhum feriado importado para o periodo da curva). Para maxima precisao na base 252, clique em "Importar feriados ANBIMA" ou rode "php artisan pu:holidays:import-anbima --calendar=%s".',
+                    $calendarCode,
+                    $calendarCode,
+                ),
         );
     }
 
@@ -394,7 +432,7 @@ class PuCurvePrerequisiteService
 
     /**
      * Conjunto distinto de meses de referência exigidos pela curva IPCA. Espelha a mecânica do
-     * {@see \App\Domain\PuCalculator\Calculators\IpcaCurveCalculator}: para cada data, o mês de
+     * {@see IpcaCurveCalculator}: para cada data, o mês de
      * referência é o 1º dia do mês da abertura do aniversário, defasado de `index_lag_months`; a razão
      * de correção também exige o mês imediatamente anterior.
      *

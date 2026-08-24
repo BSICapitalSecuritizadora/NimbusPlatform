@@ -12,12 +12,22 @@ class ListEmissionMonthlyReportNotes extends ListRecords
 
     protected static ?string $title = 'Notas Explicativas';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-report-notes-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Gestão das observações complementares utilizadas na composição dos relatórios das emissões.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('Cadastrar Nota Explicativa')
-                ->icon('heroicon-o-plus-circle'),
+                ->label('Nova Nota Explicativa')
+                ->icon('heroicon-m-plus')
+                ->color('primary'),
         ];
     }
 }

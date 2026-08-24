@@ -490,63 +490,120 @@
     border: 1px solid #dbd5d3;
     border-radius: 14px;
     box-shadow: none;
+    overflow: hidden;
 }
 
 .bsi-cockpit-page .bsi-cockpit-widget > .fi-section > .fi-section-header {
     background: #f8f7f4;
+    border-bottom: 1px solid #dbd5d3;
+}
+
+.bsi-cockpit-page .bsi-cockpit-widget .fi-section-content-ctn {
+    border-top: none !important;
+}
+
+.bsi-cockpit-page .bsi-cockpit-shortcuts .fi-section-content {
+    padding: 1.5rem !important;
 }
 
 .bsi-cockpit-shortcut {
     display: flex;
-    min-height: 5rem;
+    width: 100%;
+    min-width: 0;
+    min-height: 5.25rem;
+    height: 100%;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    background: #fbfaf8;
+    gap: 0.875rem;
+    padding: 0.875rem 1.125rem;
+    background: #ffffff;
     border: 1px solid #dbd5d3;
     border-radius: 12px;
+    box-shadow: 0 1px 2px rgb(9 27 35 / 0.04);
     transition:
         background-color 200ms ease-out,
-        border-color 200ms ease-out;
+        border-color 200ms ease-out,
+        box-shadow 200ms ease-out;
 }
 
 .bsi-cockpit-shortcut:hover {
-    background: #f8f7f4;
+    background: #ffffff;
     border-color: #b7832f;
+    box-shadow: 0 4px 14px rgb(183 131 47 / 0.12);
 }
 
 .bsi-cockpit-shortcut:focus-visible {
-    outline: 2px solid #96651f;
-    outline-offset: 3px;
+    outline: 2px solid #b7832f;
+    outline-offset: 2px;
+}
+
+.bsi-cockpit-shortcut--primary {
+    background: #091b23;
+    border: 1px solid rgba(183, 131, 47, 0.38);
+    color: #fbfaf8;
+    box-shadow: 0 2px 8px rgb(9 27 35 / 0.12);
+}
+
+.bsi-cockpit-shortcut--primary:hover {
+    background: #0d252e;
+    border-color: #b7832f;
+    box-shadow: 0 4px 16px rgb(9 27 35 / 0.2);
+}
+
+.bsi-cockpit-shortcut--primary:focus-visible {
+    outline: 2px solid #b7832f;
+    outline-offset: 2px;
 }
 
 .bsi-cockpit-action {
     position: relative;
 }
 
-.bsi-cockpit-page .fi-wi-stats-overview-stat {
-    min-height: 7.75rem;
-    padding: 1rem;
+.bsi-cockpit-page .fi-wi-stats-overview .fi-section {
     background: #fbfaf8;
     border: 1px solid #dbd5d3;
     border-radius: 14px;
     box-shadow: none;
+    overflow: hidden;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview .fi-section > .fi-section-header {
+    background: #f8f7f4;
+    border-bottom: 1px solid #dbd5d3;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview .fi-section-content-ctn {
+    border-top: none !important;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview .fi-section-content {
+    padding: 1.5rem !important;
+}
+
+.bsi-cockpit-page .fi-wi-stats-overview-stat {
+    min-height: 7.75rem;
+    padding: 1.125rem 1.25rem;
+    background: #ffffff;
+    border: 1px solid #dbd5d3;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgb(9 27 35 / 0.04);
 }
 
 .bsi-cockpit-page a.fi-wi-stats-overview-stat {
     transition:
         background-color 200ms ease-out,
-        border-color 200ms ease-out;
+        border-color 200ms ease-out,
+        box-shadow 200ms ease-out;
 }
 
 .bsi-cockpit-page a.fi-wi-stats-overview-stat:hover {
-    background: #f8f7f4;
+    background: #ffffff;
     border-color: #b7832f;
+    box-shadow: 0 4px 14px rgb(183 131 47 / 0.12);
 }
 
 .bsi-cockpit-page a.fi-wi-stats-overview-stat:focus-visible {
-    outline: 2px solid #96651f;
-    outline-offset: 3px;
+    outline: 2px solid #b7832f;
+    outline-offset: 2px;
 }
 
 .bsi-cockpit-page .fi-wi-stats-overview-stat-label-ctn {
@@ -640,18 +697,50 @@
 
 .dark .bsi-cockpit-page .bsi-cockpit-widget > .fi-section > .fi-section-header {
     background: #0a2028;
+    border-bottom: 1px solid rgba(183, 131, 47, 0.18);
+}
+
+.dark .bsi-cockpit-page .bsi-cockpit-shortcuts .fi-section-content,
+.dark .bsi-cockpit-page .fi-wi-stats-overview .fi-section-content {
+    padding: 1.5rem !important;
+}
+
+.dark .bsi-cockpit-page .fi-wi-stats-overview .fi-section {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.24) !important;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.dark .bsi-cockpit-page .fi-wi-stats-overview .fi-section > .fi-section-header {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(183, 131, 47, 0.18) !important;
 }
 
 .dark .bsi-cockpit-shortcut,
 .dark .bsi-cockpit-page .fi-wi-stats-overview-stat {
-    background: #0d252e;
-    border-color: rgb(183 131 47 / 0.24);
+    background: rgba(9, 27, 35, 0.55);
+    border-color: rgba(183, 131, 47, 0.22);
+    box-shadow: 0 1px 3px rgb(4 14 19 / 0.25);
 }
 
 .dark .bsi-cockpit-shortcut:hover,
 .dark .bsi-cockpit-page a.fi-wi-stats-overview-stat:hover {
-    background: #12313b;
+    background: rgba(18, 49, 59, 0.6);
     border-color: #b7832f;
+    box-shadow: 0 4px 14px rgb(4 14 19 / 0.35);
+}
+
+.dark .bsi-cockpit-shortcut--primary {
+    background: #06151c;
+    border-color: rgba(183, 131, 47, 0.38);
+    box-shadow: 0 2px 10px rgb(4 14 19 / 0.3);
+}
+
+.dark .bsi-cockpit-shortcut--primary:hover {
+    background: #091b23;
+    border-color: #b7832f;
+    box-shadow: 0 4px 18px rgb(4 14 19 / 0.45);
 }
 
 .dark .bsi-cockpit-scroll {
@@ -672,36 +761,69 @@
     width: 100%;
 }
 
-.bsi-cockpit-page .fi-ta,
-.bsi-cockpit-page .fi-ta-ctn,
+.bsi-cockpit-page .fi-ta {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.bsi-cockpit-page .fi-ta-ctn {
+    background: #fbfaf8;
+    border: 1px solid #dbd5d3;
+    border-radius: 14px;
+    box-shadow: none;
+    overflow: hidden !important;
+}
+
 .bsi-cockpit-page .fi-wi-table .fi-section,
 .bsi-cockpit-page .fi-section {
     background: #fbfaf8;
     border: 1px solid #dbd5d3;
     border-radius: 14px;
     box-shadow: none;
+    overflow: hidden;
 }
 
 .bsi-cockpit-page .fi-ta-header,
+.bsi-cockpit-page .fi-ta-header-toolbar,
 .bsi-cockpit-page .fi-section-header,
 .bsi-cockpit-page thead.fi-ta-header {
     background: #f8f7f4;
+    border-bottom: 1px solid #dbd5d3;
 }
 
-.dark .bsi-cockpit-page .fi-ta,
-.dark .bsi-cockpit-page .fi-ta-ctn,
+.bsi-cockpit-page .fi-ta-content-ctn {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.dark .bsi-cockpit-page .fi-ta {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.dark .bsi-cockpit-page .fi-ta-ctn {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.24) !important;
+    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.35) !important;
+    overflow: hidden !important;
+}
+
 .dark .bsi-cockpit-page .fi-wi-table .fi-section,
 .dark .bsi-cockpit-page .fi-section {
     background: #0d252e !important;
-    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    border: 1px solid rgba(183, 131, 47, 0.24) !important;
     box-shadow: 0 10px 30px rgba(4, 14, 19, 0.35) !important;
+    overflow: hidden;
 }
 
 .dark .bsi-cockpit-page .fi-ta-header,
+.dark .bsi-cockpit-page .fi-ta-header-toolbar,
 .dark .bsi-cockpit-page .fi-section-header,
 .dark .bsi-cockpit-page thead.fi-ta-header {
     background: #0a2028 !important;
-    border-bottom: 1px solid rgba(183, 131, 47, 0.15) !important;
+    border-bottom: 1px solid rgba(183, 131, 47, 0.18) !important;
 }
 
 .dark .bsi-cockpit-page thead.fi-ta-header th {
@@ -710,6 +832,108 @@
     font-weight: 600 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.05em !important;
+}
+
+.dark .bsi-cockpit-page .fi-ta-content-ctn {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.dark .bsi-cockpit-page .fi-ta-content-ctn::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dark .bsi-cockpit-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.35);
+    border-radius: 9999px;
+}
+
+.dark .bsi-cockpit-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.55);
+}
+
+/* Listagens refinadas: scrollbar horizontal neutra (cinza-azulada), sem dourado */
+.dark .bsi-proposal-list-page .fi-ta-content-ctn,
+.dark .bsi-investors-list-page .fi-ta-content-ctn,
+.dark .bsi-representatives-list-page .fi-ta-content-ctn,
+.dark .bsi-emissions-list-page .fi-ta-content-ctn,
+.dark .bsi-sales-boards-list-page .fi-ta-content-ctn,
+.dark .bsi-negotiations-list-page .fi-ta-content-ctn,
+.dark .bsi-report-notes-list-page .fi-ta-content-ctn,
+.dark .bsi-constructions-list-page .fi-ta-content-ctn,
+.dark .bsi-operations-list-page .fi-ta-content-ctn,
+.dark .bsi-measurements-list-page .fi-ta-content-ctn,
+.dark .bsi-funds-list-page .fi-ta-content-ctn,
+.dark .bsi-fund-types-list-page .fi-ta-content-ctn,
+.dark .bsi-fund-names-list-page .fi-ta-content-ctn,
+.dark .bsi-fund-applications-list-page .fi-ta-content-ctn,
+.dark .bsi-banks-list-page .fi-ta-content-ctn,
+.dark .bsi-expenses-list-page .fi-ta-content-ctn,
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn {
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.dark .bsi-proposal-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-investors-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-representatives-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-emissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-sales-boards-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-negotiations-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-report-notes-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-constructions-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-operations-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-measurements-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-funds-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-fund-types-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-fund-names-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-fund-applications-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-banks-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-expenses-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.dark .bsi-proposal-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-investors-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-representatives-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-emissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-sales-boards-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-negotiations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-report-notes-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-constructions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-operations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-measurements-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-funds-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-fund-types-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-fund-names-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-fund-applications-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-banks-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-expenses-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.35);
+    border-radius: 4px;
+}
+
+.dark .bsi-proposal-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-investors-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-representatives-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-emissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-sales-boards-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-negotiations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-report-notes-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-constructions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-operations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-measurements-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-funds-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-fund-types-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-fund-names-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-fund-applications-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-banks-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-expenses-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.55);
 }
 
 .bsi-cockpit-page .fi-ta-row {
@@ -746,16 +970,16 @@
     background: rgba(18, 49, 59, 0.6);
 }
 
-/* ── Filter Dropdown Panel / Popover Floating Context ── */
+/* ── Filter & Form Select Dropdown Panel / Popover Floating Context ── */
 .fi-dropdown-panel {
-    z-index: 50 !important;
+    z-index: 9999 !important;
 }
 
 .dark .fi-dropdown-panel {
     background: #0d252e !important;
-    border: 1px solid rgba(183, 131, 47, 0.28) !important;
-    box-shadow: 0 20px 45px rgba(4, 14, 19, 0.6) !important;
-    border-radius: 14px !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.65), 0 4px 12px rgba(4, 14, 19, 0.45) !important;
+    border-radius: 12px !important;
 }
 
 .dark .fi-ta-filters-header {
@@ -767,6 +991,133 @@
     color: #fbfaf8;
     font-size: 0.875rem;
     font-weight: 600;
+}
+
+/* ── Teleported Filter/Column Panels: padding, sticky header & discreet scrollbar ──
+   O painel é teleportado para o <body> (x-float.teleport), saindo do contexto de
+   overflow do card da tabela. O padding que o Filament aplica via
+   ".fi-ta-filters-dropdown .fi-ta-filters" se perde sem esse ancestral, então é
+   reaplicado aqui diretamente no conteúdo do painel. */
+.fi-dropdown-panel.fi-scrollable > .fi-ta-filters,
+.fi-dropdown-panel.fi-scrollable > .fi-ta-col-manager {
+    padding: calc(var(--spacing) * 6);
+}
+
+.fi-dropdown-panel.fi-scrollable .fi-ta-filters-header,
+.fi-dropdown-panel.fi-scrollable .fi-ta-col-manager-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: calc(var(--spacing) * -6) calc(var(--spacing) * -6) 0;
+    padding: calc(var(--spacing) * 6) calc(var(--spacing) * 6) 0.5rem;
+    background: #ffffff;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.dark .fi-dropdown-panel.fi-scrollable .fi-ta-filters-header,
+.dark .fi-dropdown-panel.fi-scrollable .fi-ta-col-manager-header {
+    background: #0d252e;
+    border-radius: 12px 12px 0 0;
+}
+
+.fi-dropdown-panel.fi-scrollable,
+.fi-select-input .fi-dropdown-panel {
+    max-height: 18rem !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.fi-dropdown-panel.fi-scrollable::-webkit-scrollbar,
+.fi-select-input .fi-dropdown-panel::-webkit-scrollbar {
+    width: 5px;
+}
+
+.fi-dropdown-panel.fi-scrollable::-webkit-scrollbar-track,
+.fi-select-input .fi-dropdown-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.fi-dropdown-panel.fi-scrollable::-webkit-scrollbar-thumb,
+.fi-select-input .fi-dropdown-panel::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+}
+
+.fi-dropdown-panel.fi-scrollable::-webkit-scrollbar-thumb:hover,
+.fi-select-input .fi-dropdown-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.55);
+}
+
+/* Options within Select Dropdown */
+.fi-dropdown-panel .fi-dropdown-list,
+.fi-dropdown-panel .fi-select-input-options-ctn {
+    padding: 0.375rem !important;
+}
+
+.fi-dropdown-panel .fi-select-input-option,
+.fi-dropdown-panel .fi-dropdown-list-item {
+    padding: 0.5625rem 0.8125rem !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.4 !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: background-color 0.15s ease, color 0.15s ease !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+
+.dark .fi-dropdown-panel .fi-select-input-option,
+.dark .fi-dropdown-panel .fi-dropdown-list-item {
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-dropdown-panel .fi-select-input-option:hover,
+.dark .fi-dropdown-panel .fi-dropdown-list-item:hover,
+.dark .fi-dropdown-panel .fi-select-input-option:focus,
+.dark .fi-dropdown-panel .fi-dropdown-list-item:focus {
+    background: rgba(18, 49, 59, 0.85) !important;
+    color: #ffffff !important;
+}
+
+.dark .fi-dropdown-panel .fi-select-input-option.fi-selected,
+.dark .fi-dropdown-panel .fi-dropdown-list-item.fi-selected {
+    background: #12313b !important;
+    border: 1px solid rgba(183, 131, 47, 0.35) !important;
+    color: #fbfaf8 !important;
+    font-weight: 600 !important;
+}
+
+/* Search input inside Select dropdown */
+.fi-dropdown-panel .fi-select-input-search-ctn {
+    padding: 0.5rem 0.5rem 0.375rem !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    border-top-left-radius: inherit !important;
+    border-top-right-radius: inherit !important;
+}
+
+.dark .fi-dropdown-panel .fi-select-input-search-ctn {
+    background: #0d252e !important;
+}
+
+.dark .fi-dropdown-panel .fi-select-input-search-ctn .fi-input {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    color: #fbfaf8 !important;
+    border-radius: 8px !important;
+    font-size: 0.8125rem !important;
+    padding: 0.375rem 0.625rem !important;
+    width: 100% !important;
+}
+
+.dark .fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
+    outline: none !important;
 }
 
 /* ── Cockpit Tabs & Filter Navigation ── */
@@ -782,6 +1133,9 @@
     border: 1px solid rgba(183, 131, 47, 0.18);
 }
 
+.dark .bsi-cockpit-page .fi-tabs-item.fi-active,
+.dark .bsi-cockpit-page .fi-tabs-item[aria-current="true"],
+.dark .bsi-cockpit-page .fi-tabs-item[aria-current="page"],
 .dark .bsi-cockpit-page .fi-tabs-item-active {
     background: #12313b !important;
     color: #fbfaf8 !important;
@@ -790,15 +1144,16 @@
 
 /* ── Cockpit Table Pagination & Footer ── */
 .bsi-cockpit-page .fi-ta-pagination {
-    background: transparent !important;
-    border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+    background: #f8f7f4 !important;
+    border-top: 1px solid #dbd5d3 !important;
     padding: 0.75rem 1.25rem !important;
 }
 
 .dark .bsi-cockpit-page .fi-ta-pagination {
-    background: #0d252e !important;
-    border-top: 1px solid rgba(183, 131, 47, 0.14) !important;
+    background: #0a2028 !important;
+    border-top: 1px solid rgba(183, 131, 47, 0.18) !important;
     color: rgba(251, 250, 248, 0.65) !important;
+    padding: 0.75rem 1.25rem !important;
 }
 
 .dark .bsi-cockpit-page .fi-ta-pagination-records-per-page-select-ctn .fi-select-input {
@@ -844,18 +1199,44 @@
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* ── Resource List Pages Fine-Tuning (Carteira, Investidores, Representantes, Emissões) ── */
+/* ── Resource List Pages Fine-Tuning (Carteira, Investidores, Representantes, Emissões, Quadro de Vendas, Negociações, Notas Explicativas, Obras, Medições, Fundos, Tipos de Fundo, Nomes de Fundo, Aplicações, Bancos, Despesas, Prestadores) ── */
 .bsi-proposal-list-page .fi-page,
 .bsi-investors-list-page .fi-page,
 .bsi-representatives-list-page .fi-page,
-.bsi-emissions-list-page .fi-page {
+.bsi-emissions-list-page .fi-page,
+.bsi-sales-boards-list-page .fi-page,
+.bsi-negotiations-list-page .fi-page,
+.bsi-report-notes-list-page .fi-page,
+.bsi-constructions-list-page .fi-page,
+.bsi-operations-list-page .fi-page,
+.bsi-measurements-list-page .fi-page,
+.bsi-funds-list-page .fi-page,
+.bsi-fund-types-list-page .fi-page,
+.bsi-fund-names-list-page .fi-page,
+.bsi-fund-applications-list-page .fi-page,
+.bsi-banks-list-page .fi-page,
+.bsi-expenses-list-page .fi-page,
+.bsi-expense-service-providers-list-page .fi-page {
     gap: 0.75rem !important;
 }
 
 .bsi-proposal-list-page .fi-header,
 .bsi-investors-list-page .fi-header,
 .bsi-representatives-list-page .fi-header,
-.bsi-emissions-list-page .fi-header {
+.bsi-emissions-list-page .fi-header,
+.bsi-sales-boards-list-page .fi-header,
+.bsi-negotiations-list-page .fi-header,
+.bsi-report-notes-list-page .fi-header,
+.bsi-constructions-list-page .fi-header,
+.bsi-operations-list-page .fi-header,
+.bsi-measurements-list-page .fi-header,
+.bsi-funds-list-page .fi-header,
+.bsi-fund-types-list-page .fi-header,
+.bsi-fund-names-list-page .fi-header,
+.bsi-fund-applications-list-page .fi-header,
+.bsi-banks-list-page .fi-header,
+.bsi-expenses-list-page .fi-header,
+.bsi-expense-service-providers-list-page .fi-header {
     padding: 0.875rem 1.25rem !important;
     border-radius: 12px !important;
     background: linear-gradient(135deg, #091b23 0%, #12313b 100%) !important;
@@ -865,7 +1246,20 @@
 .bsi-proposal-list-page .fi-header-heading,
 .bsi-investors-list-page .fi-header-heading,
 .bsi-representatives-list-page .fi-header-heading,
-.bsi-emissions-list-page .fi-header-heading {
+.bsi-emissions-list-page .fi-header-heading,
+.bsi-sales-boards-list-page .fi-header-heading,
+.bsi-negotiations-list-page .fi-header-heading,
+.bsi-report-notes-list-page .fi-header-heading,
+.bsi-constructions-list-page .fi-header-heading,
+.bsi-operations-list-page .fi-header-heading,
+.bsi-measurements-list-page .fi-header-heading,
+.bsi-funds-list-page .fi-header-heading,
+.bsi-fund-types-list-page .fi-header-heading,
+.bsi-fund-names-list-page .fi-header-heading,
+.bsi-fund-applications-list-page .fi-header-heading,
+.bsi-banks-list-page .fi-header-heading,
+.bsi-expenses-list-page .fi-header-heading,
+.bsi-expense-service-providers-list-page .fi-header-heading {
     font-size: 1.25rem !important;
     font-weight: 700 !important;
     line-height: 1.2 !important;
@@ -874,7 +1268,20 @@
 .bsi-proposal-list-page .fi-header-subheading,
 .bsi-investors-list-page .fi-header-subheading,
 .bsi-representatives-list-page .fi-header-subheading,
-.bsi-emissions-list-page .fi-header-subheading {
+.bsi-emissions-list-page .fi-header-subheading,
+.bsi-sales-boards-list-page .fi-header-subheading,
+.bsi-negotiations-list-page .fi-header-subheading,
+.bsi-report-notes-list-page .fi-header-subheading,
+.bsi-constructions-list-page .fi-header-subheading,
+.bsi-operations-list-page .fi-header-subheading,
+.bsi-measurements-list-page .fi-header-subheading,
+.bsi-funds-list-page .fi-header-subheading,
+.bsi-fund-types-list-page .fi-header-subheading,
+.bsi-fund-names-list-page .fi-header-subheading,
+.bsi-fund-applications-list-page .fi-header-subheading,
+.bsi-banks-list-page .fi-header-subheading,
+.bsi-expenses-list-page .fi-header-subheading,
+.bsi-expense-service-providers-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
     color: rgba(251, 250, 248, 0.72) !important;
@@ -885,7 +1292,20 @@
 .bsi-proposal-list-page .fi-breadcrumbs,
 .bsi-investors-list-page .fi-breadcrumbs,
 .bsi-representatives-list-page .fi-breadcrumbs,
-.bsi-emissions-list-page .fi-breadcrumbs {
+.bsi-emissions-list-page .fi-breadcrumbs,
+.bsi-sales-boards-list-page .fi-breadcrumbs,
+.bsi-negotiations-list-page .fi-breadcrumbs,
+.bsi-report-notes-list-page .fi-breadcrumbs,
+.bsi-constructions-list-page .fi-breadcrumbs,
+.bsi-operations-list-page .fi-breadcrumbs,
+.bsi-measurements-list-page .fi-breadcrumbs,
+.bsi-funds-list-page .fi-breadcrumbs,
+.bsi-fund-types-list-page .fi-breadcrumbs,
+.bsi-fund-names-list-page .fi-breadcrumbs,
+.bsi-fund-applications-list-page .fi-breadcrumbs,
+.bsi-banks-list-page .fi-breadcrumbs,
+.bsi-expenses-list-page .fi-breadcrumbs,
+.bsi-expense-service-providers-list-page .fi-breadcrumbs {
     font-size: 0.75rem !important;
     margin-bottom: 0.125rem !important;
 }
@@ -893,7 +1313,20 @@
 .bsi-proposal-list-page .fi-ta-table,
 .bsi-investors-list-page .fi-ta-table,
 .bsi-representatives-list-page .fi-ta-table,
-.bsi-emissions-list-page .fi-ta-table {
+.bsi-emissions-list-page .fi-ta-table,
+.bsi-sales-boards-list-page .fi-ta-table,
+.bsi-negotiations-list-page .fi-ta-table,
+.bsi-report-notes-list-page .fi-ta-table,
+.bsi-constructions-list-page .fi-ta-table,
+.bsi-operations-list-page .fi-ta-table,
+.bsi-measurements-list-page .fi-ta-table,
+.bsi-funds-list-page .fi-ta-table,
+.bsi-fund-types-list-page .fi-ta-table,
+.bsi-fund-names-list-page .fi-ta-table,
+.bsi-fund-applications-list-page .fi-ta-table,
+.bsi-banks-list-page .fi-ta-table,
+.bsi-expenses-list-page .fi-ta-table,
+.bsi-expense-service-providers-list-page .fi-ta-table {
     width: 100% !important;
     min-width: 100% !important;
     table-layout: auto !important;
@@ -902,7 +1335,20 @@
 .bsi-proposal-list-page .fi-ta-cell .fi-badge,
 .bsi-investors-list-page .fi-ta-cell .fi-badge,
 .bsi-representatives-list-page .fi-ta-cell .fi-badge,
-.bsi-emissions-list-page .fi-ta-cell .fi-badge {
+.bsi-emissions-list-page .fi-ta-cell .fi-badge,
+.bsi-sales-boards-list-page .fi-ta-cell .fi-badge,
+.bsi-negotiations-list-page .fi-ta-cell .fi-badge,
+.bsi-report-notes-list-page .fi-ta-cell .fi-badge,
+.bsi-constructions-list-page .fi-ta-cell .fi-badge,
+.bsi-operations-list-page .fi-ta-cell .fi-badge,
+.bsi-measurements-list-page .fi-ta-cell .fi-badge,
+.bsi-funds-list-page .fi-ta-cell .fi-badge,
+.bsi-fund-types-list-page .fi-ta-cell .fi-badge,
+.bsi-fund-names-list-page .fi-ta-cell .fi-badge,
+.bsi-fund-applications-list-page .fi-ta-cell .fi-badge,
+.bsi-banks-list-page .fi-ta-cell .fi-badge,
+.bsi-expenses-list-page .fi-ta-cell .fi-badge,
+.bsi-expense-service-providers-list-page .fi-ta-cell .fi-badge {
     white-space: normal !important;
     text-align: center !important;
     line-height: 1.25 !important;
@@ -921,9 +1367,133 @@
     .bsi-proposal-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-investors-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-representatives-list-page .fi-ta-header-toolbar .fi-input-wrp,
-    .bsi-emissions-list-page .fi-ta-header-toolbar .fi-input-wrp {
+    .bsi-emissions-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-sales-boards-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-negotiations-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-report-notes-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-constructions-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-operations-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-measurements-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-funds-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-fund-types-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-fund-names-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-fund-applications-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-banks-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-expenses-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-expense-service-providers-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 22rem;
     }
+}
+
+/* ── Resource List Pages Empty State (compacto, contextual e acionável) ── */
+.bsi-proposal-list-page .fi-ta-empty-state,
+.bsi-investors-list-page .fi-ta-empty-state,
+.bsi-representatives-list-page .fi-ta-empty-state,
+.bsi-emissions-list-page .fi-ta-empty-state,
+.bsi-sales-boards-list-page .fi-ta-empty-state,
+.bsi-negotiations-list-page .fi-ta-empty-state,
+.bsi-report-notes-list-page .fi-ta-empty-state,
+.bsi-constructions-list-page .fi-ta-empty-state,
+.bsi-operations-list-page .fi-ta-empty-state,
+.bsi-measurements-list-page .fi-ta-empty-state,
+.bsi-funds-list-page .fi-ta-empty-state,
+.bsi-fund-types-list-page .fi-ta-empty-state,
+.bsi-fund-names-list-page .fi-ta-empty-state,
+.bsi-fund-applications-list-page .fi-ta-empty-state,
+.bsi-banks-list-page .fi-ta-empty-state,
+.bsi-expenses-list-page .fi-ta-empty-state,
+.bsi-expense-service-providers-list-page .fi-ta-empty-state {
+    padding-block: 2.5rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+.bsi-proposal-list-page .fi-ta-empty-state-icon-bg,
+.bsi-investors-list-page .fi-ta-empty-state-icon-bg,
+.bsi-representatives-list-page .fi-ta-empty-state-icon-bg,
+.bsi-emissions-list-page .fi-ta-empty-state-icon-bg,
+.bsi-sales-boards-list-page .fi-ta-empty-state-icon-bg,
+.bsi-negotiations-list-page .fi-ta-empty-state-icon-bg,
+.bsi-report-notes-list-page .fi-ta-empty-state-icon-bg,
+.bsi-constructions-list-page .fi-ta-empty-state-icon-bg,
+.bsi-operations-list-page .fi-ta-empty-state-icon-bg,
+.bsi-measurements-list-page .fi-ta-empty-state-icon-bg,
+.bsi-funds-list-page .fi-ta-empty-state-icon-bg,
+.bsi-fund-types-list-page .fi-ta-empty-state-icon-bg,
+.bsi-fund-names-list-page .fi-ta-empty-state-icon-bg,
+.bsi-fund-applications-list-page .fi-ta-empty-state-icon-bg,
+.bsi-banks-list-page .fi-ta-empty-state-icon-bg,
+.bsi-expenses-list-page .fi-ta-empty-state-icon-bg,
+.bsi-expense-service-providers-list-page .fi-ta-empty-state-icon-bg {
+    color: #64748b !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.dark .bsi-proposal-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-investors-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-representatives-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-emissions-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-sales-boards-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-negotiations-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-report-notes-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-constructions-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-operations-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-measurements-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-funds-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-fund-types-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-fund-names-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-fund-applications-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-banks-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-expenses-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-expense-service-providers-list-page .fi-ta-empty-state-icon-bg {
+    color: rgba(251, 250, 248, 0.4) !important;
+}
+
+.bsi-proposal-list-page .fi-ta-empty-state-heading,
+.bsi-investors-list-page .fi-ta-empty-state-heading,
+.bsi-representatives-list-page .fi-ta-empty-state-heading,
+.bsi-emissions-list-page .fi-ta-empty-state-heading,
+.bsi-sales-boards-list-page .fi-ta-empty-state-heading,
+.bsi-negotiations-list-page .fi-ta-empty-state-heading,
+.bsi-report-notes-list-page .fi-ta-empty-state-heading,
+.bsi-constructions-list-page .fi-ta-empty-state-heading,
+.bsi-operations-list-page .fi-ta-empty-state-heading,
+.bsi-measurements-list-page .fi-ta-empty-state-heading,
+.bsi-funds-list-page .fi-ta-empty-state-heading,
+.bsi-fund-types-list-page .fi-ta-empty-state-heading,
+.bsi-fund-names-list-page .fi-ta-empty-state-heading,
+.bsi-fund-applications-list-page .fi-ta-empty-state-heading,
+.bsi-banks-list-page .fi-ta-empty-state-heading,
+.bsi-expenses-list-page .fi-ta-empty-state-heading,
+.bsi-expense-service-providers-list-page .fi-ta-empty-state-heading {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+}
+
+/* Despesas: algarismos tabulares para comparar valores e datas com facilidade */
+.bsi-expenses-list-page .fi-ta-table td {
+    font-variant-numeric: tabular-nums;
+}
+
+.bsi-proposal-list-page .fi-ta-empty-state-description,
+.bsi-investors-list-page .fi-ta-empty-state-description,
+.bsi-representatives-list-page .fi-ta-empty-state-description,
+.bsi-emissions-list-page .fi-ta-empty-state-description,
+.bsi-sales-boards-list-page .fi-ta-empty-state-description,
+.bsi-negotiations-list-page .fi-ta-empty-state-description,
+.bsi-report-notes-list-page .fi-ta-empty-state-description,
+.bsi-constructions-list-page .fi-ta-empty-state-description,
+.bsi-operations-list-page .fi-ta-empty-state-description,
+.bsi-measurements-list-page .fi-ta-empty-state-description,
+.bsi-funds-list-page .fi-ta-empty-state-description,
+.bsi-fund-types-list-page .fi-ta-empty-state-description,
+.bsi-fund-names-list-page .fi-ta-empty-state-description,
+.bsi-fund-applications-list-page .fi-ta-empty-state-description,
+.bsi-banks-list-page .fi-ta-empty-state-description,
+.bsi-expenses-list-page .fi-ta-empty-state-description,
+.bsi-expense-service-providers-list-page .fi-ta-empty-state-description {
+    max-width: 46ch !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.55 !important;
 }
 
 /* ── Cockpit Header Primary Action Button (Institutional BSI Gold) ── */
@@ -976,6 +1546,14 @@
     box-shadow: none !important;
 }
 
+.bsi-cockpit-page .fi-btn:disabled,
+.bsi-cockpit-page .fi-btn[disabled] {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 .bsi-cockpit-page .fi-header .fi-btn .fi-icon,
 .bsi-cockpit-page .fi-header .fi-btn svg {
     width: 1rem !important;
@@ -1000,21 +1578,6 @@
 
     .bsi-cockpit-page .fi-wi-stats-overview-stat-value {
         font-size: 1.5rem;
-    }
-
-    .bsi-cockpit-action {
-        min-height: 7rem;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 0.875rem;
-    }
-
-    .bsi-cockpit-action-arrow {
-        position: absolute;
-        top: 0.875rem;
-        right: 0.875rem;
     }
 }
 
@@ -1117,6 +1680,611 @@
     }
 }
 
+/* ── Workspace de Análise Executiva (ViewProposal & ViewEmission) ── */
+.bsi-proposal-view-page .fi-infolist,
+.bsi-emission-view-page .fi-infolist {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0.875rem !important;
+}
+
+.bsi-proposal-view-page .fi-section,
+.bsi-emission-view-page .fi-section {
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    border-radius: 14px !important;
+}
+
+.bsi-proposal-view-page .fi-page-relations-ctn,
+.bsi-emission-view-page .fi-page-relations-ctn {
+    width: 100% !important;
+    margin-top: 0.875rem !important;
+}
+
+.bsi-proposal-view-page .fi-section-header,
+.bsi-emission-view-page .fi-section-header {
+    padding-block: 0.75rem !important;
+    padding-inline: 1.25rem !important;
+}
+
+.bsi-proposal-view-page .fi-section-content,
+.bsi-emission-view-page .fi-section-content {
+    padding-block: 0.875rem !important;
+    padding-inline: 1.25rem !important;
+}
+
+.bsi-proposal-view-page .fi-in-entry,
+.bsi-emission-view-page .fi-in-entry {
+    gap-y: 0.25rem !important;
+}
+
+.bsi-proposal-view-page .fi-in-entry-label,
+.bsi-emission-view-page .fi-in-entry-label {
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: #64748b !important;
+}
+
+.dark .bsi-proposal-view-page .fi-in-entry-label,
+.dark .bsi-emission-view-page .fi-in-entry-label {
+    color: rgba(251, 250, 248, 0.55) !important;
+}
+
+.bsi-proposal-view-page .fi-in-text-item,
+.bsi-emission-view-page .fi-in-text-item {
+    color: #0f172a !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+}
+
+.dark .bsi-proposal-view-page .fi-in-text-item,
+.dark .bsi-emission-view-page .fi-in-text-item {
+    color: #fbfaf8 !important;
+}
+
+.bsi-proposal-view-page .fi-prose,
+.bsi-emission-view-page .fi-prose {
+    line-height: 1.7 !important;
+    color: inherit !important;
+}
+
+.dark .bsi-proposal-view-page .fi-prose,
+.dark .bsi-emission-view-page .fi-prose {
+    color: rgba(251, 250, 248, 0.85) !important;
+}
+
+/* Badge com quebra de linha natural de palavras inteiras (sem truncamento e sem word-break: break-all) */
+.bsi-proposal-view-page .fi-in-text-item .fi-badge,
+.bsi-emission-view-page .fi-in-text-item .fi-badge {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1.3 !important;
+    text-align: left !important;
+}
+
+/* ── Abas de Módulos Operacionais da Emissão (Tabs Navigation) ── */
+.bsi-emission-view-page .fi-page-relations-ctn {
+    width: 100% !important;
+    margin-top: 0.875rem !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(100, 116, 139, 0.25) transparent !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 0.375rem !important;
+    padding: 0.375rem 0.5rem 0.5rem !important;
+    border-radius: 12px !important;
+    clip-path: inset(0 round 12px) !important;
+    background: #f1efea !important;
+    border: 1px solid #dbd5d3 !important;
+    scroll-behavior: smooth !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-tabs {
+    background: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    box-shadow: 0 2px 10px rgba(9, 27, 35, 0.35) !important;
+    scrollbar-color: rgba(251, 250, 248, 0.18) transparent !important;
+}
+
+/* Scrollbar ultra-fina, discreta e arredondada (WebKit / Chromium / Safari) */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs::-webkit-scrollbar {
+    display: block !important;
+    height: 4px !important;
+    background: transparent !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs::-webkit-scrollbar-track {
+    background: transparent !important;
+    margin-inline: 0.875rem !important;
+    border-radius: 9999px !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.25) !important;
+    border-radius: 9999px !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.45) !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-tabs::-webkit-scrollbar-thumb {
+    background: rgba(251, 250, 248, 0.18) !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-tabs::-webkit-scrollbar-thumb:hover {
+    background: rgba(251, 250, 248, 0.35) !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    border-radius: 8px !important;
+    border: 1px solid transparent !important;
+    color: #64748b !important;
+    background: transparent !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item {
+    color: rgba(251, 250, 248, 0.7) !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item:hover {
+    color: #0f172a !important;
+    background: rgba(0, 0, 0, 0.04) !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item:hover {
+    color: #fbfaf8 !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item.fi-active,
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item[aria-current="true"],
+.bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item[aria-current="page"] {
+    background: #ffffff !important;
+    color: #091b23 !important;
+    font-weight: 600 !important;
+    border: 1px solid #d4af37 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item.fi-active,
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item[aria-current="true"],
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-tabs-item[aria-current="page"] {
+    background: linear-gradient(180deg, #163844 0%, #102d37 100%) !important;
+    color: #fbfaf8 !important;
+    font-weight: 600 !important;
+    border: 1px solid rgba(183, 131, 47, 0.45) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(183, 131, 47, 0.25) !important;
+}
+
+/* ── Cronograma de Pagamentos & Tabelas de Módulos ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-ctn {
+    border-radius: 14px !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-header {
+    padding-block: 0.75rem !important;
+    padding-inline: 1.25rem !important;
+    gap: 0.75rem !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-empty-state-ctn,
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-empty-state {
+    padding-block: 2.5rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-empty-state-icon {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+    color: #64748b !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-ta-empty-state-icon {
+    color: rgba(251, 250, 248, 0.4) !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-empty-state-heading {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    margin-top: 0.75rem !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-empty-state-description {
+    max-width: 46ch !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.55 !important;
+    margin-top: 0.375rem !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-empty-state-actions {
+    margin-top: 1.25rem !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    flex-wrap: wrap !important;
+}
+
+/* ── Table Row Density & Operational Layout (Obrigações, Garantias & Instrumentos) ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-table th,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-table th {
+    padding-block: 0.45rem !important;
+    padding-inline: 0.75rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.03em !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-table td,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-table td {
+    padding-block: 0.45rem !important;
+    padding-inline: 0.75rem !important;
+    font-size: 0.8125rem !important;
+    vertical-align: middle !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-row,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-row {
+    transition: background-color 0.15s ease !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-ta-row,
+.dark .bsi-cockpit-page .fi-page-relations-ctn .fi-ta-row {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .bsi-emission-view-page .fi-page-relations-ctn .fi-ta-row:hover,
+.dark .bsi-cockpit-page .fi-page-relations-ctn .fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.45) !important;
+}
+
+html:not(.dark) .bsi-emission-view-page .fi-page-relations-ctn .fi-ta-row:hover,
+html:not(.dark) .bsi-cockpit-page .fi-page-relations-ctn .fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.75) !important;
+}
+
+.bsi-page-relations-ctn tr.fi-ta-row:has(.fi-ta-record-action),
+.bsi-page-relations-ctn tr.fi-ta-row[role="button"],
+.fi-page-relations-ctn tr.fi-ta-row:has(.fi-ta-record-action),
+.fi-page-relations-ctn tr.fi-ta-row[role="button"] {
+    cursor: pointer !important;
+}
+
+/* ── Coluna Título / Obrigação: Mais larga, 1 a 2 linhas, sem quebra forçada ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-title,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-title,
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-name,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-name {
+    min-width: 280px !important;
+    max-width: 460px !important;
+    width: 35% !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-title .fi-ta-text-item-label,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-title .fi-ta-text-item-label,
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-name .fi-ta-text-item-label,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-name .fi-ta-text-item-label {
+    font-weight: 600 !important;
+    line-height: 1.3 !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-title .fi-ta-text-item-description,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-title .fi-ta-text-item-description,
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-name .fi-ta-text-item-description,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-name .fi-ta-text-item-description {
+    font-size: 0.725rem !important;
+    line-height: 1.25 !important;
+    margin-top: 0.15rem !important;
+    color: #94a3b8 !important;
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 1 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+}
+
+/* ── Coluna Competência: Compacta ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-competence-date,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-competence-date {
+    min-width: 85px !important;
+    max-width: 105px !important;
+    text-align: center !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* ── Coluna Status & Prioridade: Badges compactos e padronizados ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-status,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-status,
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-priority,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-priority {
+    min-width: 95px !important;
+    max-width: 130px !important;
+    white-space: nowrap !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-table .fi-badge,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-table .fi-badge {
+    min-height: 1.35rem !important;
+    padding: 0.125rem 0.45rem !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+}
+
+/* ── Coluna Vencimento: Compacta e tabular ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-due-date,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-due-date {
+    min-width: 90px !important;
+    max-width: 110px !important;
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+}
+
+/* ── Coluna Responsável: Nome + Área secundária ── */
+.bsi-emission-view-page .fi-page-relations-ctn [class*="fi-ta-cell-responsibleUser"],
+.bsi-cockpit-page .fi-page-relations-ctn [class*="fi-ta-cell-responsibleUser"],
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-responsible-user-name,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-responsible-user-name {
+    min-width: 140px !important;
+    max-width: 200px !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn [class*="fi-ta-cell-responsibleUser"] .fi-ta-text-item-label,
+.bsi-cockpit-page .fi-page-relations-ctn [class*="fi-ta-cell-responsibleUser"] .fi-ta-text-item-label {
+    font-weight: 550 !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn [class*="fi-ta-cell-responsibleUser"] .fi-ta-text-item-description,
+.bsi-cockpit-page .fi-page-relations-ctn [class*="fi-ta-cell-responsibleUser"] .fi-ta-text-item-description {
+    font-size: 0.725rem !important;
+    color: #94a3b8 !important;
+    line-height: 1.2 !important;
+    margin-top: 0.125rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* ── Coluna Situação Documental: Badge + Hint ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-document-status,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-document-status {
+    min-width: 135px !important;
+    max-width: 185px !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-cell-document-status .fi-ta-text-item-description,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-cell-document-status .fi-ta-text-item-description {
+    font-size: 0.725rem !important;
+    color: #94a3b8 !important;
+    margin-top: 0.125rem !important;
+    white-space: nowrap !important;
+}
+
+/* ── Coluna de Ações: Compacta (Dossiê + Dropdown ⋮) ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-actions-cell,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-actions-cell {
+    width: 1% !important;
+    white-space: nowrap !important;
+    text-align: end !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-actions-cell .fi-ta-actions,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-actions-cell .fi-ta-actions {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.25rem !important;
+}
+
+/* ── Discreet Slate-Teal Scrollbar for Data Tables ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-content-ctn,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-content-ctn {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(148, 163, 184, 0.25) transparent !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-content-ctn::-webkit-scrollbar,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-content-ctn::-webkit-scrollbar {
+    height: 5px !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-content-ctn::-webkit-scrollbar-track,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-content-ctn::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-content-ctn::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.25) !important;
+    border-radius: 999px !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.45) !important;
+}
+
+/* ── Filter Trigger & Table Header Refinements ── */
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-header-toolbar,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-header-toolbar {
+    gap: 0.5rem !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-filter-trigger .fi-badge:empty,
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-filter-trigger .fi-badge:is(:where([data-count="0"])),
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-filter-indicators-badge:empty,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-filter-trigger .fi-badge:empty,
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-filter-trigger .fi-badge:is(:where([data-count="0"])),
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-filter-indicators-badge:empty {
+    display: none !important;
+}
+
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-table td:has(.justify-end),
+.bsi-emission-view-page .fi-page-relations-ctn .fi-ta-table td:has(.text-end),
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-table td:has(.justify-end),
+.bsi-cockpit-page .fi-page-relations-ctn .fi-ta-table td:has(.text-end) {
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* ── Institutional Modals & Dialogs (BSI Teal System) ── */
+.dark .fi-modal-window {
+    background: linear-gradient(180deg, #0e2733 0%, #091b23 100%) !important;
+    border: 1px solid rgba(29, 69, 84, 0.65) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(183, 131, 47, 0.15) !important;
+}
+
+.dark .fi-modal-header {
+    border-bottom: 1px solid rgba(29, 69, 84, 0.45) !important;
+}
+
+.dark .fi-modal-heading {
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-modal-description {
+    color: #94a3b8 !important;
+}
+
+.dark .fi-modal-close-btn {
+    color: #94a3b8 !important;
+    border-radius: 0.5rem !important;
+}
+
+.dark .fi-modal-close-btn:hover {
+    color: #fbfaf8 !important;
+    background-color: rgba(29, 69, 84, 0.5) !important;
+}
+
+.dark .fi-modal-footer {
+    background-color: rgba(9, 27, 35, 0.95) !important;
+    border-top: 1px solid rgba(29, 69, 84, 0.45) !important;
+}
+
+.dark .fi-modal-footer .fi-btn-color-gray {
+    background-color: #0e2a37 !important;
+    border: 1px solid rgba(29, 69, 84, 0.6) !important;
+    color: #e6e4e4 !important;
+}
+
+.dark .fi-modal-footer .fi-btn-color-gray:hover {
+    background-color: #13384a !important;
+    border-color: rgba(183, 131, 47, 0.4) !important;
+}
+
+html:not(.dark) .fi-modal-window {
+    background: linear-gradient(180deg, #f8fafc 0%, #f0f4f7 100%) !important;
+    border: 1px solid rgba(160, 195, 210, 0.65) !important;
+    box-shadow: 0 20px 30px -10px rgba(9, 27, 35, 0.12) !important;
+}
+
+html:not(.dark) .fi-modal-header {
+    border-bottom: 1px solid rgba(160, 195, 210, 0.45) !important;
+}
+
+html:not(.dark) .fi-modal-heading {
+    color: #091b23 !important;
+}
+
+html:not(.dark) .fi-modal-description {
+    color: #475569 !important;
+}
+
+html:not(.dark) .fi-modal-close-btn {
+    color: #64748b !important;
+    border-radius: 0.5rem !important;
+}
+
+html:not(.dark) .fi-modal-close-btn:hover {
+    color: #091b23 !important;
+    background-color: rgba(160, 195, 210, 0.35) !important;
+}
+
+html:not(.dark) .fi-modal-footer {
+    background-color: #e6edf2 !important;
+    border-top: 1px solid rgba(160, 195, 210, 0.5) !important;
+}
+
+html:not(.dark) .fi-modal-footer .fi-btn-color-gray {
+    background-color: #dce7ec !important;
+    border: 1px solid #b8ccd6 !important;
+    color: #091b23 !important;
+}
+
+html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
+    background-color: #cfe0e7 !important;
+}
+
+/* ── Operation History (Audit Timeline) System ── */
+.fi-activity-timeline-wrapper {
+    width: 100%;
+}
+
+.fi-activity-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background-color 0.15s ease !important;
+}
+
+.dark .fi-activity-card {
+    background: linear-gradient(180deg, #0e2733 0%, #091b23 100%) !important;
+    border: 1px solid rgba(29, 69, 84, 0.65) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark .fi-activity-card:hover {
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+
+html:not(.dark) .fi-activity-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(203, 213, 225, 0.8) !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+html:not(.dark) .fi-activity-card:hover {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .fi-topbar .fi-global-search-ctn,
     .fi-topbar .fi-user-menu-trigger,
@@ -1130,3 +2298,977 @@
     }
 }
 
+
+
+/* ── Ficha Institucional da Obra, Operações, Medições e Fundos (Criar/Editar) ── */
+.bsi-construction-form-page .fi-page,
+.bsi-operation-form-page .fi-page,
+.bsi-measurement-form-page .fi-page,
+.bsi-fund-form-page .fi-page {
+    gap: 1rem;
+}
+
+/* Cabeçalho na mesma linguagem da listagem de Obras */
+.bsi-construction-form-page .fi-header,
+.bsi-operation-form-page .fi-header,
+.bsi-measurement-form-page .fi-header,
+.bsi-fund-form-page .fi-header {
+    padding: 0.875rem 1.25rem !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, #091b23 0%, #12313b 100%) !important;
+    box-shadow: 0 8px 24px rgba(4, 14, 19, 0.3) !important;
+}
+
+.bsi-construction-form-page .fi-header-heading,
+.bsi-operation-form-page .fi-header-heading,
+.bsi-measurement-form-page .fi-header-heading,
+.bsi-fund-form-page .fi-header-heading {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.015em !important;
+}
+
+.bsi-construction-form-page .fi-header-subheading,
+.bsi-operation-form-page .fi-header-subheading,
+.bsi-measurement-form-page .fi-header-subheading,
+.bsi-fund-form-page .fi-header-subheading {
+    font-size: 0.8125rem !important;
+    line-height: 1.35 !important;
+    color: rgba(251, 250, 248, 0.72) !important;
+    margin-top: 0.125rem !important;
+    max-width: 90ch !important;
+}
+
+.bsi-construction-form-page .fi-breadcrumbs,
+.bsi-operation-form-page .fi-breadcrumbs,
+.bsi-measurement-form-page .fi-breadcrumbs,
+.bsi-fund-form-page .fi-breadcrumbs {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.125rem !important;
+}
+
+/* Menu ⋮ do cabeçalho: área clicável confortável, presença discreta */
+.bsi-construction-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group,
+.bsi-operation-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group,
+.bsi-measurement-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group,
+.bsi-fund-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group {
+    width: 2.375rem !important;
+    height: 2.375rem !important;
+    color: rgba(251, 250, 248, 0.72) !important;
+    background: rgba(251, 250, 248, 0.08) !important;
+    border: 1px solid rgba(251, 250, 248, 0.14) !important;
+    border-radius: 10px !important;
+    transition: color 160ms ease-out, background-color 160ms ease-out, border-color 160ms ease-out !important;
+}
+
+.bsi-construction-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group:hover,
+.bsi-operation-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group:hover,
+.bsi-measurement-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group:hover,
+.bsi-fund-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group:hover {
+    color: #fbfaf8 !important;
+    background: rgba(251, 250, 248, 0.14) !important;
+    border-color: rgba(251, 250, 248, 0.22) !important;
+}
+
+.bsi-construction-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group:focus-visible,
+.bsi-operation-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group:focus-visible,
+.bsi-measurement-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group:focus-visible,
+.bsi-fund-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group:focus-visible {
+    outline: 2px solid #b7832f !important;
+    outline-offset: 2px !important;
+}
+
+/* Cadência vertical das seções */
+.bsi-construction-form-page form.fi-sc-form,
+.bsi-operation-form-page form.fi-sc-form,
+.bsi-measurement-form-page form.fi-sc-form,
+.bsi-fund-form-page form.fi-sc-form,
+.bsi-construction-form-page form.fi-sc-form > .fi-sc,
+.bsi-operation-form-page form.fi-sc-form > .fi-sc,
+.bsi-measurement-form-page form.fi-sc-form > .fi-sc,
+.bsi-fund-form-page form.fi-sc-form > .fi-sc {
+    gap: 1rem !important;
+    overflow: visible !important;
+}
+
+/* Superfície das seções: mais leve, borda fria, sem peso de caixa, overflow visível para dropdowns */
+.bsi-construction-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.bsi-construction-form-page form.fi-sc-form .fi-sc-section,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-section,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-section,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-section {
+    background: #fbfaf8 !important;
+    border: 1px solid #dbd5d3 !important;
+    border-radius: 14px !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-section-header,
+.bsi-operation-form-page form.fi-sc-form .fi-section-header,
+.bsi-measurement-form-page form.fi-sc-form .fi-section-header,
+.bsi-fund-form-page form.fi-sc-form .fi-section-header {
+    padding-block: 0.75rem !important;
+    padding-inline: 1.25rem !important;
+    background: #f8f7f4 !important;
+    border-bottom: 1px solid #dbd5d3 !important;
+    border-top-left-radius: 13px !important;
+    border-top-right-radius: 13px !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-section-header-heading,
+.bsi-operation-form-page form.fi-sc-form .fi-section-header-heading,
+.bsi-measurement-form-page form.fi-sc-form .fi-section-header-heading,
+.bsi-fund-form-page form.fi-sc-form .fi-section-header-heading {
+    font-size: 0.9375rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+    color: #221f1e !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-section-header-description,
+.bsi-operation-form-page form.fi-sc-form .fi-section-header-description,
+.bsi-measurement-form-page form.fi-sc-form .fi-section-header-description,
+.bsi-fund-form-page form.fi-sc-form .fi-section-header-description {
+    font-size: 0.75rem !important;
+    line-height: 1.45 !important;
+    color: #64748b !important;
+    margin-top: 0.125rem !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-section-content,
+.bsi-operation-form-page form.fi-sc-form .fi-section-content,
+.bsi-measurement-form-page form.fi-sc-form .fi-section-content,
+.bsi-fund-form-page form.fi-sc-form .fi-section-content,
+.bsi-construction-form-page form.fi-sc-form .fi-section-content-ctn,
+.bsi-operation-form-page form.fi-sc-form .fi-section-content-ctn,
+.bsi-measurement-form-page form.fi-sc-form .fi-section-content-ctn,
+.bsi-fund-form-page form.fi-sc-form .fi-section-content-ctn {
+    padding-block: 1rem 1.25rem !important;
+    padding-inline: 1.25rem !important;
+    overflow: visible !important;
+}
+
+/* Stacking context dinâmico para campos e selects ativos */
+.bsi-construction-form-page form.fi-sc-form .fi-fo-field-wrp,
+.bsi-operation-form-page form.fi-sc-form .fi-fo-field-wrp,
+.bsi-measurement-form-page form.fi-sc-form .fi-fo-field-wrp,
+.bsi-fund-form-page form.fi-sc-form .fi-fo-field-wrp,
+.bsi-construction-form-page form.fi-sc-form .fi-fo-select-wrp,
+.bsi-operation-form-page form.fi-sc-form .fi-fo-select-wrp,
+.bsi-measurement-form-page form.fi-sc-form .fi-fo-select-wrp,
+.bsi-fund-form-page form.fi-sc-form .fi-fo-select-wrp {
+    position: relative;
+    overflow: visible !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-sc-section:focus-within,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-section:focus-within,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-section:focus-within,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-section:focus-within {
+    z-index: 25 !important;
+    position: relative !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-fo-field-wrp:focus-within,
+.bsi-operation-form-page form.fi-sc-form .fi-fo-field-wrp:focus-within,
+.bsi-measurement-form-page form.fi-sc-form .fi-fo-field-wrp:focus-within,
+.bsi-fund-form-page form.fi-sc-form .fi-fo-field-wrp:focus-within,
+.bsi-construction-form-page form.fi-sc-form .fi-fo-select-wrp:focus-within,
+.bsi-operation-form-page form.fi-sc-form .fi-fo-select-wrp:focus-within,
+.bsi-measurement-form-page form.fi-sc-form .fi-fo-select-wrp:focus-within,
+.bsi-fund-form-page form.fi-sc-form .fi-fo-select-wrp:focus-within {
+    z-index: 40 !important;
+}
+
+/* Labels: identificáveis sem competir com o valor */
+.bsi-construction-form-page form.fi-sc-form .fi-fo-field-label,
+.bsi-operation-form-page form.fi-sc-form .fi-fo-field-label,
+.bsi-measurement-form-page form.fi-sc-form .fi-fo-field-label,
+.bsi-fund-form-page form.fi-sc-form .fi-fo-field-label {
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    color: #494340 !important;
+    padding-bottom: 0.375rem !important;
+}
+
+/* Inputs: altura, raio e estados consistentes */
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp,
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp,
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp,
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp {
+    min-height: 2.5rem !important;
+    background: #ffffff !important;
+    border: 1px solid #dbd5d3 !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp:hover,
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp:hover,
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp:hover,
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp:hover {
+    border-color: #c4bbb8 !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp:focus-within {
+    background: #ffffff !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.14) !important;
+}
+
+/* Campos derivados/automáticos: intencionalmente somente leitura, legíveis */
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]),
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]),
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]),
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]) {
+    background: #f8f7f4 !important;
+    border-style: dashed !important;
+    border-color: #dbd5d3 !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]):hover,
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]):hover,
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]):hover,
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]):hover {
+    border-color: #dbd5d3 !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-input[readonly],
+.bsi-operation-form-page form.fi-sc-form .fi-input[readonly],
+.bsi-measurement-form-page form.fi-sc-form .fi-input[readonly],
+.bsi-fund-form-page form.fi-sc-form .fi-input[readonly] {
+    cursor: default !important;
+}
+
+/* Textos auxiliares: orientam sem dominar o campo */
+.bsi-construction-form-page form.fi-sc-form .fi-fo-field .fi-sc-text,
+.bsi-operation-form-page form.fi-sc-form .fi-fo-field .fi-sc-text,
+.bsi-measurement-form-page form.fi-sc-form .fi-fo-field .fi-sc-text,
+.bsi-fund-form-page form.fi-sc-form .fi-fo-field .fi-sc-text {
+    font-size: 0.75rem !important;
+    line-height: 1.45 !important;
+    color: #64748b !important;
+    margin-top: 0.375rem !important;
+}
+
+/* Prefixo financeiro do Valor previsto */
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-prefix > .fi-input-wrp-label,
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp-prefix > .fi-input-wrp-label,
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp-prefix > .fi-input-wrp-label,
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp-prefix > .fi-input-wrp-label {
+    padding-inline-end: 0.5rem !important;
+    margin-inline-end: 0.5rem !important;
+    color: #766c68 !important;
+    font-weight: 600 !important;
+    border-inline-end: 1px solid #ece8e7 !important;
+}
+
+/* Ações internas dos selects (limpar/abrir): discretas */
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon,
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon,
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon,
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon {
+    color: #9d918d !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+.bsi-operation-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+.bsi-measurement-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+.bsi-fund-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover {
+    color: #5d5653 !important;
+}
+
+/* Rodapé de ações: integrado ao formulário */
+.bsi-construction-form-page form.fi-sc-form .fi-sc-actions,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-actions,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-actions {
+    margin-top: 0 !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary {
+    min-height: 2.5rem !important;
+    padding: 0.5rem 1.25rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+    color: #ffffff !important;
+    background: linear-gradient(180deg, #b7832f 0%, #a06e28 100%) !important;
+    border: 1px solid rgba(245, 208, 137, 0.3) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 6px rgba(4, 14, 19, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+    transition: all 180ms ease-out !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover {
+    background: linear-gradient(180deg, #c48f38 0%, #ad762c 100%) !important;
+    border-color: rgba(245, 208, 137, 0.5) !important;
+    box-shadow: 0 4px 14px rgba(160, 110, 40, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+    transform: translateY(-1px) !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus-visible,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus-visible,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus-visible,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus-visible {
+    outline: 2px solid #b7832f !important;
+    outline-offset: 2px !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:active,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:active,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:active,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:active {
+    background: #96651f !important;
+    transform: translateY(0) !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary) {
+    min-height: 2.5rem !important;
+    padding: 0.5rem 1rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #5d5653 !important;
+    background: transparent !important;
+    border: 1px solid #dbd5d3 !important;
+    border-radius: 10px !important;
+}
+
+.bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover {
+    color: #34302e !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+    border-color: #c4bbb8 !important;
+}
+
+/* ── Dark mode: azul-petróleo profundo, bordas frias, dourado só no foco/CTA ── */
+/* Base cromática da página: azul-petróleo profundo (navy-950), nunca preto quente */
+.dark .bsi-construction-form-page,
+.dark .bsi-operation-form-page,
+.dark .bsi-measurement-form-page,
+.dark .bsi-fund-form-page {
+    background: #06151c !important;
+}
+
+.dark .bsi-construction-form-page .fi-page-main,
+.dark .bsi-construction-form-page .fi-page,
+.dark .bsi-operation-form-page .fi-page-main,
+.dark .bsi-operation-form-page .fi-page,
+.dark .bsi-measurement-form-page .fi-page-main,
+.dark .bsi-measurement-form-page .fi-page,
+.dark .bsi-fund-form-page .fi-page-main,
+.dark .bsi-fund-form-page .fi-page {
+    background: transparent !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input {
+    caret-color: #b7832f !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input::placeholder,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input::placeholder,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input::placeholder,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input::placeholder {
+    color: rgba(251, 250, 248, 0.35) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.dark .bsi-construction-form-page form.fi-sc-form .fi-sc-section,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-sc-section,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-sc-section,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-sc-section {
+    background: #0d252e !important;
+    border-color: rgba(148, 163, 184, 0.18) !important;
+    overflow: visible !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-section-header,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-section-header,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-section-header,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-section-header {
+    background: #0a2028 !important;
+    border-bottom-color: rgba(148, 163, 184, 0.14) !important;
+    border-top-left-radius: 13px !important;
+    border-top-right-radius: 13px !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-section-header-heading,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-section-header-heading,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-section-header-heading,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-section-header-heading {
+    color: #fbfaf8 !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-section-header-description,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-section-header-description,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-section-header-description,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-section-header-description {
+    color: rgba(251, 250, 248, 0.55) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-fo-field-label,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-fo-field-label,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-fo-field-label,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-fo-field-label {
+    color: rgba(251, 250, 248, 0.85) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp {
+    background: #091b23 !important;
+    border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp:hover,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp:hover,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp:hover,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp:hover {
+    border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp:focus-within {
+    background: #091b23 !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.2) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]),
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]),
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]),
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]) {
+    background: rgba(9, 27, 35, 0.55) !important;
+    border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]):hover,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]):hover,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]):hover,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp:has(.fi-input[readonly]):hover {
+    border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-fo-field .fi-sc-text,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-fo-field .fi-sc-text,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-fo-field .fi-sc-text,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-fo-field .fi-sc-text {
+    color: rgba(251, 250, 248, 0.55) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp-prefix > .fi-input-wrp-label,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp-prefix > .fi-input-wrp-label,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp-prefix > .fi-input-wrp-label,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp-prefix > .fi-input-wrp-label {
+    color: rgba(251, 250, 248, 0.6) !important;
+    border-inline-end-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon {
+    color: rgba(251, 250, 248, 0.45) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover {
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.dark .bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.dark .bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary) {
+    color: rgba(251, 250, 248, 0.7) !important;
+    border-color: rgba(148, 163, 184, 0.25) !important;
+}
+
+.dark .bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.dark .bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.dark .bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.dark .bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover {
+    color: #fbfaf8 !important;
+    background: rgba(251, 250, 248, 0.06) !important;
+    border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+/* Mobile: campos empilhados, ações em largura confortável */
+@media (max-width: 40rem) {
+    .bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+    .bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+    .bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+    .bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }    .bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bsi-construction-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group,
+    .bsi-construction-form-page form.fi-sc-form .fi-input-wrp,
+    .bsi-construction-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-operation-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group,
+    .bsi-operation-form-page form.fi-sc-form .fi-input-wrp,
+    .bsi-operation-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-measurement-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group,
+    .bsi-measurement-form-page form.fi-sc-form .fi-input-wrp,
+    .bsi-measurement-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-fund-form-page .fi-header-actions-ctn .fi-ac-icon-btn-group,
+    .bsi-fund-form-page form.fi-sc-form .fi-input-wrp,
+    .bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+        transition: none !important;
+    }
+}
+
+/* ── Cadastros Simples (Tipo de Fundo, Aplicação): formulário administrativo de escala média confortável (660px - 720px) ── */
+.bsi-simple-form-page form.fi-sc-form {
+    width: 100% !important;
+    max-width: 44rem !important;
+    margin-inline: 0 !important;
+}
+
+.bsi-simple-form-page form.fi-sc-form > .fi-sc,
+.bsi-simple-form-page form.fi-sc-form .fi-sc-section,
+.bsi-simple-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    width: 100% !important;
+}
+
+/* Cabeçalho do Card interno */
+.bsi-simple-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
+    padding-block: 1.125rem !important;
+    padding-inline: 1.625rem !important;
+}
+
+.bsi-simple-form-page form.fi-sc-form .fi-section-header-heading {
+    font-size: 1rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-simple-form-page form.fi-sc-form .fi-section-header-description {
+    font-size: 0.8125rem !important;
+    line-height: 1.5 !important;
+    margin-top: 0.25rem !important;
+}
+
+/* Conteúdo do Card interno e Campo Nome */
+.bsi-simple-form-page form.fi-sc-form .fi-section-content,
+.bsi-simple-form-page form.fi-sc-form .fi-section-content-ctn {
+    padding-block: 1.5rem 1.625rem !important;
+    padding-inline: 1.625rem !important;
+}
+
+.bsi-simple-form-page form.fi-sc-form .fi-fo-field-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    padding-bottom: 0.5rem !important;
+}
+
+.bsi-simple-form-page form.fi-sc-form .fi-input-wrp {
+    min-height: 2.875rem !important;
+    padding-inline: 0.375rem !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+}
+
+.bsi-simple-form-page form.fi-sc-form .fi-input {
+    font-size: 0.9375rem !important;
+    padding-inline: 0.625rem !important;
+    padding-block: 0.625rem !important;
+}
+
+/* Ações do Formulário: alinhamento perfeito à esquerda, mesma largura máxima e botões uniformes */
+.bsi-simple-form-page form.fi-sc-form .fi-sc-actions {
+    margin-top: 0.875rem !important;
+    width: 100% !important;
+    max-width: 44rem !important;
+}
+
+.bsi-simple-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+    gap: 0.75rem !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+
+.bsi-simple-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+    min-height: 2.75rem !important;
+    padding-inline: 1.375rem !important;
+    padding-block: 0.5625rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+@media (max-width: 640px) {
+    .bsi-simple-form-page form.fi-sc-form {
+        max-width: 100% !important;
+    }
+
+    .bsi-simple-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .bsi-simple-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+        width: 100% !important;
+    }
+}
+
+/* ── Prestadores de Serviço (Cadastro e Edição): Ficha Administrativa Corporativa Ampla (780px - 920px) ── */
+.bsi-service-provider-form-page form.fi-sc-form {
+    width: 100% !important;
+    max-width: 58rem !important; /* 928px (~780 a 920px no desktop) */
+    margin-inline: 0 !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form > .fi-sc,
+.bsi-service-provider-form-page form.fi-sc-form .fi-sc-section,
+.bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-section,
+.bsi-service-provider-form-page form.fi-sc-form .fi-section-content,
+.bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Cabeçalho do Card interno */
+.bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
+    padding-block: 1rem !important;
+    padding-inline: 1.5rem !important;
+    background: #f8f7f4 !important;
+    border-bottom: 1px solid #dbd5d3 !important;
+    border-top-left-radius: 13px !important;
+    border-top-right-radius: 13px !important;
+}
+
+.dark .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
+    background: #0a2028 !important;
+    border-bottom-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-section-header-heading {
+    font-size: 1.0625rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-section-header-description {
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.25rem !important;
+}
+
+/* Conteúdo do Card interno e Campos: espaçamento correto e equilibrado */
+.bsi-service-provider-form-page form.fi-sc-form .fi-section-content,
+.bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn {
+    padding-block: 1.25rem 1.5rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+/* Prevenção de restrição indevida do CSS Grid e sub-wrappers */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-content-col,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-content-ctn,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-content {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    padding-bottom: 0.375rem !important;
+}
+
+/* Wrapper unificado de Inputs e Selects */
+.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 2.75rem !important;
+    padding-inline: 0.5rem 0.375rem !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-content-ctn {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    overflow: hidden !important;
+}
+
+/* Inputs de texto gerais */
+.bsi-service-provider-form-page form.fi-sc-form .fi-input {
+    font-size: 0.9375rem !important;
+    padding-inline: 0.75rem !important;
+    padding-block: 0.625rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    line-height: 1.5 !important;
+    box-sizing: border-box !important;
+}
+
+/* CNPJ: largura total no grid de 5 colunas, algarismos tabulares e sem truncamento */
+.bsi-service-provider-form-page form.fi-sc-form input.fi-input[id*="cnpj"],
+.bsi-service-provider-form-page form.fi-sc-form input[name*="cnpj"] {
+    white-space: nowrap !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: 0.025em !important;
+    text-overflow: clip !important;
+}
+
+/* Nome: largura total na linha 2 sem cortes ou truncamentos artificiais */
+.bsi-service-provider-form-page form.fi-sc-form input.fi-input[id*="name"],
+.bsi-service-provider-form-page form.fi-sc-form input[name*="name"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    text-overflow: clip !important;
+    white-space: nowrap !important;
+}
+
+/* ── Select (Tipo): exibição unilinear definitiva e imune a quebra vertical ── */
+.bsi-service-provider-form-page form.fi-sc-form .fi-select-input,
+.bsi-service-provider-form-page form.fi-sc-form .choices {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin-bottom: 0 !important;
+    position: relative !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .choices__inner {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 2.625rem !important;
+    padding: 0 0.5rem !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .choices__list--single {
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .choices__list--single .choices__item,
+.bsi-service-provider-form-page form.fi-sc-form .choices__list--single .choices__item--selectable,
+.bsi-service-provider-form-page form.fi-sc-form .choices__item {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: manual !important;
+    font-size: 0.9375rem !important;
+    line-height: 1.5 !important;
+    float: none !important;
+    color: inherit !important;
+}
+
+/* Isolamento do input fantasma de Choices.js no modo de seleção única */
+.bsi-service-provider-form-page form.fi-sc-form .choices__inner > input.choices__input {
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ── Ações laterais do Select (Cadastrar tipo, Editar tipo, Limpar, Dropdown) ── */
+.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    margin-inline-start: 0.375rem !important;
+    padding-inline: 0 !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions {
+    gap: 0.25rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    padding-inline-start: 0.25rem !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    min-width: 1.75rem !important;
+    max-width: 1.75rem !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: rgba(251, 250, 248, 0.65) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(148, 163, 184, 0.15) !important;
+    transition: all 150ms ease !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button:hover {
+    color: #fbfaf8 !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+/* Light mode icon buttons inside select actions */
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button {
+    color: #5d5653 !important;
+    background: rgba(0, 0, 0, 0.03) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button:hover {
+    color: #1a1918 !important;
+    background: rgba(0, 0, 0, 0.07) !important;
+    border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ── Ações do Formulário (Salvar alterações / Cancelar) ── */
+.bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions {
+    margin-top: 1rem !important;
+    width: 100% !important;
+    max-width: 58rem !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+    gap: 0.75rem !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+    min-height: 2.75rem !important;
+    padding-inline: 1.5rem !important;
+    padding-block: 0.5625rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Breadcrumb com nome corporativo longo protegido contra quebra brusca */
+.bsi-service-provider-form-page .fi-breadcrumbs .fi-breadcrumbs-item-label {
+    max-width: 28rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: inline-block !important;
+    vertical-align: bottom !important;
+}
+
+@media (max-width: 640px) {
+    .bsi-service-provider-form-page form.fi-sc-form {
+        max-width: 100% !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions {
+        max-width: 100% !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+        width: 100% !important;
+    }
+}

@@ -4,10 +4,14 @@ namespace App\Filament\Resources\SalesBoards\Schemas;
 
 use App\Concerns\MoneyFormatter;
 use App\Models\Construction;
+use App\Models\Emission;
 use App\Models\SalesBoard;
+use App\Models\SalesBoardHistory;
 use Closure;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -74,66 +78,137 @@ class SalesBoardForm
                             'required' => 'Selecione o empreendimento.',
                         ]),
 
-                    TextInput::make('reference_month')
-                        ->label('Mês')
-                        ->placeholder('MM/AAAA')
-                        ->mask('99/9999')
-                        ->required()
-                        ->formatStateUsing(fn (mixed $state): string => SalesBoard::formatReferenceMonthForDisplay($state))
-                        ->dehydrateStateUsing(fn (mixed $state): ?string => SalesBoard::normalizeReferenceMonth($state))
-                        ->mutateStateForValidationUsing(fn (mixed $state): ?string => SalesBoard::normalizeReferenceMonth($state))
-                        ->rule(static function (Get $get, ?SalesBoard $record = null): Closure {
-                            return static function (string $attribute, mixed $value, Closure $fail) use ($get, $record): void {
-                                $referenceMonth = SalesBoard::normalizeReferenceMonth($value);
-
-                                if (($referenceMonth === null) || blank($get('emission_id')) || blank($get('construction_id'))) {
-                                    return;
-                                }
-
-                                $exists = SalesBoard::query()
-                                    ->where('emission_id', $get('emission_id'))
-                                    ->where('construction_id', $get('construction_id'))
-                                    ->whereDate('reference_month', $referenceMonth)
-                                    ->when($record?->exists, fn (Builder $query): Builder => $query->whereKeyNot($record->getKey()))
-                                    ->exists();
-
-                                if ($exists) {
-                                    $fail('Já existe um quadro de vendas para esta operação, empreendimento e Mês.');
-                                }
-                            };
-                        })
-                        ->validationMessages([
-                            'required' => 'Informe a Mês no formato MM/AAAA.',
-                        ]),
+                    static::referenceMonthField(),
                 ])
                 ->columns(3),
 
-            Section::make('Quantidades por Status')
-                ->columnSpanFull()
-                ->schema([
-                    static::quantityField('stock_units', 'Estoque'),
-                    static::quantityField('financed_units', 'Financiado'),
-                    static::quantityField('paid_units', 'Quitado'),
-                    static::quantityField('exchanged_units', 'Permutado'),
+            static::quantitiesSection(),
 
-                    TextInput::make('total_units')
-                        ->label('Quantidade Total')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->default(0),
-                ])
-                ->columns(5),
+            static::valuesSection(),
 
-            Section::make('Valores por Status')
-                ->columnSpanFull()
-                ->schema([
-                    static::moneyField('stock_value', 'Valor em estoque'),
-                    static::moneyField('financed_value', 'Valor financiado'),
-                    static::moneyField('paid_value', 'Valor quitado'),
-                    static::moneyField('exchanged_value', 'Valor permutado'),
-                ])
-                ->columns(2),
+            static::changeReasonField(),
         ]);
+    }
+
+    /**
+     * Justification required when the competence being saved already has a
+     * registered position for that construction and the emission is no longer
+     * in the "Em Elaboração" phase. Stored on the history version, not on the
+     * board itself.
+     */
+    public static function changeReasonField(): Textarea
+    {
+        return Textarea::make('change_reason')
+            ->label('Motivo da alteração')
+            ->helperText('Informe o motivo desta nova alteração, pois já existe um registro do Quadro de Vendas para esta competência.')
+            ->rows(3)
+            ->required()
+            ->maxLength(2000)
+            ->dehydrated(false)
+            ->columnSpanFull()
+            ->visible(fn (Textarea $component): bool => static::needsChangeReason($component))
+            ->validationMessages([
+                'required' => 'Informe o motivo da alteração.',
+            ]);
+    }
+
+    /**
+     * Evaluated against the competence currently typed in the form, so moving to
+     * an unregistered competence drops the requirement straight away.
+     */
+    protected static function needsChangeReason(Component $component): bool
+    {
+        $get = $component->makeGetUtility();
+
+        $emissionId = $get('emission_id');
+        $constructionId = $get('construction_id');
+        $referenceMonth = SalesBoard::normalizeReferenceMonth($get('reference_month'));
+
+        if (blank($emissionId) || blank($constructionId) || ($referenceMonth === null)) {
+            return false;
+        }
+
+        if (Emission::query()->whereKey($emissionId)->value('status') === Emission::STATUS_DRAFT) {
+            return false;
+        }
+
+        return SalesBoardHistory::query()
+            ->whereDate('reference_month', $referenceMonth)
+            ->whereHas(
+                'salesBoard',
+                fn (Builder $query): Builder => $query
+                    ->where('emission_id', $emissionId)
+                    ->where('construction_id', $constructionId),
+            )
+            ->exists();
+    }
+
+    /**
+     * Value of the position this update started from, when the form was opened
+     * as a new update. Absent everywhere else, which disables the diff hints.
+     */
+    protected static function previousPositionValue(mixed $livewire, string $field): mixed
+    {
+        $previousPosition = (is_object($livewire) && property_exists($livewire, 'previousPosition'))
+            ? $livewire->previousPosition
+            : null;
+
+        return is_array($previousPosition) ? ($previousPosition[$field] ?? null) : null;
+    }
+
+    /**
+     * Reference month field shared by the Sales Board resource and by the
+     * inline Sales Board step of the emission creation wizard.
+     *
+     * Repeating a competence is no longer an error: it produces a new version of
+     * that position, subject to the change reason rule.
+     */
+    public static function referenceMonthField(): TextInput
+    {
+        return TextInput::make('reference_month')
+            ->label('Competência')
+            ->placeholder('MM/AAAA')
+            ->mask('99/9999')
+            ->required()
+            ->live(onBlur: true)
+            ->formatStateUsing(fn (mixed $state): string => SalesBoard::formatReferenceMonthForDisplay($state))
+            ->dehydrateStateUsing(fn (mixed $state): ?string => SalesBoard::normalizeReferenceMonth($state))
+            ->mutateStateForValidationUsing(fn (mixed $state): ?string => SalesBoard::normalizeReferenceMonth($state))
+            ->validationMessages([
+                'required' => 'Informe a competência no formato MM/AAAA.',
+            ]);
+    }
+
+    public static function quantitiesSection(): Section
+    {
+        return Section::make('Quantidades por Status')
+            ->columnSpanFull()
+            ->schema([
+                static::quantityField('stock_units', 'Estoque'),
+                static::quantityField('financed_units', 'Financiado'),
+                static::quantityField('paid_units', 'Quitado'),
+                static::quantityField('exchanged_units', 'Permutado'),
+
+                TextInput::make('total_units')
+                    ->label('Quantidade Total')
+                    ->disabled()
+                    ->dehydrated(false)
+                    ->default(0),
+            ])
+            ->columns(5);
+    }
+
+    public static function valuesSection(): Section
+    {
+        return Section::make('Valores por Status')
+            ->columnSpanFull()
+            ->schema([
+                static::moneyField('stock_value', 'Valor em estoque'),
+                static::moneyField('financed_value', 'Valor financiado'),
+                static::moneyField('paid_value', 'Valor quitado'),
+                static::moneyField('exchanged_value', 'Valor permutado'),
+            ])
+            ->columns(2);
     }
 
     protected static function quantityField(string $name, string $label): TextInput
@@ -147,6 +222,17 @@ class SalesBoardForm
             ->minValue(0)
             ->live(onBlur: true)
             ->afterStateUpdated(fn (Set $set, Get $get): null => self::fillTotalUnits($set, $get))
+            ->hint(fn (mixed $livewire, mixed $state): ?string => self::changedFromPreviousHint(
+                self::previousPositionValue($livewire, $name),
+                $state,
+                fn (mixed $value): string => (string) self::normalizeIntegerValue($value),
+            ))
+            ->hintColor('warning')
+            ->hintIcon(fn (mixed $livewire, mixed $state): ?string => self::changedFromPreviousHint(
+                self::previousPositionValue($livewire, $name),
+                $state,
+                fn (mixed $value): string => (string) self::normalizeIntegerValue($value),
+            ) === null ? null : 'heroicon-m-arrow-path')
             ->validationMessages([
                 'required' => "Informe o valor de {$label}.",
                 'integer' => "Informe um número inteiro válido para {$label}.",
@@ -170,10 +256,34 @@ class SalesBoardForm
             ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
             ->minValue(0)
             ->placeholder('1.000,00')
+            ->live(onBlur: true)
+            ->hint(fn (mixed $livewire, mixed $state): ?string => self::changedFromPreviousHint(
+                self::previousPositionValue($livewire, $name),
+                $state,
+                fn (mixed $value): string => MoneyFormatter::formatCurrencyForDisplay($value),
+            ))
+            ->hintColor('warning')
             ->validationMessages([
                 'required' => "Informe o {$label}.",
                 'min' => "O {$label} não pode ser negativo.",
             ]);
+    }
+
+    /**
+     * "Anterior: X" hint, shown only while the field differs from the position
+     * this update started from.
+     *
+     * @param  Closure(mixed): string  $format
+     */
+    protected static function changedFromPreviousHint(mixed $previousValue, mixed $currentValue, Closure $format): ?string
+    {
+        if ($previousValue === null) {
+            return null;
+        }
+
+        $previous = $format($previousValue);
+
+        return $previous === $format($currentValue) ? null : 'Anterior: '.$previous;
     }
 
     protected static function fillTotalUnits(Set $set, Get $get): null

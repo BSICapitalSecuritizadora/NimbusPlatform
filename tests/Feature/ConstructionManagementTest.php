@@ -9,8 +9,10 @@ use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -24,13 +26,59 @@ beforeEach(function () {
 it('shows the create construction action and filters on the constructions list page', function () {
     $this->actingAs(makeConstructionAdminUser());
 
+    Construction::factory()->create();
+
     Livewire::test(ListConstructions::class)
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Cadastrar obra')
+        ->assertActionHasLabel('create', 'Nova Obra')
         ->assertTableFilterExists('emission_id')
         ->assertTableFilterExists('development_name')
         ->assertTableFilterExists('measurement_company_id')
         ->assertTableFilterExists('state');
+});
+
+it('shows a contextual empty state when there are no constructions', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    Livewire::test(ListConstructions::class)
+        ->assertOk()
+        ->assertSee('Acompanhamento cadastral e financeiro das obras vinculadas às emissões.')
+        ->assertSee('Nenhuma obra cadastrada')
+        ->assertSee('Cadastre a primeira obra para acompanhar cronograma, localização e valor previsto.')
+        ->assertDontSee('Nenhuma obra corresponde aos filtros selecionados');
+});
+
+it('distinguishes no results from an empty base and offers to clear filters', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    Construction::factory()->create([
+        'development_name' => 'Residencial Alpha',
+    ]);
+
+    Livewire::test(ListConstructions::class)
+        ->assertSee('Buscar por emissão, empreendimento, cidade ou empresa...')
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhuma obra corresponde aos filtros selecionados')
+        ->assertSee('Limpar filtros')
+        ->assertDontSee('Nenhuma obra cadastrada');
+});
+
+it('groups location and schedule into scannable columns', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    Construction::factory()->create([
+        'development_name' => 'Alto Bellevue',
+        'city' => 'Garanhuns',
+        'state' => 'PE',
+        'construction_start_date' => '2025-10-01',
+        'construction_end_date' => '2028-04-01',
+        'estimated_value' => 18940068.86,
+    ]);
+
+    Livewire::test(ListConstructions::class)
+        ->assertSee('Garanhuns · PE')
+        ->assertSee('10/2025 → 04/2028')
+        ->assertSee('18.940.068,86');
 });
 
 it('creates multiple constructions for the same emission', function () {
@@ -125,7 +173,7 @@ it('keeps the selected emission when saving and creating another construction', 
     expect(Construction::query()->count())->toBe(1);
 });
 
-it('allows saving a construction without optional fields', function () {
+it('allows saving a construction without the optional schedule and value fields', function () {
     $this->actingAs(makeConstructionAdminUser());
 
     $emission = Emission::factory()->create();
@@ -137,7 +185,7 @@ it('allows saving a construction without optional fields', function () {
         ->fillForm([
             'emission_id' => $emission->id,
             'development_name' => 'Residencial Gamma',
-            'development_cnpj' => null,
+            'development_cnpj' => '55.666.777/0001-88',
             'city' => 'Curitiba',
             'state' => 'PR',
             'construction_start_date' => null,
@@ -152,7 +200,7 @@ it('allows saving a construction without optional fields', function () {
 
     expect($construction->emission_id)->toBe($emission->id)
         ->and($construction->development_name)->toBe('Residencial Gamma')
-        ->and($construction->development_cnpj)->toBeNull()
+        ->and($construction->development_cnpj)->toBe('55666777000188')
         ->and($construction->construction_start_date)->toBeNull()
         ->and($construction->construction_end_date)->toBeNull()
         ->and($construction->estimated_value)->toBeNull()
@@ -254,6 +302,8 @@ it('filters constructions by engineering measurement company', function () {
 it('limits the measurement company filter options to engineering service providers', function () {
     $this->actingAs(makeConstructionAdminUser());
 
+    Construction::factory()->create();
+
     $engineeringCompany = makeEngineeringMeasurementCompany([
         'name' => 'Engenharia Permitida',
     ]);
@@ -313,6 +363,56 @@ it('formats derived values when editing a construction', function () {
             'estimated_value' => '1.250.000,75',
             'measurement_company_cnpj' => '11.222.333/0001-44',
         ]);
+});
+
+it('requires the development cnpj', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    $emission = Emission::factory()->create();
+    $measurementCompany = makeEngineeringMeasurementCompany();
+
+    Livewire::test(CreateConstruction::class)
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'development_name' => 'Residencial Sem CNPJ',
+            'city' => 'Curitiba',
+            'state' => 'PR',
+            'measurement_company_id' => $measurementCompany->id,
+        ])
+        ->call('create')
+        ->assertHasFormErrors([
+            'development_cnpj' => 'Informe o CNPJ do empreendimento.',
+        ]);
+
+    expect(Construction::query()->count())->toBe(0);
+});
+
+it('creates a measurement company inline from the construction form', function () {
+    $this->actingAs(makeConstructionAdminUser());
+
+    Http::fake([
+        'https://publica.cnpj.ws/cnpj/*' => Http::response([
+            'razao_social' => 'Engenharia Direta Ltda',
+            'estabelecimento' => ['nome_fantasia' => 'Engenharia Direta'],
+        ]),
+    ]);
+
+    $createCompanyAction = TestAction::make('createOption')->schemaComponent('measurement_company_id');
+
+    Livewire::test(CreateConstruction::class)
+        ->assertActionHasLabel($createCompanyAction, 'Cadastrar Empresa de Medição')
+        ->mountAction($createCompanyAction)
+        ->fillForm(['cnpj' => '11.222.333/0001-44'])
+        ->assertActionDataSet(['name' => 'Engenharia Direta'])
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    $company = ExpenseServiceProvider::query()->where('cnpj', '11222333000144')->sole();
+
+    expect($company->type?->name)->toBe(Construction::MEASUREMENT_COMPANY_TYPE_NAME);
+
+    Livewire::test(CreateConstruction::class)
+        ->assertFormFieldExists('measurement_company_id');
 });
 
 function makeEngineeringMeasurementCompany(array $attributes = []): ExpenseServiceProvider

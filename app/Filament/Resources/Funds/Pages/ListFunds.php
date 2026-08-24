@@ -12,11 +12,22 @@ class ListFunds extends ListRecords
 
     protected static ?string $title = 'Fundos';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-funds-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Acompanhamento dos fundos vinculados às operações, com identificação, aplicação e dados bancários.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('Criar fundo'),
+                ->label('Criar fundo')
+                ->icon('heroicon-m-plus')
+                ->color('primary'),
         ];
     }
 }

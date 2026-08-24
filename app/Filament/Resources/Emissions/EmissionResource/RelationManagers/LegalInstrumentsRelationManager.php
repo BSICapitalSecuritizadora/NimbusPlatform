@@ -14,6 +14,7 @@ use App\Models\LegalInstrumentDocument;
 use App\Services\LegalInstruments\ExistingDocumentScanner;
 use App\Services\LegalInstruments\InstrumentPositionResolver;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -27,6 +28,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Placeholder;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -88,58 +90,126 @@ class LegalInstrumentsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('name')
+            ->recordAction('current_position')
             ->poll($this->hasProcessingDocuments() ? '5s' : null)
             ->description('Cada instrumento reúne o documento original, seus aditamentos e as garantias que ele constitui.')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['documents.document', 'guarantees', 'fields']))
+            ->searchPlaceholder('Buscar por instrumento ou número...')
             ->columns([
                 TextColumn::make('name')
                     ->label('Instrumento')
+                    ->weight('semibold')
                     ->formatStateUsing(fn (LegalInstrument $record): string => $record->display_name)
                     ->description(fn (LegalInstrument $record): string => $record->type->label())
-                    ->searchable()
+                    ->tooltip(fn (LegalInstrument $record): string => "{$record->display_name} — {$record->type->label()}")
+                    ->searchable(['name', 'number'])
+                    ->sortable()
                     ->wrap(),
+
                 TextColumn::make('documents_count')
                     ->label('Dossiê')
                     ->state(fn (LegalInstrument $record): string => $this->dossierSummary($record))
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
                     ->wrap(),
+
                 TextColumn::make('guarantees_count')
                     ->label('Garantias')
-                    ->state(fn (LegalInstrument $record): int => $record->guarantees->count())
-                    ->alignCenter(),
-                TextColumn::make('pending_changes')
-                    ->label('Alterações pendentes')
                     ->badge()
-                    ->state(fn (LegalInstrument $record): string => (string) $record->fields
-                        ->where('status', LegalInstrumentFieldStatus::PendingReview)
-                        ->count())
-                    ->color(fn (string $state): string => $state === '0' ? 'gray' : 'warning')
-                    ->alignCenter(),
+                    ->state(fn (LegalInstrument $record): string => match ($count = $record->guarantees->count()) {
+                        0 => '0 vinculadas',
+                        1 => '1 vinculada',
+                        default => "{$count} vinculadas",
+                    })
+                    ->color(fn (LegalInstrument $record): string => $record->guarantees->count() > 0 ? 'info' : 'gray')
+                    ->alignCenter()
+                    ->toggleable(),
+
+                TextColumn::make('pending_changes')
+                    ->label('Pendências')
+                    ->badge()
+                    ->state(fn (LegalInstrument $record): string => match ($pending = $record->fields->where('status', LegalInstrumentFieldStatus::PendingReview)->count()) {
+                        0 => 'Em dia',
+                        1 => '1 revisão',
+                        default => "{$pending} revisões",
+                    })
+                    ->color(fn (LegalInstrument $record): string => $record->fields->where('status', LegalInstrumentFieldStatus::PendingReview)->count() === 0 ? 'success' : 'warning')
+                    ->alignCenter()
+                    ->toggleable(),
+
                 TextColumn::make('status')
                     ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (LegalInstrument $record): string => $record->status_label)
-                    ->color(fn (LegalInstrument $record): string => $record->status === LegalInstrument::STATUS_ACTIVE ? 'success' : 'gray'),
+                    ->color(fn (LegalInstrument $record): string => match ($record->status) {
+                        LegalInstrument::STATUS_ACTIVE => 'success',
+                        default => 'gray',
+                    }),
+            ])
+            ->filters([
+                SelectFilter::make('type')
+                    ->label('Tipo de instrumento')
+                    ->options(LegalInstrumentType::options()),
+                SelectFilter::make('status')
+                    ->label('Situação')
+                    ->options(LegalInstrument::STATUS_OPTIONS),
             ])
             ->defaultSort('created_at', 'desc')
             ->headerActions([
-                $this->makeScanExistingDocumentsAction(),
+                $this->makeScanExistingDocumentsAction()
+                    ->button()
+                    ->outlined()
+                    ->color('gray'),
                 CreateAction::make()
                     ->label('Cadastrar instrumento')
+                    ->icon('heroicon-o-plus-circle')
+                    ->button()
+                    ->color('primary')
                     ->authorize(fn (): bool => $this->userCan(AccessPermission::LegalInstrumentsCreate)),
             ])
             ->actions([
-                $this->makeCurrentPositionAction(),
-                $this->makeDossierAction(),
-                $this->makeAttachDocumentAction(),
-                $this->makeReprocessAction(),
-                $this->makeHistoryAction(),
-                EditAction::make()
-                    ->authorize(fn (): bool => $this->userCan(AccessPermission::LegalInstrumentsUpdate)),
-                DeleteAction::make()
-                    ->authorize(fn (): bool => $this->userCan(AccessPermission::LegalInstrumentsDelete)),
+                $this->makeCurrentPositionAction()
+                    ->tooltip('Visualizar posição vigente consolidada'),
+                $this->makeDossierAction()
+                    ->tooltip('Visualizar dossiê documental e aditamentos'),
+                ActionGroup::make([
+                    $this->makeAttachDocumentAction()
+                        ->label('Anexar documento')
+                        ->icon('heroicon-o-paper-clip'),
+                    $this->makeReprocessAction()
+                        ->label('Reprocessar leitura')
+                        ->icon('heroicon-o-arrow-path'),
+                    $this->makeHistoryAction()
+                        ->label('Histórico de alterações')
+                        ->icon('heroicon-o-clock'),
+                    EditAction::make()
+                        ->label('Editar dados cadastrais')
+                        ->icon('heroicon-o-pencil-square')
+                        ->authorize(fn (): bool => $this->userCan(AccessPermission::LegalInstrumentsUpdate)),
+                    DeleteAction::make()
+                        ->label('Excluir instrumento')
+                        ->icon('heroicon-o-trash')
+                        ->authorize(fn (): bool => $this->userCan(AccessPermission::LegalInstrumentsDelete)),
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->tooltip('Mais ações')
+                    ->color('gray'),
             ])
-            ->emptyStateHeading('Nenhum instrumento cadastrado')
-            ->emptyStateDescription('Cadastre a CCB, o contrato de alienação fiduciária ou outro instrumento e monte o dossiê com o documento original e seus aditamentos.');
+            ->emptyStateHeading('Nenhum instrumento jurídico cadastrado')
+            ->emptyStateDescription('Cadastre a CCB, o contrato de alienação fiduciária ou outro instrumento e monte o dossiê com o documento original e seus aditamentos.')
+            ->emptyStateIcon('heroicon-o-document-duplicate')
+            ->emptyStateActions([
+                $this->makeScanExistingDocumentsAction()
+                    ->button()
+                    ->outlined()
+                    ->color('gray'),
+                CreateAction::make()
+                    ->label('Cadastrar instrumento')
+                    ->icon('heroicon-o-plus-circle')
+                    ->button()
+                    ->color('primary')
+                    ->authorize(fn (): bool => $this->userCan(AccessPermission::LegalInstrumentsCreate)),
+            ]);
     }
 
     /**

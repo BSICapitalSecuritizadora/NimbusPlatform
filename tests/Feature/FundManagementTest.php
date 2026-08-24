@@ -1,8 +1,15 @@
 <?php
 
 use App\Filament\Resources\Banks\Pages\CreateBank;
+use App\Filament\Resources\Banks\Pages\ListBanks;
+use App\Filament\Resources\FundApplications\Pages\CreateFundApplication;
+use App\Filament\Resources\FundApplications\Pages\ListFundApplications;
+use App\Filament\Resources\FundNames\Pages\CreateFundName;
+use App\Filament\Resources\FundNames\Pages\ListFundNames;
 use App\Filament\Resources\Funds\Pages\CreateFund;
 use App\Filament\Resources\Funds\Pages\ListFunds;
+use App\Filament\Resources\FundTypes\Pages\CreateFundType;
+use App\Filament\Resources\FundTypes\Pages\ListFundTypes;
 use App\Models\Bank;
 use App\Models\Emission;
 use App\Models\Fund;
@@ -282,6 +289,309 @@ it('shows the required fields on the auxiliary bank resource form', function () 
 
     Livewire::test(CreateBank::class)
         ->assertFormExists()
+        ->assertFormFieldExists('name')
+        ->assertFormFieldExists('logo_path');
+});
+
+it('renders the funds list page with custom subheading and empty state', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(ListFunds::class)
+        ->assertOk()
+        ->assertSee('Acompanhamento dos fundos vinculados às operações, com identificação, aplicação e dados bancários.')
+        ->assertSee('Nenhum fundo cadastrado')
+        ->assertSee('Criar primeiro fundo')
+        ->assertDontSee('Nenhum fundo corresponde aos filtros selecionados');
+});
+
+it('shows contextual empty state when filtered and allows clearing filters', function () {
+    $this->actingAs(makeFundAdminUser());
+    Fund::factory()->create();
+
+    Livewire::test(ListFunds::class)
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhum fundo corresponde aos filtros selecionados')
+        ->assertSee('Limpar filtros')
+        ->assertDontSee('Nenhum fundo cadastrado');
+});
+
+it('renders formatted currency and status badges in the funds table', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $emission = Emission::factory()->create(['name' => 'CRI Alpha Residencial']);
+    $fundName = FundName::factory()->create(['name' => 'Fundo Reserva Obra']);
+    $bank = Bank::factory()->create(['name' => 'Banco Bradesco']);
+
+    $fund = Fund::factory()->create([
+        'emission_id' => $emission->id,
+        'fund_name_id' => $fundName->id,
+        'bank_id' => $bank->id,
+        'balance' => 250000.50,
+        'minimum_balance' => 100000.00,
+        'balance_updated_at' => now(),
+    ]);
+
+    Livewire::test(ListFunds::class)
+        ->assertSee('CRI Alpha Residencial')
+        ->assertSee('Fundo Reserva Obra')
+        ->assertSee('Banco Bradesco')
+        ->assertSee('250.000,50')
+        ->assertSee('Em dia');
+});
+
+it('renders the fund types list page with custom subheading and empty state', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(ListFundTypes::class)
+        ->assertOk()
+        ->assertSee('Gerencie as classificações utilizadas no cadastro e organização dos fundos das operações.')
+        ->assertSee('Nenhum tipo de fundo cadastrado')
+        ->assertSee('Criar primeiro tipo de fundo')
+        ->assertDontSee('Nenhum tipo de fundo corresponde à busca aplicada');
+});
+
+it('shows contextual empty state on the fund types list when the search has no results', function () {
+    $this->actingAs(makeFundAdminUser());
+    FundType::factory()->create();
+
+    Livewire::test(ListFundTypes::class)
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhum tipo de fundo corresponde à busca aplicada')
+        ->assertSee('Limpar busca')
+        ->assertDontSee('Nenhum tipo de fundo cadastrado');
+});
+
+it('renders humanized linked names and funds counters on the fund types table', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $typeWithNames = FundType::factory()->create(['name' => 'Tipo Reserva Teste']);
+    FundName::factory()->count(2)->create(['fund_type_id' => $typeWithNames->id]);
+
+    $typeWithFund = FundType::factory()->create(['name' => 'Tipo Juros Teste']);
+    Fund::factory()->create(['fund_type_id' => $typeWithFund->id]);
+
+    Livewire::test(ListFundTypes::class)
+        ->assertSee('Tipo Reserva Teste')
+        ->assertSee('2 nomes')
+        ->assertSee('Tipo Juros Teste')
+        ->assertSee('1 fundo')
+        ->assertSee('1 nome');
+});
+
+it('renders the create fund form page with custom subheading, sections and fields', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(CreateFund::class)
+        ->assertOk()
+        ->assertSee('Cadastre a classificação, os dados bancários e os limites financeiros do fundo.')
+        ->assertSee('Classificação')
+        ->assertSee('Dados Bancários')
+        ->assertSee('Saldos e Limites')
+        ->assertSee('Criar fundo')
+        ->assertSee('Salvar e criar outro')
+        ->assertSee('Cancelar')
+        ->assertFormFieldExists('emission_id')
+        ->assertFormFieldExists('fund_type_id')
+        ->assertFormFieldExists('fund_name_id')
+        ->assertFormFieldExists('fund_application_id')
+        ->assertFormFieldExists('bank_id')
+        ->assertFormFieldExists('agency')
+        ->assertFormFieldExists('account')
+        ->assertFormFieldExists('balance')
+        ->assertFormFieldExists('minimum_balance');
+});
+
+it('renders the create fund type page with subheading, section description and refined actions', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(CreateFundType::class)
+        ->assertOk()
+        ->assertSee('Cadastre uma classificação para organizar os fundos das operações.')
+        ->assertSee('Defina o nome utilizado para classificar os fundos cadastrados.')
+        ->assertSee('Criar tipo de fundo')
+        ->assertSee('Salvar e criar outro')
+        ->assertSee('Cancelar');
+});
+
+it('creates a fund type through the create page with a success notification', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(CreateFundType::class)
+        ->fillForm(['name' => 'Fundo de Reserva'])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertNotified('Tipo de fundo cadastrado com sucesso.');
+
+    expect(FundType::query()->where('name', 'Fundo de Reserva')->exists())->toBeTrue();
+});
+
+it('renders the fund names list page with custom subheading, empty state and create action', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(ListFundNames::class)
+        ->assertOk()
+        ->assertSee('Gerencie as denominações disponíveis para cada tipo de fundo.')
+        ->assertSee('Nenhum nome de fundo cadastrado')
+        ->assertSee('Criar primeiro nome de fundo')
+        ->assertActionExists('create')
+        ->assertActionHasLabel('create', 'Criar nome de fundo');
+});
+
+it('shows contextual empty state on the fund names list when search has no results', function () {
+    $this->actingAs(makeFundAdminUser());
+    FundName::factory()->create();
+
+    Livewire::test(ListFundNames::class)
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhum nome de fundo encontrado')
+        ->assertSee('Limpar busca')
+        ->assertDontSee('Nenhum nome de fundo cadastrado');
+});
+
+it('renders humanized fund counter and type relation on fund names table', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $type = FundType::factory()->create(['name' => 'Crédito Estruturado']);
+    $fundNameWithFund = FundName::factory()->create([
+        'name' => 'Fundo Reserva Obra',
+        'fund_type_id' => $type->id,
+    ]);
+    Fund::factory()->create(['fund_name_id' => $fundNameWithFund->id]);
+
+    $fundNameWithoutFund = FundName::factory()->create([
+        'name' => 'Fundo Despesas Futuras',
+        'fund_type_id' => $type->id,
+    ]);
+
+    Livewire::test(ListFundNames::class)
+        ->assertSee('Fundo Reserva Obra')
+        ->assertSee('Fundo Despesas Futuras')
+        ->assertSee('Crédito Estruturado')
+        ->assertSee('1 fundo');
+});
+
+it('renders the create fund name form page with custom subheading and actions', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(CreateFundName::class)
+        ->assertOk()
+        ->assertSee('Cadastre uma nova denominação para vinculá-la a um tipo de fundo.')
+        ->assertSee('Criar nome de fundo')
+        ->assertSee('Salvar e criar outro')
+        ->assertSee('Cancelar')
+        ->assertFormFieldExists('fund_type_id')
+        ->assertFormFieldExists('name');
+});
+
+it('renders the fund applications list page with custom subheading and empty state', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(ListFundApplications::class)
+        ->assertOk()
+        ->assertSee('Gerencie as aplicações utilizadas na classificação financeira dos fundos.')
+        ->assertSee('Nenhuma aplicação cadastrada')
+        ->assertSee('Criar primeira aplicação')
+        ->assertDontSee('Nenhuma aplicação corresponde à busca aplicada');
+});
+
+it('shows contextual empty state on the fund applications list when the search has no results', function () {
+    $this->actingAs(makeFundAdminUser());
+    FundApplication::factory()->create();
+
+    Livewire::test(ListFundApplications::class)
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhuma aplicação corresponde à busca aplicada')
+        ->assertSee('Limpar busca')
+        ->assertDontSee('Nenhuma aplicação cadastrada');
+});
+
+it('renders humanized linked funds counter on the fund applications table', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $application = FundApplication::factory()->create(['name' => 'Renda Fixa Teste']);
+    Fund::factory()->create(['fund_application_id' => $application->id]);
+
+    Livewire::test(ListFundApplications::class)
+        ->assertSee('Renda Fixa Teste')
+        ->assertSee('1 fundo');
+});
+
+it('renders the create fund application page with subheading, section description and refined actions', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(CreateFundApplication::class)
+        ->assertOk()
+        ->assertSee('Cadastre uma aplicação para utilizá-la na configuração financeira dos fundos.')
+        ->assertSee('Defina o nome utilizado para identificar a aplicação nos fundos cadastrados.')
+        ->assertSee('Criar aplicação')
+        ->assertSee('Salvar e criar outro')
+        ->assertSee('Cancelar');
+});
+
+it('creates a fund application through the create page with a success notification', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(CreateFundApplication::class)
+        ->fillForm(['name' => 'Renda Fixa Ativa'])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertNotified('Aplicação cadastrada com sucesso.');
+
+    expect(FundApplication::query()->where('name', 'Renda Fixa Ativa')->exists())->toBeTrue();
+});
+
+it('renders the banks list page with custom subheading and empty state', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(ListBanks::class)
+        ->assertOk()
+        ->assertSee('Gerencie as instituições bancárias utilizadas nos fundos e contas financeiras das operações.')
+        ->assertSee('Nenhum banco cadastrado')
+        ->assertSee('Criar primeiro banco');
+});
+
+it('renders the banks search empty state with clear search action', function () {
+    $this->actingAs(makeFundAdminUser());
+    Bank::factory()->create(['name' => 'Banco Bradesco']);
+
+    Livewire::test(ListBanks::class)
+        ->set('tableSearch', 'termo-inexistente')
+        ->assertSee('Nenhum banco encontrado')
+        ->assertSee('Limpar busca')
+        ->assertDontSee('Nenhum banco cadastrado');
+});
+
+it('renders bank name, initials avatar fallback, and humanized linked funds counter on banks table', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $bankWithLogo = Bank::factory()->create([
+        'name' => 'Banco Bradesco',
+        'logo_path' => 'banks/logos/bradesco.png',
+    ]);
+    Fund::factory()->create(['bank_id' => $bankWithLogo->id]);
+
+    $bankWithoutLogo = Bank::factory()->create([
+        'name' => 'Banco Alfa',
+        'logo_path' => '',
+    ]);
+
+    Livewire::test(ListBanks::class)
+        ->assertSee('Banco Bradesco')
+        ->assertSee('Banco Alfa')
+        ->assertSee('1 fundo')
+        ->assertSee('banks/logos/bradesco.png')
+        ->assertSee('BA');
+});
+
+it('renders the create bank form page with custom subheading and fields', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    Livewire::test(CreateBank::class)
+        ->assertOk()
+        ->assertSee('Cadastre uma nova instituição bancária com nome e logotipo institucional.')
+        ->assertSee('Criar banco')
+        ->assertSee('Salvar e criar outro')
+        ->assertSee('Cancelar')
         ->assertFormFieldExists('name')
         ->assertFormFieldExists('logo_path');
 });

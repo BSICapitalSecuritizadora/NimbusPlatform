@@ -35,21 +35,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Calendario de dias uteis (cobertura B3)
+    | Calendario de dias uteis
     |--------------------------------------------------------------------------
     |
     | A validacao de pre-requisitos exige cobertura do calendario para todo o
-    | periodo da curva. Para calendarios "auto-completaveis" (B3) as linhas
+    | periodo da curva. O codigo B3 permanece como alias legado, sem
+    | redirecionamento automatico, ate a revisao contratual dos consumidores.
+    | BR_BANKING_ANBIMA representa calendario bancario; B3_LISTED_TRADING,
+    | sessoes de negociacao. Para calendarios "auto-completaveis" (B3 legado) as linhas
     | faltantes sao geradas automaticamente (fim de semana = nao util; dia de
     | semana = util), de forma idempotente, em vez de bloquear a geracao. A
     | derivacao NAO inclui feriados: quando relevantes, feriados B3 devem ser
-    | cadastrados/importados manualmente (linha com is_business_day=false), o
+    | cadastrados/importados (linha com is_business_day=false), o
     | que sobrepoe a derivacao porque o backfill nunca sobrescreve linhas
     | existentes. Para calendarios fora desta lista, datas faltantes continuam
     | bloqueando a geracao com mensagem acionavel.
     */
     'business_calendar' => [
         'auto_complete' => (bool) env('PU_CALCULATOR_CALENDAR_AUTO_COMPLETE', true),
+        'lock_wait_seconds' => (int) env('PU_CALCULATOR_CALENDAR_LOCK_WAIT_SECONDS', 15),
 
         /**
          * Codigos de calendario gerados automaticamente (case-insensitive).

@@ -134,4 +134,24 @@ class Proposal extends Model
             },
         );
     }
+
+    protected function totalRequestedAmount(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): float => (float) $this->projects->sum('requested_amount'),
+        );
+    }
+
+    protected function formattedTotalRequestedAmount(): Attribute
+    {
+        return Attribute::make(
+            get: function (): string {
+                $total = $this->total_requested_amount;
+
+                return $total > 0
+                    ? 'R$ '.number_format($total, 2, ',', '.')
+                    : 'Sob Consulta';
+            },
+        );
+    }
 }

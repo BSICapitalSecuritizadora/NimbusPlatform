@@ -10,6 +10,7 @@ use App\Models\ObligationSeries;
 use App\Services\Obligations\ObligationScheduleCalculator;
 use App\Services\Obligations\ObligationSeriesService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
@@ -24,8 +25,10 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\HtmlString;
 
 class ObligationSeriesRelationManager extends RelationManager
 {
@@ -51,92 +54,114 @@ class ObligationSeriesRelationManager extends RelationManager
 
     public function infolist(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Definição da Recorrência')
-                ->schema([
-                    Grid::make(4)->schema([
-                        TextEntry::make('title')
-                            ->label('Obrigação jurídica')
-                            ->weight('bold')
-                            ->columnSpan(2),
-                        TextEntry::make('status')
-                            ->label('Status da série')
-                            ->badge()
-                            ->formatStateUsing(fn (mixed $state): string => $state instanceof ObligationSeriesStatus
-                                ? $state->label()
-                                : (ObligationSeriesStatus::tryFrom((string) $state)?->label() ?? (string) $state)),
-                        TextEntry::make('frequency')
-                            ->label('Recorrência')
-                            ->badge()
-                            ->formatStateUsing(fn (mixed $state): string => $state instanceof ObligationFrequency
-                                ? $state->label()
-                                : (ObligationFrequency::tryFrom((string) $state)?->label() ?? 'A definir')),
-                        TextEntry::make('rule_summary')
-                            ->label('Regra executável confirmada')
-                            ->columnSpan(2),
-                        TextEntry::make('starts_on')
-                            ->label('Competência inicial')
-                            ->date('m/Y')
-                            ->placeholder('A definir'),
-                        TextEntry::make('ends_on')
-                            ->label('Término')
-                            ->date('d/m/Y')
-                            ->placeholder('A definir'),
-                        TextEntry::make('responsibleUser.name')
-                            ->label('Responsável padrão')
-                            ->placeholder('Não atribuído'),
-                        TextEntry::make('responsible_area')
-                            ->label('Área padrão')
-                            ->placeholder('—'),
-                        TextEntry::make('due_rule')
-                            ->label('Regra jurídica original')
-                            ->placeholder('Não informada')
-                            ->columnSpanFull(),
+        return $schema
+            ->columns(1)
+            ->components([
+                Section::make('Definição da Recorrência')
+                    ->columnSpanFull()
+                    ->schema([
+                        Grid::make(['default' => 1, 'sm' => 2, 'md' => 3])->schema([
+                            TextEntry::make('title')
+                                ->label('Obrigação jurídica')
+                                ->weight('bold')
+                                ->size('lg')
+                                ->columnSpan(['default' => 1, 'sm' => 2]),
+                            TextEntry::make('status')
+                                ->label('Status da série')
+                                ->badge()
+                                ->formatStateUsing(fn (mixed $state): string => $state instanceof ObligationSeriesStatus
+                                    ? $state->label()
+                                    : (ObligationSeriesStatus::tryFrom((string) $state)?->label() ?? (string) $state))
+                                ->color(fn (mixed $state): string => match ($state instanceof ObligationSeriesStatus ? $state : ObligationSeriesStatus::tryFrom((string) $state)) {
+                                    ObligationSeriesStatus::Active => 'success',
+                                    ObligationSeriesStatus::AwaitingConfiguration => 'warning',
+                                    ObligationSeriesStatus::Paused => 'gray',
+                                    ObligationSeriesStatus::Closed => 'gray',
+                                    default => 'warning',
+                                })
+                                ->columnSpan(['default' => 1, 'sm' => 1]),
+                            TextEntry::make('frequency')
+                                ->label('Recorrência')
+                                ->badge()
+                                ->formatStateUsing(fn (mixed $state): string => $state instanceof ObligationFrequency
+                                    ? $state->label()
+                                    : (ObligationFrequency::tryFrom((string) $state)?->label() ?? 'A definir'))
+                                ->color(fn (mixed $state): string => $state ? 'info' : 'gray'),
+                            TextEntry::make('starts_on')
+                                ->label('Competência inicial')
+                                ->date('m/Y')
+                                ->placeholder('A definir'),
+                            TextEntry::make('ends_on')
+                                ->label('Término')
+                                ->date('d/m/Y')
+                                ->placeholder('Sem término definido'),
+                            TextEntry::make('responsibleUser.name')
+                                ->label('Responsável padrão')
+                                ->placeholder('Não atribuído')
+                                ->columnSpan(['default' => 1, 'sm' => 2]),
+                            TextEntry::make('responsible_area')
+                                ->label('Área padrão')
+                                ->placeholder('—')
+                                ->columnSpan(['default' => 1, 'sm' => 1]),
+                            TextEntry::make('rule_summary')
+                                ->label('Regra executável confirmada')
+                                ->placeholder('Regra executável ainda não configurada.')
+                                ->columnSpanFull(),
+                            TextEntry::make('due_rule')
+                                ->label('Regra jurídica original')
+                                ->placeholder('Não informada')
+                                ->columnSpanFull(),
+                        ]),
                     ]),
-                ]),
-        ]);
+            ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('title')
-            ->description('A série guarda a regra recorrente; cada competência materializada aparece como uma obrigação operacional independente.')
+            ->description(fn (): Htmlable => $this->seriesDescription())
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with(['responsibleUser', 'rules'])
                 ->withCount('occurrences'))
             ->columns([
                 TextColumn::make('title')
-                    ->label('Série')
+                    ->label('Série de obrigação')
+                    ->description(fn (ObligationSeries $record): ?string => filled($record->obligation_category) ? $record->obligation_category : ($record->obligation_type ?? 'Obrigação recorrente'))
                     ->searchable()
+                    ->weight('bold')
+                    ->tooltip(fn (ObligationSeries $record): string => $record->title)
                     ->wrap(),
-                TextColumn::make('frequency')
-                    ->label('Recorrência')
-                    ->badge()
-                    ->formatStateUsing(fn (mixed $state): string => $state instanceof ObligationFrequency
-                        ? $state->label()
-                        : (ObligationFrequency::tryFrom((string) $state)?->label() ?? 'A definir')),
                 TextColumn::make('rule_summary')
-                    ->label('Regra')
+                    ->label('Recorrência & Regra')
+                    ->state(fn (ObligationSeries $record): string => $record->frequency?->label() ?? 'A definir')
+                    ->description(fn (ObligationSeries $record): string => $record->rule_summary)
+                    ->tooltip(fn (ObligationSeries $record): ?string => $record->due_rule ?? $record->rule_summary)
                     ->wrap(),
-                TextColumn::make('starts_on')
-                    ->label('Início')
-                    ->date('m/Y')
-                    ->placeholder('—')
-                    ->sortable(),
-                TextColumn::make('ends_on')
-                    ->label('Término')
-                    ->date('d/m/Y')
-                    ->placeholder('—')
-                    ->sortable(),
+                TextColumn::make('validity')
+                    ->label('Vigência')
+                    ->state(fn (ObligationSeries $record): string => $record->starts_on ? 'Desde '.$record->starts_on->format('m/Y') : 'Início a definir')
+                    ->description(fn (ObligationSeries $record): string => $record->ends_on ? 'Até '.$record->ends_on->format('d/m/Y') : 'Sem término definido')
+                    ->tooltip(fn (ObligationSeries $record): string => sprintf(
+                        'Competência inicial: %s · Término: %s',
+                        $record->starts_on ? $record->starts_on->format('m/Y') : 'Não definido',
+                        $record->ends_on ? $record->ends_on->format('d/m/Y') : 'Indeterminado',
+                    )),
                 TextColumn::make('next_occurrence')
                     ->label('Próxima ocorrência')
                     ->state(fn (ObligationSeries $record): string => $this->nextOccurrenceLabel($record))
-                    ->wrap(),
+                    ->badge()
+                    ->color(fn (ObligationSeries $record): string => match (true) {
+                        $record->status === ObligationSeriesStatus::AwaitingConfiguration => 'warning',
+                        $record->status === ObligationSeriesStatus::Active => 'info',
+                        default => 'gray',
+                    }),
                 TextColumn::make('occurrences_count')
                     ->label('Competências')
                     ->badge()
-                    ->color('gray'),
+                    ->formatStateUsing(fn (int $state): string => "{$state} comp.")
+                    ->color('gray')
+                    ->tooltip(fn (int $state): string => "{$state} competência(s) materializada(s) nesta série"),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -145,12 +170,35 @@ class ObligationSeriesRelationManager extends RelationManager
                         : (ObligationSeriesStatus::tryFrom((string) $state)?->label() ?? (string) $state))
                     ->color(fn (mixed $state): string => match ($state instanceof ObligationSeriesStatus ? $state : ObligationSeriesStatus::tryFrom((string) $state)) {
                         ObligationSeriesStatus::Active => 'success',
-                        ObligationSeriesStatus::Paused => 'warning',
+                        ObligationSeriesStatus::AwaitingConfiguration => 'warning',
+                        ObligationSeriesStatus::Paused => 'gray',
                         ObligationSeriesStatus::Closed => 'gray',
-                        default => 'danger',
+                        default => 'warning',
                     }),
+                TextColumn::make('responsibleUser.name')
+                    ->label('Responsável padrão')
+                    ->placeholder('—')
+                    ->description(fn (ObligationSeries $record): ?string => $record->responsible_area ?? $record->responsible_party)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('frequency')
+                    ->label('Recorrência (isolada)')
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('starts_on')
+                    ->label('Início')
+                    ->date('m/Y')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('ends_on')
+                    ->label('Término')
+                    ->date('d/m/Y')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('id', 'desc')
+            ->searchPlaceholder('Buscar por título ou regra da série...')
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status da série')
@@ -167,6 +215,8 @@ class ObligationSeriesRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('Criar recorrência')
+                    ->icon('heroicon-o-plus')
+                    ->color('warning')
                     ->modalHeading('Criar recorrência de obrigação')
                     ->modalWidth(Width::FiveExtraLarge)
                     ->authorize(fn (): bool => $this->canCreateSeries())
@@ -177,9 +227,8 @@ class ObligationSeriesRelationManager extends RelationManager
                     )),
             ])
             ->actions([
-                ViewAction::make()
-                    ->label('Abrir série')
-                    ->color('info'),
+                $this->makeConfigureAction(),
+                $this->makeOnDemandOccurrenceAction(),
                 Action::make('occurrences')
                     ->label('Competências')
                     ->icon('heroicon-o-calendar-days')
@@ -197,17 +246,27 @@ class ObligationSeriesRelationManager extends RelationManager
                             ->withCount('evidences')
                             ->get(),
                     ])),
-                $this->makeConfigureAction(),
-                $this->makeEditDefinitionAction(),
-                $this->makeReviseRuleAction(),
-                $this->makeOnDemandOccurrenceAction(),
-                $this->makePauseAction(),
-                $this->makeReactivateAction(),
-                $this->makeCloseAction(),
-                $this->makeHistoryAction(),
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->label('Abrir série')
+                        ->modalHeading(fn (ObligationSeries $record): string => 'Ficha da Recorrência')
+                        ->modalDescription(fn (ObligationSeries $record): string => $record->title)
+                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalCancelActionLabel('Fechar'),
+                    $this->makeEditDefinitionAction(),
+                    $this->makeReviseRuleAction(),
+                    $this->makePauseAction(),
+                    $this->makeReactivateAction(),
+                    $this->makeCloseAction(),
+                    $this->makeHistoryAction(),
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->color('gray')
+                    ->tooltip('Mais ações'),
             ])
-            ->emptyStateHeading('Nenhuma recorrência configurada')
-            ->emptyStateDescription('Obrigações únicas continuam na aba de obrigações. Cadastre aqui apenas obrigações recorrentes ou sob demanda.');
+            ->emptyStateHeading('Nenhuma recorrência cadastrada')
+            ->emptyStateDescription('Crie uma série recorrente para automatizar o acompanhamento de obrigações periódicas.')
+            ->emptyStateIcon('heroicon-o-arrow-path');
     }
 
     protected function makeConfigureAction(): Action
@@ -424,6 +483,40 @@ class ObligationSeriesRelationManager extends RelationManager
     protected function canUpdateSeries(): bool
     {
         return auth()->user()?->can(AccessPermission::ObligationsUpdate->value) ?? false;
+    }
+
+    protected function seriesDescription(): Htmlable
+    {
+        $emission = $this->getOwnerRecord();
+        $total = $emission->obligationSeries()->count();
+        $active = $emission->obligationSeries()->where('status', ObligationSeriesStatus::Active)->count();
+        $awaiting = $emission->obligationSeries()->where('status', ObligationSeriesStatus::AwaitingConfiguration)->count();
+        $paused = $emission->obligationSeries()->where('status', ObligationSeriesStatus::Paused)->count();
+
+        $summaryHtml = '';
+        if ($total > 0) {
+            $summaryHtml = sprintf(
+                '<div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+                    <span class="rounded-md bg-[#0c232e] px-2.5 py-1 text-slate-300 border border-[#1d4554]/50 font-medium">%d série(s) cadastrada(s)</span>
+                    <span class="rounded-md bg-emerald-950/60 px-2.5 py-1 text-emerald-300 border border-emerald-500/30 font-medium">%d ativa(s)</span>
+                    %s
+                    %s
+                </div>',
+                $total,
+                $active,
+                $awaiting > 0
+                    ? sprintf('<span class="rounded-md bg-amber-950/60 px-2.5 py-1 text-amber-300 border border-amber-500/30 font-medium">%d aguardando configuração</span>', $awaiting)
+                    : '',
+                $paused > 0
+                    ? sprintf('<span class="rounded-md bg-slate-800/80 px-2.5 py-1 text-slate-400 border border-slate-700 font-medium">%d pausada(s)</span>', $paused)
+                    : ''
+            );
+        }
+
+        return new HtmlString(
+            '<span class="block text-slate-300">A série guarda a regra recorrente; cada competência materializada aparece como uma obrigação operacional independente.</span>'
+            .$summaryHtml
+        );
     }
 
     protected function seriesService(): ObligationSeriesService

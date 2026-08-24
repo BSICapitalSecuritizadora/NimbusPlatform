@@ -16,11 +16,11 @@ class PuDailyCurvesRelationManager extends RelationManager
 {
     protected static string $relationship = 'puDailyCurves';
 
-    protected static ?string $title = 'Curva PU Diario';
+    protected static ?string $title = 'Curva PU Diário';
 
     protected static ?string $modelLabel = 'Linha da curva PU';
 
-    protected static ?string $pluralModelLabel = 'Curva PU diario';
+    protected static ?string $pluralModelLabel = 'Curva PU diário';
 
     public function form(Schema $schema): Schema
     {
@@ -32,44 +32,71 @@ class PuDailyCurvesRelationManager extends RelationManager
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => $query)
             ->recordTitleAttribute('curve_date')
+            ->searchPlaceholder('Buscar por data...')
             ->columns([
                 TextColumn::make('curve_date')
                     ->label('Data')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->weight('medium')
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('calculation_version')
-                    ->label('Versao')
-                    ->badge(),
+                    ->label('Versão')
+                    ->badge()
+                    ->color('gray')
+                    ->alignCenter()
+                    ->sortable(),
                 TextColumn::make('updated_unit_value')
-                    ->label('PU atualizado')
-                    ->numeric(8, ',', '.'),
+                    ->label('PU Atualizado')
+                    ->weight('semibold')
+                    ->numeric(8, ',', '.')
+                    ->prefix('R$ ')
+                    ->alignEnd()
+                    ->sortable(),
                 TextColumn::make('residual_unit_value')
-                    ->label('PU residual')
-                    ->numeric(8, ',', '.'),
+                    ->label('PU Residual')
+                    ->numeric(8, ',', '.')
+                    ->prefix('R$ ')
+                    ->alignEnd()
+                    ->sortable(),
                 TextColumn::make('quantity')
                     ->label('Quantidade')
-                    ->numeric(4, ',', '.'),
+                    ->numeric(4, ',', '.')
+                    ->alignEnd()
+                    ->sortable(),
                 TextColumn::make('total_value')
-                    ->label('Valor total')
-                    ->numeric(8, ',', '.'),
+                    ->label('Valor Total')
+                    ->numeric(2, ',', '.')
+                    ->prefix('R$ ')
+                    ->alignEnd()
+                    ->sortable(),
                 TextColumn::make('payment_total_value')
-                    ->label('Pagamento total')
-                    ->numeric(8, ',', '.'),
+                    ->label('Pagamento Total')
+                    ->numeric(2, ',', '.')
+                    ->prefix('R$ ')
+                    ->alignEnd()
+                    ->sortable(),
                 TextColumn::make('index_rate_value')
-                    ->label('CDI usado')
-                    ->numeric(8, ',', '.'),
+                    ->label('CDI Usado')
+                    ->numeric(8, ',', '.')
+                    ->alignEnd()
+                    ->sortable(),
                 TextColumn::make('dup_interest')
                     ->label('DUP')
-                    ->numeric(),
+                    ->tooltip('Dias úteis decorridos no período de juros')
+                    ->alignCenter()
+                    ->sortable(),
                 TextColumn::make('dut_interest')
                     ->label('DUT')
-                    ->numeric(),
+                    ->tooltip('Dias úteis totais no período de juros (base 252)')
+                    ->alignCenter()
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('calculation_version')
-                    ->label('Versao')
+                    ->label('Versão')
                     ->options(
-                        EmissionPuDailyCurve::query()
+                        fn () => EmissionPuDailyCurve::query()
                             ->where('emission_id', $this->ownerRecord->id)
                             ->orderByDesc('id')
                             ->pluck('calculation_version', 'calculation_version')
@@ -81,11 +108,12 @@ class PuDailyCurvesRelationManager extends RelationManager
             ->headerActions([])
             ->actions([
                 Action::make('memory')
-                    ->label('Memoria')
+                    ->label('Memória')
                     ->icon('heroicon-o-document-magnifying-glass')
                     ->color('gray')
+                    ->tooltip('Visualizar memória de cálculo da linha')
                     ->modalWidth(Width::FiveExtraLarge)
-                    ->modalHeading('Memoria de calculo da linha')
+                    ->modalHeading('Memória de Cálculo da Linha')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar')
                     ->modalContent(fn (EmissionPuDailyCurve $record) => view('filament.emissions.pu-curve-memory', [
@@ -93,6 +121,8 @@ class PuDailyCurvesRelationManager extends RelationManager
                     ])),
             ])
             ->bulkActions([])
-            ->emptyStateHeading('Nenhuma curva de PU gerada');
+            ->emptyStateIcon('heroicon-o-chart-bar')
+            ->emptyStateHeading('Nenhuma curva de PU gerada')
+            ->emptyStateDescription('A curva diária será exibida aqui após o processamento e geração do PU para esta emissão.');
     }
 }

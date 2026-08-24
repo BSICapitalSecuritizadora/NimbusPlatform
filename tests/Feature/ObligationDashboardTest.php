@@ -14,10 +14,12 @@ use App\Models\Obligation;
 use App\Models\ObligationEvidence;
 use App\Models\User;
 use App\Services\Obligations\ObligationDashboardData;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -26,7 +28,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     $this->seed(RolesAndPermissionsSeeder::class);
-    $this->travelTo(Carbon\CarbonImmutable::parse('2026-06-18 09:00:00'));
+    $this->travelTo(CarbonImmutable::parse('2026-06-18 09:00:00'));
 });
 
 afterEach(function () {
@@ -73,7 +75,7 @@ function makeDashboardUserWithPermissions(array $permissions): User
     return $user;
 }
 
-function dashboardRelationManager(Emission $emission): \Livewire\Features\SupportTesting\Testable
+function dashboardRelationManager(Emission $emission): Testable
 {
     return Livewire::test(ObligationsRelationManager::class, [
         'ownerRecord' => $emission,

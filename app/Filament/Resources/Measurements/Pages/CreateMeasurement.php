@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Measurements\Pages;
 
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Services\MeasurementWorkflow;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateMeasurement extends CreateRecord
@@ -13,6 +14,15 @@ class CreateMeasurement extends CreateRecord
     protected static ?string $title = 'Enviar Medição';
 
     protected static ?string $breadcrumb = 'Enviar';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-construction-form-page bsi-measurement-form-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Envie os arquivos da competência para cada empreendimento vinculado à operação.';
+    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -31,6 +41,27 @@ class CreateMeasurement extends CreateRecord
     protected function afterCreate(): void
     {
         app(MeasurementWorkflow::class)->startReview($this->record->refresh());
+    }
+
+    protected function getCreateFormAction(): Action
+    {
+        return parent::getCreateFormAction()
+            ->label('Enviar Medição')
+            ->icon('heroicon-m-arrow-up-tray');
+    }
+
+    protected function getCreateAnotherFormAction(): Action
+    {
+        return parent::getCreateAnotherFormAction()
+            ->label('Salvar e criar outra')
+            ->color('gray');
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()
+            ->label('Cancelar')
+            ->color('gray');
     }
 
     protected function getCreatedNotificationTitle(): ?string

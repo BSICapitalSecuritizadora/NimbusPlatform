@@ -3,6 +3,7 @@
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Pages\CreateEmission;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
+use App\Filament\Resources\Emissions\Schemas\EmissionConstructionsStep;
 use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
@@ -29,7 +30,9 @@ beforeEach(function () {
 });
 
 it('organizes the emission form into dedicated wizard steps', function () {
-    $schema = EmissionForm::configure(Schema::make(new CreateEmission));
+    $this->actingAs(makeAdminUser());
+
+    $schema = EmissionForm::configure(Schema::make(new CreateEmission)->operation('create'));
     $wizard = collect($schema->getComponents())
         ->sole(fn (mixed $component): bool => $component instanceof Wizard);
     $steps = collect($wizard->getChildSchema()->getComponents())
@@ -39,10 +42,11 @@ it('organizes the emission form into dedicated wizard steps', function () {
     expect($wizard->getColumnSpan())->toMatchArray([
         'default' => 'full',
     ])
-        ->and($wizard->isSkippable())->toBeTrue()
-        ->and($steps)->toHaveCount(7)
+        ->and($wizard->isSkippable())->toBeFalse()
+        ->and($steps)->toHaveCount(8)
         ->and($steps->map(fn (Step $step): string => Str::of((string) $step->getLabel())->ascii()->lower()->toString())->all())->toBe([
             'dados basicos',
+            'empreendimentos',
             'participantes',
             'caracteristicas financeiras',
             'valores e remuneracao',
@@ -54,13 +58,9 @@ it('organizes the emission form into dedicated wizard steps', function () {
             'default' => 1,
             'xl' => 2,
         ])
-        ->and($steps[1]->getColumns())->toMatchArray([
-            'default' => 1,
-            'xl' => 1,
-        ])
         ->and($steps[2]->getColumns())->toMatchArray([
             'default' => 1,
-            'xl' => 2,
+            'xl' => 1,
         ])
         ->and($steps[3]->getColumns())->toMatchArray([
             'default' => 1,
@@ -74,20 +74,193 @@ it('organizes the emission form into dedicated wizard steps', function () {
             'default' => 1,
             'xl' => 2,
         ])
-        ->and($steps[1]->getChildSchema()->getComponentByStatePath('issuer'))->not->toBeNull()
-        ->and($steps[1]->getChildSchema()->getComponentByStatePath('law_firm'))->not->toBeNull()
+        ->and($steps[6]->getColumns())->toMatchArray([
+            'default' => 1,
+            'xl' => 2,
+        ])
         ->and($steps[0]->getChildSchema()->getComponentByStatePath('registered_with_cvm'))->not->toBeNull()
-        ->and($steps[2]->getChildSchema()->getComponentByStatePath('prepayment_possibility'))->not->toBeNull()
-        ->and($steps[3]->getChildSchema()->getComponentByStatePath('offer_type')?->getLabel())->toBe('Tipo de Oferta')
-        ->and($steps[3]->getChildSchema()->getComponentByStatePath('offer_type')?->getColumnSpan())->toMatchArray([
+        ->and($steps[1]->getChildSchema()->getComponentByStatePath(EmissionConstructionsStep::STATE_PATH))->not->toBeNull()
+        ->and($steps[2]->getChildSchema()->getComponentByStatePath('issuer'))->not->toBeNull()
+        ->and($steps[2]->getChildSchema()->getComponentByStatePath('law_firm'))->not->toBeNull()
+        ->and($steps[3]->getChildSchema()->getComponentByStatePath('prepayment_possibility'))->not->toBeNull()
+        ->and($steps[4]->getChildSchema()->getComponentByStatePath('offer_type')?->getLabel())->toBe('Tipo de Oferta')
+        ->and($steps[4]->getChildSchema()->getComponentByStatePath('offer_type')?->getColumnSpan())->toMatchArray([
             'default' => 'full',
         ])
-        ->and($steps[3]->getChildSchema()->getComponentByStatePath('remuneration_indexer'))->not->toBeNull()
-        ->and($steps[3]->getChildSchema()->getComponentByStatePath('remuneration_rate'))->not->toBeNull()
-        ->and($steps[3]->getChildSchema()->getComponentByStatePath('issued_volume'))->not->toBeNull()
-        ->and($steps[4]->getChildSchema()->getComponentByStatePath('use_of_proceeds'))->not->toBeNull()
-        ->and($steps[5]->getChildSchema()->getComponentByStatePath('description'))->not->toBeNull()
-        ->and($steps[6]->getChildSchema()->getComponentByStatePath('resumo'))->not->toBeNull();
+        ->and($steps[4]->getChildSchema()->getComponentByStatePath('remuneration_indexer'))->not->toBeNull()
+        ->and($steps[4]->getChildSchema()->getComponentByStatePath('remuneration_rate'))->not->toBeNull()
+        ->and($steps[4]->getChildSchema()->getComponentByStatePath('issued_volume'))->not->toBeNull()
+        ->and($steps[5]->getChildSchema()->getComponentByStatePath('use_of_proceeds'))->not->toBeNull()
+        ->and($steps[6]->getChildSchema()->getComponentByStatePath('description'))->not->toBeNull()
+        ->and($steps[7]->getChildSchema()->getComponentByStatePath('resumo'))->not->toBeNull();
+});
+
+it('offers the segments already in use and allows creating one inline', function () {
+    $this->actingAs(makeAdminUser());
+
+    Emission::factory()->create(['segment' => 'Incorporação Residencial']);
+    Emission::factory()->create(['segment' => 'Incorporação Residencial']);
+    Emission::factory()->create(['segment' => 'Logística']);
+    Emission::factory()->create(['segment' => null]);
+
+    $createSegmentAction = TestAction::make('createOption')->schemaComponent('segment');
+
+    Livewire::test(CreateEmission::class)
+        ->assertFormFieldExists('segment', function (Select $field): bool {
+            return $field->getOptions() === [
+                'Incorporação Residencial' => 'Incorporação Residencial',
+                'Logística' => 'Logística',
+            ];
+        })
+        ->assertActionHasLabel($createSegmentAction, 'Cadastrar Segmento')
+        ->mountAction($createSegmentAction)
+        ->fillForm(['segment' => 'Loteamento Urbano'])
+        ->callMountedAction()
+        ->assertHasNoFormErrors()
+        ->assertFormSet(['segment' => 'Loteamento Urbano'])
+        ->fillForm([
+            'name' => 'Emissão Segmento Novo',
+            'type' => 'CRI',
+            'status' => 'draft',
+            ...emissionCreateFormState(makeMeasurementCompany()->id),
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Emission::query()->where('name', 'Emissão Segmento Novo')->sole()->segment)
+        ->toBe('Loteamento Urbano');
+});
+
+it('keeps a segment stored on an existing emission selectable', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create(['segment' => 'Shopping Centers']);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->assertFormSet(['segment' => 'Shopping Centers'])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($emission->refresh()->segment)->toBe('Shopping Centers');
+});
+
+it('prefills the read-only target audience without overriding a stored value', function () {
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(CreateEmission::class)
+        ->assertFormFieldIsReadOnly('target_audience')
+        ->assertFormSet([
+            'target_audience' => Emission::DEFAULT_TARGET_AUDIENCE,
+        ])
+        ->fillForm([
+            'name' => 'Emissão Público Alvo',
+            'type' => 'CRI',
+            'status' => 'draft',
+            ...emissionCreateFormState(makeMeasurementCompany()->id),
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Emission::query()->where('name', 'Emissão Público Alvo')->sole()->target_audience)
+        ->toBe(Emission::DEFAULT_TARGET_AUDIENCE);
+
+    $emission = Emission::factory()->create([
+        'target_audience' => 'Investidores Qualificados',
+    ]);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->assertFormFieldIsReadOnly('target_audience')
+        ->assertFormSet([
+            'target_audience' => 'Investidores Qualificados',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($emission->refresh()->target_audience)->toBe('Investidores Qualificados');
+});
+
+it('fills the target audience of legacy emissions that have none', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'target_audience' => null,
+    ]);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->assertFormSet([
+            'target_audience' => Emission::DEFAULT_TARGET_AUDIENCE,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($emission->refresh()->target_audience)->toBe(Emission::DEFAULT_TARGET_AUDIENCE);
+});
+
+it('derives the issued volume from the issued quantity and the unit price', function () {
+    $this->actingAs(makeAdminUser());
+
+    Livewire::test(CreateEmission::class)
+        ->assertFormFieldIsReadOnly('issued_volume')
+        ->fillForm([
+            'name' => 'Emissão Volume Derivado',
+            'type' => 'CRI',
+            'status' => 'draft',
+            'issued_quantity' => '32.600',
+            'issued_price' => '1.000,00',
+            ...emissionCreateFormState(makeMeasurementCompany()->id),
+        ])
+        ->assertFormSet([
+            'issued_volume' => '32.600.000,00',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect((float) Emission::query()->where('name', 'Emissão Volume Derivado')->sole()->issued_volume)
+        ->toBe(32600000.0);
+});
+
+it('recalculates the issued volume when the unit price changes on an existing emission', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'issued_quantity' => 1000,
+        'issued_price' => 1000,
+        'issued_volume' => 1000000,
+    ]);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->assertFormSet([
+            'issued_volume' => '1.000.000,00',
+        ])
+        ->fillForm([
+            'issued_price' => '2.500,00',
+        ])
+        ->assertFormSet([
+            'issued_volume' => '2.500.000,00',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect((float) $emission->refresh()->issued_volume)->toBe(2500000.0);
+});
+
+it('keeps a stored issued volume when one of its factors is missing', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create([
+        'issued_quantity' => null,
+        'issued_price' => null,
+        'issued_volume' => 7500000,
+    ]);
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->assertFormSet([
+            'issued_volume' => '7.500.000,00',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect((float) $emission->refresh()->issued_volume)->toBe(7500000.0);
 });
 
 it('uses the full content width on emission create and edit pages', function () {
@@ -704,6 +877,7 @@ it('stores emission provider selections and yes no options from the create form'
             'segregated_estate' => 'Constituído conforme termo de securitização.',
             'guarantees_description' => 'Alienação fiduciária e cessão de recebíveis.',
             'covenants' => 'Manutenção de razão mínima de cobertura e obrigações de reporte.',
+            ...emissionCreateFormState(makeMeasurementCompany()->id),
         ])
         ->call('create')
         ->assertHasNoFormErrors();

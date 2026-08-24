@@ -17,9 +17,11 @@ class FundTypeForm
         return [
             TextInput::make('name')
                 ->label('Nome')
+                ->placeholder('Informe o nome do tipo de fundo')
                 ->required()
                 ->maxLength(255)
                 ->unique(ignoreRecord: true, table: FundType::class)
+                ->columnSpanFull()
                 ->validationMessages([
                     'required' => 'Informe o nome do tipo de fundo.',
                     'unique' => 'Já existe um tipo de fundo cadastrado com este nome.',
@@ -31,7 +33,9 @@ class FundTypeForm
     {
         return $schema->components([
             Section::make('Dados do tipo de fundo')
-                ->schema(static::fields()),
+                ->description('Defina o nome utilizado para classificar os fundos cadastrados.')
+                ->schema(static::fields())
+                ->columnSpanFull(),
         ]);
     }
 }

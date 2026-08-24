@@ -12,6 +12,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 class PlanLinesRelationManager extends RelationManager
 {
@@ -112,7 +113,7 @@ class PlanLinesRelationManager extends RelationManager
                     ])
                     ->action(function (array $data, MeasurementPlanLine $record): void {
                         $data['measurement_date'] = filled($data['measurement_date'] ?? null)
-                            ? \Illuminate\Support\Carbon::parse($data['measurement_date'].'-01')->toDateString()
+                            ? Carbon::parse($data['measurement_date'].'-01')->toDateString()
                             : null;
 
                         $record->update($data);

@@ -11,6 +11,18 @@ class EditOperation extends EditRecord
 {
     protected static string $resource = OperationResource::class;
 
+    protected static ?string $title = 'Editar Operação de Obra';
+
+    protected static ?string $breadcrumb = 'Editar';
+
+    protected ?string $subheading = 'Atualize a operação, os empreendimentos e os responsáveis pelo fluxo de medição.';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-construction-form-page bsi-operation-form-page',
+    ];
+
+    protected ?bool $hasUnsavedDataChangesAlert = true;
+
     /**
      * @var array<int, array<string, mixed>>
      */
@@ -19,8 +31,12 @@ class EditOperation extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            ViewAction::make(),
-            DeleteAction::make(),
+            ViewAction::make()
+                ->label('Visualizar')
+                ->icon('heroicon-m-eye')
+                ->color('gray'),
+            DeleteAction::make()
+                ->label('Excluir operação'),
         ];
     }
 
@@ -39,5 +55,10 @@ class EditOperation extends EditRecord
     protected function afterSave(): void
     {
         $this->record->syncDevelopmentPlans($this->developments);
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Operação de obra atualizada com sucesso.';
     }
 }

@@ -70,3 +70,61 @@ jobs:
       - name: Show Laravel log on failure
         if: failure()
         run: cat storage/logs/laravel.log || true
+
+  # The suite above runs on SQLite. These tests depend on how the database itself
+  # behaves -- collation deciding what a UNIQUE index treats as equal, generated
+  # columns, identifier length limits, soft deletes against uniqueness, imports
+  # resolving textual keys -- so they run a second time on MySQL and have to give
+  # the same answer. Tag a test into it with `pest()->group('parity');`.
+  parity:
+    runs-on: ubuntu-latest
+    environment: Testing
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: nimbus_parity_check
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          extensions: pdo_mysql
+
+      - name: Add Flux Credentials Loaded From ENV
+        run: composer config http-basic.composer.fluxui.dev "${{ secrets.FLUX_USERNAME }}" "${{ secrets.FLUX_LICENSE_KEY }}"
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Copy Environment File
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      # The script creates and drops its own database, so the credentials here
+      # only have to reach the service container.
+      - name: Run parity tests on MySQL
+        env:
+          PARITY_DB_HOST: 127.0.0.1
+          PARITY_DB_PORT: '3306'
+          PARITY_DB_USERNAME: root
+          PARITY_DB_PASSWORD: password
+          PARITY_ADMIN_USERNAME: root
+          PARITY_ADMIN_PASSWORD: password
+        run: ./scripts/parity-check.sh

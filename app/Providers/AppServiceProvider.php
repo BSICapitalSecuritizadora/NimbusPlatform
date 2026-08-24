@@ -12,10 +12,16 @@ use App\Domain\PuCalculator\Services\IndexRateService;
 use App\Domain\PuCalculator\Services\RoundingService;
 use App\Listeners\LogNotificationListener;
 use App\Mail\Transport\MicrosoftGraphTransport;
+use App\Models\ContractInstallment;
 use App\Models\Document;
+use App\Models\JobApplication;
 use App\Models\Nimbus\Submission;
+use App\Models\Vacancy;
+use App\Policies\ContractInstallmentPolicy;
 use App\Policies\DocumentPolicy;
+use App\Policies\JobApplicationPolicy;
 use App\Policies\Nimbus\SubmissionPolicy;
+use App\Policies\VacancyPolicy;
 use App\Services\ConstructionProgressProvider;
 use App\Services\MeasurementPlanProgressProvider;
 use Carbon\CarbonImmutable;
@@ -55,7 +61,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(RoundingService::class);
         $this->app->alias(RoundingService::class, DecimalRounder::class);
 
-        $this->app->singleton(BusinessDayCalendarService::class);
+        $this->app->scoped(BusinessDayCalendarService::class);
         $this->app->alias(BusinessDayCalendarService::class, BusinessCalendarService::class);
         $this->app->bind(BusinessDayCalendar::class, BusinessDayCalendarService::class);
 
@@ -75,8 +81,11 @@ class AppServiceProvider extends ServiceProvider
         $this->configureMacros();
         $this->configureMailTransports();
 
+        Gate::policy(ContractInstallment::class, ContractInstallmentPolicy::class);
         Gate::policy(Submission::class, SubmissionPolicy::class);
         Gate::policy(Document::class, DocumentPolicy::class);
+        Gate::policy(Vacancy::class, VacancyPolicy::class);
+        Gate::policy(JobApplication::class, JobApplicationPolicy::class);
 
         Gate::before(function ($user, $ability) {
             return (method_exists($user, 'hasRole') && $user->hasRole('super-admin')) ? true : null;

@@ -64,101 +64,165 @@ class ProposalResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Dossiê Executivo')
-                ->schema([
-                    Grid::make(4)->schema([
-                        TextEntry::make('company.name')
-                            ->label('Proponente')
-                            ->weight('bold')
-                            ->size('lg'),
-                        TextEntry::make('company.cnpj')
-                            ->label('CNPJ'),
-                        TextEntry::make('status')
-                            ->label('Situação Atual')
-                            ->badge()
-                            ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
-                            ->color(fn (?string $state): string => ProposalStatus::colorFor($state)),
-                        TextEntry::make('representative.name')
-                            ->label('Responsável')
-                            ->placeholder('Não atribuído'),
-                        TextEntry::make('created_at')
-                            ->label('Data de Entrada')
-                            ->dateTime('d/m/Y H:i')
-                            ->placeholder('—'),
-                        TextEntry::make('latestStatusHistory.changed_at')
-                            ->label('Última Atualização')
-                            ->dateTime('d/m/Y H:i')
-                            ->placeholder('—'),
-                        TextEntry::make('source')
-                            ->label('Origem')
-                            ->state('Captação via Site')
-                            ->placeholder('—'),
-                        TextEntry::make('next_action')
-                            ->label('Próxima Ação / Criticidade')
-                            ->state(fn (?Proposal $record): string => match ($record?->status) {
-                                'aguardando_complementacao', 'aguardando_informacoes' => 'Atenção: Aguardar o cliente complementar as informações.',
-                                'em_analise' => 'Alta: Analisar documentação e aprovar/solicitar.',
-                                'aprovado' => 'Concluída: Prosseguir com a emissão.',
-                                'rejeitado' => 'Sem Ação: Proposta arquivada.',
-                                'concluida' => 'Sem Ação: Processo de proposta concluído.',
-                                default => 'Atenção: Definir responsável e iniciar análise.',
-                            })
-                            ->color(fn (?Proposal $record): string => match ($record?->status) {
-                                'aguardando_complementacao', 'aguardando_informacoes' => 'warning',
-                                'em_analise' => 'primary',
-                                'rejeitado' => 'gray',
-                                'concluida', 'aprovado' => 'success',
-                                default => 'warning',
-                            })
-                            ->icon(fn (?Proposal $record): string => match ($record?->status) {
-                                'aguardando_complementacao', 'aguardando_informacoes' => 'heroicon-m-exclamation-triangle',
-                                'em_analise' => 'heroicon-m-information-circle',
-                                'rejeitado' => 'heroicon-m-archive-box',
-                                'aprovado', 'concluida' => 'heroicon-m-check-circle',
-                                default => 'heroicon-m-exclamation-circle',
-                            })
-                            ->weight('bold'),
-                    ]),
-                ]),
+        return $schema
+            ->columns(1)
+            ->components([
+                // ── 1. Resumo Executivo da Proposta ──
+                Section::make('Resumo Executivo da Proposta')
+                    ->icon('heroicon-o-presentation-chart-line')
+                    ->columnSpanFull()
+                    ->schema([
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'lg' => 3,
+                            'xl' => 6,
+                        ])->schema([
+                            TextEntry::make('company.name')
+                                ->label('Proponente')
+                                ->weight('bold')
+                                ->size('lg')
+                                ->helperText(fn (?Proposal $record): ?string => $record?->company?->cnpj ? "CNPJ: {$record->company->cnpj}" : null)
+                                ->tooltip(fn (?Proposal $record): ?string => $record?->company?->name),
 
-            Grid::make(2)->schema([
+                            TextEntry::make('total_requested_amount')
+                                ->label('Valor da Proposta')
+                                ->state(fn (?Proposal $record): string => $record?->formatted_total_requested_amount ?? '—')
+                                ->weight('bold')
+                                ->size('lg')
+                                ->color('primary')
+                                ->helperText(fn (?Proposal $record): ?string => $record && $record->projects->count() > 0
+                                    ? "{$record->projects->count()} empreendimento(s)"
+                                    : 'Captação inicial'),
+
+                            TextEntry::make('status')
+                                ->label('Estágio Atual')
+                                ->badge()
+                                ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
+                                ->color(fn (?string $state): string => ProposalStatus::colorFor($state))
+                                ->helperText(fn (?Proposal $record): ?string => $record?->latestStatusHistory?->changed_at
+                                    ? 'Desde '.$record->latestStatusHistory->changed_at->format('d/m/Y H:i')
+                                    : null),
+
+                            TextEntry::make('representative.name')
+                                ->label('Responsável Comercial')
+                                ->placeholder('Não atribuído')
+                                ->icon('heroicon-m-user-circle')
+                                ->iconColor('gray')
+                                ->helperText(fn (?Proposal $record): ?string => $record?->distribution_sequence
+                                    ? "Fila #{$record->distribution_sequence}"
+                                    : 'Aguardando fila'),
+
+                            TextEntry::make('time_in_status')
+                                ->label('Permanência no Estágio')
+                                ->state(fn (?Proposal $record): string => $record?->updated_at ? $record->updated_at->diffForHumans(null, true) : '—')
+                                ->icon('heroicon-m-clock')
+                                ->iconColor('gray')
+                                ->helperText(fn (?Proposal $record): ?string => $record?->created_at
+                                    ? 'Entrada em '.$record->created_at->format('d/m/Y')
+                                    : null),
+
+                            TextEntry::make('next_action')
+                                ->label('Diagnóstico & SLA')
+                                ->state(fn (?Proposal $record): string => match ($record?->status) {
+                                    'aguardando_complementacao', 'aguardando_informacoes' => 'Atenção: Aguardar informações',
+                                    'em_analise' => 'Alta: Analisar documentação',
+                                    'aprovado' => 'Concluída: Prosseguir emissão',
+                                    'rejeitado' => 'Sem Ação: Proposta arquivada',
+                                    'concluida' => 'Concluída: Processo finalizado',
+                                    default => 'Atenção: Iniciar análise',
+                                })
+                                ->badge()
+                                ->color(fn (?Proposal $record): string => match ($record?->status) {
+                                    'aguardando_complementacao', 'aguardando_informacoes' => 'warning',
+                                    'em_analise' => 'primary',
+                                    'rejeitado' => 'gray',
+                                    'concluida', 'aprovado' => 'success',
+                                    default => 'warning',
+                                })
+                                ->icon(fn (?Proposal $record): string => match ($record?->status) {
+                                    'aguardando_complementacao', 'aguardando_informacoes' => 'heroicon-m-exclamation-triangle',
+                                    'em_analise' => 'heroicon-m-information-circle',
+                                    'rejeitado' => 'heroicon-m-archive-box',
+                                    'aprovado', 'concluida' => 'heroicon-m-check-circle',
+                                    default => 'heroicon-m-exclamation-circle',
+                                }),
+                        ]),
+                    ]),
+
+                // ── 2. Resumo da Proposta (Largura Completa com Leitura Confortável) ──
                 Section::make('Resumo da Proposta')
+                    ->icon('heroicon-o-document-text')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('observations')
-                            ->label('Informações Complementares')
-                            ->placeholder('Sem observações.')
+                            ->label('Informações Complementares do Proponente')
+                            ->placeholder('Nenhuma observação informada pelo proponente.')
+                            ->columnSpanFull()
+                            ->prose(),
+
+                        TextEntry::make('internal_notes')
+                            ->label('Parecer Técnico / Comercial Interno')
+                            ->placeholder('Sem observações internas registradas.')
+                            ->helperText('Visível apenas à equipe interna no painel administrativo.')
                             ->columnSpanFull(),
                     ]),
-                Section::make('Contato Responsável')
+
+                // ── 3. Contato do Proponente (Largura Completa com Grid Interno) ──
+                Section::make('Contato do Proponente')
+                    ->icon('heroicon-o-user')
+                    ->columnSpanFull()
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 2,
+                        'lg' => 4,
+                    ])
                     ->schema([
                         TextEntry::make('contact.name')
                             ->label('Nome do Contato')
                             ->placeholder('—'),
+                        TextEntry::make('contact.cargo')
+                            ->label('Cargo / Função')
+                            ->placeholder('—'),
                         TextEntry::make('contact.email')
-                            ->label('E-mail')
+                            ->label('E-mail Comercial')
                             ->placeholder('—')
+                            ->icon('heroicon-m-envelope')
                             ->url(fn (?Proposal $record): ?string => $record?->contact_mailto_url),
                         TextEntry::make('contact.phone_personal')
                             ->label('Celular / WhatsApp')
                             ->placeholder('—')
+                            ->icon('heroicon-m-phone')
                             ->url(fn (?Proposal $record): ?string => $record?->contact?->whatsapp_url)
                             ->openUrlInNewTab(),
-                        TextEntry::make('contact.whatsapp_availability_label')
-                            ->label('Número possui WhatsApp')
-                            ->placeholder('—'),
                         TextEntry::make('contact.whatsapp_consent_label')
-                            ->label('Consentimento para contato')
-                            ->placeholder('—'),
+                            ->label('Consentimento WhatsApp')
+                            ->placeholder('—')
+                            ->badge()
+                            ->color('success'),
                         TextEntry::make('contact.phone_summary')
-                            ->label('Telefones')
-                            ->placeholder('—'),
-                        TextEntry::make('contact.cargo')
-                            ->label('Cargo')
-                            ->placeholder('—'),
-                    ])->columns(2),
-                Section::make('Dados da Empresa')
+                            ->label('Outros Telefones')
+                            ->placeholder('—')
+                            ->columnSpan(['default' => 1, 'sm' => 2, 'lg' => 3]),
+                    ]),
+
+                // ── 4. Dados Cadastrais da Empresa (Largura Completa com Grid Interno) ──
+                Section::make('Dados Cadastrais da Empresa')
+                    ->icon('heroicon-o-building-office-2')
+                    ->columnSpanFull()
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 2,
+                        'lg' => 4,
+                    ])
                     ->schema([
+                        TextEntry::make('company.name')
+                            ->label('Razão Social')
+                            ->placeholder('—'),
+                        TextEntry::make('company.cnpj')
+                            ->label('CNPJ')
+                            ->placeholder('—')
+                            ->copyable(),
                         TextEntry::make('company.ie')
                             ->label('Inscrição Estadual (IE)')
                             ->placeholder('—'),
@@ -170,16 +234,29 @@ class ProposalResource extends Resource
                         TextEntry::make('company.full_address')
                             ->label('Endereço Completo')
                             ->placeholder('—')
-                            ->columnSpanFull(),
+                            ->columnSpan(['default' => 1, 'sm' => 2, 'lg' => 3]),
                         TextEntry::make('company.sectors.name')
                             ->label('Setores de Atuação')
-                            ->listWithLineBreaks()
-                            ->bulleted()
-                            ->placeholder('—')
-                            ->columnSpanFull(),
-                    ])->columns(2),
-                Section::make('Fluxo e Andamento')
+                            ->badge()
+                            ->color('gray')
+                            ->placeholder('Nenhum setor vinculado')
+                            ->columnSpan(['default' => 1, 'sm' => 2, 'lg' => 1]),
+                    ]),
+
+                // ── 5. Fluxo Operacional e Atendimento ──
+                Section::make('Fluxo Operacional e Atendimento')
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->columnSpanFull()
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 2,
+                        'lg' => 4,
+                    ])
                     ->schema([
+                        TextEntry::make('representative.name')
+                            ->label('Responsável Comercial Atual')
+                            ->placeholder('Não atribuído')
+                            ->icon('heroicon-m-user'),
                         TextEntry::make('distribution_sequence')
                             ->label('Ordem na Fila')
                             ->numeric(decimalPlaces: 0)
@@ -192,9 +269,6 @@ class ProposalResource extends Resource
                             ->label('Data de Formalização')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
-                    ])->columns(2),
-                Section::make('Histórico / Atividades')
-                    ->schema([
                         TextEntry::make('latest_status_changed_by')
                             ->label('Última Atualização por')
                             ->state(fn (?Proposal $record): ?string => match (true) {
@@ -202,38 +276,32 @@ class ProposalResource extends Resource
                                 (bool) $record->latestStatusHistory->changedByUser?->name => $record->latestStatusHistory->changedByUser->name,
                                 default => 'Sistema',
                             })
-                            ->placeholder('—'),
-                        TextEntry::make('latestStatusHistory.note')
-                            ->label('Histórico de Observações')
-                            ->placeholder('Sem observação registrada.')
+                            ->placeholder('—')
                             ->columnSpanFull(),
-                        TextEntry::make('internal_notes')
-                            ->label('Informações Complementares Internas')
-                            ->placeholder('Sem observações internas.')
-                            ->columnSpanFull(),
-                    ])->columns(2),
-                Section::make('Link Seguro (Acesso do Cliente)')
+                    ]),
+
+                // ── 6. Links Seguros (Acesso do Cliente) ──
+                Section::make('Links Seguros (Acesso do Cliente)')
+                    ->icon('heroicon-o-key')
+                    ->columnSpanFull()
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 2,
+                        'lg' => 4,
+                    ])
                     ->schema([
                         TextEntry::make('latestContinuationAccess.status_label')
                             ->label('Situação do Acesso')
-                            ->state(fn (Proposal $record): ?string => $record->latestContinuationAccess?->status_label)
+                            ->state(fn (?Proposal $record): ?string => $record?->latestContinuationAccess?->status_label)
                             ->placeholder('—')
                             ->badge()
-                            ->color(fn (Proposal $record): string => $record->latestContinuationAccess?->status_color ?? 'gray'),
+                            ->color(fn (?Proposal $record): string => $record?->latestContinuationAccess?->status_color ?? 'gray'),
                         TextEntry::make('latestContinuationAccess.display_code')
                             ->label('Código de Acesso')
                             ->placeholder('—')
                             ->copyable(),
                         TextEntry::make('latestContinuationAccess.sent_at')
                             ->label('Data de Envio')
-                            ->dateTime('d/m/Y H:i')
-                            ->placeholder('—'),
-                        TextEntry::make('latestContinuationAccess.mail_queued_at')
-                            ->label('Data de Enfileiramento')
-                            ->dateTime('d/m/Y H:i')
-                            ->placeholder('—'),
-                        TextEntry::make('latestContinuationAccess.mail_failed_at')
-                            ->label('Falha Definitiva do Envio')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('—'),
                         TextEntry::make('latestContinuationAccess.expires_at')
@@ -247,9 +315,8 @@ class ProposalResource extends Resource
                             ->url(fn (?string $state): ?string => filled($state) ? $state : null)
                             ->openUrlInNewTab()
                             ->columnSpanFull(),
-                    ])->columns(2)->collapsed(),
-            ]),
-        ]);
+                    ]),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -260,10 +327,10 @@ class ProposalResource extends Resource
     public static function getRelations(): array
     {
         return [
+            ProjectRelationManager::class,
+            ProposalStatusHistoryRelationManager::class,
             ProposalAssignmentRelationManager::class,
             ProposalContinuationAccessRelationManager::class,
-            ProposalStatusHistoryRelationManager::class,
-            ProjectRelationManager::class,
             ActivitiesRelationManager::class,
         ];
     }
@@ -310,6 +377,7 @@ class ProposalResource extends Resource
                 'representative.user',
                 'latestContinuationAccess',
                 'latestStatusHistory.changedByUser',
+                'projects',
             ]),
             static::resolveCurrentUser(),
         );

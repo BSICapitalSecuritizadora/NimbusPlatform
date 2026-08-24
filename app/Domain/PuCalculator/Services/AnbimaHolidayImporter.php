@@ -6,26 +6,35 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\AnbimaHolidayImportResult;
 use App\Domain\PuCalculator\Exceptions\AnbimaHolidayImportException;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Models\BusinessCalendarDate;
+use App\Models\BusinessCalendarImportRun;
+use App\Models\BusinessCalendarOverride;
+use App\Models\BusinessCalendarYear;
 use App\Models\BusinessHoliday;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as SpreadsheetDate;
 use Throwable;
 
 /**
- * Importa feriados nacionais publicados pela ANBIMA a partir do arquivo `feriados_nacionais.xls`
+ * Importa o calendário bancário publicado pela ANBIMA a partir do arquivo `feriados_nacionais.xls`
  * (formato BIFF8 do Excel), aceitando download por URL ou upload manual de arquivo.
  *
  * O arquivo persiste em {@see BusinessHoliday} (fonte/auditoria) e, fora do dry-run, os feriados são
  * aplicados ao calendário de dias úteis ({@see BusinessCalendarDate}, is_business_day=false) — que é a
- * estrutura consultada por CDI/Prefixado via {@see BusinessCalendarService}. A operação é idempotente:
- * reimportar não duplica nem altera dados existentes (a menos de --force) e nunca quebra a geração da
- * curva. A engine de cálculo jamais baixa o arquivo em tempo de cálculo.
+ * estrutura consultada por CDI/Prefixado via {@see BusinessCalendarService}. A operação é transacional
+ * e idempotente nos dados efetivos: cada tentativa é auditada, mas reimportar a mesma fonte não duplica
+ * feriados nem incrementa a revisão anual. A engine de cálculo jamais baixa o arquivo em tempo de cálculo.
  */
 class AnbimaHolidayImporter
 {
@@ -45,16 +54,39 @@ class AnbimaHolidayImporter
         'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
     ];
 
-    public function __construct(private readonly BusinessDayCalendarService $businessDayCalendar) {}
+    public function __construct(
+        private readonly BusinessDayCalendarService $businessDayCalendar,
+        private readonly BusinessCalendarYearService $yearService,
+        private readonly BusinessCalendarRevisionService $revisionService,
+    ) {}
 
     public function importFromUrl(
         string $url,
-        string $calendarCode = 'B3',
+        string $calendarCode = BusinessCalendarRegistry::BR_BANKING_ANBIMA,
         bool $dryRun = false,
         bool $force = false,
         ?int $importedByUserId = null,
     ): AnbimaHolidayImportResult {
-        $contents = $this->download($url);
+        $startedAt = Date::now();
+
+        try {
+            $contents = $this->download($url);
+        } catch (AnbimaHolidayImportException $exception) {
+            $this->recordFailedRuns(
+                calendarCode: $calendarCode,
+                years: [null],
+                sourceUrl: $url,
+                sourceFile: basename(parse_url($url, PHP_URL_PATH) ?: $url),
+                checksum: null,
+                startedAt: $startedAt,
+                userId: $importedByUserId,
+                process: $this->responsibleProcess($importedByUserId),
+                dryRun: $dryRun,
+                errors: [$exception->getMessage()],
+            );
+
+            throw $exception;
+        }
 
         $temporaryPath = $this->writeTemporaryFile($contents, $url);
 
@@ -66,6 +98,9 @@ class AnbimaHolidayImporter
                 $force,
                 $importedByUserId,
                 sourceFileLabel: basename(parse_url($url, PHP_URL_PATH) ?: $url),
+                sourceUrl: $url,
+                sourceDocument: $url,
+                startedAt: $startedAt,
             );
         } finally {
             @unlink($temporaryPath);
@@ -74,91 +109,286 @@ class AnbimaHolidayImporter
 
     public function importFromFile(
         string $path,
-        string $calendarCode = 'B3',
+        string $calendarCode = BusinessCalendarRegistry::BR_BANKING_ANBIMA,
         bool $dryRun = false,
         bool $force = false,
         ?int $importedByUserId = null,
         ?string $sourceFileLabel = null,
+        ?string $sourceUrl = null,
+        ?string $sourceDocument = null,
+        ?string $sourceRevision = null,
+        ?CarbonImmutable $startedAt = null,
     ): AnbimaHolidayImportResult {
+        $startedAt ??= Date::now();
+        $batchUuid = (string) Str::uuid();
+        $process = $this->responsibleProcess($importedByUserId);
+
+        try {
+            $calendarCode = BusinessCalendarRegistry::ensureKnown($calendarCode);
+
+            if (! BusinessCalendarRegistry::acceptsAnbima($calendarCode)) {
+                throw new AnbimaHolidayImportException(sprintf(
+                    'O calendário %s representa sessões de negociação B3 e não pode receber feriados bancários ANBIMA.',
+                    $calendarCode,
+                ));
+            }
+        } catch (\InvalidArgumentException $exception) {
+            throw new AnbimaHolidayImportException($exception->getMessage(), previous: $exception);
+        }
+
         if (! is_file($path) || ! is_readable($path)) {
-            throw new AnbimaHolidayImportException(sprintf(
+            $exception = new AnbimaHolidayImportException(sprintf(
                 'Arquivo de feriados não encontrado ou ilegível: %s. Faça o upload manual do arquivo da ANBIMA.',
                 $path,
             ));
+            $this->recordFailedRuns(
+                $calendarCode,
+                [null],
+                $sourceUrl,
+                $sourceFileLabel ?? basename($path),
+                null,
+                $startedAt,
+                $importedByUserId,
+                $process,
+                $dryRun,
+                [$exception->getMessage()],
+                $batchUuid,
+            );
+
+            throw $exception;
         }
 
         $sourceFile = $sourceFileLabel ?? basename($path);
+        $sourceDocument ??= $sourceUrl ?? $sourceFile;
+        $checksum = hash_file('sha256', $path) ?: null;
 
         $result = new AnbimaHolidayImportResult(
             calendarCode: $calendarCode,
             source: 'anbima',
             sourceFile: $sourceFile,
             dryRun: $dryRun,
+            checksum: $checksum,
         );
 
-        [$holidays, $invalidErrors, $invalidCount] = $this->parse($path);
+        try {
+            [$holidays, $invalidErrors, $invalidCount] = $this->parse($path);
+        } catch (AnbimaHolidayImportException $exception) {
+            $this->recordFailedRuns(
+                $calendarCode,
+                [null],
+                $sourceUrl,
+                $sourceFile,
+                $checksum,
+                $startedAt,
+                $importedByUserId,
+                $process,
+                $dryRun,
+                [$exception->getMessage()],
+                $batchUuid,
+            );
+
+            throw $exception;
+        }
 
         $result->invalid = $invalidCount;
         $result->errors = array_slice($invalidErrors, 0, self::MAX_ERRORS);
 
         if ($holidays === [] && $invalidCount === 0) {
-            throw new AnbimaHolidayImportException(
+            $exception = new AnbimaHolidayImportException(
                 'Nenhum feriado válido encontrado no arquivo. Verifique se é o arquivo de feriados nacionais da ANBIMA (feriados_nacionais.xls).',
             );
+            $this->recordFailedRuns(
+                $calendarCode,
+                [null],
+                $sourceUrl,
+                $sourceFile,
+                $checksum,
+                $startedAt,
+                $importedByUserId,
+                $process,
+                $dryRun,
+                [$exception->getMessage()],
+                $batchUuid,
+            );
+
+            throw $exception;
         }
 
         $result->total = count($holidays);
-        $timestamp = Date::now();
+        $holidaysByYear = collect($holidays)->groupBy(
+            static fn (?string $name, string $date): int => CarbonImmutable::parse($date)->year,
+            preserveKeys: true,
+        );
+        $changedYears = [];
 
-        foreach ($holidays as $dateString => $name) {
-            $existing = BusinessHoliday::query()
-                ->where('calendar_code', $calendarCode)
-                ->where('source', 'anbima')
-                ->whereDate('holiday_date', $dateString)
-                ->first();
+        try {
+            Cache::lock($this->yearService->lockKey($calendarCode), 180)
+                ->block((int) config('pu_calculator.business_calendar.lock_wait_seconds', 15), function () use (
+                    $calendarCode,
+                    $holidaysByYear,
+                    $sourceUrl,
+                    $sourceFile,
+                    $sourceDocument,
+                    $sourceRevision,
+                    $checksum,
+                    $startedAt,
+                    $importedByUserId,
+                    $process,
+                    $dryRun,
+                    $force,
+                    $invalidErrors,
+                    $batchUuid,
+                    $result,
+                    &$changedYears,
+                ): void {
+                    DB::transaction(function () use (
+                        $calendarCode,
+                        $holidaysByYear,
+                        $sourceUrl,
+                        $sourceFile,
+                        $sourceDocument,
+                        $sourceRevision,
+                        $checksum,
+                        $startedAt,
+                        $importedByUserId,
+                        $process,
+                        $dryRun,
+                        $force,
+                        $invalidErrors,
+                        $batchUuid,
+                        $result,
+                        &$changedYears,
+                    ): void {
+                        foreach ($holidaysByYear as $year => $yearHolidays) {
+                            $yearHolidays = $yearHolidays->all();
+                            $existing = BusinessHoliday::query()
+                                ->where('calendar_code', $calendarCode)
+                                ->where('source', 'anbima')
+                                ->whereYear('holiday_date', (int) $year)
+                                ->lockForUpdate()
+                                ->get()
+                                ->keyBy(fn (BusinessHoliday $holiday): string => CarbonImmutable::instance($holiday->holiday_date)->toDateString());
+                            $incomingDates = array_keys($yearHolidays);
+                            $additions = array_values(array_diff($incomingDates, $existing->keys()->all()));
+                            $removals = array_values(array_diff($existing->keys()->all(), $incomingDates));
+                            $changes = array_values(array_filter(
+                                $incomingDates,
+                                static fn (string $date): bool => $existing->has($date)
+                                    && $existing->get($date)?->name !== $yearHolidays[$date],
+                            ));
+                            $actualChanges = $force ? $changes : [];
+                            $conflicts = count($removals) + ($force ? 0 : count($changes));
+                            $calendarYear = $dryRun
+                                ? BusinessCalendarYear::query()->where('calendar_code', $calendarCode)->where('year', (int) $year)->first()
+                                : $this->yearService->findOrCreateForUpdate($calendarCode, (int) $year, [
+                                    'source' => 'anbima',
+                                    'source_is_official' => true,
+                                ]);
+                            $run = BusinessCalendarImportRun::query()->create([
+                                'batch_uuid' => $batchUuid,
+                                'business_calendar_year_id' => $calendarYear?->id,
+                                'calendar_code' => $calendarCode,
+                                'year' => (int) $year,
+                                'source' => 'anbima',
+                                'source_is_official' => true,
+                                'source_url' => $sourceUrl,
+                                'source_file' => $sourceFile,
+                                'source_document' => $sourceDocument,
+                                'source_revision' => $sourceRevision,
+                                'checksum' => $checksum,
+                                'started_at' => $startedAt,
+                                'finished_at' => Date::now(),
+                                'triggered_by' => $importedByUserId,
+                                'triggered_by_process' => $process,
+                                'records_found' => count($yearHolidays),
+                                'records_inserted' => count($additions),
+                                'records_changed' => count($changes),
+                                'removals_detected' => count($removals),
+                                'conflicts_detected' => $conflicts,
+                                'errors' => $invalidErrors === [] ? null : $invalidErrors,
+                                'result' => $this->successfulRunResult($conflicts, $invalidErrors),
+                                'dry_run' => $dryRun,
+                            ]);
 
-            if ($existing === null) {
-                if (! $dryRun) {
-                    BusinessHoliday::query()->create([
-                        'calendar_code' => $calendarCode,
-                        'holiday_date' => $dateString,
-                        'name' => $name,
-                        'source' => 'anbima',
-                        'source_file' => $sourceFile,
-                        'imported_at' => $timestamp,
-                        'imported_by' => $importedByUserId,
-                    ]);
-                }
+                            $result->importRuns++;
+                            $result->imported += count($additions);
+                            $result->changesDetected += count($changes);
+                            $result->updated += count($actualChanges);
+                            $result->skipped += count($yearHolidays) - count($additions) - count($actualChanges);
+                            $result->removalsDetected += count($removals);
 
-                $result->imported++;
+                            if (! $dryRun && $calendarYear instanceof BusinessCalendarYear) {
+                                $this->persistHolidayFacts(
+                                    $calendarCode,
+                                    $yearHolidays,
+                                    $existing,
+                                    $actualChanges,
+                                    $removals,
+                                    $calendarYear,
+                                    $run,
+                                    $sourceFile,
+                                    $sourceDocument,
+                                    $sourceRevision,
+                                    $checksum,
+                                    $importedByUserId,
+                                );
+                                $application = $this->applyToCalendar(
+                                    $calendarCode,
+                                    $yearHolidays,
+                                    $calendarYear,
+                                    $run,
+                                    $force,
+                                );
+                                $result->calendarApplied += $application['applied'];
+                                $conflicts += $application['conflicts'];
+                                $this->updateCalendarYear(
+                                    $calendarYear,
+                                    $sourceDocument,
+                                    $sourceRevision,
+                                    $checksum,
+                                    count($additions) + count($actualChanges) + $application['applied'],
+                                    $conflicts,
+                                    count($removals),
+                                );
+                                $run->update([
+                                    'business_calendar_year_id' => $calendarYear->id,
+                                    'conflicts_detected' => $conflicts,
+                                    'result' => $this->successfulRunResult($conflicts, $invalidErrors),
+                                ]);
+                                $changedYears[(int) $year] = $calendarYear->fresh();
+                            }
 
-                continue;
-            }
+                            $result->conflictsDetected += $conflicts;
+                        }
+                    });
+                });
+        } catch (Throwable $exception) {
+            $years = $holidaysByYear->keys()->map(static fn ($year): int => (int) $year)->all();
+            $this->recordFailedRuns(
+                $calendarCode,
+                $years,
+                $sourceUrl,
+                $sourceFile,
+                $checksum,
+                $startedAt,
+                $importedByUserId,
+                $process,
+                $dryRun,
+                [$exception->getMessage()],
+                $batchUuid,
+            );
 
-            if ($force) {
-                $existing->fill([
-                    'name' => $name,
-                    'source_file' => $sourceFile,
-                    'imported_at' => $timestamp,
-                    'imported_by' => $importedByUserId,
-                ]);
+            throw new AnbimaHolidayImportException(
+                'A importação foi revertida integralmente; nenhum feriado ou dia útil ficou parcialmente aplicado. '.$exception->getMessage(),
+                previous: $exception,
+            );
+        }
 
-                if ($existing->isDirty(['name', 'source_file'])) {
-                    if (! $dryRun) {
-                        $existing->save();
-                    }
-
-                    $result->updated++;
-
-                    continue;
-                }
-            }
-
-            $result->skipped++;
+        foreach ($changedYears as $calendarYear) {
+            $this->revisionService->publish($calendarYear);
         }
 
         if (! $dryRun) {
-            $result->calendarApplied = $this->applyToCalendar($calendarCode, array_keys($holidays), $holidays);
             $this->businessDayCalendar->flushCache();
         }
 
@@ -168,7 +398,9 @@ class AnbimaHolidayImporter
     private function download(string $url): string
     {
         try {
-            $response = Http::timeout(30)
+            $response = Http::connectTimeout(10)
+                ->timeout(30)
+                ->retry(2, 250, throw: false)
                 ->withHeaders(['Accept' => 'application/vnd.ms-excel,application/octet-stream,*/*'])
                 ->get($url);
         } catch (ConnectionException $exception) {
@@ -288,7 +520,7 @@ class AnbimaHolidayImporter
         return [$holidays, $errors, $invalid];
     }
 
-    private function parseCellDate(\PhpOffice\PhpSpreadsheet\Cell\Cell $cell): ?CarbonImmutable
+    private function parseCellDate(Cell $cell): ?CarbonImmutable
     {
         $value = $cell->getValue();
 
@@ -395,35 +627,289 @@ class AnbimaHolidayImporter
     }
 
     /**
-     * Aplica os feriados ao calendário de dias úteis: cada data vira NÃO útil (is_business_day=false),
-     * sobrepondo qualquer linha gerada pelo backfill. Idempotente.
-     *
-     * @param  list<string>  $dateStrings
-     * @param  array<string, ?string>  $names
+     * @param  array<string, ?string>  $holidays
+     * @param  Collection<string, BusinessHoliday>  $existing
+     * @param  list<string>  $actualChanges
+     * @param  list<string>  $removals
      */
-    private function applyToCalendar(string $calendarCode, array $dateStrings, array $names): int
-    {
-        $applied = 0;
+    private function persistHolidayFacts(
+        string $calendarCode,
+        array $holidays,
+        Collection $existing,
+        array $actualChanges,
+        array $removals,
+        BusinessCalendarYear $calendarYear,
+        BusinessCalendarImportRun $run,
+        string $sourceFile,
+        string $sourceDocument,
+        ?string $sourceRevision,
+        ?string $checksum,
+        ?int $userId,
+    ): void {
+        $timestamp = Date::now();
 
-        foreach ($dateStrings as $dateString) {
+        foreach ($holidays as $dateString => $name) {
+            $holiday = $existing->get($dateString);
+
+            if (! $holiday instanceof BusinessHoliday) {
+                BusinessHoliday::query()->create([
+                    'business_calendar_year_id' => $calendarYear->id,
+                    'calendar_code' => $calendarCode,
+                    'holiday_date' => $dateString,
+                    'name' => $name,
+                    'source' => 'anbima',
+                    'data_origin' => 'imported',
+                    'source_is_official' => true,
+                    'source_file' => $sourceFile,
+                    'source_document' => $sourceDocument,
+                    'source_revision' => $sourceRevision,
+                    'checksum' => $checksum,
+                    'import_run_id' => $run->id,
+                    'last_seen_import_run_id' => $run->id,
+                    'imported_at' => $timestamp,
+                    'imported_by' => $userId,
+                ]);
+
+                continue;
+            }
+
+            $holiday->fill([
+                'business_calendar_year_id' => $calendarYear->id,
+                'data_origin' => 'imported',
+                'source_is_official' => true,
+                'source_file' => $sourceFile,
+                'source_document' => $sourceDocument,
+                'source_revision' => $sourceRevision,
+                'checksum' => $checksum,
+                'last_seen_import_run_id' => $run->id,
+                'removed_detected_at' => null,
+            ]);
+
+            if (in_array($dateString, $actualChanges, true)) {
+                $holiday->fill([
+                    'name' => $name,
+                    'imported_at' => $timestamp,
+                    'imported_by' => $userId,
+                ]);
+            }
+
+            if ($holiday->isDirty()) {
+                $holiday->save();
+            }
+        }
+
+        foreach ($removals as $dateString) {
+            $holiday = $existing->get($dateString);
+
+            if ($holiday instanceof BusinessHoliday && $holiday->removed_detected_at === null) {
+                $holiday->update(['removed_detected_at' => $timestamp]);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, ?string>  $holidays
+     * @return array{applied:int,conflicts:int}
+     */
+    private function applyToCalendar(
+        string $calendarCode,
+        array $holidays,
+        BusinessCalendarYear $calendarYear,
+        BusinessCalendarImportRun $run,
+        bool $force,
+    ): array {
+        $applied = 0;
+        $conflicts = 0;
+        $overrides = BusinessCalendarOverride::query()
+            ->where('calendar_code', $calendarCode)
+            ->whereIn('calendar_date', array_keys($holidays))
+            ->latest('applied_at')
+            ->latest('id')
+            ->get()
+            ->unique(fn (BusinessCalendarOverride $override): string => CarbonImmutable::instance($override->calendar_date)->toDateString())
+            ->keyBy(fn (BusinessCalendarOverride $override): string => CarbonImmutable::instance($override->calendar_date)->toDateString());
+
+        foreach ($holidays as $dateString => $name) {
+            $override = $overrides->get($dateString);
+
+            if ($override instanceof BusinessCalendarOverride) {
+                if ((bool) $override->new_is_business_day) {
+                    $conflicts++;
+                }
+
+                continue;
+            }
+
             $calendarDate = BusinessCalendarDate::query()
                 ->where('calendar_code', $calendarCode)
                 ->whereDate('calendar_date', $dateString)
-                ->first()
-                ?? new BusinessCalendarDate([
-                    'calendar_code' => $calendarCode,
-                    'calendar_date' => $dateString,
-                ]);
+                ->lockForUpdate()
+                ->first();
 
-            $calendarDate->is_business_day = false;
-            $calendarDate->description = $names[$dateString] ?? 'Feriado ANBIMA';
+            if ($calendarDate?->data_origin === 'manual_override') {
+                if ((bool) $calendarDate->is_business_day) {
+                    $conflicts++;
+                }
+
+                continue;
+            }
+
+            if (
+                $calendarDate instanceof BusinessCalendarDate
+                && $calendarDate->data_origin === null
+                && (bool) $calendarDate->is_business_day
+            ) {
+                $conflicts++;
+
+                continue;
+            }
+
+            $calendarDate ??= new BusinessCalendarDate([
+                'calendar_code' => $calendarCode,
+                'calendar_date' => $dateString,
+            ]);
+            $description = $calendarDate->exists && ! $force
+                ? ($calendarDate->description ?? $name ?? 'Feriado ANBIMA')
+                : ($name ?? 'Feriado ANBIMA');
+            $calendarDate->fill([
+                'business_calendar_year_id' => $calendarYear->id,
+                'is_business_day' => false,
+                'description' => $description,
+                'data_origin' => 'imported',
+                'source' => 'anbima',
+                'source_is_official' => true,
+                'source_document' => $run->source_document,
+                'source_revision' => $run->source_revision,
+                'import_run_id' => $calendarDate->import_run_id ?? $run->id,
+            ]);
 
             if (! $calendarDate->exists || $calendarDate->isDirty()) {
+                $calendarDate->revision = ((int) $calendarYear->revision) + 1;
                 $calendarDate->save();
                 $applied++;
             }
         }
 
-        return $applied;
+        return ['applied' => $applied, 'conflicts' => $conflicts];
+    }
+
+    private function updateCalendarYear(
+        BusinessCalendarYear $calendarYear,
+        string $sourceDocument,
+        ?string $sourceRevision,
+        ?string $checksum,
+        int $effectiveChanges,
+        int $conflicts,
+        int $removals,
+    ): void {
+        $metadataChanged = $calendarYear->source_document !== $sourceDocument
+            || $calendarYear->source_revision !== $sourceRevision
+            || $calendarYear->checksum !== $checksum;
+        $statusWillChange = ($conflicts > 0 || $removals > 0)
+            && $calendarYear->status !== BusinessCalendarYear::STATUS_STALE;
+        $mustRevise = $metadataChanged || $effectiveChanges > 0 || $statusWillChange;
+        $calendarYear->fill([
+            'source' => 'anbima',
+            'source_is_official' => true,
+            'source_document' => $sourceDocument,
+            'source_revision' => $sourceRevision,
+            'checksum' => $checksum,
+        ]);
+
+        if ($conflicts > 0 || $removals > 0) {
+            $calendarYear->status = BusinessCalendarYear::STATUS_STALE;
+        } elseif ($mustRevise && $calendarYear->status === BusinessCalendarYear::STATUS_CONFIRMED) {
+            $calendarYear->status = BusinessCalendarYear::STATUS_STALE;
+        }
+
+        if ($mustRevise) {
+            $calendarYear->revision = ((int) $calendarYear->revision) + 1;
+        }
+
+        if ($calendarYear->isDirty()) {
+            $calendarYear->save();
+        }
+    }
+
+    /**
+     * @param  list<?int>  $years
+     * @param  list<string>  $errors
+     */
+    private function recordFailedRuns(
+        string $calendarCode,
+        array $years,
+        ?string $sourceUrl,
+        string $sourceFile,
+        ?string $checksum,
+        CarbonImmutable $startedAt,
+        ?int $userId,
+        string $process,
+        bool $dryRun,
+        array $errors,
+        ?string $batchUuid = null,
+    ): void {
+        try {
+            DB::transaction(function () use (
+                $calendarCode,
+                $years,
+                $sourceUrl,
+                $sourceFile,
+                $checksum,
+                $startedAt,
+                $userId,
+                $process,
+                $dryRun,
+                $errors,
+                $batchUuid,
+            ): void {
+                foreach ($years as $year) {
+                    $calendarYear = $year === null
+                        ? null
+                        : BusinessCalendarYear::query()->where('calendar_code', strtoupper($calendarCode))->where('year', $year)->first();
+                    BusinessCalendarImportRun::query()->create([
+                        'batch_uuid' => $batchUuid ?? (string) Str::uuid(),
+                        'business_calendar_year_id' => $calendarYear?->id,
+                        'calendar_code' => strtoupper($calendarCode),
+                        'year' => $year,
+                        'source' => 'anbima',
+                        'source_is_official' => true,
+                        'source_url' => $sourceUrl,
+                        'source_file' => $sourceFile,
+                        'source_document' => $sourceUrl ?? $sourceFile,
+                        'checksum' => $checksum,
+                        'started_at' => $startedAt,
+                        'finished_at' => Date::now(),
+                        'triggered_by' => $userId,
+                        'triggered_by_process' => $process,
+                        'errors' => $errors,
+                        'result' => BusinessCalendarImportRun::RESULT_FAILED,
+                        'dry_run' => $dryRun,
+                    ]);
+                }
+            });
+        } catch (Throwable $auditFailure) {
+            report($auditFailure);
+        }
+    }
+
+    private function responsibleProcess(?int $userId): string
+    {
+        if ($userId !== null) {
+            return 'filament';
+        }
+
+        return app()->runningInConsole() ? 'artisan' : 'system';
+    }
+
+    /** @param  list<string>  $errors */
+    private function successfulRunResult(int $conflicts, array $errors): string
+    {
+        if ($conflicts > 0) {
+            return BusinessCalendarImportRun::RESULT_CONFLICTS;
+        }
+
+        return $errors === []
+            ? BusinessCalendarImportRun::RESULT_SUCCEEDED
+            : BusinessCalendarImportRun::RESULT_COMPLETED_WITH_ERRORS;
     }
 }

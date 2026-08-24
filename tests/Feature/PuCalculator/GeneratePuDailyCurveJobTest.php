@@ -5,6 +5,7 @@ use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use App\Models\IndexRate;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Spatie\Activitylog\Models\Activity;
@@ -71,7 +72,7 @@ it('stores the failure payload in cache when the queued job fails', function () 
 
 function seedBusinessCalendarForPuJob(string $startDate, string $endDate): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         BusinessCalendarDate::query()->create([
             'calendar_code' => 'B3',
             'calendar_date' => $date->toDateString(),
@@ -83,7 +84,7 @@ function seedBusinessCalendarForPuJob(string $startDate, string $endDate): void
 
 function seedFixedCdiRatesForPuJob(string $startDate, string $endDate, string $rateValue): void
 {
-    for ($date = \Carbon\CarbonImmutable::parse($startDate); $date->lte(\Carbon\CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
+    for ($date = CarbonImmutable::parse($startDate); $date->lte(CarbonImmutable::parse($endDate)); $date = $date->addDay()) {
         if ($date->isWeekend()) {
             continue;
         }

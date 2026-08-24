@@ -11,6 +11,8 @@ use App\Models\Fund;
 use App\Models\Obligation;
 use App\Models\ObligationEvidence;
 use App\Models\Proposal;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Section;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -27,9 +29,23 @@ class ExecutiveIndicatorsWidget extends StatsOverviewWidget
     protected ?string $description = 'Leitura consolidada do ambiente administrativo.';
 
     protected int|array|null $columns = [
-        'default' => 2,
-        'md' => 3,
+        'default' => 1,
+        'sm' => 2,
+        'lg' => 3,
     ];
+
+    public function getSectionContentComponent(): Component
+    {
+        return Section::make()
+            ->heading($this->getHeading())
+            ->description($this->getDescription())
+            ->schema($this->getCachedStats())
+            ->columns($this->getColumns())
+            ->contained()
+            ->extraAttributes([
+                'class' => 'bsi-cockpit-widget bsi-cockpit-indicators-section',
+            ]);
+    }
 
     protected function getStats(): array
     {

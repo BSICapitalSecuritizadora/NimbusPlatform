@@ -13,7 +13,7 @@ class JobApplicationResumeController extends Controller
 {
     public function download(JobApplication $jobApplication): StreamedResponse
     {
-        Gate::authorize('recruitment.applications.view');
+        Gate::authorize('view', $jobApplication);
 
         abort_unless(
             $jobApplication->scan_status === MalwareScanStatus::Clean

@@ -190,6 +190,31 @@ Se não houver obrigações no documento, retorne: {"obligations": []}
 Não adicione texto antes ou depois do JSON.
 PROMPT;
 
+    private const EXPLANATORY_NOTE_PROMPT = <<<'PROMPT'
+Você está gerando uma Nota Explicativa para o relatório mensal institucional de uma operação de securitização (CRI, CRA, CR).
+
+Contexto:
+- Emissão: {{issuanceName}}
+- Competência / Período de referência: {{referenceMonth}}
+- Categoria da nota: {{category}}
+- Documento de referência: {{documentName}} ({{documentType}})
+
+Analise o documento anexado e identifique eventos, mudanças, atualizações ou informações relevantes que devem ser comunicadas por meio de uma Nota Explicativa no relatório mensal institucional desta emissão.
+
+Regras obrigatórias:
+- Baseie-se SOMENTE no que está explicitamente escrito no documento. Não invente informações e não faça suposições sem respaldo direto no texto.
+- Não exponha caminhos de arquivo ou metadados internos.
+- Gere um título curto, objetivo e profissional e uma nota explicativa clara, concisa e em português, em tom institucional.
+- Priorize eventos relevantes da competência informada, incluindo alterações envolvendo garantias, vendas, obra/andamento da construção, recebíveis, inadimplência, pagamentos, fundos, obrigações ou qualquer outro desenvolvimento material da operação.
+- Se o documento não contiver informações confiáveis suficientes para gerar uma Nota Explicativa, indique explicitamente essa insuficiência no campo "note" e gere um título que reflita a ausência de conteúdo relevante, em vez de fabricar conteúdo.
+
+Retorne SOMENTE um JSON válido, sem texto antes ou depois, com a estrutura:
+{
+  "title": "...",
+  "note": "..."
+}
+PROMPT;
+
     private const GUARANTEES_PROMPT = <<<'PROMPT'
 Você é um especialista em direito do mercado de capitais brasileiro, com foco nas garantias de operações de securitização (CRI, CRA, CR).
 
@@ -446,6 +471,47 @@ PROMPT;
         }
 
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($value)) === 1 ? trim($value) : null;
+    }
+
+    /**
+     * Gera título e nota explicativa a partir de um documento já armazenado.
+     *
+     * Reusa o mesmo transporte de `generateFromDocument` (inline vs File API,
+     * polling, delete e retry). O prompt inclui emissão, competência, categoria
+     * e metadados do documento para que o modelo não precise inferir contexto.
+     *
+     * @param  array{issuanceName?: string, referenceMonth?: string, category?: string, documentName?: string, documentType?: string}  $context
+     * @return array{title: string, note: string}
+     */
+    public function generateExplanatoryNote(Document $document, array $context = []): array
+    {
+        $prompt = strtr(self::EXPLANATORY_NOTE_PROMPT, [
+            '{{issuanceName}}' => trim((string) ($context['issuanceName'] ?? 'Não informada')),
+            '{{referenceMonth}}' => trim((string) ($context['referenceMonth'] ?? 'Não informada')),
+            '{{category}}' => trim((string) ($context['category'] ?? 'Geral')),
+            '{{documentName}}' => trim((string) ($context['documentName'] ?? $document->title ?? 'Documento')),
+            '{{documentType}}' => trim((string) ($context['documentType'] ?? $document->category_label ?? $document->category ?? 'Não informado')),
+        ]);
+
+        $json = $this->generateFromDocument($prompt, $document);
+
+        $title = $this->nullableString($json['title'] ?? null, 255);
+        $note = $this->nullableString($json['note'] ?? $json['content'] ?? null);
+
+        if ($title === null || $note === null) {
+            throw new \RuntimeException('A resposta da IA não continha título e nota válidos.');
+        }
+
+        Log::info('GeminiService: nota explicativa gerada', [
+            'document_id' => $document->id,
+            'title_length' => mb_strlen($title),
+            'note_length' => mb_strlen($note),
+        ]);
+
+        return [
+            'title' => $title,
+            'note' => $note,
+        ];
     }
 
     /** @return array<string, string|null> */

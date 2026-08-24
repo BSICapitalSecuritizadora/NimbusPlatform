@@ -14,6 +14,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -24,7 +25,7 @@ beforeEach(function () {
     $this->seed(RolesAndPermissionsSeeder::class);
 });
 
-function workflowRelationManager(Emission $emission): \Livewire\Features\SupportTesting\Testable
+function workflowRelationManager(Emission $emission): Testable
 {
     return Livewire::test(ObligationsRelationManager::class, [
         'ownerRecord' => $emission,

@@ -9,7 +9,7 @@
             @if($canViewProposals)
                 <a
                     href="{{ $proposalsUrl }}"
-                    class="bsi-cockpit-action group flex min-h-20 items-center gap-3 rounded-xl bg-bsi-navy-900 px-4 py-3 text-bsi-paper shadow-[0_10px_24px_rgba(9,27,35,0.16)] transition-[background-color,box-shadow] duration-200 ease-out hover:bg-bsi-navy-800 hover:shadow-[0_14px_28px_rgba(9,27,35,0.22)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-bsi-gold-500 motion-reduce:transition-none"
+                    class="bsi-cockpit-action bsi-cockpit-shortcut bsi-cockpit-shortcut--primary group w-full min-w-0"
                     aria-label="Ver todas as propostas da carteira comercial"
                 >
                     <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-bsi-gold-500/20 text-bsi-gold-500">

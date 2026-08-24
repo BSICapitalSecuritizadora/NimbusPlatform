@@ -3,11 +3,11 @@
 namespace App\Filament\Resources\SalesBoards;
 
 use App\Filament\Resources\SalesBoards\Pages\CreateSalesBoard;
-use App\Filament\Resources\SalesBoards\Pages\EditSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\ListSalesBoards;
 use App\Filament\Resources\SalesBoards\Pages\ViewSalesBoard;
 use App\Filament\Resources\SalesBoards\RelationManagers\SalesBoardHistoriesRelationManager;
 use App\Filament\Resources\SalesBoards\Schemas\SalesBoardForm;
+use App\Filament\Resources\SalesBoards\Schemas\SalesBoardInfolist;
 use App\Filament\Resources\SalesBoards\Tables\SalesBoardsTable;
 use App\Models\SalesBoard;
 use BackedEnum;
@@ -44,6 +44,11 @@ class SalesBoardResource extends Resource
         return SalesBoardForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return SalesBoardInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return SalesBoardsTable::configure($table);
@@ -61,6 +66,7 @@ class SalesBoardResource extends Resource
         return parent::getEloquentQuery()->with([
             'emission',
             'construction',
+            'initialPosition',
         ]);
     }
 
@@ -95,7 +101,6 @@ class SalesBoardResource extends Resource
             'index' => ListSalesBoards::route('/'),
             'create' => CreateSalesBoard::route('/create'),
             'view' => ViewSalesBoard::route('/{record}'),
-            'edit' => EditSalesBoard::route('/{record}/edit'),
         ];
     }
 }

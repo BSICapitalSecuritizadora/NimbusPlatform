@@ -12,7 +12,7 @@ class ImportAnbimaHolidaysCommand extends Command
     protected $signature = 'pu:holidays:import-anbima
         {--url= : URL do arquivo .xls (default: ANBIMA feriados_nacionais.xls)}
         {--file= : Caminho local de um arquivo .xls/.xlsx (fallback de upload manual)}
-        {--calendar=B3 : Codigo do calendario que recebe os feriados}
+        {--calendar=BR_BANKING_ANBIMA : Calendário bancário de destino (B3 permanece disponível somente para compatibilidade explícita)}
         {--dry-run : Apenas simula, sem persistir nem aplicar ao calendario}
         {--force : Atualiza nome/notas de feriados ja cadastrados}';
 
@@ -58,20 +58,24 @@ class ImportAnbimaHolidaysCommand extends Command
 
         if ($result->dryRun) {
             $this->warn(sprintf(
-                'Dry-run: %d seriam criados, %d atualizados, %d ja cadastrados, %d invalido(s). Nada persistido.',
+                'Dry-run: %d seriam criados, %d atualizados, %d ja cadastrados, %d invalido(s). Nenhum dado de calendario foi alterado; %d execucao(oes) de auditoria registrada(s).',
                 $result->imported,
                 $result->updated,
                 $result->skipped,
                 $result->invalid,
+                $result->importRuns,
             ));
         } else {
             $this->info(sprintf(
-                'Criados: %d | Atualizados: %d | Ja cadastrados: %d | Invalido(s): %d | Aplicados ao calendario: %d',
+                'Criados: %d | Atualizados: %d | Ja cadastrados: %d | Remocoes detectadas: %d | Conflitos: %d | Invalido(s): %d | Aplicados ao calendario: %d | Execucoes auditadas: %d',
                 $result->imported,
                 $result->updated,
                 $result->skipped,
+                $result->removalsDetected,
+                $result->conflictsDetected,
                 $result->invalid,
                 $result->calendarApplied,
+                $result->importRuns,
             ));
         }
 

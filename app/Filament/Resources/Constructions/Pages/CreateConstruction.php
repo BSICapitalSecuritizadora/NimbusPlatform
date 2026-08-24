@@ -14,6 +14,10 @@ class CreateConstruction extends CreateRecord
 
     protected static ?string $breadcrumb = 'Criar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-construction-form-page',
+    ];
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>

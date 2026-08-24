@@ -70,7 +70,7 @@ class OperationResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['emission', 'planSets.construction']);
+        return parent::getEloquentQuery()->with(['emission', 'construction', 'planSets.construction']);
     }
 
     public static function canViewAny(): bool

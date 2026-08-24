@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Permission;
 
 uses(RefreshDatabase::class);
 
@@ -15,7 +16,7 @@ beforeEach(function () {
 });
 
 it('can create a new document version via action', function () {
-    \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'documents.update', 'guard_name' => 'web']);
+    Permission::firstOrCreate(['name' => 'documents.update', 'guard_name' => 'web']);
     $admin = User::factory()->create();
     $admin->givePermissionTo('documents.update');
 

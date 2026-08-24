@@ -109,7 +109,7 @@ it('rejects invalid spreadsheets through the receivables spreadsheet rule', func
 });
 
 it('normalizes reference months from DateTime instances', function () {
-    expect(Receivable::normalizeReferenceMonth(new \DateTimeImmutable('2026-03-31 00:00:00')))
+    expect(Receivable::normalizeReferenceMonth(new DateTimeImmutable('2026-03-31 00:00:00')))
         ->toBe('2026-03-01');
 });
 

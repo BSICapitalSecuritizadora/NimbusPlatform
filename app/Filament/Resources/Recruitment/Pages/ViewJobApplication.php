@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Recruitment\Pages;
 
 use App\Filament\Resources\Recruitment\JobApplicationResource;
+use App\Filament\Resources\Recruitment\RelationManagers\JobApplicationStatusHistoryRelationManager;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -18,6 +20,14 @@ class ViewJobApplication extends ViewRecord
     {
         return [
             EditAction::make(),
+            DeleteAction::make()->label('Excluir')->modalHeading('Excluir Candidatura'),
+        ];
+    }
+
+    public function getRelationManagers(): array
+    {
+        return [
+            JobApplicationStatusHistoryRelationManager::class,
         ];
     }
 }

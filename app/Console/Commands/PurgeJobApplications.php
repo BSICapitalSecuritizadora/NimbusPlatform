@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Storage;
  * Currículo é dado pessoal com finalidade esgotada quando o processo seletivo
  * termina; mantê-lo indefinidamente contraria os arts. 15 e 16 da LGPD e ainda
  * amplia o dano de um eventual vazamento.
+ *
+ * Suporta overrides por status terminal via `privacy.retention.retention_overrides`.
  */
 class PurgeJobApplications extends Command
 {
@@ -25,23 +27,46 @@ class PurgeJobApplications extends Command
 
     public function handle(): int
     {
-        $retentionMonths = (int) ($this->option('months') ?? config('privacy.retention.job_applications.months', 12));
+        $globalRetentionMonths = (int) ($this->option('months') ?? config('privacy.retention.job_applications.months', 12));
 
-        if ($retentionMonths <= 0) {
+        // If --months is given, it overrides everything globally.
+        $overrides = $this->option('months') !== null ? [] : (config('privacy.retention.retention_overrides.job_applications', []) ?? []);
+
+        // Normalize overrides: filter nulls and non-positives
+        $overrides = collect($overrides)
+            ->filter(fn ($v): bool => $v !== null && (int) $v > 0)
+            ->map(fn ($v): int => (int) $v)
+            ->all();
+
+        if ($globalRetentionMonths <= 0 && empty($overrides)) {
             $this->components->warn('Expurgo de candidaturas desativado (prazo de retenção não positivo).');
 
             return self::SUCCESS;
         }
 
         $isDryRun = (bool) $this->option('dry-run');
-        $cutoffDate = Carbon::now()->subMonths($retentionMonths)->startOfDay();
 
         $deletedApplications = 0;
         $deletedResumes = 0;
 
         JobApplication::query()
-            ->where('created_at', '<', $cutoffDate)
-            ->eachById(function (JobApplication $application) use ($isDryRun, &$deletedApplications, &$deletedResumes): void {
+            ->eachById(function (JobApplication $application) use ($isDryRun, $globalRetentionMonths, $overrides, &$deletedApplications, &$deletedResumes): void {
+                $retention = $globalRetentionMonths;
+
+                if (isset($overrides[$application->status])) {
+                    $retention = (int) $overrides[$application->status];
+                }
+
+                if ($retention <= 0) {
+                    return;
+                }
+
+                $cutoffDate = Carbon::now()->subMonths($retention)->startOfDay();
+
+                if ($application->created_at >= $cutoffDate) {
+                    return;
+                }
+
                 $resumePath = (string) $application->resume_path;
 
                 if ($resumePath !== '' && Storage::disk('resumes')->exists($resumePath)) {
@@ -59,23 +84,24 @@ class PurgeJobApplications extends Command
                 $deletedApplications++;
             });
 
-        // Registra só contagens: um log de expurgo que nomeasse os titulares
-        // recriaria, no arquivo de log, o dado que a rotina acabou de eliminar.
         Log::info('Expurgo de candidaturas concluído.', [
-            'retention_months' => $retentionMonths,
-            'cutoff' => $cutoffDate->toDateString(),
+            'retention_months' => $globalRetentionMonths,
+            'overrides' => $overrides,
             'applications' => $deletedApplications,
             'resumes' => $deletedResumes,
             'dry_run' => $isDryRun,
         ]);
 
         $this->components->info(sprintf(
-            '%s %d candidatura(s) e %d currículo(s) anteriores a %s.',
+            '%s %d candidatura(s) e %d currículo(s) conforme regras de retenção.',
             $isDryRun ? 'Seriam eliminadas' : 'Eliminadas',
             $deletedApplications,
             $deletedResumes,
-            $cutoffDate->format('d/m/Y'),
         ));
+
+        if (! empty($overrides)) {
+            $this->components->info('Overrides ativos: '.json_encode($overrides));
+        }
 
         return self::SUCCESS;
     }

@@ -2,6 +2,7 @@
 
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\PuReferenceWorkbookScenarioService;
+use App\Models\BusinessCalendarDate;
 use App\Models\Emission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -13,6 +14,13 @@ it('synchronizes the AMANI workbook scenario with lagged business-day CDI lookup
         'type' => 'CRI',
         'status' => 'active',
         'issued_quantity' => 20000,
+    ]);
+
+    BusinessCalendarDate::query()->create([
+        'calendar_code' => 'B3',
+        'calendar_date' => '2026-01-02',
+        'is_business_day' => false,
+        'description' => 'canonical-control-row',
     ]);
 
     $spreadsheetPath = puValidationSpreadsheetPath('AMANI');
@@ -27,6 +35,9 @@ it('synchronizes the AMANI workbook scenario with lagged business-day CDI lookup
         ->and($parameter)->not()->toBeNull()
         ->and($parameter?->index_rate_lookup_mode_enum)->toBe(PuIndexRateLookupMode::BusinessDayLagExact)
         ->and($parameter?->index_rate_lag_business_days)->toBe(-5)
+        ->and($parameter?->calendar_code)->toStartWith('HML_PU_')
+        ->and(BusinessCalendarDate::query()->where('calendar_code', 'B3')->whereDate('calendar_date', '2026-01-02')->value('description'))->toBe('canonical-control-row')
+        ->and(BusinessCalendarDate::query()->where('calendar_code', 'B3')->where('description', 'like', 'reference:%')->exists())->toBeFalse()
         ->and($emission->puEvents()->count())->toBe(61)
         ->and($emission->integralizationHistories()->count())->toBe(3);
 });

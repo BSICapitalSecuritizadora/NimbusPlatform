@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\Emissions\Schemas;
 
+use App\Concerns\MoneyFormatter;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Resources\ExpenseServiceProviders\Schemas\ExpenseServiceProviderForm;
 use App\Jobs\ExtractSecuritizationClausesJob;
 use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
+use App\Models\SalesBoard;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -130,6 +132,8 @@ class EmissionForm
 
                         ]),
 
+                    EmissionConstructionsStep::make(),
+
                     Step::make('Participantes')
                         ->columns([
                             'default' => 1,
@@ -214,15 +218,16 @@ class EmissionForm
                                 ->dehydrateStateUsing(fn ($state): bool => (bool) $state)
                                 ->placeholder('Selecione'),
 
-                            TextInput::make('segment')
-                                ->label('Segmento de Atuação')
-                                ->maxLength(255)
-                                ->placeholder('Informe o segmento'),
+                            self::segmentField(),
 
                             TextInput::make('target_audience')
                                 ->label('Público Alvo')
-                                ->maxLength(255)
-                                ->placeholder('Informe o público alvo'),
+                                ->readOnly()
+                                ->default(Emission::DEFAULT_TARGET_AUDIENCE)
+                                ->afterStateHydrated(function (TextInput $component, mixed $state): void {
+                                    $component->state(filled($state) ? $state : Emission::DEFAULT_TARGET_AUDIENCE);
+                                })
+                                ->maxLength(255),
                         ]),
 
                     Step::make('Valores e Remuneração')
@@ -271,7 +276,10 @@ class EmissionForm
                                         ->minValue(0)
                                         ->live(onBlur: true)
                                         ->afterStateHydrated(fn (Get $get, Set $set): null => self::syncRemainingQuantity($get, $set))
-                                        ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncRemainingQuantity($get, $set))
+                                        ->afterStateUpdated(function (Get $get, Set $set): void {
+                                            self::syncRemainingQuantity($get, $set);
+                                            self::syncIssuedVolume($get, $set);
+                                        })
                                         ->placeholder('0'),
 
                                     TextInput::make('integralized_quantity')
@@ -298,16 +306,25 @@ class EmissionForm
                             JS))
                                 ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2, ',', '.') : null)
                                 ->dehydrateStateUsing(fn ($state) => filled($state) ? (float) str_replace(['.', ','], ['', '.'], (string) $state) : null)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Get $get, Set $set): null => self::syncIssuedVolume($get, $set))
                                 ->prefix('R$')
                                 ->placeholder('0,00'),
 
                             TextInput::make('issued_volume')
                                 ->label('Volume Total Emitido')
+                                ->readOnly()
+                                ->helperText('Calculado automaticamente: Quantidade Emitida × Preço Unitário de Emissão (PU).')
                                 ->mask(RawJs::make(<<<'JS'
                                 $money($input, ',', '.', 2)
                             JS))
-                                ->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2, ',', '.') : null)
-                                ->dehydrateStateUsing(fn ($state) => filled($state) ? (float) str_replace(['.', ','], ['', '.'], (string) $state) : null)
+                                ->formatStateUsing(function (Get $get, mixed $state): ?string {
+                                    $issuedVolume = self::calculateIssuedVolume($get) ?? $state;
+
+                                    return $issuedVolume !== null ? number_format((float) $issuedVolume, 2, ',', '.') : null;
+                                })
+                                ->dehydrateStateUsing(fn (Get $get, mixed $state): ?float => self::calculateIssuedVolume($get)
+                                    ?? (filled($state) ? MoneyFormatter::normalizeDecimalValue($state) : null))
                                 ->prefix('R$')
                                 ->placeholder('0,00'),
                         ]),
@@ -603,18 +620,85 @@ class EmissionForm
                         ->schema([
                             Placeholder::make('resumo')
                                 ->label('Resumo dos Dados Preenchidos')
-                                ->content(fn (Get $get) => new HtmlString(
+                                ->content(fn (Get $get, string $operation) => new HtmlString(
                                     '<b>Denominação:</b> '.($get('name') ?: '<span class="text-danger-500">Não preenchido</span>').'<br>'.
                                     '<b>Tipo:</b> '.($get('type') ?: '<span class="text-danger-500">Não preenchido</span>').'<br>'.
                                     '<b>Volume Emitido:</b> R$ '.($get('issued_volume') ?: '0,00').'<br>'.
-                                    '<b>Emissor:</b> '.($get('issuer') ?: '<span class="text-danger-500">Não preenchido</span>').'<br><br>'.
+                                    '<b>Emissor:</b> '.($get('issuer') ?: '<span class="text-danger-500">Não preenchido</span>').'<br>'.
+                                    self::summarizeInitialConstructions($get, $operation).'<br>'.
                                     '<span class="text-gray-500">Revise os campos acima e confirme a operação clicando em salvar.</span>'
                                 )),
                         ]),
                 ])
                     ->columnSpanFull()
-                    ->skippable(),
+                    ->skippable(fn (string $operation): bool => $operation !== 'create'),
             ]);
+    }
+
+    /**
+     * Summarizes the mandatory constructions step. The block is omitted
+     * entirely outside the creation wizard, where that step is not rendered.
+     */
+    private static function summarizeInitialConstructions(Get $get, string $operation): string
+    {
+        if ($operation !== 'create') {
+            return '';
+        }
+
+        $constructions = array_values((array) $get(EmissionConstructionsStep::STATE_PATH));
+
+        if ($constructions === []) {
+            return '<b>Empreendimentos:</b> <span class="text-danger-500">Nenhum empreendimento cadastrado</span><br>';
+        }
+
+        $lines = array_map(static function (array $construction): string {
+            $developmentName = $construction['development_name'] ?? null;
+            $referenceMonth = $construction[EmissionConstructionsStep::SALES_BOARD_STATE_PATH]['reference_month'] ?? null;
+
+            if (blank($developmentName) || blank($referenceMonth)) {
+                return '&nbsp;&nbsp;• <span class="text-danger-500">Empreendimento incompleto</span>';
+            }
+
+            return '&nbsp;&nbsp;• '.e($developmentName)
+                .' — Quadro de Vendas '.e(SalesBoard::formatReferenceMonthForDisplay($referenceMonth));
+        }, $constructions);
+
+        return '<b>Empreendimentos:</b><br>'.implode('<br>', $lines).'<br>';
+    }
+
+    /**
+     * Keeps the read-only "Volume Total Emitido" field in sync with its factors.
+     */
+    private static function syncIssuedVolume(Get $get, Set $set): null
+    {
+        $issuedVolume = self::calculateIssuedVolume($get);
+
+        if ($issuedVolume !== null) {
+            $set('issued_volume', number_format($issuedVolume, 2, ',', '.'));
+        }
+
+        return null;
+    }
+
+    /**
+     * Volume Total Emitido = Quantidade Emitida x Preço Unitário de Emissão (PU).
+     *
+     * Returns null when either factor is missing so that a volume already
+     * stored on the emission is never overwritten by an incomplete form.
+     */
+    private static function calculateIssuedVolume(Get $get): ?float
+    {
+        $issuedQuantity = $get('issued_quantity');
+        $issuedPrice = $get('issued_price');
+
+        if (blank($issuedQuantity) || blank($issuedPrice)) {
+            return null;
+        }
+
+        return round(
+            self::normalizeQuantityValue($issuedQuantity) * MoneyFormatter::normalizeDecimalValue($issuedPrice),
+            2,
+        );
     }
 
     private static function syncRemainingQuantity(Get $get, Set $set): null
@@ -653,6 +737,66 @@ class EmissionForm
     public static function formatQuantityForDisplay(mixed $value): string
     {
         return number_format((float) self::normalizeQuantityValue($value), 0, ',', '.');
+    }
+
+    /**
+     * Segment selector following the same "pick one or create it inline"
+     * behaviour of the Participantes fields.
+     */
+    private static function segmentField(): Select
+    {
+        return Select::make('segment')
+            ->label('Segmento de Atuação')
+            ->options(fn (): array => self::getSegmentOptions())
+            ->searchable()
+            ->preload()
+            ->getSearchResultsUsing(
+                fn (string $search): array => self::getSegmentOptions($search),
+            )
+            ->getOptionLabelUsing(
+                fn (mixed $value): ?string => filled($value) ? (string) $value : null,
+            )
+            ->createOptionForm([
+                TextInput::make('segment')
+                    ->label('Segmento de Atuação')
+                    ->required()
+                    ->maxLength(255)
+                    ->validationMessages([
+                        'required' => 'Informe o segmento de atuação.',
+                    ]),
+            ])
+            ->createOptionUsing(
+                fn (array $data): string => trim((string) $data['segment']),
+            )
+            ->createOptionAction(
+                fn (Action $action): Action => $action
+                    ->label('Cadastrar Segmento')
+                    ->modalHeading('Cadastrar Segmento de Atuação'),
+            )
+            ->placeholder('Selecione ou cadastre um segmento');
+    }
+
+    /**
+     * Segments already in use by other emissions.
+     *
+     * The column is free text with no catalog table behind it, so the option
+     * list is derived from the values already registered.
+     *
+     * @return array<string, string>
+     */
+    private static function getSegmentOptions(?string $search = null): array
+    {
+        return Emission::query()
+            ->whereNotNull('segment')
+            ->where('segment', '<>', '')
+            ->when(
+                filled($search),
+                fn ($query): mixed => $query->where('segment', 'like', '%'.trim((string) $search).'%'),
+            )
+            ->distinct()
+            ->orderBy('segment')
+            ->pluck('segment', 'segment')
+            ->all();
     }
 
     private static function serviceProviderField(string $field, string $label, string $typeName): Select

@@ -1,7 +1,6 @@
 <?php
 
 use App\Filament\Resources\SalesBoards\Pages\CreateSalesBoard;
-use App\Filament\Resources\SalesBoards\Pages\EditSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\ListSalesBoards;
 use App\Filament\Resources\SalesBoards\Pages\ViewSalesBoard;
 use App\Filament\Resources\SalesBoards\RelationManagers\SalesBoardHistoriesRelationManager;
@@ -11,8 +10,8 @@ use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardHistory;
-use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,13 +38,14 @@ it('shows the create and view actions with the expected filters on the list page
 
     Livewire::test(ListSalesBoards::class)
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Cadastrar Quadro de Vendas')
+        ->assertActionHasLabel('create', 'Novo Quadro de Vendas')
         ->assertTableActionExists('view', null, $salesBoard)
         ->assertTableActionHasLabel('view', 'Visualizar')
         ->assertTableActionHasUrl('view', SalesBoardResource::getUrl('view', ['record' => $salesBoard]), $salesBoard)
         ->assertTableFilterExists('emission_id')
         ->assertTableFilterExists('construction_id')
-        ->assertTableFilterExists('reference_month');
+        ->assertTableFilterExists('reference_month')
+        ->assertTableFilterExists('stock_position');
 });
 
 it('renders each sales board form section on its own row', function () {
@@ -59,6 +59,11 @@ it('renders each sales board form section on its own row', function () {
         'Quantidades por Status',
         'Valores por Status',
     ]);
+
+    $allComponents = SalesBoardForm::configure(Schema::make(new CreateSalesBoard))->getComponents(withHidden: true);
+
+    expect(collect($allComponents)->contains(fn (mixed $component): bool => $component instanceof Textarea
+        && $component->getName() === 'change_reason'))->toBeTrue();
 
     expect($sections['Dados do Quadro de Vendas']->getColumnSpan())->toMatchArray([
         'default' => 'full',
@@ -136,7 +141,7 @@ it('creates a monthly sales board linked to emission and construction', function
         ->and($salesBoard?->exchanged_value)->toBe('400000.25');
 });
 
-it('saves tracked sales board changes without adding values to history', function () {
+it('records a history version on every tracked sales board change', function () {
     $this->actingAs(makeSalesBoardAdminUser());
 
     Carbon::setTestNow('2026-05-07 12:00:00');
@@ -154,9 +159,8 @@ it('saves tracked sales board changes without adding values to history', functio
         'exchanged_value' => 400000.25,
     ]);
 
-    Livewire::test(EditSalesBoard::class, [
-        'record' => $salesBoard->getRouteKey(),
-    ])
+    Livewire::withQueryParams(['from' => $salesBoard->getKey()])
+        ->test(CreateSalesBoard::class)
         ->fillForm([
             'stock_units' => 12,
             'financed_units' => 18,
@@ -167,7 +171,7 @@ it('saves tracked sales board changes without adding values to history', functio
             'paid_value' => '3.100.000,00',
             'exchanged_value' => '380.000,25',
         ])
-        ->call('save')
+        ->call('create')
         ->assertHasNoFormErrors();
 
     $salesBoard->refresh();
@@ -181,10 +185,17 @@ it('saves tracked sales board changes without adding values to history', functio
         ->and($salesBoard->financed_value)->toBe('2450000.50')
         ->and($salesBoard->paid_value)->toBe('3100000.00')
         ->and($salesBoard->exchanged_value)->toBe('380000.25')
-        ->and($salesBoard->valueHistories()->count())->toBe(0);
+        ->and($salesBoard->valueHistories()->count())->toBe(2);
+
+    $latestVersion = $salesBoard->valueHistories()->latest('id')->first();
+
+    expect($latestVersion->stock_units)->toBe(12)
+        ->and($latestVersion->total_units)->toBe(65)
+        ->and($latestVersion->changedBy?->name)->not->toBeNull()
+        ->and($latestVersion->change_reason)->toBeNull();
 });
 
-it('saves the current values and adds them to history when requested', function () {
+it('records the saved values as a new history version', function () {
     $this->actingAs(makeSalesBoardAdminUser());
 
     Carbon::setTestNow('2026-05-07 12:00:00');
@@ -202,9 +213,8 @@ it('saves the current values and adds them to history when requested', function 
         'exchanged_value' => 400000.25,
     ]);
 
-    Livewire::test(EditSalesBoard::class, [
-        'record' => $salesBoard->getRouteKey(),
-    ])
+    Livewire::withQueryParams(['from' => $salesBoard->getKey()])
+        ->test(CreateSalesBoard::class)
         ->fillForm([
             'stock_units' => 12,
             'financed_units' => 18,
@@ -215,11 +225,11 @@ it('saves the current values and adds them to history when requested', function 
             'paid_value' => '3.100.000,00',
             'exchanged_value' => '380.000,25',
         ])
-        ->call('saveAndAddToHistory')
+        ->call('create')
         ->assertHasNoFormErrors();
 
     $salesBoard->refresh();
-    $history = $salesBoard->valueHistories()->first();
+    $history = $salesBoard->valueHistories()->latest('id')->first();
 
     expect($salesBoard->stock_units)->toBe(12)
         ->and($salesBoard->financed_units)->toBe(18)
@@ -284,7 +294,7 @@ it('keeps monthly history without overwriting previous competencies', function (
         ->and(SalesBoard::query()->whereDate('reference_month', '2026-04-01')->value('stock_units'))->toBe(9);
 });
 
-it('prevents duplicate sales board records for the same monthly competency', function () {
+it('records a new version instead of duplicating a sales board for the same competency', function () {
     $this->actingAs(makeSalesBoardAdminUser());
 
     [$emission, $construction] = makeSalesBoardEmissionAndConstruction();
@@ -308,7 +318,15 @@ it('prevents duplicate sales board records for the same monthly competency', fun
             'exchanged_value' => '1.000,00',
         ])
         ->call('create')
-        ->assertHasFormErrors(['reference_month']);
+        ->assertHasNoFormErrors();
+
+    expect(SalesBoard::query()->count())->toBe(1);
+
+    $salesBoard = SalesBoard::query()->sole();
+
+    expect($salesBoard->stock_units)->toBe(1)
+        ->and($salesBoard->valueHistories()->count())->toBe(2)
+        ->and($salesBoard->valueHistories()->orderBy('id')->pluck('stock_units')->last())->toBe(1);
 });
 
 it('requires a construction linked to the selected emission', function () {
@@ -368,9 +386,8 @@ it('formats monthly competency and money fields when editing', function () {
         'exchanged_value' => 400000.25,
     ]);
 
-    Livewire::test(EditSalesBoard::class, [
-        'record' => $salesBoard->getRouteKey(),
-    ])
+    Livewire::withQueryParams(['from' => $salesBoard->getKey()])
+        ->test(CreateSalesBoard::class)
         ->assertFormSet([
             'reference_month' => '04/2026',
             'total_units' => 65,
@@ -400,60 +417,36 @@ it('shows the saved values on the read-only view page', function () {
     Livewire::test(ViewSalesBoard::class, [
         'record' => $salesBoard->getRouteKey(),
     ])
-        ->assertFormSet([
-            'reference_month' => '04/2026',
-            'total_units' => 65,
-            'stock_value' => '1.000.000,00',
-            'financed_value' => '2.500.000,50',
-            'paid_value' => '3.000.000,00',
-            'exchanged_value' => '400.000,25',
-        ]);
+        ->assertSee('Dados da Operação')
+        ->assertSee('Início da Operação')
+        ->assertSee('Posição Atual')
+        ->assertSee('04/2026')
+        ->assertSee('R$ 1.000.000,00')
+        ->assertSee('R$ 2.500.000,50')
+        ->assertSee('R$ 3.000.000,00')
+        ->assertSee('R$ 400.000,25');
 });
 
-it('requires confirmation before saving changes to a sales board', function () {
+it('offers a new update action instead of editing the current position', function () {
     $this->actingAs(makeSalesBoardAdminUser());
 
-    $salesBoard = SalesBoard::factory()->create();
+    [$emission, $construction] = makeSalesBoardEmissionAndConstruction();
+    $salesBoard = SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create();
 
-    $component = Livewire::test(EditSalesBoard::class, [
-        'record' => $salesBoard->getRouteKey(),
-    ])->instance();
+    Livewire::test(ViewSalesBoard::class, ['record' => $salesBoard->getRouteKey()])
+        ->assertActionExists('newUpdate')
+        ->assertActionHasLabel('newUpdate', 'Nova Atualização')
+        ->assertActionHasUrl('newUpdate', SalesBoardResource::getUrl('create', ['from' => $salesBoard->getKey()]))
+        ->assertDontSee('Editar');
 
-    if (function_exists('invade')) {
-        $saveAction = invade($component)->getSaveFormAction();
-    } else {
-        $method = new ReflectionMethod($component, 'getSaveFormAction');
-        $method->setAccessible(true);
-        $saveAction = $method->invoke($component);
-    }
-
-    expect($saveAction->isConfirmationRequired())->toBeTrue()
-        ->and((string) $saveAction->getModalHeading())->toBe('Salvar alterações do quadro de vendas')
-        ->and((string) $saveAction->getModalDescription())->toBe('Confirme para salvar as alterações realizadas.')
-        ->and($saveAction->getModalSubmitActionLabel())->toBe('Salvar alterações');
+    Livewire::test(ListSalesBoards::class)
+        ->assertTableActionExists('newUpdate', null, $salesBoard)
+        ->assertTableActionDoesNotExist('edit', null, $salesBoard);
 });
 
-it('configures a dedicated action to add the current values to history', function () {
-    $this->actingAs(makeSalesBoardAdminUser());
-
-    $salesBoard = SalesBoard::factory()->create();
-
-    $component = Livewire::test(EditSalesBoard::class, [
-        'record' => $salesBoard->getRouteKey(),
-    ])->instance();
-
-    $method = new ReflectionMethod($component, 'getFormActions');
-    $method->setAccessible(true);
-    $actions = collect($method->invoke($component));
-    $addToHistoryAction = $actions->first(fn (mixed $action): bool => $action->getName() === 'addToHistory');
-
-    expect($addToHistoryAction)->not->toBeNull()
-        ->and($addToHistoryAction->getLabel())->toBe('Adicionar ao Histórico')
-        ->and($addToHistoryAction->isConfirmationRequired())->toBeTrue()
-        ->and((string) $addToHistoryAction->getModalHeading())->toBe('Adicionar valores ao histórico')
-        ->and((string) $addToHistoryAction->getModalDescription())->toBe('Tem certeza de que deseja adicionar os valores atuais ao histórico? Após a confirmação, este registro não poderá mais ser removido.')
-        ->and($addToHistoryAction->getModalSubmitActionLabel())->toBe('Adicionar ao histórico')
-        ->and($addToHistoryAction->getLivewireClickHandler())->toContain("mountAction('addToHistory'");
+it('no longer registers an edit page for the sales board', function () {
+    expect(array_keys(SalesBoardResource::getPages()))->toBe(['index', 'create', 'view'])
+        ->and(file_exists(app_path('Filament/Resources/SalesBoards/Pages/EditSalesBoard.php')))->toBeFalse();
 });
 
 it('shows sales board history records on the relation manager', function () {
@@ -475,7 +468,7 @@ it('shows sales board history records on the relation manager', function () {
 
     Livewire::test(SalesBoardHistoriesRelationManager::class, [
         'ownerRecord' => $salesBoard,
-        'pageClass' => EditSalesBoard::class,
+        'pageClass' => ViewSalesBoard::class,
     ])
         ->assertCanSeeTableRecords([$latestHistory, $olderHistory], inOrder: true);
 });
@@ -484,6 +477,7 @@ function makeSalesBoardEmissionAndConstruction(): array
 {
     $emission = Emission::factory()->create([
         'name' => 'CRI Quadro de Vendas',
+        'status' => Emission::STATUS_DRAFT,
     ]);
     $construction = Construction::factory()->create([
         'emission_id' => $emission->id,
@@ -491,14 +485,4 @@ function makeSalesBoardEmissionAndConstruction(): array
     ]);
 
     return [$emission, $construction];
-}
-
-function makeSalesBoardAdminUser(): User
-{
-    $user = User::factory()->withTwoFactor()->create([
-        'email' => fake()->unique()->safeEmail(),
-    ]);
-    $user->assignRole('admin');
-
-    return $user;
 }

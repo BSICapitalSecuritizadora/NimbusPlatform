@@ -33,11 +33,17 @@ class ExpenseServiceProviderForm
                 ->required()
             : Select::make('expense_service_provider_type_id')
                 ->label('Tipo')
+                ->placeholder('Selecione o tipo...')
                 ->options(fn (): array => self::getServiceProviderTypeOptions())
                 ->searchable()
                 ->preload()
                 ->required()
                 ->live()
+                ->columnSpan([
+                    'default' => 1,
+                    'sm' => 7,
+                    'lg' => 7,
+                ])
                 ->getSearchResultsUsing(
                     fn (string $search): array => self::getServiceProviderTypeOptions($search),
                 )
@@ -60,12 +66,14 @@ class ExpenseServiceProviderForm
                 ->createOptionAction(
                     fn (Action $action): Action => $action
                         ->label('Cadastrar tipo')
-                        ->modalHeading('Cadastrar tipo de prestador de serviço'),
+                        ->modalHeading('Cadastrar tipo de prestador de serviço')
+                        ->tooltip('Cadastrar novo tipo de prestador'),
                 )
                 ->editOptionAction(
                     fn (Action $action): Action => $action
                         ->label('Editar tipo')
-                        ->modalHeading('Editar tipo de prestador de serviço'),
+                        ->modalHeading('Editar tipo de prestador de serviço')
+                        ->tooltip('Editar tipo selecionado'),
                 )
                 ->validationMessages([
                     'required' => 'Selecione o tipo do prestador de serviço.',
@@ -82,6 +90,14 @@ class ExpenseServiceProviderForm
                 ->stripCharacters(['.', '/', '-'])
                 ->required()
                 ->rule('digits:14')
+                ->columnSpan([
+                    'default' => 1,
+                    'sm' => 5,
+                    'lg' => 5,
+                ])
+                ->extraInputAttributes([
+                    'class' => 'font-mono tabular-nums tracking-wide',
+                ])
                 ->unique(
                     table: ExpenseServiceProvider::class,
                     column: 'cnpj',
@@ -103,6 +119,7 @@ class ExpenseServiceProviderForm
 
             TextInput::make('name')
                 ->label('Nome')
+                ->placeholder('Razão social ou nome empresarial completo')
                 ->required()
                 ->maxLength(255)
                 ->columnSpanFull(),
@@ -113,8 +130,12 @@ class ExpenseServiceProviderForm
     {
         return $schema->components([
             Section::make('Dados do prestador')
+                ->description('Informe a classificação, documento e a razão social ou nome empresarial do prestador.')
                 ->schema(static::fields())
-                ->columns(2),
+                ->columns([
+                    'default' => 1,
+                    'sm' => 12,
+                ]),
         ]);
     }
 

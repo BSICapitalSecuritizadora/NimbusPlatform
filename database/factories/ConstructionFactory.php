@@ -27,6 +27,7 @@ class ConstructionFactory extends Factory
         return [
             'emission_id' => Emission::factory(),
             'development_name' => fake()->company().' Residence',
+            'development_trade_name' => fake()->company(),
             'development_cnpj' => fake()->unique()->numerify('##############'),
             'city' => fake()->city(),
             'state' => fake()->randomElement(array_keys(Construction::STATE_OPTIONS)),

@@ -14,6 +14,15 @@ class EditEmissionMonthlyReportNote extends EditRecord
 
     protected static ?string $breadcrumb = 'Editar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Atualize a observação complementar vinculada à emissão e à competência do relatório.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [

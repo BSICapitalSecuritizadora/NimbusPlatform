@@ -125,6 +125,7 @@ it('groups the construction resources under Obras', function () {
         ->and(navigationChildLabels('Operações', 'Obras'))->toBe([
             'Operações de Obra',
             'Medições',
+            'Unidades',
         ]);
 });
 
@@ -204,7 +205,7 @@ it('groups the market reference data inside Dados de Mercado', function () {
 
     expect(navigationItemLabels('Dados de Mercado'))->toBe([
         'Índices (CDI/IPCA)',
-        'Feriados (Calendário B3)',
+        'Calendários de dias úteis',
     ])
         ->and(navigationChildLabels('Dados de Mercado', 'Índices (CDI/IPCA)'))->toBe([
             'Séries Projetadas IPCA',

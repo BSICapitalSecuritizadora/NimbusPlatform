@@ -16,6 +16,7 @@ use App\Models\ExtractedGuarantee;
 use App\Models\GuaranteeGenerationRun;
 use App\Services\Guarantees\GuaranteeSuggestionReviewService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -119,14 +120,17 @@ class GuaranteeDetectionsRelationManager extends RelationManager
                     ->label('Garantia identificada')
                     ->description(fn (ExtractedGuarantee $record): string => GuaranteeType::labelFor($record->type))
                     ->searchable()
+                    ->weight('bold')
+                    ->tooltip(fn (ExtractedGuarantee $record): string => $record->name)
                     ->wrap(),
                 TextColumn::make('event_type')
                     ->label('Evento')
                     ->badge()
                     ->formatStateUsing(fn (ExtractedGuarantee $record): string => $record->event_type?->label() ?? '—')
-                    ->color(fn (ExtractedGuarantee $record): string => $record->event_type?->color() ?? 'gray'),
+                    ->color(fn (ExtractedGuarantee $record): string => $record->event_type?->color() ?? 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('document.title')
-                    ->label('Documento')
+                    ->label('Origem Documental')
                     ->description(fn (ExtractedGuarantee $record): string => $this->sourceLocation($record))
                     ->placeholder('Documento não vinculado')
                     ->wrap(),
@@ -134,7 +138,8 @@ class GuaranteeDetectionsRelationManager extends RelationManager
                     ->label('Confiança')
                     ->badge()
                     ->formatStateUsing(fn (ExtractedGuarantee $record): string => $record->confidenceLevel()?->label() ?? '—')
-                    ->color(fn (ExtractedGuarantee $record): string => $record->confidenceLevel()?->color() ?? 'gray'),
+                    ->color(fn (ExtractedGuarantee $record): string => $record->confidenceLevel()?->color() ?? 'gray')
+                    ->tooltip(fn (ExtractedGuarantee $record): ?string => $record->confidencePercent() ? "Confiança: {$record->confidencePercent()}" : null),
                 TextColumn::make('reconciliation_outcome')
                     ->label('O que o documento traz')
                     ->badge()
@@ -146,45 +151,55 @@ class GuaranteeDetectionsRelationManager extends RelationManager
                     ->tooltip(fn (ExtractedGuarantee $record): ?string => $record->conflict_reason)
                     ->wrap(),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (ExtractedGuarantee $record): string => $record->status?->label() ?? '—')
                     ->color(fn (ExtractedGuarantee $record): string => $record->status?->color() ?? 'gray'),
                 TextColumn::make('reviewer.name')
                     ->label('Revisado por')
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
+            ->searchPlaceholder('Buscar por garantia ou documento...')
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label('Situação')
                     ->options(GuaranteeDetectionStatus::options()),
                 SelectFilter::make('reconciliation_outcome')
                     ->label('O que o documento traz')
                     ->options(GuaranteeReconciliationOutcome::options()),
+                SelectFilter::make('type')
+                    ->label('Tipo de garantia')
+                    ->options(GuaranteeType::options()),
             ])
             ->headerActions([
                 $this->makeGenerateAction(),
             ])
             ->actions([
                 $this->makeReviewAction(),
-                $this->makeComplementAction(),
-                $this->makeApproveAction(),
-                $this->makeRejectAction(),
-                Action::make('open_document')
-                    ->label('Ver no documento')
-                    ->icon('heroicon-o-arrow-top-right-on-square')
+                ActionGroup::make([
+                    $this->makeComplementAction(),
+                    $this->makeApproveAction(),
+                    $this->makeRejectAction(),
+                    Action::make('open_document')
+                        ->label('Ver no documento')
+                        ->icon('heroicon-o-arrow-top-right-on-square')
+                        ->color('gray')
+                        ->url(fn (ExtractedGuarantee $record): ?string => $record->document === null
+                            ? null
+                            : route('admin.documents.download', $record->document))
+                        ->openUrlInNewTab()
+                        ->visible(fn (ExtractedGuarantee $record): bool => $record->document !== null
+                            && Route::has('admin.documents.download')),
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical')
                     ->color('gray')
-                    ->url(fn (ExtractedGuarantee $record): ?string => $record->document === null
-                        ? null
-                        : route('admin.documents.download', $record->document))
-                    ->openUrlInNewTab()
-                    ->visible(fn (ExtractedGuarantee $record): bool => $record->document !== null
-                        && Route::has('admin.documents.download')),
+                    ->tooltip('Mais ações'),
             ])
             ->emptyStateHeading('Nenhuma garantia detectada')
-            ->emptyStateDescription('Use "Identificar nos documentos" para analisar o Termo, os aditamentos e os instrumentos de garantia da operação.');
+            ->emptyStateDescription('Use "Identificar garantias nos documentos" para analisar o Termo, os aditamentos e os instrumentos de garantia da operação.')
+            ->emptyStateIcon('heroicon-o-document-magnifying-glass');
     }
 
     /**
@@ -194,9 +209,9 @@ class GuaranteeDetectionsRelationManager extends RelationManager
     protected function makeReviewAction(): Action
     {
         return Action::make('review')
-            ->label('Revisar')
+            ->label(fn (ExtractedGuarantee $record): string => $record->status === GuaranteeDetectionStatus::Approved ? 'Ver detalhes' : 'Revisar')
             ->icon('heroicon-o-magnifying-glass')
-            ->color('gray')
+            ->color(fn (ExtractedGuarantee $record): string => $record->status === GuaranteeDetectionStatus::Suggested ? 'warning' : 'gray')
             ->modalHeading(fn (ExtractedGuarantee $record): string => $record->name)
             ->modalWidth('4xl')
             ->modalSubmitAction(false)
@@ -528,10 +543,32 @@ class GuaranteeDetectionsRelationManager extends RelationManager
             ? view('filament.resources.emissions.relation-managers.guarantee-generation-progress', ['run' => $run])->render()
             : '';
 
+        $emission = $this->getOwnerRecord();
+        $total = $emission->extractedGuarantees()->count();
+        $approved = $emission->extractedGuarantees()->where('status', GuaranteeDetectionStatus::Approved)->count();
+        $pending = $emission->extractedGuarantees()->pending()->count();
+
+        $summaryHtml = '';
+        if ($total > 0) {
+            $summaryHtml = sprintf(
+                '<div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+                    <span class="rounded-md bg-[#0c232e] px-2.5 py-1 text-slate-300 border border-[#1d4554]/50 font-medium">%d garantia(s) detectada(s)</span>
+                    <span class="rounded-md bg-emerald-950/60 px-2.5 py-1 text-emerald-300 border border-emerald-500/30 font-medium">%d confirmada(s)</span>
+                    %s
+                </div>',
+                $total,
+                $approved,
+                $pending > 0
+                    ? sprintf('<span class="rounded-md bg-amber-950/60 px-2.5 py-1 text-amber-300 border border-amber-500/30 font-medium">%d pendente(s)</span>', $pending)
+                    : '<span class="rounded-md bg-slate-800/80 px-2.5 py-1 text-slate-400 border border-slate-700">Todas revisadas</span>'
+            );
+        }
+
         return new HtmlString(
             $banner
-            .'<span class="block">Garantias identificadas nos documentos da operação. Nenhuma delas integra a emissão até ser confirmada.</span>'
-            .'<span class="mt-1 block text-sm text-gray-600">Confirme para incorporar com a origem documental preservada, ou rejeite informando o motivo.</span>'
+            .'<span class="block text-slate-300">Garantias identificadas nos documentos da operação. Nenhuma delas integra a emissão até ser confirmada.</span>'
+            .'<span class="mt-0.5 block text-xs text-slate-400">Confirme para incorporar com a rastreabilidade documental preservada, ou rejeite informando o motivo.</span>'
+            .$summaryHtml
         );
     }
 }

@@ -13,6 +13,15 @@ class CreateNegotiation extends CreateRecord
 
     protected static ?string $breadcrumb = 'Cadastrar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Registre as movimentações comerciais mensais de uma operação e empreendimento.';
+    }
+
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Negociação cadastrada com sucesso.';

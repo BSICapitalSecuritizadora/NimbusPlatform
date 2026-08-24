@@ -30,6 +30,12 @@ class PuHomologateReferenceCommand extends Command
         GeneratePuDailyCurve $generatePuDailyCurve,
         ValidatePuDailyCurve $validatePuDailyCurve,
     ): int {
+        if (app()->isProduction()) {
+            $this->error('Comando bloqueado: planilhas de homologação não podem alterar cenários ou calendários em produção.');
+
+            return self::FAILURE;
+        }
+
         $keyword = $this->argument('keyword');
         $mode = PuValidationMode::from((string) $this->option('mode'));
         $rangeStart = $this->option('from') !== null ? CarbonImmutable::parse((string) $this->option('from')) : null;

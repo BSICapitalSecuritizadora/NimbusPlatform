@@ -211,6 +211,7 @@ it('warns the CDI curve when the calendar is weekend-only and silences once holi
     );
 
     expect($warningKeys($emission))->toContain('business_calendar_holidays');
+    expect($warningKeys($emission))->toContain('business_calendar_confirmation');
 
     BusinessHoliday::query()->create([
         'calendar_code' => 'B3',

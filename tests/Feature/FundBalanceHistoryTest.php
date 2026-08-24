@@ -72,7 +72,7 @@ it('shows an informational warning when creating a fund with balance below the m
         ])
         ->call('create')
         ->assertHasNoFormErrors()
-        ->assertNotified('Atencao: o saldo informado esta abaixo do valor minimo definido.');
+        ->assertNotified('Atenção: o saldo informado está abaixo do valor mínimo definido.');
 
     expect(Fund::query()->first())
         ->not->toBeNull()
@@ -119,7 +119,7 @@ it('sends the below minimum email after creating a fund when the emission has li
         ])
         ->call('create')
         ->assertHasNoFormErrors()
-        ->assertNotified('Atencao: o saldo informado esta abaixo do valor minimo definido.');
+        ->assertNotified('Atenção: o saldo informado está abaixo do valor mínimo definido.');
 
     $fund = Fund::query()->firstOrFail();
 
@@ -205,7 +205,7 @@ it('does not show the below minimum warning when the saved balance is equal to o
         ])
         ->call('save')
         ->assertHasNoFormErrors()
-        ->assertNotNotified('Atencao: o saldo informado esta abaixo do valor minimo definido.');
+        ->assertNotNotified('Atenção: o saldo informado está abaixo do valor mínimo definido.');
 
     Mail::assertNothingSent();
     expect($fund->refresh()->minimum_balance_alert_sent_at)->toBeNull()

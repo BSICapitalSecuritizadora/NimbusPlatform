@@ -12,6 +12,7 @@ use Illuminate\Auth\Events\Logout;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -183,7 +184,7 @@ it('logs when role permissions are changed directly via the model', function () 
     $admin->assignRole('super-admin');
 
     $role = Role::findByName('editor');
-    $permission = \Spatie\Permission\Models\Permission::findByName('funds.view');
+    $permission = Permission::findByName('funds.view');
 
     $permsBefore = $role->permissions->pluck('name')->sort()->values()->all();
 

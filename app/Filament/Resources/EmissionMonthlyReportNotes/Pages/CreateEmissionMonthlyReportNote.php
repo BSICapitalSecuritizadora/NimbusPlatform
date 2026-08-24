@@ -13,6 +13,15 @@ class CreateEmissionMonthlyReportNote extends CreateRecord
 
     protected static ?string $breadcrumb = 'Cadastrar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Registre observações complementares vinculadas à emissão e à competência do relatório.';
+    }
+
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Nota explicativa cadastrada com sucesso.';

@@ -9,75 +9,87 @@
     $outcome = $plan?->outcome ?? $candidate->outcome();
 
     $money = static fn (mixed $value): string => blank($value)
-        ? 'Não localizado'
+        ? '—'
         : 'R$ ' . \App\Concerns\MoneyFormatter::formatCurrencyForDisplay($value);
 
     $identificationLabels = $candidate->type?->category()->identificationFields() ?? [];
 
     $evidenceBadge = static function (GuaranteeEvidenceLevel $level): string {
         return match ($level) {
-            GuaranteeEvidenceLevel::Explicit => 'bg-emerald-500/10 text-emerald-200',
-            GuaranteeEvidenceLevel::Inferred => 'bg-amber-500/10 text-amber-200',
-            GuaranteeEvidenceLevel::Conflicting => 'bg-rose-500/10 text-rose-200',
-            GuaranteeEvidenceLevel::NotFound => 'bg-white/[0.05] text-gray-400',
+            GuaranteeEvidenceLevel::Explicit => 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30',
+            GuaranteeEvidenceLevel::Inferred => 'bg-amber-950/60 text-amber-300 border border-amber-500/30',
+            GuaranteeEvidenceLevel::Conflicting => 'bg-rose-950/60 text-rose-300 border border-rose-500/30',
+            GuaranteeEvidenceLevel::NotFound => 'bg-[#081a22] text-slate-400 border border-[#1d4554]/40',
         };
     };
 
     $banner = match ($outcome) {
-        GuaranteeReconciliationOutcome::Conflict => ['border-rose-400/20 bg-rose-500/10', 'text-rose-200', 'text-rose-100/80'],
-        GuaranteeReconciliationOutcome::Change => ['border-amber-400/20 bg-amber-500/10', 'text-amber-200', 'text-amber-100/80'],
-        GuaranteeReconciliationOutcome::Complement => ['border-emerald-400/20 bg-emerald-500/10', 'text-emerald-200', 'text-emerald-100/80'],
-        GuaranteeReconciliationOutcome::Confirmation => ['border-white/10 bg-white/[0.04]', 'text-gray-200', 'text-gray-400'],
-        GuaranteeReconciliationOutcome::NewGuarantee => ['border-sky-400/20 bg-sky-500/10', 'text-sky-200', 'text-sky-100/80'],
+        GuaranteeReconciliationOutcome::Conflict => ['border-rose-500/40 bg-rose-950/50', 'text-rose-300', 'text-rose-200/90'],
+        GuaranteeReconciliationOutcome::Change => ['border-amber-500/40 bg-amber-950/50', 'text-amber-300', 'text-amber-200/90'],
+        GuaranteeReconciliationOutcome::Complement => ['border-emerald-500/40 bg-emerald-950/50', 'text-emerald-300', 'text-emerald-200/90'],
+        GuaranteeReconciliationOutcome::Confirmation => ['border-[#1d4554]/60 bg-[#0c232e]', 'text-slate-200', 'text-slate-400'],
+        GuaranteeReconciliationOutcome::NewGuarantee => ['border-sky-500/40 bg-sky-950/50', 'text-sky-300', 'text-sky-200/90'],
     };
 @endphp
 
-<div class="space-y-6 text-sm">
-    <div class="rounded-xl border p-4 {{ $banner[0] }}">
-        <div class="font-semibold {{ $banner[1] }}">{{ $outcome->label() }}</div>
-        <p class="mt-1 text-xs {{ $banner[2] }}">
+<div class="space-y-5 text-xs text-slate-300">
+    {{-- 1. Faixa do Veredito da Reconciliação --}}
+    <div class="rounded-xl border p-4 shadow-sm {{ $banner[0] }}">
+        <div class="font-semibold text-sm {{ $banner[1] }} flex items-center gap-2">
+            <x-heroicon-m-document-magnifying-glass class="h-4 w-4" />
+            {{ $outcome->label() }}
+        </div>
+        <p class="mt-1 leading-relaxed {{ $banner[2] }}">
             {{ $candidate->conflict_reason ?? $outcome->description() }}
         </p>
     </div>
 
+    {{-- 2. Possível Correspondência Cadastrada --}}
     @if ($plan?->hasGuarantee())
-        <section class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <section class="rounded-xl border border-[#1d4554]/60 bg-[#081a22] p-4 shadow-sm">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Possível correspondência</div>
-                    <div class="mt-1 font-medium">{{ $plan->guarantee->display_name }}</div>
+                    <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Possível correspondência cadastrada</div>
+                    <div class="mt-1 font-bold text-sm text-white">{{ $plan->guarantee->display_name }}</div>
                 </div>
                 @if ($plan->match)
-                    <div class="text-xs text-gray-400">
-                        Correspondência:
-                        <span class="font-medium text-gray-200">{{ $plan->match->level->label() }}</span>
-                        @if ($candidate->matchPercent())
-                            ({{ $candidate->matchPercent() }})
-                        @endif
+                    <div class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span>Correspondência:</span>
+                        <span class="font-semibold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                            {{ $plan->match->level->label() }}
+                            @if ($candidate->matchPercent())
+                                ({{ $candidate->matchPercent() }})
+                            @endif
+                        </span>
                     </div>
                 @endif
             </div>
 
             @if ($plan->match?->evidence)
-                <ul class="mt-3 space-y-1 text-xs text-gray-300">
+                <ul class="mt-3 space-y-1 text-slate-300 border-t border-[#1d4554]/30 pt-2.5">
                     @foreach ($plan->match->evidence as $evidence)
-                        <li class="flex gap-2"><span class="text-emerald-300">•</span><span>{{ $evidence }}</span></li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-emerald-400 mt-0.5">•</span>
+                            <span>{{ $evidence }}</span>
+                        </li>
                     @endforeach
                 </ul>
             @endif
 
             @if ($plan->match?->contradictions)
-                <ul class="mt-2 space-y-1 text-xs text-amber-200/90">
+                <ul class="mt-2 space-y-1 text-amber-300/90 border-t border-amber-500/20 pt-2">
                     @foreach ($plan->match->contradictions as $contradiction)
-                        <li class="flex gap-2"><span>⚠</span><span>{{ $contradiction }}</span></li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-amber-400">⚠</span>
+                            <span>{{ $contradiction }}</span>
+                        </li>
                     @endforeach
                 </ul>
             @endif
 
-            <p class="mt-3 text-xs text-gray-400">
+            <p class="mt-3 text-[11px] text-slate-400 border-t border-[#1d4554]/20 pt-2">
                 @if ($candidate->related_guarantee_id === null)
-                    Esta correspondência foi encontrada agora, depois da detecção — provavelmente a garantia
-                    foi cadastrada nesse intervalo. Complementar aplica as informações a ela mesmo assim.
+                    Esta correspondência foi identificada agora. Complementar aplica as informações à garantia acima mantendo a rastreabilidade.
                 @else
                     Complementar aplica estas informações à garantia acima e preserva a posição anterior no histórico.
                 @endif
@@ -85,45 +97,46 @@
         </section>
     @endif
 
+    {{-- 3. O que este documento acrescenta / altera --}}
     @if ($plan?->changesAnyValue() || $plan?->confirmations)
-        <section>
-            <h4 class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">
-                O que este documento acrescenta
+        <section class="rounded-xl border border-[#1d4554]/60 bg-[#0c232e] p-4 shadow-sm">
+            <h4 class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                O que este documento acrescenta ou altera
             </h4>
 
             <div class="mt-3 overflow-x-auto">
                 <table class="w-full text-left text-xs">
-                    <thead class="text-gray-400">
-                        <tr class="border-b border-white/10">
-                            <th class="py-2 pr-3 font-medium">Campo</th>
-                            <th class="py-2 pr-3 font-medium">Atualmente</th>
-                            <th class="py-2 pr-3 font-medium">Documento identificou</th>
-                            <th class="py-2 font-medium">Situação</th>
+                    <thead>
+                        <tr class="border-b border-[#1d4554]/40 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            <th class="py-2 pr-3">Campo</th>
+                            <th class="py-2 pr-3">Cadastrado</th>
+                            <th class="py-2 pr-3">Documento identificou</th>
+                            <th class="py-2">Situação</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-white/5">
+                    <tbody class="divide-y divide-[#1d4554]/30">
                         @foreach ($plan->complements as $delta)
                             <tr>
-                                <td class="py-2 pr-3 text-gray-300">{{ $delta->label }}</td>
-                                <td class="py-2 pr-3 text-gray-500">{{ $delta->currentDisplay }}</td>
-                                <td class="py-2 pr-3 font-medium text-emerald-200">{{ $delta->newDisplay }}</td>
-                                <td class="py-2 text-emerald-300">Complementa</td>
+                                <td class="py-2.5 pr-3 text-slate-300 font-medium">{{ $delta->label }}</td>
+                                <td class="py-2.5 pr-3 text-slate-500 font-mono">{{ $delta->currentDisplay }}</td>
+                                <td class="py-2.5 pr-3 font-semibold text-emerald-300 font-mono">{{ $delta->newDisplay }}</td>
+                                <td class="py-2.5 text-emerald-400 font-medium">Complementa</td>
                             </tr>
                         @endforeach
                         @foreach ($plan->divergences as $delta)
                             <tr>
-                                <td class="py-2 pr-3 text-gray-300">{{ $delta->label }}</td>
-                                <td class="py-2 pr-3 font-medium text-gray-200">{{ $delta->currentDisplay }}</td>
-                                <td class="py-2 pr-3 font-medium text-amber-200">{{ $delta->newDisplay }}</td>
-                                <td class="py-2 text-amber-300">Diverge — exige decisão</td>
+                                <td class="py-2.5 pr-3 text-slate-300 font-medium">{{ $delta->label }}</td>
+                                <td class="py-2.5 pr-3 font-medium text-slate-200 font-mono">{{ $delta->currentDisplay }}</td>
+                                <td class="py-2.5 pr-3 font-semibold text-amber-300 font-mono">{{ $delta->newDisplay }}</td>
+                                <td class="py-2.5 text-amber-400 font-medium">Diverge — exige decisão</td>
                             </tr>
                         @endforeach
                         @foreach ($plan->confirmations as $delta)
                             <tr>
-                                <td class="py-2 pr-3 text-gray-300">{{ $delta->label }}</td>
-                                <td class="py-2 pr-3 text-gray-400">{{ $delta->currentDisplay }}</td>
-                                <td class="py-2 pr-3 text-gray-400">{{ $delta->newDisplay }}</td>
-                                <td class="py-2 text-gray-500">Confirma — só nova fonte</td>
+                                <td class="py-2.5 pr-3 text-slate-300 font-medium">{{ $delta->label }}</td>
+                                <td class="py-2.5 pr-3 text-slate-400 font-mono">{{ $delta->currentDisplay }}</td>
+                                <td class="py-2.5 pr-3 text-slate-400 font-mono">{{ $delta->newDisplay }}</td>
+                                <td class="py-2.5 text-slate-500">Confirma — nova fonte</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -131,120 +144,107 @@
             </div>
 
             @if ($plan->hasDivergences())
-                <p class="mt-3 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-100">
-                    Nenhum valor divergente é sobrescrito automaticamente. Ao complementar, escolha campo a campo
-                    entre manter o cadastrado e adotar o do documento — a decisão fica registrada no histórico.
+                <p class="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/40 p-2.5 text-[11px] text-amber-200">
+                    Nenhum valor divergente é sobrescrito automaticamente. Ao complementar, escolha campo a campo entre manter o cadastrado e adotar o do documento.
                 </p>
             @endif
         </section>
     @endif
 
-    @if ($plan?->linkedFund)
-        <section class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Conta já cadastrada</div>
-            <p class="mt-1 text-xs text-gray-300">
-                A conta do documento é a do fundo
-                <span class="font-medium text-gray-100">{{ $plan->linkedFund->trade_name ?? $plan->linkedFund->fundName?->name ?? 'cadastrado' }}</span>.
-                A garantia será vinculada a ele em vez de guardar uma segunda cópia dos dados bancários.
-            </p>
-        </section>
-    @endif
-
-    <section>
-        <h4 class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">O que foi identificado</h4>
+    {{-- 4. O que foi Identificado no Documento --}}
+    <section class="rounded-xl border border-[#1d4554]/60 bg-[#081a22] p-4 shadow-sm">
+        <h4 class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Classificação e Valores Extraídos</h4>
         <dl class="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
-                <dt class="text-gray-400">Tipo</dt>
-                <dd class="font-medium">{{ \App\Enums\GuaranteeType::labelFor($candidate->type) }}</dd>
+            <div class="rounded-lg bg-[#0c232e] p-2.5 border border-[#1d4554]/40">
+                <dt class="text-[10px] uppercase font-bold text-slate-400">Tipo de Garantia</dt>
+                <dd class="mt-1 font-semibold text-white">{{ \App\Enums\GuaranteeType::labelFor($candidate->type) }}</dd>
             </div>
-            <div>
-                <dt class="text-gray-400">Evento</dt>
-                <dd class="font-medium">{{ $candidate->event_type?->label() ?? '—' }}</dd>
+            <div class="rounded-lg bg-[#0c232e] p-2.5 border border-[#1d4554]/40">
+                <dt class="text-[10px] uppercase font-bold text-slate-400">Evento</dt>
+                <dd class="mt-1 font-semibold text-white">{{ $candidate->event_type?->label() ?? '—' }}</dd>
             </div>
-            <div>
-                <dt class="text-gray-400">Valor identificado</dt>
-                <dd class="font-medium">{{ $money($candidate->contracted_value) }}</dd>
+            <div class="rounded-lg bg-[#0c232e] p-2.5 border border-[#1d4554]/40">
+                <dt class="text-[10px] uppercase font-bold text-slate-400">Valor Identificado</dt>
+                <dd class="mt-1 font-bold text-white font-mono">{{ $money($candidate->contracted_value) }}</dd>
             </div>
-            <div>
-                <dt class="text-gray-400">Cobertura mínima identificada</dt>
-                <dd class="font-medium">
+            <div class="rounded-lg bg-[#0c232e] p-2.5 border border-[#1d4554]/40">
+                <dt class="text-[10px] uppercase font-bold text-slate-400">Cobertura Mínima Prevista</dt>
+                <dd class="mt-1 font-bold text-white font-mono">
                     @if ($candidate->requirement_percentage !== null)
                         {{ number_format((float) $candidate->requirement_percentage * 100, 2, ',', '.') }}%
                         @if ($candidate->requirement_base)
-                            do {{ mb_strtolower($candidate->requirement_base->label()) }}
+                            <span class="text-xs font-normal text-slate-300">do {{ mb_strtolower($candidate->requirement_base->label()) }}</span>
                         @endif
                     @elseif ($candidate->requirement_value !== null)
                         {{ $money($candidate->requirement_value) }}
                     @else
-                        Não localizada
+                        —
                     @endif
                 </dd>
             </div>
             @foreach (($candidate->identification ?? []) as $key => $value)
                 @continue(blank($value) || ! is_scalar($value))
-                <div>
-                    <dt class="text-gray-400">{{ $identificationLabels[$key] ?? \Illuminate\Support\Str::of($key)->replace('_', ' ')->title() }}</dt>
-                    <dd class="font-medium">{{ $value }}</dd>
+                <div class="rounded-lg bg-[#0c232e] p-2.5 border border-[#1d4554]/40">
+                    <dt class="text-[10px] uppercase font-bold text-slate-400">{{ $identificationLabels[$key] ?? \Illuminate\Support\Str::of($key)->replace('_', ' ')->title() }}</dt>
+                    <dd class="mt-1 font-medium text-slate-200">{{ $value }}</dd>
                 </div>
             @endforeach
         </dl>
     </section>
 
-    <section>
-        <h4 class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Origem no documento</h4>
-        <dl class="mt-3 grid gap-3 sm:grid-cols-3">
-            <div>
-                <dt class="text-gray-400">Documento</dt>
-                <dd class="font-medium">{{ $candidate->document?->title ?? $candidate->document_type?->label() ?? '—' }}</dd>
+    {{-- 5. Origem no Documento & Trecho Identificado --}}
+    <section class="rounded-xl border border-[#1d4554]/60 bg-[#081a22] p-4 shadow-sm">
+        <h4 class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Origem Documental & Evidência</h4>
+        <dl class="mt-3 grid gap-2 sm:grid-cols-3">
+            <div class="rounded-lg bg-[#0c232e] p-2.5 border border-[#1d4554]/40">
+                <dt class="text-[10px] uppercase font-bold text-slate-400">Documento</dt>
+                <dd class="mt-0.5 font-medium text-white truncate">{{ $candidate->document?->title ?? $candidate->document_type?->label() ?? '—' }}</dd>
             </div>
-            <div>
-                <dt class="text-gray-400">Cláusula</dt>
-                <dd class="font-medium">{{ $candidate->source_clause ?? 'Não informada' }}</dd>
+            <div class="rounded-lg bg-[#0c232e] p-2.5 border border-[#1d4554]/40">
+                <dt class="text-[10px] uppercase font-bold text-slate-400">Cláusula</dt>
+                <dd class="mt-0.5 font-semibold text-white">{{ $candidate->source_clause ?? '—' }}</dd>
             </div>
-            <div>
-                <dt class="text-gray-400">Página</dt>
-                <dd class="font-medium">{{ $candidate->source_page ?? 'Não informada' }}</dd>
+            <div class="rounded-lg bg-[#0c232e] p-2.5 border border-[#1d4554]/40">
+                <dt class="text-[10px] uppercase font-bold text-slate-400">Página</dt>
+                <dd class="mt-0.5 font-semibold text-white">{{ $candidate->source_page ?? '—' }}</dd>
             </div>
         </dl>
 
         @if (filled($candidate->source_excerpt))
-            <blockquote class="mt-3 border-l-2 border-white/20 pl-3 text-xs italic text-gray-300">
+            <blockquote class="mt-3 rounded-r-lg border-l-2 border-[#a06e28] border-y border-r border-[#1d4554]/40 bg-[#0c232e] p-3.5 italic leading-relaxed text-slate-200 shadow-inner">
                 “{{ $candidate->source_excerpt }}”
             </blockquote>
         @endif
     </section>
 
-    <section>
-        <h4 class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Confiança da extração</h4>
-        <p class="mt-2 text-xs text-gray-400">
-            Geral: <span class="font-medium text-gray-200">{{ $candidate->confidenceLevel()?->label() ?? '—' }}</span>
-            @if ($candidate->confidencePercent())
-                ({{ $candidate->confidencePercent() }})
-            @endif
-        </p>
+    {{-- 6. Confiança da Extração --}}
+    <section class="rounded-xl border border-[#1d4554]/60 bg-[#081a22] p-4 shadow-sm">
+        <div class="flex items-center justify-between">
+            <h4 class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Nível de Confiança da Extração</h4>
+            <span class="font-bold text-xs text-white">
+                {{ $candidate->confidenceLevel()?->label() ?? '—' }}
+                @if ($candidate->confidencePercent())
+                    <span class="text-slate-400 font-mono font-normal">({{ $candidate->confidencePercent() }})</span>
+                @endif
+            </span>
+        </div>
 
         @if (filled($candidate->field_evidence))
-            <ul class="mt-3 flex flex-wrap gap-2">
+            <ul class="mt-3 flex flex-wrap gap-1.5">
                 @foreach ($candidate->field_evidence as $field => $level)
                     @php $evidenceLevel = GuaranteeEvidenceLevel::tryFrom($level) ?? GuaranteeEvidenceLevel::NotFound; @endphp
-                    <li class="rounded-full px-2.5 py-0.5 text-xs {{ $evidenceBadge($evidenceLevel) }}">
+                    <li class="rounded-md px-2 py-0.5 text-[11px] {{ $evidenceBadge($evidenceLevel) }}">
                         {{ \Illuminate\Support\Str::of($field)->replace('_', ' ')->title() }}: {{ $evidenceLevel->label() }}
                     </li>
                 @endforeach
             </ul>
         @endif
-
-        @if ($candidate->inferredFields() !== [])
-            <p class="mt-3 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-100">
-                Campos inferidos exigem conferência contra o documento antes de confirmar.
-            </p>
-        @endif
     </section>
 
     @if (filled($candidate->review_notes))
-        <section>
-            <h4 class="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Observações</h4>
-            <p class="mt-2 text-xs text-gray-300">{{ $candidate->review_notes }}</p>
+        <section class="rounded-xl border border-[#1d4554]/60 bg-[#081a22] p-3.5 shadow-sm">
+            <h4 class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Observações da Revisão</h4>
+            <p class="mt-1 text-slate-300 leading-relaxed">{{ $candidate->review_notes }}</p>
         </section>
     @endif
 </div>

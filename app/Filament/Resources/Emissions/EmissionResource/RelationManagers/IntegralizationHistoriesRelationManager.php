@@ -10,6 +10,12 @@ use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\IntegralizationHistory;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -65,6 +71,7 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                     ]),
                 TextInput::make('unit_value')
                     ->label('Preço Unitário (PU)')
+                    ->prefix('R$')
                     ->inputMode('decimal')
                     ->mask(RawJs::make(<<<'JS'
                         $money($input, ',', '.', 8)
@@ -114,48 +121,64 @@ class IntegralizationHistoriesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('date')
+            ->searchPlaceholder('Buscar integralizações...')
             ->columns([
                 TextColumn::make('date')
                     ->label('Data')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->weight('medium')
+                    ->sortable()
+                    ->searchable(),
                 TextColumn::make('quantity')
                     ->label('Quantidade')
                     ->numeric(0, ',', '.')
+                    ->alignEnd()
                     ->sortable(),
                 TextColumn::make('unit_value')
                     ->label('PU')
                     ->numeric(8, ',', '.')
+                    ->prefix('R$ ')
+                    ->alignEnd()
                     ->sortable(),
                 TextColumn::make('financial_value')
                     ->label('Valor Financeiro')
                     ->money('BRL')
+                    ->weight('semibold')
+                    ->alignEnd()
                     ->sortable(),
                 TextColumn::make('investor_fund')
                     ->label('Fundo do Investidor')
                     ->searchable()
+                    ->wrap()
+                    ->tooltip(fn (?string $state): ?string => $state)
                     ->sortable(),
             ])
             ->defaultSort('date', 'desc')
             ->headerActions([
-                \Filament\Actions\Action::make('download_template')
+                Action::make('download_template')
                     ->label('Download do Template')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
+                    ->tooltip('Baixar modelo de planilha para preenchimento')
                     ->url(fn (): string => route('admin.integralization-histories.template.download'))
                     ->visible(fn (): bool => app(IntegralizationHistorySpreadsheetTemplate::class)->exists()),
-                \Filament\Actions\Action::make('manage_template')
+                Action::make('manage_template')
                     ->label('Configurar Template')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->color('gray')
+                    ->tooltip('Configurar mapeamento de colunas do template')
                     ->url(fn (): string => SettingsPage::getUrl(panel: 'admin'))
                     ->visible(fn (): bool => auth()->user()?->can('settings.view') ?? false),
-                \Filament\Actions\Action::make('import')
+                Action::make('import')
                     ->label('Importar Dados')
                     ->icon('heroicon-o-arrow-up-tray')
+                    ->color('primary')
+                    ->tooltip('Importar histórico de integralizações via planilha (.xlsx / .csv)')
+                    ->modalHeading('Importar Planilha de Integralizações')
+                    ->modalSubmitActionLabel('Importar Dados')
                     ->form([
                         FileUpload::make('file')
-                            ->label('Planilha de Dados (.xlsx)')
+                            ->label('Planilha de Dados (.xlsx / .csv)')
                             ->disk('local')
                             ->directory('imports')
                             ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
@@ -190,22 +213,87 @@ class IntegralizationHistoriesRelationManager extends RelationManager
                             ->success()
                             ->send();
                     }),
-                \Filament\Actions\CreateAction::make()
-                    ->label('Lançar Integralização')
+                CreateAction::make()
+                    ->label('Adicionar Integralização')
+                    ->icon('heroicon-m-plus')
+                    ->tooltip('Cadastrar integralização manualmente')
+                    ->modalHeading('Adicionar Integralização')
                     ->before(function (Action $action, array $data): void {
                         $this->validateIntegralizationQuantityOrHalt($action, $data);
                     }),
             ])
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->modalHeading('Editar Integralização')
+                        ->before(function (Action $action, array $data, IntegralizationHistory $record): void {
+                            $this->validateIntegralizationQuantityOrHalt($action, $data, $record);
+                        }),
+                    DeleteAction::make()
+                        ->modalHeading('Excluir Integralização'),
                 ]),
             ])
-            ->emptyStateHeading('Nenhuma integralização cadastrada');
+            ->bulkActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
+            ])
+            ->emptyStateIcon('heroicon-o-banknotes')
+            ->emptyStateHeading('Nenhuma integralização cadastrada')
+            ->emptyStateDescription('Cadastre manualmente a primeira integralização ou importe uma planilha para iniciar o histórico desta emissão.')
+            ->emptyStateActions([
+                CreateAction::make('empty_create')
+                    ->label('Adicionar Integralização')
+                    ->icon('heroicon-m-plus')
+                    ->color('primary')
+                    ->modalHeading('Adicionar Integralização')
+                    ->before(function (Action $action, array $data): void {
+                        $this->validateIntegralizationQuantityOrHalt($action, $data);
+                    }),
+                Action::make('empty_import')
+                    ->label('Importar Dados')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('gray')
+                    ->modalHeading('Importar Planilha de Integralizações')
+                    ->modalSubmitActionLabel('Importar Dados')
+                    ->form([
+                        FileUpload::make('file')
+                            ->label('Planilha de Dados (.xlsx / .csv)')
+                            ->disk('local')
+                            ->directory('imports')
+                            ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/csv', 'text/csv'])
+                            ->required(),
+                    ])
+                    ->action(function (array $data, RelationManager $livewire): void {
+                        $path = Storage::disk('local')->path($data['file']);
+
+                        try {
+                            $count = app(ImportIntegralizationHistoriesFromSpreadsheet::class)->handle($path, $livewire->ownerRecord);
+                        } catch (ValidationException $exception) {
+                            Notification::make()
+                                ->title('Falha na importação')
+                                ->body(collect($exception->errors())->flatten()->implode(PHP_EOL))
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            return;
+                        } catch (\Throwable) {
+                            Notification::make()
+                                ->title('Erro ao processar o arquivo')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Importação concluída com sucesso!')
+                            ->body("{$count} registros foram processados.")
+                            ->success()
+                            ->send();
+                    }),
+            ]);
     }
 
     protected function afterActionCalled(Action $action): void

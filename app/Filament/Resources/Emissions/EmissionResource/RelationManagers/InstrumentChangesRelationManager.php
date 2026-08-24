@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Emissions\EmissionResource\RelationManagers;
 
 use App\Enums\AccessPermission;
+use App\Enums\GuaranteeEvidenceLevel;
 use App\Enums\LegalInstrumentFieldStatus;
 use App\Models\Emission;
 use App\Models\LegalInstrumentField;
@@ -14,6 +15,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -66,41 +68,72 @@ class InstrumentChangesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('field_key')
-            ->description('Alterações identificadas nos documentos dos instrumentos. Nada altera a posição vigente até ser confirmado.')
+            ->description('Alterações identificadas automaticamente nos documentos da operação e aguardando conferência humana.')
+            ->searchPlaceholder('Buscar por campo, valor ou cláusula...')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with(['instrument', 'instrumentDocument.document', 'guarantee', 'reviewer'])
                 ->latest('id'))
-            ->columns([
-                TextColumn::make('instrument.name')
+            ->groups([
+                Group::make('legal_instrument_id')
                     ->label('Instrumento')
-                    ->formatStateUsing(fn (LegalInstrumentField $record): string => $record->instrument?->display_name ?? '—')
-                    ->description(fn (LegalInstrumentField $record): ?string => $record->guarantee?->display_name)
-                    ->wrap(),
+                    ->getTitleFromRecordUsing(fn (LegalInstrumentField $record): string => $record->instrument?->display_name ?? 'Instrumento não identificado')
+                    ->collapsible(),
+            ])
+            ->defaultGroup('legal_instrument_id')
+            ->recordAction('inspect')
+            ->columns([
                 TextColumn::make('field_key')
-                    ->label('Campo')
+                    ->label('Campo Alterado')
+                    ->weight('semibold')
                     ->formatStateUsing(fn (LegalInstrumentField $record): string => $record->field_key?->label() ?? '—')
-                    ->description(fn (LegalInstrumentField $record): ?string => $record->field_key?->isMaterial() === true
-                        ? 'Alteração material'
-                        : null)
+                    ->description(function (LegalInstrumentField $record): ?string {
+                        $parts = array_filter([
+                            $record->guarantee?->display_name,
+                            $record->field_key?->isMaterial() === true ? 'Alteração material' : null,
+                        ]);
+
+                        return $parts === [] ? null : implode(' · ', $parts);
+                    })
                     ->wrap(),
-                TextColumn::make('previous_value')
-                    ->label('Anterior')
-                    ->state(fn (LegalInstrumentField $record): string => $this->previousValue($record))
-                    ->wrap(),
-                TextColumn::make('value')
-                    ->label('Novo')
-                    ->formatStateUsing(fn (LegalInstrumentField $record): string => $record->formatted_value)
-                    ->weight('bold')
+                TextColumn::make('diff')
+                    ->label('Alteração (De → Para)')
+                    ->formatStateUsing(function (LegalInstrumentField $record): string {
+                        $prev = htmlspecialchars($this->previousValue($record));
+                        $new = htmlspecialchars($record->formatted_value);
+                        $date = $record->effective_date
+                            ? "<span class=\"text-[11px] text-gray-400 dark:text-gray-500 block mt-0.5\">Vigência: {$record->effective_date->format('d/m/Y')}</span>"
+                            : '';
+
+                        return '<div class="flex flex-col gap-0.5">'
+                            .'<div class="flex items-center gap-1.5 flex-wrap">'
+                            ."<span class=\"text-xs text-gray-400 line-through\">{$prev}</span>"
+                            .'<span class="text-xs text-gray-500 font-bold">→</span>'
+                            ."<span class=\"text-xs font-semibold text-emerald-600 dark:text-emerald-400\">{$new}</span>"
+                            .'</div>'
+                            ."{$date}"
+                            .'</div>';
+                    })
+                    ->html()
                     ->wrap(),
                 TextColumn::make('source')
-                    ->label('Fonte')
+                    ->label('Origem / Fonte')
                     ->state(fn (LegalInstrumentField $record): string => $this->sourceLabel($record))
+                    ->description(fn (LegalInstrumentField $record): ?string => $record->instrumentDocument?->role_label)
                     ->wrap(),
                 TextColumn::make('evidence_level')
                     ->label('Evidência')
                     ->badge()
-                    ->formatStateUsing(fn (LegalInstrumentField $record): string => $record->evidence_level?->label() ?? '—')
-                    ->color(fn (LegalInstrumentField $record): string => $record->evidence_level?->color() ?? 'gray'),
+                    ->formatStateUsing(fn (LegalInstrumentField $record): string => match ($record->evidence_level) {
+                        GuaranteeEvidenceLevel::Explicit => 'Explícita',
+                        GuaranteeEvidenceLevel::Inferred => 'Inferida',
+                        GuaranteeEvidenceLevel::NotFound => 'Não localizada',
+                        GuaranteeEvidenceLevel::Conflicting => 'Conflitante',
+                        null => '—',
+                    })
+                    ->color(fn (LegalInstrumentField $record): string => $record->evidence_level?->color() ?? 'gray')
+                    ->tooltip(fn (LegalInstrumentField $record): ?string => $record->confidence_score !== null
+                        ? $record->evidence_level?->label().' (Confiança: '.round($record->confidence_score * 100).'%)'
+                        : $record->evidence_level?->label()),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -113,14 +146,25 @@ class InstrumentChangesRelationManager extends RelationManager
                     ->attribute('legal_instrument_fields.status')
                     ->options(LegalInstrumentFieldStatus::options())
                     ->default(LegalInstrumentFieldStatus::PendingReview->value),
+                SelectFilter::make('evidence_level')
+                    ->label('Evidência')
+                    ->options([
+                        GuaranteeEvidenceLevel::Explicit->value => 'Explícita',
+                        GuaranteeEvidenceLevel::Inferred->value => 'Inferida',
+                        GuaranteeEvidenceLevel::Conflicting->value => 'Conflitante',
+                        GuaranteeEvidenceLevel::NotFound->value => 'Não localizada',
+                    ]),
             ])
             ->actions([
                 $this->makeInspectAction(),
                 $this->makeConfirmAction(),
                 $this->makeRejectAction(),
             ])
-            ->emptyStateHeading('Nenhuma alteração pendente')
-            ->emptyStateDescription('Anexe documentos ao dossiê de um instrumento para que o sistema compare o conteúdo com a posição vigente.');
+            ->defaultPaginationPageOption(25)
+            ->paginated([10, 25, 50, 100])
+            ->emptyStateIcon('heroicon-o-document-magnifying-glass')
+            ->emptyStateHeading('Nenhuma alteração pendente de revisão')
+            ->emptyStateDescription('Todas as alterações identificadas nos documentos desta emissão já foram conferidas e homologadas.');
     }
 
     protected function makeInspectAction(): Action
@@ -129,7 +173,11 @@ class InstrumentChangesRelationManager extends RelationManager
             ->label('Ver trecho')
             ->icon('heroicon-o-magnifying-glass')
             ->color('gray')
-            ->modalHeading(fn (LegalInstrumentField $record): string => $record->field_key?->label() ?? 'Alteração')
+            ->tooltip('Consultar trecho e evidência documental')
+            ->modalHeading(fn (LegalInstrumentField $record): string => 'Evidência: '.($record->field_key?->label() ?? 'Alteração'))
+            ->modalDescription(fn (LegalInstrumentField $record): ?string => $record->instrument?->display_name
+                ? ($record->instrument->display_name.' · '.($record->source_label ?? 'Documento da Operação'))
+                : null)
             ->modalWidth('3xl')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Fechar')
@@ -147,6 +195,7 @@ class InstrumentChangesRelationManager extends RelationManager
             ->label('Confirmar')
             ->icon('heroicon-o-check')
             ->color('success')
+            ->tooltip('Homologar alteração como posição vigente')
             ->requiresConfirmation()
             ->modalHeading('Confirmar alteração')
             ->modalDescription('O valor passa a ser a posição vigente a partir da data de vigência. A versão anterior é preservada no histórico.')
@@ -173,6 +222,7 @@ class InstrumentChangesRelationManager extends RelationManager
             ->label('Rejeitar')
             ->icon('heroicon-o-x-mark')
             ->color('danger')
+            ->tooltip('Rejeitar proposta de alteração')
             ->modalHeading('Rejeitar alteração')
             ->modalDescription('A posição vigente permanece como está. A rejeição exige motivo e fica registrada.')
             ->modalSubmitActionLabel('Rejeitar')
@@ -202,13 +252,16 @@ class InstrumentChangesRelationManager extends RelationManager
 
     protected function sourceLabel(LegalInstrumentField $record): string
     {
-        $document = $record->instrumentDocument;
+        $parts = [];
 
-        $parts = array_filter([
-            $document?->role_label,
-            $record->source_label,
-        ]);
+        if (filled($record->clause)) {
+            $parts[] = 'Cláusula '.$record->clause;
+        }
 
-        return $parts === [] ? '—' : implode(' · ', $parts);
+        if (filled($record->page)) {
+            $parts[] = 'pág. '.$record->page;
+        }
+
+        return $parts === [] ? ($record->source_label ?? '—') : implode(' · ', $parts);
     }
 }

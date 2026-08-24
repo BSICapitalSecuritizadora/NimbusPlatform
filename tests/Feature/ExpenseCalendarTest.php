@@ -169,6 +169,26 @@ it('renders scheduled payment events on the expense calendar page', function () 
         ->assertSee('R$ 5.000,00');
 });
 
+it('accepts list filters as calendar context through query string', function () {
+    $this->actingAs(makeExpenseCalendarAdminUser());
+
+    $emission = Emission::factory()->create();
+
+    Livewire::withQueryParams(['category' => 'Cartório', 'emission_id' => (string) $emission->id])
+        ->test(ExpenseCalendar::class)
+        ->assertSet('selectedCategory', 'Cartório')
+        ->assertSet('selectedEmissionId', (string) $emission->id);
+});
+
+it('ignores invalid calendar context from the query string', function () {
+    $this->actingAs(makeExpenseCalendarAdminUser());
+
+    Livewire::withQueryParams(['category' => 'Categoria Inexistente', 'emission_id' => '99999'])
+        ->test(ExpenseCalendar::class)
+        ->assertSet('selectedCategory', null)
+        ->assertSet('selectedEmissionId', null);
+});
+
 function makeExpenseCalendarAdminUser(): User
 {
     $user = User::factory()->withTwoFactor()->create([

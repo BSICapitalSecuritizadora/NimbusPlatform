@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\MoneyFormatter;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Database\Factories\ConstructionFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Construction extends Model
 {
-    /** @use HasFactory<\Database\Factories\ConstructionFactory> */
+    /** @use HasFactory<ConstructionFactory> */
     use HasFactory, LogsActivity;
 
     public const MEASUREMENT_COMPANY_TYPE_NAME = 'Engenharia';
@@ -54,6 +55,7 @@ class Construction extends Model
     protected $fillable = [
         'emission_id',
         'development_name',
+        'development_trade_name',
         'development_cnpj',
         'city',
         'state',
@@ -108,6 +110,11 @@ class Construction extends Model
     public function salesBoards(): HasMany
     {
         return $this->hasMany(SalesBoard::class);
+    }
+
+    public function units(): HasMany
+    {
+        return $this->hasMany(ConstructionUnit::class);
     }
 
     public function getFormattedDevelopmentCnpjAttribute(): string

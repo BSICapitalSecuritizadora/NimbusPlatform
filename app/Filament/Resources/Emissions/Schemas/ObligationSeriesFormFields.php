@@ -144,7 +144,7 @@ class ObligationSeriesFormFields
                 ->visible(fn (Get $get): bool => $get('due_rule_type') === ObligationDueRuleType::FixedDay->value),
             Select::make('calendar_code')
                 ->label('Calendário de dias úteis')
-                ->options((array) config('obligations.recurrence.calendar_options', ['B3' => 'B3 / ANBIMA']))
+                ->options((array) config('obligations.recurrence.calendar_options', ['B3' => 'B3 (legado — semântica ANBIMA atual)']))
                 ->default('B3')
                 ->required(fn (Get $get): bool => $get('due_rule_type') === ObligationDueRuleType::NthBusinessDay->value)
                 ->visible(fn (Get $get): bool => $get('due_rule_type') === ObligationDueRuleType::NthBusinessDay->value),

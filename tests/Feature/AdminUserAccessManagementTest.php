@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -71,7 +72,7 @@ it('logs user status changes to the activity log when is_active is updated', fun
 
     $target->update(['is_active' => false]);
 
-    $log = \Spatie\Activitylog\Models\Activity::query()
+    $log = Activity::query()
         ->where('subject_type', User::class)
         ->where('subject_id', $target->id)
         ->where('event', 'updated')

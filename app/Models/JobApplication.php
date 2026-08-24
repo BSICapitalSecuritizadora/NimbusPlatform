@@ -6,6 +6,7 @@ use App\Enums\MalwareScanStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class JobApplication extends Model
 {
@@ -75,6 +76,19 @@ class JobApplication extends Model
         };
     }
 
+    /**
+     * @return list<string>
+     */
+    public static function terminalStatuses(): array
+    {
+        return [self::STATUS_HIRED, self::STATUS_REJECTED];
+    }
+
+    public function isTerminal(): bool
+    {
+        return in_array($this->status, self::terminalStatuses(), true);
+    }
+
     public function vacancy(): BelongsTo
     {
         return $this->belongsTo(Vacancy::class);
@@ -83,6 +97,11 @@ class JobApplication extends Model
     public function reviewedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by_user_id');
+    }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(JobApplicationStatusHistory::class);
     }
 
     public function getStatusLabelAttribute(): string

@@ -15,6 +15,7 @@ use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use LogicException;
 
 class PuReferenceWorkbookScenarioService
 {
@@ -41,6 +42,10 @@ class PuReferenceWorkbookScenarioService
      */
     public function sync(Emission $emission, string $spreadsheetPath): array
     {
+        if (app()->isProduction()) {
+            throw new LogicException('A sincronização de planilhas de homologação é proibida em produção.');
+        }
+
         ['sheet_name' => $sheetName, 'rows' => $rows] = $this->reader->read($spreadsheetPath);
 
         if ($rows === []) {
@@ -53,6 +58,7 @@ class PuReferenceWorkbookScenarioService
             ? $this->inferIndexLagBusinessDays($rows, $businessDayMap)
             : 1;
         $spreadRate = $this->inferSpreadRate($rows, 252);
+        $homologationCalendarCode = $this->homologationCalendarCode($emission);
 
         $calendarRows = 0;
         $indexRateRows = 0;
@@ -67,6 +73,7 @@ class PuReferenceWorkbookScenarioService
             $lookupMode,
             $lagBusinessDays,
             $spreadRate,
+            $homologationCalendarCode,
             &$calendarRows,
             &$indexRateRows,
             &$eventRows,
@@ -79,13 +86,13 @@ class PuReferenceWorkbookScenarioService
                 'spread_rate' => $spreadRate,
                 'indexer' => PuIndexer::Cdi->value,
                 'business_day_basis' => 252,
-                'calendar_code' => 'B3',
+                'calendar_code' => $homologationCalendarCode,
                 'index_rate_lookup_mode' => $lookupMode->value,
                 'index_rate_lag_business_days' => $lagBusinessDays,
                 'legacy_projection_enabled' => $emission->puParameter?->legacy_projection_enabled ?? true,
             ]);
 
-            $calendarRows = $this->syncCalendarDates($businessDayMap, 'B3', basename($spreadsheetPath));
+            $calendarRows = $this->syncCalendarDates($businessDayMap, $homologationCalendarCode, basename($spreadsheetPath));
             $indexRateRows = $this->syncIndexRates($rows, $businessDayMap, basename($spreadsheetPath));
             $eventRows = $this->syncEvents($emission, $rows, basename($spreadsheetPath));
             $integralizationRowsCreated = $this->syncIntegralizations($emission, $rows);
@@ -260,12 +267,20 @@ class PuReferenceWorkbookScenarioService
         $timestamp = now();
         $rows = [];
 
+        BusinessCalendarDate::query()
+            ->where('calendar_code', $calendarCode)
+            ->delete();
+
         foreach ($businessDayMap as $date => $isBusinessDay) {
             $rows[] = [
                 'calendar_code' => $calendarCode,
                 'calendar_date' => $date,
                 'is_business_day' => $isBusinessDay,
                 'description' => 'reference:'.$sourceReference,
+                'data_origin' => 'inferred',
+                'source' => 'homologation_workbook',
+                'source_is_official' => false,
+                'source_document' => $sourceReference,
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ];
@@ -278,6 +293,11 @@ class PuReferenceWorkbookScenarioService
         );
 
         return count($rows);
+    }
+
+    private function homologationCalendarCode(Emission $emission): string
+    {
+        return 'HML_PU_'.strtoupper(base_convert((string) $emission->getKey(), 10, 36));
     }
 
     /**

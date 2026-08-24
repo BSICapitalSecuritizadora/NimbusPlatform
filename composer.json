@@ -77,6 +77,10 @@
             "@lint:check",
             "@php artisan test"
         ],
+        "test:parity": [
+            "Composer\\Config::disableProcessTimeout",
+            "./scripts/parity-check.sh"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi",
@@ -113,5 +117,8 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "scripts-descriptions": {
+        "test:parity": "Roda o grupo 'parity' no MySQL, num banco temporario criado e removido pelo script."
+    }
 }

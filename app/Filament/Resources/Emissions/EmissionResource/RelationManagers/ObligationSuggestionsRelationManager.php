@@ -14,6 +14,7 @@ use App\Models\ExtractedObligation;
 use App\Models\ObligationGenerationRun;
 use App\Services\Obligations\ObligationSuggestionReviewService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -85,11 +86,25 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['responsibleUser', 'reviewer', 'obligation', 'obligationSeries']))
             ->columns([
                 TextColumn::make('title')
-                    ->label('Título')
+                    ->label('Título da obrigação')
+                    ->description(fn (ExtractedObligation $record): ?string => filled($record->obligation_category) ? $record->obligation_category : ($record->obligation_type ?? null))
                     ->searchable()
+                    ->weight('bold')
+                    ->tooltip(fn (ExtractedObligation $record): string => $record->title)
                     ->wrap(),
+                TextColumn::make('description')
+                    ->label('Fundamentação')
+                    ->state(fn (ExtractedObligation $record): string => filled($record->description) ? $record->description : ($record->source_excerpt ?? '—'))
+                    ->description(fn (ExtractedObligation $record): ?string => filled($record->source_clause) ? "Cláusula {$record->source_clause}".($record->source_page ? " · pág. {$record->source_page}" : '') : null)
+                    ->tooltip(fn (ExtractedObligation $record): ?string => $record->source_excerpt ?? $record->description)
+                    ->limit(100)
+                    ->wrap()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->where(function (Builder $q) use ($search): void {
+                        $q->where('description', 'like', "%{$search}%")
+                            ->orWhere('source_excerpt', 'like', "%{$search}%");
+                    })),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label('Situação')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => ExtractedObligation::STATUS_OPTIONS[$state] ?? (string) $state)
                     ->color(fn (?string $state): string => match ($state) {
@@ -97,6 +112,40 @@ class ObligationSuggestionsRelationManager extends RelationManager
                         ExtractedObligation::STATUS_REJECTED => 'danger',
                         default => 'warning',
                     }),
+                TextColumn::make('responsibleUser.name')
+                    ->label('Responsável')
+                    ->placeholder('—')
+                    ->description(fn (ExtractedObligation $record): ?string => $record->responsible_area ?? $record->responsible_party)
+                    ->tooltip(fn (ExtractedObligation $record): ?string => $record->responsibleUser?->name),
+                TextColumn::make('due_rule')
+                    ->label('Prazo / Recorrência')
+                    ->state(fn (ExtractedObligation $record): string => filled($record->due_rule) ? $record->due_rule : ($record->due_date ? $record->due_date->format('d/m/Y') : ($record->recurrence ?? '—')))
+                    ->description(fn (ExtractedObligation $record): ?string => filled($record->due_rule) && filled($record->recurrence) ? $record->recurrence : ($record->due_date ? 'Vencimento: '.$record->due_date->format('d/m/Y') : null))
+                    ->placeholder('—')
+                    ->limit(35),
+                TextColumn::make('priority')
+                    ->label('Prioridade')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => ExtractedObligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
+                    ->color(fn (?string $state): string => match ($state) {
+                        'critical' => 'danger',
+                        'high' => 'warning',
+                        'medium' => 'info',
+                        default => 'gray',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('confidence_score')
+                    ->label('Confiança')
+                    ->badge()
+                    ->formatStateUsing(fn (?float $state): string => $state === null ? '—' : round($state * 100).'%')
+                    ->color(fn (?float $state): string => match (true) {
+                        $state >= 0.85 => 'success',
+                        $state >= 0.65 => 'warning',
+                        $state !== null => 'danger',
+                        default => 'gray',
+                    })
+                    ->tooltip(fn (ExtractedObligation $record): ?string => $record->confidencePercent() ? "Nível de confiança: {$record->confidencePercent()}" : null)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('consolidated_target')
                     ->label('Destino criado')
                     ->state(fn (ExtractedObligation $record): ?string => $record->obligation?->operational_title
@@ -108,49 +157,26 @@ class ObligationSuggestionsRelationManager extends RelationManager
                         ? EmissionResource::getUrl('edit', ['record' => $record->emission_id])
                         : null)
                     ->openUrlInNewTab()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('review_notes')
                     ->label('Motivo / observação da revisão')
                     ->placeholder('—')
                     ->limit(60)
                     ->wrap()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('reviewer.name')
                     ->label('Revisado por')
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('reviewed_at')
                     ->label('Revisado em')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->sortable()
-                    ->toggleable(),
-                TextColumn::make('priority')
-                    ->label('Prioridade')
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => ExtractedObligation::PRIORITY_OPTIONS[$state] ?? (string) $state)
-                    ->color(fn (?string $state): string => match ($state) {
-                        'critical' => 'danger',
-                        'high' => 'warning',
-                        'medium' => 'info',
-                        default => 'gray',
-                    }),
-                TextColumn::make('responsibleUser.name')
-                    ->label('Responsável')
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('due_rule')
-                    ->label('Prazo')
-                    ->placeholder('—')
-                    ->limit(40)
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('obligation_category')
                     ->label('Categoria')
                     ->badge()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('confidence_score')
-                    ->label('Confiança')
-                    ->formatStateUsing(fn (?float $state): string => $state === null ? '—' : round($state * 100).'%')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('source_excerpt')
                     ->label('Trecho do Termo')
@@ -160,10 +186,17 @@ class ObligationSuggestionsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('confidence_score', 'desc')
+            ->searchPlaceholder('Buscar por título ou fundamentação...')
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label('Situação')
                     ->options(ExtractedObligation::STATUS_OPTIONS),
+                SelectFilter::make('priority')
+                    ->label('Prioridade')
+                    ->options(ExtractedObligation::PRIORITY_OPTIONS),
+                SelectFilter::make('responsible_user_id')
+                    ->label('Responsável')
+                    ->relationship('responsibleUser', 'name'),
             ])
             ->headerActions([
                 $this->makeGenerateAction(),
@@ -179,11 +212,16 @@ class ObligationSuggestionsRelationManager extends RelationManager
                     ->openUrlInNewTab()
                     ->visible(fn (ExtractedObligation $record): bool => filled($record->obligation?->id) || filled($record->obligationSeries?->id))
                     ->authorize(fn (): bool => auth()->user()?->can(AccessPermission::ObligationsView->value) ?? false),
-                EditAction::make()
-                    ->label('Editar')
-                    ->authorize(fn (): bool => $this->canManage()),
-                DeleteAction::make()
-                    ->authorize(fn (): bool => $this->canManage()),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('Editar')
+                        ->authorize(fn (): bool => $this->canManage()),
+                    DeleteAction::make()
+                        ->authorize(fn (): bool => $this->canManage()),
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->color('gray')
+                    ->tooltip('Mais ações'),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -192,7 +230,8 @@ class ObligationSuggestionsRelationManager extends RelationManager
                 ]),
             ])
             ->emptyStateHeading('Nenhuma obrigação sugerida')
-            ->emptyStateDescription('Use "Gerar obrigações do Termo" para extrair sugestões do Termo de Securitização. Sugestões aprovadas ou rejeitadas não possuem reabertura nesta etapa.');
+            ->emptyStateDescription('Use "Gerar obrigações do Termo" para extrair sugestões do Termo de Securitização. Sugestões aprovadas ou rejeitadas não possuem reabertura nesta etapa.')
+            ->emptyStateIcon('heroicon-o-clipboard-document-list');
     }
 
     protected function makeGenerateAction(): Action
@@ -286,8 +325,38 @@ class ObligationSuggestionsRelationManager extends RelationManager
             ? view('filament.obligations.generation-progress', ['run' => $run])->render()
             : '';
 
+        $emission = $this->getOwnerRecord();
+        $total = $emission->extractedObligations()->count();
+        $approved = $emission->extractedObligations()->where('status', ExtractedObligation::STATUS_APPROVED)->count();
+        $pending = $emission->extractedObligations()->where('status', ExtractedObligation::STATUS_SUGGESTED)->count();
+        $rejected = $emission->extractedObligations()->where('status', ExtractedObligation::STATUS_REJECTED)->count();
+
+        $summaryHtml = '';
+        if ($total > 0) {
+            $summaryHtml = sprintf(
+                '<div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+                    <span class="rounded-md bg-[#0c232e] px-2.5 py-1 text-slate-300 border border-[#1d4554]/50 font-medium">%d obrigação(ões) identificada(s)</span>
+                    <span class="rounded-md bg-emerald-950/60 px-2.5 py-1 text-emerald-300 border border-emerald-500/30 font-medium">%d aprovada(s)</span>
+                    %s
+                    %s
+                </div>',
+                $total,
+                $approved,
+                $pending > 0
+                    ? sprintf('<span class="rounded-md bg-amber-950/60 px-2.5 py-1 text-amber-300 border border-amber-500/30 font-medium">%d pendente(s) de revisão</span>', $pending)
+                    : '<span class="rounded-md bg-slate-800/80 px-2.5 py-1 text-slate-400 border border-slate-700">Todas revisadas</span>',
+                $rejected > 0
+                    ? sprintf('<span class="rounded-md bg-rose-950/60 px-2.5 py-1 text-rose-300 border border-rose-500/30 font-medium">%d rejeitada(s)</span>', $rejected)
+                    : ''
+            );
+        }
+
         return new HtmlString(
-            $banner.'<span class="block">Revise as obrigações sugeridas pela IA a partir do Termo de Securitização e tome uma decisão formal de aprovação ou rejeição.</span><span class="mt-1 block text-sm text-gray-600">Sugestões aprovadas criam uma obrigação na emissão; sugestões rejeitadas encerram a análise e não possuem reabertura nesta etapa.</span>'.$this->readOnlySuggestionHint()
+            $banner
+            .'<span class="block text-slate-300">Revise as obrigações sugeridas pela IA a partir do Termo de Securitização e tome uma decisão formal de aprovação ou rejeição.</span>'
+            .'<span class="mt-0.5 block text-xs text-slate-400">Sugestões aprovadas criam uma obrigação na emissão; sugestões rejeitadas encerram a análise e não possuem reabertura nesta etapa.</span>'
+            .$this->readOnlySuggestionHint()
+            .$summaryHtml
         );
     }
 

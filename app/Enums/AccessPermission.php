@@ -97,6 +97,21 @@ enum AccessPermission: string
     case ConstructionsCreate = 'constructions.create';
     case ConstructionsUpdate = 'constructions.update';
     case ConstructionsDelete = 'constructions.delete';
+    case ClientsView = 'clients.view';
+    case ClientsCreate = 'clients.create';
+    case ClientsUpdate = 'clients.update';
+    case ClientsDelete = 'clients.delete';
+    case ClientsRestore = 'clients.restore';
+    case ContractsView = 'contracts.view';
+    case ContractsCreate = 'contracts.create';
+    case ContractsUpdate = 'contracts.update';
+    case ContractsDelete = 'contracts.delete';
+    case ContractsRestore = 'contracts.restore';
+    case ContractInstallmentsView = 'contract-installments.view';
+    case ContractInstallmentsCreate = 'contract-installments.create';
+    case ContractInstallmentsUpdate = 'contract-installments.update';
+    case ContractInstallmentsDelete = 'contract-installments.delete';
+    case ContractInstallmentsRestore = 'contract-installments.restore';
     case SalesBoardsView = 'sales-boards.view';
     case SalesBoardsCreate = 'sales-boards.create';
     case SalesBoardsUpdate = 'sales-boards.update';
@@ -317,6 +332,21 @@ enum AccessPermission: string
             self::ConstructionsCreate => 'Obras: criar',
             self::ConstructionsUpdate => 'Obras: editar',
             self::ConstructionsDelete => 'Obras: excluir',
+            self::ClientsView => 'Clientes: visualizar',
+            self::ClientsCreate => 'Clientes: criar',
+            self::ClientsUpdate => 'Clientes: editar',
+            self::ClientsDelete => 'Clientes: excluir',
+            self::ClientsRestore => 'Clientes: restaurar',
+            self::ContractsView => 'Contratos: visualizar',
+            self::ContractsCreate => 'Contratos: criar',
+            self::ContractsUpdate => 'Contratos: editar',
+            self::ContractsDelete => 'Contratos: excluir',
+            self::ContractsRestore => 'Contratos: restaurar',
+            self::ContractInstallmentsView => 'Parcelas dos contratos: visualizar',
+            self::ContractInstallmentsCreate => 'Parcelas dos contratos: criar',
+            self::ContractInstallmentsUpdate => 'Parcelas dos contratos: editar',
+            self::ContractInstallmentsDelete => 'Parcelas dos contratos: excluir',
+            self::ContractInstallmentsRestore => 'Parcelas dos contratos: restaurar',
             self::SalesBoardsView => 'Quadro de vendas: visualizar',
             self::SalesBoardsCreate => 'Quadro de vendas: criar',
             self::SalesBoardsUpdate => 'Quadro de vendas: editar',
@@ -436,6 +466,21 @@ enum AccessPermission: string
                 self::ConstructionsCreate,
                 self::ConstructionsUpdate,
                 self::ConstructionsDelete,
+                self::ClientsView,
+                self::ClientsCreate,
+                self::ClientsUpdate,
+                self::ClientsDelete,
+                self::ClientsRestore,
+                self::ContractsView,
+                self::ContractsCreate,
+                self::ContractsUpdate,
+                self::ContractsDelete,
+                self::ContractsRestore,
+                self::ContractInstallmentsView,
+                self::ContractInstallmentsCreate,
+                self::ContractInstallmentsUpdate,
+                self::ContractInstallmentsDelete,
+                self::ContractInstallmentsRestore,
             ], true) => 'Cadastro',
             in_array($this, [
                 self::EmissionsView,

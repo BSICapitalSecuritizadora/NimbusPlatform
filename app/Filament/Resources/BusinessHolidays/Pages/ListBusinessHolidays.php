@@ -5,13 +5,19 @@ namespace App\Filament\Resources\BusinessHolidays\Pages;
 use App\Domain\PuCalculator\DTOs\AnbimaHolidayImportResult;
 use App\Domain\PuCalculator\Exceptions\AnbimaHolidayImportException;
 use App\Domain\PuCalculator\Services\AnbimaHolidayImporter;
+use App\Domain\PuCalculator\Services\BusinessCalendarCatalogService;
 use App\Domain\PuCalculator\Services\BusinessCalendarCoverageService;
+use App\Domain\PuCalculator\Services\BusinessCalendarOverrideService;
+use App\Domain\PuCalculator\Services\BusinessCalendarYearService;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\BusinessHolidays\BusinessHolidayResource;
-use App\Models\BusinessHoliday;
+use App\Filament\Widgets\BusinessCalendars\BusinessCalendarOverview;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -24,25 +30,27 @@ class ListBusinessHolidays extends ListRecords
 
     public function getSubheading(): ?string
     {
-        $last = BusinessHoliday::query()->max('imported_at');
-        $total = BusinessHoliday::query()->count();
+        return 'ANBIMA (bancário) e B3 (sessões de negociação) são calendários distintos. O código B3 abaixo é um alias legado sem redirecionamento automático.';
+    }
 
-        if ($last === null) {
-            return 'Nenhum feriado importado ainda. O calendário B3 está derivado apenas de fins de semana (weekend-only).';
-        }
-
-        return sprintf(
-            '%d feriado(s) cadastrado(s) • última importação em %s',
-            $total,
-            CarbonImmutable::parse($last)->format('d/m/Y H:i'),
-        );
+    protected function getHeaderWidgets(): array
+    {
+        return [BusinessCalendarOverview::class];
     }
 
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('compareCalendars')
+                ->label('Comparar calendários')
+                ->icon('heroicon-o-arrows-right-left')
+                ->color('gray')
+                ->visible(fn (): bool => auth()->user()?->can('pu.dashboard.view') ?? false)
+                ->url(BusinessHolidayResource::getUrl('compare')),
             $this->buildImportFromUrlAction(),
             $this->buildImportFromFileAction(),
+            $this->buildManualOverrideAction(),
+            $this->buildConfirmYearAction(),
             $this->buildSeedCalendarAction(),
         ];
     }
@@ -57,10 +65,16 @@ class ListBusinessHolidays extends ListRecords
             ->modalHeading('Importar feriados nacionais da ANBIMA (URL)')
             ->modalDescription('Baixa o arquivo .xls publicado pela ANBIMA e aplica os feriados ao calendário (não úteis). Idempotente. Se a URL falhar, use "Importar feriados de arquivo".')
             ->form([
-                TextInput::make('calendar_code')->label('Calendário')->default('B3')->required(),
+                Select::make('calendar_code')
+                    ->label('Calendário bancário de destino')
+                    ->options($this->anbimaCalendarOptions())
+                    ->default(BusinessCalendarRegistry::BR_BANKING_ANBIMA)
+                    ->helperText('Novas cargas ANBIMA alimentam somente BR_BANKING_ANBIMA. B3 legado e B3_LISTED_TRADING não são destinos desta ação.')
+                    ->required(),
                 TextInput::make('url')
                     ->label('URL do arquivo .xls')
                     ->default(AnbimaHolidayImporter::DEFAULT_URL)
+                    ->url()
                     ->required(),
                 Toggle::make('dry_run')->label('Dry-run (simular, sem persistir)')->default(false),
                 Toggle::make('force')->label('Forçar atualização de nomes já cadastrados')->default(false),
@@ -99,7 +113,12 @@ class ListBusinessHolidays extends ListRecords
             ->modalHeading('Importar feriados da ANBIMA (arquivo)')
             ->modalDescription('Fallback de upload manual quando a URL da ANBIMA está indisponível. Aceita o .xls oficial ou .xlsx equivalente.')
             ->form([
-                TextInput::make('calendar_code')->label('Calendário')->default('B3')->required(),
+                Select::make('calendar_code')
+                    ->label('Calendário bancário de destino')
+                    ->options($this->anbimaCalendarOptions())
+                    ->default(BusinessCalendarRegistry::BR_BANKING_ANBIMA)
+                    ->helperText('O arquivo ANBIMA não representa sessões de negociação da B3.')
+                    ->required(),
                 FileUpload::make('holiday_file')
                     ->label('Arquivo de feriados (.xls/.xlsx)')
                     ->disk('local')
@@ -109,6 +128,7 @@ class ListBusinessHolidays extends ListRecords
                         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         'application/octet-stream',
                     ])
+                    ->maxSize(10240)
                     ->required(),
                 Toggle::make('dry_run')->label('Dry-run (simular, sem persistir)')->default(false),
                 Toggle::make('force')->label('Forçar atualização de nomes já cadastrados')->default(false),
@@ -144,14 +164,18 @@ class ListBusinessHolidays extends ListRecords
         $now = CarbonImmutable::now();
 
         return Action::make('seedBusinessCalendar')
-            ->label('Completar calendário B3')
+            ->label('Completar cobertura')
             ->icon('heroicon-o-calendar-days')
             ->color('gray')
             ->visible(fn (): bool => auth()->user()?->can('pu.calendar.manage') ?? false)
             ->modalHeading('Completar calendário de dias úteis')
-            ->modalDescription('Gera as datas faltantes do período (fim de semana = não útil; dia de semana = útil; feriado importado = não útil), de forma idempotente. Não sobrescreve datas já cadastradas.')
+            ->modalDescription('Gera datas faltantes por inferência (final de semana = não útil; dia de semana = útil; feriado importado = não útil). Isso não confirma oficialmente o ano e não sobrescreve datas existentes.')
             ->form([
-                TextInput::make('calendar_code')->label('Calendário')->default('B3')->required(),
+                Select::make('calendar_code')
+                    ->label('Calendário')
+                    ->options(fn (): array => app(BusinessCalendarCatalogService::class)->administrativeOptions())
+                    ->default(BusinessCalendarRegistry::LEGACY_B3)
+                    ->required(),
                 DatePicker::make('from')->label('De')->default($now->subYears(5)->startOfYear())->required(),
                 DatePicker::make('to')->label('Até')->default($now->addYears(3)->endOfYear())->required(),
                 Toggle::make('dry_run')->label('Dry-run (simular, sem persistir)')->default(false),
@@ -191,18 +215,123 @@ class ListBusinessHolidays extends ListRecords
             });
     }
 
+    private function buildManualOverrideAction(): Action
+    {
+        return Action::make('manualCalendarOverride')
+            ->label('Override manual')
+            ->icon('heroicon-o-pencil-square')
+            ->color('warning')
+            ->visible(fn (): bool => auth()->user()?->can('pu.calendar.manage') ?? false)
+            ->modalHeading('Aplicar override manual auditável')
+            ->modalDescription('O override prevalece sobre importações futuras. Se o ano estava confirmado, ele será marcado como desatualizado até nova revisão.')
+            ->form([
+                Select::make('calendar_code')
+                    ->label('Calendário')
+                    ->options(fn (): array => app(BusinessCalendarCatalogService::class)->administrativeOptions())
+                    ->required(),
+                DatePicker::make('calendar_date')->label('Data')->required(),
+                Select::make('is_business_day')
+                    ->label('Nova decisão')
+                    ->options([
+                        '1' => 'Dia útil',
+                        '0' => 'Dia não útil',
+                    ])
+                    ->required(),
+                Textarea::make('reason')
+                    ->label('Motivo')
+                    ->helperText('Descreva a evidência e por que a decisão oficial/importada precisa ser substituída.')
+                    ->rows(4)
+                    ->minLength(10)
+                    ->required(),
+            ])
+            ->action(function (array $data): void {
+                try {
+                    $override = app(BusinessCalendarOverrideService::class)->apply(
+                        (string) $data['calendar_code'],
+                        CarbonImmutable::parse((string) $data['calendar_date']),
+                        (string) $data['is_business_day'] === '1',
+                        (string) $data['reason'],
+                        (int) auth()->id(),
+                    );
+                } catch (\Throwable $exception) {
+                    Notification::make()->title('Override não aplicado.')->body($exception->getMessage())->danger()->persistent()->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Override manual aplicado e auditado.')
+                    ->body(sprintf(
+                        '%s/%s: %s → %s (revisão %d).',
+                        $override->calendar_code,
+                        $override->calendar_date?->format('d/m/Y'),
+                        $override->previous_is_business_day ? 'útil' : 'não útil',
+                        $override->new_is_business_day ? 'útil' : 'não útil',
+                        $override->revision,
+                    ))
+                    ->warning()
+                    ->send();
+            });
+    }
+
+    private function buildConfirmYearAction(): Action
+    {
+        return Action::make('confirmCalendarYear')
+            ->label('Confirmar ano')
+            ->icon('heroicon-o-shield-check')
+            ->color('success')
+            ->visible(fn (): bool => auth()->user()?->can('pu.calendar.manage') ?? false)
+            ->modalHeading('Confirmar cobertura anual')
+            ->modalDescription('A confirmação exige cobertura de todas as datas do ano e ausência de conflitos na última execução.')
+            ->form([
+                Select::make('calendar_code')
+                    ->label('Calendário')
+                    ->options(fn (): array => app(BusinessCalendarCatalogService::class)->administrativeOptions())
+                    ->required(),
+                TextInput::make('year')->label('Ano')->integer()->minValue(1990)->maxValue(2200)->required(),
+                TextInput::make('source')->label('Fonte')->required(),
+                Textarea::make('source_document')->label('Documento/referência oficial')->rows(3)->required(),
+                TextInput::make('source_revision')->label('Revisão do documento'),
+                TextInput::make('checksum')->label('Checksum SHA-256')->length(64),
+            ])
+            ->action(function (array $data): void {
+                try {
+                    $calendarYear = app(BusinessCalendarYearService::class)->confirm(
+                        (string) $data['calendar_code'],
+                        (int) $data['year'],
+                        (string) $data['source'],
+                        (string) $data['source_document'],
+                        filled($data['source_revision'] ?? null) ? (string) $data['source_revision'] : null,
+                        filled($data['checksum'] ?? null) ? (string) $data['checksum'] : null,
+                        (int) auth()->id(),
+                    );
+                } catch (\Throwable $exception) {
+                    Notification::make()->title('Ano não confirmado.')->body($exception->getMessage())->danger()->persistent()->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Ano confirmado.')
+                    ->body(sprintf('%s/%d confirmado na revisão %d.', $calendarYear->calendar_code, $calendarYear->year, $calendarYear->revision))
+                    ->success()
+                    ->send();
+            });
+    }
+
     private function notifyResult(AnbimaHolidayImportResult $result): void
     {
         if ($result->dryRun) {
             Notification::make()
                 ->title('Dry-run concluído (nada persistido).')
                 ->body(sprintf(
-                    '%d feriado(s) lido(s): %d seriam criados, %d atualizados, %d já cadastrados, %d inválido(s).',
+                    '%d feriado(s) lido(s): %d seriam criados, %d atualizados, %d remoções e %d conflitos detectados. O calendário não foi alterado; %d execução(ões) de auditoria foram registradas.',
                     $result->total,
                     $result->imported,
                     $result->updated,
-                    $result->skipped,
-                    $result->invalid,
+                    $result->removalsDetected,
+                    $result->conflictsDetected,
+                    $result->importRuns,
                 ))
                 ->warning()
                 ->send();
@@ -210,17 +339,32 @@ class ListBusinessHolidays extends ListRecords
             return;
         }
 
-        Notification::make()
+        $notification = Notification::make()
             ->title('Feriados importados.')
             ->body(sprintf(
-                '%d criado(s), %d atualizado(s), %d já cadastrado(s), %d inválido(s). %d data(s) aplicada(s) ao calendário B3.',
+                '%s: %d criado(s), %d atualizado(s), %d já cadastrado(s), %d remoção(ões), %d conflito(s), %d inválido(s). %d data(s) aplicada(s).',
+                $result->calendarCode,
                 $result->imported,
                 $result->updated,
                 $result->skipped,
+                $result->removalsDetected,
+                $result->conflictsDetected,
                 $result->invalid,
                 $result->calendarApplied,
-            ))
-            ->success()
-            ->send();
+            ));
+
+        if ($result->conflictsDetected > 0 || $result->removalsDetected > 0 || $result->hasErrors()) {
+            $notification->warning()->persistent();
+        } else {
+            $notification->success();
+        }
+
+        $notification->send();
+    }
+
+    /** @return array<string, string> */
+    private function anbimaCalendarOptions(): array
+    {
+        return app(BusinessCalendarCatalogService::class)->anbimaImportOptions();
     }
 }

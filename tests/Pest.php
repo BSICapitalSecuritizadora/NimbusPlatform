@@ -1,8 +1,13 @@
 <?php
 
 use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
+use App\Filament\Resources\Emissions\Schemas\EmissionConstructionsStep;
 use App\Livewire\Forms\CreateProposalFormObject;
 use App\Livewire\Proposals\CreateProposalForm;
+use App\Models\Construction;
+use App\Models\Emission;
+use App\Models\ExpenseServiceProvider;
+use App\Models\ExpenseServiceProviderType;
 use App\Models\ProposalSector;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
@@ -128,6 +133,90 @@ function submitProposalCreateForm(array $state): void
 function submitInitialProposalThroughComponent(ProposalSector $sector, int $index = 1): void
 {
     submitProposalCreateForm(proposalCreateFormState($sector, $index));
+}
+
+/**
+ * Engineering provider accepted as a construction's measurement company.
+ */
+function makeMeasurementCompany(): ExpenseServiceProvider
+{
+    $engineeringType = ExpenseServiceProviderType::factory()->create([
+        'name' => Construction::MEASUREMENT_COMPANY_TYPE_NAME,
+    ]);
+
+    return ExpenseServiceProvider::factory()->create([
+        'name' => 'Engenharia Medições',
+        'expense_service_provider_type_id' => $engineeringType->id,
+    ]);
+}
+
+/**
+ * Mandatory construction payload of the emission creation wizard, with its
+ * initial sales board.
+ *
+ * @return array<string, mixed>
+ */
+function emissionConstructionState(int $measurementCompanyId): array
+{
+    return [
+        'development_name' => 'Residencial Aurora',
+        'development_trade_name' => 'Aurora',
+        'development_cnpj' => '12.345.678/0001-90',
+        'city' => 'Fortaleza',
+        'state' => 'CE',
+        'measurement_company_id' => $measurementCompanyId,
+        EmissionConstructionsStep::SALES_BOARD_STATE_PATH => [
+            'reference_month' => '05/2026',
+            'stock_units' => 10,
+            'financed_units' => 4,
+            'paid_units' => 3,
+            'exchanged_units' => 1,
+            'stock_value' => '1.000,00',
+            'financed_value' => '2.000,50',
+            'paid_value' => '3.000,00',
+            'exchanged_value' => '4.000,00',
+        ],
+    ];
+}
+
+/**
+ * Emission form state that satisfies the mandatory constructions step.
+ *
+ * @return array<string, mixed>
+ */
+function emissionCreateFormState(int $measurementCompanyId): array
+{
+    return [
+        EmissionConstructionsStep::STATE_PATH => [
+            emissionConstructionState($measurementCompanyId),
+        ],
+    ];
+}
+
+/**
+ * Emission with one construction, the pair every unit test needs.
+ *
+ * @return array{0: Emission, 1: Construction}
+ */
+function unitEmissionAndConstruction(string $emissionName = 'CRI Conviva', string $developmentName = 'Conviva Camboinhas'): array
+{
+    $emission = Emission::factory()->create(['name' => $emissionName]);
+    $construction = Construction::factory()->create([
+        'emission_id' => $emission->id,
+        'development_name' => $developmentName,
+    ]);
+
+    return [$emission, $construction];
+}
+
+function makeSalesBoardAdminUser(): User
+{
+    $user = User::factory()->withTwoFactor()->create([
+        'email' => fake()->unique()->safeEmail(),
+    ]);
+    $user->assignRole('admin');
+
+    return $user;
 }
 
 function makeAdminUser(): User
