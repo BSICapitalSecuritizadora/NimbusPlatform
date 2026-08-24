@@ -108,7 +108,7 @@ function contractRow(array $overrides = []): array
 }
 
 it('builds a template whose data sheet carries only the headers', function () {
-    $path = app(ContractSpreadsheetTemplate::class)->build();
+    $path = discardTemplateFileAfterTest(app(ContractSpreadsheetTemplate::class)->build());
 
     $dataRows = SimpleExcelReader::create($path)->getRows()->all();
     $exampleRows = SimpleExcelReader::create($path)->fromSheetName(ContractSpreadsheetTemplate::EXAMPLE_SHEET)->getRows()->all();
@@ -127,9 +127,11 @@ it('builds a template whose data sheet carries only the headers', function () {
 it('serves the template through the download route', function () {
     $this->actingAs(makeAdminUser());
 
-    $this->get(route('admin.contracts.template.download'))
+    $response = $this->get(route('admin.contracts.template.download'))
         ->assertSuccessful()
         ->assertDownload(ContractSpreadsheetTemplate::DOWNLOAD_NAME);
+
+    discardTemplateFileAfterTest($response->baseResponse->getFile()->getPathname());
 });
 
 it('rejects a spreadsheet without the required columns', function () {

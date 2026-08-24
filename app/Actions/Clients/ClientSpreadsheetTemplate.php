@@ -2,6 +2,7 @@
 
 namespace App\Actions\Clients;
 
+use App\Support\TemporarySpreadsheetFile;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
 /**
@@ -30,22 +31,17 @@ class ClientSpreadsheetTemplate
 
     public function build(): string
     {
-        $path = tempnam(sys_get_temp_dir(), 'clients-template-').'.xlsx';
+        return TemporarySpreadsheetFile::write('clients-template-', function (SimpleExcelWriter $writer): void {
+            $writer->nameCurrentSheet(self::DATA_SHEET)
+                ->addHeader(ClientSpreadsheetColumns::headers());
 
-        $writer = SimpleExcelWriter::create($path)
-            ->nameCurrentSheet(self::DATA_SHEET)
-            ->addHeader(ClientSpreadsheetColumns::headers());
+            $writer->addNewSheetAndMakeItCurrent(self::EXAMPLE_SHEET)
+                ->addHeader(ClientSpreadsheetColumns::headers());
 
-        $writer->addNewSheetAndMakeItCurrent(self::EXAMPLE_SHEET)
-            ->addHeader(ClientSpreadsheetColumns::headers());
-
-        foreach (self::EXAMPLE_ROWS as $exampleRow) {
-            $writer->addRow(array_combine(ClientSpreadsheetColumns::headers(), $exampleRow));
-        }
-
-        $writer->close();
-
-        return $path;
+            foreach (self::EXAMPLE_ROWS as $exampleRow) {
+                $writer->addRow(array_combine(ClientSpreadsheetColumns::headers(), $exampleRow));
+            }
+        });
     }
 
     public function downloadName(): string

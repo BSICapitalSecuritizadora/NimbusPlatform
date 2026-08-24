@@ -45,6 +45,25 @@ function temporaryTestFilePath(string $prefix, string $extension = 'xlsx'): stri
     return $disk->path("tests-tmp/{$prefix}-{$sequence}.{$extension}");
 }
 
+/**
+ * Remove, ao fim do teste, o arquivo temporário que um gerador de modelo criou.
+ *
+ * Em produção quem remove é o `deleteFileAfterSend()` da resposta de download. O
+ * cliente de teste monta a resposta mas nunca a envia, então esse gancho não
+ * dispara -- e sem isto cada execução da suíte deixa uma planilha no diretório
+ * de temporários da máquina, que é compartilhado com todo o resto do sistema.
+ */
+function discardTemplateFileAfterTest(string $path): string
+{
+    test()->beforeApplicationDestroyed(function () use ($path): void {
+        if (is_file($path)) {
+            unlink($path);
+        }
+    });
+
+    return $path;
+}
+
 function puValidationSpreadsheetPath(string $keyword): string
 {
     try {

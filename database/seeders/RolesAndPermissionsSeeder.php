@@ -70,6 +70,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'pu.curve.validate', 'pu.curve.export', 'pu.curve.reprocess',
             'pu.dashboard.view', 'pu.index.import', 'pu.index.sync',
             'pu.calendar.manage', 'pu.holiday.import',
+            'pu.calendar-homologation.execute',
         ]);
 
         $commercialRepresentative->syncPermissions([

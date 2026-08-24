@@ -4,18 +4,69 @@ namespace App\Filament\Resources\Documents\Pages;
 
 use App\Filament\Resources\Documents\DocumentResource;
 use App\Models\Document;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Width;
 
 class EditDocument extends EditRecord
 {
     protected static string $resource = DocumentResource::class;
 
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    protected static ?string $breadcrumb = 'Editar';
+
+    protected ?string $subheading = 'Atualize os metadados, publicação e vínculos deste documento.';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-document-form-page',
+    ];
+
+    protected ?bool $hasUnsavedDataChangesAlert = true;
+
+    public function getTitle(): string
+    {
+        return 'Editar '.($this->record?->title ?: 'Documento');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            ActionGroup::make([
+                DeleteAction::make()
+                    ->label('Excluir documento')
+                    ->modalHeading('Excluir documento')
+                    ->modalDescription('Tem certeza que deseja excluir este documento? Esta ação não pode ser desfeita e removerá o arquivo de forma permanente.')
+                    ->modalSubmitActionLabel('Sim, excluir')
+                    ->visible(fn (): bool => DocumentResource::canDelete($this->getRecord())),
+            ])
+                ->label('Opções')
+                ->icon('heroicon-m-ellipsis-vertical')
+                ->color('gray')
+                ->tooltip('Mais opções')
+                ->dropdownWidth(Width::ExtraSmall),
         ];
+    }
+
+    protected function getSaveFormAction(): Action
+    {
+        return parent::getSaveFormAction()
+            ->label('Salvar alterações')
+            ->color('primary');
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()
+            ->label('Cancelar')
+            ->color('gray');
+    }
+
+    protected function getSavedNotificationTitle(): ?string
+    {
+        return 'Documento atualizado com sucesso.';
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Actions\ContractInstallments;
 
+use App\Support\TemporarySpreadsheetFile;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
 /**
@@ -37,22 +38,17 @@ class ContractInstallmentSpreadsheetTemplate
      */
     public function build(): string
     {
-        $path = tempnam(sys_get_temp_dir(), 'contract-installments-template-').'.xlsx';
+        return TemporarySpreadsheetFile::write('contract-installments-template-', function (SimpleExcelWriter $writer): void {
+            $writer->nameCurrentSheet(self::DATA_SHEET)
+                ->addHeader(ContractInstallmentSpreadsheetColumns::headers());
 
-        $writer = SimpleExcelWriter::create($path)
-            ->nameCurrentSheet(self::DATA_SHEET)
-            ->addHeader(ContractInstallmentSpreadsheetColumns::headers());
+            $writer->addNewSheetAndMakeItCurrent(self::EXAMPLE_SHEET)
+                ->addHeader(ContractInstallmentSpreadsheetColumns::headers());
 
-        $writer->addNewSheetAndMakeItCurrent(self::EXAMPLE_SHEET)
-            ->addHeader(ContractInstallmentSpreadsheetColumns::headers());
-
-        foreach (self::EXAMPLE_ROWS as $exampleRow) {
-            $writer->addRow(array_combine(ContractInstallmentSpreadsheetColumns::headers(), $exampleRow));
-        }
-
-        $writer->close();
-
-        return $path;
+            foreach (self::EXAMPLE_ROWS as $exampleRow) {
+                $writer->addRow(array_combine(ContractInstallmentSpreadsheetColumns::headers(), $exampleRow));
+            }
+        });
     }
 
     public function downloadName(): string

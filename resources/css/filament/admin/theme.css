@@ -859,6 +859,7 @@
 .dark .bsi-investors-list-page .fi-ta-content-ctn,
 .dark .bsi-representatives-list-page .fi-ta-content-ctn,
 .dark .bsi-emissions-list-page .fi-ta-content-ctn,
+.dark .bsi-documents-list-page .fi-ta-content-ctn,
 .dark .bsi-sales-boards-list-page .fi-ta-content-ctn,
 .dark .bsi-negotiations-list-page .fi-ta-content-ctn,
 .dark .bsi-report-notes-list-page .fi-ta-content-ctn,
@@ -879,6 +880,7 @@
 .dark .bsi-investors-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-representatives-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-emissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-sales-boards-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-negotiations-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-report-notes-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
@@ -899,6 +901,7 @@
 .dark .bsi-investors-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-representatives-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-emissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-sales-boards-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-negotiations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-report-notes-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
@@ -920,6 +923,7 @@
 .dark .bsi-investors-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-representatives-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-emissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-sales-boards-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-negotiations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-report-notes-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
@@ -1199,11 +1203,12 @@
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* ── Resource List Pages Fine-Tuning (Carteira, Investidores, Representantes, Emissões, Quadro de Vendas, Negociações, Notas Explicativas, Obras, Medições, Fundos, Tipos de Fundo, Nomes de Fundo, Aplicações, Bancos, Despesas, Prestadores) ── */
+/* ── Resource List Pages Fine-Tuning (Carteira, Investidores, Representantes, Emissões, Documentos, Quadro de Vendas, Negociações, Notas Explicativas, Obras, Medições, Fundos, Tipos de Fundo, Nomes de Fundo, Aplicações, Bancos, Despesas, Prestadores) ── */
 .bsi-proposal-list-page .fi-page,
 .bsi-investors-list-page .fi-page,
 .bsi-representatives-list-page .fi-page,
 .bsi-emissions-list-page .fi-page,
+.bsi-documents-list-page .fi-page,
 .bsi-sales-boards-list-page .fi-page,
 .bsi-negotiations-list-page .fi-page,
 .bsi-report-notes-list-page .fi-page,
@@ -1224,6 +1229,7 @@
 .bsi-investors-list-page .fi-header,
 .bsi-representatives-list-page .fi-header,
 .bsi-emissions-list-page .fi-header,
+.bsi-documents-list-page .fi-header,
 .bsi-sales-boards-list-page .fi-header,
 .bsi-negotiations-list-page .fi-header,
 .bsi-report-notes-list-page .fi-header,
@@ -1247,6 +1253,7 @@
 .bsi-investors-list-page .fi-header-heading,
 .bsi-representatives-list-page .fi-header-heading,
 .bsi-emissions-list-page .fi-header-heading,
+.bsi-documents-list-page .fi-header-heading,
 .bsi-sales-boards-list-page .fi-header-heading,
 .bsi-negotiations-list-page .fi-header-heading,
 .bsi-report-notes-list-page .fi-header-heading,
@@ -1269,6 +1276,7 @@
 .bsi-investors-list-page .fi-header-subheading,
 .bsi-representatives-list-page .fi-header-subheading,
 .bsi-emissions-list-page .fi-header-subheading,
+.bsi-documents-list-page .fi-header-subheading,
 .bsi-sales-boards-list-page .fi-header-subheading,
 .bsi-negotiations-list-page .fi-header-subheading,
 .bsi-report-notes-list-page .fi-header-subheading,
@@ -1293,6 +1301,7 @@
 .bsi-investors-list-page .fi-breadcrumbs,
 .bsi-representatives-list-page .fi-breadcrumbs,
 .bsi-emissions-list-page .fi-breadcrumbs,
+.bsi-documents-list-page .fi-breadcrumbs,
 .bsi-sales-boards-list-page .fi-breadcrumbs,
 .bsi-negotiations-list-page .fi-breadcrumbs,
 .bsi-report-notes-list-page .fi-breadcrumbs,
@@ -1314,6 +1323,7 @@
 .bsi-investors-list-page .fi-ta-table,
 .bsi-representatives-list-page .fi-ta-table,
 .bsi-emissions-list-page .fi-ta-table,
+.bsi-documents-list-page .fi-ta-table,
 .bsi-sales-boards-list-page .fi-ta-table,
 .bsi-negotiations-list-page .fi-ta-table,
 .bsi-report-notes-list-page .fi-ta-table,
@@ -1336,6 +1346,7 @@
 .bsi-investors-list-page .fi-ta-cell .fi-badge,
 .bsi-representatives-list-page .fi-ta-cell .fi-badge,
 .bsi-emissions-list-page .fi-ta-cell .fi-badge,
+.bsi-documents-list-page .fi-ta-cell .fi-badge,
 .bsi-sales-boards-list-page .fi-ta-cell .fi-badge,
 .bsi-negotiations-list-page .fi-ta-cell .fi-badge,
 .bsi-report-notes-list-page .fi-ta-cell .fi-badge,
@@ -1359,7 +1370,8 @@
 }
 
 .bsi-proposal-list-page .fi-tabs-item .fi-badge[data-color="gray"],
-.bsi-emissions-list-page .fi-tabs-item .fi-badge[data-color="gray"] {
+.bsi-emissions-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-documents-list-page .fi-tabs-item .fi-badge[data-color="gray"] {
     opacity: 0.45 !important;
 }
 
@@ -1368,6 +1380,7 @@
     .bsi-investors-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-representatives-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-emissions-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-documents-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-sales-boards-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-negotiations-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-report-notes-list-page .fi-ta-header-toolbar .fi-input-wrp,
@@ -1390,6 +1403,7 @@
 .bsi-investors-list-page .fi-ta-empty-state,
 .bsi-representatives-list-page .fi-ta-empty-state,
 .bsi-emissions-list-page .fi-ta-empty-state,
+.bsi-documents-list-page .fi-ta-empty-state,
 .bsi-sales-boards-list-page .fi-ta-empty-state,
 .bsi-negotiations-list-page .fi-ta-empty-state,
 .bsi-report-notes-list-page .fi-ta-empty-state,
@@ -1411,6 +1425,7 @@
 .bsi-investors-list-page .fi-ta-empty-state-icon-bg,
 .bsi-representatives-list-page .fi-ta-empty-state-icon-bg,
 .bsi-emissions-list-page .fi-ta-empty-state-icon-bg,
+.bsi-documents-list-page .fi-ta-empty-state-icon-bg,
 .bsi-sales-boards-list-page .fi-ta-empty-state-icon-bg,
 .bsi-negotiations-list-page .fi-ta-empty-state-icon-bg,
 .bsi-report-notes-list-page .fi-ta-empty-state-icon-bg,
@@ -1432,6 +1447,7 @@
 .dark .bsi-investors-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-representatives-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-emissions-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-documents-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-sales-boards-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-negotiations-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-report-notes-list-page .fi-ta-empty-state-icon-bg,
@@ -1452,6 +1468,7 @@
 .bsi-investors-list-page .fi-ta-empty-state-heading,
 .bsi-representatives-list-page .fi-ta-empty-state-heading,
 .bsi-emissions-list-page .fi-ta-empty-state-heading,
+.bsi-documents-list-page .fi-ta-empty-state-heading,
 .bsi-sales-boards-list-page .fi-ta-empty-state-heading,
 .bsi-negotiations-list-page .fi-ta-empty-state-heading,
 .bsi-report-notes-list-page .fi-ta-empty-state-heading,
@@ -1470,7 +1487,8 @@
 }
 
 /* Despesas: algarismos tabulares para comparar valores e datas com facilidade */
-.bsi-expenses-list-page .fi-ta-table td {
+.bsi-expenses-list-page .fi-ta-table td,
+.bsi-documents-list-page .fi-ta-table td {
     font-variant-numeric: tabular-nums;
 }
 
@@ -1478,6 +1496,7 @@
 .bsi-investors-list-page .fi-ta-empty-state-description,
 .bsi-representatives-list-page .fi-ta-empty-state-description,
 .bsi-emissions-list-page .fi-ta-empty-state-description,
+.bsi-documents-list-page .fi-ta-empty-state-description,
 .bsi-sales-boards-list-page .fi-ta-empty-state-description,
 .bsi-negotiations-list-page .fi-ta-empty-state-description,
 .bsi-report-notes-list-page .fi-ta-empty-state-description,
@@ -1494,6 +1513,31 @@
     max-width: 46ch !important;
     font-size: 0.8125rem !important;
     line-height: 1.55 !important;
+}
+
+/* Documentos: refinamento de largura e alinhamento de colunas */
+.bsi-documents-list-page .fi-ta-table th,
+.bsi-documents-list-page .fi-ta-table td {
+    padding-block: 0.625rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+.bsi-documents-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-documents-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.45) !important;
+}
+
+html:not(.dark) .bsi-documents-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.75) !important;
+}
+
+.bsi-documents-list-page .fi-ta-cell-file_name .fi-ta-text-item-label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    font-size: 0.75rem !important;
+    letter-spacing: -0.01em !important;
 }
 
 /* ── Cockpit Header Primary Action Button (Institutional BSI Gold) ── */
@@ -4100,3 +4144,153 @@ html:not(.dark) .fi-activity-card:hover {
     font-size: 0.8125rem !important;
     line-height: 1.55 !important;
 }
+
+/* ── Documentos (Edição / Ficha Documental Institucional): Dark Mode Teal, Stacked 100% Cards & Histórico de Versões ── */
+.bsi-document-form-page,
+.bsi-document-form-page .fi-page,
+.bsi-document-form-page .fi-page-main-ctn {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.bsi-document-form-page form.fi-sc-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    width: 100% !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    box-shadow: 0 4px 16px rgba(4, 14, 19, 0.25) !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    padding: 1.125rem 1.75rem !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-section-header-heading {
+    color: #fbfaf8 !important;
+    font-size: 1.0625rem !important;
+    font-weight: 700 !important;
+    line-height: 1.3 !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-section-header-description {
+    color: rgba(251, 250, 248, 0.68) !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.4 !important;
+    margin-top: 0.125rem !important;
+}
+
+.bsi-document-form-page form.fi-sc-form .fi-section-content {
+    padding: 1.75rem !important;
+}
+
+@media (min-width: 1024px) {
+    .bsi-document-form-page form.fi-sc-form .fi-section-content {
+        padding: 2rem !important;
+    }
+}
+
+/* Subseção interna de Visibilidade e Publicação */
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    border-radius: 10px !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header {
+    background: #06151c !important;
+    padding: 0.75rem 1.25rem !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content {
+    padding: 1.25rem !important;
+}
+
+/* Campo Categoria e Select Controls */
+.bsi-document-form-page .choices__inner {
+    min-height: 2.625rem !important;
+}
+
+.bsi-document-form-page .choices__list--single .choices__item {
+    font-size: 0.875rem !important;
+    white-space: nowrap !important;
+}
+
+/* Placeholders na Ficha Técnica */
+.dark .bsi-document-form-page .fi-fo-placeholder .fi-fo-placeholder-label {
+    color: rgba(251, 250, 248, 0.55) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.035em !important;
+    white-space: nowrap !important;
+}
+
+.dark .bsi-document-form-page .fi-fo-placeholder .fi-fo-placeholder-content {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    line-height: 1.45 !important;
+}
+
+/* Espaçamento e Separação para o Histórico de Versões (Relation Manager) */
+.bsi-document-form-page .fi-resource-relation-manager,
+.bsi-document-form-page .fi-sc-relation-manager,
+.bsi-document-form-page [wire\:key*="versions"] {
+    margin-top: 2rem !important;
+}
+
+.dark .bsi-document-form-page .fi-resource-relation-manager .fi-ta,
+.dark .bsi-document-form-page .fi-sc-relation-manager .fi-ta {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+}
+
+.dark .bsi-document-form-page .fi-resource-relation-manager .fi-ta-header,
+.dark .bsi-document-form-page .fi-sc-relation-manager .fi-ta-header {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    padding: 1rem 1.5rem !important;
+}
+
+/* Empty State compacto e não-destrutivo para versões */
+.bsi-document-form-page .fi-resource-relation-manager .fi-ta-empty-state,
+.bsi-document-form-page .fi-sc-relation-manager .fi-ta-empty-state {
+    padding-block: 2rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+.dark .bsi-document-form-page .fi-resource-relation-manager .fi-ta-empty-state-icon,
+.dark .bsi-document-form-page .fi-sc-relation-manager .fi-ta-empty-state-icon {
+    color: rgba(251, 250, 248, 0.4) !important;
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+}
+
+.bsi-document-form-page .fi-resource-relation-manager .fi-ta-empty-state-heading,
+.bsi-document-form-page .fi-sc-relation-manager .fi-ta-empty-state-heading {
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+}
+
+.bsi-document-form-page .fi-resource-relation-manager .fi-ta-empty-state-description,
+.bsi-document-form-page .fi-sc-relation-manager .fi-ta-empty-state-description {
+    font-size: 0.8125rem !important;
+    max-width: 44ch !important;
+}
+

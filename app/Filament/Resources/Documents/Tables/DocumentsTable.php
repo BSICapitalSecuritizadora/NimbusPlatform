@@ -9,10 +9,13 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\FontFamily;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -21,30 +24,61 @@ class DocumentsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->searchPlaceholder('Buscar por título, categoria, arquivo ou série...')
+            ->defaultSort('created_at', 'desc')
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->emptyStateHeading('Nenhum documento encontrado')
+            ->emptyStateDescription('Não há documentos cadastrados que correspondam à busca ou aos filtros aplicados.')
+            ->emptyStateIcon('heroicon-o-document-text')
             ->columns([
                 TextColumn::make('title')
                     ->label('Título')
+                    ->weight('semibold')
+                    ->wrap()
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn (Document $record): ?string => $record->version > 1 ? "Versão {$record->version}" : null)
+                    ->tooltip(fn (Document $record): string => $record->title),
 
                 TextColumn::make('category')
                     ->label('Categoria')
                     ->formatStateUsing(fn (?string $state): string => Document::CATEGORY_OPTIONS[$state] ?? (string) $state)
                     ->badge()
-                    ->searchable(),
+                    ->color(fn (?string $state): string => match ($state) {
+                        'societarios', 'governanca' => 'info',
+                        'fatos_relevantes', 'anuncios' => 'warning',
+                        'demonstracoes_financeiras', 'relatorios_anuais' => 'primary',
+                        default => 'gray',
+                    })
+                    ->searchable()
+                    ->sortable(),
 
                 TextColumn::make('emissions.name')
                     ->label('Séries')
                     ->badge()
-                    ->separator(','),
+                    ->separator(',')
+                    ->limitList(2)
+                    ->expandableLimitedList()
+                    ->placeholder('—')
+                    ->tooltip(fn (Document $record): ?string => $record->emissions->isNotEmpty() ? $record->emissions->pluck('name')->implode(', ') : null),
 
                 TextColumn::make('file_name')
                     ->label('Arquivo')
+                    ->icon('heroicon-o-paper-clip')
+                    ->fontFamily(FontFamily::Mono)
+                    ->limit(26)
+                    ->searchable()
+                    ->tooltip(fn (Document $record): ?string => $record->file_name)
+                    ->description(fn (Document $record): ?string => $record->mime_type ? strtoupper(pathinfo($record->file_name ?? '', PATHINFO_EXTENSION) ?: (explode('/', $record->mime_type)[1] ?? '')) : null)
                     ->toggleable(),
 
                 TextColumn::make('file_size')
                     ->label('Tamanho')
                     ->formatStateUsing(fn ($state): string => $state ? Number::fileSize($state) : '—')
+                    ->alignEnd()
+                    ->color('gray')
+                    ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('storage_disk')
@@ -54,7 +88,7 @@ class DocumentsTable
 
                 TextColumn::make('workflow_status')
                     ->label('Status')
-                    ->state(function ($record) {
+                    ->state(function (Document $record): string {
                         if (! $record->is_published) {
                             return 'Rascunho';
                         }
@@ -65,6 +99,12 @@ class DocumentsTable
                         return 'Público';
                     })
                     ->badge()
+                    ->icon(fn (string $state): string => match ($state) {
+                        'Rascunho' => 'heroicon-m-pencil-square',
+                        'Publicado' => 'heroicon-m-check-circle',
+                        'Público' => 'heroicon-m-globe-americas',
+                        default => 'heroicon-m-document',
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'Rascunho' => 'gray',
                         'Publicado' => 'info',
@@ -72,7 +112,6 @@ class DocumentsTable
                         default => 'gray',
                     })
                     ->sortable(query: function ($query, string $direction) {
-                        // opcional: ordenar por status; pode ser deixado sem sortable
                         return $query->orderBy('is_published', $direction)->orderBy('is_public', $direction);
                     }),
 
@@ -84,19 +123,35 @@ class DocumentsTable
                 TextColumn::make('published_at')
                     ->label('Publicado em')
                     ->dateTime('d/m/Y H:i')
+                    ->description(fn (Document $record): ?string => $record->published_at?->diffForHumans())
+                    ->placeholder('—')
                     ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('publisher.name')
                     ->label('Publicado por')
+                    ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->description(fn (Document $record): ?string => $record->created_at?->diffForHumans())
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([
+                Action::make('download')
+                    ->label('Baixar')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('primary')
+                    ->url(fn (Document $record): ?string => $record->file_path
+                        ? route('admin.documents.download', $record)
+                        : null)
+                    ->openUrlInNewTab()
+                    ->visible(fn (Document $record): bool => (bool) $record->file_path),
+
                 Action::make('new_version')
                     ->label('Nova Versão')
                     ->icon('heroicon-o-document-duplicate')
@@ -212,15 +267,6 @@ class DocumentsTable
                     })
                     ->visible(fn (Document $record): bool => ! $record->is_public && auth()->user()->can('documents.update')),
 
-                Action::make('download')
-                    ->label('Baixar')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->url(fn (Document $record): ?string => $record->file_path
-                        ? route('admin.documents.download', $record)
-                        : null)
-                    ->openUrlInNewTab()
-                    ->visible(fn (Document $record): bool => (bool) $record->file_path),
-
                 EditAction::make()
                     ->visible(fn (): bool => auth()->user()->can('documents.update')),
 
@@ -228,18 +274,29 @@ class DocumentsTable
                     ->visible(fn (): bool => auth()->user()->can('documents.delete')),
             ])
             ->filters([
+                SelectFilter::make('category')
+                    ->label('Categoria')
+                    ->options(Document::CATEGORY_OPTIONS)
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('emissions')
+                    ->label('Série')
+                    ->relationship('emissions', 'name')
+                    ->searchable()
+                    ->preload(),
+
                 Filter::make('rascunho')
                     ->label('Rascunho')
-                    ->query(fn ($query) => $query->where('is_published', false)),
+                    ->query(fn (Builder $query) => $query->where('is_published', false)),
 
                 Filter::make('publicado')
                     ->label('Publicado')
-                    ->query(fn ($query) => $query->where('is_published', true)->where('is_public', false)),
+                    ->query(fn (Builder $query) => $query->where('is_published', true)->where('is_public', false)),
 
                 Filter::make('publico')
                     ->label('Público')
-                    ->query(fn ($query) => $query->where('is_published', true)->where('is_public', true)),
-            ])
-            ->defaultSort('created_at', 'desc');
+                    ->query(fn (Builder $query) => $query->where('is_published', true)->where('is_public', true)),
+            ]);
     }
 }

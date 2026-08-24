@@ -2,6 +2,7 @@
 
 namespace App\Actions\ConstructionUnits;
 
+use App\Support\TemporarySpreadsheetFile;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
 /**
@@ -34,22 +35,17 @@ class ConstructionUnitSpreadsheetTemplate
      */
     public function build(): string
     {
-        $path = tempnam(sys_get_temp_dir(), 'construction-units-template-').'.xlsx';
+        return TemporarySpreadsheetFile::write('construction-units-template-', function (SimpleExcelWriter $writer): void {
+            $writer->nameCurrentSheet(self::DATA_SHEET)
+                ->addHeader(ConstructionUnitSpreadsheetColumns::headers());
 
-        $writer = SimpleExcelWriter::create($path)
-            ->nameCurrentSheet(self::DATA_SHEET)
-            ->addHeader(ConstructionUnitSpreadsheetColumns::headers());
+            $writer->addNewSheetAndMakeItCurrent(self::EXAMPLE_SHEET)
+                ->addHeader(ConstructionUnitSpreadsheetColumns::headers());
 
-        $writer->addNewSheetAndMakeItCurrent(self::EXAMPLE_SHEET)
-            ->addHeader(ConstructionUnitSpreadsheetColumns::headers());
-
-        foreach (self::EXAMPLE_ROWS as $exampleRow) {
-            $writer->addRow(array_combine(ConstructionUnitSpreadsheetColumns::headers(), $exampleRow));
-        }
-
-        $writer->close();
-
-        return $path;
+            foreach (self::EXAMPLE_ROWS as $exampleRow) {
+                $writer->addRow(array_combine(ConstructionUnitSpreadsheetColumns::headers(), $exampleRow));
+            }
+        });
     }
 
     public function downloadName(): string

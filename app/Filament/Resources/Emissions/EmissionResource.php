@@ -13,6 +13,7 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\Obligatio
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSuggestionsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager;
+use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuCalendarHomologationsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuDailyCurvesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuEventsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuHistoriesRelationManager;
@@ -279,6 +280,7 @@ class EmissionResource extends Resource
         return [
             PaymentsRelationManager::class,
             PuHistoriesRelationManager::class,
+            PuCalendarHomologationsRelationManager::class,
             PuEventsRelationManager::class,
             PuDailyCurvesRelationManager::class,
             IntegralizationHistoriesRelationManager::class,

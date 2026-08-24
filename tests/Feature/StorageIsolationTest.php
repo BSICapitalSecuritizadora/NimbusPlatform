@@ -156,6 +156,9 @@ it('cleans up temporary files created through the helper', function () {
  * exatamente esse padrão que encheu `storage/framework/testing/disks` de mais
  * de doze mil diretórios órfãos. `tempnam()` tem o problema irmão -- grava num
  * diretório compartilhado por toda a máquina e não é removido.
+ *
+ * A busca é textual e não distingue código de comentário: um teste que precise
+ * citar um destes nomes deve escrevê-lo sem os parênteses.
  */
 it('keeps tests from opting out of the isolated disks', function () {
     $forbidden = [

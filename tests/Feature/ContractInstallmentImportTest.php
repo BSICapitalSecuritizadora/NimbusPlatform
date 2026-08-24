@@ -115,7 +115,7 @@ function installmentRow(array $overrides = []): array
 }
 
 it('builds a template whose data sheet carries only the headers', function () {
-    $path = app(ContractInstallmentSpreadsheetTemplate::class)->build();
+    $path = discardTemplateFileAfterTest(app(ContractInstallmentSpreadsheetTemplate::class)->build());
 
     $dataRows = SimpleExcelReader::create($path)->getRows()->all();
     $exampleRows = SimpleExcelReader::create($path)
@@ -139,9 +139,11 @@ it('builds a template whose data sheet carries only the headers', function () {
 it('serves the template through the download route', function () {
     $this->actingAs(makeAdminUser());
 
-    $this->get(route('admin.contract-installments.template.download'))
+    $response = $this->get(route('admin.contract-installments.template.download'))
         ->assertSuccessful()
         ->assertDownload(ContractInstallmentSpreadsheetTemplate::DOWNLOAD_NAME);
+
+    discardTemplateFileAfterTest($response->baseResponse->getFile()->getPathname());
 });
 
 it('rejects a spreadsheet without the required columns', function () {

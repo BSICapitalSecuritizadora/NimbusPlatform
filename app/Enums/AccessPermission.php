@@ -187,6 +187,9 @@ enum AccessPermission: string
     case PuProjectionApprove = 'pu.projection.approve';
     case PuCalendarManage = 'pu.calendar.manage';
     case PuHolidayImport = 'pu.holiday.import';
+    case PuCalendarHomologationExecute = 'pu.calendar-homologation.execute';
+    case PuCalendarHomologationReview = 'pu.calendar-homologation.review';
+    case PuCalendarHomologationApply = 'pu.calendar-homologation.apply';
     case ContactMessagesView = 'contact-messages.view';
     case ContactMessagesUpdate = 'contact-messages.update';
     case ReminderLogsView = 'reminder-logs.view';
@@ -423,6 +426,9 @@ enum AccessPermission: string
             self::PuProjectionApprove => 'Curva de PU: aprovar série projetada',
             self::PuCalendarManage => 'Curva de PU: completar calendário de dias úteis',
             self::PuHolidayImport => 'Curva de PU: importar feriados ANBIMA',
+            self::PuCalendarHomologationExecute => 'Homologação de calendário CDI: executar',
+            self::PuCalendarHomologationReview => 'Homologação de calendário CDI: revisar',
+            self::PuCalendarHomologationApply => 'Homologação de calendário CDI: aplicar configuração futura',
             self::ContactMessagesView => 'Mensagens de contato: visualizar',
             self::ContactMessagesUpdate => 'Mensagens de contato: registrar atendimento',
             self::ReminderLogsView => 'Auditoria de lembretes: visualizar',

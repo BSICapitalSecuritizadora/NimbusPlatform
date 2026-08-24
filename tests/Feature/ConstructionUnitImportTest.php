@@ -50,7 +50,7 @@ function analyzeUnitSpreadsheet(array $rows, ?array $headers = null)
 }
 
 it('builds a template whose data sheet carries only the headers', function () {
-    $path = app(ConstructionUnitSpreadsheetTemplate::class)->build();
+    $path = discardTemplateFileAfterTest(app(ConstructionUnitSpreadsheetTemplate::class)->build());
 
     $dataRows = SimpleExcelReader::create($path)->getRows()->all();
     $exampleRows = SimpleExcelReader::create($path)->fromSheetName(ConstructionUnitSpreadsheetTemplate::EXAMPLE_SHEET)->getRows()->all();
@@ -68,9 +68,11 @@ it('builds a template whose data sheet carries only the headers', function () {
 it('serves the template through the download route', function () {
     $this->actingAs(makeAdminUser());
 
-    $this->get(route('admin.construction-units.template.download'))
+    $response = $this->get(route('admin.construction-units.template.download'))
         ->assertSuccessful()
         ->assertDownload(ConstructionUnitSpreadsheetTemplate::DOWNLOAD_NAME);
+
+    discardTemplateFileAfterTest($response->baseResponse->getFile()->getPathname());
 });
 
 it('rejects a spreadsheet without the required columns', function () {
