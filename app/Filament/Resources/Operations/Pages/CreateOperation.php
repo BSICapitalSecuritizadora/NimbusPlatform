@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operations\Pages;
 
 use App\Filament\Resources\Operations\OperationResource;
 use App\Models\User;
+use App\Services\OperationContextVisibilityService;
 use App\Services\OperationResponsibilityService;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
@@ -42,6 +43,11 @@ class CreateOperation extends CreateRecord
         app(OperationResponsibilityService::class)->assertCanAssignOnCreation($actor, $data);
 
         $this->developments = $data['developments'] ?? [];
+        app(OperationContextVisibilityService::class)->assertOperationPayloadIsVisible(
+            $actor,
+            $data['emission_id'] ?? null,
+            $this->developments,
+        );
         unset($data['developments']);
 
         return $data;
@@ -49,7 +55,10 @@ class CreateOperation extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->record->syncDevelopmentPlans($this->developments);
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+
+        $this->record->syncDevelopmentPlans($this->developments, $actor);
     }
 
     protected function getCreateFormAction(): Action

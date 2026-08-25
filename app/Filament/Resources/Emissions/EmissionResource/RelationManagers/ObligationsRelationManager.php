@@ -65,12 +65,12 @@ class ObligationsRelationManager extends RelationManager
         return $schema->components([
             Section::make('Dossiê da Obrigação')
                 ->schema([
-                    Grid::make(4)->schema([
+                    Grid::make(['default' => 1, 'sm' => 2, 'md' => 3])->schema([
                         TextEntry::make('title')
                             ->label('Obrigação')
                             ->weight('bold')
                             ->size('lg')
-                            ->columnSpan(2),
+                            ->columnSpan(['default' => 1, 'sm' => 2, 'md' => 3]),
                         TextEntry::make('status')
                             ->label('Status Atual')
                             ->badge()
@@ -92,6 +92,10 @@ class ObligationsRelationManager extends RelationManager
                                 'medium' => 'info',
                                 default => 'gray',
                             }),
+                        TextEntry::make('recurrence')
+                            ->label('Recorrência')
+                            ->badge()
+                            ->placeholder('Única'),
                         TextEntry::make('due_date')
                             ->label('Prazo / Vencimento')
                             ->state(fn (Obligation $record): string => $record->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar
@@ -104,24 +108,20 @@ class ObligationsRelationManager extends RelationManager
                         TextEntry::make('competence_label')
                             ->label('Competência')
                             ->placeholder('Obrigação única'),
-                        TextEntry::make('recurrence')
-                            ->label('Recorrência')
-                            ->badge()
-                            ->placeholder('Única'),
+                        TextEntry::make('source')
+                            ->label('Origem')
+                            ->state(fn (Obligation $record): string => $this->sourceLabel($record))
+                            ->placeholder('—'),
                         TextEntry::make('responsibleUser.name')
                             ->label('Responsável')
                             ->placeholder('Não atribuído'),
                         TextEntry::make('responsible_area')
                             ->label('Área Responsável')
                             ->placeholder('—'),
-                        TextEntry::make('source')
-                            ->label('Origem')
-                            ->state(fn (Obligation $record): string => $this->sourceLabel($record))
-                            ->placeholder('—'),
                         TextEntry::make('series.rule_summary')
                             ->label('Regra da série')
                             ->placeholder('Não se aplica')
-                            ->columnSpan(2),
+                            ->columnSpan(['default' => 1, 'sm' => 2, 'md' => 3]),
                         TextEntry::make('next_action')
                             ->label('Próxima Ação Recomendada')
                             ->state(fn (Obligation $record): string => $record->due_date_calculation_status === ObligationDueDateCalculationStatus::AwaitingCalendar
@@ -132,20 +132,28 @@ class ObligationsRelationManager extends RelationManager
                                     'em_dia', 'concluida' => 'Nenhuma ação operacional pendente.',
                                     default => 'Defina responsável e organize a comprovação necessária.',
                                 })
-                            ->color('primary')
-                            ->weight('bold')
-                            ->columnSpan(2),
-                        TextEntry::make('workflow_availability')
-                            ->label('Acesso operacional')
-                            ->state(fn (Obligation $record): string => $this->workflowAvailabilityMessage($record))
-                            ->placeholder('—')
-                            ->columnSpan(2),
+                            ->color(fn (Obligation $record): string => match ($record->status) {
+                                'em_dia', 'concluida' => 'gray',
+                                'a_vencer' => 'info',
+                                'vencida' => 'danger',
+                                'em_analise' => 'warning',
+                                default => 'primary',
+                            })
+                            ->weight('medium')
+                            ->columnSpan(['default' => 1, 'sm' => 2, 'md' => 3]),
                     ]),
                     TextEntry::make('description')
                         ->label('Descrição / Detalhes da Obrigação')
                         ->columnSpanFull()
                         ->placeholder('Sem descrição adicional.'),
-                ]),
+                    TextEntry::make('workflow_availability')
+                        ->hiddenLabel()
+                        ->state(fn (Obligation $record): string => $this->workflowAvailabilityMessage($record))
+                        ->color('gray')
+                        ->size('xs')
+                        ->columnSpanFull(),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 
@@ -387,7 +395,9 @@ class ObligationsRelationManager extends RelationManager
             ->actions([
                 ViewAction::make()
                     ->label('Abrir dossiê')
-                    ->modalHeading(fn (Obligation $record): string => 'Visualizar '.$record->operational_title)
+                    ->modalHeading(fn (Obligation $record): string => $record->operational_title)
+                    ->modalDescription('Dossiê da obrigação')
+                    ->modalWidth(Width::ThreeExtraLarge)
                     ->color('info')
                     ->icon('heroicon-o-eye')
                     ->iconButton()

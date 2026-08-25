@@ -1,7 +1,9 @@
 <?php
 
+use App\Jobs\ProcessNimbusNotificationOutbox;
 use App\Jobs\SyncContaAzulExpensesJob;
 use App\Models\Nimbus\AccessToken;
+use App\Models\Nimbus\NotificationOutbox;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -18,6 +20,33 @@ Schedule::call(function () {
         ->where('expires_at', '<', now()->subHours(24))
         ->delete();
 })->dailyAt('03:00')->name('nimbus-tokens-cleanup');
+
+// Nimbus Notification Outbox — dispatch due PENDING/FAILED and stale SENDING every minute
+Schedule::call(function () {
+    $due = NotificationOutbox::query()
+        ->where(function ($q) {
+            $q->where(function ($qq) {
+                $qq->where('status', 'PENDING')
+                    ->where(function ($qqq) {
+                        $qqq->whereNull('next_attempt_at')->orWhere('next_attempt_at', '<=', now());
+                    });
+            })->orWhere(function ($qq) {
+                $qq->where('status', 'FAILED')
+                    ->whereColumn('attempts', '<', 'max_attempts')
+                    ->where(function ($qqq) {
+                        $qqq->whereNull('next_attempt_at')->orWhere('next_attempt_at', '<=', now());
+                    });
+            })->orWhere(function ($qq) {
+                $qq->where('status', 'SENDING')->where('updated_at', '<', now()->subMinutes(15));
+            });
+        })
+        ->limit(100)
+        ->get();
+
+    foreach ($due as $outbox) {
+        dispatch(new ProcessNimbusNotificationOutbox($outbox->id));
+    }
+})->everyMinute()->name('nimbus-outbox-dispatch')->withoutOverlapping();
 
 Schedule::command('app:cleanup-temporary-uploads')
     ->dailyAt('02:00')

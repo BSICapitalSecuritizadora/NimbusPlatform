@@ -56,6 +56,17 @@ function createFileSecurityScenario(): array
     return compact('participant', 'outsider', 'operation', 'measurement', 'asset');
 }
 
+function createLegacyPublicAsset(Measurement $measurement, string $path): MeasurementAsset
+{
+    return MeasurementAsset::withoutEvents(fn (): MeasurementAsset => MeasurementAsset::query()->create([
+        'measurement_id' => $measurement->id,
+        'filename' => basename($path),
+        'storage_path' => $path,
+        'storage_disk' => null,
+        'uploaded_at' => now(),
+    ]));
+}
+
 it('stores new measurement assets privately and derives SHA-256 from real content', function () {
     $scenario = createFileSecurityScenario();
     $asset = $scenario['asset']->fresh();
@@ -193,10 +204,7 @@ it('migrates public legacy files only after a verified private copy and supports
     $operation = Operation::factory()->create(['assigned_user_id' => $participant->id]);
     $measurement = Measurement::factory()->create(['operation_id' => $operation->id, 'storage_path' => null]);
     Storage::disk('public')->put('measurements/legacy.pdf', '%PDF-1.7 legacy-content');
-    $asset = $measurement->assets()->create([
-        'storage_path' => 'measurements/legacy.pdf',
-        'storage_disk' => null,
-    ]);
+    $asset = createLegacyPublicAsset($measurement, 'measurements/legacy.pdf');
 
     $this->artisan('measurements:secure-legacy-files')->assertSuccessful();
     Storage::disk('public')->assertExists('measurements/legacy.pdf');
@@ -217,10 +225,7 @@ it('reports a missing legacy public source as an incomplete migration', function
     $operation = Operation::factory()->create(['assigned_user_id' => $participant->id]);
     $measurement = Measurement::factory()->create(['operation_id' => $operation->id, 'storage_path' => null]);
     Storage::disk('public')->put('measurements/missing-source.pdf', '%PDF-1.7 temporary-source');
-    $asset = $measurement->assets()->create([
-        'storage_path' => 'measurements/missing-source.pdf',
-        'storage_disk' => null,
-    ]);
+    $asset = createLegacyPublicAsset($measurement, 'measurements/missing-source.pdf');
     Storage::disk('public')->delete('measurements/missing-source.pdf');
 
     $this->artisan('measurements:secure-legacy-files', ['--execute' => true])
@@ -231,17 +236,14 @@ it('reports a missing legacy public source as an incomplete migration', function
         ->and($asset->fresh()->storage_path)->toBe('measurements/missing-source.pdf');
 });
 
-it('detects and removes a verified public residue left by an older committed migration', function () {
+it('detects but never removes an unowned public residue from an older committed migration', function () {
     $participant = createFileSecurityEditor();
     $operation = Operation::factory()->create(['assigned_user_id' => $participant->id]);
     $measurement = Measurement::factory()->create(['operation_id' => $operation->id, 'storage_path' => null]);
     $publicPath = 'measurements/residual.pdf';
     $content = '%PDF-1.7 residual-content';
     Storage::disk('public')->put($publicPath, $content);
-    $asset = $measurement->assets()->create([
-        'storage_path' => $publicPath,
-        'storage_disk' => null,
-    ]);
+    $asset = createLegacyPublicAsset($measurement, $publicPath);
     $privatePath = "nimbus_docs/measurements/legacy/assets/{$asset->id}/residual.pdf";
     Storage::disk('local')->put($privatePath, $content);
     DB::table('measurement_assets')->where('id', $asset->id)->update([
@@ -251,15 +253,17 @@ it('detects and removes a verified public residue left by an older committed mig
     ]);
 
     $this->artisan('measurements:secure-legacy-files')
-        ->expectsOutputToContain('cópia pública residual detectada')
-        ->assertSuccessful();
+        ->expectsOutputToContain('candidato público sem ownership registrado')
+        ->assertFailed();
     Storage::disk('public')->assertExists($publicPath);
 
-    $this->artisan('measurements:secure-legacy-files', ['--execute' => true])->assertSuccessful();
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true])
+        ->expectsOutputToContain('nenhuma exclusão foi realizada')
+        ->assertFailed();
 
     expect($asset->fresh()->storage_disk)->toBe('local')
         ->and($asset->fresh()->storage_path)->toBe($privatePath);
-    Storage::disk('public')->assertMissing($publicPath);
+    Storage::disk('public')->assertExists($publicPath);
 });
 
 it('is idempotent with an equal destination and rejects a divergent destination', function (bool $sameHash) {
@@ -267,10 +271,7 @@ it('is idempotent with an equal destination and rejects a divergent destination'
     $operation = Operation::factory()->create(['assigned_user_id' => $participant->id]);
     $measurement = Measurement::factory()->create(['operation_id' => $operation->id, 'storage_path' => null]);
     Storage::disk('public')->put('measurements/idempotent.pdf', '%PDF-1.7 legacy-content');
-    $asset = $measurement->assets()->create([
-        'storage_path' => 'measurements/idempotent.pdf',
-        'storage_disk' => null,
-    ]);
+    $asset = createLegacyPublicAsset($measurement, 'measurements/idempotent.pdf');
     $target = "nimbus_docs/measurements/legacy/assets/{$asset->id}/idempotent.pdf";
     Storage::disk('local')->put($target, $sameHash ? '%PDF-1.7 legacy-content' : '%PDF-1.7 different-content');
 
@@ -294,10 +295,7 @@ it('does not report success when public deletion fails and recovers on rerun', f
     $public = Storage::disk('public');
     $local = Storage::disk('local');
     $public->put('measurements/delete-failure.pdf', '%PDF-1.7 legacy-content');
-    $asset = $measurement->assets()->create([
-        'storage_path' => 'measurements/delete-failure.pdf',
-        'storage_disk' => null,
-    ]);
+    $asset = createLegacyPublicAsset($measurement, 'measurements/delete-failure.pdf');
     $deleteAttempts = 0;
     $publicMock = Mockery::mock($public)->makePartial();
     $publicMock->shouldReceive('delete')->twice()->andReturnUsing(function (string $path) use (&$deleteAttempts, $public): bool {
@@ -309,7 +307,7 @@ it('does not report success when public deletion fails and recovers on rerun', f
     Storage::shouldReceive('disk')->with('local')->andReturn($local);
 
     $this->artisan('measurements:secure-legacy-files', ['--execute' => true])->assertFailed();
-    expect($asset->fresh()->storage_disk)->toBeNull();
+    expect($asset->fresh()->storage_disk)->toBe('local');
     expect($public->exists('measurements/delete-failure.pdf'))->toBeTrue();
 
     $this->artisan('measurements:secure-legacy-files', ['--execute' => true])->assertSuccessful();
@@ -322,10 +320,7 @@ it('keeps database and public source retryable when the database save fails', fu
     $operation = Operation::factory()->create(['assigned_user_id' => $participant->id]);
     $measurement = Measurement::factory()->create(['operation_id' => $operation->id, 'storage_path' => null]);
     Storage::disk('public')->put('measurements/save-failure.pdf', '%PDF-1.7 legacy-content');
-    $asset = $measurement->assets()->create([
-        'storage_path' => 'measurements/save-failure.pdf',
-        'storage_disk' => null,
-    ]);
+    $asset = createLegacyPublicAsset($measurement, 'measurements/save-failure.pdf');
     DB::unprepared("CREATE TRIGGER fail_asset_migration BEFORE UPDATE ON measurement_assets WHEN OLD.id = {$asset->id} BEGIN SELECT RAISE(ABORT, 'forced save failure'); END");
 
     $this->artisan('measurements:secure-legacy-files', ['--execute' => true])->assertFailed();

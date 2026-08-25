@@ -158,6 +158,49 @@ class ImportContractsFromSpreadsheet
             ])
             ->chunk(self::CHUNK_SIZE)
             ->each(fn (Collection $chunk) => Contract::query()->insert($chunk->all()));
+
+        $this->linkBuyers($rows);
+    }
+
+    /**
+     * Records the buyers of the contracts just inserted.
+     *
+     * A bulk insert gives back no ids and fires no model event, so the buyer
+     * table cannot be filled by the model and cannot be filled row by row
+     * either without undoing the reason the insert is bulk in the first place.
+     * The identity the file already resolved -- development plus normalized code
+     * -- reads every new id back in one query, and the links go in in bulk too.
+     *
+     * Two queries per chunk instead of two per contract: a file with three
+     * thousand new contracts costs a dozen statements, not six thousand.
+     *
+     * @param  Collection<int, array<string, mixed>>  $rows
+     */
+    private function linkBuyers(Collection $rows): void
+    {
+        $rows->chunk(self::CHUNK_SIZE)->each(function (Collection $chunk): void {
+            $ids = Contract::query()
+                ->whereIn('construction_id', $chunk->pluck('construction_id')->unique()->all())
+                ->whereIn('code_normalized', $chunk->pluck('code_normalized')->unique()->all())
+                ->get(['id', 'construction_id', 'code_normalized'])
+                ->keyBy(fn (Contract $contract): string => $contract->construction_id.'|'.$contract->code_normalized);
+
+            $links = $chunk
+                ->map(function (array $row) use ($ids): ?array {
+                    $contract = $ids->get($row['construction_id'].'|'.$row['code_normalized']);
+
+                    return $contract === null ? null : [
+                        'contract_id' => $contract->getKey(),
+                        'client_id' => $row['client_id'],
+                    ];
+                })
+                ->filter()
+                ->values();
+
+            if ($links->isNotEmpty()) {
+                DB::table('contract_clients')->insertOrIgnore($links->all());
+            }
+        });
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Exceptions\MeasurementWorkflowException;
+use App\Services\OperationContextVisibilityService;
 use Database\Factories\MeasurementPlanSetFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,12 +28,39 @@ class MeasurementPlanSet extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (self $planSet): void {
+            if ($planSet->exists
+                && $planSet->isDirty([
+                    'operation_id',
+                    'construction_id',
+                    'construction_fund_amount',
+                    'initial_incurred_amount',
+                ])
+                && $planSet->isReferencedByApprovedEngineering()) {
+                throw new MeasurementWorkflowException('O contexto de um plano aprovado pela Engenharia está bloqueado.');
+            }
+
+            $actor = auth()->user();
+
+            if ($actor instanceof User
+                && filled($planSet->construction_id)
+                && (! $planSet->exists || $planSet->isDirty(['operation_id', 'construction_id']))) {
+                $operation = Operation::query()->find($planSet->operation_id);
+
+                if (! $operation instanceof Operation) {
+                    throw new MeasurementWorkflowException('A operação do plano de medição não está disponível.');
+                }
+
+                app(OperationContextVisibilityService::class)->assertConstructionIsVisibleForOperation(
+                    $actor,
+                    $operation,
+                    $planSet->construction_id,
+                );
+            }
+        });
+
         static::deleting(function (self $planSet): void {
-            $approvedMeasurementId = $planSet->assets()
-                ->whereHas('measurement.reviews', fn ($reviews) => $reviews
-                    ->where('stage', 1)
-                    ->where('status', 'approved'))
-                ->value('measurement_id');
+            $approvedMeasurementId = $planSet->approvedEngineeringMeasurementId();
 
             if ($approvedMeasurementId !== null) {
                 throw new MeasurementWorkflowException('Um empreendimento coberto por Engenharia aprovada não pode ser removido.', [
@@ -104,5 +132,21 @@ class MeasurementPlanSet extends Model
         }
 
         return ($this->incurred_amount / (float) $this->construction_fund_amount) * 100;
+    }
+
+    private function isReferencedByApprovedEngineering(): bool
+    {
+        return $this->approvedEngineeringMeasurementId() !== null;
+    }
+
+    private function approvedEngineeringMeasurementId(): ?int
+    {
+        $measurementId = $this->assets()
+            ->whereHas('measurement.reviews', fn ($reviews) => $reviews
+                ->where('stage', 1)
+                ->where('status', 'approved'))
+            ->value('measurement_id');
+
+        return $measurementId === null ? null : (int) $measurementId;
     }
 }

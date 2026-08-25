@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesBoards\Pages;
 
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\SalesBoard;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,6 +22,10 @@ class CreateSalesBoard extends CreateRecord
     protected static string $resource = SalesBoardResource::class;
 
     protected static ?string $breadcrumb = 'Nova Atualização';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-fund-form-page bsi-sales-board-form-page',
+    ];
 
     /**
      * Position this update started from, used by the form to point out which
@@ -56,6 +61,32 @@ class CreateSalesBoard extends CreateRecord
         return $this->previousPosition === null
             ? 'Adicionar Quadro de Vendas'
             : 'Nova Atualização do Quadro de Vendas';
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Registre a posição mensal de unidades e valores do empreendimento por status.';
+    }
+
+    protected function getCreateFormAction(): Action
+    {
+        return parent::getCreateFormAction()
+            ->label('Criar quadro de vendas')
+            ->icon('heroicon-m-plus');
+    }
+
+    protected function getCreateAnotherFormAction(): Action
+    {
+        return parent::getCreateAnotherFormAction()
+            ->label('Salvar e criar outro')
+            ->color('gray');
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()
+            ->label('Cancelar')
+            ->color('gray');
     }
 
     protected function getCreatedNotificationTitle(): ?string

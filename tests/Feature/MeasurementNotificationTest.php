@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Measurement;
+use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
@@ -106,11 +107,15 @@ it('notifies the payment manager to attach receipts when a payment is registered
 
     $manager = measurementNotificationActor();
     $operation = Operation::factory()->create(['payment_manager_user_id' => $manager->id]);
+    $planSet = MeasurementPlanSet::factory()->default()->create(['operation_id' => $operation->id]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'storage_path' => null,
         'status' => 'awaiting_payment',
         'current_stage' => MeasurementWorkflow::STAGE_PAYMENT,
+        'engineering_snapshot' => [
+            'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true]],
+        ],
     ]);
     $measurement->reviews()->create([
         'stage' => MeasurementWorkflow::STAGE_PAYMENT,

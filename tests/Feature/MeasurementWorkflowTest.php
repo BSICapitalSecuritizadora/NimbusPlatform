@@ -330,6 +330,12 @@ it('registers one payment per development', function () {
         'storage_path' => null,
         'status' => 'awaiting_payment',
         'current_stage' => 4,
+        'engineering_snapshot' => [
+            'plan_sets' => [
+                ['plan_set_id' => $planA->id, 'is_default' => true],
+                ['plan_set_id' => $planB->id, 'is_default' => false],
+            ],
+        ],
     ]);
     $measurement->reviews()->create(['stage' => 4, 'reviewer_user_id' => $actor->id, 'status' => 'pending']);
 
@@ -355,6 +361,12 @@ it('ignores payment rows without an amount', function () {
         'storage_path' => null,
         'status' => 'awaiting_payment',
         'current_stage' => 4,
+        'engineering_snapshot' => [
+            'plan_sets' => [
+                ['plan_set_id' => $planA->id, 'is_default' => true],
+                ['plan_set_id' => $planB->id, 'is_default' => false],
+            ],
+        ],
     ]);
     $measurement->reviews()->create(['stage' => 4, 'reviewer_user_id' => $actor->id, 'status' => 'pending']);
 

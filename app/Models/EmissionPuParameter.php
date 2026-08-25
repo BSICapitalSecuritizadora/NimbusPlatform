@@ -2,16 +2,25 @@
 
 namespace App\Models;
 
+use App\Domain\PuCalculator\Enums\PuCalculationMethod;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
+use Database\Factories\EmissionPuParameterFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class EmissionPuParameter extends Model
 {
-    /** @use HasFactory<\Database\Factories\EmissionPuParameterFactory> */
+    /** @use HasFactory<EmissionPuParameterFactory> */
     use HasFactory;
+
+    protected $attributes = [
+        'first_coupon_pre_integralization_premium_enabled' => false,
+        'first_coupon_pre_integralization_apply_index_factor' => true,
+        'first_coupon_pre_integralization_apply_spread_factor' => true,
+    ];
 
     protected $fillable = [
         'emission_id',
@@ -28,6 +37,10 @@ class EmissionPuParameter extends Model
         'calendar_code',
         'index_rate_lookup_mode',
         'index_rate_lag_business_days',
+        'first_coupon_pre_integralization_premium_enabled',
+        'first_coupon_pre_integralization_business_days',
+        'first_coupon_pre_integralization_apply_index_factor',
+        'first_coupon_pre_integralization_apply_spread_factor',
         'index_lag_months',
         'base_index_date',
         'correction_frequency',
@@ -45,28 +58,42 @@ class EmissionPuParameter extends Model
             'annual_rate' => 'decimal:8',
             'business_day_basis' => 'integer',
             'index_rate_lag_business_days' => 'integer',
+            'first_coupon_pre_integralization_premium_enabled' => 'boolean',
+            'first_coupon_pre_integralization_business_days' => 'integer',
+            'first_coupon_pre_integralization_apply_index_factor' => 'boolean',
+            'first_coupon_pre_integralization_apply_spread_factor' => 'boolean',
             'index_lag_months' => 'integer',
             'base_index_date' => 'date',
             'legacy_projection_enabled' => 'boolean',
         ];
     }
 
-    public function resolvedCalculationMethod(): \App\Domain\PuCalculator\Enums\PuCalculationMethod
+    public function resolvedCalculationMethod(): PuCalculationMethod
     {
         if ($this->calculation_method !== null) {
-            $method = \App\Domain\PuCalculator\Enums\PuCalculationMethod::tryFrom((string) $this->calculation_method);
+            $method = PuCalculationMethod::tryFrom((string) $this->calculation_method);
 
             if ($method !== null) {
                 return $method;
             }
         }
 
-        return \App\Domain\PuCalculator\Enums\PuCalculationMethod::forIndexer($this->indexer_enum);
+        return PuCalculationMethod::forIndexer($this->indexer_enum);
     }
 
     public function emission(): BelongsTo
     {
         return $this->belongsTo(Emission::class);
+    }
+
+    public function selectionEvidence(): MorphMany
+    {
+        return $this->morphMany(BusinessCalendarSelectionEvidence::class, 'subject');
+    }
+
+    public function hasFirstCouponPreIntegralizationPremium(): bool
+    {
+        return (bool) $this->first_coupon_pre_integralization_premium_enabled;
     }
 
     public function getIndexerEnumAttribute(): PuIndexer

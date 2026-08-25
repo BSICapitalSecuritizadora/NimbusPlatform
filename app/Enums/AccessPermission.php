@@ -597,4 +597,64 @@ enum AccessPermission: string
 
         return $options;
     }
+
+    public function module(): string
+    {
+        return match (true) {
+            str_starts_with($this->value, 'emissions.'),
+            str_starts_with($this->value, 'sales-boards.'),
+            str_starts_with($this->value, 'receivables.'),
+            str_starts_with($this->value, 'negotiations.'),
+            str_starts_with($this->value, 'operations.'),
+            str_starts_with($this->value, 'measurements.') => 'Emissões & Operações',
+
+            str_starts_with($this->value, 'obligations.') => 'Obrigações',
+
+            str_starts_with($this->value, 'guarantees.'),
+            str_starts_with($this->value, 'legal-instruments.') => 'Garantias & Instrumentos Jurídicos',
+
+            str_starts_with($this->value, 'documents.'),
+            str_starts_with($this->value, 'investors.'),
+            str_starts_with($this->value, 'funds.'),
+            str_starts_with($this->value, 'constructions.'),
+            str_starts_with($this->value, 'expenses.') => 'Documentos & Cadastros',
+
+            str_starts_with($this->value, 'clients.'),
+            str_starts_with($this->value, 'contracts.'),
+            str_starts_with($this->value, 'contract-installments.') => 'Clientes & Contratos',
+
+            str_starts_with($this->value, 'proposals.'),
+            str_starts_with($this->value, 'proposal-representatives.'),
+            str_starts_with($this->value, 'contact-messages.') => 'Comercial & Propostas',
+
+            str_starts_with($this->value, 'pu.') => 'Curva de PU & Índices',
+
+            str_starts_with($this->value, 'recruitment.') => 'Recrutamento & Vagas',
+
+            str_starts_with($this->value, 'nimbus.') => 'Portal Nimbus (Gestão Documental)',
+
+            str_starts_with($this->value, 'audit.'),
+            str_starts_with($this->value, 'reminder-logs.') => 'Auditoria & Rastreabilidade',
+
+            str_starts_with($this->value, 'reports.') => 'Relatórios',
+
+            str_starts_with($this->value, 'users.'),
+            str_starts_with($this->value, 'roles.'),
+            str_starts_with($this->value, 'invitations.'),
+            str_starts_with($this->value, 'settings.') => 'Administração & Usuários',
+
+            default => 'Outros',
+        };
+    }
+
+    public function isCritical(): bool
+    {
+        return str_ends_with($this->value, '.delete')
+            || str_contains($this->value, '.delete')
+            || str_contains($this->value, '.invalidate')
+            || str_contains($this->value, '.release')
+            || str_contains($this->value, 'manage-responsibilities')
+            || str_contains($this->value, 'roles.')
+            || str_contains($this->value, 'permissions');
+    }
 }

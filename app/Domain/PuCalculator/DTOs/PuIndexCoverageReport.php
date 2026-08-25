@@ -26,6 +26,7 @@ final readonly class PuIndexCoverageReport
         public array $missingIndexMessages = [],
         public array $pendingIndexDates = [],
         public array $pendingIndexMessages = [],
+        public ?string $financialRequirementStartDate = null,
     ) {}
 
     public function hasBlockingGaps(): bool
@@ -53,6 +54,7 @@ final readonly class PuIndexCoverageReport
             'indexer' => $this->indexer,
             'start_date' => $this->startDate,
             'end_date' => $this->endDate,
+            'financial_requirement_start_date' => $this->financialRequirementStartDate,
             'missing_calendar_dates' => $this->missingCalendarDates,
             'missing_index_dates' => $this->missingIndexDates,
             'projected_index_dates' => $this->projectedIndexDates,

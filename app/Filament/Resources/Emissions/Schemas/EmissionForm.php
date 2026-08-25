@@ -10,6 +10,7 @@ use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\SalesBoard;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -80,6 +81,7 @@ class EmissionForm
                                 ->label('Denominação da Operação')
                                 ->required()
                                 ->maxLength(255)
+                                ->placeholder('Ex: CRI BSI Capital - 1ª Emissão')
                                 ->columnSpanFull()
                                 ->validationMessages([
                                     'required' => 'Informe a denominação da operação.',
@@ -88,6 +90,7 @@ class EmissionForm
                             Select::make('type')
                                 ->label('Tipo de Título')
                                 ->options(Emission::TYPE_OPTIONS)
+                                ->native(false)
                                 ->required()
                                 ->validationMessages([
                                     'required' => 'Selecione o tipo de título.',
@@ -97,6 +100,7 @@ class EmissionForm
                                 ->label('Status da Operação')
                                 ->options(Emission::STATUS_OPTIONS)
                                 ->default('draft')
+                                ->native(false)
                                 ->required()
                                 ->validationMessages([
                                     'required' => 'Selecione o status da operação.',
@@ -105,31 +109,40 @@ class EmissionForm
                             Select::make('registered_with_cvm')
                                 ->label('Registrada na CVM')
                                 ->options(self::YES_NO_OPTIONS)
+                                ->native(false)
                                 ->placeholder('Selecione'),
-
-                            TextInput::make('if_code')
-                                ->label('Código IF')
-                                ->maxLength(255)
-                                ->placeholder('Informe o código IF'),
-
-                            TextInput::make('isin_code')
-                                ->label('Código ISIN')
-                                ->maxLength(255)
-                                ->placeholder('Informe o código ISIN'),
 
                             Select::make('issuer_situation')
                                 ->label('Situação da Emissora')
                                 ->options(Emission::ISSUER_SITUATION_OPTIONS)
+                                ->native(false)
                                 ->placeholder('Selecione'),
 
-                            TextInput::make('bsi_code')
-                                ->label('Código BSI')
-                                ->readOnly()
-                                ->dehydrated(false)
-                                ->placeholder('Gerado automaticamente pelo sistema')
-                                ->helperText('Código identificador gerado automaticamente.')
-                                ->columnSpanFull(),
+                            Grid::make([
+                                'default' => 1,
+                                'md' => 3,
+                            ])
+                                ->columnSpanFull()
+                                ->schema([
+                                    TextInput::make('if_code')
+                                        ->label('Código IF')
+                                        ->maxLength(255)
+                                        ->placeholder('Informe o código IF'),
 
+                                    TextInput::make('isin_code')
+                                        ->label('Código ISIN')
+                                        ->maxLength(255)
+                                        ->placeholder('Informe o código ISIN'),
+
+                                    TextInput::make('bsi_code')
+                                        ->label('Código BSI')
+                                        ->readOnly()
+                                        ->dehydrated(false)
+                                        ->placeholder('Gerado automaticamente pelo sistema')
+                                        ->extraInputAttributes([
+                                            'class' => 'bsi-code-readonly',
+                                        ]),
+                                ]),
                         ]),
 
                     EmissionConstructionsStep::make(),
@@ -420,13 +433,66 @@ class EmissionForm
                             Placeholder::make('gemini_extraction_progress')
                                 ->label('')
                                 ->content(new HtmlString(
-                                    '<div class="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-                                    <svg class="animate-spin size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                    </svg>
-                                    Extração de cláusulas em andamento via IA. O processo pode levar de 3 a 5 minutos; a página será atualizada automaticamente ao concluir.
-                                </div>'
+                                    '<div class="bsi-progress-card w-full">
+                                        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                                                    <svg class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h4 class="text-sm font-semibold text-[#fbfaf8]">Extração de Cláusulas via IA</h4>
+                                                    <p class="text-xs text-white/50">Processamento e estruturação do Termo de Securitização</p>
+                                                </div>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                                                <span class="size-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                                Em andamento
+                                            </span>
+                                        </div>
+
+                                        <p class="text-xs text-white/75 mt-3 leading-relaxed">
+                                            A inteligência artificial está analisando o documento para identificar, extrair e preencher automaticamente as cláusulas e obrigações da operação.
+                                        </p>
+
+                                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 my-3.5 pt-1">
+                                            <div class="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+                                                <svg class="size-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"/></svg>
+                                                <span>Documento identificado</span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5 text-xs text-amber-300 font-medium">
+                                                <span class="size-2 rounded-full bg-amber-400 animate-ping shrink-0"></span>
+                                                <span>Extração via IA</span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5 text-xs text-white/40">
+                                                <span class="size-2 rounded-full border border-white/25 shrink-0"></span>
+                                                <span>Estruturando cláusulas</span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5 text-xs text-white/40">
+                                                <span class="size-2 rounded-full border border-white/25 shrink-0"></span>
+                                                <span>Preenchimento final</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="bsi-progress-bar-track">
+                                            <div class="bsi-progress-bar-indeterminate"></div>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 text-[11px] text-white/50 border-t border-white/5">
+                                            <div class="flex items-center gap-1.5">
+                                                <svg class="size-3.5 text-amber-400/80" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
+                                                <span>Tempo estimado: <strong class="text-white/85 font-medium">3 a 5 minutos</strong></span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="size-1.5 rounded-full bg-emerald-400/70"></span>
+                                                <span>Atualização automática ao concluir (a cada 5s)</span>
+                                            </div>
+                                        </div>
+                                    </div>'
                                 ))
                                 ->columnSpanFull()
                                 ->visibleOn('edit')
@@ -436,13 +502,35 @@ class EmissionForm
                             Placeholder::make('pu_curve_generation_progress')
                                 ->label('')
                                 ->content(new HtmlString(
-                                    '<div class="flex items-center gap-2 text-sm text-sky-600 dark:text-sky-400">
-                                    <svg class="animate-spin size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                    </svg>
-                                    Geracao da curva diaria de PU em andamento (processando em fila). A pagina sera atualizada automaticamente ao concluir.
-                                </div>'
+                                    '<div class="bsi-progress-card bsi-progress-card-sky w-full">
+                                        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400">
+                                                    <svg class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h4 class="text-sm font-semibold text-[#fbfaf8]">Geração da Curva Diária de PU</h4>
+                                                    <p class="text-xs text-white/50">Cálculo diário de PU sendo processado em segundo plano (fila)</p>
+                                                </div>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                                                <span class="size-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+                                                Em andamento
+                                            </span>
+                                        </div>
+
+                                        <div class="bsi-progress-bar-track my-3">
+                                            <div class="bsi-progress-bar-indeterminate-sky"></div>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/50">
+                                            <span>Acompanhe o andamento no <strong>Painel da Curva PU</strong>.</span>
+                                            <span>Atualização automática ao concluir</span>
+                                        </div>
+                                    </div>'
                                 ))
                                 ->columnSpanFull()
                                 ->visibleOn('edit')
@@ -452,13 +540,35 @@ class EmissionForm
                             Placeholder::make('pu_curve_validation_progress')
                                 ->label('')
                                 ->content(new HtmlString(
-                                    '<div class="flex items-center gap-2 text-sm text-sky-600 dark:text-sky-400">
-                                    <svg class="animate-spin size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                    </svg>
-                                    Validacao da curva de PU em andamento (processando em fila). A pagina sera atualizada automaticamente ao concluir.
-                                </div>'
+                                    '<div class="bsi-progress-card bsi-progress-card-sky w-full">
+                                        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400">
+                                                    <svg class="size-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h4 class="text-sm font-semibold text-[#fbfaf8]">Validação da Curva de PU</h4>
+                                                    <p class="text-xs text-white/50">Comparação com planilha de referência em execução na fila</p>
+                                                </div>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                                                <span class="size-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+                                                Em andamento
+                                            </span>
+                                        </div>
+
+                                        <div class="bsi-progress-bar-track my-3">
+                                            <div class="bsi-progress-bar-indeterminate-sky"></div>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/50">
+                                            <span>O relatório de divergências será gerado ao concluir.</span>
+                                            <span>Atualização automática ao concluir</span>
+                                        </div>
+                                    </div>'
                                 ))
                                 ->columnSpanFull()
                                 ->visibleOn('edit')
@@ -523,52 +633,62 @@ class EmissionForm
                             Textarea::make('corporate_purpose')
                                 ->label('Objeto Social')
                                 ->placeholder('Descreva o objeto social da operação')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('use_of_proceeds')
                                 ->label('Destinação dos Recursos')
                                 ->placeholder('Descreva a destinação dos recursos captados')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('subscription_and_integralization_terms')
                                 ->label('Condições de Subscrição e Integralização')
                                 ->placeholder('Descreva as formas e preços de subscrição e integralização')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('repactuation')
                                 ->label('Repactuação')
                                 ->placeholder('Descreva as condições de repactuação, se houver')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('amortization_payment_schedule')
                                 ->label('Calendário de Pagamento da Amortização')
                                 ->placeholder('Descreva o cronograma de amortização')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('remuneration_payment_schedule')
                                 ->label('Calendário de Pagamento da Remuneração')
                                 ->placeholder('Descreva o cronograma de pagamento de juros/remuneração')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('optional_early_redemption')
                                 ->label('Resgate Antecipado Facultativo')
                                 ->placeholder('Descreva as condições para resgate antecipado facultativo')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('early_amortization')
                                 ->label('Amortização Antecipada')
                                 ->placeholder('Descreva as hipóteses de amortização antecipada')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('remuneration_calculation')
                                 ->label('Cálculo da Remuneração')
                                 ->placeholder('Descreva a metodologia de cálculo da remuneração')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('segregated_estate')
                                 ->label('Patrimônio Separado')
                                 ->placeholder('Descreva a constituição do patrimônio separado')
-                                ->rows(4),
+                                ->rows(4)
+                                ->columnSpanFull(),
 
                             Textarea::make('property_description')
                                 ->label('Descrição do Imóvel')
@@ -619,20 +739,198 @@ class EmissionForm
                     Step::make('Revisão')
                         ->schema([
                             Placeholder::make('resumo')
-                                ->label('Resumo dos Dados Preenchidos')
-                                ->content(fn (Get $get, string $operation) => new HtmlString(
-                                    '<b>Denominação:</b> '.($get('name') ?: '<span class="text-danger-500">Não preenchido</span>').'<br>'.
-                                    '<b>Tipo:</b> '.($get('type') ?: '<span class="text-danger-500">Não preenchido</span>').'<br>'.
-                                    '<b>Volume Emitido:</b> R$ '.($get('issued_volume') ?: '0,00').'<br>'.
-                                    '<b>Emissor:</b> '.($get('issuer') ?: '<span class="text-danger-500">Não preenchido</span>').'<br>'.
-                                    self::summarizeInitialConstructions($get, $operation).'<br>'.
-                                    '<span class="text-gray-500">Revise os campos acima e confirme a operação clicando em salvar.</span>'
-                                )),
+                                ->hiddenLabel()
+                                ->columnSpanFull()
+                                ->content(fn (Get $get, string $operation) => view('filament.emissions.review-sheet', self::buildReviewData($get, $operation))),
                         ]),
                 ])
                     ->columnSpanFull()
                     ->skippable(fn (string $operation): bool => $operation !== 'create'),
             ]);
+    }
+
+    /**
+     * Builds comprehensive structured review data across all wizard steps.
+     */
+    public static function buildReviewData(Get $get, string $operation): array
+    {
+        $isCreate = $operation === 'create';
+
+        $stepsIndexes = [
+            'dados_basicos' => 0,
+            'empreendimentos' => $isCreate ? 1 : 0,
+            'participantes' => $isCreate ? 2 : 1,
+            'caracteristicas_financeiras' => $isCreate ? 3 : 2,
+            'valores_remuneracao' => $isCreate ? 4 : 3,
+            'lastro_garantias' => $isCreate ? 5 : 4,
+            'documentos' => $isCreate ? 6 : 5,
+        ];
+
+        // Format and collect constructions
+        $constructions = [];
+        if ($isCreate) {
+            $rawConstructions = array_values((array) $get(EmissionConstructionsStep::STATE_PATH));
+            foreach ($rawConstructions as $c) {
+                $devName = $c['development_name'] ?? null;
+                $refMonth = $c[EmissionConstructionsStep::SALES_BOARD_STATE_PATH]['reference_month'] ?? null;
+                if (filled($devName)) {
+                    $constructions[] = [
+                        'name' => (string) $devName,
+                        'details' => filled($refMonth) ? 'Quadro de Vendas: '.SalesBoard::formatReferenceMonthForDisplay($refMonth) : 'Quadro de Vendas pendente',
+                    ];
+                }
+            }
+        }
+
+        // Status option labels
+        $statusOptions = Emission::STATUS_OPTIONS;
+        $statusKey = (string) $get('status');
+        $statusLabel = $statusOptions[$statusKey] ?? $statusKey;
+
+        // CVM registered
+        $cvmVal = (string) $get('registered_with_cvm');
+        $cvmLabel = $cvmVal === '1' ? 'Sim' : ($cvmVal === '0' ? 'Não' : ($cvmVal ?: 'Não informado'));
+
+        // Issuer situation
+        $issuerSitKey = (string) $get('issuer_situation');
+        $issuerSitOptions = Emission::ISSUER_SITUATION_OPTIONS;
+        $issuerSitLabel = $issuerSitOptions[$issuerSitKey] ?? $issuerSitKey;
+
+        // Fiduciary regime
+        $fidRegime = (string) $get('fiduciary_regime');
+        $fidRegimeLabel = $fidRegime === '1' ? 'Sim' : ($fidRegime === '0' ? 'Não' : ($fidRegime ?: 'Não informado'));
+
+        // Prepayment possibility
+        $prepay = $get('prepayment_possibility');
+        $prepayLabel = ($prepay === '1' || $prepay === true || $prepay === 1) ? 'Sim' : 'Não';
+
+        // Funds Yes/No
+        $guaranteeFund = (string) $get('guarantee_fund');
+        $expenseFund = (string) $get('expense_fund');
+        $liquidityFund = (string) $get('liquidity_fund');
+        $reserveFund = (string) $get('reserve_fund');
+
+        // Clauses in Lastro, garantias e operação
+        $clauses = [];
+        $clauseDefs = [
+            ['field' => 'destination_of_funds', 'label' => 'Destinação dos Recursos'],
+            ['field' => 'subscription_conditions', 'label' => 'Condições de Subscrição e Integralização'],
+            ['field' => 'repurchase_conditions', 'label' => 'Repactuação'],
+            ['field' => 'amortization_schedule', 'label' => 'Calendário de Amortização'],
+            ['field' => 'remuneration_schedule', 'label' => 'Calendário de Remuneração'],
+            ['field' => 'early_redemption_conditions', 'label' => 'Resgate Antecipado Facultativo'],
+            ['field' => 'early_amortization_conditions', 'label' => 'Amortização Antecipada'],
+            ['field' => 'remuneration_calculation', 'label' => 'Cálculo da Remuneração'],
+            ['field' => 'penalty_conditions', 'label' => 'Multa e Juros Moratórios'],
+            ['field' => 'underlying_asset', 'label' => 'Descrição do Lastro'],
+            ['field' => 'covenant_conditions', 'label' => 'Obrigações Adicionais (Covenants)'],
+            ['field' => 'cross_default_conditions', 'label' => 'Vencimento Antecipado'],
+            ['field' => 'operational_structure', 'label' => 'Estrutura da Operação'],
+        ];
+
+        foreach ($clauseDefs as $cd) {
+            $val = $get($cd['field']);
+            if (filled($val)) {
+                $clauses[] = [
+                    'label' => $cd['label'],
+                    'value' => (string) $val,
+                ];
+            }
+        }
+
+        // Remuneration summary string
+        $indexer = (string) ($get('remuneration_indexer') ?: $get('indexer') ?: '');
+        $rate = (string) ($get('remuneration_rate') ?: $get('spread_rate') ?: '');
+        $remunerationSummary = trim($indexer.(filled($rate) ? ' + '.$rate.'%' : ''));
+
+        // Series and Emission number combined
+        $series = $get('series');
+        $emNumber = $get('emission_number');
+        $seriesNumber = trim(($series ? $series : '').($series && $emNumber ? ' / ' : '').($emNumber ? $emNumber : ''));
+
+        $stepsValidity = [
+            'dados_basicos' => filled($get('name')) && filled($get('type')),
+            'empreendimentos' => ! $isCreate || ! empty($constructions),
+            'participantes' => filled($get('issuer')),
+            'caracteristicas_financeiras' => filled($get('issue_date')) || filled($get('maturity_date')),
+            'valores_remuneracao' => filled($get('issued_volume')) || filled($get('issued_price')) || filled($get('remuneration_indexer')),
+            'lastro_garantias' => true,
+            'documentos' => true,
+        ];
+
+        return [
+            'is_create' => $isCreate,
+            'steps_indexes' => $stepsIndexes,
+            'steps_validity' => $stepsValidity,
+            'summary' => [
+                'name' => (string) $get('name'),
+                'type' => (string) $get('type'),
+                'issued_volume' => (string) $get('issued_volume'),
+                'issuer' => (string) $get('issuer'),
+                'status_label' => $statusLabel,
+                'issue_date' => self::formatDateForDisplay($get('issue_date')),
+                'maturity_date' => self::formatDateForDisplay($get('maturity_date')),
+                'remuneration_summary' => $remunerationSummary,
+            ],
+            'dados_basicos' => [
+                'name' => (string) $get('name'),
+                'type' => (string) $get('type'),
+                'status_label' => $statusLabel,
+                'registered_with_cvm_label' => $cvmLabel,
+                'issuer_situation_label' => $issuerSitLabel,
+                'if_code' => (string) $get('if_code'),
+                'isin_code' => (string) $get('isin_code'),
+                'bsi_code' => (string) $get('bsi_code'),
+            ],
+            'constructions' => $constructions,
+            'participantes' => [
+                'issuer' => (string) $get('issuer'),
+                'lead_coordinator' => (string) $get('lead_coordinator'),
+                'settlement_bank' => (string) $get('settlement_bank'),
+                'registrar' => (string) $get('registrar'),
+                'distributor' => (string) $get('distributor'),
+                'trustee_agent' => (string) $get('trustee_agent'),
+                'debtor' => (string) $get('debtor'),
+                'law_firm' => (string) $get('law_firm'),
+            ],
+            'caracteristicas_financeiras' => [
+                'issue_date' => self::formatDateForDisplay($get('issue_date')),
+                'maturity_date' => self::formatDateForDisplay($get('maturity_date')),
+                'series_number' => $seriesNumber,
+                'fiduciary_regime_label' => $fidRegimeLabel,
+                'form_type' => (string) $get('form_type'),
+                'monetary_update_period' => (string) $get('monetary_update_period'),
+                'interest_payment_frequency' => (string) $get('interest_payment_frequency'),
+                'amortization_frequency' => (string) $get('amortization_frequency'),
+                'concentration' => (string) $get('concentration'),
+                'prepayment_possibility_label' => $prepayLabel,
+                'segment' => (string) $get('segment'),
+                'target_audience' => (string) $get('target_audience'),
+            ],
+            'valores_remuneracao' => [
+                'offer_type' => (string) $get('offer_type'),
+                'remuneration_indexer' => (string) $get('remuneration_indexer'),
+                'remuneration_rate' => (string) $get('remuneration_rate'),
+                'issued_price' => (string) $get('issued_price'),
+                'issued_quantity' => (string) $get('issued_quantity'),
+                'integralized_quantity' => (string) $get('integralized_quantity'),
+                'remaining_quantity' => (string) $get('remaining_quantity'),
+                'issued_volume' => (string) $get('issued_volume'),
+            ],
+            'lastro_garantias' => [
+                'guarantee_fund' => $guaranteeFund === '1' ? 'Sim' : ($guaranteeFund === '0' ? 'Não' : ($guaranteeFund ?: 'Não')),
+                'expense_fund' => $expenseFund === '1' ? 'Sim' : ($expenseFund === '0' ? 'Não' : ($expenseFund ?: 'Não')),
+                'liquidity_fund' => $liquidityFund === '1' ? 'Sim' : ($liquidityFund === '0' ? 'Não' : ($liquidityFund ?: 'Não')),
+                'reserve_fund' => $reserveFund === '1' ? 'Sim' : ($reserveFund === '0' ? 'Não' : ($reserveFund ?: 'Não')),
+                'clauses' => $clauses,
+            ],
+            'documentos' => [
+                'risk_rating' => (string) $get('risk_rating'),
+                'public_trading_code' => (string) $get('public_trading_code'),
+                'trading_environment' => (string) $get('trading_environment'),
+                'description' => (string) $get('description'),
+            ],
+        ];
     }
 
     /**
@@ -737,6 +1035,23 @@ class EmissionForm
     public static function formatQuantityForDisplay(mixed $value): string
     {
         return number_format((float) self::normalizeQuantityValue($value), 0, ',', '.');
+    }
+
+    public static function formatDateForDisplay(mixed $value): string
+    {
+        if (blank($value)) {
+            return '';
+        }
+
+        try {
+            if ($value instanceof \DateTimeInterface) {
+                return $value->format('d/m/Y');
+            }
+
+            return Carbon::parse((string) $value)->format('d/m/Y');
+        } catch (\Throwable) {
+            return (string) $value;
+        }
     }
 
     /**

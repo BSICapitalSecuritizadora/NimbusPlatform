@@ -8,6 +8,7 @@ use Filament\Actions\Action;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\ColumnGroup;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -54,69 +55,99 @@ class SalesBoardHistoriesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('created_at')
             ->columns([
-                TextColumn::make('created_at')
-                    ->label('Registrado em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
-                TextColumn::make('position')
-                    ->label('Posição')
-                    ->badge()
-                    ->state(fn (SalesBoardHistory $record): ?string => match (true) {
-                        $record->is_initial => 'Início da Operação',
-                        in_array($record->getKey(), $this->versionsInForce(), true) => 'Vigente',
-                        default => null,
-                    })
-                    ->color(fn (?string $state): string => $state === 'Início da Operação' ? 'warning' : 'success')
-                    ->placeholder('—'),
-                TextColumn::make('reference_month')
-                    ->label('Competência')
-                    ->date('m/Y')
-                    ->sortable(),
-                TextColumn::make('changedBy.name')
-                    ->label('Alterado por')
-                    ->placeholder('—')
-                    ->toggleable(),
-                IconColumn::make('change_reason')
-                    ->label('Motivo')
-                    ->alignCenter()
-                    ->icon(fn (?string $state): ?string => filled($state) ? 'heroicon-o-chat-bubble-left-ellipsis' : null)
-                    ->color('warning')
-                    ->tooltip(fn (?string $state): ?string => filled($state) ? 'Alteração justificada — clique em "Ver motivo".' : null),
-                TextColumn::make('stock_units')
-                    ->label('Estoque')
-                    ->sortable(),
-                TextColumn::make('financed_units')
-                    ->label('Financiado')
-                    ->sortable(),
-                TextColumn::make('paid_units')
-                    ->label('Quitado')
-                    ->sortable(),
-                TextColumn::make('exchanged_units')
-                    ->label('Permutado')
-                    ->sortable(),
-                TextColumn::make('total_units')
-                    ->label('Quantidade Total')
-                    ->sortable(),
-                TextColumn::make('stock_value')
-                    ->label('Valor em estoque')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(),
-                TextColumn::make('financed_value')
-                    ->label('Valor financiado')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(),
-                TextColumn::make('paid_value')
-                    ->label('Valor quitado')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(),
-                TextColumn::make('exchanged_value')
-                    ->label('Valor permutado')
-                    ->money('BRL')
-                    ->sortable()
-                    ->toggleable(),
+                ColumnGroup::make('Contexto')
+                    ->columns([
+                        TextColumn::make('created_at')
+                            ->label('Registrado em')
+                            ->dateTime('d/m/Y H:i')
+                            ->sortable(),
+                        TextColumn::make('position')
+                            ->label('Posição')
+                            ->badge()
+                            ->state(fn (SalesBoardHistory $record): ?string => match (true) {
+                                $record->is_initial => 'Início da Operação',
+                                in_array($record->getKey(), $this->versionsInForce(), true) => 'Vigente',
+                                default => null,
+                            })
+                            ->color(fn (?string $state): string => $state === 'Início da Operação' ? 'warning' : 'success')
+                            ->placeholder('—'),
+                        TextColumn::make('reference_month')
+                            ->label('Competência')
+                            ->date('m/Y')
+                            ->sortable(),
+                        TextColumn::make('changedBy.name')
+                            ->label('Alterado por')
+                            ->placeholder('—')
+                            ->toggleable(),
+                        IconColumn::make('change_reason')
+                            ->label('Motivo')
+                            ->alignCenter()
+                            ->icon(fn (?string $state): ?string => filled($state) ? 'heroicon-o-chat-bubble-left-ellipsis' : null)
+                            ->color('warning')
+                            ->tooltip(fn (?string $state): ?string => filled($state) ? 'Alteração justificada — clique em "Ver motivo".' : null),
+                    ]),
+
+                ColumnGroup::make('Quantidades')
+                    ->columns([
+                        TextColumn::make('stock_units')
+                            ->label('Estoque')
+                            ->alignEnd()
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums'])
+                            ->sortable(),
+                        TextColumn::make('financed_units')
+                            ->label('Financiado')
+                            ->alignEnd()
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums'])
+                            ->sortable(),
+                        TextColumn::make('paid_units')
+                            ->label('Quitado')
+                            ->alignEnd()
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums'])
+                            ->sortable(),
+                        TextColumn::make('exchanged_units')
+                            ->label('Permutado')
+                            ->alignEnd()
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums'])
+                            ->sortable(),
+                        TextColumn::make('total_units')
+                            ->label('Quantidade Total')
+                            ->alignEnd()
+                            ->weight('bold')
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums font-semibold'])
+                            ->sortable(),
+                    ]),
+
+                ColumnGroup::make('Valores')
+                    ->columns([
+                        TextColumn::make('stock_value')
+                            ->label('Valor em estoque')
+                            ->money('BRL')
+                            ->alignEnd()
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap'])
+                            ->sortable()
+                            ->toggleable(),
+                        TextColumn::make('financed_value')
+                            ->label('Valor financiado')
+                            ->money('BRL')
+                            ->alignEnd()
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap'])
+                            ->sortable()
+                            ->toggleable(),
+                        TextColumn::make('paid_value')
+                            ->label('Valor quitado')
+                            ->money('BRL')
+                            ->alignEnd()
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap'])
+                            ->sortable()
+                            ->toggleable(),
+                        TextColumn::make('exchanged_value')
+                            ->label('Valor permutado')
+                            ->money('BRL')
+                            ->alignEnd()
+                            ->extraCellAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap'])
+                            ->sortable()
+                            ->toggleable(),
+                    ]),
             ])
             ->defaultSort('created_at', 'desc')
             ->headerActions([])
@@ -148,6 +179,8 @@ class SalesBoardHistoriesRelationManager extends RelationManager
                     ]),
             ])
             ->bulkActions([])
-            ->emptyStateHeading('Nenhum histórico de valores registrado');
+            ->emptyStateHeading('Nenhuma atualização anterior')
+            ->emptyStateDescription('O histórico será preenchido à medida que novas posições do quadro de vendas forem registradas.')
+            ->emptyStateIcon('heroicon-o-clock');
     }
 }

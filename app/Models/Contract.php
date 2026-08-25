@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\Contracts\ImportContractsFromSpreadsheet;
 use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
 use App\Support\Contracts\ContractOccupancyPeriod;
@@ -14,8 +15,10 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -70,6 +73,10 @@ class Contract extends Model
 
     protected static function booted(): void
     {
+        static::saved(function (self $contract): void {
+            $contract->mirrorSingleBuyerIntoPivot();
+        });
+
         static::saving(function (self $contract): void {
             $contract->construction_id = self::resolveConstructionId($contract->construction_unit_id);
 
@@ -95,9 +102,66 @@ class Contract extends Model
             ->dontSubmitEmptyLogs();
     }
 
+    /**
+     * The single buyer the contract was born with.
+     *
+     * Transitional: `contracts.client_id` is being replaced by {@see clients()}.
+     * It is still the column the application writes, and the pivot is kept in
+     * step with it, so the two agree for as long as both exist. It stops being
+     * written -- and this relation stops being used -- in the release that turns
+     * the buyer set plural.
+     *
+     * @deprecated Use {@see clients()}.
+     */
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Everyone who bought under this contract.
+     *
+     * `withTrashed()` on purpose: a buyer that was archived years later is still
+     * who signed, and a historical contract that hid them would be lying. The
+     * rule about not giving new contracts to an archived client belongs to the
+     * write path, not to reading the past.
+     *
+     * @return BelongsToMany<Client, $this>
+     */
+    public function clients(): BelongsToMany
+    {
+        return $this->belongsToMany(Client::class, 'contract_clients')
+            ->withTrashed()
+            ->orderBy('clients.name');
+    }
+
+    /**
+     * Keeps the buyer table in step with the column that still writes it.
+     *
+     * Transitional, and deliberately narrow: while the domain has exactly one
+     * buyer, `client_id` translates into the pivot with no interpretation --
+     * there is no "main buyer" being chosen here, there is only ever one. The
+     * release that makes the set plural deletes this method along with the
+     * writes to `client_id`.
+     *
+     * Bulk inserts skip model events, so the contract import fills the pivot
+     * itself; see {@see ImportContractsFromSpreadsheet}.
+     */
+    private function mirrorSingleBuyerIntoPivot(): void
+    {
+        if ($this->client_id === null) {
+            return;
+        }
+
+        DB::table('contract_clients')
+            ->where('contract_id', $this->getKey())
+            ->where('client_id', '!=', $this->client_id)
+            ->delete();
+
+        DB::table('contract_clients')->insertOrIgnore([
+            'contract_id' => $this->getKey(),
+            'client_id' => $this->client_id,
+        ]);
     }
 
     public function constructionUnit(): BelongsTo

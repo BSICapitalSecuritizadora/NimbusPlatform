@@ -8,6 +8,7 @@ use App\DTOs\Guarantees\GuaranteePositionData;
 use App\Enums\AccessPermission;
 use App\Enums\GuaranteeCategory;
 use App\Enums\GuaranteeLegalStatus;
+use App\Enums\GuaranteeRequirementBasis;
 use App\Enums\GuaranteeType;
 use App\Enums\GuaranteeValuationBasis;
 use App\Enums\GuaranteeValueSource;
@@ -19,6 +20,7 @@ use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
 use App\Services\Guarantees\GuaranteeAlertBuilder;
 use App\Services\Guarantees\GuaranteeSnapshotWriter;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -40,6 +42,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 
 /**
  * Aba de Garantias da emissão.
@@ -109,67 +112,97 @@ class GuaranteesRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('name')
                     ->label('Garantia')
-                    ->formatStateUsing(fn (?string $state, Guarantee $record): string => $record->display_name)
-                    ->description(function (Guarantee $record): ?string {
-                        $parts = [];
-                        if ($record->construction?->name) {
-                            $parts[] = $record->construction->name;
-                        } elseif ($record->fund?->display_name) {
-                            $parts[] = $record->fund->display_name;
-                        }
-                        $type = GuaranteeType::labelFor($record->type);
-                        if ($type && $type !== $record->display_name) {
-                            $parts[] = $type;
-                        }
-
-                        return ! empty($parts) ? implode(' · ', $parts) : null;
-                    })
+                    ->formatStateUsing(fn (?string $state, Guarantee $record): HtmlString => new HtmlString(
+                        '<div class="flex flex-col py-0.5 min-w-[200px]">
+                            <span class="font-semibold text-sm text-[#fbfaf8] leading-snug hover:text-amber-300 transition-colors">'.e($record->display_name).'</span>
+                            '.($this->guaranteeSubtitle($record) ? '<span class="text-xs text-white/50 leading-tight mt-0.5">'.e($this->guaranteeSubtitle($record)).'</span>' : '').'
+                        </div>'
+                    ))
                     ->searchable()
-                    ->weight('bold')
-                    ->tooltip(fn (Guarantee $record): string => $record->display_name)
-                    ->wrap(),
+                    ->grow()
+                    ->tooltip(fn (Guarantee $record): string => $record->display_name),
                 TextColumn::make('identification')
                     ->label('Identificação')
                     ->formatStateUsing(fn (mixed $state): string => $this->formatIdentification($state))
                     ->placeholder('—')
-                    ->wrap()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('requirement_basis')
                     ->label('Regra Contratual')
-                    ->formatStateUsing(fn (Guarantee $record): string => $this->requirementLabel($record))
+                    ->formatStateUsing(fn (Guarantee $record): HtmlString => new HtmlString(
+                        '<span class="text-xs text-white/80 leading-snug line-clamp-2 max-w-[280px] block" title="'.e($this->requirementFullDescription($record)).'">'.
+                        e($this->requirementLabel($record)).
+                        '</span>'
+                    ))
                     ->placeholder('—')
-                    ->wrap()
+                    ->tooltip(fn (Guarantee $record): string => $this->requirementFullDescription($record))
                     ->toggleable(),
                 TextColumn::make('contracted_value')
                     ->label('Valor Contratação')
-                    ->formatStateUsing(fn (mixed $state): string => $this->money($state))
+                    ->formatStateUsing(fn (mixed $state): HtmlString => new HtmlString(
+                        $state === null || $state === ''
+                            ? '<span class="text-white/30 font-normal">—</span>'
+                            : '<span class="text-xs font-medium text-white/75 tabular-nums whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
+                    ))
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('current_value')
                     ->label('Valor Atual')
-                    ->state(fn (Guarantee $record): string => $this->money($this->positionFor($record)?->currentValue()))
-                    ->weight('semibold')
+                    ->state(fn (Guarantee $record): ?float => $this->positionFor($record)?->currentValue())
+                    ->formatStateUsing(fn (?float $state): HtmlString => new HtmlString(
+                        $state === null
+                            ? '<span class="text-white/30 font-normal">—</span>'
+                            : '<span class="text-xs sm:text-sm font-bold text-[#fbfaf8] tabular-nums whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
+                    ))
                     ->alignEnd(),
                 TextColumn::make('eligible_value')
                     ->label('Valor Elegível')
-                    ->state(fn (Guarantee $record): string => $this->money($this->positionFor($record)?->eligibleValue))
+                    ->state(fn (Guarantee $record): ?float => $this->positionFor($record)?->eligibleValue)
+                    ->formatStateUsing(fn (?float $state): HtmlString => new HtmlString(
+                        $state === null
+                            ? '<span class="text-white/30 font-normal">—</span>'
+                            : '<span class="text-xs font-medium text-white/75 tabular-nums whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
+                    ))
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('coverage')
                     ->label('Cobertura')
-                    ->state(fn (Guarantee $record): string => $this->ratio($this->positionFor($record)?->coverageRatio))
-                    ->color(fn (Guarantee $record): ?string => match ($this->positionFor($record)?->coverageStatus?->color()) {
-                        'success' => 'success',
-                        'warning' => 'warning',
-                        'danger' => 'danger',
-                        default => null,
+                    ->state(fn (Guarantee $record): ?float => $this->positionFor($record)?->coverageRatio)
+                    ->formatStateUsing(function (?float $state, Guarantee $record): HtmlString {
+                        if ($state === null) {
+                            return new HtmlString('<span class="text-white/30 font-normal">—</span>');
+                        }
+                        $percent = number_format($state * 100, 2, ',', '.').'%';
+                        $statusColor = $this->positionFor($record)?->coverageStatus?->color();
+                        $color = match ($statusColor) {
+                            'success' => 'text-emerald-400',
+                            'warning' => 'text-amber-400',
+                            'danger' => 'text-rose-400',
+                            default => 'text-white/80',
+                        };
+                        $barColor = match ($statusColor) {
+                            'success' => 'bg-emerald-400',
+                            'warning' => 'bg-amber-400',
+                            'danger' => 'bg-rose-400',
+                            default => 'bg-white/40',
+                        };
+                        $fillWidth = min(100, max(0, round($state * 100)));
+
+                        return new HtmlString(
+                            '<div class="flex flex-col items-end gap-1">
+                                <span class="font-bold text-xs '.$color.' tabular-nums whitespace-nowrap">'.$percent.'</span>
+                                <div class="w-14 h-1 bg-white/10 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full '.$barColor.'" style="width: '.$fillWidth.'%"></div>
+                                </div>
+                            </div>'
+                        );
                     })
-                    ->weight('semibold')
                     ->alignEnd()
                     ->toggleable(),
                 TextColumn::make('validity_end_date')
                     ->label('Vigência')
-                    ->formatStateUsing(fn (mixed $state, Guarantee $record): string => $this->validityLabel($record))
+                    ->formatStateUsing(fn (mixed $state, Guarantee $record): HtmlString => new HtmlString(
+                        '<span class="text-xs text-white/60 tabular-nums whitespace-nowrap">'.e($this->validityLabel($record)).'</span>'
+                    ))
                     ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('value_source')
@@ -217,13 +250,19 @@ class GuaranteesRelationManager extends RelationManager
             ])
             ->actions([
                 $this->makeViewDetailAction(),
-                $this->makeRecordValuationAction(),
-                $this->makeInformValueAction(),
-                EditAction::make()
-                    ->modalHeading('Editar garantia')
-                    ->authorize(fn (): bool => $this->userCanUpdate()),
-                DeleteAction::make()
-                    ->authorize(fn (): bool => $this->userCanDelete()),
+                ActionGroup::make([
+                    $this->makeRecordValuationAction(),
+                    $this->makeInformValueAction(),
+                    EditAction::make()
+                        ->modalHeading('Editar garantia')
+                        ->authorize(fn (): bool => $this->userCanUpdate()),
+                    DeleteAction::make()
+                        ->authorize(fn (): bool => $this->userCanDelete()),
+                ])
+                    ->icon('heroicon-o-ellipsis-vertical')
+                    ->color('gray')
+                    ->iconButton()
+                    ->tooltip('Mais opções'),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -275,6 +314,8 @@ class GuaranteesRelationManager extends RelationManager
             ->label('Detalhes')
             ->icon('heroicon-o-eye')
             ->color('gray')
+            ->iconButton()
+            ->tooltip('Ver detalhes da garantia')
             ->modalHeading(fn (Guarantee $record): string => $record->display_name)
             ->modalWidth('5xl')
             ->modalSubmitAction(false)
@@ -469,7 +510,46 @@ class GuaranteesRelationManager extends RelationManager
         return str($key)->replace('_', ' ')->title()->toString();
     }
 
+    protected function guaranteeSubtitle(Guarantee $record): ?string
+    {
+        $parts = [];
+        if ($record->construction?->name) {
+            $parts[] = $record->construction->name;
+        } elseif ($record->fund?->display_name) {
+            $parts[] = $record->fund->display_name;
+        }
+        $type = GuaranteeType::labelFor($record->type);
+        if ($type && $type !== $record->display_name) {
+            $parts[] = $type;
+        }
+
+        return ! empty($parts) ? implode(' · ', $parts) : null;
+    }
+
     protected function requirementLabel(Guarantee $guarantee): string
+    {
+        $position = $this->positionFor($guarantee);
+
+        if ($guarantee->requirement_value !== null && $guarantee->requirement_basis === GuaranteeRequirementBasis::Absolute) {
+            return $this->money($guarantee->requirement_value);
+        }
+
+        if ($guarantee->requirement_percentage !== null && $guarantee->requirement_basis === GuaranteeRequirementBasis::Percentage) {
+            $baseLabel = match ($guarantee->requirement_base) {
+                'outstanding_balance' => 'do saldo devedor',
+                'issued_volume' => 'do volume emitido',
+                default => '',
+            };
+
+            return number_format((float) $guarantee->requirement_percentage * 100, 2, ',', '.').'% '.$baseLabel;
+        }
+
+        return $position?->requirement->description
+            ?? $guarantee->requirement_formula
+            ?? ($guarantee->requirement_value === null ? '—' : $this->money($guarantee->requirement_value));
+    }
+
+    protected function requirementFullDescription(Guarantee $guarantee): string
     {
         $position = $this->positionFor($guarantee);
 

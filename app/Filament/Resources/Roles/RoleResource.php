@@ -64,7 +64,7 @@ class RoleResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with('permissions');
+        return parent::getEloquentQuery()->with('permissions')->withCount('users');
     }
 
     public static function canViewAny(): bool

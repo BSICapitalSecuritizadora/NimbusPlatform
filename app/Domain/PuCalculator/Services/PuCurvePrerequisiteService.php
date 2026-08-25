@@ -8,6 +8,7 @@ use App\Domain\PuCalculator\Calculators\IpcaCurveCalculator;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteIssue;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
+use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
@@ -115,11 +116,34 @@ class PuCurvePrerequisiteService
             );
         }
 
+        $premiumConfigurationIsValid = $this->validateFirstCouponPreIntegralizationPremiumConfiguration(
+            $issues,
+            $parameter,
+            $startDate,
+        );
+
         if ($startDate !== null && $endDate !== null && $endDate->gte($startDate)) {
             $this->validateIntegralizationTimeline($issues, $emission, $endDate);
-            $this->validateCalendarCoverage($issues, $startDate, $endDate, (string) $parameter->calendar_code, $indexer);
+            $financialRequirementStartDate = $premiumConfigurationIsValid
+                ? $this->firstCouponFinancialRequirementStartDate($issues, $parameter, $startDate)
+                : $startDate;
+            $this->validateCalendarCoverage(
+                $issues,
+                $financialRequirementStartDate,
+                $endDate,
+                (string) $parameter->calendar_code,
+                $indexer,
+            );
+
+            if ($parameter->hasFirstCouponPreIntegralizationPremium()) {
+                $this->validateFirstCouponIntegralizationAndEvent($issues, $emission, $startDate);
+            }
 
             if ($indexer === PuIndexer::Cdi) {
+                if ($premiumConfigurationIsValid) {
+                    $this->validateFirstCouponPreIntegralizationIndexCoverage($issues, $parameter);
+                }
+
                 $this->validateIndexCoverage($issues, $parameter, $startDate, $endDate);
             }
 
@@ -136,6 +160,149 @@ class PuCurvePrerequisiteService
         }
 
         return new PuCurvePrerequisiteCheckResult($issues);
+    }
+
+    /** @param  list<PuCurvePrerequisiteIssue>  $issues */
+    private function validateFirstCouponPreIntegralizationPremiumConfiguration(
+        array &$issues,
+        EmissionPuParameter $parameter,
+        ?CarbonImmutable $startDate,
+    ): bool {
+        if (! $parameter->hasFirstCouponPreIntegralizationPremium()) {
+            return true;
+        }
+
+        $valid = true;
+
+        if ($parameter->indexer_enum !== PuIndexer::Cdi) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_premium',
+                'O prêmio pré-integralização do primeiro cupom está disponível somente para configurações CDI.',
+            );
+            $valid = false;
+        }
+
+        if ((int) $parameter->first_coupon_pre_integralization_business_days <= 0) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_business_days',
+                'Informe uma quantidade de Dias Úteis maior que zero para o prêmio pré-integralização.',
+            );
+            $valid = false;
+        }
+
+        if (! (bool) $parameter->first_coupon_pre_integralization_apply_index_factor
+            && ! (bool) $parameter->first_coupon_pre_integralization_apply_spread_factor) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_factors',
+                'O prêmio pré-integralização deve aplicar ao menos o Fator DI ou o Fator Spread.',
+            );
+            $valid = false;
+        }
+
+        if ($startDate === null) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_start_date',
+                'O prêmio pré-integralização exige curve_start_date correspondente à integralização efetiva.',
+            );
+            $valid = false;
+        }
+
+        return $valid;
+    }
+
+    /** @param  list<PuCurvePrerequisiteIssue>  $issues */
+    private function firstCouponFinancialRequirementStartDate(
+        array &$issues,
+        EmissionPuParameter $parameter,
+        CarbonImmutable $startDate,
+    ): CarbonImmutable {
+        try {
+            return $this->indexRateRequirementResolver
+                ->firstCouponPreIntegralizationFinancialCalendarStartDate($parameter) ?? $startDate;
+        } catch (\Throwable $exception) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_calendar',
+                sprintf(
+                    'Não foi possível resolver os Dias Úteis pré-integralização no calendário %s: %s',
+                    (string) $parameter->calendar_code,
+                    $exception->getMessage(),
+                ),
+            );
+
+            return $startDate;
+        }
+    }
+
+    /** @param  list<PuCurvePrerequisiteIssue>  $issues */
+    private function validateFirstCouponIntegralizationAndEvent(
+        array &$issues,
+        Emission $emission,
+        CarbonImmutable $startDate,
+    ): void {
+        $hasIntegralizationAtStart = $emission->integralizationHistories
+            ->contains(fn ($history): bool => $history->date !== null
+                && CarbonImmutable::instance($history->date)->equalTo($startDate)
+                && bccomp((string) $history->quantity, '0', DecimalRounder::QUANTITY_SCALE) === 1);
+
+        if (! $hasIntegralizationAtStart) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_integralization',
+                sprintf(
+                    'O prêmio exige integralização positiva na curve_start_date %s; confirme documentalmente a data e cadastre o histórico correspondente.',
+                    $startDate->toDateString(),
+                ),
+            );
+        }
+
+        $firstInterestEvent = $emission->puEvents
+            ->filter(fn ($event): bool => $event->event_type_enum === PuEventType::InterestPayment)
+            ->sortBy(fn ($event): string => CarbonImmutable::instance($event->effective_date)->toDateString())
+            ->first();
+
+        if ($firstInterestEvent === null) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_interest_event',
+                'Cadastre o primeiro evento de pagamento de juros antes de aplicar o prêmio pré-integralização.',
+            );
+
+            return;
+        }
+
+        if (CarbonImmutable::instance($firstInterestEvent->effective_date)->lte($startDate)) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_interest_event',
+                'O primeiro pagamento de juros que recebe o prêmio deve ocorrer após a integralização/curve_start_date.',
+            );
+        }
+    }
+
+    /** @param  list<PuCurvePrerequisiteIssue>  $issues */
+    private function validateFirstCouponPreIntegralizationIndexCoverage(
+        array &$issues,
+        EmissionPuParameter $parameter,
+    ): void {
+        try {
+            $requirements = $this->indexRateRequirementResolver
+                ->firstCouponPreIntegralizationRateRequirements($parameter);
+        } catch (\Throwable $exception) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_index_rates',
+                sprintf('Não foi possível resolver os snapshots DI do prêmio: %s', $exception->getMessage()),
+            );
+
+            return;
+        }
+
+        foreach ($requirements as $requirement) {
+            if ($requirement->rate !== null) {
+                continue;
+            }
+
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_index_rates',
+                "Snapshot DI obrigatório do prêmio pré-integralização ausente.\n\n{$requirement->missingRateMessage()}",
+            );
+        }
     }
 
     /**

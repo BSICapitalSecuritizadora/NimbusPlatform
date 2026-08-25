@@ -324,6 +324,11 @@ class Emission extends Model
         return $this->hasMany(Construction::class);
     }
 
+    public function operations(): HasMany
+    {
+        return $this->hasMany(Operation::class);
+    }
+
     /**
      * Units of every construction of the operation.
      *

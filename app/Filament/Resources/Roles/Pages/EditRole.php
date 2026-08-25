@@ -10,6 +10,17 @@ class EditRole extends EditRecord
 {
     protected static string $resource = RoleResource::class;
 
+    protected static ?string $title = 'Editar Perfil de Acesso';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-role-edit-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Atualize o nome e o conjunto de permissões concedidas a este perfil.';
+    }
+
     /** @var array{name: string, permissions: list<string>} */
     protected array $roleStateBeforeSave = [];
 

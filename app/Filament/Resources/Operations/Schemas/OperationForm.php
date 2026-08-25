@@ -6,6 +6,8 @@ use App\Concerns\MoneyFormatter;
 use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\Operation;
+use App\Models\User;
+use App\Services\OperationContextVisibilityService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -33,7 +35,9 @@ class OperationForm
                     Select::make('emission_id')
                         ->label('Emissão')
                         ->placeholder('Selecione a emissão...')
-                        ->relationship('emission', 'name')
+                        ->options(fn (): array => static::emissionOptions())
+                        ->getSearchResultsUsing(fn (string $search): array => static::emissionOptions($search))
+                        ->getOptionLabelUsing(fn (mixed $value): ?string => static::emissionLabel($value))
                         ->searchable()
                         ->preload()
                         ->required()
@@ -44,10 +48,8 @@ class OperationForm
                                 return;
                             }
 
-                            $emission = Emission::query()->find($state);
-
                             $set('developments', static::developmentsForEmission($state));
-                            $set('due_date', $emission?->maturity_date?->toDateString());
+                            $set('due_date', static::emissionMaturityDate($state));
                         })
                         ->validationMessages([
                             'required' => 'Selecione a emissão.',
@@ -91,19 +93,11 @@ class OperationForm
                         ->deletable(false)
                         ->reorderable(false)
                         ->visible(fn (Get $get): bool => filled($get('emission_id')))
-                        ->itemLabel(fn (array $state): ?string => filled($state['construction_id'] ?? null)
-                            ? Construction::query()->whereKey($state['construction_id'])->value('development_name')
-                            : null)
+                        ->itemLabel(fn (array $state): ?string => static::constructionLabel($state['construction_id'] ?? null))
                         ->schema([
                             Select::make('construction_id')
                                 ->label('Empreendimento')
-                                ->options(fn (Get $get): array => filled($get('../../emission_id'))
-                                    ? Construction::query()
-                                        ->where('emission_id', $get('../../emission_id'))
-                                        ->orderBy('development_name')
-                                        ->pluck('development_name', 'id')
-                                        ->all()
-                                    : [])
+                                ->options(fn (Get $get): array => static::constructionOptionsForEmission($get('../../emission_id')))
                                 ->required()
                                 ->disabled()
                                 ->dehydrated()
@@ -181,8 +175,15 @@ class OperationForm
             return [];
         }
 
-        return Construction::query()
-            ->where('emission_id', $emissionId)
+        $user = auth()->user();
+
+        if (! $user instanceof User
+            || ! app(OperationContextVisibilityService::class)->findVisibleEmission($user, $emissionId) instanceof Emission) {
+            return [];
+        }
+
+        return app(OperationContextVisibilityService::class)
+            ->visibleConstructions($user, $emissionId)
             ->orderBy('development_name')
             ->pluck('id')
             ->map(fn (int $id): array => [
@@ -190,6 +191,77 @@ class OperationForm
                 'construction_fund_amount' => null,
             ])
             ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected static function emissionOptions(?string $search = null): array
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        $query = app(OperationContextVisibilityService::class)
+            ->visibleEmissions($user)
+            ->orderBy('name');
+
+        if (filled($search)) {
+            $query->where('name', 'like', '%'.trim((string) $search).'%');
+        }
+
+        return $query->limit(50)->pluck('name', 'id')->all();
+    }
+
+    protected static function emissionLabel(mixed $emissionId): ?string
+    {
+        $user = auth()->user();
+
+        return $user instanceof User
+            ? app(OperationContextVisibilityService::class)->findVisibleEmission($user, $emissionId)?->name
+            : null;
+    }
+
+    protected static function emissionMaturityDate(mixed $emissionId): ?string
+    {
+        $user = auth()->user();
+
+        return $user instanceof User
+            ? app(OperationContextVisibilityService::class)->findVisibleEmission($user, $emissionId)?->maturity_date?->toDateString()
+            : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected static function constructionOptionsForEmission(mixed $emissionId, ?string $search = null): array
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User || blank($emissionId)) {
+            return [];
+        }
+
+        $query = app(OperationContextVisibilityService::class)
+            ->visibleConstructions($user, $emissionId)
+            ->orderBy('development_name');
+
+        if (filled($search)) {
+            $query->where('development_name', 'like', '%'.trim((string) $search).'%');
+        }
+
+        return $query->limit(50)->pluck('development_name', 'id')->all();
+    }
+
+    protected static function constructionLabel(mixed $constructionId): ?string
+    {
+        $user = auth()->user();
+
+        return $user instanceof User
+            ? app(OperationContextVisibilityService::class)->findVisibleConstruction($user, $constructionId)?->development_name
+            : null;
     }
 
     protected static function userField(string $name, string $label, string $relationship, ?string $helperText = null): Select

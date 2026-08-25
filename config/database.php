@@ -32,6 +32,37 @@ return [
 
     'connections' => [
 
+        'nimbus_legacy' => [
+            'driver' => 'mysql',
+            'url' => env('NIMBUS_LEGACY_DB_URL'),
+            'host' => env('NIMBUS_LEGACY_DB_HOST', '127.0.0.1'),
+            'port' => env('NIMBUS_LEGACY_DB_PORT', '3306'),
+            'database' => env('NIMBUS_LEGACY_DB_DATABASE', 'nimbusdocs'),
+            'username' => env('NIMBUS_LEGACY_DB_USERNAME', 'root'),
+            'password' => env('NIMBUS_LEGACY_DB_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
+        'nimbus_migration_control' => [
+            'driver' => env('NIMBUS_MIGRATION_CONTROL_DB_DRIVER', env('DB_CONNECTION', 'sqlite')),
+            'url' => env('NIMBUS_MIGRATION_CONTROL_DB_URL'),
+            'host' => env('NIMBUS_MIGRATION_CONTROL_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('NIMBUS_MIGRATION_CONTROL_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('NIMBUS_MIGRATION_CONTROL_DB_DATABASE', env('DB_DATABASE', ':memory:')),
+            'username' => env('NIMBUS_MIGRATION_CONTROL_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('NIMBUS_MIGRATION_CONTROL_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),

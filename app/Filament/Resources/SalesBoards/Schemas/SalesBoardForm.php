@@ -32,6 +32,7 @@ class SalesBoardForm
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()
+                        ->placeholder('Selecione a operação...')
                         ->required()
                         ->live()
                         ->afterStateUpdated(function (Set $set, mixed $state, mixed $old): void {
@@ -55,9 +56,10 @@ class SalesBoardForm
                         )
                         ->searchable()
                         ->preload()
+                        ->placeholder(fn (Get $get): string => blank($get('emission_id')) ? 'Aguardando seleção da operação...' : 'Selecione o empreendimento...')
                         ->required()
                         ->disabled(fn (Get $get): bool => blank($get('emission_id')))
-                        ->helperText('Selecione primeiro a operação para listar apenas os empreendimentos vinculados.')
+                        ->helperText(fn (Get $get): string => blank($get('emission_id')) ? 'Selecione a operação para listar os empreendimentos.' : 'Empreendimentos vinculados à operação selecionada.')
                         ->rule(static function (Get $get): Closure {
                             return static function (string $attribute, mixed $value, Closure $fail) use ($get): void {
                                 if (blank($value) || blank($get('emission_id'))) {
@@ -80,7 +82,7 @@ class SalesBoardForm
 
                     static::referenceMonthField(),
                 ])
-                ->columns(3),
+                ->columns(['sm' => 1, 'md' => 3, 'lg' => 3]),
 
             static::quantitiesSection(),
 
@@ -169,8 +171,12 @@ class SalesBoardForm
             ->label('Competência')
             ->placeholder('MM/AAAA')
             ->mask('99/9999')
+            ->prefixIcon('heroicon-m-calendar')
             ->required()
             ->live(onBlur: true)
+            ->extraInputAttributes([
+                'class' => 'text-center font-mono',
+            ])
             ->formatStateUsing(fn (mixed $state): string => SalesBoard::formatReferenceMonthForDisplay($state))
             ->dehydrateStateUsing(fn (mixed $state): ?string => SalesBoard::normalizeReferenceMonth($state))
             ->mutateStateForValidationUsing(fn (mixed $state): ?string => SalesBoard::normalizeReferenceMonth($state))
@@ -193,9 +199,17 @@ class SalesBoardForm
                     ->label('Quantidade Total')
                     ->disabled()
                     ->dehydrated(false)
-                    ->default(0),
+                    ->default(0)
+                    ->prefixIcon('heroicon-m-calculator')
+                    ->suffix('un.')
+                    ->extraInputAttributes([
+                        'class' => 'text-right font-bold font-mono tabular-nums',
+                    ])
+                    ->extraAttributes([
+                        'class' => 'bsi-total-units-field',
+                    ]),
             ])
-            ->columns(5);
+            ->columns(['sm' => 1, 'md' => 2, 'lg' => 5, 'xl' => 5]);
     }
 
     public static function valuesSection(): Section
@@ -208,7 +222,7 @@ class SalesBoardForm
                 static::moneyField('paid_value', 'Valor quitado'),
                 static::moneyField('exchanged_value', 'Valor permutado'),
             ])
-            ->columns(2);
+            ->columns(['sm' => 1, 'md' => 2, 'lg' => 4, 'xl' => 4]);
     }
 
     protected static function quantityField(string $name, string $label): TextInput
@@ -221,6 +235,9 @@ class SalesBoardForm
             ->integer()
             ->minValue(0)
             ->live(onBlur: true)
+            ->extraInputAttributes([
+                'class' => 'text-right font-mono tabular-nums',
+            ])
             ->afterStateUpdated(fn (Set $set, Get $get): null => self::fillTotalUnits($set, $get))
             ->hint(fn (mixed $livewire, mixed $state): ?string => self::changedFromPreviousHint(
                 self::previousPositionValue($livewire, $name),
@@ -255,8 +272,11 @@ class SalesBoardForm
             ->dehydrateStateUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
             ->mutateStateForValidationUsing(fn (mixed $state): ?float => self::normalizeCurrencyValue($state))
             ->minValue(0)
-            ->placeholder('1.000,00')
+            ->placeholder('0,00')
             ->live(onBlur: true)
+            ->extraInputAttributes([
+                'class' => 'text-right font-mono tabular-nums',
+            ])
             ->hint(fn (mixed $livewire, mixed $state): ?string => self::changedFromPreviousHint(
                 self::previousPositionValue($livewire, $name),
                 $state,

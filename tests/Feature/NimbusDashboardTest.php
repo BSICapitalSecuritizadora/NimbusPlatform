@@ -556,7 +556,7 @@ it('mirrors the original Gestão Documental Externa status review options on the
         'responsible_name' => 'Cliente Status',
         'company_cnpj' => '12.345.678/0001-90',
         'company_name' => 'Empresa Status',
-        'status' => Submission::STATUS_PENDING,
+        'status' => Submission::STATUS_UNDER_REVIEW,
         'submitted_at' => now(),
     ]);
 
@@ -568,7 +568,7 @@ it('mirrors the original Gestão Documental Externa status review options on the
         ->assertActionExists('alterar_situacao')
         ->mountAction('alterar_situacao')
         ->assertSchemaStateSet([
-            'status' => Submission::STATUS_PENDING,
+            'status' => Submission::STATUS_UNDER_REVIEW,
             'visibility' => 'USER_VISIBLE',
             'note' => null,
         ])

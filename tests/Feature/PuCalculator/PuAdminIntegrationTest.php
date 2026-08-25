@@ -165,6 +165,50 @@ it('records the optional evidence when the administrator confirms a new calendar
         ->and($evidence->confirmed_at)->not->toBeNull();
 });
 
+it('stores the opt-in first coupon premium and its contractual evidence', function () {
+    $admin = makeAdminUser();
+    $this->actingAs($admin);
+    $emission = Emission::factory()->create();
+
+    Livewire::test(EditEmission::class, ['record' => $emission->getRouteKey()])
+        ->callAction('configurePuCalculation', [
+            'curve_start_date' => '2026-01-12',
+            'curve_end_date' => '2026-12-31',
+            'initial_unit_value' => '1000.00',
+            'indexer' => PuIndexer::Cdi->value,
+            'spread_rate' => '6.00',
+            'business_day_basis' => 252,
+            'calendar_code' => BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+            'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
+            'index_rate_lag_business_days' => -5,
+            'first_coupon_pre_integralization_premium_enabled' => true,
+            'first_coupon_pre_integralization_business_days' => 2,
+            'first_coupon_pre_integralization_apply_index_factor' => true,
+            'first_coupon_pre_integralization_apply_spread_factor' => true,
+            'first_coupon_premium_evidence_document' => 'Termo de Securitização',
+            'first_coupon_premium_evidence_clause' => '4.1.8(vii)',
+            'first_coupon_premium_evidence_page' => '26',
+            'first_coupon_premium_evidence_excerpt' => 'Produtório dos dois Dias Úteis anteriores à Data de Integralização.',
+            'first_coupon_premium_evidence_confirmed' => true,
+            'legacy_projection_enabled' => false,
+        ])
+        ->assertHasNoActionErrors();
+
+    $parameter = $emission->fresh()->puParameter;
+    $evidence = BusinessCalendarSelectionEvidence::query()
+        ->where('context', 'pu_first_coupon_pre_integralization_premium')
+        ->sole();
+
+    expect($parameter?->first_coupon_pre_integralization_premium_enabled)->toBeTrue()
+        ->and($parameter?->first_coupon_pre_integralization_business_days)->toBe(2)
+        ->and($parameter?->first_coupon_pre_integralization_apply_index_factor)->toBeTrue()
+        ->and($parameter?->first_coupon_pre_integralization_apply_spread_factor)->toBeTrue()
+        ->and($evidence->source_document)->toBe('Termo de Securitização')
+        ->and($evidence->clause_reference)->toBe('4.1.8(vii)')
+        ->and($evidence->page_reference)->toBe('26')
+        ->and($evidence->confirmed_by)->toBe($admin->id);
+});
+
 it('stores PU calculation parameters on the emission model using the same payload expected by the page action', function () {
     $emission = Emission::factory()->create([
         'issue_date' => '2026-01-01',

@@ -11,6 +11,7 @@ use App\Domain\PuCalculator\Enums\PuValidationMode;
 use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Domain\PuCalculator\Services\BusinessCalendarCatalogService;
 use App\Domain\PuCalculator\Services\BusinessCalendarSelectionEvidenceService;
+use App\Domain\PuCalculator\Services\FirstCouponPreIntegralizationPremiumCalculator;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuCurveExportService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
@@ -23,6 +24,7 @@ use App\Jobs\GeneratePuDailyCurveJob;
 use App\Jobs\ValidatePuCurveJob;
 use App\Models\EmissionPuDailyCurve;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Component;
@@ -86,6 +88,7 @@ class EditEmission extends EditRecord
                 ->label('Painel da Curva PU')
                 ->icon('heroicon-o-presentation-chart-line')
                 ->color('gray')
+                ->outlined()
                 ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
                 ->modalWidth(Width::FiveExtraLarge)
                 ->modalHeading('Painel da Curva PU')
@@ -96,68 +99,7 @@ class EditEmission extends EditRecord
                     'version' => $this->getRecord()->currentPuCurveVersion(),
                     'coverage' => app(PuIndexCoverageService::class)->report($this->getRecord()),
                 ])),
-            Action::make('puCurveHistory')
-                ->label('Historico / Auditoria')
-                ->icon('heroicon-o-clock')
-                ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
-                ->url(fn (): string => EmissionResource::getUrl('pu-history', ['record' => $this->getRecord()])),
-            Action::make('configurePuCalculation')
-                ->label('Configurar Calculo de PU')
-                ->icon('heroicon-o-calculator')
-                ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
-                ->modalWidth(Width::ThreeExtraLarge)
-                ->modalHeading('Configurar Calculo de PU')
-                ->fillForm(fn (): array => $this->getPuCalculationDefaults())
-                ->form($this->getPuCalculationForm())
-                ->action(function (array $data): void {
-                    $evidenceKeys = [
-                        'calendar_evidence_document',
-                        'calendar_evidence_clause',
-                        'calendar_evidence_page',
-                        'calendar_evidence_excerpt',
-                        'calendar_evidence_notes',
-                        'calendar_evidence_confirmed',
-                    ];
-                    $evidence = Arr::only($data, $evidenceKeys);
-                    $parameterData = Arr::except($data, $evidenceKeys);
-                    $before = $this->getRecord()->puParameter?->only(array_keys($parameterData)) ?? [];
 
-                    $parameter = $this->getRecord()->puParameter()->updateOrCreate([], $parameterData);
-
-                    if ($this->shouldRecordCalendarEvidence($evidence)) {
-                        app(BusinessCalendarSelectionEvidenceService::class)->record(
-                            $parameter,
-                            'pu_business_day_calendar',
-                            (string) $parameterData['calendar_code'],
-                            [
-                                'source_document' => $evidence['calendar_evidence_document'] ?? null,
-                                'clause_reference' => $evidence['calendar_evidence_clause'] ?? null,
-                                'page_reference' => $evidence['calendar_evidence_page'] ?? null,
-                                'excerpt' => $evidence['calendar_evidence_excerpt'] ?? null,
-                                'notes' => $evidence['calendar_evidence_notes'] ?? null,
-                            ],
-                            auth()->id(),
-                            (bool) ($evidence['calendar_evidence_confirmed'] ?? false),
-                        );
-                    }
-
-                    $this->getRecord()->unsetRelation('puParameter');
-                    $this->getRecord()->load('puParameter');
-
-                    app(PuAuditLogService::class)->logParametersUpdated(
-                        $this->getRecord(),
-                        $before,
-                        $parameterData,
-                        auth()->id(),
-                    );
-
-                    Notification::make()
-                        ->title('Parametros do calculo de PU atualizados.')
-                        ->success()
-                        ->send();
-                }),
             Action::make('generatePuDailyCurve')
                 ->label(fn (): string => $this->generatePuCurveLabel())
                 ->icon('heroicon-o-arrow-path')
@@ -237,6 +179,7 @@ class EditEmission extends EditRecord
                         ->info()
                         ->send();
                 }),
+
             Action::make('homologatePuCurve')
                 ->label('Homologar Curva')
                 ->icon('heroicon-o-check-badge')
@@ -260,175 +203,284 @@ class EditEmission extends EditRecord
                         ->success()
                         ->send();
                 }),
-            Action::make('invalidatePuCurve')
-                ->label('Invalidar Curva')
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->visible(fn (): bool => auth()->user()?->can('pu.curve.invalidate') ?? false)
-                ->requiresConfirmation()
-                ->modalHeading('Invalidar Curva PU')
-                ->modalDescription('A versao corrente sera marcada como obsoleta. O historico e preservado.')
-                ->action(function (): void {
-                    try {
-                        $version = app(InvalidatePuCurve::class)->handle($this->getRecord(), null, auth()->id());
-                    } catch (\InvalidArgumentException $exception) {
-                        Notification::make()->title('Nao foi possivel invalidar.')->body($exception->getMessage())->danger()->send();
 
-                        return;
-                    }
+            ActionGroup::make([
+                Action::make('configurePuCalculation')
+                    ->label('Configurar Calculo de PU')
+                    ->icon('heroicon-o-calculator')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.parameters.configure') ?? false)
+                    ->modalWidth(Width::ThreeExtraLarge)
+                    ->modalHeading('Configurar Calculo de PU')
+                    ->fillForm(fn (): array => $this->getPuCalculationDefaults())
+                    ->form($this->getPuCalculationForm())
+                    ->action(function (array $data): void {
+                        $calendarEvidenceKeys = [
+                            'calendar_evidence_document',
+                            'calendar_evidence_clause',
+                            'calendar_evidence_page',
+                            'calendar_evidence_excerpt',
+                            'calendar_evidence_notes',
+                            'calendar_evidence_confirmed',
+                        ];
+                        $premiumEvidenceKeys = [
+                            'first_coupon_premium_evidence_document',
+                            'first_coupon_premium_evidence_clause',
+                            'first_coupon_premium_evidence_page',
+                            'first_coupon_premium_evidence_excerpt',
+                            'first_coupon_premium_evidence_notes',
+                            'first_coupon_premium_evidence_confirmed',
+                        ];
+                        $calendarEvidence = Arr::only($data, $calendarEvidenceKeys);
+                        $premiumEvidence = Arr::only($data, $premiumEvidenceKeys);
+                        $parameterData = Arr::except($data, [...$calendarEvidenceKeys, ...$premiumEvidenceKeys]);
 
-                    Notification::make()
-                        ->title('Curva invalidada.')
-                        ->body(sprintf('Versao %s marcada como obsoleta.', $version->calculation_version))
-                        ->success()
-                        ->send();
-                }),
-            Action::make('viewPuDailyCurve')
-                ->label('Visualizar Curva PU Diario')
-                ->icon('heroicon-o-chart-bar-square')
-                ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
-                ->modalWidth(Width::SevenExtraLarge)
-                ->modalHeading('Curva PU Diario')
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Fechar')
-                ->modalContent(fn () => view('filament.emissions.pu-curve-summary', [
-                    'emission' => $this->getRecord(),
-                    'summary' => app(PuCurveExportService::class)->summary($this->getRecord()),
-                    'rows' => app(PuCurveExportService::class)->rows($this->getRecord())->take(30),
-                ])),
-            Action::make('validatePuDailyCurve')
-                ->label(fn (): string => $this->isValidatingPuCurve ? 'Validando...' : 'Validar contra Planilha')
-                ->icon('heroicon-o-clipboard-document-check')
-                ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('pu.curve.validate') ?? false)
-                ->disabled(fn (): bool => $this->isValidatingPuCurve)
-                ->modalWidth(Width::ThreeExtraLarge)
-                ->modalHeading('Validar Curva PU')
-                ->fillForm(fn (): array => [
-                    'reference_spreadsheet' => $this->defaultSpreadsheetSelection(),
-                    'calculation_version' => EmissionPuDailyCurve::latestCalculationVersionForEmission($this->getRecord()->id),
-                    'validation_mode' => PuValidationMode::DisplayScale->value,
-                ])
-                ->form([
-                    Select::make('calculation_version')
-                        ->label('Versao da curva')
-                        ->options($this->getCalculationVersionOptions())
-                        ->placeholder('Usar a versao mais recente'),
-                    Select::make('validation_mode')
-                        ->label('Modo de validacao')
-                        ->options([
-                            PuValidationMode::DisplayScale->value => 'Display-scale',
-                            PuValidationMode::RawScale->value => 'Raw-scale',
-                        ])
-                        ->required(),
-                    DatePicker::make('range_start')
-                        ->label('Data inicial da analise'),
-                    DatePicker::make('range_end')
-                        ->label('Data final da analise'),
-                    Select::make('reference_spreadsheet')
-                        ->label('Planilha de referencia')
-                        ->options(app(PuValidationSpreadsheetLocatorService::class)->options())
-                        ->searchable()
-                        ->placeholder('Selecione uma planilha de validacao'),
-                    FileUpload::make('spreadsheet_file')
-                        ->label('Ou envie uma planilha .xlsx')
-                        ->disk('local')
-                        ->directory('imports/pu-validation')
-                        ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
-                ])
-                ->action(function (array $data): void {
-                    if ($this->isValidatingPuCurve || Cache::get($this->puCurveValidationStatusCacheKey()) === 'processing') {
+                        if (! (bool) ($parameterData['first_coupon_pre_integralization_premium_enabled'] ?? false)) {
+                            $parameterData['first_coupon_pre_integralization_business_days'] = null;
+                        }
+
+                        $before = $this->getRecord()->puParameter?->only(array_keys($parameterData)) ?? [];
+
+                        $parameter = $this->getRecord()->puParameter()->updateOrCreate([], $parameterData);
+
+                        if ($this->shouldRecordCalendarEvidence($calendarEvidence)) {
+                            app(BusinessCalendarSelectionEvidenceService::class)->record(
+                                $parameter,
+                                'pu_business_day_calendar',
+                                (string) $parameterData['calendar_code'],
+                                [
+                                    'source_document' => $calendarEvidence['calendar_evidence_document'] ?? null,
+                                    'clause_reference' => $calendarEvidence['calendar_evidence_clause'] ?? null,
+                                    'page_reference' => $calendarEvidence['calendar_evidence_page'] ?? null,
+                                    'excerpt' => $calendarEvidence['calendar_evidence_excerpt'] ?? null,
+                                    'notes' => $calendarEvidence['calendar_evidence_notes'] ?? null,
+                                ],
+                                auth()->id(),
+                                (bool) ($calendarEvidence['calendar_evidence_confirmed'] ?? false),
+                            );
+                        }
+
+                        if ($parameter->hasFirstCouponPreIntegralizationPremium()
+                            && $this->shouldRecordFirstCouponPremiumEvidence($premiumEvidence)) {
+                            app(BusinessCalendarSelectionEvidenceService::class)->record(
+                                $parameter,
+                                FirstCouponPreIntegralizationPremiumCalculator::EVIDENCE_CONTEXT,
+                                (string) $parameterData['calendar_code'],
+                                [
+                                    'source_document' => $premiumEvidence['first_coupon_premium_evidence_document'] ?? null,
+                                    'clause_reference' => $premiumEvidence['first_coupon_premium_evidence_clause'] ?? null,
+                                    'page_reference' => $premiumEvidence['first_coupon_premium_evidence_page'] ?? null,
+                                    'excerpt' => $premiumEvidence['first_coupon_premium_evidence_excerpt'] ?? null,
+                                    'notes' => $premiumEvidence['first_coupon_premium_evidence_notes'] ?? null,
+                                ],
+                                auth()->id(),
+                                (bool) ($premiumEvidence['first_coupon_premium_evidence_confirmed'] ?? false),
+                            );
+                        }
+
+                        $this->getRecord()->unsetRelation('puParameter');
+                        $this->getRecord()->load('puParameter');
+
+                        app(PuAuditLogService::class)->logParametersUpdated(
+                            $this->getRecord(),
+                            $before,
+                            $parameterData,
+                            auth()->id(),
+                        );
+
                         Notification::make()
-                            ->title('Validacao ja em andamento.')
-                            ->body('Aguarde a conclusao da validacao atual.')
-                            ->warning()
+                            ->title('Parametros do calculo de PU atualizados.')
+                            ->success()
                             ->send();
+                    }),
 
-                        return;
-                    }
+                Action::make('puCurveHistory')
+                    ->label('Historico / Auditoria')
+                    ->icon('heroicon-o-clock')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                    ->url(fn (): string => EmissionResource::getUrl('pu-history', ['record' => $this->getRecord()])),
 
-                    $spreadsheetPath = $this->resolveValidationSpreadsheetPath($data);
-
-                    if ($spreadsheetPath === null) {
-                        Notification::make()
-                            ->title('Validacao nao executada.')
-                            ->body('Selecione uma planilha de referencia ou envie um arquivo .xlsx.')
-                            ->danger()
-                            ->persistent()
-                            ->send();
-
-                        return;
-                    }
-
-                    $mode = PuValidationMode::from((string) ($data['validation_mode'] ?? PuValidationMode::DisplayScale->value));
-
-                    Cache::put($this->puCurveValidationStatusCacheKey(), 'processing', 1800);
-                    $this->isValidatingPuCurve = true;
-
-                    ValidatePuCurveJob::dispatch(
-                        $this->getRecord()->id,
-                        $spreadsheetPath,
-                        $data['calculation_version'] ?? null,
-                        $mode->value,
-                        filled($data['range_start'] ?? null) ? (string) $data['range_start'] : null,
-                        filled($data['range_end'] ?? null) ? (string) $data['range_end'] : null,
-                        auth()->id(),
-                    );
-
-                    Notification::make()
-                        ->title('Validacao iniciada.')
-                        ->body('A validacao foi enviada para a fila e a pagina sera atualizada ao concluir.')
-                        ->info()
-                        ->send();
-                }),
-            Action::make('viewPuValidationReport')
-                ->label('Ver Relatorio de Divergencias')
-                ->icon('heroicon-o-exclamation-triangle')
-                ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
-                ->modalWidth(Width::SevenExtraLarge)
-                ->modalHeading('Ultimo Relatorio de Validacao')
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Fechar')
-                ->modalContent(fn () => view('filament.emissions.pu-validation-report', [
-                    'activity' => app(PuAuditLogService::class)->latestValidationActivity($this->getRecord()),
-                ])),
-            Action::make('exportPuDailyCurve')
-                ->label('Exportar Curva PU')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('gray')
-                ->visible(fn (): bool => auth()->user()?->can('pu.curve.export') ?? false)
-                ->modalHeading('Exportar Curva PU')
-                ->fillForm(fn (): array => [
-                    'calculation_version' => EmissionPuDailyCurve::latestCalculationVersionForEmission($this->getRecord()->id),
-                ])
-                ->form([
-                    Select::make('calculation_version')
-                        ->label('Versao da curva')
-                        ->options($this->getCalculationVersionOptions())
-                        ->required(),
-                ])
-                ->action(function (array $data): void {
-                    $calculationVersion = $data['calculation_version'] ?? null;
-
-                    if (! filled($calculationVersion)) {
-                        Notification::make()
-                            ->title('Nenhuma versao de curva disponivel para exportacao.')
-                            ->warning()
-                            ->send();
-
-                        return;
-                    }
-
-                    $this->redirect(route('admin.emissions.pu-curves.export', [
+                Action::make('viewPuDailyCurve')
+                    ->label('Visualizar Curva PU Diario')
+                    ->icon('heroicon-o-chart-bar-square')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalHeading('Curva PU Diario')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(fn () => view('filament.emissions.pu-curve-summary', [
                         'emission' => $this->getRecord(),
-                        'calculation_version' => $calculationVersion,
-                    ]), navigate: false);
-                }),
-            DeleteAction::make()
-                ->label('Excluir Emissao')
-                ->modalHeading('Excluir Emissao'),
+                        'summary' => app(PuCurveExportService::class)->summary($this->getRecord()),
+                        'rows' => app(PuCurveExportService::class)->rows($this->getRecord())->take(30),
+                    ])),
+
+                Action::make('viewPuValidationReport')
+                    ->label('Ver Relatorio de Divergencias')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->modalHeading('Ultimo Relatorio de Validacao')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(fn () => view('filament.emissions.pu-validation-report', [
+                        'activity' => app(PuAuditLogService::class)->latestValidationActivity($this->getRecord()),
+                    ])),
+
+                Action::make('validatePuDailyCurve')
+                    ->label(fn (): string => $this->isValidatingPuCurve ? 'Validando...' : 'Validar contra Planilha')
+                    ->icon('heroicon-o-clipboard-document-check')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.curve.validate') ?? false)
+                    ->disabled(fn (): bool => $this->isValidatingPuCurve)
+                    ->modalWidth(Width::ThreeExtraLarge)
+                    ->modalHeading('Validar Curva PU')
+                    ->fillForm(fn (): array => [
+                        'reference_spreadsheet' => $this->defaultSpreadsheetSelection(),
+                        'calculation_version' => EmissionPuDailyCurve::latestCalculationVersionForEmission($this->getRecord()->id),
+                        'validation_mode' => PuValidationMode::DisplayScale->value,
+                    ])
+                    ->form([
+                        Select::make('calculation_version')
+                            ->label('Versao da curva')
+                            ->options($this->getCalculationVersionOptions())
+                            ->placeholder('Usar a versao mais recente'),
+                        Select::make('validation_mode')
+                            ->label('Modo de validacao')
+                            ->options([
+                                PuValidationMode::DisplayScale->value => 'Display-scale',
+                                PuValidationMode::RawScale->value => 'Raw-scale',
+                            ])
+                            ->required(),
+                        DatePicker::make('range_start')
+                            ->label('Data inicial da analise'),
+                        DatePicker::make('range_end')
+                            ->label('Data final da analise'),
+                        Select::make('reference_spreadsheet')
+                            ->label('Planilha de referencia')
+                            ->options(app(PuValidationSpreadsheetLocatorService::class)->options())
+                            ->searchable()
+                            ->placeholder('Selecione uma planilha de validacao'),
+                        FileUpload::make('spreadsheet_file')
+                            ->label('Ou envie uma planilha .xlsx')
+                            ->disk('local')
+                            ->directory('imports/pu-validation')
+                            ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
+                    ])
+                    ->action(function (array $data): void {
+                        if ($this->isValidatingPuCurve || Cache::get($this->puCurveValidationStatusCacheKey()) === 'processing') {
+                            Notification::make()
+                                ->title('Validacao ja em andamento.')
+                                ->body('Aguarde a conclusao da validacao atual.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $spreadsheetPath = $this->resolveValidationSpreadsheetPath($data);
+
+                        if ($spreadsheetPath === null) {
+                            Notification::make()
+                                ->title('Validacao nao executada.')
+                                ->body('Selecione uma planilha de referencia ou envie um arquivo .xlsx.')
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            return;
+                        }
+
+                        $mode = PuValidationMode::from((string) ($data['validation_mode'] ?? PuValidationMode::DisplayScale->value));
+
+                        Cache::put($this->puCurveValidationStatusCacheKey(), 'processing', 1800);
+                        $this->isValidatingPuCurve = true;
+
+                        ValidatePuCurveJob::dispatch(
+                            $this->getRecord()->id,
+                            $spreadsheetPath,
+                            $data['calculation_version'] ?? null,
+                            $mode->value,
+                            filled($data['range_start'] ?? null) ? (string) $data['range_start'] : null,
+                            filled($data['range_end'] ?? null) ? (string) $data['range_end'] : null,
+                            auth()->id(),
+                        );
+
+                        Notification::make()
+                            ->title('Validacao iniciada.')
+                            ->body('A validacao foi enviada para a fila e a pagina sera atualizada ao concluir.')
+                            ->info()
+                            ->send();
+                    }),
+
+                Action::make('exportPuDailyCurve')
+                    ->label('Exportar Curva PU')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.curve.export') ?? false)
+                    ->modalHeading('Exportar Curva PU')
+                    ->fillForm(fn (): array => [
+                        'calculation_version' => EmissionPuDailyCurve::latestCalculationVersionForEmission($this->getRecord()->id),
+                    ])
+                    ->form([
+                        Select::make('calculation_version')
+                            ->label('Versao da curva')
+                            ->options($this->getCalculationVersionOptions())
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $calculationVersion = $data['calculation_version'] ?? null;
+
+                        if (! filled($calculationVersion)) {
+                            Notification::make()
+                                ->title('Nenhuma versao de curva disponivel para exportacao.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
+                        $this->redirect(route('admin.emissions.pu-curves.export', [
+                            'emission' => $this->getRecord(),
+                            'calculation_version' => $calculationVersion,
+                        ]), navigate: false);
+                    }),
+
+                Action::make('invalidatePuCurve')
+                    ->label('Invalidar Curva')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.curve.invalidate') ?? false)
+                    ->requiresConfirmation()
+                    ->modalHeading('Invalidar Curva PU')
+                    ->modalDescription('A versao corrente sera marcada como obsoleta. O historico e preservado.')
+                    ->action(function (): void {
+                        try {
+                            $version = app(InvalidatePuCurve::class)->handle($this->getRecord(), null, auth()->id());
+                        } catch (\InvalidArgumentException $exception) {
+                            Notification::make()->title('Nao foi possivel invalidar.')->body($exception->getMessage())->danger()->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Curva invalidada.')
+                            ->body(sprintf('Versao %s marcada como obsoleta.', $version->calculation_version))
+                            ->success()
+                            ->send();
+                    }),
+            ])
+                ->label('Mais ações')
+                ->icon('heroicon-o-ellipsis-horizontal')
+                ->color('gray')
+                ->button(),
+
+            ActionGroup::make([
+                DeleteAction::make()
+                    ->label('Excluir Emissao')
+                    ->modalHeading('Excluir Emissao')
+                    ->color('danger'),
+            ])
+                ->icon('heroicon-o-ellipsis-vertical')
+                ->color('gray')
+                ->iconButton()
+                ->tooltip('Opções avançadas'),
         ];
     }
 
@@ -742,6 +794,52 @@ class EditEmission extends EditRecord
                 ->default(-1)
                 ->required(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value)
                 ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value && $get('index_rate_lookup_mode') === PuIndexRateLookupMode::BusinessDayLagExact->value),
+            Toggle::make('first_coupon_pre_integralization_premium_enabled')
+                ->label('Aplicar prêmio pré-integralização no primeiro cupom')
+                ->helperText('Remuneração opt-in de Dias Úteis anteriores à integralização, aplicada uma única vez no primeiro pagamento de juros. Não altera VNU nem principal.')
+                ->default(false)
+                ->live()
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value),
+            TextInput::make('first_coupon_pre_integralization_business_days')
+                ->label('Dias Úteis anteriores à integralização')
+                ->numeric()
+                ->integer()
+                ->minValue(1)
+                ->required(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled'))
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value
+                    && (bool) $get('first_coupon_pre_integralization_premium_enabled')),
+            Toggle::make('first_coupon_pre_integralization_apply_index_factor')
+                ->label('Aplicar Fator DI no prêmio')
+                ->default(true)
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value
+                    && (bool) $get('first_coupon_pre_integralization_premium_enabled')),
+            Toggle::make('first_coupon_pre_integralization_apply_spread_factor')
+                ->label('Aplicar Fator Spread no prêmio')
+                ->default(true)
+                ->visible(fn (Get $get): bool => $get('indexer') === PuIndexer::Cdi->value
+                    && (bool) $get('first_coupon_pre_integralization_premium_enabled')),
+            TextInput::make('first_coupon_premium_evidence_document')
+                ->label('Documento do prêmio pré-integralização')
+                ->visible(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled')),
+            TextInput::make('first_coupon_premium_evidence_clause')
+                ->label('Cláusula / item do prêmio')
+                ->visible(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled')),
+            TextInput::make('first_coupon_premium_evidence_page')
+                ->label('Página(s) da evidência do prêmio')
+                ->visible(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled')),
+            Textarea::make('first_coupon_premium_evidence_excerpt')
+                ->label('Excerto contratual do prêmio')
+                ->rows(3)
+                ->visible(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled')),
+            Textarea::make('first_coupon_premium_evidence_notes')
+                ->label('Notas internas sobre o prêmio')
+                ->rows(2)
+                ->visible(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled')),
+            Toggle::make('first_coupon_premium_evidence_confirmed')
+                ->label('Confirmo que revisei a evidência do prêmio')
+                ->helperText('Registra usuário e data da confirmação sem ativar automaticamente a regra em outras emissões.')
+                ->default(false)
+                ->visible(fn (Get $get): bool => (bool) $get('first_coupon_pre_integralization_premium_enabled')),
             Toggle::make('legacy_projection_enabled')
                 ->label('Atualizar projecoes legadas (payments / pu_histories)')
                 ->default(true),
@@ -776,6 +874,16 @@ class EditEmission extends EditRecord
             'calendar_evidence_confirmed' => false,
             'index_rate_lookup_mode' => $parameter?->index_rate_lookup_mode ?? PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
             'index_rate_lag_business_days' => $parameter?->index_rate_lag_business_days ?? -1,
+            'first_coupon_pre_integralization_premium_enabled' => $parameter?->first_coupon_pre_integralization_premium_enabled ?? false,
+            'first_coupon_pre_integralization_business_days' => $parameter?->first_coupon_pre_integralization_business_days,
+            'first_coupon_pre_integralization_apply_index_factor' => $parameter?->first_coupon_pre_integralization_apply_index_factor ?? true,
+            'first_coupon_pre_integralization_apply_spread_factor' => $parameter?->first_coupon_pre_integralization_apply_spread_factor ?? true,
+            'first_coupon_premium_evidence_document' => null,
+            'first_coupon_premium_evidence_clause' => null,
+            'first_coupon_premium_evidence_page' => null,
+            'first_coupon_premium_evidence_excerpt' => null,
+            'first_coupon_premium_evidence_notes' => null,
+            'first_coupon_premium_evidence_confirmed' => false,
             'legacy_projection_enabled' => $parameter?->legacy_projection_enabled ?? true,
         ];
     }
@@ -798,6 +906,16 @@ class EditEmission extends EditRecord
     {
         return collect($evidence)
             ->filter(fn (mixed $value, string $key): bool => $key === 'calendar_evidence_confirmed'
+                ? (bool) $value
+                : filled($value))
+            ->isNotEmpty();
+    }
+
+    /** @param  array<string, mixed>  $evidence */
+    private function shouldRecordFirstCouponPremiumEvidence(array $evidence): bool
+    {
+        return collect($evidence)
+            ->filter(fn (mixed $value, string $key): bool => $key === 'first_coupon_premium_evidence_confirmed'
                 ? (bool) $value
                 : filled($value))
             ->isNotEmpty();

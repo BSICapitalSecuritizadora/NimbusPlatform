@@ -68,8 +68,14 @@ it('renders operations with formatted values and developments counter', function
     $this->actingAs(makeOperationAdminUser());
 
     $emission = Emission::factory()->create(['name' => 'CRI Residencial Parque']);
-    $construction1 = Construction::factory()->create(['development_name' => 'Residencial Alto Bellevue']);
-    $construction2 = Construction::factory()->create(['development_name' => 'Torre Horizon']);
+    $construction1 = Construction::factory()->create([
+        'emission_id' => $emission->id,
+        'development_name' => 'Residencial Alto Bellevue',
+    ]);
+    $construction2 = Construction::factory()->create([
+        'emission_id' => $emission->id,
+        'development_name' => 'Torre Horizon',
+    ]);
 
     $operation = Operation::factory()->create([
         'emission_id' => $emission->id,

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Exceptions\MeasurementWorkflowException;
+use App\Services\OperationContextVisibilityService;
 use App\Services\OperationResponsibilityService;
 use Database\Factories\OperationFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -66,12 +68,31 @@ class Operation extends Model
         static::updating(function (self $operation): void {
             $actor = auth()->user();
 
+            if ($operation->isDirty(['emission_id', 'construction_id'])
+                && $operation->measurements()
+                    ->whereHas('reviews', fn (Builder $reviews): Builder => $reviews
+                        ->where('stage', 1)
+                        ->where('status', 'approved'))
+                    ->exists()) {
+                throw new MeasurementWorkflowException('O contexto de uma operação aprovada pela Engenharia está bloqueado.');
+            }
+
             if ($actor instanceof User && $operation->isDirty(self::RESPONSIBILITY_FIELDS)) {
                 app(OperationResponsibilityService::class)->assertCanChange(
                     $actor,
                     $operation,
                     $operation->only(self::RESPONSIBILITY_FIELDS),
                 );
+            }
+        });
+
+        static::deleting(function (self $operation): void {
+            if ($operation->measurements()
+                ->whereHas('reviews', fn (Builder $reviews): Builder => $reviews
+                    ->where('stage', 1)
+                    ->where('status', 'approved'))
+                ->exists()) {
+                throw new MeasurementWorkflowException('Uma operação com medição aprovada pela Engenharia não pode ser excluída.');
             }
         });
 
@@ -194,8 +215,10 @@ class Operation extends Model
      *
      * @param  array<int, array{construction_id?: mixed, construction_fund_amount?: mixed}>  $developments
      */
-    public function syncDevelopmentPlans(array $developments): void
+    public function syncDevelopmentPlans(array $developments, User $actor): void
     {
+        $visibility = app(OperationContextVisibilityService::class);
+        $visibility->assertOperationPayloadIsVisible($actor, $this->emission_id, $developments);
         $hasDefault = $this->planSets()->where('is_default', true)->exists();
         $index = 0;
 
@@ -206,8 +229,8 @@ class Operation extends Model
                 continue;
             }
 
-            $developmentName = Construction::query()->whereKey($constructionId)->value('development_name')
-                ?? ('Empreendimento '.$constructionId);
+            $construction = $visibility->assertConstructionIsVisibleForOperation($actor, $this, $constructionId);
+            $developmentName = $construction->development_name;
             $fund = $development['construction_fund_amount'] ?? null;
 
             $planSet = $this->planSets()->where('construction_id', $constructionId)->first();

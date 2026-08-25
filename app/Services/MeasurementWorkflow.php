@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Exceptions\MeasurementWorkflowException;
+use App\Models\Construction;
 use App\Models\Measurement;
+use App\Models\MeasurementAsset;
 use App\Models\MeasurementPause;
 use App\Models\MeasurementPayment;
+use App\Models\MeasurementPlanLine;
+use App\Models\MeasurementPlanSet;
 use App\Models\MeasurementReview;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
@@ -201,6 +205,12 @@ class MeasurementWorkflow
             if ($stage === self::STAGE_ENGINEERING) {
                 $engineeringSnapshot = $this->engineering->validateAndRecord($locked, $engineeringProgress);
                 $locked->forceFill(['engineering_snapshot' => $engineeringSnapshot])->save();
+                $this->audit($locked, $actor, 'measurement_engineering_snapshot_created', [
+                    'snapshot_schema_version' => MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION,
+                    'snapshot_sha256' => $this->snapshotHash($engineeringSnapshot),
+                    'engineering_snapshot' => $engineeringSnapshot,
+                    'workflow_revision' => (int) $locked->workflow_revision + 1,
+                ]);
             }
 
             if ($stage === self::STAGE_PAYMENT) {
@@ -337,7 +347,7 @@ class MeasurementWorkflow
             } else {
                 $targetStage = $stage - 1;
                 $toStatus = $targetStage === self::STAGE_PAYMENT ? 'awaiting_payment' : 'in_review';
-                $this->reopenStage($locked, $targetStage, $notes);
+                $this->reopenStage($locked, $actor, $targetStage, $notes);
             }
 
             $this->advanceRevision($locked);
@@ -421,7 +431,7 @@ class MeasurementWorkflow
                 'reviewed_at' => now(),
             ])->save();
 
-            $this->reopenStage($locked, $target, $reason);
+            $this->reopenStage($locked, $actor, $target, $reason);
             $this->advanceRevision($locked);
 
             $this->audit($locked, $actor, 'measurement_finalization_returned', [
@@ -634,20 +644,39 @@ class MeasurementWorkflow
                 'payments.*.plan_set_id' => ['nullable', 'integer'],
             ])->validate()['payments'];
 
-            $validPlanSetIds = $locked->operation->planSets()->pluck('id')->map(fn (int $id): int => $id)->all();
+            $snapshotPlanSets = collect($locked->engineering_snapshot['plan_sets'] ?? []);
+            $approvedPlanSetIds = $snapshotPlanSets
+                ->pluck('plan_set_id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+            $currentPlanSetIds = $locked->operation->planSets()
+                ->whereKey($approvedPlanSetIds->all())
+                ->lockForUpdate()
+                ->pluck('id')
+                ->map(fn (int $id): int => $id);
+
+            if ($approvedPlanSetIds->isEmpty() || $currentPlanSetIds->count() !== $approvedPlanSetIds->count()) {
+                throw $this->invalidState($locked, 'O contexto aprovado pela Engenharia não está disponível para pagamentos.');
+            }
+
+            $validPlanSetIds = $approvedPlanSetIds->all();
+            $defaultPlanSetId = (int) ($snapshotPlanSets->firstWhere('is_default', true)['plan_set_id']
+                ?? $validPlanSetIds[0]);
 
             foreach ($validated as $index => $row) {
                 if (filled($row['plan_set_id'] ?? null)
                     && ! in_array((int) $row['plan_set_id'], $validPlanSetIds, true)) {
                     throw ValidationException::withMessages([
-                        "payments.{$index}.plan_set_id" => 'O empreendimento informado não pertence a esta operação.',
+                        "payments.{$index}.plan_set_id" => 'O empreendimento informado não pertence ao contexto aprovado desta medição.',
                     ]);
                 }
             }
 
             $payments = collect($validated)->map(fn (array $row): MeasurementPayment => $locked->payments()->create([
                 'operation_id' => $locked->operation_id,
-                'plan_set_id' => $row['plan_set_id'] ?? $locked->operation->defaultPlanSet()?->id,
+                'plan_set_id' => $row['plan_set_id'] ?? $defaultPlanSetId,
                 'pay_date' => $row['pay_date'],
                 'amount' => $row['amount'],
                 'method' => $row['method'] ?? null,
@@ -960,8 +989,12 @@ class MeasurementWorkflow
             && $measurement->reviews()->where('stage', $stage)->where('status', 'pending')->whereNull('paused_at')->exists();
     }
 
-    private function reopenStage(Measurement $measurement, int $target, ?string $note): void
+    private function reopenStage(Measurement $measurement, User $actor, int $target, ?string $note): void
     {
+        $previousSnapshot = $target === self::STAGE_ENGINEERING
+            ? $measurement->engineering_snapshot
+            : null;
+
         $measurement->reviews()->updateOrCreate(
             ['stage' => $target],
             [
@@ -986,6 +1019,16 @@ class MeasurementWorkflow
         }
 
         $measurement->forceFill($state)->save();
+
+        if (is_array($previousSnapshot) && $previousSnapshot !== []) {
+            $this->audit($measurement, $actor, 'measurement_engineering_snapshot_invalidated', [
+                'reason' => $note,
+                'snapshot_schema_version' => $previousSnapshot['schema_version'] ?? null,
+                'snapshot_sha256' => $this->snapshotHash($previousSnapshot),
+                'engineering_snapshot' => $previousSnapshot,
+                'workflow_revision' => (int) $measurement->workflow_revision + 1,
+            ]);
+        }
     }
 
     private function ensureValidPaymentExists(Measurement $measurement): void
@@ -999,6 +1042,21 @@ class MeasurementWorkflow
         if ($paymentCount < 1 || $paymentCount !== $validPaymentCount) {
             throw ValidationException::withMessages([
                 'payments' => 'Cadastre ao menos um pagamento válido antes de aprovar a etapa Pagamento.',
+            ]);
+        }
+
+        $approvedPlanSetIds = collect($measurement->engineering_snapshot['plan_sets'] ?? [])
+            ->pluck('plan_set_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($approvedPlanSetIds->isEmpty()
+            || $measurement->payments()->whereNotIn('plan_set_id', $approvedPlanSetIds->all())->exists()
+            || $measurement->payments()->whereNull('plan_set_id')->exists()) {
+            throw ValidationException::withMessages([
+                'payments' => 'Todos os pagamentos devem pertencer ao contexto aprovado pela Engenharia.',
             ]);
         }
     }
@@ -1026,7 +1084,7 @@ class MeasurementWorkflow
 
         $measurement->assets()->get()->each(function ($asset) use ($files, $measurement): void {
             try {
-                $this->fileValidation->validateAsset($asset->storage_path, $asset->resolved_storage_disk);
+                $this->fileValidation->validateStoredAsset($asset->storage_path, $asset->resolved_storage_disk);
             } catch (ValidationException) {
                 throw $this->invalidState($measurement, "O arquivo de medição #{$asset->getKey()} é inválido ou está ausente.");
             }
@@ -1041,7 +1099,7 @@ class MeasurementWorkflow
 
         $measurement->payments()->get()->each(function (MeasurementPayment $payment) use ($files, $measurement): void {
             try {
-                $this->fileValidation->validateReceipt($payment->receipt_path, $payment->resolved_receipt_disk);
+                $this->fileValidation->validateStoredReceipt($payment->receipt_path, $payment->resolved_receipt_disk);
             } catch (ValidationException) {
                 throw $this->invalidState($measurement, "O comprovante #{$payment->getKey()} é inválido ou está ausente.");
             }
@@ -1074,50 +1132,129 @@ class MeasurementWorkflow
 
     private function ensureEngineeringCoverageIsIntact(Measurement $measurement): void
     {
-        $requirements = collect($measurement->engineering_snapshot['plan_sets'] ?? []);
+        $snapshot = $measurement->engineering_snapshot;
+        $requirements = collect(is_array($snapshot) ? ($snapshot['plan_sets'] ?? []) : []);
 
-        if ($requirements->isEmpty()
+        if (! is_array($snapshot)
+            || (int) ($snapshot['schema_version'] ?? 0) !== MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION
+            || (int) ($snapshot['measurement_id'] ?? 0) !== (int) $measurement->getKey()
+            || (int) ($snapshot['operation_id'] ?? 0) !== (int) $measurement->operation_id
+            || ! $this->nullableIntMatches($measurement->operation->emission_id, $snapshot['emission_id'] ?? null)
+            || ($measurement->reference_month?->toDateString() ?? '') !== ($snapshot['reference_month'] ?? null)
+            || $requirements->isEmpty()
             || $requirements->pluck('plan_set_id')->filter()->unique()->count() !== $requirements->count()) {
-            throw $this->invalidState($measurement, 'O snapshot obrigatório da Engenharia está ausente ou possui cardinalidade inválida.');
+            throw $this->invalidState($measurement, 'O snapshot obrigatório da Engenharia está ausente, desatualizado ou possui cardinalidade inválida.');
         }
 
         $expectedPlanSetIds = $requirements->pluck('plan_set_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $expectedConstructionIds = $requirements->pluck('construction_id')->filter()->map(fn (mixed $id): int => (int) $id)->unique()->all();
+        $expectedLineIds = $requirements->pluck('plan_line_id')->map(fn (mixed $id): int => (int) $id)->all();
         $planSets = $measurement->operation->planSets()
             ->whereKey($expectedPlanSetIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+        $constructions = Construction::query()
+            ->whereKey($expectedConstructionIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+        $lines = MeasurementPlanLine::query()
+            ->whereKey($expectedLineIds)
+            ->orderBy('id')
             ->lockForUpdate()
             ->get()
             ->keyBy('id');
         $assets = $measurement->assets()
-            ->with('planLine')
+            ->orderBy('id')
             ->lockForUpdate()
             ->get();
 
         if ($planSets->count() !== count($expectedPlanSetIds)
+            || $lines->count() !== count($expectedLineIds)
+            || $constructions->count() !== count($expectedConstructionIds)
             || $assets->count() !== count($expectedPlanSetIds)
             || $assets->pluck('plan_set_id')->filter()->unique()->count() !== count($expectedPlanSetIds)) {
-            throw $this->invalidState($measurement, 'A cobertura de arquivos não corresponde aos empreendimentos aprovados pela Engenharia.');
+            throw $this->invalidState($measurement, 'A cobertura atual não corresponde ao contexto aprovado pela Engenharia.');
         }
 
         $assetsByPlanSet = $assets->keyBy('plan_set_id');
 
         foreach ($requirements as $requirement) {
             $planSetId = (int) ($requirement['plan_set_id'] ?? 0);
+            $planSet = $planSets->get($planSetId);
+            $constructionId = $requirement['construction_id'] ?? null;
+            $construction = filled($constructionId) ? $constructions->get((int) $constructionId) : null;
+            $line = $lines->get((int) ($requirement['plan_line_id'] ?? 0));
             $asset = $assetsByPlanSet->get($planSetId);
 
-            if (! $planSets->has($planSetId)
-                || $asset === null
+            if (! $planSet instanceof MeasurementPlanSet
+                || ! $line instanceof MeasurementPlanLine
+                || ! $asset instanceof MeasurementAsset
+                || ! $this->nullableIntMatches($planSet->construction_id, $constructionId)
+                || ! $this->nullableDecimalMatches($planSet->construction_fund_amount, $requirement['construction_fund_amount'] ?? null)
+                || ! $this->nullableDecimalMatches($planSet->initial_incurred_amount, $requirement['initial_incurred_amount'] ?? null)
+                || (filled($constructionId) && ! $construction instanceof Construction)
+                || ($construction instanceof Construction
+                    && (! $this->nullableIntMatches($construction->emission_id, $requirement['construction_emission_id'] ?? null)
+                        || $construction->development_cnpj !== ($requirement['construction_cnpj'] ?? null)))
+                || (int) $line->plan_set_id !== $planSetId
+                || (int) $line->operation_id !== (int) $measurement->operation_id
+                || (int) $line->measurement_id !== (int) $measurement->getKey()
+                || ($line->measurement_date?->toDateString() ?? '') !== ($requirement['measurement_date'] ?? null)
+                || (int) $line->sequence_number !== (int) ($requirement['sequence_number'] ?? 0)
+                || ! $this->decimalMatches($line->planned_monthly_percent, $requirement['planned_monthly_percent'] ?? null)
+                || ! $this->decimalMatches($line->planned_cumulative_percent, $requirement['planned_cumulative_percent'] ?? null)
+                || ! $this->decimalMatches($line->initial_realized_cumulative_percent, $requirement['initial_realized_cumulative_percent'] ?? null)
+                || ! $this->decimalMatches($line->realized_monthly_percent, $requirement['realized_monthly_percent'] ?? null)
+                || ! $this->decimalMatches($line->realized_cumulative_percent, $requirement['realized_cumulative_percent'] ?? null)
                 || (int) $asset->measurement_id !== (int) $measurement->getKey()
                 || (int) $asset->getKey() !== (int) ($requirement['asset_id'] ?? 0)
-                || (int) $asset->plan_line_id !== (int) ($requirement['plan_line_id'] ?? 0)
-                || (int) $asset->planLine?->plan_set_id !== $planSetId
-                || (int) $asset->planLine?->operation_id !== (int) $measurement->operation_id
+                || (int) $asset->plan_line_id !== (int) $line->getKey()
                 || $asset->storage_path !== ($requirement['storage_path'] ?? null)
                 || $asset->resolved_storage_disk !== ($requirement['storage_disk'] ?? null)
+                || $asset->mime_type !== ($requirement['mime_type'] ?? null)
+                || (int) $asset->size !== (int) ($requirement['file_size'] ?? -1)
                 || ! is_string($asset->sha256)
                 || ! hash_equals((string) ($requirement['sha256'] ?? ''), $asset->sha256)) {
-                throw $this->invalidState($measurement, "A evidência de Engenharia do empreendimento #{$planSetId} foi removida ou substituída.");
+                throw $this->invalidState($measurement, "O contexto aprovado pela Engenharia para o plano #{$planSetId} foi alterado.");
             }
         }
+    }
+
+    private function decimalMatches(mixed $actual, mixed $expected): bool
+    {
+        return is_numeric($actual)
+            && is_numeric($expected)
+            && number_format((float) $actual, 2, '.', '') === number_format((float) $expected, 2, '.', '');
+    }
+
+    private function nullableDecimalMatches(mixed $actual, mixed $expected): bool
+    {
+        if ($actual === null || $expected === null) {
+            return $actual === null && $expected === null;
+        }
+
+        return $this->decimalMatches($actual, $expected);
+    }
+
+    private function nullableIntMatches(mixed $actual, mixed $expected): bool
+    {
+        if ($actual === null || $expected === null) {
+            return $actual === null && $expected === null;
+        }
+
+        return (int) $actual === (int) $expected;
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     */
+    private function snapshotHash(array $snapshot): string
+    {
+        return hash('sha256', json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     private function assertExpectedState(

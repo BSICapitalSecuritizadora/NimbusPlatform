@@ -9,6 +9,7 @@ use App\Services\DocumentStorageService;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Throwable;
 
 class BackfillMeasurementFileHashes extends Command
 {
@@ -24,11 +25,14 @@ class BackfillMeasurementFileHashes extends Command
 
     private int $missing = 0;
 
+    private int $failed = 0;
+
     public function handle(DocumentStorageService $storage): int
     {
         $this->processed = 0;
         $this->updated = 0;
         $this->missing = 0;
+        $this->failed = 0;
 
         $execute = (bool) $this->option('execute');
         $limit = max(0, (int) $this->option('limit'));
@@ -69,9 +73,9 @@ class BackfillMeasurementFileHashes extends Command
             $limit,
         );
 
-        $this->table(['Processados', 'Persistidos', 'Ausentes'], [[$this->processed, $this->updated, $this->missing]]);
+        $this->table(['Processados', 'Persistidos', 'Ausentes', 'Falhas'], [[$this->processed, $this->updated, $this->missing, $this->failed]]);
 
-        return $execute && $this->missing > 0 ? self::FAILURE : self::SUCCESS;
+        return $this->missing > 0 || $this->failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 
     /**
@@ -126,12 +130,23 @@ class BackfillMeasurementFileHashes extends Command
                 $metadata = $storage->metadata($path, $disk);
 
                 if ($execute) {
-                    $record->forceFill([
-                        $hashColumn => $hash,
-                        $mimeColumn => is_string($metadata['mime_type']) ? $metadata['mime_type'] : 'application/octet-stream',
-                        $sizeColumn => is_int($metadata['size_bytes']) ? $metadata['size_bytes'] : 0,
-                    ])->saveQuietly();
-                    $this->updated++;
+                    try {
+                        $saved = $record->forceFill([
+                            $hashColumn => $hash,
+                            $mimeColumn => is_string($metadata['mime_type']) ? $metadata['mime_type'] : 'application/octet-stream',
+                            $sizeColumn => is_int($metadata['size_bytes']) ? $metadata['size_bytes'] : 0,
+                        ])->saveQuietly();
+                        $confirmedHash = $record->fresh()?->getAttribute($hashColumn);
+
+                        if (! $saved || ! is_string($confirmedHash) || ! hash_equals($hash, $confirmedHash)) {
+                            throw new \RuntimeException('A persistência do SHA-256 não foi confirmada.');
+                        }
+
+                        $this->updated++;
+                    } catch (Throwable $exception) {
+                        $this->failed++;
+                        $this->components->warn($record::class." #{$record->getKey()}: {$exception->getMessage()}");
+                    }
                 }
             }
 

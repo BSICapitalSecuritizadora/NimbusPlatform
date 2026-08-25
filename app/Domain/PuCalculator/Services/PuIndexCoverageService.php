@@ -61,7 +61,12 @@ class PuIndexCoverageService
             );
         }
 
-        $missingCalendarDates = $this->missingCalendarDates($startDate, $endDate, (string) $parameter->calendar_code);
+        $financialRequirementStartDate = $this->financialRequirementStartDate($parameter, $startDate);
+        $missingCalendarDates = $this->missingCalendarDates(
+            $financialRequirementStartDate,
+            $endDate,
+            (string) $parameter->calendar_code,
+        );
         [
             $missingIndexDates,
             $projectedIndexDates,
@@ -82,6 +87,7 @@ class PuIndexCoverageService
             missingIndexMessages: $missingIndexMessages,
             pendingIndexDates: $pendingIndexDates,
             pendingIndexMessages: $pendingIndexMessages,
+            financialRequirementStartDate: $financialRequirementStartDate->toDateString(),
         );
     }
 
@@ -125,6 +131,35 @@ class PuIndexCoverageService
         $pending = [];
         $pendingMessages = [];
         $lastResolvedDate = null;
+
+        try {
+            $premiumRequirements = $this->indexRateRequirementResolver
+                ->firstCouponPreIntegralizationRateRequirements($parameter);
+        } catch (\Throwable $exception) {
+            $dateKey = $startDate->toDateString();
+            $missing[$dateKey] = $dateKey;
+            $missingMessages[$dateKey] = sprintf(
+                'Não foi possível resolver os requisitos DI do prêmio pré-integralização: %s',
+                $exception->getMessage(),
+            );
+            $premiumRequirements = [];
+        }
+
+        foreach ($premiumRequirements as $requirement) {
+            $requiredRateDate = $requirement->requiredRateDate();
+            $dateKey = $requiredRateDate?->toDateString() ?? $requirement->curveDate->toDateString();
+
+            if ($requirement->rate === null) {
+                $missing[$dateKey] = $dateKey;
+                $missingMessages[$dateKey] = "Snapshot DI obrigatório do prêmio pré-integralização ausente.\n\n{$requirement->missingRateMessage()}";
+
+                continue;
+            }
+
+            if ($requirement->rate->isProjected) {
+                $projected[$dateKey] = $dateKey;
+            }
+        }
 
         for ($currentDate = $startDate->addDay(); $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
             try {
@@ -198,5 +233,17 @@ class PuIndexCoverageService
         $date = $query->max('rate_date');
 
         return $date !== null ? CarbonImmutable::parse((string) $date)->toDateString() : null;
+    }
+
+    private function financialRequirementStartDate(
+        EmissionPuParameter $parameter,
+        CarbonImmutable $curveStartDate,
+    ): CarbonImmutable {
+        try {
+            return $this->indexRateRequirementResolver
+                ->firstCouponPreIntegralizationFinancialCalendarStartDate($parameter) ?? $curveStartDate;
+        } catch (\Throwable) {
+            return $curveStartDate;
+        }
     }
 }

@@ -10,6 +10,7 @@ use Database\Factories\MeasurementAssetFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class MeasurementAsset extends Model
 {
@@ -102,6 +103,11 @@ class MeasurementAsset extends Model
     public function planLine(): BelongsTo
     {
         return $this->belongsTo(MeasurementPlanLine::class, 'plan_line_id');
+    }
+
+    public function fileMigrationJournal(): MorphOne
+    {
+        return $this->morphOne(MeasurementFileMigration::class, 'migratable');
     }
 
     public function getResolvedStorageDiskAttribute(): string

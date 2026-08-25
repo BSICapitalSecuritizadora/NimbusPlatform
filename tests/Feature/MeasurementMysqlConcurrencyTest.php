@@ -5,6 +5,7 @@ use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
+use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Facades\Artisan;
@@ -159,6 +160,9 @@ it('serializes payment registration against payment approval on MySQL', function
         'status' => 'awaiting_payment',
         'current_stage' => 4,
         'workflow_revision' => 20,
+        'engineering_snapshot' => [
+            'plan_sets' => [['plan_set_id' => $planSet->id]],
+        ],
     ]);
     $measurement->reviews()->create(['stage' => 4, 'status' => 'pending']);
     $measurement->payments()->create([
@@ -205,6 +209,7 @@ it('serializes finalize against finalize on MySQL', function () {
     ]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
+        'reference_month' => '2026-08-01',
         'status' => 'approved',
         'current_stage' => 5,
         'workflow_revision' => 30,
@@ -217,17 +222,11 @@ it('serializes finalize against finalize on MySQL', function () {
         'plan_line_id' => $line->id,
         'storage_path' => 'nimbus_docs/measurements/assets/mysql.pdf',
     ]);
-    $measurement->forceFill(['engineering_snapshot' => [
-        'reference_month' => '2026-08-01',
-        'plan_sets' => [[
-            'plan_set_id' => $planSet->id,
-            'plan_line_id' => $line->id,
-            'asset_id' => $asset->id,
-            'storage_path' => $asset->storage_path,
-            'storage_disk' => $asset->resolved_storage_disk,
-            'sha256' => $asset->sha256,
-        ]],
-    ]])->save();
+    $snapshot = app(MeasurementEngineeringService::class)->validateAndRecord(
+        $measurement->fresh(),
+        [$planSet->id => 5],
+    );
+    $measurement->forceFill(['engineering_snapshot' => $snapshot])->save();
     foreach ([1, 2, 3, 4] as $stage) {
         $measurement->reviews()->create(['stage' => $stage, 'status' => 'approved', 'reviewer_user_id' => $actor->id]);
     }

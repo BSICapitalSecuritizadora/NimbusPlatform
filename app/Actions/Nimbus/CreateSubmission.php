@@ -6,6 +6,7 @@ use App\DTOs\Nimbus\StoreSubmissionDTO;
 use App\DTOs\Nimbus\StoreSubmissionFileDTO;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
+use App\Services\Nimbus\NimbusNotificationService;
 use App\Services\Nimbus\SubmissionWorkflowService;
 use App\Services\Security\PiiPseudonymizer;
 use Illuminate\Support\Facades\DB;
@@ -30,11 +31,12 @@ class CreateSubmission
     public function __construct(
         protected StoreSubmissionFile $storeSubmissionFile,
         protected SubmissionWorkflowService $workflowService,
+        protected NimbusNotificationService $notificationService,
     ) {}
 
     public function handle(StoreSubmissionDTO $dto, PortalUser $portalUser): Submission
     {
-        return DB::transaction(function () use ($dto, $portalUser): Submission {
+        $submission = DB::transaction(function () use ($dto, $portalUser): Submission {
             $submission = Submission::query()->create([
                 'nimbus_portal_user_id' => $portalUser->id,
                 'reference_code' => $this->generateReferenceCode(),
@@ -99,6 +101,15 @@ class CreateSubmission
 
             return $submission;
         });
+
+        // Enqueue transactional notification only after successful commit.
+        try {
+            $this->notificationService->enqueueSubmissionReceived($submission);
+        } catch (\Throwable $e) {
+            // Do not fail submission on notification enqueue error.
+        }
+
+        return $submission;
     }
 
     protected function generateReferenceCode(): string

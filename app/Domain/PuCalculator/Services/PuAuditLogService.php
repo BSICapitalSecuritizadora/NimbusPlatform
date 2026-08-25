@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
 use App\Domain\PuCalculator\DTOs\PuValidationFieldDifference;
@@ -11,6 +12,7 @@ use App\Domain\PuCalculator\DTOs\PuValidationReport;
 use App\Domain\PuCalculator\DTOs\PuValidationRowResult;
 use App\Models\Emission;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Spatie\Activitylog\Models\Activity;
 
 class PuAuditLogService
@@ -193,7 +195,7 @@ class PuAuditLogService
         $logger->event('invalidated')->log('pu_curve_invalidated');
     }
 
-    public function logIndexSync(\App\Domain\PuCalculator\DTOs\IndexRateSyncResult $result, ?int $requestedByUserId): void
+    public function logIndexSync(IndexRateSyncResult $result, ?int $requestedByUserId): void
     {
         $logger = activity(self::LOG_NAME)
             ->withProperties([
@@ -226,9 +228,9 @@ class PuAuditLogService
     /**
      * Atividades da calculadora de PU de uma emissao, mais recentes primeiro.
      *
-     * @return \Illuminate\Support\Collection<int, Activity>
+     * @return Collection<int, Activity>
      */
-    public function activitiesFor(Emission $emission, int $limit = 50): \Illuminate\Support\Collection
+    public function activitiesFor(Emission $emission, int $limit = 50): Collection
     {
         return Activity::query()
             ->where('log_name', self::LOG_NAME)
@@ -320,6 +322,10 @@ class PuAuditLogService
             'calendar_code' => $parameter->calendar_code,
             'index_rate_lookup_mode' => $parameter->index_rate_lookup_mode,
             'index_rate_lag_business_days' => $parameter->index_rate_lag_business_days,
+            'first_coupon_pre_integralization_premium_enabled' => $parameter->first_coupon_pre_integralization_premium_enabled,
+            'first_coupon_pre_integralization_business_days' => $parameter->first_coupon_pre_integralization_business_days,
+            'first_coupon_pre_integralization_apply_index_factor' => $parameter->first_coupon_pre_integralization_apply_index_factor,
+            'first_coupon_pre_integralization_apply_spread_factor' => $parameter->first_coupon_pre_integralization_apply_spread_factor,
             'legacy_projection_enabled' => $parameter->legacy_projection_enabled,
         ];
     }

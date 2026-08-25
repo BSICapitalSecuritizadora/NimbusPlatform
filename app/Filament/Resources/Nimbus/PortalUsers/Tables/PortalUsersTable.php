@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources\Nimbus\PortalUsers\Tables;
 
-use App\Mail\Nimbus\SendPortalAccessCode;
-use App\Models\Nimbus\AccessToken;
+use App\Services\Nimbus\NimbusNotificationService;
 use App\Services\Security\PiiPseudonymizer;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -13,8 +12,6 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 
 class PortalUsersTable
 {
@@ -91,60 +88,37 @@ class PortalUsersTable
                     ))
                     ->requiresConfirmation()
                     ->modalHeading('Gerar Chave de Acesso')
-                    ->modalDescription('Uma nova chave de acesso será gerada (formato XXXX-XXXX-XXXX) e a chave anterior, se houver, será revogada.')
+                    ->modalDescription('Uma nova chave de acesso será gerada (formato XXXX-XXXX-XXXX) e a chave anterior, se houver, será revogada. O código será gerado e enviado de forma assíncrona via fila segura.')
                     ->action(function ($record): void {
                         try {
-                            [$code, $expiresAt] = DB::transaction(function () use ($record): array {
-                                $record->accessTokens()
-                                    ->where('status', 'PENDING')
-                                    ->update(['status' => 'REVOKED']);
+                            $service = app(NimbusNotificationService::class);
+                            $outbox = $service->enqueueAccessCode($record);
 
-                                $code = strtoupper(substr(bin2hex(random_bytes(2)), 0, 4)).'-'.
-                                    strtoupper(substr(bin2hex(random_bytes(2)), 0, 4)).'-'.
-                                    strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
+                            if (! $outbox) {
+                                throw new \RuntimeException('Não foi possível enfileirar o envio. Verifique o e-mail do usuário.');
+                            }
 
-                                $expiresAt = now()->addDays((int) config('nimbus.access_tokens.expires_in_days', 7));
-
-                                $record->accessTokens()->create([
-                                    'code_hash' => AccessToken::computeHash($code),
-                                    'status' => 'PENDING',
-                                    'expires_at' => $expiresAt,
-                                ]);
-
-                                return [$code, $expiresAt];
-                            });
-
-                            $token = $record->accessTokens()->where('code_hash', AccessToken::computeHash($code))->first();
-
-                            // Audit: token generation (no plaintext in properties).
+                            // Audit: delivery requested (no plaintext).
                             activity('nimbus')
-                                ->performedOn($token ?? $record)
+                                ->performedOn($record)
                                 ->causedBy(auth()->user())
                                 ->withProperties([
                                     'portal_user_id' => $record->id,
                                     'email_hash' => PiiPseudonymizer::email($record->email),
-                                    'expires_at' => $expiresAt?->toIso8601String(),
+                                    'outbox_id' => $outbox->id,
+                                    'correlation_id' => $outbox->correlation_id,
                                 ])
-                                ->log('nimbus.access_token.generated');
-
-                            Mail::mailer((string) config('nimbus.mail.mailer', config('mail.default')))
-                                ->to($record->email)
-                                ->send(new SendPortalAccessCode(
-                                    user: $record,
-                                    code: $code,
-                                    accessUrl: route('nimbus.auth.request'),
-                                    expiresAt: $expiresAt,
-                                ));
+                                ->log('nimbus.access_token.delivery_requested');
 
                             Notification::make()
-                                ->title('Chave de Acesso Enviada')
-                                ->body("A chave **{$code}** foi gerada com sucesso e enviada ao e-mail do usuário.")
+                                ->title('Chave de Acesso Enfileirada')
+                                ->body('A geração e o envio foram enfileirados com segurança. O portal usuário receberá o código em instantes. Acompanhe em Auditoria de Envios.')
                                 ->success()
                                 ->duration(10000)
                                 ->send();
                         } catch (\Exception $e) {
                             Notification::make()
-                                ->title('Erro ao Gerar Chave')
+                                ->title('Erro ao Enfileirar Chave')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->send();

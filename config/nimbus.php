@@ -17,4 +17,9 @@ return [
     // Must be set via NIMBUS_PII_BLIND_INDEX_KEY. Changing APP_KEY must NOT change blind indexes.
     'pii_blind_index_key' => env('NIMBUS_PII_BLIND_INDEX_KEY'),
     'pii_blind_index_version' => env('NIMBUS_PII_BLIND_INDEX_VERSION', 'v1'),
+
+    'migration' => [
+        'legacy_storage_root' => env('NIMBUS_LEGACY_STORAGE_ROOT', storage_path('app/private/nimbus-legacy')),
+        'control_connection' => env('NIMBUS_MIGRATION_CONTROL_CONNECTION', env('DB_CONNECTION', 'sqlite')),
+    ],
 ];

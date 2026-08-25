@@ -17,10 +17,12 @@ class RoleForm
     {
         return $schema
             ->components([
-                Section::make('Perfil')
+                Section::make('Identificação do perfil')
+                    ->description('Defina o nome de identificação do perfil de acesso.')
                     ->schema([
                         TextInput::make('name')
                             ->label('Nome do perfil')
+                            ->placeholder('Ex: Gestor de Operações')
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->validationMessages([
@@ -29,11 +31,14 @@ class RoleForm
                             ->maxLength(255),
                         Hidden::make('guard_name')
                             ->default('web'),
-                    ]),
-                Section::make('Permissões')
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Permissões do perfil')
+                    ->description('Selecione as permissões de acesso concedidas aos usuários vinculados a este perfil.')
                     ->schema([
                         CheckboxList::make('permissions')
-                            ->label('Permissões do perfil')
+                            ->label('Permissões')
                             ->relationship(
                                 'permissions',
                                 'name',
@@ -42,10 +47,10 @@ class RoleForm
                                     ->orderBy('name'),
                             )
                             ->getOptionLabelFromRecordUsing(fn (Permission $record): string => AccessPermission::labelFor($record->name))
-                            ->bulkToggleable()
-                            ->columns(2)
+                            ->view('filament.forms.components.permission-matrix')
                             ->columnSpanFull(),
-                    ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 }

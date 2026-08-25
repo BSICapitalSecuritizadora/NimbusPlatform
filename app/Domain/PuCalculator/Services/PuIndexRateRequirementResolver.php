@@ -11,6 +11,7 @@ use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\EmissionPuParameter;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
+use InvalidArgumentException;
 
 final class PuIndexRateRequirementResolver
 {
@@ -58,6 +59,79 @@ final class PuIndexRateRequirementResolver
             lookupDate: $lookupDate,
             rate: $rate,
         );
+    }
+
+    /** @return list<CarbonImmutable> */
+    public function firstCouponPreIntegralizationAccrualDates(EmissionPuParameter $parameter): array
+    {
+        if (! $parameter->hasFirstCouponPreIntegralizationPremium()) {
+            return [];
+        }
+
+        $businessDays = (int) $parameter->first_coupon_pre_integralization_business_days;
+
+        if ($businessDays <= 0) {
+            throw new InvalidArgumentException(
+                'O prêmio pré-integralização do primeiro cupom exige quantidade de Dias Úteis maior que zero.',
+            );
+        }
+
+        if ($parameter->curve_start_date === null) {
+            throw new InvalidArgumentException(
+                'O prêmio pré-integralização do primeiro cupom exige a data inicial/integralização da curva.',
+            );
+        }
+
+        $startDate = CarbonImmutable::instance($parameter->curve_start_date);
+        $calendarCode = (string) $parameter->calendar_code;
+        $dates = [];
+
+        for ($offset = $businessDays; $offset >= 1; $offset--) {
+            $dates[] = $this->businessDayCalendar->shiftBusinessDays(
+                $startDate,
+                -$offset,
+                $calendarCode,
+            );
+        }
+
+        return $dates;
+    }
+
+    /** @return list<PuIndexRateRequirement> */
+    public function firstCouponPreIntegralizationRateRequirements(EmissionPuParameter $parameter): array
+    {
+        if (! $parameter->hasFirstCouponPreIntegralizationPremium()
+            || ! (bool) $parameter->first_coupon_pre_integralization_apply_index_factor) {
+            return [];
+        }
+
+        return array_map(
+            fn (CarbonImmutable $accrualDate): PuIndexRateRequirement => $this->resolve($parameter, $accrualDate),
+            $this->firstCouponPreIntegralizationAccrualDates($parameter),
+        );
+    }
+
+    public function firstCouponPreIntegralizationFinancialCalendarStartDate(
+        EmissionPuParameter $parameter,
+    ): ?CarbonImmutable {
+        $dates = $this->firstCouponPreIntegralizationAccrualDates($parameter);
+
+        foreach ($this->firstCouponPreIntegralizationRateRequirements($parameter) as $requirement) {
+            if ($requirement->lookupDate !== null) {
+                $dates[] = $requirement->lookupDate;
+            }
+        }
+
+        if ($dates === []) {
+            return null;
+        }
+
+        usort(
+            $dates,
+            fn (CarbonImmutable $left, CarbonImmutable $right): int => $left->getTimestamp() <=> $right->getTimestamp(),
+        );
+
+        return $dates[0];
     }
 
     public function isAwaitingPublication(

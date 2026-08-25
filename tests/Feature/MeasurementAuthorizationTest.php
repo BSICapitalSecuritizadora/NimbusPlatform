@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Measurement;
+use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementWorkflow;
@@ -168,11 +169,15 @@ it('allows only the payment manager to register payments in the pending payment 
         'payment_manager_user_id' => $manager->id,
         'payment_receipt_uploader_user_id' => $uploader->id,
     ]);
+    $planSet = MeasurementPlanSet::factory()->default()->create(['operation_id' => $operation->id]);
     $measurement = Measurement::factory()->create([
         'operation_id' => $operation->id,
         'storage_path' => null,
         'status' => 'awaiting_payment',
         'current_stage' => MeasurementWorkflow::STAGE_PAYMENT,
+        'engineering_snapshot' => [
+            'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true]],
+        ],
     ]);
     $measurement->reviews()->create([
         'stage' => MeasurementWorkflow::STAGE_PAYMENT,

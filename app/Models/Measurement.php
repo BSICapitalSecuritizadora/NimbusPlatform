@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -74,6 +75,7 @@ class Measurement extends Model
                     'sha256',
                     'file_size',
                     'mime_type',
+                    'engineering_snapshot',
                 ])) {
                 throw new MeasurementWorkflowException('Os dados aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para corrigi-los.', [
                     'measurement_id' => $measurement->getKey(),
@@ -82,6 +84,12 @@ class Measurement extends Model
 
             if (blank($measurement->filename) && filled($measurement->storage_path)) {
                 $measurement->filename = basename((string) $measurement->storage_path);
+            }
+        });
+
+        static::deleting(function (self $measurement): void {
+            if ($measurement->hasApprovedEngineering()) {
+                throw new MeasurementWorkflowException('Uma medição aprovada pela Engenharia não pode ser excluída.');
             }
         });
     }
@@ -150,6 +158,11 @@ class Measurement extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(MeasurementPayment::class);
+    }
+
+    public function fileMigrationJournal(): MorphOne
+    {
+        return $this->morphOne(MeasurementFileMigration::class, 'migratable');
     }
 
     public function reviewForStage(int $stage): ?MeasurementReview

@@ -38,6 +38,14 @@ class ContractFactory extends Factory
         ]);
     }
 
+    /**
+     * The buyer of the contract.
+     *
+     * Still written through `contracts.client_id`: the model mirrors it into the
+     * buyer table on save, so a contract built by this factory comes out with
+     * exactly one buyer on both sides. When the domain goes plural this state
+     * becomes the single-buyer shorthand and a `withBuyers()` state joins it.
+     */
     public function forClient(Client $client): static
     {
         return $this->state(fn (): array => [

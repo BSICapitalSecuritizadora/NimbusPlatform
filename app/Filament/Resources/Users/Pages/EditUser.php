@@ -10,6 +10,17 @@ class EditUser extends EditRecord
 {
     protected static string $resource = UserResource::class;
 
+    protected static ?string $title = 'Editar Usuário';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-user-edit-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Atualize as informações cadastrais, vínculos e permissões de acesso do usuário.';
+    }
+
     /** @var list<string> */
     protected array $rolesBeforeSave = [];
 

@@ -2,7 +2,6 @@
 
 namespace App\Domain\PuCalculator\Services;
 
-use App\Domain\PuCalculator\Calculators\DailyFactorCalculator;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\DTOs\IndexRateData;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
@@ -10,7 +9,6 @@ use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
-use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
 use App\Models\EmissionPuParameter;
@@ -25,7 +23,8 @@ class PuCurveGenerationService
     public function __construct(
         private readonly BusinessDayCalendar $businessDayCalendar,
         private readonly PuIndexRateRequirementResolver $indexRateRequirementResolver,
-        private readonly DailyFactorCalculator $dailyFactorCalculator,
+        private readonly CdiFactorCompositionService $factorComposition,
+        private readonly FirstCouponPreIntegralizationPremiumCalculator $openingPremiumCalculator,
         private readonly DecimalRounder $rounder,
     ) {}
 
@@ -42,12 +41,14 @@ class PuCurveGenerationService
         $endDate = CarbonImmutable::instance($parameter->curve_end_date);
         $eventGroups = $this->groupEventsByDate($emission->puEvents);
         $quantityTimeline = $this->buildQuantityTimeline($emission->integralizationHistories);
+        $openingPremium = $this->openingPremiumCalculator->calculate($parameter);
 
         $baseUnitValue = $this->rounder->normalize((string) $parameter->initial_unit_value, DecimalRounder::CALCULATION_SCALE);
         $lastResidualUnitValue = $baseUnitValue;
         $factorDiAccumulated = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
         $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
         $businessDaysSinceReset = 0;
+        $openingPremiumApplied = false;
         $rows = [];
 
         for ($currentDate = $startDate; $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
@@ -78,59 +79,28 @@ class PuCurveGenerationService
             } else {
                 if ($isBusinessDay) {
                     $businessDaysSinceReset++;
-                    $factorSpread = $this->dailyFactorCalculator->factorSpreadForBusinessDays(
-                        (string) $parameter->spread_rate,
-                        $businessDaysSinceReset,
-                        (int) $parameter->business_day_basis,
-                        DecimalRounder::CALCULATION_SCALE,
-                    );
+                    $factorSpread = $this->factorComposition->spreadFactor($parameter, $businessDaysSinceReset);
                 }
 
-                $factorDi = $this->dailyFactorCalculator->factorDiForDay(
-                    $rateSnapshot?->value,
-                    $rateRequirement->shouldApplyRate(),
-                    (int) $parameter->business_day_basis,
-                    DecimalRounder::CALCULATION_SCALE,
-                );
-
-                if ($parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact) {
-                    $factorDi = $this->rounder->normalize(
-                        $this->rounder->round($factorDi, 8),
-                        DecimalRounder::CALCULATION_SCALE,
-                    );
-                }
-
-                $factorDiAccumulated = $this->rounder->round(
-                    bcmul($factorDiAccumulated, $factorDi, DecimalRounder::CALCULATION_SCALE + 4),
-                    DecimalRounder::CALCULATION_SCALE,
+                $factorDi = $this->factorComposition->dailyIndexFactor($parameter, $rateRequirement);
+                $factorDiAccumulated = $this->factorComposition->accumulateIndexFactor(
+                    $factorDiAccumulated,
+                    $factorDi,
                 );
 
                 if ($businessDaysSinceReset === 0) {
                     $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 }
 
-                if ($parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact) {
-                    $factorSpread = $this->rounder->normalize(
-                        $this->rounder->round($factorSpread, 9),
-                        DecimalRounder::CALCULATION_SCALE,
-                    );
-                }
-
-                $factorSpreadDiBase = $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact
-                    ? $this->rounder->normalize(
-                        $this->rounder->round($factorDiAccumulated, 8),
-                        DecimalRounder::CALCULATION_SCALE,
-                    )
-                    : $factorDiAccumulated;
-
-                $factorSpreadDi = $this->rounder->round(
-                    bcmul($factorSpreadDiBase, $factorSpread, DecimalRounder::CALCULATION_SCALE + 4),
-                    DecimalRounder::CALCULATION_SCALE,
+                $factorSpreadDi = $this->factorComposition->combinedFactor(
+                    $parameter,
+                    $factorDiAccumulated,
+                    $factorSpread,
                 );
                 $interestRealUnitValue = $this->rounder->round(
                     bcmul(
                         $baseUnitValue,
-                        bcsub($this->factorSpreadDiForInterest($parameter, $factorSpreadDi), '1', DecimalRounder::CALCULATION_SCALE + 4),
+                        bcsub($this->factorComposition->factorForInterest($parameter, $factorSpreadDi), '1', DecimalRounder::CALCULATION_SCALE + 4),
                         DecimalRounder::CALCULATION_SCALE + 4,
                     ),
                     DecimalRounder::CALCULATION_SCALE,
@@ -149,10 +119,43 @@ class PuCurveGenerationService
             $eventOriginalDate = null;
             $eventEffectiveDate = null;
             $groupedEvents = $eventGroups[$currentDate->toDateString()] ?? collect();
+            $openingPremiumAppliedOnCurrentRow = false;
+            $factorSpreadDiBeforeOpeningPremium = null;
 
             if ($groupedEvents->isNotEmpty()) {
-                $interestPaymentUnitValue = $groupedEvents
-                    ->contains(fn (EmissionPuEvent $event): bool => $event->event_type_enum === PuEventType::InterestPayment)
+                $hasInterestPayment = $groupedEvents
+                    ->contains(fn (EmissionPuEvent $event): bool => $event->event_type_enum === PuEventType::InterestPayment);
+
+                if ($hasInterestPayment && $openingPremium !== null && ! $openingPremiumApplied) {
+                    $factorSpreadDiBeforeOpeningPremium = $factorSpreadDi;
+                    $factorSpreadDi = $this->factorComposition->factorForInterest(
+                        $parameter,
+                        $this->rounder->round(
+                            bcmul(
+                                $this->factorComposition->factorForInterest($parameter, $factorSpreadDi),
+                                $openingPremium->factor,
+                                DecimalRounder::CALCULATION_SCALE + 4,
+                            ),
+                            DecimalRounder::CALCULATION_SCALE,
+                        ),
+                    );
+                    $interestRealUnitValue = $this->rounder->round(
+                        bcmul(
+                            $baseUnitValue,
+                            bcsub($factorSpreadDi, '1', DecimalRounder::CALCULATION_SCALE + 4),
+                            DecimalRounder::CALCULATION_SCALE + 4,
+                        ),
+                        DecimalRounder::CALCULATION_SCALE,
+                    );
+                    $updatedUnitValue = $this->rounder->round(
+                        bcadd($baseUnitValue, $interestRealUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
+                        DecimalRounder::CALCULATION_SCALE,
+                    );
+                    $openingPremiumApplied = true;
+                    $openingPremiumAppliedOnCurrentRow = true;
+                }
+
+                $interestPaymentUnitValue = $hasInterestPayment
                     ? $interestRealUnitValue
                     : $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
 
@@ -240,6 +243,7 @@ class PuCurveGenerationService
                 'factor_di_accumulated_raw' => $factorDiAccumulated,
                 'factor_spread_raw' => $factorSpread,
                 'factor_spread_di_raw' => $factorSpreadDi,
+                'factor_spread_di_before_first_coupon_premium_raw' => $factorSpreadDiBeforeOpeningPremium,
                 'interest_real_unit_value_raw' => $interestRealUnitValue,
                 'updated_unit_value_raw' => $updatedUnitValue,
                 'interest_payment_unit_value_raw' => $interestPaymentUnitValue,
@@ -254,6 +258,10 @@ class PuCurveGenerationService
                 'dup_interest' => $dupInterest,
                 'dut_interest' => $dutInterest,
                 'reset_after_payment' => bccomp($paymentTotalUnitValue, '0', DecimalRounder::UNIT_SCALE) === 1,
+                'first_coupon_pre_integralization_premium_applied' => $openingPremiumAppliedOnCurrentRow,
+                'first_coupon_pre_integralization_premium' => $openingPremiumAppliedOnCurrentRow
+                    ? $openingPremium?->toCalculationMemory()
+                    : null,
                 'event_types' => $groupedEvents
                     ->map(fn (EmissionPuEvent $event): string => $event->event_type)
                     ->values()
@@ -423,26 +431,5 @@ class PuCurveGenerationService
             && $rateSnapshot === null
             && $parameter->indexer_enum === PuIndexer::Cdi
             && $parameter->index_rate_lookup_mode_enum === PuIndexRateLookupMode::BusinessDayLagExact;
-    }
-
-    /**
-     * A engine externa espelhada pelos modos "Exact" arredonda o fator Spread×DI em 9 casas ANTES de
-     * calcular os juros (comprovado linha-a-linha nos gabaritos AMANI 2026-03-02 e TROUPE 2025-06-05:
-     * juros do gabarito = base × (round9(fator) − 1), exato). O fator persistido/exibido permanece sem
-     * esse arredondamento, como nas planilhas de origem. Modos não espelhados mantêm o fator íntegro.
-     */
-    private function factorSpreadDiForInterest(EmissionPuParameter $parameter, string $factorSpreadDi): string
-    {
-        if (! in_array($parameter->index_rate_lookup_mode_enum, [
-            PuIndexRateLookupMode::BusinessDayLagExact,
-            PuIndexRateLookupMode::PreviousCalendarDayExact,
-        ], true)) {
-            return $factorSpreadDi;
-        }
-
-        return $this->rounder->normalize(
-            $this->rounder->round($factorSpreadDi, 9),
-            DecimalRounder::CALCULATION_SCALE,
-        );
     }
 }

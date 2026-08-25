@@ -9,6 +9,7 @@ use Database\Factories\MeasurementPaymentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -92,6 +93,11 @@ class MeasurementPayment extends Model
     public function receiptUploadedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'receipt_uploaded_by');
+    }
+
+    public function fileMigrationJournal(): MorphOne
+    {
+        return $this->morphOne(MeasurementFileMigration::class, 'migratable');
     }
 
     public function hasReceipt(): bool

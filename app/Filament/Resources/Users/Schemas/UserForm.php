@@ -21,13 +21,16 @@ class UserForm
         return $schema
             ->components([
                 Section::make('Dados do usuário')
+                    ->description('Informações cadastrais e credenciais corporativas do colaborador.')
                     ->schema([
                         TextInput::make('name')
                             ->label('Nome')
+                            ->placeholder('Ex: Ana Paula Silva')
                             ->required()
                             ->maxLength(255),
                         TextInput::make('email')
                             ->label('E-mail corporativo')
+                            ->placeholder('colaborador@bsicapital.com.br')
                             ->email()
                             ->required()
                             ->unique(ignoreRecord: true)
@@ -37,20 +40,26 @@ class UserForm
                             ->maxLength(255),
                         TextInput::make('cargo')
                             ->label('Cargo')
+                            ->placeholder('Ex: Analista de Estruturação')
                             ->maxLength(255),
                         TextInput::make('departamento')
                             ->label('Departamento')
+                            ->placeholder('Ex: Gestão & Operações')
                             ->maxLength(255),
                         Toggle::make('is_active')
-                            ->label('Ativo')
-                            ->helperText('Usuários inativos não conseguem acessar o painel, mesmo autenticados pela Microsoft.')
-                            ->default(true),
+                            ->label('Usuário ativo na plataforma')
+                            ->helperText('Usuários inativos têm o acesso bloqueado imediatamente em todas as rotas do painel, mesmo com sessão Microsoft válida.')
+                            ->default(true)
+                            ->columnSpanFull(),
                     ])
-                    ->columns(2),
-                Section::make('Acesso e permissões')
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('Acessos e permissões')
+                    ->description('Defina o perfil de acesso e as permissões específicas concedidas a este usuário.')
                     ->schema([
                         Select::make('roles')
-                            ->label('Perfis de acesso')
+                            ->label('Perfil de acesso')
                             ->relationship(
                                 'roles',
                                 'name',
@@ -61,9 +70,11 @@ class UserForm
                             ->preload()
                             ->searchable()
                             ->required()
-                            ->helperText('O perfil define o conjunto base de permissões do usuário.'),
+                            ->helperText('O perfil define o conjunto base de permissões. O perfil Super Admin possui acesso integral irrestrito a todas as funcionalidades da plataforma.')
+                            ->columnSpanFull(),
+
                         CheckboxList::make('permissions')
-                            ->label('Permissões adicionais')
+                            ->label('Permissões individuais')
                             ->relationship(
                                 'permissions',
                                 'name',
@@ -72,25 +83,28 @@ class UserForm
                                     ->orderBy('name'),
                             )
                             ->getOptionLabelFromRecordUsing(fn (Permission $record): string => AccessPermission::labelFor($record->name))
-                            ->bulkToggleable()
-                            ->columns(2)
-                            ->columnSpanFull()
-                            ->helperText('Use permissões diretas para exceções pontuais ao perfil selecionado.'),
+                            ->view('filament.forms.components.permission-matrix')
+                            ->columnSpanFull(),
                     ])
-                    ->columns(2),
+                    ->columnSpanFull(),
+
                 Section::make('Status de autenticação')
+                    ->description('Dados de provisionamento e auditoria de login corporativo Microsoft 365.')
+                    ->collapsible()
+                    ->collapsed()
                     ->schema([
                         Placeholder::make('approved_at')
                             ->label('Provisionado em')
                             ->content(fn ($record) => $record?->approved_at?->format('d/m/Y H:i') ?? 'Será provisionado ao salvar'),
                         Placeholder::make('azure_id')
-                            ->label('Identificador Microsoft')
+                            ->label('Identificador Microsoft (Entra ID)')
                             ->content(fn ($record) => $record?->azure_id ?: 'Aguardando primeiro login via Microsoft 365'),
                         Placeholder::make('last_login_at')
-                            ->label('Último Acesso')
+                            ->label('Último acesso')
                             ->content(fn ($record) => $record?->last_login_at?->format('d/m/Y H:i') ?? 'Nenhum login registrado'),
                     ])
-                    ->columns(3),
+                    ->columns(3)
+                    ->columnSpanFull(),
             ]);
     }
 }

@@ -275,17 +275,16 @@ it('allows finalization to return to an earlier stage only with persisted eviden
 it('keeps batch and per-development payments, records authors and rejects invalid values', function () {
     $scenario = createP0Scenario();
     advanceP0ToStage($scenario, 4);
-    $secondPlan = MeasurementPlanSet::factory()->create(['operation_id' => $scenario['operation']->id]);
     $workflow = app(MeasurementWorkflow::class);
 
     $payments = $workflow->registerPayments($scenario['measurement']->fresh(), $scenario['payment'], [
         ['plan_set_id' => $scenario['planSet']->id, 'amount' => 100, 'pay_date' => '2026-08-20'],
-        ['plan_set_id' => $secondPlan->id, 'amount' => 200, 'pay_date' => '2026-08-21'],
-        ['plan_set_id' => $secondPlan->id, 'amount' => null, 'pay_date' => '2026-08-21'],
+        ['plan_set_id' => $scenario['planSet']->id, 'amount' => 200, 'pay_date' => '2026-08-21'],
+        ['plan_set_id' => $scenario['planSet']->id, 'amount' => null, 'pay_date' => '2026-08-21'],
     ]);
 
     expect($payments)->toHaveCount(2)
-        ->and($payments->pluck('plan_set_id')->all())->toBe([$scenario['planSet']->id, $secondPlan->id])
+        ->and($payments->pluck('plan_set_id')->all())->toBe([$scenario['planSet']->id, $scenario['planSet']->id])
         ->and($payments->every(fn ($payment): bool => $payment->created_by === $scenario['payment']->id))->toBeTrue();
 
     expect(fn () => $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['payment'], [

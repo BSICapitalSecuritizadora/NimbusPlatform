@@ -31,6 +31,7 @@
                     $observationChanges = $item->observationChanges();
                     $regularChanges = $item->regularChanges();
                     $hasInternal = $item->hasInternalNote();
+                    $totalChangesCount = count($item->changes);
                 @endphp
 
                 <li class="relative ps-6 sm:ps-7">
@@ -55,6 +56,12 @@
                                     <x-filament::badge :color="$item->color ?? 'gray'" size="sm">
                                         {{ $item->eventLabel }}
                                     </x-filament::badge>
+                                @endif
+
+                                @if ($totalChangesCount > 0)
+                                    <span class="inline-flex items-center rounded-md bg-white/5 px-2 py-0.5 text-[11px] font-medium text-slate-300 ring-1 ring-white/10 tabular-nums">
+                                        {{ $totalChangesCount }} {{ $totalChangesCount === 1 ? 'alteração' : 'alterações' }}
+                                    </span>
                                 @endif
 
                                 @if ($hasInternal)
@@ -91,7 +98,7 @@
                                     title="{{ $item->occurredAt->format('d/m/Y H:i:s') }}"
                                     class="font-medium text-gray-600 dark:text-gray-300"
                                 >
-                                    {{ $item->occurredAt->format('d/m/Y \à\s H:i') }}
+                                    {{ $item->occurredAt->format('d/m/Y \à\s H:i:s') }}
                                 </time>
 
                                 <span aria-hidden="true" class="text-gray-300 dark:text-gray-600">·</span>
@@ -102,7 +109,7 @@
                             </div>
                         </div>
 
-                        {{-- ── Nível 1: Resumo Operacional ── --}}
+                        {{-- ── Nível 1: Resumo Operacional (Visível por padrão) ── --}}
                         <div class="mt-3 space-y-2.5">
                             {{-- 1. Transição de Status --}}
                             @if ($statusChange)
@@ -123,26 +130,43 @@
                                 </div>
                             @endif
 
-                            {{-- 2. Campos Alterados Regulares (Visualização Rápida) --}}
+                            {{-- 2. Campos Alterados Regulares (Diff Cards estruturados) --}}
                             @if (count($regularChanges))
-                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-gray-700 dark:text-gray-300">
-                                    @foreach ($regularChanges as $change)
-                                        <div class="inline-flex items-center gap-1.5">
-                                            <span class="font-medium text-gray-500 dark:text-gray-400">{{ $change->label }}:</span>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                                    @foreach (array_slice($regularChanges, 0, 6) as $change)
+                                        <div class="rounded-lg border border-gray-100 bg-gray-50/60 p-2.5 dark:border-white/5 dark:bg-white/[0.02]">
+                                            <span class="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400 block mb-1">
+                                                {{ $change->label }}
+                                            </span>
 
                                             @if ($change->hasTransition())
-                                                <span class="text-gray-400 dark:text-gray-500 line-through text-[11px]">{{ $change->old }}</span>
-                                                <x-filament::icon icon="heroicon-m-arrow-right" class="h-3 w-3 text-gray-400" aria-hidden="true" />
-                                                <span class="font-semibold text-gray-900 dark:text-white">{{ $change->new }}</span>
+                                                <div class="flex flex-col gap-1">
+                                                    <div class="flex items-baseline gap-1 text-[11px] text-gray-400 dark:text-rose-400/80">
+                                                        <span class="text-[9px] uppercase font-bold text-gray-400 dark:text-slate-500">De:</span>
+                                                        <span class="line-through font-mono truncate">{{ $change->old ?? '—' }}</span>
+                                                    </div>
+                                                    <div class="flex items-baseline gap-1 font-medium text-gray-900 dark:text-emerald-300">
+                                                        <span class="text-[9px] uppercase font-bold text-gray-500 dark:text-slate-400">Para:</span>
+                                                        <span class="font-mono font-semibold truncate">{{ $change->new ?? '—' }}</span>
+                                                    </div>
+                                                </div>
                                             @else
-                                                <span class="font-semibold text-gray-900 dark:text-white">{{ $change->new ?? '—' }}</span>
+                                                <div class="font-medium text-gray-900 dark:text-white font-mono truncate">
+                                                    {{ $change->new ?? '—' }}
+                                                </div>
                                             @endif
                                         </div>
                                     @endforeach
                                 </div>
+
+                                @if (count($regularChanges) > 6)
+                                    <div class="text-[11px] text-gray-500 dark:text-slate-400 italic">
+                                        + {{ count($regularChanges) - 6 }} outros campos alterados disponíveis nos detalhes técnicos abaixo.
+                                    </div>
+                                @endif
                             @endif
 
-                            {{-- 3. Observações / Notas / Comentários (Container de Citação com Clamp) --}}
+                            {{-- 3. Observações / Textos Longos (Citação com Clamp e Toggle) --}}
                             @if (count($observationChanges))
                                 @foreach ($observationChanges as $obs)
                                     <div
@@ -167,13 +191,13 @@
                                             {{ $obs->new ?? '—' }}
                                         </p>
 
-                                        @if (strlen($obs->new ?? '') > 160)
+                                        @if (strlen($obs->new ?? '') > 140)
                                             <button
                                                 type="button"
                                                 x-on:click="expanded = !expanded"
                                                 class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300"
                                             >
-                                                <span x-text="expanded ? 'Mostrar menos' : 'Ver mais da observação'">Ver mais</span>
+                                                <span x-text="expanded ? 'Mostrar menos' : 'Ver conteúdo completo'">Ver conteúdo completo</span>
                                                 <x-filament::icon icon="heroicon-m-chevron-down" class="h-3 w-3 transition-transform duration-150" x-bind:class="expanded && 'rotate-180'" />
                                             </button>
                                         @endif
@@ -182,7 +206,7 @@
                             @endif
                         </div>
 
-                        {{-- ── Nível 2: Detalhes Técnicos & Auditoria (Expansível) ── --}}
+                        {{-- ── Nível 2: Detalhes Técnicos & Auditoria (Expansível / Recolhido por Padrão) ── --}}
                         <div x-data="{ open: false, copied: false, copiedJson: false }" class="mt-3 pt-2 border-t border-gray-100/80 dark:border-white/5">
                             <div class="flex items-center justify-between">
                                 <button
@@ -226,9 +250,9 @@
                                             Campos alterados
                                         </h4>
 
-                                        <div class="overflow-x-auto rounded border border-gray-200/80 bg-white dark:border-white/10 dark:bg-[#07151c]">
+                                        <div class="overflow-x-auto rounded border border-gray-200/80 bg-white dark:border-white/10 dark:bg-[#07151c] max-h-64 overflow-y-auto">
                                             <table class="w-full text-left text-xs">
-                                                <thead class="bg-gray-50 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-white/5 dark:text-gray-400 border-b border-gray-200/70 dark:border-white/5">
+                                                <thead class="sticky top-0 bg-gray-50 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:bg-[#0a1e27] dark:text-gray-400 border-b border-gray-200/70 dark:border-white/5">
                                                     <tr>
                                                         <th class="px-2.5 py-1.5">Campo</th>
                                                         <th class="px-2.5 py-1.5">Valor anterior</th>
@@ -264,13 +288,13 @@
                                     </dl>
                                 </div>
 
-                                {{-- C. Payload Bruto (JSON Prettified) --}}
+                                {{-- C. Payload Bruto (JSON Prettified em Accordion) --}}
                                 @if ($item->rawJson)
                                     <details class="group rounded border border-gray-200/80 bg-white dark:border-white/10 dark:bg-[#07151c] p-2.5">
                                         <summary class="cursor-pointer font-medium text-gray-700 dark:text-gray-300 select-none flex items-center justify-between text-[11px]">
                                             <span class="flex items-center gap-1.5">
                                                 <x-filament::icon icon="heroicon-m-code-bracket" class="h-3.5 w-3.5 text-gray-400" />
-                                                Payload JSON completo
+                                                Dados técnicos / Payload JSON completo
                                             </span>
                                             <span class="text-xs text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                                         </summary>
@@ -284,7 +308,7 @@
                                                 <span x-text="copiedJson ? 'Copiado!' : 'Copiar JSON'">Copiar JSON</span>
                                             </button>
 
-                                            <pre x-ref="rawJsonPre" class="max-h-56 overflow-y-auto rounded bg-gray-100 p-3 font-mono text-[10.5px] leading-relaxed text-gray-800 dark:bg-black/50 dark:text-gray-200 whitespace-pre overflow-x-auto"><code>{{ $item->rawJson }}</code></pre>
+                                            <pre x-ref="rawJsonPre" class="max-h-72 overflow-y-auto rounded bg-gray-100 p-3 font-mono text-[10.5px] leading-relaxed text-gray-800 dark:bg-[#040e13] dark:text-slate-300 whitespace-pre overflow-x-auto border border-white/5"><code>{{ $item->rawJson }}</code></pre>
                                         </div>
                                     </details>
                                 @endif

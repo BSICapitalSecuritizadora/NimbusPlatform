@@ -5,10 +5,11 @@ namespace Database\Factories;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\Emission;
+use App\Models\EmissionPuParameter;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EmissionPuParameter>
+ * @extends Factory<EmissionPuParameter>
  */
 class EmissionPuParameterFactory extends Factory
 {
@@ -25,6 +26,10 @@ class EmissionPuParameterFactory extends Factory
             'calendar_code' => 'B3',
             'index_rate_lookup_mode' => PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
             'index_rate_lag_business_days' => 1,
+            'first_coupon_pre_integralization_premium_enabled' => false,
+            'first_coupon_pre_integralization_business_days' => null,
+            'first_coupon_pre_integralization_apply_index_factor' => true,
+            'first_coupon_pre_integralization_apply_spread_factor' => true,
             'legacy_projection_enabled' => true,
         ];
     }

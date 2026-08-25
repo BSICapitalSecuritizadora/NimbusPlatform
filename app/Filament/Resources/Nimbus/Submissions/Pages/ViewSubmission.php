@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Nimbus\Submissions\Pages;
 
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
 use App\Models\Nimbus\Submission;
+use App\Services\Nimbus\NimbusNotificationService;
 use App\Services\Nimbus\SubmissionWorkflowService;
 use Filament\Actions;
 use Filament\Forms\Components\Select;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ViewSubmission extends ViewRecord
@@ -68,7 +70,8 @@ class ViewSubmission extends ViewRecord
                         ->label('Solicitar Correção')
                         ->icon('heroicon-o-arrow-uturn-left')
                         ->color('warning')
-                        ->outlined(),
+                        ->outlined()
+                        ->visible(fn (Submission $record): bool => app(SubmissionWorkflowService::class)->isAllowedTransition($record->status, Submission::STATUS_NEEDS_CORRECTION)),
                     $action->makeModalSubmitAction('rejeitar', arguments: ['intent' => 'reject'])
                         ->label('Rejeitar')
                         ->icon('heroicon-o-x-mark')
@@ -82,9 +85,15 @@ class ViewSubmission extends ViewRecord
                 ->action(function (array $data, array $arguments, Submission $record): void {
                     $intent = $arguments['intent'] ?? 'update_status';
                     $note = trim((string) ($data['note'] ?? ''));
-                    $visibility = in_array(($data['visibility'] ?? 'USER_VISIBLE'), ['USER_VISIBLE', 'ADMIN_ONLY'], true)
-                        ? $data['visibility']
-                        : 'USER_VISIBLE';
+                    // Server-side guarantee: correction reason must always be USER_VISIBLE,
+                    // internal comments must always be ADMIN_ONLY, regardless of UI input or manipulation.
+                    $visibility = match ($intent) {
+                        'request_correction' => 'USER_VISIBLE',
+                        'internal_comment' => 'ADMIN_ONLY',
+                        default => in_array(($data['visibility'] ?? 'USER_VISIBLE'), ['USER_VISIBLE', 'ADMIN_ONLY'], true)
+                            ? $data['visibility']
+                            : 'USER_VISIBLE',
+                    };
 
                     $requestedStatus = match ($intent) {
                         'approve' => Submission::STATUS_COMPLETED,
@@ -130,28 +139,74 @@ class ViewSubmission extends ViewRecord
 
                         // No status history for internal comment.
                     } else {
-                        // Centralized transition creates history + audit atomically.
-                        // Workaround for legacy enum fallback is preserved via persistableStatusFor above.
                         $workflow = app(SubmissionWorkflowService::class);
 
-                        // Same-status no-op should not create duplicate history; workflow handles it.
-                        if ($status !== $record->status) {
-                            $workflow->transition($record, $status, $actor, $note !== '' ? $note : null);
-                        }
+                        // request_correction must be atomic: transition + USER_VISIBLE note + audits succeed together,
+                        // otherwise no partial state (status without visible instruction).
+                        if ($intent === 'request_correction') {
+                            DB::transaction(function () use ($workflow, $record, $status, $actor, $note, $visibility): void {
+                                if ($status !== $record->status) {
+                                    $workflow->transition($record, $status, $actor, $note !== '' ? $note : null);
+                                }
 
-                        if ($note !== '') {
-                            $record->notes()->create([
-                                'user_id' => auth()->id(),
-                                'visibility' => $visibility,
-                                'message' => $note,
-                            ]);
+                                if ($note !== '') {
+                                    $record->notes()->create([
+                                        'user_id' => auth()->id(),
+                                        'visibility' => $visibility,
+                                        'message' => $note,
+                                    ]);
 
-                            // Note audit (distinct from status change audit already done by workflow).
-                            activity('nimbus')
-                                ->performedOn($record)
-                                ->causedBy($actor)
-                                ->withProperties(['visibility' => $visibility])
-                                ->log($intent === 'request_correction' ? 'nimbus.submission.correction_requested' : 'nimbus.submission.note_added');
+                                    activity('nimbus')
+                                        ->performedOn($record)
+                                        ->causedBy($actor)
+                                        ->withProperties(['visibility' => $visibility])
+                                        ->log('nimbus.submission.correction_requested');
+                                }
+                            });
+
+                            // Enqueue transactional notification only after commit.
+                            try {
+                                $fresh = $record->refresh();
+                                $historyId = $fresh->statusHistories()->where('old_status', Submission::STATUS_UNDER_REVIEW)->where('new_status', Submission::STATUS_NEEDS_CORRECTION)->reorder()->orderByDesc('id')->first()?->id;
+                                app(NimbusNotificationService::class)->enqueueCorrectionRequested($fresh, $note, $historyId);
+                            } catch (\Throwable $e) {
+                            }
+                        } else {
+                            $didTransition = false;
+                            // Centralized transition creates history + audit atomically.
+                            // Workaround for legacy enum fallback is preserved via persistableStatusFor above.
+                            if ($status !== $record->status) {
+                                $workflow->transition($record, $status, $actor, $note !== '' ? $note : null);
+                                $didTransition = true;
+                            }
+
+                            if ($note !== '') {
+                                $record->notes()->create([
+                                    'user_id' => auth()->id(),
+                                    'visibility' => $visibility,
+                                    'message' => $note,
+                                ]);
+
+                                activity('nimbus')
+                                    ->performedOn($record)
+                                    ->causedBy($actor)
+                                    ->withProperties(['visibility' => $visibility])
+                                    ->log('nimbus.submission.note_added');
+                            }
+
+                            // Enqueue status-change notifications after commit.
+                            try {
+                                $fresh = $record->refresh();
+                                $notifier = app(NimbusNotificationService::class);
+                                if ($didTransition) {
+                                    if ($fresh->status === Submission::STATUS_COMPLETED && $intent === 'approve') {
+                                        $notifier->enqueueCompleted($fresh);
+                                    } elseif ($fresh->status === Submission::STATUS_REJECTED && $intent === 'reject') {
+                                        $notifier->enqueueRejected($fresh);
+                                    }
+                                }
+                            } catch (\Throwable $e) {
+                            }
                         }
                     }
 

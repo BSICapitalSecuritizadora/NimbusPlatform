@@ -155,6 +155,10 @@ final class PuCalendarHomologationComparisonService
             'calendar_code' => $parameter->calendar_code,
             'index_rate_lookup_mode' => $parameter->index_rate_lookup_mode_enum->value,
             'index_rate_lag_business_days' => (int) $parameter->index_rate_lag_business_days,
+            'first_coupon_pre_integralization_premium_enabled' => $parameter->hasFirstCouponPreIntegralizationPremium(),
+            'first_coupon_pre_integralization_business_days' => $parameter->first_coupon_pre_integralization_business_days,
+            'first_coupon_pre_integralization_apply_index_factor' => (bool) $parameter->first_coupon_pre_integralization_apply_index_factor,
+            'first_coupon_pre_integralization_apply_spread_factor' => (bool) $parameter->first_coupon_pre_integralization_apply_spread_factor,
             'legacy_projection_enabled' => false,
         ];
     }

@@ -38,12 +38,17 @@
                                 </div>
 
                                 <div class="space-y-1">
-                                    <h3 id="{{ $toggleLabelId }}" class="text-sm font-semibold text-white sm:text-base">{{ $option['title'] }}</h3>
+                                    <h3 id="{{ $toggleLabelId }}" class="text-sm font-semibold text-white sm:text-base">
+                                        {{ $option['title'] }}
+                                        @if (! empty($option['badge']))
+                                            <span class="ml-2 inline-flex items-center rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/20">{{ $option['badge'] }}</span>
+                                        @endif
+                                    </h3>
                                     <p id="{{ $toggleDescriptionId }}" class="max-w-xl text-sm leading-6 text-gray-400">{{ $option['description'] }}</p>
                                 </div>
                             </div>
 
-                            <label for="{{ $toggleId }}" class="relative inline-flex cursor-pointer items-center self-end sm:self-center">
+                            <label for="{{ $toggleId }}" class="relative inline-flex cursor-pointer items-center self-end sm:self-center {{ ! empty($option['disabled']) ? 'opacity-60 cursor-not-allowed' : '' }}">
                                 <input
                                     id="{{ $toggleId }}"
                                     type="checkbox"
@@ -51,6 +56,7 @@
                                     wire:model.live="data.{{ $option['state_path'] }}"
                                     aria-labelledby="{{ $toggleLabelId }}"
                                     aria-describedby="{{ $toggleDescriptionId }}"
+                                    @if (! empty($option['disabled'])) disabled @endif
                                 >
 
                                 <span class="h-7 w-12 rounded-full bg-white/10 transition peer-checked:bg-primary-500 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300/60"></span>

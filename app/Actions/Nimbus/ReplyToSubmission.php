@@ -6,6 +6,7 @@ use App\DTOs\Nimbus\StoreSubmissionFileDTO;
 use App\DTOs\Nimbus\SubmissionReplyDTO;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
+use App\Services\Nimbus\NimbusNotificationService;
 use App\Services\Nimbus\SubmissionWorkflowService;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,6 +16,7 @@ class ReplyToSubmission
     public function __construct(
         protected StoreSubmissionFile $storeSubmissionFile,
         protected SubmissionWorkflowService $workflowService,
+        protected NimbusNotificationService $notificationService,
     ) {}
 
     public function handle(
@@ -76,6 +78,14 @@ class ReplyToSubmission
                 $dto->comment,
             );
         });
+
+        try {
+            $fresh = $submission->refresh();
+            $historyId = $fresh->statusHistories()->where('old_status', Submission::STATUS_NEEDS_CORRECTION)->where('new_status', Submission::STATUS_UNDER_REVIEW)->reorder()->orderByDesc('id')->first()?->id;
+            $this->notificationService->enqueueCorrectionResponseReceived($fresh, $historyId);
+        } catch (\Throwable $e) {
+            // Do not fail reply on notification error.
+        }
 
         return $submission->refresh();
     }

@@ -15,12 +15,21 @@ class ViewSalesBoard extends ViewRecord
 
     protected static ?string $breadcrumb = 'Visualizar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-fund-form-page bsi-sales-board-view-page bsi-sales-board-form-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Acompanhe a posição inicial, a posição mais recente e o histórico de atualizações do empreendimento.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             Action::make('newUpdate')
                 ->label('Nova Atualização')
-                ->icon('heroicon-o-plus')
+                ->icon('heroicon-m-plus')
                 ->color('primary')
                 ->tooltip('Registra uma nova posição a partir da atual, preservando o histórico.')
                 ->visible(fn (SalesBoard $record): bool => SalesBoardResource::canEdit($record))

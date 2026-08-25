@@ -53,7 +53,9 @@ class NotificationSettings extends Page
      *     description: string,
      *     icon: Heroicon,
      *     icon_background: string,
-     *     icon_color: string
+     *     icon_color: string,
+     *     disabled?: bool,
+     *     badge?: string
      * }>
      */
     public function notificationOptions(): array
@@ -86,10 +88,12 @@ class NotificationSettings extends Page
             [
                 'state_path' => 'portal_notify_access_link',
                 'title' => 'Link de acesso',
-                'description' => 'Enviar automaticamente um e-mail com o link de acesso sempre que solicitado.',
+                'description' => 'Entrega obrigatória do código de acesso para login — sempre enviado, não pode ser desativado por segurança.',
                 'icon' => Heroicon::OutlinedKey,
                 'icon_background' => 'bg-amber-500/15',
                 'icon_color' => 'text-amber-300',
+                'disabled' => true,
+                'badge' => 'Obrigatório',
             ],
         ];
     }
@@ -102,7 +106,8 @@ class NotificationSettings extends Page
             'portal.notify.new_submission' => ! empty($this->data['portal_notify_new_submission']) ? '1' : '0',
             'portal.notify.status_change' => ! empty($this->data['portal_notify_status_change']) ? '1' : '0',
             'portal.notify.response_upload' => ! empty($this->data['portal_notify_response_upload']) ? '1' : '0',
-            'portal.notify.access_link' => ! empty($this->data['portal_notify_access_link']) ? '1' : '0',
+            // access_link is mandatory — always 1 regardless of UI input
+            'portal.notify.access_link' => '1',
         ]);
 
         Notification::make()

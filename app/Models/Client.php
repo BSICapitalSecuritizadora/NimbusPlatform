@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Contracts\Activity;
@@ -102,10 +102,16 @@ class Client extends Model
 
     /**
      * Every sale ever made to this client, across units and developments.
+     *
+     * Through the buyer table rather than through `contracts.client_id`: a sale
+     * can have more than one buyer, and this client is one of them whether or
+     * not they happen to be the one the legacy column names.
+     *
+     * @return BelongsToMany<Contract, $this>
      */
-    public function contracts(): HasMany
+    public function contracts(): BelongsToMany
     {
-        return $this->hasMany(Contract::class);
+        return $this->belongsToMany(Contract::class, 'contract_clients');
     }
 
     public function getFormattedDocumentAttribute(): string

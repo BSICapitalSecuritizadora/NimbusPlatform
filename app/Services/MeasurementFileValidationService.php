@@ -11,17 +11,36 @@ class MeasurementFileValidationService
 
     public function validateAsset(string $path, string $disk): void
     {
-        $this->validate($path, $disk, 'measurement', 'asset');
+        $this->validate($path, $disk, 'measurement', 'asset', allowLegacyPublic: false);
+    }
+
+    public function validateStoredAsset(string $path, string $disk): void
+    {
+        $this->validate($path, $disk, 'measurement', 'asset', allowLegacyPublic: true);
     }
 
     public function validateReceipt(string $path, string $disk): void
     {
-        $this->validate($path, $disk, 'measurement_receipt', 'receipt');
+        $this->validate($path, $disk, 'measurement_receipt', 'receipt', allowLegacyPublic: false);
     }
 
-    private function validate(string $path, string $disk, string $configuration, string $errorKey): void
+    public function validateStoredReceipt(string $path, string $disk): void
     {
-        if (! $this->storage->isAllowedMeasurementDisk($disk)
+        $this->validate($path, $disk, 'measurement_receipt', 'receipt', allowLegacyPublic: true);
+    }
+
+    private function validate(
+        string $path,
+        string $disk,
+        string $configuration,
+        string $errorKey,
+        bool $allowLegacyPublic,
+    ): void {
+        $allowedDisk = $allowLegacyPublic
+            ? $this->storage->isAllowedMeasurementReadDisk($disk)
+            : $this->storage->isAllowedMeasurementWriteDisk($disk);
+
+        if (! $allowedDisk
             || ! $this->storage->isSafeStoredPath($path)
             || ! $this->storage->exists($path, $disk)) {
             throw ValidationException::withMessages([

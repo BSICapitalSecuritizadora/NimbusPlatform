@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operations\Pages;
 
 use App\Filament\Resources\Operations\OperationResource;
 use App\Models\User;
+use App\Services\OperationContextVisibilityService;
 use App\Services\OperationResponsibilityService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -54,6 +55,11 @@ class EditOperation extends EditRecord
         app(OperationResponsibilityService::class)->assertCanChange($actor, $this->record, $data);
 
         $this->developments = $data['developments'] ?? [];
+        app(OperationContextVisibilityService::class)->assertOperationPayloadIsVisible(
+            $actor,
+            $data['emission_id'] ?? $this->record->emission_id,
+            $this->developments,
+        );
         unset($data['developments']);
 
         return $data;
@@ -61,7 +67,10 @@ class EditOperation extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->record->syncDevelopmentPlans($this->developments);
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+
+        $this->record->syncDevelopmentPlans($this->developments, $actor);
     }
 
     protected function getSavedNotificationTitle(): ?string

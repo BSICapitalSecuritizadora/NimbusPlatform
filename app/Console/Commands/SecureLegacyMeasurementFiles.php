@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
+use App\Models\MeasurementFileMigration;
 use App\Models\MeasurementPayment;
 use App\Services\DocumentStorageService;
 use Illuminate\Console\Command;
@@ -22,22 +23,57 @@ class SecureLegacyMeasurementFiles extends Command
 
     protected $description = 'Migra arquivos legados de medições do disco público para o armazenamento privado (dry-run por padrão)';
 
+    /**
+     * @var array<string, array{model: class-string<Model>, path: string, disk: string, hash: string, mime: string, size: string}>
+     */
+    private const FILE_CONFIGURATIONS = [
+        'files' => [
+            'model' => Measurement::class,
+            'path' => 'storage_path',
+            'disk' => 'storage_disk',
+            'hash' => 'sha256',
+            'mime' => 'mime_type',
+            'size' => 'file_size',
+        ],
+        'assets' => [
+            'model' => MeasurementAsset::class,
+            'path' => 'storage_path',
+            'disk' => 'storage_disk',
+            'hash' => 'sha256',
+            'mime' => 'mime_type',
+            'size' => 'size',
+        ],
+        'receipts' => [
+            'model' => MeasurementPayment::class,
+            'path' => 'receipt_path',
+            'disk' => 'receipt_disk',
+            'hash' => 'receipt_sha256',
+            'mime' => 'receipt_mime_type',
+            'size' => 'receipt_size',
+        ],
+    ];
+
     private int $processed = 0;
 
     private int $migrated = 0;
 
+    private int $residues = 0;
+
     private int $failed = 0;
+
+    private int $skipped = 0;
+
+    private int $alreadySecure = 0;
+
+    private int $recovered = 0;
 
     public function handle(DocumentStorageService $storage): int
     {
-        $this->processed = 0;
-        $this->migrated = 0;
-        $this->failed = 0;
-
+        $this->resetCounters();
         $targetDisk = DocumentStorageService::privateDisk();
 
-        if ($targetDisk === 'public') {
-            $this->components->error('O disco privado está configurado como public; a migração foi cancelada.');
+        if (! $storage->isAllowedMeasurementWriteDisk($targetDisk)) {
+            $this->components->error('O disco privado configurado não é permitido para novos arquivos de medição.');
 
             return self::FAILURE;
         }
@@ -46,228 +82,445 @@ class SecureLegacyMeasurementFiles extends Command
         $limit = max(0, (int) $this->option('limit'));
         $this->components->info($execute ? 'Executando migração segura.' : 'Dry-run: nenhum arquivo será copiado ou removido.');
 
-        $this->process(Measurement::query(), 'storage_path', 'storage_disk', 'sha256', 'mime_type', 'file_size', 'files', $storage, $targetDisk, $execute, $limit);
-        $this->process(MeasurementAsset::query(), 'storage_path', 'storage_disk', 'sha256', 'mime_type', 'size', 'assets', $storage, $targetDisk, $execute, $limit);
-        $this->process(MeasurementPayment::query(), 'receipt_path', 'receipt_disk', 'receipt_sha256', 'receipt_mime_type', 'receipt_size', 'receipts', $storage, $targetDisk, $execute, $limit);
-        $this->reconcileResidualPublicCopies(Measurement::query(), 'storage_path', 'storage_disk', 'sha256', 'files', $storage, $targetDisk, $execute, $limit);
-        $this->reconcileResidualPublicCopies(MeasurementAsset::query(), 'storage_path', 'storage_disk', 'sha256', 'assets', $storage, $targetDisk, $execute, $limit);
-        $this->reconcileResidualPublicCopies(MeasurementPayment::query(), 'receipt_path', 'receipt_disk', 'receipt_sha256', 'receipts', $storage, $targetDisk, $execute, $limit);
+        $this->recoverTrackedMigrations($storage, $execute, $limit);
 
-        $this->table(['Processados', 'Migrados', 'Falhas'], [[$this->processed, $this->migrated, $this->failed]]);
+        foreach (self::FILE_CONFIGURATIONS as $role => $configuration) {
+            if ($this->limitReached($limit)) {
+                break;
+            }
 
-        return $this->failed === 0 ? self::SUCCESS : self::FAILURE;
+            $this->processNewLegacyRecords($role, $configuration, $storage, $targetDisk, $execute, $limit);
+        }
+
+        if (! $this->limitReached($limit)) {
+            $this->detectUnownedLegacyResidues($storage, $targetDisk, $limit);
+        }
+
+        $this->table(
+            ['Processados', 'Migrados', 'Com resíduo público', 'Recuperados', 'Já seguros', 'Ignorados', 'Falhas'],
+            [[$this->processed, $this->migrated, $this->residues, $this->recovered, $this->alreadySecure, $this->skipped, $this->failed]],
+        );
+
+        return $this->failed === 0 && $this->residues === 0 ? self::SUCCESS : self::FAILURE;
+    }
+
+    private function recoverTrackedMigrations(DocumentStorageService $storage, bool $execute, int $limit): void
+    {
+        MeasurementFileMigration::query()
+            ->orderBy('id')
+            ->chunkById(100, function ($journals) use ($storage, $execute, $limit): bool {
+                foreach ($journals as $journal) {
+                    if ($this->limitReached($limit)) {
+                        return false;
+                    }
+
+                    $this->processed++;
+                    $label = $this->journalLabel($journal);
+
+                    try {
+                        $outcome = $execute
+                            ? $this->executeJournal($journal, $storage, isRecovery: true)
+                            : $this->inspectJournal($journal, $storage);
+                        $this->recordOutcome($label, $outcome);
+                    } catch (Throwable $exception) {
+                        $this->markJournalError($journal, $exception->getMessage());
+                        $this->recordOutcome($label, 'failed', $exception->getMessage());
+                    }
+                }
+
+                return ! $this->limitReached($limit);
+            });
     }
 
     /**
-     * @param  Builder<Model>  $query
+     * @param  array{model: class-string<Model>, path: string, disk: string, hash: string, mime: string, size: string}  $configuration
      */
-    private function process(
-        Builder $query,
-        string $pathColumn,
-        string $diskColumn,
-        string $hashColumn,
-        string $mimeColumn,
-        string $sizeColumn,
-        string $type,
+    private function processNewLegacyRecords(
+        string $role,
+        array $configuration,
         DocumentStorageService $storage,
         string $targetDisk,
         bool $execute,
         int $limit,
     ): void {
-        $query->whereNotNull($pathColumn)
-            ->where(fn (Builder $legacy): Builder => $legacy->whereNull($diskColumn)->orWhere($diskColumn, 'public'))
+        $modelClass = $configuration['model'];
+
+        $modelClass::query()
+            ->whereNotNull($configuration['path'])
+            ->where(fn (Builder $legacy): Builder => $legacy
+                ->whereNull($configuration['disk'])
+                ->orWhere($configuration['disk'], 'public'))
+            ->whereDoesntHave('fileMigrationJournal', fn (Builder $journal): Builder => $journal->where('file_role', $role))
             ->orderBy('id')
-            ->chunkById(100, function ($records) use (
-                $pathColumn,
-                $diskColumn,
-                $hashColumn,
-                $mimeColumn,
-                $sizeColumn,
-                $type,
-                $storage,
-                $targetDisk,
-                $execute,
-                $limit,
-            ): bool {
+            ->chunkById(100, function ($records) use ($role, $configuration, $storage, $targetDisk, $execute, $limit): bool {
                 foreach ($records as $record) {
-                    if ($limit > 0 && $this->processed >= $limit) {
+                    if ($this->limitReached($limit)) {
                         return false;
                     }
 
                     $this->processed++;
-                    $sourcePath = (string) $record->getAttribute($pathColumn);
-
-                    if (! $storage->exists($sourcePath, 'public')) {
-                        $this->failed++;
-                        $this->components->warn($record::class." #{$record->getKey()}: origem pública ausente.");
-
-                        continue;
-                    }
-
+                    $label = $record::class." #{$record->getKey()}";
+                    $sourcePath = (string) $record->getAttribute($configuration['path']);
                     $sourceHash = $storage->checksum($sourcePath, 'public');
-                    $targetPath = DocumentStorageService::PRIVATE_PREFIX
-                        ."/measurements/legacy/{$type}/{$record->getKey()}/".basename($sourcePath);
 
                     if ($sourceHash === null) {
-                        $this->failed++;
-                        $this->components->warn($record::class." #{$record->getKey()}: não foi possível calcular o SHA-256 da origem.");
+                        $this->recordOutcome($label, 'failed', 'origem pública ausente ou sem SHA-256 verificável');
 
                         continue;
                     }
 
                     if (! $execute) {
-                        continue;
-                    }
-
-                    if (! $this->copyAndVerify($sourcePath, $targetPath, $sourceHash, $targetDisk, $storage)) {
-                        $this->failed++;
-                        $this->components->warn($record::class." #{$record->getKey()}: cópia privada não pôde ser verificada.");
+                        $this->recordOutcome($label, 'skipped');
 
                         continue;
                     }
-
-                    $metadata = $storage->metadata($targetPath, $targetDisk);
 
                     try {
-                        DB::transaction(function () use (
+                        [$journal, $created] = $this->prepareJournal(
                             $record,
-                            $pathColumn,
-                            $diskColumn,
-                            $hashColumn,
-                            $mimeColumn,
-                            $sizeColumn,
+                            $role,
+                            $configuration,
                             $sourcePath,
                             $sourceHash,
-                            $targetPath,
                             $targetDisk,
-                            $metadata,
-                            $storage,
-                        ): void {
-                            $locked = $record::query()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
-
-                            if ((string) $locked->getAttribute($pathColumn) !== $sourcePath
-                                || ! in_array($locked->getAttribute($diskColumn), [null, 'public'], true)) {
-                                throw new RuntimeException('O registro foi alterado durante a migração.');
-                            }
-
-                            $saved = $locked->forceFill([
-                                $pathColumn => $targetPath,
-                                $diskColumn => $targetDisk,
-                                $hashColumn => $sourceHash,
-                                $mimeColumn => is_string($metadata['mime_type']) ? $metadata['mime_type'] : 'application/octet-stream',
-                                $sizeColumn => is_int($metadata['size_bytes']) ? $metadata['size_bytes'] : 0,
-                            ])->saveQuietly();
-
-                            if (! $saved
-                                || $locked->fresh()?->getAttribute($hashColumn) !== $sourceHash
-                                || $locked->fresh()?->getAttribute($diskColumn) !== $targetDisk) {
-                                throw new RuntimeException('O banco não confirmou o destino privado.');
-                            }
-
-                            $deleted = Storage::disk('public')->delete($sourcePath);
-
-                            if (! $deleted || $storage->exists($sourcePath, 'public')) {
-                                throw new RuntimeException('A cópia pública não pôde ser removida e confirmada.');
-                            }
-                        });
+                        );
+                        $outcome = $this->executeJournal($journal, $storage, isRecovery: ! $created);
+                        $this->recordOutcome($label, $outcome);
                     } catch (Throwable $exception) {
-                        $this->restorePublicSourceAfterRollback(
-                            $record,
-                            $diskColumn,
-                            $sourcePath,
-                            $sourceHash,
-                            $targetPath,
-                            $targetDisk,
-                            $storage,
-                        );
-                        $this->failed++;
-                        $this->components->warn($record::class." #{$record->getKey()}: {$exception->getMessage()}");
+                        if (isset($journal) && $journal instanceof MeasurementFileMigration) {
+                            $this->markJournalError($journal, $exception->getMessage());
+                        }
 
-                        continue;
+                        $this->recordOutcome($label, 'failed', $exception->getMessage());
                     }
-
-                    $confirmed = $record->fresh();
-
-                    if ($confirmed?->getAttribute($diskColumn) !== $targetDisk
-                        || $confirmed?->getAttribute($hashColumn) !== $sourceHash
-                        || ! $storage->exists($targetPath, $targetDisk)
-                        || $storage->exists($sourcePath, 'public')) {
-                        $this->restoreTrackedPublicState(
-                            $record,
-                            $pathColumn,
-                            $diskColumn,
-                            $hashColumn,
-                            $sourcePath,
-                            $sourceHash,
-                            $targetPath,
-                            $targetDisk,
-                            $storage,
-                        );
-                        $this->failed++;
-                        $this->components->warn($record::class." #{$record->getKey()}: verificação pós-commit falhou.");
-
-                        continue;
-                    }
-
-                    $this->migrated++;
                 }
 
-                return ! ($limit > 0 && $this->processed >= $limit);
+                return ! $this->limitReached($limit);
             });
     }
 
-    private function copyAndVerify(
+    /**
+     * @param  array{model: class-string<Model>, path: string, disk: string, hash: string, mime: string, size: string}  $configuration
+     * @return array{MeasurementFileMigration, bool}
+     */
+    private function prepareJournal(
+        Model $record,
+        string $role,
+        array $configuration,
         string $sourcePath,
-        string $targetPath,
         string $sourceHash,
         string $targetDisk,
-        DocumentStorageService $storage,
-    ): bool {
-        if ($storage->exists($targetPath, $targetDisk)) {
-            return hash_equals($sourceHash, (string) $storage->checksum($targetPath, $targetDisk));
-        }
+    ): array {
+        return DB::transaction(function () use ($record, $role, $configuration, $sourcePath, $sourceHash, $targetDisk): array {
+            $locked = $record::query()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
 
-        $stream = Storage::disk('public')->readStream($sourcePath);
-
-        if (! is_resource($stream)) {
-            return false;
-        }
-
-        try {
-            if (! Storage::disk($targetDisk)->writeStream($targetPath, $stream)) {
-                return false;
+            if ((string) $locked->getAttribute($configuration['path']) !== $sourcePath
+                || ! in_array($locked->getAttribute($configuration['disk']), [null, 'public'], true)) {
+                throw new RuntimeException('O registro foi alterado antes da preparação da migração.');
             }
-        } finally {
-            fclose($stream);
+
+            $existing = MeasurementFileMigration::query()
+                ->where('migratable_type', $record::class)
+                ->where('migratable_id', $record->getKey())
+                ->where('file_role', $role)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing instanceof MeasurementFileMigration) {
+                if ($existing->source_path !== $sourcePath || ! hash_equals($existing->source_sha256, $sourceHash)) {
+                    throw new RuntimeException('O journal existente não corresponde à origem pública atual.');
+                }
+
+                return [$existing, false];
+            }
+
+            $targetPath = DocumentStorageService::PRIVATE_PREFIX
+                ."/measurements/legacy/{$role}/{$record->getKey()}/".basename($sourcePath);
+
+            $journal = MeasurementFileMigration::query()->create([
+                'migratable_type' => $record::class,
+                'migratable_id' => $record->getKey(),
+                'file_role' => $role,
+                'source_disk' => 'public',
+                'source_path' => $sourcePath,
+                'source_sha256' => $sourceHash,
+                'destination_disk' => $targetDisk,
+                'destination_path' => $targetPath,
+                'recovery_path' => $targetPath.'.migration-recovery',
+                'state' => MeasurementFileMigration::STATE_PREPARING,
+            ]);
+
+            return [$journal, true];
+        });
+    }
+
+    private function executeJournal(
+        MeasurementFileMigration $journal,
+        DocumentStorageService $storage,
+        bool $isRecovery,
+    ): string {
+        $configuration = $this->configurationForJournal($journal);
+        $record = $this->recordForJournal($journal, $configuration);
+        $recordPointsToSource = $this->recordPointsToSource($record, $journal, $configuration);
+        $recordPointsToDestination = $this->recordPointsToDestination($record, $journal, $configuration);
+
+        if (! $recordPointsToSource && ! $recordPointsToDestination) {
+            throw new RuntimeException('O registro não aponta nem para a origem conhecida nem para o destino do journal.');
         }
 
-        return hash_equals($sourceHash, (string) $storage->checksum($targetPath, $targetDisk));
+        if ($journal->state === MeasurementFileMigration::STATE_COMPLETED
+            && $recordPointsToDestination
+            && ! $storage->exists($journal->source_path, $journal->source_disk)
+            && $this->hasExpectedChecksum($journal->destination_path, $journal->destination_disk, $journal->source_sha256, $storage)) {
+            $this->removeRecoveryCopy($journal, $storage);
+
+            return 'already_secure';
+        }
+
+        $sourceIsValid = $this->hasExpectedChecksum(
+            $journal->source_path,
+            $journal->source_disk,
+            $journal->source_sha256,
+            $storage,
+        );
+        $recoveryIsValid = $this->hasExpectedChecksum(
+            $journal->recovery_path,
+            $journal->destination_disk,
+            $journal->source_sha256,
+            $storage,
+        );
+        $destinationIsValid = $this->hasExpectedChecksum(
+            $journal->destination_path,
+            $journal->destination_disk,
+            $journal->source_sha256,
+            $storage,
+        );
+
+        if ($recordPointsToSource && ! $sourceIsValid) {
+            throw new RuntimeException('A origem pública conhecida está ausente ou diverge do SHA-256 registrado.');
+        }
+
+        if (! $recoveryIsValid) {
+            if (! $sourceIsValid
+                || ($storage->exists($journal->recovery_path, $journal->destination_disk)
+                    && ! $recordPointsToDestination)) {
+                throw new RuntimeException('A cópia privada de recuperação está ausente ou divergente.');
+            }
+
+            $recoveryIsValid = $this->copyAndVerify(
+                $journal->source_disk,
+                $journal->source_path,
+                $journal->destination_disk,
+                $journal->recovery_path,
+                $journal->source_sha256,
+                $storage,
+                allowOverwrite: $recordPointsToDestination,
+            );
+        }
+
+        if (! $recoveryIsValid) {
+            throw new RuntimeException('A cópia privada de recuperação não pôde ser verificada.');
+        }
+
+        if (! $destinationIsValid) {
+            if ($storage->exists($journal->destination_path, $journal->destination_disk)
+                && ! $recordPointsToDestination) {
+                throw new RuntimeException('O destino privado já existe com SHA-256 divergente.');
+            }
+
+            $destinationIsValid = $this->copyAndVerify(
+                $journal->destination_disk,
+                $journal->recovery_path,
+                $journal->destination_disk,
+                $journal->destination_path,
+                $journal->source_sha256,
+                $storage,
+                allowOverwrite: $recordPointsToDestination,
+            );
+        }
+
+        if (! $destinationIsValid) {
+            throw new RuntimeException('O destino privado não pôde ser verificado.');
+        }
+
+        $prepared = $journal->forceFill([
+            'state' => MeasurementFileMigration::STATE_PREPARED,
+            'prepared_at' => $journal->prepared_at ?? now(),
+            'last_error' => null,
+        ])->saveQuietly();
+
+        if (! $prepared) {
+            throw new RuntimeException('O journal não confirmou a preparação das cópias privadas.');
+        }
+
+        $this->switchDatabaseToPrivate($journal, $configuration, $storage);
+        $journal->refresh();
+        $record = $this->recordForJournal($journal, $configuration);
+
+        if (! $this->recordPointsToDestination($record, $journal, $configuration)
+            || ! $this->hasExpectedChecksum($journal->destination_path, $journal->destination_disk, $journal->source_sha256, $storage)) {
+            throw new RuntimeException('A verificação pós-commit do destino privado falhou; a origem pública foi preservada.');
+        }
+
+        $verified = $journal->forceFill([
+            'state' => MeasurementFileMigration::STATE_VERIFIED,
+            'verified_at' => now(),
+            'last_error' => null,
+        ])->saveQuietly();
+
+        if (! $verified) {
+            throw new RuntimeException('O journal não confirmou a verificação pós-commit.');
+        }
+
+        if ($storage->exists($journal->source_path, $journal->source_disk)) {
+            if (! $this->hasExpectedChecksum($journal->destination_path, $journal->destination_disk, $journal->source_sha256, $storage)
+                || ! $this->hasExpectedChecksum($journal->recovery_path, $journal->destination_disk, $journal->source_sha256, $storage)) {
+                throw new RuntimeException('O cleanup foi bloqueado porque as duas cópias privadas não estão íntegras.');
+            }
+
+            try {
+                $deleted = Storage::disk($journal->source_disk)->delete($journal->source_path);
+            } catch (Throwable $exception) {
+                $deleted = false;
+
+                if ($storage->exists($journal->source_path, $journal->source_disk)) {
+                    $this->markPublicResidue($journal, $exception->getMessage());
+
+                    return 'migrated_with_public_residue';
+                }
+            }
+
+            if (! $deleted && $storage->exists($journal->source_path, $journal->source_disk)) {
+                $this->markPublicResidue($journal, 'A origem pública exata não pôde ser removida.');
+
+                return 'migrated_with_public_residue';
+            }
+        }
+
+        if (! $this->hasExpectedChecksum($journal->destination_path, $journal->destination_disk, $journal->source_sha256, $storage)) {
+            $restored = $this->copyAndVerify(
+                $journal->destination_disk,
+                $journal->recovery_path,
+                $journal->destination_disk,
+                $journal->destination_path,
+                $journal->source_sha256,
+                $storage,
+                allowOverwrite: true,
+            );
+
+            if (! $restored) {
+                throw new RuntimeException('O destino privado falhou após o cleanup; a cópia privada de recuperação foi preservada.');
+            }
+
+            $isRecovery = true;
+        }
+
+        $completed = $journal->forceFill([
+            'state' => MeasurementFileMigration::STATE_COMPLETED,
+            'cleaned_at' => now(),
+            'last_error' => null,
+        ])->saveQuietly();
+
+        if (! $completed) {
+            throw new RuntimeException('O journal não confirmou a conclusão do cleanup.');
+        }
+
+        $this->removeRecoveryCopy($journal, $storage);
+
+        return $isRecovery ? 'recovered' : 'migrated';
     }
 
     /**
-     * Reconciles records left by older executions that committed the private
-     * path before confirming deletion of the public source. A public file is
-     * removed only when its basename and SHA-256 both match the canonical
-     * private legacy record, avoiding deletion of an unrelated namesake.
-     *
-     * @param  Builder<Model>  $query
+     * @param  array{model: class-string<Model>, path: string, disk: string, hash: string, mime: string, size: string}  $configuration
      */
-    private function reconcileResidualPublicCopies(
-        Builder $query,
-        string $pathColumn,
-        string $diskColumn,
-        string $hashColumn,
-        string $type,
+    private function switchDatabaseToPrivate(
+        MeasurementFileMigration $journal,
+        array $configuration,
         DocumentStorageService $storage,
-        string $targetDisk,
-        bool $execute,
-        int $limit,
     ): void {
+        DB::transaction(function () use ($journal, $configuration, $storage): void {
+            $lockedJournal = MeasurementFileMigration::query()->whereKey($journal->getKey())->lockForUpdate()->firstOrFail();
+            $modelClass = $configuration['model'];
+            $locked = $modelClass::query()->whereKey($lockedJournal->migratable_id)->lockForUpdate()->firstOrFail();
+
+            if (! $this->hasExpectedChecksum(
+                $lockedJournal->destination_path,
+                $lockedJournal->destination_disk,
+                $lockedJournal->source_sha256,
+                $storage,
+            )) {
+                throw new RuntimeException('O destino privado perdeu integridade antes do DB switch.');
+            }
+
+            if ($this->recordPointsToSource($locked, $lockedJournal, $configuration)) {
+                $metadata = $storage->metadata($lockedJournal->destination_path, $lockedJournal->destination_disk);
+                $saved = $locked->forceFill([
+                    $configuration['path'] => $lockedJournal->destination_path,
+                    $configuration['disk'] => $lockedJournal->destination_disk,
+                    $configuration['hash'] => $lockedJournal->source_sha256,
+                    $configuration['mime'] => is_string($metadata['mime_type']) ? $metadata['mime_type'] : 'application/octet-stream',
+                    $configuration['size'] => is_int($metadata['size_bytes']) ? $metadata['size_bytes'] : 0,
+                ])->saveQuietly();
+
+                if (! $saved) {
+                    throw new RuntimeException('O banco recusou a persistência do destino privado.');
+                }
+            } elseif (! $this->recordPointsToDestination($locked, $lockedJournal, $configuration)) {
+                throw new RuntimeException('O registro foi alterado durante o DB switch.');
+            }
+
+            $confirmed = $locked->fresh();
+
+            if (! $confirmed instanceof Model
+                || ! $this->recordPointsToDestination($confirmed, $lockedJournal, $configuration)) {
+                throw new RuntimeException('O banco não confirmou o destino privado.');
+            }
+
+            $savedJournal = $lockedJournal->forceFill([
+                'state' => MeasurementFileMigration::STATE_SWITCHED,
+                'switched_at' => $lockedJournal->switched_at ?? now(),
+                'last_error' => null,
+            ])->saveQuietly();
+
+            if (! $savedJournal) {
+                throw new RuntimeException('O journal não confirmou o DB switch.');
+            }
+        });
+    }
+
+    private function inspectJournal(MeasurementFileMigration $journal, DocumentStorageService $storage): string
+    {
+        $configuration = $this->configurationForJournal($journal);
+        $record = $this->recordForJournal($journal, $configuration);
+        $destinationIsValid = $this->hasExpectedChecksum(
+            $journal->destination_path,
+            $journal->destination_disk,
+            $journal->source_sha256,
+            $storage,
+        );
+        $publicExists = $storage->exists($journal->source_path, $journal->source_disk);
+
+        if ($journal->state === MeasurementFileMigration::STATE_COMPLETED
+            && ! $publicExists
+            && $destinationIsValid
+            && $this->recordPointsToDestination($record, $journal, $configuration)) {
+            return 'already_secure';
+        }
+
+        if ($publicExists && $this->recordPointsToDestination($record, $journal, $configuration) && $destinationIsValid) {
+            return 'migrated_with_public_residue';
+        }
+
+        return 'failed';
+    }
+
+    private function detectUnownedLegacyResidues(DocumentStorageService $storage, string $targetDisk, int $limit): void
+    {
         try {
             $publicFiles = Storage::disk('public')->allFiles();
         } catch (Throwable $exception) {
             $this->failed++;
-            $this->components->warn("Não foi possível inspecionar cópias públicas residuais: {$exception->getMessage()}");
+            $this->components->warn("Não foi possível inspecionar resíduos públicos sem journal: {$exception->getMessage()}");
 
             return;
         }
@@ -277,141 +530,216 @@ class SecureLegacyMeasurementFiles extends Command
         }
 
         $filesByBasename = collect($publicFiles)->groupBy(fn (string $path): string => basename($path));
-        $legacyPrefix = DocumentStorageService::PRIVATE_PREFIX."/measurements/legacy/{$type}/";
 
-        $query->where($diskColumn, $targetDisk)
-            ->where($pathColumn, 'like', $legacyPrefix.'%')
-            ->whereNotNull($hashColumn)
-            ->orderBy('id')
-            ->chunkById(100, function ($records) use (
-                $pathColumn,
-                $hashColumn,
-                $storage,
-                $targetDisk,
-                $execute,
-                $limit,
-                $legacyPrefix,
-                $filesByBasename,
-            ): bool {
-                foreach ($records as $record) {
-                    $privatePath = (string) $record->getAttribute($pathColumn);
-                    $expectedPrefix = $legacyPrefix.$record->getKey().'/';
+        foreach (self::FILE_CONFIGURATIONS as $role => $configuration) {
+            $modelClass = $configuration['model'];
+            $legacyPrefix = DocumentStorageService::PRIVATE_PREFIX."/measurements/legacy/{$role}/";
 
-                    if (! str_starts_with($privatePath, $expectedPrefix)) {
-                        continue;
-                    }
-
-                    $expectedHash = (string) $record->getAttribute($hashColumn);
-                    $matchingPublicPaths = $filesByBasename
-                        ->get(basename($privatePath), collect())
-                        ->filter(fn (string $publicPath): bool => hash_equals(
-                            $expectedHash,
-                            (string) $storage->checksum($publicPath, 'public'),
-                        ));
-
-                    foreach ($matchingPublicPaths as $publicPath) {
-                        if ($limit > 0 && $this->processed >= $limit) {
+            $modelClass::query()
+                ->where($configuration['disk'], $targetDisk)
+                ->where($configuration['path'], 'like', $legacyPrefix.'%')
+                ->whereNotNull($configuration['hash'])
+                ->whereDoesntHave('fileMigrationJournal', fn (Builder $journal): Builder => $journal->where('file_role', $role))
+                ->orderBy('id')
+                ->chunkById(100, function ($records) use ($configuration, $filesByBasename, $storage, $limit): bool {
+                    foreach ($records as $record) {
+                        if ($this->limitReached($limit)) {
                             return false;
                         }
 
+                        $privatePath = (string) $record->getAttribute($configuration['path']);
+                        $expectedHash = (string) $record->getAttribute($configuration['hash']);
+                        $candidates = $filesByBasename
+                            ->get(basename($privatePath), collect())
+                            ->filter(fn (string $publicPath): bool => hash_equals(
+                                $expectedHash,
+                                (string) $storage->checksum($publicPath, 'public'),
+                            ));
+
+                        if ($candidates->isEmpty()) {
+                            continue;
+                        }
+
                         $this->processed++;
-
-                        if (! hash_equals($expectedHash, (string) $storage->checksum($privatePath, $targetDisk))) {
-                            $this->failed++;
-                            $this->components->warn($record::class." #{$record->getKey()}: cópia pública residual detectada, mas o destino privado não pôde ser validado.");
-
-                            continue;
-                        }
-
-                        if (! $execute) {
-                            $this->components->warn($record::class." #{$record->getKey()}: cópia pública residual detectada em {$publicPath}.");
-
-                            continue;
-                        }
-
-                        $deleted = Storage::disk('public')->delete($publicPath);
-
-                        if (! $deleted || $storage->exists($publicPath, 'public')) {
-                            $this->failed++;
-                            $this->components->warn($record::class." #{$record->getKey()}: cópia pública residual não pôde ser removida.");
-
-                            continue;
-                        }
-
-                        $this->migrated++;
+                        $this->failed++;
+                        $this->components->warn(
+                            $record::class." #{$record->getKey()}: candidato público sem ownership registrado; nenhuma exclusão foi realizada.",
+                        );
                     }
-                }
 
-                return ! ($limit > 0 && $this->processed >= $limit);
-            });
+                    return ! $this->limitReached($limit);
+                });
+        }
     }
 
-    private function restorePublicSourceAfterRollback(
-        Model $record,
-        string $diskColumn,
-        string $sourcePath,
-        string $sourceHash,
-        string $targetPath,
-        string $targetDisk,
-        DocumentStorageService $storage,
-    ): void {
-        $current = $record->fresh();
+    /**
+     * @return array{model: class-string<Model>, path: string, disk: string, hash: string, mime: string, size: string}
+     */
+    private function configurationForJournal(MeasurementFileMigration $journal): array
+    {
+        $configuration = self::FILE_CONFIGURATIONS[$journal->file_role] ?? null;
 
-        if ($current?->getAttribute($diskColumn) === $targetDisk
-            || $storage->exists($sourcePath, 'public')) {
-            return;
+        if (! is_array($configuration) || $configuration['model'] !== $journal->migratable_type) {
+            throw new RuntimeException('O journal possui tipo de arquivo não suportado.');
         }
 
-        $stream = Storage::disk($targetDisk)->readStream($targetPath);
+        return $configuration;
+    }
+
+    /**
+     * @param  array{model: class-string<Model>, path: string, disk: string, hash: string, mime: string, size: string}  $configuration
+     */
+    private function recordForJournal(MeasurementFileMigration $journal, array $configuration): Model
+    {
+        $modelClass = $configuration['model'];
+        $record = $modelClass::query()->find($journal->migratable_id);
+
+        if (! $record instanceof Model) {
+            throw new RuntimeException('O registro associado ao journal não existe mais.');
+        }
+
+        return $record;
+    }
+
+    /**
+     * @param  array{model: class-string<Model>, path: string, disk: string, hash: string, mime: string, size: string}  $configuration
+     */
+    private function recordPointsToSource(Model $record, MeasurementFileMigration $journal, array $configuration): bool
+    {
+        return (string) $record->getAttribute($configuration['path']) === $journal->source_path
+            && in_array($record->getAttribute($configuration['disk']), [null, $journal->source_disk], true);
+    }
+
+    /**
+     * @param  array{model: class-string<Model>, path: string, disk: string, hash: string, mime: string, size: string}  $configuration
+     */
+    private function recordPointsToDestination(Model $record, MeasurementFileMigration $journal, array $configuration): bool
+    {
+        return (string) $record->getAttribute($configuration['path']) === $journal->destination_path
+            && $record->getAttribute($configuration['disk']) === $journal->destination_disk
+            && is_string($record->getAttribute($configuration['hash']))
+            && hash_equals($journal->source_sha256, $record->getAttribute($configuration['hash']));
+    }
+
+    private function copyAndVerify(
+        string $sourceDisk,
+        string $sourcePath,
+        string $destinationDisk,
+        string $destinationPath,
+        string $expectedHash,
+        DocumentStorageService $storage,
+        bool $allowOverwrite,
+    ): bool {
+        if ($storage->exists($destinationPath, $destinationDisk)) {
+            if ($this->hasExpectedChecksum($destinationPath, $destinationDisk, $expectedHash, $storage)) {
+                return true;
+            }
+
+            if (! $allowOverwrite) {
+                return false;
+            }
+        }
+
+        $stream = Storage::disk($sourceDisk)->readStream($sourcePath);
 
         if (! is_resource($stream)) {
-            return;
+            return false;
         }
 
         try {
-            Storage::disk('public')->writeStream($sourcePath, $stream);
+            if (! Storage::disk($destinationDisk)->writeStream($destinationPath, $stream)) {
+                return false;
+            }
         } finally {
             fclose($stream);
         }
 
-        if (! hash_equals($sourceHash, (string) $storage->checksum($sourcePath, 'public'))) {
-            $this->components->error($record::class." #{$record->getKey()}: rollback não conseguiu restaurar a origem pública.");
+        return $this->hasExpectedChecksum($destinationPath, $destinationDisk, $expectedHash, $storage);
+    }
+
+    private function hasExpectedChecksum(
+        string $path,
+        string $disk,
+        string $expectedHash,
+        DocumentStorageService $storage,
+    ): bool {
+        $actualHash = $storage->checksum($path, $disk);
+
+        return is_string($actualHash) && hash_equals($expectedHash, $actualHash);
+    }
+
+    private function markPublicResidue(MeasurementFileMigration $journal, string $message): void
+    {
+        $saved = $journal->forceFill([
+            'state' => MeasurementFileMigration::STATE_PUBLIC_RESIDUE,
+            'last_error' => $message,
+        ])->saveQuietly();
+
+        if (! $saved) {
+            throw new RuntimeException('O journal não confirmou o resíduo público pendente.');
         }
     }
 
-    private function restoreTrackedPublicState(
-        Model $record,
-        string $pathColumn,
-        string $diskColumn,
-        string $hashColumn,
-        string $sourcePath,
-        string $sourceHash,
-        string $targetPath,
-        string $targetDisk,
-        DocumentStorageService $storage,
-    ): void {
-        if (! $storage->exists($sourcePath, 'public')) {
-            $this->restorePublicSourceAfterRollback(
-                $record,
-                $diskColumn,
-                $sourcePath,
-                $sourceHash,
-                $targetPath,
-                $targetDisk,
-                $storage,
-            );
+    private function markJournalError(MeasurementFileMigration $journal, string $message): void
+    {
+        rescue(
+            fn (): bool => $journal->fresh()?->forceFill(['last_error' => $message])->saveQuietly() ?? false,
+            report: true,
+        );
+    }
+
+    private function removeRecoveryCopy(MeasurementFileMigration $journal, DocumentStorageService $storage): void
+    {
+        if (! $storage->exists($journal->recovery_path, $journal->destination_disk)) {
+            return;
         }
 
-        if (! hash_equals($sourceHash, (string) $storage->checksum($sourcePath, 'public'))) {
-            $this->components->error($record::class." #{$record->getKey()}: não foi possível restaurar uma origem pública verificável para retry.");
+        rescue(
+            fn (): bool => Storage::disk($journal->destination_disk)->delete($journal->recovery_path),
+            report: true,
+        );
+    }
+
+    private function recordOutcome(string $label, string $outcome, ?string $detail = null): void
+    {
+        $message = $detail === null ? "{$label}: {$outcome}." : "{$label}: {$outcome} — {$detail}.";
+
+        match ($outcome) {
+            'migrated' => $this->migrated++,
+            'migrated_with_public_residue' => $this->residues++,
+            'recovered' => $this->recovered++,
+            'already_secure' => $this->alreadySecure++,
+            'skipped' => $this->skipped++,
+            default => $this->failed++,
+        };
+
+        if (in_array($outcome, ['failed', 'migrated_with_public_residue'], true)) {
+            $this->components->warn($message);
 
             return;
         }
 
-        $record->fresh()?->forceFill([
-            $pathColumn => $sourcePath,
-            $diskColumn => 'public',
-            $hashColumn => $sourceHash,
-        ])->saveQuietly();
+        $this->line($message);
+    }
+
+    private function journalLabel(MeasurementFileMigration $journal): string
+    {
+        return "{$journal->migratable_type} #{$journal->migratable_id}";
+    }
+
+    private function limitReached(int $limit): bool
+    {
+        return $limit > 0 && $this->processed >= $limit;
+    }
+
+    private function resetCounters(): void
+    {
+        $this->processed = 0;
+        $this->migrated = 0;
+        $this->residues = 0;
+        $this->failed = 0;
+        $this->skipped = 0;
+        $this->alreadySecure = 0;
+        $this->recovered = 0;
     }
 }

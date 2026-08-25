@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Operations\RelationManagers;
 
 use App\Concerns\MoneyFormatter;
 use App\Models\MeasurementPlanSet;
+use App\Models\User;
+use App\Services\OperationContextVisibilityService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -22,7 +24,6 @@ use Filament\Support\RawJs;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 
@@ -47,11 +48,9 @@ class PlanSetsRelationManager extends RelationManager
 
                     Select::make('construction_id')
                         ->label('Empreendimento')
-                        ->relationship(
-                            name: 'construction',
-                            titleAttribute: 'development_name',
-                            modifyQueryUsing: fn (EloquentBuilder $query): EloquentBuilder => $query->where('emission_id', $emissionId),
-                        )
+                        ->options(fn (): array => $this->constructionOptions($emissionId))
+                        ->getSearchResultsUsing(fn (string $search): array => $this->constructionOptions($emissionId, $search))
+                        ->getOptionLabelUsing(fn (mixed $value): ?string => $this->constructionLabel($value, $emissionId))
                         ->searchable()
                         ->preload()
                         ->helperText('Um plano por empreendimento. A mesma medição cobre todos os planos da operação.'),
@@ -215,5 +214,37 @@ class PlanSetsRelationManager extends RelationManager
             ->dehydrateStateUsing(fn (mixed $state): ?float => blank($state) ? null : MoneyFormatter::normalizeDecimalValue($state))
             ->minValue(0)
             ->placeholder('1.000,00');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function constructionOptions(mixed $emissionId, ?string $search = null): array
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        $query = app(OperationContextVisibilityService::class)
+            ->visibleConstructions($user, $emissionId)
+            ->orderBy('development_name');
+
+        if (filled($search)) {
+            $query->where('development_name', 'like', '%'.trim((string) $search).'%');
+        }
+
+        return $query->limit(50)->pluck('development_name', 'id')->all();
+    }
+
+    protected function constructionLabel(mixed $constructionId, mixed $emissionId): ?string
+    {
+        $user = auth()->user();
+
+        return $user instanceof User
+            ? app(OperationContextVisibilityService::class)
+                ->findVisibleConstruction($user, $constructionId, $emissionId)?->development_name
+            : null;
     }
 }

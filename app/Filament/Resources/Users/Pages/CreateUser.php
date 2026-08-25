@@ -11,6 +11,17 @@ class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
 
+    protected static ?string $title = 'Criar Usuário';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-user-create-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Cadastre um novo colaborador e configure seu perfil e permissões de acesso.';
+    }
+
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>

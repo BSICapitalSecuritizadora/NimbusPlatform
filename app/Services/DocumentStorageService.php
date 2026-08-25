@@ -22,10 +22,18 @@ class DocumentStorageService
     /**
      * @var array<int, string>
      */
-    private const SUPPORTED_DISKS = [
+    private const READ_DISKS = [
         'local',
         'private',
         'public',
+    ];
+
+    /**
+     * @var array<int, string>
+     */
+    private const WRITE_DISKS = [
+        'local',
+        'private',
     ];
 
     /**
@@ -78,6 +86,11 @@ class DocumentStorageService
     public function storePrivateFile(UploadedFile $file, string $directory): array
     {
         $privateDisk = self::privateDisk();
+
+        if (! $this->isAllowedMeasurementWriteDisk($privateDisk)) {
+            throw new InvalidArgumentException('The configured private disk cannot be used for new measurement uploads.');
+        }
+
         $path = $file->store($this->privateDirectoryPath($directory), $privateDisk);
 
         return [
@@ -173,7 +186,17 @@ class DocumentStorageService
 
     public function isAllowedMeasurementDisk(string $disk): bool
     {
-        return in_array($disk, self::SUPPORTED_DISKS, true);
+        return $this->isAllowedMeasurementReadDisk($disk);
+    }
+
+    public function isAllowedMeasurementReadDisk(string $disk): bool
+    {
+        return in_array($disk, self::READ_DISKS, true);
+    }
+
+    public function isAllowedMeasurementWriteDisk(string $disk): bool
+    {
+        return in_array($disk, self::WRITE_DISKS, true);
     }
 
     public function isSafeStoredPath(string $path): bool
@@ -354,7 +377,7 @@ class DocumentStorageService
 
     protected function normalizeDisk(string $disk): string
     {
-        if (! in_array($disk, self::SUPPORTED_DISKS, true)) {
+        if (! $this->isAllowedMeasurementReadDisk($disk)) {
             throw new InvalidArgumentException("Unsupported storage disk [{$disk}].");
         }
 

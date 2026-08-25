@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
+use App\Exceptions\MeasurementWorkflowException;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Database\Factories\ConstructionFactory;
@@ -77,8 +78,20 @@ class Construction extends Model
     protected static function booted(): void
     {
         static::saving(function (self $construction): void {
+            if ($construction->exists
+                && $construction->isDirty(['emission_id', 'development_cnpj'])
+                && $construction->isReferencedByApprovedEngineering()) {
+                throw new MeasurementWorkflowException('A identidade de um empreendimento aprovado pela Engenharia está bloqueada.');
+            }
+
             $construction->construction_start_date = self::normalizeMonthDate($construction->construction_start_date);
             $construction->construction_end_date = self::normalizeMonthDate($construction->construction_end_date);
+        });
+
+        static::deleting(function (self $construction): void {
+            if ($construction->isReferencedByApprovedEngineering()) {
+                throw new MeasurementWorkflowException('Um empreendimento aprovado pela Engenharia não pode ser removido.');
+            }
         });
     }
 
@@ -115,6 +128,11 @@ class Construction extends Model
     public function units(): HasMany
     {
         return $this->hasMany(ConstructionUnit::class);
+    }
+
+    public function measurementPlanSets(): HasMany
+    {
+        return $this->hasMany(MeasurementPlanSet::class);
     }
 
     public function getFormattedDevelopmentCnpjAttribute(): string
@@ -173,5 +191,14 @@ class Construction extends Model
         }
 
         return Carbon::parse($monthDate)->format('m/Y');
+    }
+
+    private function isReferencedByApprovedEngineering(): bool
+    {
+        return $this->measurementPlanSets()
+            ->whereHas('assets.measurement.reviews', fn ($reviews) => $reviews
+                ->where('stage', 1)
+                ->where('status', 'approved'))
+            ->exists();
     }
 }

@@ -3,7 +3,10 @@
 namespace App\Http\Requests\Nimbus;
 
 use App\DTOs\Nimbus\StoreSubmissionDTO;
+use App\Rules\Cnpj;
+use App\Rules\Cpf;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Validator;
 
 class StoreSubmissionRequest extends FormRequest
@@ -33,7 +36,7 @@ class StoreSubmissionRequest extends FormRequest
 
         return [
             'responsible_name' => ['required', 'string', 'max:190'],
-            'company_cnpj' => ['required', 'string', 'max:18'],
+            'company_cnpj' => ['required', 'string', 'max:18', new Cnpj],
             'company_name' => ['required', 'string', 'max:190'],
             'main_activity' => ['nullable', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
@@ -43,7 +46,7 @@ class StoreSubmissionRequest extends FormRequest
             'registrant_name' => ['required', 'string', 'max:190'],
             'registrant_position' => ['nullable', 'string', 'max:100'],
             'registrant_rg' => ['nullable', 'string', 'max:20'],
-            'registrant_cpf' => ['required', 'string', 'max:14'],
+            'registrant_cpf' => ['required', 'string', 'max:14', new Cpf],
             'shareholders' => ['required', 'json'],
             'is_us_person' => ['nullable', 'boolean'],
             'is_pep' => ['nullable', 'boolean'],
@@ -97,12 +100,35 @@ class StoreSubmissionRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            // Phone: normalize and validate length 10-11 digits (Brazil)
+            $phoneDigits = Str::digitsOnly((string) $this->input('phone'));
+            if ($phoneDigits !== '' && (strlen($phoneDigits) < 10 || strlen($phoneDigits) > 11)) {
+                $validator->errors()->add('phone', 'Informe um telefone válido com DDD (10 ou 11 dígitos).');
+            }
+
+            // Financial fields: must be parseable and >= 0 (NimbusPlatform treats them as required financial values)
+            foreach (['net_worth', 'annual_revenue'] as $field) {
+                $raw = (string) $this->input($field);
+                $normalized = str_replace(',', '.', str_replace(['R$', '.', ' '], '', $raw));
+                if (! is_numeric($normalized) || (float) $normalized < 0) {
+                    $validator->errors()->add($field, 'Informe um valor válido maior ou igual a zero.');
+                }
+            }
+
             $shareholders = $this->decodedShareholders();
 
             if ($shareholders === []) {
                 $validator->errors()->add('shareholders', 'Informe ao menos um sócio na composição societária.');
 
                 return;
+            }
+
+            // Per-shareholder validation: percentage bounds (0 < pct <= 100)
+            foreach ($shareholders as $idx => $shareholder) {
+                $pct = (float) ($shareholder['percentage'] ?? 0);
+                if ($pct <= 0 || $pct > 100) {
+                    $validator->errors()->add('shareholders', 'Sócio #'.($idx + 1).': participação deve ser entre 0,01% e 100%.');
+                }
             }
 
             $totalPercentage = array_sum(array_map(

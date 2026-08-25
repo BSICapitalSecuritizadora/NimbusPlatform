@@ -1,7 +1,11 @@
 <?php
 
+use App\Filament\Resources\Roles\Pages\EditRole;
+use App\Filament\Resources\Roles\Pages\ListRoles;
 use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\Users\Pages\CreateUser;
+use App\Filament\Resources\Users\Pages\EditUser;
+use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\UserResource;
 use App\Http\Controllers\Auth\AzureController;
 use App\Models\User;
@@ -223,4 +227,153 @@ it('normalizes Microsoft email claims from fallback fields', function () {
     });
 
     expect($email)->toBe('user@bsicapital.com.br');
+});
+
+it('renders the users list page with cockpit headers and columns for super admins', function () {
+    $superAdmin = User::factory()->create([
+        'name' => 'Anderson Cavalcante',
+        'email' => 'anderson.cavalcante@bsicapital.com.br',
+        'cargo' => 'Desenvolvedor',
+        'departamento' => 'Tecnologia',
+        'is_active' => true,
+    ]);
+    $superAdmin->assignRole('super-admin');
+
+    Livewire::actingAs($superAdmin)
+        ->test(ListUsers::class)
+        ->assertCanSeeTableRecords([$superAdmin])
+        ->assertTableColumnStateSet('name', 'Anderson Cavalcante', $superAdmin)
+        ->assertTableColumnStateSet('email', 'anderson.cavalcante@bsicapital.com.br', $superAdmin)
+        ->assertTableColumnStateSet('cargo', 'Desenvolvedor', $superAdmin)
+        ->assertTableColumnStateSet('departamento', 'Tecnologia', $superAdmin)
+        ->assertTableColumnStateSet('is_active', 'Ativo', $superAdmin);
+});
+
+it('displays the empty state when no users match the search filter', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignRole('super-admin');
+
+    $this->actingAs($superAdmin);
+
+    Livewire::test(ListUsers::class)
+        ->searchTable('usuario_inexistente_9999')
+        ->assertSee('Nenhum usuário encontrado')
+        ->assertSee('Limpar busca');
+});
+
+it('filters users by status and role correctly', function () {
+    $superAdmin = User::factory()->create([
+        'name' => 'Super Admin User',
+        'is_active' => true,
+    ]);
+    $superAdmin->assignRole('super-admin');
+
+    $inactiveUser = User::factory()->create([
+        'name' => 'Inactive User',
+        'is_active' => false,
+    ]);
+    $inactiveUser->assignRole('editor');
+
+    $this->actingAs($superAdmin);
+
+    Livewire::test(ListUsers::class)
+        ->filterTable('is_active', '0')
+        ->assertCanSeeTableRecords([$inactiveUser])
+        ->assertCanNotSeeTableRecords([$superAdmin]);
+});
+
+it('allows a super admin to edit user details and sync direct permissions in EditUser', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignRole('super-admin');
+
+    $targetUser = User::factory()->create([
+        'name' => 'Carlos Gestor',
+        'email' => 'carlos.gestor@bsicapital.com.br',
+        'cargo' => 'Coordenador',
+        'departamento' => 'Operações',
+        'is_active' => true,
+    ]);
+    $targetUser->assignRole('editor');
+
+    $perm1 = Permission::findByName('documents.view');
+    $perm2 = Permission::findByName('obligations.view');
+
+    $this->actingAs($superAdmin);
+
+    Livewire::test(EditUser::class, [
+        'record' => $targetUser->getKey(),
+    ])
+        ->assertSchemaComponentExists('cargo')
+        ->assertSchemaComponentExists('roles')
+        ->assertSchemaComponentExists('permissions')
+        ->fillForm([
+            'cargo' => 'Gerente de Operações',
+            'permissions' => [$perm1->id, $perm2->id],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $targetUser->refresh();
+
+    expect($targetUser->cargo)->toBe('Gerente de Operações')
+        ->and($targetUser->hasDirectPermission('documents.view'))->toBeTrue()
+        ->and($targetUser->hasDirectPermission('obligations.view'))->toBeTrue();
+});
+
+it('renders the roles list page with summary columns and search placeholder', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignRole('super-admin');
+
+    $role = Role::findByName('editor');
+
+    Livewire::actingAs($superAdmin)
+        ->test(ListRoles::class)
+        ->assertCanSeeTableRecords([$role])
+        ->assertTableColumnStateSet('name', 'editor', $role)
+        ->assertTableColumnFormattedStateSet('name', 'Editor', $role)
+        ->assertSee('Alcance e Permissões')
+        ->assertSee('Usuários vinculados');
+});
+
+it('displays empty state on roles list when search yields no matches', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignRole('super-admin');
+
+    Livewire::actingAs($superAdmin)
+        ->test(ListRoles::class)
+        ->searchTable('perfil_totalmente_inexistente_9999')
+        ->assertSee('Nenhum perfil encontrado')
+        ->assertSee('Limpar busca');
+});
+
+it('allows super admin to edit a role and sync permissions in EditRole', function () {
+    $superAdmin = User::factory()->create();
+    $superAdmin->assignRole('super-admin');
+
+    $customRole = Role::create([
+        'name' => 'analista-operacoes',
+        'guard_name' => 'web',
+    ]);
+
+    $perm1 = Permission::findByName('emissions.view');
+    $perm2 = Permission::findByName('contracts.view');
+
+    Livewire::actingAs($superAdmin)
+        ->test(EditRole::class, [
+            'record' => $customRole->getKey(),
+        ])
+        ->assertSchemaComponentExists('name')
+        ->assertSchemaComponentExists('permissions')
+        ->fillForm([
+            'name' => 'analista-operacoes-senior',
+            'permissions' => [$perm1->id, $perm2->id],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $customRole->refresh();
+
+    expect($customRole->name)->toBe('analista-operacoes-senior')
+        ->and($customRole->hasPermissionTo('emissions.view'))->toBeTrue()
+        ->and($customRole->hasPermissionTo('contracts.view'))->toBeTrue();
 });
