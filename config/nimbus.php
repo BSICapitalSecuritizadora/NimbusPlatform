@@ -12,4 +12,9 @@ return [
             'name' => env('NIMBUS_MAIL_FROM_NAME', env('MAIL_FROM_NAME', 'BSI Capital')),
         ],
     ],
+
+    // Dedicated stable secret for PII blind indexes — independent from APP_KEY rotation.
+    // Must be set via NIMBUS_PII_BLIND_INDEX_KEY. Changing APP_KEY must NOT change blind indexes.
+    'pii_blind_index_key' => env('NIMBUS_PII_BLIND_INDEX_KEY'),
+    'pii_blind_index_version' => env('NIMBUS_PII_BLIND_INDEX_VERSION', 'v1'),
 ];

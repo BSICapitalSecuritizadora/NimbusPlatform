@@ -195,6 +195,19 @@ class Submission extends Model
         return $this->belongsToMany(Tag::class, 'nimbus_submission_tags', 'nimbus_submission_id', 'nimbus_tag_id');
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (self $submission): bool {
+            // Enforce retention: workflow history is audit-relevant and FK is restrictOnDelete.
+            // Block hard deletion if history exists to avoid accidental loss.
+            if ($submission->statusHistories()->exists()) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
     public function statusHistories(): HasMany
     {
         return $this->hasMany(SubmissionStatusHistory::class, 'nimbus_submission_id')->orderBy('created_at');

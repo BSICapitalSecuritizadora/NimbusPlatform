@@ -33,6 +33,18 @@ class ImportRunFactory extends Factory
         ];
     }
 
+    /**
+     * A run correlated to an activity batch. The uuid is only ever produced by
+     * `LogBatch` in production -- the factory fabricates one so a test can hold
+     * two runs apart without going through a real import.
+     */
+    public function withBatch(?string $batchUuid = null): static
+    {
+        return $this->state(fn (): array => [
+            'batch_uuid' => $batchUuid ?? fake()->uuid(),
+        ]);
+    }
+
     public function installments(): static
     {
         return $this->state(fn (): array => [

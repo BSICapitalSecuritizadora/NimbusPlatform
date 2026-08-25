@@ -145,7 +145,7 @@ trait ImportsContractInstallments
                         'type' => ImportRun::TYPE_CONTRACT_INSTALLMENTS,
                         'file_name' => $this->resolveInstallmentFileName($data, $path),
                         'checksum' => is_file((string) $path) ? hash_file('sha256', (string) $path) : null,
-                        'activity_batch_uuid' => $batchUuid,
+                        'batch_uuid' => $batchUuid,
                         'user_id' => auth()->id(),
                         'contract_id' => $contractId,
                         'records_analyzed' => $analysis->totalLines(),

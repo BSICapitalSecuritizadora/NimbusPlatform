@@ -2,10 +2,14 @@
 
 namespace App\Models\Nimbus;
 
+use App\Casts\LegacyEncrypted;
+use App\Services\Security\BlindIndexService;
 use App\Services\Security\PiiPseudonymizer;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PortalUser extends Authenticatable
 {
@@ -19,51 +23,28 @@ class PortalUser extends Authenticatable
     {
         return [
             'last_login_at' => 'datetime',
-            'document_number' => 'encrypted',
-            'phone_number' => 'encrypted',
+            'document_number' => LegacyEncrypted::class,
+            'phone_number' => LegacyEncrypted::class,
         ];
     }
 
     /**
      * Domain-separated HMAC for blind indexes.
-     * Purpose strings ensure document_number and phone_number hashes are not interchangeable.
+     * Delegates to centralized BlindIndexService for versioning/rotation.
      */
     public static function blindIndex(string $purpose, ?string $normalizedValue): ?string
     {
-        $normalized = trim((string) $normalizedValue);
-
-        if ($normalized === '') {
-            return null;
-        }
-
-        // Domain separation: purpose binds hash to its field.
-        // Use APP_KEY as HMAC secret; key is never exposed.
-        $keyMaterial = (string) config('app.key');
-        $context = "nimbus:pii:{$purpose}:v1";
-
-        return hash_hmac('sha256', $normalized, $keyMaterial.$context);
+        return BlindIndexService::for($purpose, $normalizedValue);
     }
 
     public static function documentNumberHash(?string $rawValue): ?string
     {
-        $digits = preg_replace('/\D+/', '', (string) $rawValue);
-
-        if ($digits === '' || $digits === null) {
-            return null;
-        }
-
-        return static::blindIndex('document_number', $digits);
+        return BlindIndexService::documentNumber($rawValue);
     }
 
     public static function phoneNumberHash(?string $rawValue): ?string
     {
-        $digits = preg_replace('/\D+/', '', (string) $rawValue);
-
-        if ($digits === '' || $digits === null) {
-            return null;
-        }
-
-        return static::blindIndex('phone_number', $digits);
+        return BlindIndexService::phoneNumber($rawValue);
     }
 
     /**
@@ -131,18 +112,33 @@ class PortalUser extends Authenticatable
 
         static::saving(function (self $model): void {
             // Normalize hashes from the raw (decrypted) attributes.
-            // getAttribute returns decrypted value for encrypted casts.
+            // getAttribute returns decrypted value for encrypted casts (LegacyEncrypted handles plaintext fallback).
             $doc = $model->getAttribute('document_number');
             $phone = $model->getAttribute('phone_number');
 
-            // If the model has raw hash already set (e.g. backfill), respect it unless value changed.
-            // We recompute hash whenever document_number or phone_number is dirty or hash is empty.
-            if ($model->isDirty('document_number') || empty($model->getAttribute('document_number_hash'))) {
-                $model->setAttribute('document_number_hash', static::documentNumberHash($doc));
+            $expectedDocHash = static::documentNumberHash($doc);
+            $expectedPhoneHash = static::phoneNumberHash($phone);
+
+            // Transitional duplicate detection: covers both already-hashed rows and legacy
+            // plaintext rows where hash is still NULL. UNIQUE constraint on hash alone
+            // does not catch legacy NULL case, so we check explicitly before write.
+            if ($expectedDocHash !== null && ($model->isDirty('document_number') || empty($model->getAttribute('document_number_hash')))) {
+                $conflict = static::findDuplicateDocumentOwner($expectedDocHash, $doc, $model->getKey());
+                if ($conflict !== null) {
+                    throw ValidationException::withMessages([
+                        'document_number' => 'Este CPF já está cadastrado.',
+                    ]);
+                }
+                $model->setAttribute('document_number_hash', $expectedDocHash);
+            } elseif ($model->isDirty('document_number') || empty($model->getAttribute('document_number_hash'))) {
+                $model->setAttribute('document_number_hash', $expectedDocHash);
             }
 
-            if ($model->isDirty('phone_number') || empty($model->getAttribute('phone_number_hash'))) {
-                $model->setAttribute('phone_number_hash', static::phoneNumberHash($phone));
+            if ($expectedPhoneHash !== null && ($model->isDirty('phone_number') || empty($model->getAttribute('phone_number_hash')))) {
+                // Phone is not unique, but we still populate hash for exact lookup.
+                $model->setAttribute('phone_number_hash', $expectedPhoneHash);
+            } elseif ($model->isDirty('phone_number') || empty($model->getAttribute('phone_number_hash'))) {
+                $model->setAttribute('phone_number_hash', $expectedPhoneHash);
             }
 
             // Ensure empty strings become null for nullable DB columns.
@@ -169,5 +165,60 @@ class PortalUser extends Authenticatable
     public function documents(): HasMany
     {
         return $this->hasMany(PortalDocument::class, 'nimbus_portal_user_id');
+    }
+
+    /**
+     * Find existing owner of same normalized document, covering legacy plaintext
+     * rows and stale APP_KEY-derived hashes during dedicated-key transition.
+     * Returns conflicting model id or null.
+     */
+    protected static function findDuplicateDocumentOwner(?string $expectedHash, ?string $rawDoc, mixed $excludeId = null): ?int
+    {
+        if ($expectedHash === null) {
+            return null;
+        }
+
+        // Fast path: rows already hashed with current dedicated key.
+        $hashedConflict = static::query()
+            ->where('document_number_hash', $expectedHash)
+            ->when($excludeId !== null, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->value('id');
+
+        if ($hashedConflict !== null) {
+            return (int) $hashedConflict;
+        }
+
+        // Transitional: rows hashed with old APP_KEY-derived key (stale after dedicated-key migration).
+        $legacyHash = BlindIndexService::legacyDocumentNumber($rawDoc);
+        if ($legacyHash !== null && $legacyHash !== $expectedHash) {
+            $legacyHashedConflict = static::query()
+                ->where('document_number_hash', $legacyHash)
+                ->when($excludeId !== null, fn ($q) => $q->where('id', '!=', $excludeId))
+                ->value('id');
+
+            if ($legacyHashedConflict !== null) {
+                return (int) $legacyHashedConflict;
+            }
+        }
+
+        // Transitional: legacy rows where hash is still NULL but plaintext holds same digits.
+        $legacyRows = DB::table('nimbus_portal_users')
+            ->whereNull('document_number_hash')
+            ->whereNotNull('document_number')
+            ->when($excludeId !== null, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->select('id', 'document_number')
+            ->get();
+
+        $normalizedIncoming = preg_replace('/\D+/', '', (string) $rawDoc);
+
+        foreach ($legacyRows as $row) {
+            $legacyDigits = preg_replace('/\D+/', '', (string) $row->document_number);
+
+            if ($legacyDigits === $normalizedIncoming && $legacyDigits !== '') {
+                return (int) $row->id;
+            }
+        }
+
+        return null;
     }
 }

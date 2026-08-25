@@ -33,6 +33,8 @@ return [
     'bcb' => [
         'base_url' => env('PU_BCB_SGS_BASE_URL', 'https://api.bcb.gov.br/dados/serie'),
 
+        'connect_timeout' => (int) env('PU_BCB_SGS_CONNECT_TIMEOUT', 10),
+
         'timeout' => (int) env('PU_BCB_SGS_TIMEOUT', 30),
 
         'retries' => (int) env('PU_BCB_SGS_RETRIES', 3),
@@ -93,5 +95,35 @@ return [
                 'anchor_base' => env('PU_BCB_SGS_IPCA_ANCHOR_BASE', '100'),
             ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Homologação Taxa DI B3 × BCB SGS 4389
+    |--------------------------------------------------------------------------
+    |
+    | O FTP MediaCDI é a distribuição estruturada oficial da B3. Cada arquivo
+    | YYYYMMDD.txt contém a Taxa DI daquela data em nove dígitos, com duas casas
+    | decimais implícitas. Esta configuração é usada somente pela homologação;
+    | não participa da engine e não persiste em index_rates.
+    |
+    */
+
+    'b3_di' => [
+        'host' => env('PU_B3_DI_FTP_HOST', 'ftp.cetip.com.br'),
+        'port' => (int) env('PU_B3_DI_FTP_PORT', 21),
+        'directory' => env('PU_B3_DI_FTP_DIRECTORY', '/MediaCDI'),
+        'timeout' => (int) env('PU_B3_DI_FTP_TIMEOUT', 30),
+        'passive' => true,
+        'username' => env('PU_B3_DI_FTP_USERNAME', 'anonymous'),
+        'password' => env('PU_B3_DI_FTP_PASSWORD', 'nimbusplatform@localhost'),
+        'documentation_url' => 'https://www.b3.com.br/pt_br/market-data-e-indices/indices/indices-de-segmentos-e-setoriais/dados-via-ftp.htm',
+        'methodology_url' => 'https://www.b3.com.br/pt_br/market-data-e-indices/indices/indices-de-segmentos-e-setoriais/di/metodologia-de-apuracao-da-taxa/',
+    ],
+
+    'source_homologation' => [
+        'artifact_disk' => env('PU_SOURCE_HOMOLOGATION_DISK', 'local'),
+        'artifact_directory' => 'homologations/index-rate-sources',
+        'minimum_common_records' => (int) env('PU_SOURCE_HOMOLOGATION_MINIMUM_COMMON_RECORDS', 250),
     ],
 ];

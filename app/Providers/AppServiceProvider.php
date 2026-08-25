@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Domain\PuCalculator\Contracts\B3DiSource;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\Contracts\IndexRateProvider;
+use App\Domain\PuCalculator\Services\B3DiFtpSource;
 use App\Domain\PuCalculator\Services\BusinessCalendarService;
 use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
 use App\Domain\PuCalculator\Services\DecimalRounder;
@@ -68,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(BusinessDayCalendarService::class);
         $this->app->alias(BusinessDayCalendarService::class, BusinessCalendarService::class);
         $this->app->bind(BusinessDayCalendar::class, BusinessDayCalendarService::class);
+        $this->app->bind(B3DiSource::class, B3DiFtpSource::class);
 
         $this->app->singleton(IndexRateService::class);
         $this->app->alias(IndexRateService::class, IndexRateLookupService::class);

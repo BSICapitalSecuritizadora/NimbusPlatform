@@ -58,15 +58,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (DB::getDriverName() === 'mysql') {
-            DB::statement('ALTER TABLE nimbus_portal_users MODIFY document_number VARCHAR(50) NULL');
-            DB::statement('ALTER TABLE nimbus_portal_users MODIFY phone_number VARCHAR(50) NULL');
-        } else {
-            Schema::table('nimbus_portal_users', function (Blueprint $table) {
-                $table->string('document_number', 50)->nullable()->change();
-                $table->string('phone_number', 50)->nullable()->change();
-            });
-        }
+        // Non-destructive rollback: encrypted payloads exceed VARCHAR(50) and would be truncated.
+        // Keep columns as TEXT to avoid data loss; only remove blind-index infrastructure.
+        // A controlled data transformation (decrypt + normalize) is required before safely
+        // restoring VARCHAR(50), so we intentionally preserve TEXT here.
 
         Schema::table('nimbus_portal_users', function (Blueprint $table) {
             try {
@@ -76,12 +71,6 @@ return new class extends Migration
 
             try {
                 $table->dropIndex('nimbus_portal_users_phone_hash_index');
-            } catch (Throwable $e) {
-            }
-
-            // Restore legacy unique if data permits (best-effort).
-            try {
-                $table->unique('document_number');
             } catch (Throwable $e) {
             }
         });

@@ -10,9 +10,15 @@ return new class extends Migration
     {
         Schema::create('nimbus_submission_status_histories', function (Blueprint $table) {
             $table->id();
+            // Retention: workflow history is audit-relevant and must not disappear silently.
+            // Previous cascadeOnDelete would delete history when a submission is hard-deleted.
+            // Submissions are hard-deletable via Filament (EditSubmission DeleteAction) but are
+            // operationally retained; we use restrictOnDelete to block accidental cascade and
+            // force explicit handling. If hard deletion is ever required, history must be
+            // explicitly archived before the parent can be removed.
             $table->foreignId('nimbus_submission_id')
                 ->constrained('nimbus_submissions')
-                ->cascadeOnDelete();
+                ->restrictOnDelete();
 
             // Nullable old_status for initial creation record.
             $table->string('old_status', 50)->nullable();

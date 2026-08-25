@@ -6,6 +6,8 @@ use App\Filament\Resources\ImportRuns\ImportRunResource;
 use App\Models\ImportRun;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Support\Enums\FontFamily;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -27,7 +29,7 @@ class ImportRunsTable
             ->recordUrl(fn (ImportRun $record): ?string => ImportRunResource::canView($record)
                 ? ImportRunResource::getUrl('view', ['record' => $record])
                 : null)
-            ->searchPlaceholder('Buscar por arquivo, checksum, usuário ou nº da importação...')
+            ->searchPlaceholder('Buscar por arquivo, tipo, usuário ou checksum...')
             /**
              * Two runs of the same monthly file land in the same second often
              * enough that `created_at` alone leaves the order to the database.
@@ -42,29 +44,32 @@ class ImportRunsTable
                 TextColumn::make('id')
                     ->label('Nº')
                     ->prefix('#')
+                    ->fontFamily(FontFamily::Mono)
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->label('Data/Hora')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y · H:i:s')
+                    ->fontFamily(FontFamily::Mono)
+                    ->tooltip(fn (ImportRun $record): ?string => $record->created_at?->diffForHumans())
                     ->sortable(),
 
                 TextColumn::make('type')
                     ->label('Tipo')
                     ->badge()
                     ->formatStateUsing(fn (ImportRun $record): string => $record->typeLabel())
-                    ->color(fn (ImportRun $record): string => $record->type === ImportRun::TYPE_CONTRACTS ? 'info' : 'primary')
+                    ->color('gray')
                     ->sortable(),
 
                 TextColumn::make('file_name')
                     ->label('Arquivo')
+                    ->weight(FontWeight::SemiBold)
                     ->searchable()
-                    ->limit(38)
-                    ->tooltip(fn (ImportRun $record): ?string => mb_strlen((string) $record->file_name) > 38
-                        ? $record->file_name
-                        : null),
+                    ->limit(45)
+                    ->tooltip(fn (ImportRun $record): ?string => $record->file_name)
+                    ->wrap(),
 
                 TextColumn::make('user.name')
                     ->label('Usuário')
@@ -75,32 +80,39 @@ class ImportRunsTable
                 TextColumn::make('records_analyzed')
                     ->label('Analisados')
                     ->numeric()
+                    ->fontFamily(FontFamily::Mono)
                     ->alignEnd()
                     ->sortable(),
 
                 TextColumn::make('records_created')
                     ->label('Novos')
                     ->numeric()
+                    ->fontFamily(FontFamily::Mono)
                     ->alignEnd()
                     ->sortable(),
 
                 TextColumn::make('records_updated')
                     ->label('Atualizados')
                     ->numeric()
+                    ->fontFamily(FontFamily::Mono)
                     ->alignEnd()
                     ->sortable(),
 
                 TextColumn::make('records_unchanged')
                     ->label('Sem alteração')
                     ->numeric()
+                    ->fontFamily(FontFamily::Mono)
                     ->alignEnd()
                     ->sortable(),
 
                 TextColumn::make('records_critical')
                     ->label('Críticos')
                     ->numeric()
+                    ->fontFamily(FontFamily::Mono)
                     ->alignEnd()
-                    ->color(fn (ImportRun $record): string => $record->records_critical > 0 ? 'warning' : 'gray')
+                    ->color(fn (ImportRun $record): string => $record->records_critical > 0 ? 'danger' : 'gray')
+                    ->weight(fn (ImportRun $record): ?FontWeight => $record->records_critical > 0 ? FontWeight::Bold : null)
+                    ->tooltip(fn (ImportRun $record): ?string => $record->records_critical > 0 ? "{$record->records_critical} registros críticos identificados" : null)
                     ->sortable(),
 
                 TextColumn::make('result')
@@ -111,6 +123,7 @@ class ImportRunsTable
 
                 TextColumn::make('checksum')
                     ->label('Checksum')
+                    ->fontFamily(FontFamily::Mono)
                     ->searchable()
                     ->limit(12)
                     ->copyable()
@@ -161,7 +174,12 @@ class ImportRunsTable
                     }),
             ])
             ->recordActions([
-                ViewAction::make(),
+                ViewAction::make()
+                    ->label('Visualizar')
+                    ->tooltip('Visualizar importação')
+                    ->icon('heroicon-m-eye')
+                    ->color('gray')
+                    ->iconButton(),
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Nenhuma importação registrada')

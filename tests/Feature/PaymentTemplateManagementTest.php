@@ -1,6 +1,8 @@
 <?php
 
+use App\Actions\Emissions\IntegralizationHistorySpreadsheetTemplate;
 use App\Actions\Emissions\PaymentSpreadsheetTemplate;
+use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
 use App\Filament\Pages\Settings;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
@@ -55,6 +57,9 @@ it('renders the settings page and allows replacing the payment template', functi
         ->assertSuccessful()
         ->assertSee('Templates de planilhas')
         ->assertSee('Fluxo de pagamentos')
+        ->assertSee('Histórico de PU')
+        ->assertSee('Histórico de integralizações')
+        ->assertSee('Como funciona o gerenciamento de templates')
         ->assertSee('Salvar template')
         ->assertSee('wire:confirm="Restaurar o template padrão do fluxo de pagamentos?', false)
         ->assertSee('wire:confirm="Restaurar o template padrão do histórico de PU?', false)
@@ -92,4 +97,54 @@ it('restores the default payment template after a custom upload', function () {
     Storage::disk('local')->assertMissing('payment-templates/template-fluxo-de-pagamento.xlsx');
 
     expect(app(PaymentSpreadsheetTemplate::class)->hasCustomTemplate())->toBeFalse();
+});
+
+it('allows replacing and restoring the PU history template', function () {
+    $user = makeAdminUser();
+
+    $this->actingAs($user);
+
+    Livewire::test(Settings::class)
+        ->set('puHistoryTemplateFile', UploadedFile::fake()->create(
+            'template-pu-personalizado.xlsx',
+            32,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ))
+        ->call('savePuHistoryTemplate')
+        ->assertHasNoErrors();
+
+    Storage::disk('local')->assertExists('pu-history-templates/template-historico-de-pu.xlsx');
+    expect(app(PuHistorySpreadsheetTemplate::class)->hasCustomTemplate())->toBeTrue();
+
+    Livewire::test(Settings::class)
+        ->call('restoreDefaultPuHistoryTemplate')
+        ->assertHasNoErrors();
+
+    Storage::disk('local')->assertMissing('pu-history-templates/template-historico-de-pu.xlsx');
+    expect(app(PuHistorySpreadsheetTemplate::class)->hasCustomTemplate())->toBeFalse();
+});
+
+it('allows replacing and restoring the integralization history template', function () {
+    $user = makeAdminUser();
+
+    $this->actingAs($user);
+
+    Livewire::test(Settings::class)
+        ->set('integralizationHistoryTemplateFile', UploadedFile::fake()->create(
+            'template-integralizacao-personalizado.xlsx',
+            32,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ))
+        ->call('saveIntegralizationHistoryTemplate')
+        ->assertHasNoErrors();
+
+    Storage::disk('local')->assertExists('integralization-history-templates/template-historico-de-integralizacoes.xlsx');
+    expect(app(IntegralizationHistorySpreadsheetTemplate::class)->hasCustomTemplate())->toBeTrue();
+
+    Livewire::test(Settings::class)
+        ->call('restoreDefaultIntegralizationHistoryTemplate')
+        ->assertHasNoErrors();
+
+    Storage::disk('local')->assertMissing('integralization-history-templates/template-historico-de-integralizacoes.xlsx');
+    expect(app(IntegralizationHistorySpreadsheetTemplate::class)->hasCustomTemplate())->toBeFalse();
 });

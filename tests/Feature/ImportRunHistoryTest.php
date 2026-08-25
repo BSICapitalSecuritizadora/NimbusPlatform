@@ -108,7 +108,7 @@ it('shows what each execution processed', function () {
         ->assertTableColumnStateSet('records_critical', 0, $run)
         ->assertTableColumnStateSet('result', 'Concluída', $run)
         ->assertSee('Parcelas')
-        ->assertSee('24/08/2026 14:32');
+        ->assertSee('24/08/2026 · 14:32:00');
 });
 
 it('derives the outcome from the counters the execution recorded', function () {

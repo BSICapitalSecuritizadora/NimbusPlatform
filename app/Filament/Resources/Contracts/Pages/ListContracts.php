@@ -147,7 +147,7 @@ class ListContracts extends ListRecords
                             'type' => ImportRun::TYPE_CONTRACTS,
                             'file_name' => $this->resolveFileName($data, $path),
                             'checksum' => is_file((string) $path) ? hash_file('sha256', (string) $path) : null,
-                            'activity_batch_uuid' => $batchUuid,
+                            'batch_uuid' => $batchUuid,
                             'user_id' => auth()->id(),
                             'records_analyzed' => $analysis->totalLines(),
                             'records_created' => $result['created'],

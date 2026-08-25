@@ -23,6 +23,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Activitylog\LogBatch;
@@ -176,7 +177,7 @@ it('stamps the batch of the execution on the import run and on every installment
 
     $run = ImportRun::query()->sole();
 
-    expect($run->activity_batch_uuid)->not->toBeNull()
+    expect($run->batch_uuid)->not->toBeNull()
         ->and($run->hasChangeCorrelation())->toBeTrue()
         ->and($run->records_updated)->toBe(1);
 
@@ -187,7 +188,7 @@ it('stamps the batch of the execution on the import run and on every installment
         ->get();
 
     expect($activities)->toHaveCount(1)
-        ->and($activities->first()->batch_uuid)->toBe($run->activity_batch_uuid)
+        ->and($activities->first()->batch_uuid)->toBe($run->batch_uuid)
         ->and(Activity::query()->where('event', 'created')->whereNotNull('batch_uuid')->count())->toBe(0);
 });
 
@@ -204,8 +205,8 @@ it('stamps the batch on every contract it changed', function () {
 
     $activity = Activity::query()->where('subject_type', Contract::class)->where('event', 'updated')->sole();
 
-    expect($run->activity_batch_uuid)->not->toBeNull()
-        ->and($activity->batch_uuid)->toBe($run->activity_batch_uuid)
+    expect($run->batch_uuid)->not->toBeNull()
+        ->and($activity->batch_uuid)->toBe($run->batch_uuid)
         ->and($run->records_updated)->toBe(1);
 });
 
@@ -311,7 +312,7 @@ it('gives two imports of the same record two separate histories', function () {
     $runs = ImportRun::query()->oldest('id')->get();
 
     expect($runs)->toHaveCount(2)
-        ->and($runs->first()->activity_batch_uuid)->not->toBe($runs->last()->activity_batch_uuid);
+        ->and($runs->first()->batch_uuid)->not->toBe($runs->last()->batch_uuid);
 
     $first = $runs->first()->activities()->where('subject_type', ContractInstallment::class)->sole();
     $second = $runs->last()->activities()->where('subject_type', ContractInstallment::class)->sole();
@@ -319,6 +320,49 @@ it('gives two imports of the same record two separate histories', function () {
     expect($first->properties->get('attributes')['paid_value'])->toBe('2000.00')
         ->and($second->properties->get('old')['paid_value'])->toBe('2000.00')
         ->and($second->properties->get('attributes')['paid_value'])->toBe('2500.00');
+});
+
+it('keeps each run reading only the activities of its own batch', function () {
+    $this->actingAs(makeAdminUser());
+
+    [$contract] = correlationScenario();
+
+    $installment = ContractInstallment::factory()->for($contract)->create([
+        'number' => '001',
+        'due_date' => '2026-01-10',
+        'expected_value' => 10000.00,
+    ]);
+
+    $runA = ImportRun::factory()->withBatch()->create();
+    $runB = ImportRun::factory()->withBatch()->create();
+
+    $batch = app(LogBatch::class);
+
+    $batch->setBatch($runA->batch_uuid);
+    $contract->update(['sale_value' => 900000.00]);
+    $batch->endBatch();
+
+    $batch->setBatch($runB->batch_uuid);
+    $installment->update(['paid_value' => 2500.00]);
+    $batch->endBatch();
+
+    expect($runA->batch_uuid)->not->toBe($runB->batch_uuid)
+        ->and($runA->activities()->pluck('batch_uuid')->unique()->all())->toBe([$runA->batch_uuid])
+        ->and($runB->activities()->pluck('batch_uuid')->unique()->all())->toBe([$runB->batch_uuid])
+        ->and($runA->activities()->pluck('subject_type')->all())->toBe([Contract::class])
+        ->and($runB->activities()->pluck('subject_type')->all())->toBe([ContractInstallment::class]);
+});
+
+/**
+ * The column is named after the one it points at -- `activity_log.batch_uuid` --
+ * and after the sibling `business_calendar_import_runs.batch_uuid`. The old name
+ * must not survive anywhere in the schema.
+ */
+it('names the correlation column after the activity log column it points at', function () {
+    expect(Schema::hasColumn('import_runs', 'batch_uuid'))->toBeTrue()
+        ->and(Schema::hasColumn('import_runs', 'activity_batch_uuid'))->toBeFalse()
+        ->and(Schema::hasColumn('activity_log', 'batch_uuid'))->toBeTrue()
+        ->and(Schema::hasColumn('business_calendar_import_runs', 'batch_uuid'))->toBeTrue();
 });
 
 it('records a batch with no individual change for an idempotent re-run', function () {
@@ -439,7 +483,7 @@ it('does not let a failed execution contaminate the next one', function () {
     $run = ImportRun::query()->sole();
 
     expect($leakedUuid)->not->toBeNull()
-        ->and($run->activity_batch_uuid)->not->toBe($leakedUuid)
+        ->and($run->batch_uuid)->not->toBe($leakedUuid)
         ->and(Activity::query()->where('batch_uuid', $leakedUuid)->count())->toBe(0);
 });
 
@@ -448,7 +492,7 @@ it('does not let a failed execution contaminate the next one', function () {
 it('opens a run recorded before the correlation existed', function () {
     $user = correlationHistoryUser();
 
-    $run = ImportRun::factory()->create(['activity_batch_uuid' => null]);
+    $run = ImportRun::factory()->create(['batch_uuid' => null]);
 
     expect($run->hasChangeCorrelation())->toBeFalse()
         ->and($run->activities()->count())->toBe(0);
@@ -474,7 +518,7 @@ it('does not sweep in the activities that have no batch at all', function () {
     // A manual edit made before any import: no batch uuid whatsoever.
     $contract->update(['sale_value' => 900000.00]);
 
-    $run = ImportRun::factory()->create(['activity_batch_uuid' => null]);
+    $run = ImportRun::factory()->create(['batch_uuid' => null]);
 
     expect(Activity::query()->whereNull('batch_uuid')->count())->toBeGreaterThan(0)
         ->and($run->activities()->count())->toBe(0);

@@ -19,5 +19,6 @@ final readonly class BcbSgsRateData
         public CarbonImmutable $referenceDate,
         public string $value,
         public int $seriesCode,
+        public ?string $rawValue = null,
     ) {}
 }

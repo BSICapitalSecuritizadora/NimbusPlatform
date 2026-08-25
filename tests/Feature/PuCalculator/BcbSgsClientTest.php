@@ -24,9 +24,13 @@ it('parses a SGS JSON response into DTOs with decimal-string values', function (
         ->and($result->rates)->toHaveCount(2)
         ->and($result->rates[0]->referenceDate->toDateString())->toBe('2024-01-02')
         ->and($result->rates[0]->value)->toBe('11.65')
+        ->and($result->rates[0]->rawValue)->toBe('11.65')
         ->and($result->rates[1]->value)->toBe('11.70')
         ->and($result->rates[0]->seriesCode)->toBe(4389)
         ->and($result->blocksTotal)->toBe(1)
+        ->and($result->rawPayloads)->toHaveCount(1)
+        ->and($result->rawPayloads[0]->sha256)->toBe(hash('sha256', $result->rawPayloads[0]->body))
+        ->and($result->rawPayloads[0]->url)->toContain('bcdata.sgs.4389/dados')
         ->and($result->hasBlockFailures())->toBeFalse();
 });
 
@@ -63,7 +67,8 @@ it('skips malformed items without keys', function () {
     $result = app(BcbSgsClient::class)->fetchSeries(4389, CarbonImmutable::parse('2024-01-01'), CarbonImmutable::parse('2024-01-31'));
 
     expect($result->rates)->toHaveCount(1)
-        ->and($result->rates[0]->value)->toBe('11.65');
+        ->and($result->rates[0]->value)->toBe('11.65')
+        ->and($result->invalidEntries)->toHaveCount(2);
 });
 
 it('splits a long window into yearly blocks and consolidates the results', function () {
@@ -105,7 +110,9 @@ it('deduplicates points returned in more than one block by date', function () {
     $dates = array_map(fn ($rate) => $rate->referenceDate->toDateString(), $result->rates);
 
     expect($result->rates)->toHaveCount(2)
-        ->and($dates)->toContain('2022-12-31', '2023-01-02');
+        ->and($dates)->toContain('2022-12-31', '2023-01-02')
+        ->and($result->duplicateDates)->toHaveCount(1)
+        ->and($result->duplicateDates[0]['discarded_value'])->toBe('99.99');
 });
 
 it('records a partial failure when one block fails but others succeed', function () {

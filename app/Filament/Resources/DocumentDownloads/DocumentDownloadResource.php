@@ -15,6 +15,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontFamily;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -22,6 +24,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class DocumentDownloadResource extends Resource
 {
@@ -86,32 +89,76 @@ class DocumentDownloadResource extends Resource
     {
         return $schema
             ->components([
-                TextEntry::make('document.title')->label('Documento'),
-                TextEntry::make('source')->label('Origem')
-                    ->formatStateUsing(fn (string $state): string => $state === 'admin' ? 'Painel Admin' : 'Portal do Investidor')
+                TextEntry::make('document.title')
+                    ->label('Documento')
+                    ->weight(FontWeight::SemiBold),
+                TextEntry::make('source')
+                    ->label('Origem')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'admin' => 'Painel Admin',
+                        'portal' => 'Portal do Investidor',
+                        default => Str::headline((string) $state),
+                    })
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'admin' ? 'warning' : 'success'),
-                TextEntry::make('investor.name')->label('Investidor')->placeholder('—'),
-                TextEntry::make('adminUser.name')->label('Usuário Admin')->placeholder('—'),
-                TextEntry::make('ip')->label('Endereço IP'),
-                TextEntry::make('user_agent')->label('Navegador / Dispositivo'),
-                TextEntry::make('downloaded_at')->label('Data do Download')->dateTime('d/m/Y H:i:s'),
+                    ->color(fn (?string $state): string => match ($state) {
+                        'admin' => 'warning',
+                        'portal' => 'success',
+                        default => 'gray',
+                    }),
+                TextEntry::make('investor.name')
+                    ->label('Investidor')
+                    ->placeholder('—'),
+                TextEntry::make('adminUser.name')
+                    ->label('Usuário Admin')
+                    ->placeholder('—'),
+                TextEntry::make('downloaded_at')
+                    ->label('Data e Hora do Download')
+                    ->dateTime('d/m/Y · H:i:s')
+                    ->fontFamily(FontFamily::Mono),
+                TextEntry::make('ip')
+                    ->label('Endereço IP')
+                    ->fontFamily(FontFamily::Mono)
+                    ->placeholder('—'),
+                TextEntry::make('user_agent')
+                    ->label('Navegador / Dispositivo')
+                    ->placeholder('—')
+                    ->columnSpanFull(),
+                TextEntry::make('referer')
+                    ->label('Origem do Acesso (Referer)')
+                    ->placeholder('—')
+                    ->columnSpanFull(),
             ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->searchPlaceholder('Buscar por documento ou investidor...')
+            ->defaultSort('downloaded_at', 'desc')
+            ->defaultPaginationPageOption(25)
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('document.title')
                     ->label('Documento')
+                    ->weight(FontWeight::SemiBold)
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->wrap(),
                 TextColumn::make('source')
                     ->label('Origem')
-                    ->formatStateUsing(fn (string $state): string => $state === 'admin' ? 'Admin' : 'Portal')
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'admin' => 'Admin',
+                        'portal' => 'Portal',
+                        default => Str::headline((string) $state),
+                    })
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'admin' ? 'warning' : 'success'),
+                    ->color(fn (string $state): string => match ($state) {
+                        'admin' => 'warning',
+                        'portal' => 'success',
+                        default => 'gray',
+                    })
+                    ->sortable(),
                 TextColumn::make('investor.name')
                     ->label('Investidor')
                     ->placeholder('—')
@@ -125,16 +172,20 @@ class DocumentDownloadResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('downloaded_at')
                     ->label('Data e Hora')
-                    ->dateTime('d/m/Y H:i:s')
+                    ->dateTime('d/m/Y · H:i:s')
+                    ->fontFamily(FontFamily::Mono)
+                    ->tooltip(fn (DocumentDownload $record): ?string => $record->downloaded_at?->diffForHumans())
                     ->sortable(),
                 TextColumn::make('ip')
                     ->label('Endereço IP')
+                    ->fontFamily(FontFamily::Mono)
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('user_agent')
                     ->label('Navegador / Dispositivo')
                     ->searchable()
-                    ->limit(30)
+                    ->limit(35)
+                    ->tooltip(fn (DocumentDownload $record): ?string => $record->user_agent)
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -152,6 +203,7 @@ class DocumentDownloadResource extends Resource
                     ->searchable()
                     ->preload(),
                 Filter::make('downloaded_at')
+                    ->label('Data do Download')
                     ->form([
                         DatePicker::make('created_from')->label('Data Inicial'),
                         DatePicker::make('created_until')->label('Data Final'),
@@ -168,15 +220,24 @@ class DocumentDownloadResource extends Resource
                             );
                     }),
             ])
-            ->defaultSort('downloaded_at', 'desc')
             ->recordActions([
-                ViewAction::make(),
+                ViewAction::make()
+                    ->label('Visualizar')
+                    ->tooltip('Visualizar registro de download')
+                    ->icon('heroicon-m-eye')
+                    ->color('gray')
+                    ->iconButton(),
             ])
             ->toolbarActions([
                 ExportAction::make()
-                    ->label('Exportar')
+                    ->label('Exportar registros')
+                    ->icon('heroicon-m-arrow-down-tray')
+                    ->color('gray')
                     ->exporter(DocumentDownloadExporter::class),
-            ]);
+            ])
+            ->emptyStateHeading('Nenhum download registrado')
+            ->emptyStateDescription('Os downloads realizados aparecerão aqui para acompanhamento e auditoria.')
+            ->emptyStateIcon('heroicon-o-arrow-down-tray');
     }
 
     public static function getPages(): array

@@ -49,7 +49,7 @@ class ImportRun extends Model
         'type',
         'file_name',
         'checksum',
-        'activity_batch_uuid',
+        'batch_uuid',
         'user_id',
         'contract_id',
         'records_analyzed',
@@ -95,7 +95,7 @@ class ImportRun extends Model
      */
     public function activities(): HasMany
     {
-        return $this->hasMany(Activity::class, 'batch_uuid', 'activity_batch_uuid');
+        return $this->hasMany(Activity::class, 'batch_uuid', 'batch_uuid');
     }
 
     /**
@@ -108,7 +108,7 @@ class ImportRun extends Model
      */
     public function hasChangeCorrelation(): bool
     {
-        return filled($this->activity_batch_uuid);
+        return filled($this->batch_uuid);
     }
 
     public function typeLabel(): string

@@ -7,6 +7,7 @@ use App\Actions\Emissions\PaymentSpreadsheetTemplate;
 use App\Actions\Emissions\PuHistorySpreadsheetTemplate;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 use UnitEnum;
@@ -34,6 +35,12 @@ class Settings extends Page
     protected static ?string $title = "Configura\u{00E7}\u{00F5}es";
 
     protected ?string $subheading = 'Gerencie os templates de planilhas utilizados nos fluxos operacionais das emissões.';
+
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-settings-page',
+    ];
 
     public static function canAccess(): bool
     {

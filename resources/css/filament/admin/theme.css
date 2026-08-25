@@ -878,6 +878,8 @@
 .dark .bsi-invitations-list-page .fi-ta-content-ctn,
 .dark .bsi-activities-list-page .fi-ta-content-ctn,
 .dark .bsi-reminder-logs-list-page .fi-ta-content-ctn,
+.dark .bsi-document-downloads-list-page .fi-ta-content-ctn,
+.dark .bsi-import-runs-list-page .fi-ta-content-ctn,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
@@ -905,6 +907,8 @@
 .dark .bsi-invitations-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-activities-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
     background: transparent;
 }
@@ -932,6 +936,8 @@
 .dark .bsi-invitations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-activities-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
@@ -960,6 +966,8 @@
 .dark .bsi-invitations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-activities-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover {
     background-color: rgba(148, 163, 184, 0.55);
 }
@@ -1251,6 +1259,9 @@
 .bsi-invitations-list-page .fi-page,
 .bsi-activities-list-page .fi-page,
 .bsi-reminder-logs-list-page .fi-page,
+.bsi-document-downloads-list-page .fi-page,
+.bsi-import-runs-list-page .fi-page,
+.bsi-settings-page .fi-page,
 .bsi-receivables-list-page .fi-page {
     gap: 0.75rem !important;
 }
@@ -1278,6 +1289,9 @@
 .bsi-invitations-list-page .fi-header,
 .bsi-activities-list-page .fi-header,
 .bsi-reminder-logs-list-page .fi-header,
+.bsi-document-downloads-list-page .fi-header,
+.bsi-import-runs-list-page .fi-header,
+.bsi-settings-page .fi-header,
 .bsi-receivables-list-page .fi-header {
     padding: 0.875rem 1.25rem !important;
     border-radius: 12px !important;
@@ -1308,6 +1322,9 @@
 .bsi-invitations-list-page .fi-header-heading,
 .bsi-activities-list-page .fi-header-heading,
 .bsi-reminder-logs-list-page .fi-header-heading,
+.bsi-document-downloads-list-page .fi-header-heading,
+.bsi-import-runs-list-page .fi-header-heading,
+.bsi-settings-page .fi-header-heading,
 .bsi-receivables-list-page .fi-header-heading {
     font-size: 1.25rem !important;
     font-weight: 700 !important;
@@ -1337,6 +1354,9 @@
 .bsi-invitations-list-page .fi-header-subheading,
 .bsi-activities-list-page .fi-header-subheading,
 .bsi-reminder-logs-list-page .fi-header-subheading,
+.bsi-document-downloads-list-page .fi-header-subheading,
+.bsi-import-runs-list-page .fi-header-subheading,
+.bsi-settings-page .fi-header-subheading,
 .bsi-receivables-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
@@ -1368,6 +1388,9 @@
 .bsi-invitations-list-page .fi-breadcrumbs,
 .bsi-activities-list-page .fi-breadcrumbs,
 .bsi-reminder-logs-list-page .fi-breadcrumbs,
+.bsi-document-downloads-list-page .fi-breadcrumbs,
+.bsi-import-runs-list-page .fi-breadcrumbs,
+.bsi-settings-page .fi-breadcrumbs,
 .bsi-receivables-list-page .fi-breadcrumbs {
     font-size: 0.75rem !important;
     margin-bottom: 0.125rem !important;
@@ -1396,6 +1419,8 @@
 .bsi-invitations-list-page .fi-ta-table,
 .bsi-activities-list-page .fi-ta-table,
 .bsi-reminder-logs-list-page .fi-ta-table,
+.bsi-document-downloads-list-page .fi-ta-table,
+.bsi-import-runs-list-page .fi-ta-table,
 .bsi-receivables-list-page .fi-ta-table {
     width: 100% !important;
     min-width: 100% !important;
@@ -1425,6 +1450,8 @@
 .bsi-invitations-list-page .fi-ta-cell .fi-badge,
 .bsi-activities-list-page .fi-ta-cell .fi-badge,
 .bsi-reminder-logs-list-page .fi-ta-cell .fi-badge,
+.bsi-document-downloads-list-page .fi-ta-cell .fi-badge,
+.bsi-import-runs-list-page .fi-ta-cell .fi-badge,
 .bsi-receivables-list-page .fi-ta-cell .fi-badge {
     white-space: normal !important;
     text-align: center !important;
@@ -1442,6 +1469,8 @@
 .bsi-invitations-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-activities-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-reminder-logs-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-document-downloads-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-import-runs-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-documents-list-page .fi-tabs-item .fi-badge[data-color="gray"] {
     opacity: 0.45 !important;
 }
@@ -1470,6 +1499,8 @@
     .bsi-invitations-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-activities-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-reminder-logs-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-document-downloads-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-import-runs-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-receivables-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 22rem;
     }
@@ -1499,6 +1530,8 @@
 .bsi-invitations-list-page .fi-ta-empty-state,
 .bsi-activities-list-page .fi-ta-empty-state,
 .bsi-reminder-logs-list-page .fi-ta-empty-state,
+.bsi-document-downloads-list-page .fi-ta-empty-state,
+.bsi-import-runs-list-page .fi-ta-empty-state,
 .bsi-receivables-list-page .fi-ta-empty-state {
     padding-block: 2.5rem !important;
     padding-inline: 1.5rem !important;
@@ -1527,6 +1560,8 @@
 .bsi-invitations-list-page .fi-ta-empty-state-icon-bg,
 .bsi-activities-list-page .fi-ta-empty-state-icon-bg,
 .bsi-reminder-logs-list-page .fi-ta-empty-state-icon-bg,
+.bsi-document-downloads-list-page .fi-ta-empty-state-icon-bg,
+.bsi-import-runs-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: #64748b !important;
     margin-bottom: 0.75rem !important;
@@ -1555,6 +1590,8 @@
 .dark .bsi-invitations-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-activities-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-reminder-logs-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-document-downloads-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-import-runs-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: rgba(251, 250, 248, 0.4) !important;
 }
@@ -1582,6 +1619,8 @@
 .bsi-invitations-list-page .fi-ta-empty-state-heading,
 .bsi-activities-list-page .fi-ta-empty-state-heading,
 .bsi-reminder-logs-list-page .fi-ta-empty-state-heading,
+.bsi-document-downloads-list-page .fi-ta-empty-state-heading,
+.bsi-import-runs-list-page .fi-ta-empty-state-heading,
 .bsi-receivables-list-page .fi-ta-empty-state-heading {
     font-size: 1rem !important;
     font-weight: 600 !important;
@@ -1595,6 +1634,8 @@
 .bsi-invitations-list-page .fi-ta-table td,
 .bsi-activities-list-page .fi-ta-table td,
 .bsi-reminder-logs-list-page .fi-ta-table td,
+.bsi-document-downloads-list-page .fi-ta-table td,
+.bsi-import-runs-list-page .fi-ta-table td,
 .bsi-receivables-list-page .fi-ta-table td {
     font-variant-numeric: tabular-nums;
 }
@@ -1622,6 +1663,8 @@
 .bsi-invitations-list-page .fi-ta-empty-state-description,
 .bsi-activities-list-page .fi-ta-empty-state-description,
 .bsi-reminder-logs-list-page .fi-ta-empty-state-description,
+.bsi-document-downloads-list-page .fi-ta-empty-state-description,
+.bsi-import-runs-list-page .fi-ta-empty-state-description,
 .bsi-receivables-list-page .fi-ta-empty-state-description {
     max-width: 46ch !important;
     font-size: 0.8125rem !important;
@@ -2073,6 +2116,155 @@ html:not(.dark) .bsi-reminder-logs-list-page tr.fi-ta-row:hover {
 .dark .bsi-reminder-logs-list-page .fi-ta-actions .fi-icon-btn:hover {
     color: #d49e47 !important;
     background-color: rgba(183, 131, 47, 0.15) !important;
+}
+
+/* ── Registros de Downloads (Rastreabilidade Operacional de Acesso): Dark Mode Teal, Alta Densidade, Destaque de Documento & Origem ── */
+.bsi-document-downloads-list-page .fi-ta-table th,
+.bsi-document-downloads-list-page .fi-ta-table td {
+    padding-block: 0.625rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+.bsi-document-downloads-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-document-downloads-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-document-downloads-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Documento com protagonismo */
+.dark .bsi-document-downloads-list-page .fi-ta-cell-document-title .fi-ta-text-item-label,
+.dark .bsi-document-downloads-list-page .fi-ta-cell-document\.title .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+/* Origem: Badges compactos e elegantes */
+.dark .bsi-document-downloads-list-page .fi-ta-cell-source .fi-badge {
+    font-size: 0.75rem !important;
+    padding: 0.2rem 0.55rem !important;
+}
+
+/* Investidor */
+.dark .bsi-document-downloads-list-page .fi-ta-cell-investor-name .fi-ta-text-item-label,
+.dark .bsi-document-downloads-list-page .fi-ta-cell-investor\.name .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.85) !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Data e Hora com segundos e algarismos tabulares */
+.dark .bsi-document-downloads-list-page .fi-ta-cell-downloaded_at .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.75) !important;
+    font-size: 0.75rem !important;
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+}
+
+/* Ação Visualizar sutil */
+.dark .bsi-document-downloads-list-page .fi-ta-actions .fi-icon-btn {
+    color: rgba(251, 250, 248, 0.5) !important;
+    transition: color 150ms ease, background-color 150ms ease !important;
+}
+
+.dark .bsi-document-downloads-list-page tr.fi-ta-row:hover .fi-ta-actions .fi-icon-btn,
+.dark .bsi-document-downloads-list-page .fi-ta-actions .fi-icon-btn:hover {
+    color: #d49e47 !important;
+    background-color: rgba(183, 131, 47, 0.15) !important;
+}
+
+/* ── Histórico de Importações (Rastreabilidade e Reconciliação): Dark Mode Teal, Alta Densidade, Separação de Contexto & Métricas ── */
+.bsi-import-runs-list-page .fi-ta-table th,
+.bsi-import-runs-list-page .fi-ta-table td {
+    padding-block: 0.625rem !important;
+    padding-inline: 0.75rem !important;
+}
+
+.bsi-import-runs-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-import-runs-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-import-runs-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Data e Hora com segundos e algarismos tabulares */
+.dark .bsi-import-runs-list-page .fi-ta-cell-created_at .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.75) !important;
+    font-size: 0.75rem !important;
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+}
+
+/* Tipo */
+.dark .bsi-import-runs-list-page .fi-ta-cell-type .fi-badge {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    font-size: 0.75rem !important;
+    padding: 0.2rem 0.55rem !important;
+}
+
+/* Arquivo com protagonismo */
+.dark .bsi-import-runs-list-page .fi-ta-cell-file_name .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+/* Usuário */
+.dark .bsi-import-runs-list-page .fi-ta-cell-user-name .fi-ta-text-item-label,
+.dark .bsi-import-runs-list-page .fi-ta-cell-user\.name .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.85) !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Transição / divisor sutil entre contexto e métricas */
+.bsi-import-runs-list-page .fi-ta-cell-records_analyzed {
+    border-left: 1px dashed rgba(148, 163, 184, 0.15) !important;
+    padding-left: 1rem !important;
+}
+
+/* Células numéricas de reconciliação */
+.dark .bsi-import-runs-list-page .fi-ta-cell-records_analyzed .fi-ta-text-item-label,
+.dark .bsi-import-runs-list-page .fi-ta-cell-records_created .fi-ta-text-item-label,
+.dark .bsi-import-runs-list-page .fi-ta-cell-records_updated .fi-ta-text-item-label,
+.dark .bsi-import-runs-list-page .fi-ta-cell-records_unchanged .fi-ta-text-item-label {
+    font-size: 0.8125rem !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* Críticos: Destaque visual apenas quando > 0 */
+.dark .bsi-import-runs-list-page .fi-ta-cell-records_critical .fi-ta-text-item-label {
+    font-size: 0.8125rem !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* Ação Visualizar sutil */
+.dark .bsi-import-runs-list-page .fi-ta-actions .fi-icon-btn {
+    color: rgba(251, 250, 248, 0.5) !important;
+    transition: color 150ms ease, background-color 150ms ease !important;
+}
+
+.dark .bsi-import-runs-list-page tr.fi-ta-row:hover .fi-ta-actions .fi-icon-btn,
+.dark .bsi-import-runs-list-page .fi-ta-actions .fi-icon-btn:hover {
+    color: #d49e47 !important;
+    background-color: rgba(183, 131, 47, 0.15) !important;
+}
+
+/* ── Configurações > Templates de Planilhas (Central Operacional de Modelos): Dark Mode Teal, Full-Width ── */
+.bsi-settings-page .fi-page,
+.bsi-settings-page .fi-main-ctn {
+    max-width: 100% !important;
 }
 
 /* ── Cockpit Header Primary Action Button (Institutional BSI Gold) ── */

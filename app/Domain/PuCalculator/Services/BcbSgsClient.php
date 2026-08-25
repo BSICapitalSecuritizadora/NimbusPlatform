@@ -7,6 +7,7 @@ namespace App\Domain\PuCalculator\Services;
 use App\Domain\PuCalculator\DTOs\BcbSgsBlockFailure;
 use App\Domain\PuCalculator\DTOs\BcbSgsFetchResult;
 use App\Domain\PuCalculator\DTOs\BcbSgsRateData;
+use App\Domain\PuCalculator\DTOs\BcbSgsRawPayload;
 use App\Domain\PuCalculator\Exceptions\BcbSgsException;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
@@ -39,11 +40,17 @@ class BcbSgsClient
         $rates = [];
         /** @var list<BcbSgsBlockFailure> $failures */
         $failures = [];
+        /** @var list<BcbSgsRawPayload> $rawPayloads */
+        $rawPayloads = [];
+        /** @var list<array<string, mixed>> $invalidEntries */
+        $invalidEntries = [];
+        /** @var list<array<string, mixed>> $duplicateDates */
+        $duplicateDates = [];
         $seenDates = [];
 
         foreach ($blocks as [$blockFrom, $blockTo]) {
             try {
-                $blockRates = $this->fetchBlock($seriesCode, $blockFrom, $blockTo, $config);
+                $block = $this->fetchBlock($seriesCode, $blockFrom, $blockTo, $config);
             } catch (BcbSgsException $exception) {
                 $failures[] = new BcbSgsBlockFailure($blockFrom, $blockTo, $exception->getMessage());
 
@@ -57,14 +64,24 @@ class BcbSgsClient
                 continue;
             }
 
-            foreach ($blockRates as $rate) {
+            $rawPayloads[] = $block['payload'];
+            $invalidEntries = [...$invalidEntries, ...$block['invalid_entries']];
+
+            foreach ($block['rates'] as $rate) {
                 $key = $rate->referenceDate->toDateString();
 
                 if (isset($seenDates[$key])) {
+                    $duplicateDates[] = [
+                        'issue' => 'duplicate_date',
+                        'reference_date' => $key,
+                        'kept_value' => $seenDates[$key],
+                        'discarded_value' => $rate->rawValue ?? $rate->value,
+                    ];
+
                     continue;
                 }
 
-                $seenDates[$key] = true;
+                $seenDates[$key] = $rate->rawValue ?? $rate->value;
                 $rates[] = $rate;
             }
         }
@@ -79,7 +96,14 @@ class BcbSgsClient
             ));
         }
 
-        return new BcbSgsFetchResult($rates, $failures, count($blocks));
+        return new BcbSgsFetchResult(
+            rates: $rates,
+            blockFailures: $failures,
+            blocksTotal: count($blocks),
+            rawPayloads: $rawPayloads,
+            invalidEntries: $invalidEntries,
+            duplicateDates: $duplicateDates,
+        );
     }
 
     /**
@@ -114,7 +138,7 @@ class BcbSgsClient
      * Consulta um único bloco com retry/backoff exponencial. Lança {@see BcbSgsException} ao falhar.
      *
      * @param  array<string, mixed>  $config
-     * @return list<BcbSgsRateData>
+     * @return array{rates:list<BcbSgsRateData>,payload:BcbSgsRawPayload,invalid_entries:list<array<string, mixed>>}
      */
     private function fetchBlock(int $seriesCode, CarbonImmutable $from, CarbonImmutable $to, array $config): array
     {
@@ -122,6 +146,7 @@ class BcbSgsClient
 
         try {
             $response = Http::baseUrl((string) ($config['base_url'] ?? 'https://api.bcb.gov.br/dados/serie'))
+                ->connectTimeout((int) ($config['connect_timeout'] ?? 10))
                 ->timeout((int) ($config['timeout'] ?? 30))
                 ->retry(
                     max(1, (int) ($config['retries'] ?? 3)),
@@ -156,9 +181,16 @@ class BcbSgsClient
         }
 
         $rates = [];
+        $invalidEntries = [];
 
-        foreach ($payload as $item) {
+        foreach ($payload as $position => $item) {
             if (! is_array($item) || ! isset($item['data'], $item['valor'])) {
+                $invalidEntries[] = [
+                    'issue' => 'invalid_entry_shape',
+                    'position' => $position,
+                    'entry' => $item,
+                ];
+
                 continue;
             }
 
@@ -166,19 +198,47 @@ class BcbSgsClient
             $value = $this->normalizeValue((string) $item['valor']);
 
             if ($date === null || $value === null) {
+                $invalidEntries[] = [
+                    'issue' => $date === null ? 'invalid_reference_date' : 'invalid_decimal_format',
+                    'position' => $position,
+                    'entry' => $item,
+                ];
+
                 continue;
             }
 
-            $rates[] = new BcbSgsRateData(referenceDate: $date, value: $value, seriesCode: $seriesCode);
+            $rates[] = new BcbSgsRateData(
+                referenceDate: $date,
+                value: $value,
+                seriesCode: $seriesCode,
+                rawValue: (string) $item['valor'],
+            );
         }
 
-        return $rates;
+        $body = $response->body();
+
+        return [
+            'rates' => $rates,
+            'payload' => new BcbSgsRawPayload(
+                from: $from,
+                to: $to,
+                url: (string) $response->effectiveUri(),
+                body: $body,
+                sha256: hash('sha256', $body),
+                capturedAt: CarbonImmutable::now(),
+            ),
+            'invalid_entries' => $invalidEntries,
+        ];
     }
 
     private function parseDate(string $value): ?CarbonImmutable
     {
         try {
-            return CarbonImmutable::createFromFormat('d/m/Y', trim($value))?->startOfDay();
+            $date = CarbonImmutable::createFromFormat('!d/m/Y', trim($value));
+
+            return $date !== null && $date->format('d/m/Y') === trim($value)
+                ? $date
+                : null;
         } catch (Throwable) {
             return null;
         }

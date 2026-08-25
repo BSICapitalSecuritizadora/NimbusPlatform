@@ -15,6 +15,10 @@ return new class extends Migration
      * "what did this run change" be answered by a key instead of by guessing
      * from the subject and a time window.
      *
+     * Named after the column it points at -- `activity_log.batch_uuid` -- and
+     * after the sibling `business_calendar_import_runs.batch_uuid`, so an
+     * activity batch is called the same thing everywhere in the platform.
+     *
      * Nullable because runs recorded before this existed have no batch, and
      * because the correlation is technical -- the `ImportRun` remains the fact
      * of the execution with or without it.
@@ -26,14 +30,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('import_runs', function (Blueprint $table) {
-            $table->uuid('activity_batch_uuid')->nullable()->after('checksum');
+            $table->uuid('batch_uuid')->nullable()->after('checksum');
         });
     }
 
     public function down(): void
     {
         Schema::table('import_runs', function (Blueprint $table) {
-            $table->dropColumn('activity_batch_uuid');
+            $table->dropColumn('batch_uuid');
         });
     }
 };
