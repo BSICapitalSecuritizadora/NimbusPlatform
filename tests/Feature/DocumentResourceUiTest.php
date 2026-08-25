@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Resources\Documents\Pages\CreateDocument;
 use App\Filament\Resources\Documents\Pages\EditDocument;
 use App\Filament\Resources\Documents\Pages\ListDocuments;
 use App\Filament\Resources\Documents\RelationManagers\VersionsRelationManager;
@@ -176,4 +177,38 @@ it('renders the versions relation manager with clean empty state when no previou
         ->assertSee('Histórico de versões')
         ->assertSee('Nenhuma versão anterior')
         ->assertSee('Este documento ainda não teve seu arquivo substituído.');
+});
+
+it('renders the create document page with institutional cockpit layout, subheadings and actions', function (): void {
+    $user = documentUiUser('documents.view', 'documents.create');
+    $this->actingAs($user);
+
+    Livewire::test(CreateDocument::class)
+        ->assertSee('Criar documento')
+        ->assertSee('Cadastre o arquivo, sua classificação, vínculos e regras de publicação.')
+        ->assertSee('Dados do documento')
+        ->assertSee('Informações cadastrais, classificação, arquivo e regras de visibilidade.')
+        ->assertSee('Visibilidade e publicação')
+        ->assertSee('Publicado')
+        ->assertSee('Público')
+        ->assertSee('Salvar e criar outro')
+        ->assertSee('Cancelar');
+});
+
+it('validates required fields with specific friendly error messages on document creation', function (): void {
+    $user = documentUiUser('documents.view', 'documents.create');
+    $this->actingAs($user);
+
+    Livewire::test(CreateDocument::class)
+        ->fillForm([
+            'title' => '',
+            'category' => '',
+            'file_path' => null,
+        ])
+        ->call('create')
+        ->assertHasFormErrors([
+            'title' => 'Informe o título do documento.',
+            'category' => 'Selecione a categoria.',
+            'file_path' => 'Selecione um arquivo.',
+        ]);
 });

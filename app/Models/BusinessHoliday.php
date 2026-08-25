@@ -15,6 +15,7 @@ class BusinessHoliday extends Model
     protected $fillable = [
         'calendar_code',
         'business_calendar_year_id',
+        'business_calendar_legal_rule_id',
         'holiday_date',
         'name',
         'source',
@@ -50,6 +51,11 @@ class BusinessHoliday extends Model
     public function calendarYear(): BelongsTo
     {
         return $this->belongsTo(BusinessCalendarYear::class, 'business_calendar_year_id');
+    }
+
+    public function legalRule(): BelongsTo
+    {
+        return $this->belongsTo(BusinessCalendarLegalRule::class, 'business_calendar_legal_rule_id');
     }
 
     public function importRun(): BelongsTo

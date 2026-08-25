@@ -47,7 +47,8 @@ class MeasurementPolicy
     {
         return $user->can('measurements.update')
             && $this->authorization->canViewMeasurement($user, $measurement)
-            && $measurement->status !== 'finalized';
+            && $measurement->status !== 'finalized'
+            && ! $measurement->hasApprovedEngineering();
     }
 
     /**
@@ -57,7 +58,8 @@ class MeasurementPolicy
     {
         return $user->can('measurements.delete')
             && $this->authorization->canViewMeasurement($user, $measurement)
-            && $measurement->status !== 'finalized';
+            && $measurement->status !== 'finalized'
+            && ! $measurement->reviews()->exists();
     }
 
     /**

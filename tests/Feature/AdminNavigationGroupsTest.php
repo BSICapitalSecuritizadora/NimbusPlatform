@@ -238,6 +238,7 @@ it('consolidates the audit trails and internal access inside Administração', f
             'Logs de Auditoria',
             'Auditoria de Lembretes',
             'Histórico de Downloads',
+            'Histórico de Importações',
         ])
         ->and(navigationChildLabels('Administração', 'Configurações'))->toBe([
             'Usuários',

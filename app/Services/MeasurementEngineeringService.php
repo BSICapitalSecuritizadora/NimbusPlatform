@@ -6,18 +6,20 @@ use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class MeasurementEngineeringService
 {
+    public function __construct(private MeasurementFileValidationService $fileValidation) {}
+
     /**
      * Validate and persist the Engineering data while the caller holds the
      * measurement workflow transaction.
      *
      * @param  array<int|string, mixed>  $monthlyProgress
+     * @return array{reference_month: ?string, plan_sets: array<int, array{plan_set_id: int, plan_line_id: int, asset_id: int, storage_path: string, storage_disk: string, sha256: string}>}
      */
-    public function validateAndRecord(Measurement $measurement, array $monthlyProgress): void
+    public function validateAndRecord(Measurement $measurement, array $monthlyProgress): array
     {
         $measurement->loadMissing([
             'operation.planSets.construction',
@@ -40,6 +42,11 @@ class MeasurementEngineeringService
         $assetsByPlanSet = $measurement->assets->keyBy('plan_set_id');
         $validatedLines = [];
 
+        if ($measurement->assets->count() !== $planSets->count()
+            || $assetsByPlanSet->count() !== $planSets->count()) {
+            $errors['assets.coverage'] = 'Envie exatamente um arquivo para cada empreendimento da operação.';
+        }
+
         foreach ($planSets as $planSet) {
             $asset = $assetsByPlanSet->get($planSet->getKey());
             $label = $this->planSetLabel($planSet);
@@ -50,9 +57,14 @@ class MeasurementEngineeringService
                 continue;
             }
 
-            if (blank($asset->storage_path)
-                || ! Storage::disk($asset->resolved_storage_disk)->exists($asset->storage_path)) {
+            try {
+                $this->fileValidation->validateAsset($asset->storage_path, $asset->resolved_storage_disk);
+            } catch (ValidationException) {
                 $errors["assets.{$planSet->getKey()}"] = "O arquivo de medição de {$label} não foi encontrado no armazenamento.";
+            }
+
+            if (! is_string($asset->sha256) || mb_strlen($asset->sha256) !== 64) {
+                $errors["assets.{$planSet->getKey()}.sha256"] = "O arquivo de medição de {$label} não possui SHA-256 válido.";
             }
 
             $line = $asset->planLine;
@@ -106,7 +118,7 @@ class MeasurementEngineeringService
                 continue;
             }
 
-            $validatedLines[] = [$lockedLine, (float) $monthly, $cumulative];
+            $validatedLines[] = [$lockedLine, (float) $monthly, $cumulative, $asset];
         }
 
         if ($errors !== []) {
@@ -120,6 +132,22 @@ class MeasurementEngineeringService
                 'measurement_id' => $measurement->getKey(),
             ])->save();
         }
+
+        return [
+            'reference_month' => $measurement->reference_month?->toDateString(),
+            'plan_sets' => collect($validatedLines)
+                ->map(fn (array $validated): array => [
+                    'plan_set_id' => (int) $validated[0]->plan_set_id,
+                    'plan_line_id' => (int) $validated[0]->getKey(),
+                    'asset_id' => (int) $validated[3]->getKey(),
+                    'storage_path' => (string) $validated[3]->storage_path,
+                    'storage_disk' => $validated[3]->resolved_storage_disk,
+                    'sha256' => (string) $validated[3]->sha256,
+                ])
+                ->sortBy('plan_set_id')
+                ->values()
+                ->all(),
+        ];
     }
 
     private function planSetLabel(MeasurementPlanSet $planSet): string

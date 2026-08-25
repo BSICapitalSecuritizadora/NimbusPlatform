@@ -23,9 +23,12 @@ class DocumentForm
             Section::make('Dados do documento')
                 ->description('Informações cadastrais, classificação, arquivo e regras de visibilidade.')
                 ->icon('heroicon-o-document-text')
+                ->columnSpanFull()
                 ->columns([
                     'default' => 1,
+                    'sm' => 12,
                     'md' => 12,
+                    'lg' => 12,
                 ])
                 ->schema([
                     TextInput::make('title')
@@ -33,7 +36,15 @@ class DocumentForm
                         ->placeholder('Ex: Ata da Assembleia Geral Ordinária')
                         ->required()
                         ->maxLength(255)
-                        ->columnSpan(['default' => 12, 'md' => 8]),
+                        ->validationMessages([
+                            'required' => 'Informe o título do documento.',
+                        ])
+                        ->columnSpan([
+                            'default' => 12,
+                            'sm' => 12,
+                            'md' => 8,
+                            'lg' => 8,
+                        ]),
 
                     Select::make('category')
                         ->label('Categoria')
@@ -41,7 +52,15 @@ class DocumentForm
                         ->required()
                         ->searchable()
                         ->preload()
-                        ->columnSpan(['default' => 12, 'md' => 4]),
+                        ->validationMessages([
+                            'required' => 'Selecione a categoria.',
+                        ])
+                        ->columnSpan([
+                            'default' => 12,
+                            'sm' => 12,
+                            'md' => 4,
+                            'lg' => 4,
+                        ]),
 
                     // `mime_type` e `file_size` não vêm mais do formulário: são
                     // derivados do arquivo em disco por DerivesStoredFileMetadata.
@@ -61,7 +80,7 @@ class DocumentForm
                             $ext = strtoupper(pathinfo($record->file_name ?? $record->file_path, PATHINFO_EXTENSION) ?: 'PDF');
 
                             return new HtmlString('
-                                <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-4 rounded-xl bg-gray-500/10 border border-gray-500/20 text-gray-200">
+                                <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-4 rounded-xl bg-[#091b23] border border-amber-500/25 text-gray-200 shadow-sm">
                                     <div class="flex items-center gap-4 min-w-0 flex-1">
                                         <span class="flex-shrink-0 px-3 py-1.5 text-xs font-bold rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">
                                             '.$ext.'
@@ -101,7 +120,10 @@ class DocumentForm
                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         ])
                         ->maxSize((int) config('uploads.document.max_kb', 102400))
-                        ->helperText('Tamanho máximo por arquivo: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
+                        ->helperText('Formatos aceitos: PDF, DOCX, XLSX, JPEG, PNG · Tamanho máximo por arquivo: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
+                        ->validationMessages([
+                            'required' => 'Selecione um arquivo.',
+                        ])
                         ->afterStateUpdated(function ($state, callable $set) {
                             if ($state instanceof TemporaryUploadedFile) {
                                 $set('file_name', $state->getClientOriginalName());
@@ -153,7 +175,9 @@ class DocumentForm
                         ])
                         ->columns([
                             'default' => 1,
+                            'sm' => 1,
                             'md' => 2,
+                            'lg' => 2,
                         ])
                         ->columnSpanFull(),
                 ]),
@@ -161,6 +185,7 @@ class DocumentForm
             Section::make('Informações do arquivo')
                 ->description('Metadados técnicos derivados do arquivo armazenado e registro de publicação.')
                 ->icon('heroicon-o-information-circle')
+                ->columnSpanFull()
                 ->schema([
                     Placeholder::make('file_name_display')
                         ->label('Nome do arquivo')
@@ -221,6 +246,7 @@ class DocumentForm
                 ->columns([
                     'default' => 1,
                     'sm' => 2,
+                    'md' => 4,
                 ])
                 ->visibleOn('edit'),
         ]);

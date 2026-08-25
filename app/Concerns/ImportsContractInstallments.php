@@ -6,6 +6,7 @@ use App\Actions\ContractInstallments\AnalyzeContractInstallmentSpreadsheet;
 use App\Actions\ContractInstallments\ContractInstallmentSpreadsheetAnalysis;
 use App\Actions\ContractInstallments\ImportContractInstallmentsFromSpreadsheet;
 use App\Enums\ReconciliationOutcome;
+use App\Filament\Resources\ImportRuns\ImportRunResource;
 use App\Models\ImportRun;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -19,6 +20,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Spatie\Activitylog\LogBatch;
 
 /**
  * The spreadsheet import of installments, shared by the global listing and by
@@ -90,6 +92,13 @@ trait ImportsContractInstallments
                             ])
                             ->required()
                             ->live()
+                            /**
+                             * The upload is stored under a generated name, so
+                             * the name the operator recognises -- the one that
+                             * has to show up in the import history months later
+                             * -- is kept aside here.
+                             */
+                            ->storeFileNamesIn('original_file_name')
                             ->helperText($helperText),
                     ]),
 
@@ -116,35 +125,59 @@ trait ImportsContractInstallments
                     return;
                 }
 
-                $result = app(ImportContractInstallmentsFromSpreadsheet::class)->handle($analysis);
+                /**
+                 * Everything the confirmation writes happens inside one activity
+                 * log batch: each installment saved through the model stamps the
+                 * batch uuid on its own activity, which is what later answers
+                 * "what did this run change" without confusing it with a manual
+                 * edit made afterwards on the same installment.
+                 *
+                 * The batch wraps the transaction, never the other way round:
+                 * `withinBatch()` closes it in a `finally`, so a failed import
+                 * rolls back its writes -- activities included, they are written
+                 * by the same transaction -- and leaves no batch open for the
+                 * next execution to fall into.
+                 */
+                [$result, $run] = app(LogBatch::class)->withinBatch(function (?string $batchUuid) use ($analysis, $contractId, $data, $path): array {
+                    $result = app(ImportContractInstallmentsFromSpreadsheet::class)->handle($analysis);
 
-                $run = ImportRun::query()->create([
-                    'type' => ImportRun::TYPE_CONTRACT_INSTALLMENTS,
-                    'file_name' => basename((string) $path),
-                    'checksum' => is_file((string) $path) ? hash_file('sha256', (string) $path) : null,
-                    'user_id' => auth()->id(),
-                    'contract_id' => $contractId,
-                    'records_analyzed' => $analysis->totalLines(),
-                    'records_created' => $result['created'],
-                    'records_updated' => $result['updated'],
-                    'records_unchanged' => $result['unchanged'],
-                    'records_critical' => $analysis->criticalUpdateCount(),
-                ]);
+                    $run = ImportRun::query()->create([
+                        'type' => ImportRun::TYPE_CONTRACT_INSTALLMENTS,
+                        'file_name' => $this->resolveInstallmentFileName($data, $path),
+                        'checksum' => is_file((string) $path) ? hash_file('sha256', (string) $path) : null,
+                        'activity_batch_uuid' => $batchUuid,
+                        'user_id' => auth()->id(),
+                        'contract_id' => $contractId,
+                        'records_analyzed' => $analysis->totalLines(),
+                        'records_created' => $result['created'],
+                        'records_updated' => $result['updated'],
+                        'records_unchanged' => $result['unchanged'],
+                        'records_critical' => $analysis->criticalUpdateCount(),
+                    ]);
 
-                activity('importacao-parcelas')
-                    ->causedBy(auth()->user())
-                    ->withProperties([
-                        'arquivo' => basename((string) $path),
-                        'parcelas_cadastradas' => $result['created'],
-                        'parcelas_atualizadas' => $result['updated'],
-                        'parcelas_sem_alteracao' => $result['unchanged'],
-                        'contratos_envolvidos' => $result['contracts'],
-                        'contrato_id' => $contractId,
-                        'importacao_id' => $run->getKey(),
-                    ])
-                    ->log('Conciliação de parcelas concluída.');
+                    /**
+                     * Part of the same batch, deliberately: it is the entry that
+                     * describes the execution itself. It carries no subject,
+                     * which is how the change listing tells it apart from the
+                     * individual records.
+                     */
+                    activity('importacao-parcelas')
+                        ->causedBy(auth()->user())
+                        ->withProperties([
+                            'arquivo' => $run->file_name,
+                            'parcelas_cadastradas' => $result['created'],
+                            'parcelas_atualizadas' => $result['updated'],
+                            'parcelas_sem_alteracao' => $result['unchanged'],
+                            'contratos_envolvidos' => $result['contracts'],
+                            'contrato_id' => $contractId,
+                            'importacao_id' => $run->getKey(),
+                        ])
+                        ->log('Conciliação de parcelas concluída.');
 
-                Notification::make()
+                    return [$result, $run];
+                });
+
+                $notification = Notification::make()
                     ->success()
                     ->title('Posição processada com sucesso.')
                     ->body(sprintf(
@@ -154,8 +187,17 @@ trait ImportsContractInstallments
                         $result['unchanged'],
                         $result['contracts'],
                     ))
-                    ->persistent()
-                    ->send();
+                    ->persistent();
+
+                if (ImportRunResource::canViewAny()) {
+                    $notification->actions([
+                        Action::make('viewImportRun')
+                            ->label('Ver detalhes da importação')
+                            ->url(ImportRunResource::getUrl('view', ['record' => $run])),
+                    ]);
+                }
+
+                $notification->send();
             });
     }
 
@@ -290,6 +332,23 @@ trait ImportsContractInstallments
      * The upload state is a temporary file while the wizard is open and a stored
      * path once the step is dehydrated.
      */
+    /**
+     * The name to record in the history: the one the operator uploaded, falling
+     * back to the stored name when the upload came in already saved.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveInstallmentFileName(array $data, ?string $path): string
+    {
+        $original = $data['original_file_name'] ?? null;
+
+        if (is_string($original) && ($original !== '')) {
+            return $original;
+        }
+
+        return basename((string) $path);
+    }
+
     private function resolveInstallmentPath(mixed $file): ?string
     {
         if (is_array($file)) {

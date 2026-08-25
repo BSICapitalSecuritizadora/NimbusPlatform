@@ -6,13 +6,20 @@ use App\Filament\Resources\Receivables\ReceivableResource;
 use App\Models\Receivable;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Width;
 use Illuminate\Validation\ValidationException;
 
 class EditReceivable extends EditRecord
 {
     protected static string $resource = ReceivableResource::class;
 
-    protected static ?string $title = 'Editar Resumo de Recebíveis';
+    protected static ?string $title = 'Editar resumo de recebíveis';
+
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-receivable-form-page',
+    ];
 
     protected function getHeaderActions(): array
     {
@@ -33,7 +40,7 @@ class EditReceivable extends EditRecord
 
         if ($exists) {
             throw ValidationException::withMessages([
-                'reference_month' => 'Já existe um resumo de recebíveis para esta operação e competência.',
+                'reference_month' => 'Já existe um resumo de recebíveis para esta operação e mês.',
             ]);
         }
 

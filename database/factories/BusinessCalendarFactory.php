@@ -28,6 +28,7 @@ class BusinessCalendarFactory extends Factory
             'source' => 'Documento contratual',
             'status' => 'active',
             'import_mode' => 'manual_approval',
+            'materialization_policy' => BusinessCalendar::MATERIALIZATION_POLICY_EXPLICIT_OFFICIAL_DECISIONS,
             'is_official' => false,
             'financial_use_allowed' => true,
             'is_legacy' => false,

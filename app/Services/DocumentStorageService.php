@@ -158,11 +158,27 @@ class DocumentStorageService
 
     public function exists(string $path, ?string $disk = null): bool
     {
+        $resolvedDisk = $this->normalizeDisk($disk ?? self::privateDisk());
+
         if (! $this->isSafeRelativePath($path)) {
             return false;
         }
 
-        return $this->filesystem($disk ?? self::privateDisk())->exists($path);
+        if ($this->isLocalDisk($resolvedDisk)) {
+            return $this->containedLocalPath($path, $resolvedDisk) !== null;
+        }
+
+        return $this->filesystem($resolvedDisk)->exists($path);
+    }
+
+    public function isAllowedMeasurementDisk(string $disk): bool
+    {
+        return in_array($disk, self::SUPPORTED_DISKS, true);
+    }
+
+    public function isSafeStoredPath(string $path): bool
+    {
+        return $this->isSafeRelativePath($path);
     }
 
     public function download(
@@ -219,12 +235,14 @@ class DocumentStorageService
      */
     public function checksum(string $path, ?string $disk = null): ?string
     {
-        if (! $this->isSafeRelativePath($path)) {
+        $resolvedDisk = $disk ?? self::privateDisk();
+
+        if (! $this->exists($path, $resolvedDisk)) {
             return null;
         }
 
         $stream = rescue(
-            fn () => $this->filesystem($disk ?? self::privateDisk())->readStream($path),
+            fn () => $this->filesystem($resolvedDisk)->readStream($path),
             null,
             report: false,
         );
@@ -238,6 +256,31 @@ class DocumentStorageService
             hash_update_stream($hash, $stream);
 
             return hash_final($hash);
+        } finally {
+            fclose($stream);
+        }
+    }
+
+    public function readPrefix(string $path, string $disk, int $length): ?string
+    {
+        if ($length < 1 || ! $this->exists($path, $disk)) {
+            return null;
+        }
+
+        $stream = rescue(
+            fn () => $this->filesystem($disk)->readStream($path),
+            null,
+            report: false,
+        );
+
+        if (! is_resource($stream)) {
+            return null;
+        }
+
+        try {
+            $prefix = fread($stream, $length);
+
+            return is_string($prefix) ? $prefix : null;
         } finally {
             fclose($stream);
         }
@@ -269,7 +312,19 @@ class DocumentStorageService
     {
         $this->assertSafeRelativePath($path);
 
-        return Storage::disk($this->normalizeDisk($disk ?? self::privateDisk()))->path($path);
+        $resolvedDisk = $this->normalizeDisk($disk ?? self::privateDisk());
+
+        if (! $this->isLocalDisk($resolvedDisk)) {
+            throw new InvalidArgumentException('Absolute paths are unavailable for remote storage disks.');
+        }
+
+        $containedPath = $this->containedLocalPath($path, $resolvedDisk);
+
+        if ($containedPath === null) {
+            throw new InvalidArgumentException('The stored file resolves outside the allowed storage root.');
+        }
+
+        return $containedPath;
     }
 
     protected function isLocalDisk(string $disk): bool
@@ -312,7 +367,29 @@ class DocumentStorageService
             && ! str_contains($path, "\0")
             && ! str_starts_with($path, '/')
             && ! str_starts_with($path, '\\')
+            && preg_match('/^[A-Za-z]:[\\\\\/]/', $path) !== 1
             && preg_match('#(^|[\\\\/])\.\.?(?:[\\\\/]|$)#', $path) !== 1;
+    }
+
+    private function containedLocalPath(string $path, string $disk): ?string
+    {
+        $filesystem = $this->filesystem($disk);
+        $root = realpath($filesystem->path(''));
+        $resolved = realpath($filesystem->path($path));
+
+        if (! is_string($root) || ! is_string($resolved)) {
+            return null;
+        }
+
+        $normalizedRoot = rtrim(Str::replace('\\', '/', $root), '/');
+        $normalizedResolved = Str::replace('\\', '/', $resolved);
+
+        if ($normalizedResolved !== $normalizedRoot
+            && ! str_starts_with($normalizedResolved, $normalizedRoot.'/')) {
+            return null;
+        }
+
+        return $resolved;
     }
 
     private function assertSafeRelativePath(string $path): void

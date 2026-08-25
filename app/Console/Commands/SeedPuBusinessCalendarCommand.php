@@ -44,7 +44,13 @@ class SeedPuBusinessCalendarCommand extends Command
         }
 
         $dryRun = (bool) $this->option('dry-run');
-        $summary = $coverageService->backfill($calendarCode, $from, $to, $dryRun);
+        try {
+            $summary = $coverageService->backfill($calendarCode, $from, $to, $dryRun);
+        } catch (\InvalidArgumentException $exception) {
+            $this->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
 
         $this->info(sprintf('Calendario %s | Periodo %s a %s', $calendarCode, $summary['from'], $summary['to']));
         $this->line(sprintf('Dias no periodo: %d', $summary['total_days']));

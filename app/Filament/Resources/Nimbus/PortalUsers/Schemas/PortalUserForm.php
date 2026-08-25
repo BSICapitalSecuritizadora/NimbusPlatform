@@ -2,13 +2,16 @@
 
 namespace App\Filament\Resources\Nimbus\PortalUsers\Schemas;
 
+use App\Models\Nimbus\PortalUser;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
 
 class PortalUserForm
 {
@@ -54,7 +57,26 @@ class PortalUserForm
                                     ->validationMessages([
                                         'regex' => 'O CPF deve seguir o formato 000.000.000-00.',
                                     ])
-                                    ->maxLength(20),
+                                    ->maxLength(20)
+                                    ->rules([
+                                        fn (Get $get, ?Model $record): \Closure => function (string $attribute, $value, \Closure $fail) use ($record): void {
+                                            $digits = preg_replace('/\D+/', '', (string) $value);
+
+                                            if ($digits === '' || $digits === null) {
+                                                return;
+                                            }
+
+                                            $hash = PortalUser::documentNumberHash($digits);
+                                            $exists = PortalUser::query()
+                                                ->where('document_number_hash', $hash)
+                                                ->when($record?->exists, fn ($q) => $q->where('id', '!=', $record->getKey()))
+                                                ->exists();
+
+                                            if ($exists) {
+                                                $fail('Este CPF já está cadastrado.');
+                                            }
+                                        },
+                                    ]),
                                 TextInput::make('phone_number')
                                     ->label('Telefone/Celular')
                                     ->placeholder('(00) 00000-0000')

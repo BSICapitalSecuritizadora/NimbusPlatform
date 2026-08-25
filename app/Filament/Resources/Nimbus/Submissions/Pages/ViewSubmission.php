@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Nimbus\Submissions\Pages;
 
 use App\Filament\Resources\Nimbus\Submissions\SubmissionResource;
 use App\Models\Nimbus\Submission;
+use App\Services\Nimbus\SubmissionWorkflowService;
 use Filament\Actions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -109,18 +110,49 @@ class ViewSubmission extends ViewRecord
                         ]);
                     }
 
-                    $record->update([
-                        'status' => $status,
-                        'status_updated_at' => now(),
-                        'status_updated_by' => auth()->id(),
-                    ]);
+                    $actor = auth()->user();
 
-                    if ($note !== '') {
-                        $record->notes()->create([
-                            'user_id' => auth()->id(),
-                            'visibility' => $visibility,
-                            'message' => $note,
-                        ]);
+                    // Internal comment: no status transition, only note.
+                    if ($intent === 'internal_comment') {
+                        if ($note !== '') {
+                            $record->notes()->create([
+                                'user_id' => auth()->id(),
+                                'visibility' => $visibility,
+                                'message' => $note,
+                            ]);
+
+                            activity('nimbus')
+                                ->performedOn($record)
+                                ->causedBy($actor)
+                                ->withProperties(['visibility' => $visibility])
+                                ->log('nimbus.submission.internal_note');
+                        }
+
+                        // No status history for internal comment.
+                    } else {
+                        // Centralized transition creates history + audit atomically.
+                        // Workaround for legacy enum fallback is preserved via persistableStatusFor above.
+                        $workflow = app(SubmissionWorkflowService::class);
+
+                        // Same-status no-op should not create duplicate history; workflow handles it.
+                        if ($status !== $record->status) {
+                            $workflow->transition($record, $status, $actor, $note !== '' ? $note : null);
+                        }
+
+                        if ($note !== '') {
+                            $record->notes()->create([
+                                'user_id' => auth()->id(),
+                                'visibility' => $visibility,
+                                'message' => $note,
+                            ]);
+
+                            // Note audit (distinct from status change audit already done by workflow).
+                            activity('nimbus')
+                                ->performedOn($record)
+                                ->causedBy($actor)
+                                ->withProperties(['visibility' => $visibility])
+                                ->log($intent === 'request_correction' ? 'nimbus.submission.correction_requested' : 'nimbus.submission.note_added');
+                        }
                     }
 
                     $title = match ($intent) {

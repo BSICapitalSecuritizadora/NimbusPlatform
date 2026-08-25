@@ -16,6 +16,8 @@ final class BusinessCalendarRegistry
 
     public const B3_LISTED_TRADING = 'B3_LISTED_TRADING';
 
+    public const BR_NATIONAL_HOLIDAYS = 'BR_NATIONAL_HOLIDAYS';
+
     /**
      * @return array<string, array{label:string, meaning:string, legacy:bool, legacy_alias_of:?string, accepts_anbima:bool}>
      */
@@ -39,6 +41,13 @@ final class BusinessCalendarRegistry
             self::B3_LISTED_TRADING => [
                 'label' => 'B3 — sessões de negociação',
                 'meaning' => 'Calendário de sessões do mercado listado da B3. Não recebe importações ANBIMA.',
+                'legacy' => false,
+                'legacy_alias_of' => null,
+                'accepts_anbima' => false,
+            ],
+            self::BR_NATIONAL_HOLIDAYS => [
+                'label' => 'Feriados Nacionais — Brasil',
+                'meaning' => 'Sábados, domingos e feriados de âmbito nacional instituídos por legislação federal. Não inclui automaticamente feriados bancários, Carnaval, Corpus Christi, feriados locais ou sessões B3.',
                 'legacy' => false,
                 'legacy_alias_of' => null,
                 'accepts_anbima' => false,

@@ -2,15 +2,18 @@
 
 namespace App\Models;
 
+use App\Exceptions\MeasurementWorkflowException;
+use Database\Factories\MeasurementPlanLineFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class MeasurementPlanLine extends Model
 {
-    /** @use HasFactory<\Database\Factories\MeasurementPlanLineFactory> */
+    /** @use HasFactory<MeasurementPlanLineFactory> */
     use HasFactory, LogsActivity;
 
     public const TREND_AHEAD = 'Acima';
@@ -37,6 +40,14 @@ class MeasurementPlanLine extends Model
     protected static function booted(): void
     {
         static::saving(function (self $line): void {
+            if ($line->exists
+                && $line->isDirty()
+                && $line->assets()->whereHas('measurement.reviews', fn ($reviews) => $reviews
+                    ->where('stage', 1)
+                    ->where('status', 'approved'))->exists()) {
+                throw new MeasurementWorkflowException('A linha de cronograma usada por uma Engenharia aprovada está bloqueada.');
+            }
+
             if (blank($line->operation_id) && filled($line->plan_set_id)) {
                 $line->operation_id = MeasurementPlanSet::whereKey($line->plan_set_id)->value('operation_id');
             }
@@ -44,6 +55,14 @@ class MeasurementPlanLine extends Model
             $diff = round((float) $line->realized_cumulative_percent - (float) $line->planned_cumulative_percent, 2);
             $line->evolution_diff_percent = $diff;
             $line->evolution_trend = self::resolveTrend($diff);
+        });
+
+        static::deleting(function (self $line): void {
+            if ($line->assets()->whereHas('measurement.reviews', fn ($reviews) => $reviews
+                ->where('stage', 1)
+                ->where('status', 'approved'))->exists()) {
+                throw new MeasurementWorkflowException('A linha de cronograma usada por uma Engenharia aprovada não pode ser removida.');
+            }
         });
     }
 
@@ -82,6 +101,11 @@ class MeasurementPlanLine extends Model
     public function measurement(): BelongsTo
     {
         return $this->belongsTo(Measurement::class);
+    }
+
+    public function assets(): HasMany
+    {
+        return $this->hasMany(MeasurementAsset::class, 'plan_line_id');
     }
 
     public static function resolveTrend(float $diff): string

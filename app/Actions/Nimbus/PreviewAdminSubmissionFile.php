@@ -27,6 +27,18 @@ class PreviewAdminSubmissionFile
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        activity('nimbus')
+            ->performedOn($file)
+            ->causedBy($user)
+            ->withProperties([
+                'submission_id' => $file->nimbus_submission_id,
+                'file_id' => $file->id,
+                'action' => 'preview',
+                'ip' => request()->ip(),
+                'user_agent' => mb_substr((string) request()->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.submission_file.preview');
+
         return $this->documentStorageService->previewPrivate(
             $file->storage_path,
             $file->mime_type,

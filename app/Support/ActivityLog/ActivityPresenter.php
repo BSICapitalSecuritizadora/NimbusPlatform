@@ -2,7 +2,11 @@
 
 namespace App\Support\ActivityLog;
 
+use App\Concerns\MoneyFormatter;
+use App\Enums\ContractStatus;
 use App\Enums\ProposalStatus;
+use App\Models\Contract;
+use App\Models\ContractInstallment;
 use App\Models\Emission;
 use App\Models\Obligation;
 use App\Models\ProposalCompany;
@@ -10,6 +14,7 @@ use App\Models\ProposalContact;
 use App\Models\ProposalRepresentative;
 use App\Models\User;
 use App\Models\Vacancy;
+use App\Support\Reconciliation\FieldChange;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
@@ -99,6 +104,20 @@ final class ActivityPresenter
         'buyer_name' => 'Comprador',
         'signed_at' => 'Assinado em',
 
+        /**
+         * Conciliação de contratos e parcelas. Os rótulos são os mesmos que
+         * {@see FieldChange} usa na conferência da
+         * planilha, para que o operador leia a mesma palavra antes e depois de
+         * confirmar a importação.
+         */
+        'sale_date' => 'Data da venda',
+        'sale_value' => 'Valor de venda',
+        'cancellation_date' => 'Data de cancelamento',
+        'number' => 'Número',
+        'expected_value' => 'Valor previsto',
+        'payment_date' => 'Data do pagamento',
+        'paid_value' => 'Valor pago',
+
         // Cliente
         'document' => 'Documento (CPF/CNPJ)',
         'person_type' => 'Tipo de pessoa',
@@ -114,6 +133,40 @@ final class ActivityPresenter
         'feedback' => 'Parecer',
         'notes' => 'Notas',
         'justification' => 'Justificativa',
+    ];
+
+    /**
+     * Rótulos que dependem do tipo do registro: a mesma coluna é lida com
+     * palavras diferentes em cada domínio. `cancellation_date` é distrato num
+     * contrato e cancelamento numa parcela -- exatamente como a conferência da
+     * planilha os chama.
+     *
+     * Consultado antes de {@see FIELD_LABELS}, que continua valendo para o resto.
+     *
+     * @var array<string, array<string, string>>
+     */
+    private const SUBJECT_FIELD_LABELS = [
+        'Contract' => [
+            'cancellation_date' => 'Data do distrato',
+            'code' => 'Contrato',
+        ],
+        'ContractInstallment' => [
+            'cancellation_date' => 'Data de cancelamento',
+            'number' => 'Parcela',
+        ],
+    ];
+
+    /**
+     * Campos gravados como decimal e apresentados em reais. O valor da activity
+     * permanece intocado -- `"2500.00"` continua sendo `"2500.00"`; só a leitura
+     * muda.
+     *
+     * @var array<int, string>
+     */
+    private const MONEY_FIELDS = [
+        'sale_value',
+        'expected_value',
+        'paid_value',
     ];
 
     /** @var array<int, string> */
@@ -205,6 +258,49 @@ final class ActivityPresenter
      */
     private static array $referenceCache = [];
 
+    /**
+     * As alterações de campo de uma activity, já rotuladas e humanizadas.
+     *
+     * Exposto para quem precisa só do diff -- a listagem de alterações de uma
+     * importação, por exemplo -- sem montar a linha do tempo inteira.
+     *
+     * @return array<int, ActivityChange>
+     */
+    public static function changesFor(Activity $activity): array
+    {
+        return self::extractChanges($activity);
+    }
+
+    /**
+     * Como o registro afetado deve ser chamado na tela.
+     *
+     * Usa os relacionamentos já carregados; nada aqui dispara query. Um subject
+     * que não existe mais -- ou que o eager loading não trouxe -- cai no
+     * identificador técnico, que continua sendo informação de auditoria válida.
+     */
+    public static function subjectLabel(Activity $activity): string
+    {
+        $subject = $activity->subject;
+
+        if ($subject instanceof ContractInstallment) {
+            $code = $subject->contract?->code;
+
+            return $code === null
+                ? sprintf('Parcela %s', $subject->number)
+                : sprintf('Contrato %s · Parcela %s', $code, $subject->number);
+        }
+
+        if ($subject instanceof Contract) {
+            return sprintf('Contrato %s', $subject->code);
+        }
+
+        if ($activity->subject_type === null) {
+            return 'Execução da importação';
+        }
+
+        return sprintf('%s #%s', class_basename((string) $activity->subject_type), $activity->subject_id);
+    }
+
     public static function present(Activity $activity): ActivityTimelineItem
     {
         $changes = self::extractChanges($activity);
@@ -289,7 +385,7 @@ final class ActivityPresenter
 
             $changes[] = new ActivityChange(
                 key: $key,
-                label: self::FIELD_LABELS[$key] ?? Str::headline(str_replace('_', ' ', $key)),
+                label: self::labelFor($key, $subject),
                 old: $activity->event === 'updated' ? self::humanizeValue($key, $oldValue, $subject) : null,
                 new: self::humanizeValue($key, $newValue, $subject),
                 oldColor: self::colorForValue($key, $oldValue, $subject),
@@ -367,6 +463,13 @@ final class ActivityPresenter
         return ['title' => 'Registro atualizado', 'icon' => 'heroicon-m-arrow-path', 'color' => 'gray'];
     }
 
+    private static function labelFor(string $key, string $subject): string
+    {
+        return self::SUBJECT_FIELD_LABELS[$subject][$key]
+            ?? self::FIELD_LABELS[$key]
+            ?? Str::headline(str_replace('_', ' ', $key));
+    }
+
     private static function humanizeValue(string $key, mixed $value, string $subject): ?string
     {
         if ($value === null || $value === '') {
@@ -377,6 +480,10 @@ final class ActivityPresenter
             return $resolved;
         }
 
+        if (in_array($key, self::MONEY_FIELDS, true) && is_scalar($value)) {
+            return 'R$ '.MoneyFormatter::formatCurrencyForDisplay($value);
+        }
+
         if ($key === 'status') {
             if ($subject === 'Proposal') {
                 return ProposalStatus::labelFor(is_scalar($value) ? (string) $value : null);
@@ -384,6 +491,10 @@ final class ActivityPresenter
 
             if ($subject === 'Obligation' && is_string($value)) {
                 return Obligation::STATUS_OPTIONS[$value] ?? Str::headline($value);
+            }
+
+            if ($subject === 'Contract' && is_string($value)) {
+                return ContractStatus::tryFrom($value)?->label() ?? Str::headline($value);
             }
         }
 
@@ -429,6 +540,10 @@ final class ActivityPresenter
                     'vencida' => 'danger',
                     default => 'gray',
                 };
+            }
+
+            if ($subject === 'Contract' && is_string($value)) {
+                return ContractStatus::tryFrom($value)?->color() ?? 'gray';
             }
         }
 

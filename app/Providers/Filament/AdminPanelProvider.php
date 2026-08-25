@@ -8,6 +8,7 @@ use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\Nimbus\NotificationSettings;
 use App\Filament\Resources\Activities\ActivityResource;
 use App\Filament\Resources\DocumentDownloads\DocumentDownloadResource;
+use App\Filament\Resources\ImportRuns\ImportRunResource;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
 use App\Filament\Resources\Nimbus\Announcements\AnnouncementResource;
 use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
@@ -15,6 +16,8 @@ use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
 use App\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource;
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
+use App\Filament\Resources\Receivables\Pages\CreateReceivable;
+use App\Filament\Resources\Receivables\Pages\EditReceivable;
 use App\Filament\Resources\ReminderLogs\ReminderLogResource;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Middleware\EnsureUserIsApproved;
@@ -78,6 +81,14 @@ class AdminPanelProvider extends PanelProvider
                 fn (): string => '<meta name="robots" content="noindex,nofollow">',
                 scopes: CustomLogin::class,
             )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn (): string => view('filament.receivables.zero-watch')->render(),
+                scopes: [
+                    CreateReceivable::class,
+                    EditReceivable::class,
+                ],
+            )
             ->navigationGroups([
                 NavigationGroup::make('Comercial'),
                 NavigationGroup::make('Operações'),
@@ -140,13 +151,15 @@ class AdminPanelProvider extends PanelProvider
                         'audit.activities.view',
                         AccessPermission::ReminderLogsView->value,
                         'audit.document-downloads.view',
+                        AccessPermission::AuditImportRunsView->value,
                     ]) ?? false)
                     ->url(fn (): string => static::firstAccessibleUrl([
                         'audit.activities.view' => ActivityResource::class,
                         AccessPermission::ReminderLogsView->value => ReminderLogResource::class,
                         'audit.document-downloads.view' => DocumentDownloadResource::class,
+                        AccessPermission::AuditImportRunsView->value => ImportRunResource::class,
                     ]))
-                    ->isActiveWhen(fn (): bool => request()->routeIs(ActivityResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ReminderLogResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(DocumentDownloadResource::getNavigationItemActiveRoutePattern())),
+                    ->isActiveWhen(fn (): bool => request()->routeIs(ActivityResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ReminderLogResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(DocumentDownloadResource::getNavigationItemActiveRoutePattern()) || request()->routeIs(ImportRunResource::getNavigationItemActiveRoutePattern())),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\DerivesStoredFileMetadata;
+use App\Exceptions\MeasurementWorkflowException;
 use App\Services\DocumentStorageService;
 use Database\Factories\MeasurementFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -27,7 +28,7 @@ class Measurement extends Model
         'in_review' => 'Em Análise',
         'paused' => 'Pausada',
         'rejected' => 'Recusada',
-        'approved' => 'Pronta para Finalização',
+        'approved' => 'Documentação financeira completa',
         'awaiting_payment' => 'Etapa Pagamento',
         'awaiting_receipt' => 'Finalização — aguardando comprovante',
         'finalized' => 'Finalizada',
@@ -55,6 +56,30 @@ class Measurement extends Model
     protected static function booted(): void
     {
         static::saving(function (self $measurement): void {
+            if ($measurement->exists && $measurement->isDirty('operation_id')) {
+                throw new MeasurementWorkflowException('A operação de uma medição não pode ser alterada após sua criação.', [
+                    'measurement_id' => $measurement->getKey(),
+                    'original_operation_id' => $measurement->getOriginal('operation_id'),
+                    'attempted_operation_id' => $measurement->operation_id,
+                ]);
+            }
+
+            if ($measurement->exists
+                && $measurement->hasApprovedEngineering()
+                && $measurement->isDirty([
+                    'reference_month',
+                    'filename',
+                    'storage_path',
+                    'storage_disk',
+                    'sha256',
+                    'file_size',
+                    'mime_type',
+                ])) {
+                throw new MeasurementWorkflowException('Os dados aprovados pela Engenharia estão bloqueados. Devolva a medição à Engenharia para corrigi-los.', [
+                    'measurement_id' => $measurement->getKey(),
+                ]);
+            }
+
             if (blank($measurement->filename) && filled($measurement->storage_path)) {
                 $measurement->filename = basename((string) $measurement->storage_path);
             }
@@ -66,6 +91,8 @@ class Measurement extends Model
         return [
             'reference_month' => 'date',
             'current_stage' => 'integer',
+            'workflow_revision' => 'integer',
+            'engineering_snapshot' => 'array',
             'file_size' => 'integer',
             'uploaded_at' => 'datetime',
             'analyzed_at' => 'datetime',
@@ -128,6 +155,14 @@ class Measurement extends Model
     public function reviewForStage(int $stage): ?MeasurementReview
     {
         return $this->reviews->firstWhere('stage', $stage);
+    }
+
+    public function hasApprovedEngineering(): bool
+    {
+        return $this->reviews()
+            ->where('stage', 1)
+            ->where('status', 'approved')
+            ->exists();
     }
 
     public function getResolvedStorageDiskAttribute(): string

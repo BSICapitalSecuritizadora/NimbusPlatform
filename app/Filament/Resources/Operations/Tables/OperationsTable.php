@@ -16,6 +16,7 @@ use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class OperationsTable
 {
@@ -25,7 +26,7 @@ class OperationsTable
             ->recordUrl(fn (Operation $record): ?string => OperationResource::canView($record)
                 ? OperationResource::getUrl('view', ['record' => $record])
                 : (OperationResource::canEdit($record) ? OperationResource::getUrl('edit', ['record' => $record]) : null))
-            ->searchable(Operation::query()->exists())
+            ->searchable(static::visibleOperationsExist())
             ->searchPlaceholder('Buscar por código, título ou emissão...')
             ->searchDebounce('400ms')
             ->defaultSort('created_at', 'desc')
@@ -151,7 +152,7 @@ class OperationsTable
             ->filtersFormWidth(Width::Small)
             ->filtersFormMaxHeight('420px')
             ->filters(
-                Operation::query()->exists()
+                static::visibleOperationsExist()
                     ? [
                         SelectFilter::make('status')
                             ->label('Situação')
@@ -159,7 +160,16 @@ class OperationsTable
 
                         SelectFilter::make('emission_id')
                             ->label('Emissão')
-                            ->relationship('emission', 'name')
+                            ->relationship(
+                                'emission',
+                                'name',
+                                modifyQueryUsing: fn (Builder $query): Builder => auth()->user() === null
+                                    ? $query->whereRaw('1 = 0')
+                                    : $query->whereIn(
+                                        'id',
+                                        Operation::query()->visibleTo(auth()->user())->select('emission_id'),
+                                    ),
+                            )
                             ->searchable()
                             ->preload(),
                     ]
@@ -202,5 +212,12 @@ class OperationsTable
         };
 
         return collect($livewire->tableFilters ?? [])->contains(fn (mixed $state): bool => $hasValue($state));
+    }
+
+    protected static function visibleOperationsExist(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && Operation::query()->visibleTo($user)->exists();
     }
 }

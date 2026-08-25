@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\DerivesStoredFileMetadata;
 use App\Services\DocumentStorageService;
+use App\Services\MeasurementFileValidationService;
 use Database\Factories\MeasurementPaymentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,18 @@ class MeasurementPayment extends Model
         'receipt_uploaded_at',
         'created_by',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $payment): void {
+            if ($payment->isDirty(['receipt_path', 'receipt_disk']) && filled($payment->receipt_path)) {
+                app(MeasurementFileValidationService::class)->validateReceipt(
+                    (string) $payment->receipt_path,
+                    $payment->resolved_receipt_disk,
+                );
+            }
+        });
+    }
 
     protected function casts(): array
     {

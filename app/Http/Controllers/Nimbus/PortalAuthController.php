@@ -44,6 +44,16 @@ class PortalAuthController extends Controller
             'used_user_agent' => $request->userAgent(),
         ]);
 
+        // Audit: successful token usage (after authorization).
+        activity('nimbus')
+            ->performedOn($token)
+            ->causedBy($token->portalUser)
+            ->withProperties([
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.access_token.used');
+
         $user = $token->portalUser;
         $user->update([
             'last_login_at' => now(),

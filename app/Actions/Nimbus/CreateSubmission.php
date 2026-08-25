@@ -6,6 +6,8 @@ use App\DTOs\Nimbus\StoreSubmissionDTO;
 use App\DTOs\Nimbus\StoreSubmissionFileDTO;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
+use App\Services\Nimbus\SubmissionWorkflowService;
+use App\Services\Security\PiiPseudonymizer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -27,6 +29,7 @@ class CreateSubmission
 
     public function __construct(
         protected StoreSubmissionFile $storeSubmissionFile,
+        protected SubmissionWorkflowService $workflowService,
     ) {}
 
     public function handle(StoreSubmissionDTO $dto, PortalUser $portalUser): Submission
@@ -81,6 +84,18 @@ class CreateSubmission
                     uploadedById: $portalUser->id,
                 ));
             }
+
+            // Immutable history + audit for creation (inside same transaction).
+            $this->workflowService->recordCreation($submission, $portalUser);
+
+            activity('nimbus')
+                ->performedOn($submission)
+                ->causedBy($portalUser)
+                ->withProperties([
+                    'portal_user_id' => $portalUser->id,
+                    'company_cnpj_hash' => PiiPseudonymizer::document($dto->companyCnpj),
+                ])
+                ->log('nimbus.submission.created');
 
             return $submission;
         });

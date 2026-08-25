@@ -22,7 +22,7 @@ class OperationFactory extends Factory
             'emission_id' => Emission::factory(),
             'construction_id' => null,
             'title' => fake()->company().' - Obra',
-            'status' => fake()->randomElement(array_keys(Operation::STATUS_OPTIONS)),
+            'status' => 'active',
             'issuer' => fake()->company(),
             'amount' => fake()->randomFloat(2, 100000, 50000000),
             'construction_fund_amount' => fake()->randomFloat(2, 50000, 10000000),

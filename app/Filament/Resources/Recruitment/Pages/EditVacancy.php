@@ -4,15 +4,30 @@ namespace App\Filament\Resources\Recruitment\Pages;
 
 use App\Enums\VacancyStatus;
 use App\Filament\Resources\Recruitment\VacancyResource;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Width;
 
 class EditVacancy extends EditRecord
 {
     protected static string $resource = VacancyResource::class;
 
-    protected static ?string $title = 'Editar Vaga';
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    protected static ?string $title = 'Editar vaga';
+
+    protected static ?string $breadcrumb = 'Editar';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-vacancy-form-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Atualize os dados da oportunidade, publicação, remuneração e conteúdo exibido aos candidatos.';
+    }
 
     protected function getHeaderActions(): array
     {
@@ -22,6 +37,20 @@ class EditVacancy extends EditRecord
                 ->label('Excluir Vaga')
                 ->modalHeading('Excluir Vaga'),
         ];
+    }
+
+    protected function getSaveFormAction(): Action
+    {
+        return parent::getSaveFormAction()
+            ->label('Salvar alterações')
+            ->color('primary');
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()
+            ->label('Cancelar')
+            ->color('gray');
     }
 
     protected function mutateFormDataBeforeSave(array $data): array

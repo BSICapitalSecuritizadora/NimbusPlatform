@@ -8,7 +8,6 @@ use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -92,7 +91,7 @@ function createP0Scenario(): array
     ]);
 
     $assetPath = "nimbus_docs/measurements/assets/{$measurement->id}.pdf";
-    Storage::disk('local')->put($assetPath, 'measurement-file-content');
+    Storage::disk('local')->put($assetPath, '%PDF-1.7 measurement-file-content');
     $measurement->assets()->create([
         'plan_set_id' => $planSet->id,
         'plan_line_id' => $line->id,
@@ -169,12 +168,12 @@ it('executes the formal five-stage workflow without treating payment registratio
         ->and($measurement->fresh()->reviewForStage(4)?->status)->toBe('approved');
 
     $receiptPath = 'nimbus_docs/measurements/receipts/payment.pdf';
-    Storage::disk('local')->put($receiptPath, 'receipt-real-content');
+    Storage::disk('local')->put($receiptPath, '%PDF-1.7 receipt-real-content');
     $workflow->attachReceipt($payment, $scenario['receipt'], $receiptPath, 'local');
 
     expect($measurement->fresh()->status)->toBe('approved')
         ->and($payment->fresh()->receipt_uploaded_by)->toBe($scenario['receipt']->id)
-        ->and($payment->fresh()->receipt_sha256)->toBe(hash('sha256', 'receipt-real-content'));
+        ->and($payment->fresh()->receipt_sha256)->toBe(hash('sha256', '%PDF-1.7 receipt-real-content'));
 
     $workflow->finalize($measurement->fresh(), $scenario['finalizer']);
 
@@ -304,7 +303,7 @@ it('revalidates locked state so a stale second decision fails without corruption
     $workflow->approve($firstRequest, $scenario['engineering'], null, [$scenario['planSet']->id => 10]);
 
     expect(fn () => $workflow->reject($staleSecondRequest, $scenario['engineering'], 'Decisão concorrente'))
-        ->toThrow(AuthorizationException::class);
+        ->toThrow(MeasurementWorkflowException::class, 'A etapa desta medição foi alterada por outra ação. Atualize a página.');
 
     expect($scenario['measurement']->fresh()->current_stage)->toBe(2)
         ->and($scenario['measurement']->fresh()->reviews()->where('stage', 1)->count())->toBe(1)

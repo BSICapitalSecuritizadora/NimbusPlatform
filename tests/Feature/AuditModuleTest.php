@@ -6,6 +6,7 @@ use App\Models\Construction;
 use App\Models\Expense;
 use App\Models\Investor;
 use App\Models\User;
+use App\Models\Vacancy;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -227,4 +228,40 @@ it('does not render the audit log table for users without the audit.activities.v
     $user->assignRole('editor');
 
     expect(ActivityResource::canViewAny())->toBeFalse();
+});
+
+it('renders audit page with title, subheading and export action', function () {
+    $page = new ManageActivities;
+    expect($page->getTitle())->toBe('Registros de Auditoria')
+        ->and($page->getSubheading())->toContain('Acompanhe ações executadas no sistema');
+});
+
+it('formats friendly names for log names, descriptions and subject types', function () {
+    expect(ActivityResource::friendlyLogName('business_calendars'))->toBe('Calendário de Negócios')
+        ->and(ActivityResource::friendlyLogName('importacao-parcelas'))->toBe('Importação de Parcelas')
+        ->and(ActivityResource::friendlyLogName('login'))->toBe('Login')
+        ->and(ActivityResource::friendlyDescription('created'))->toBe('Criação de registro')
+        ->and(ActivityResource::friendlyDescription('updated'))->toBe('Atualização de registro')
+        ->and(ActivityResource::friendlyDescription('business_calendar_b3_listed_inferred_set_removed'))->toBe('Remoção de inferência B3 no calendário')
+        ->and(ActivityResource::friendlySubjectType(Expense::class))->toBe('Despesa')
+        ->and(ActivityResource::friendlySubjectType(Vacancy::class))->toBe('Vaga')
+        ->and(ActivityResource::friendlySubjectType(null))->toBe('—');
+});
+
+it('renders activity records with friendly labels in the livewire table', function () {
+    $user = User::factory()->create(['approved_at' => now(), 'is_active' => true, 'name' => 'Anderson Cavalcante']);
+    $user->givePermissionTo('audit.activities.view');
+
+    activity('importacao-parcelas')
+        ->causedBy($user)
+        ->performedOn($user)
+        ->event('created')
+        ->log('created');
+
+    Livewire::actingAs($user)
+        ->test(ManageActivities::class)
+        ->assertSuccessful()
+        ->assertSee('Importação de Parcelas')
+        ->assertSee('Criação de registro')
+        ->assertSee('Anderson Cavalcante');
 });

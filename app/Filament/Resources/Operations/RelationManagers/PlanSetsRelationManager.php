@@ -24,6 +24,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 
 class PlanSetsRelationManager extends RelationManager
 {
@@ -131,13 +132,17 @@ class PlanSetsRelationManager extends RelationManager
                     ->state(fn (MeasurementPlanSet $record): float => $record->used_percentage),
             ])
             ->headerActions([
-                CreateAction::make()->label('Novo Plano'),
+                CreateAction::make()
+                    ->label('Novo Plano')
+                    ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord())),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord())),
                 Action::make('addLines')
                     ->label('Adicionar medições')
                     ->icon('heroicon-o-plus-circle')
+                    ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord()))
                     ->modalHeading('Gerar medições para o plano')
                     ->modalDescription('Crie múltiplas linhas de medição previstas para este plano de uma só vez.')
                     ->form([
@@ -175,11 +180,13 @@ class PlanSetsRelationManager extends RelationManager
                             ->title("{$count} medições adicionadas ao plano.")
                             ->send();
                     }),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord())),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord())),
                 ]),
             ]);
     }

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Exceptions\MeasurementWorkflowException;
+use Database\Factories\MeasurementPlanSetFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class MeasurementPlanSet extends Model
 {
-    /** @use HasFactory<\Database\Factories\MeasurementPlanSetFactory> */
+    /** @use HasFactory<MeasurementPlanSetFactory> */
     use HasFactory, LogsActivity;
 
     protected $fillable = [
@@ -22,6 +24,24 @@ class MeasurementPlanSet extends Model
         'construction_fund_amount',
         'initial_incurred_amount',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $planSet): void {
+            $approvedMeasurementId = $planSet->assets()
+                ->whereHas('measurement.reviews', fn ($reviews) => $reviews
+                    ->where('stage', 1)
+                    ->where('status', 'approved'))
+                ->value('measurement_id');
+
+            if ($approvedMeasurementId !== null) {
+                throw new MeasurementWorkflowException('Um empreendimento coberto por Engenharia aprovada não pode ser removido.', [
+                    'measurement_id' => $approvedMeasurementId,
+                    'plan_set_id' => $planSet->getKey(),
+                ]);
+            }
+        });
+    }
 
     protected function casts(): array
     {

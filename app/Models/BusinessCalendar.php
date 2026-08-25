@@ -9,6 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BusinessCalendar extends Model
 {
+    public const MATERIALIZATION_POLICY_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS = 'weekday_with_official_exceptions';
+
+    public const MATERIALIZATION_POLICY_EXPLICIT_OFFICIAL_DECISIONS = 'explicit_official_decisions';
+
+    public const MATERIALIZATION_POLICY_LEGACY = 'legacy';
+
+    public const MATERIALIZATION_POLICY_HOMOLOGATION = 'homologation';
+
     public const COVERAGE_BASIS_EXPLICIT_DATES = 'explicit_dates';
 
     public const COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS = 'weekday_with_official_exceptions';
@@ -24,6 +32,7 @@ class BusinessCalendar extends Model
         'source',
         'status',
         'import_mode',
+        'materialization_policy',
         'is_official',
         'financial_use_allowed',
         'is_legacy',
@@ -66,10 +75,23 @@ class BusinessCalendar extends Model
 
     public function coverageBasis(): string
     {
-        if ($this->accepts_anbima && $this->is_official && $this->import_mode === 'official_spreadsheet') {
+        if ($this->materialization_policy === self::MATERIALIZATION_POLICY_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS) {
             return self::COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS;
         }
 
         return self::COVERAGE_BASIS_EXPLICIT_DATES;
+    }
+
+    public function allowsGenericWeekdayBackfill(): bool
+    {
+        return $this->materialization_policy === self::MATERIALIZATION_POLICY_LEGACY;
+    }
+
+    public function allowsImplicitWeekdayDecision(): bool
+    {
+        return in_array($this->materialization_policy, [
+            self::MATERIALIZATION_POLICY_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS,
+            self::MATERIALIZATION_POLICY_LEGACY,
+        ], true);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Models\BusinessCalendar;
 use App\Models\BusinessCalendarDate;
 use App\Models\BusinessCalendarYear;
 use Carbon\CarbonImmutable;
@@ -31,8 +32,10 @@ final class BusinessCalendarDiffService
             throw new InvalidArgumentException('A comparação administrativa está limitada a dez anos por execução.');
         }
 
-        $calendarA = $this->catalog->findOrFail($calendarA)->code;
-        $calendarB = $this->catalog->findOrFail($calendarB)->code;
+        $calendarModelA = $this->catalog->findOrFail($calendarA);
+        $calendarModelB = $this->catalog->findOrFail($calendarB);
+        $calendarA = $calendarModelA->code;
+        $calendarB = $calendarModelB->code;
         $coverageA = $this->yearService->coverageForRange($calendarA, $from, $to);
         $coverageB = $this->yearService->coverageForRange($calendarB, $from, $to);
 
@@ -62,12 +65,14 @@ final class BusinessCalendarDiffService
                 $persistedDates->get($calendarA)?->get($dateKey),
                 $yearMetadata->get($calendarA.'|'.$date->year),
                 $coverageA[$date->year]['state'],
+                $calendarModelA->coverageBasis(),
             );
             $decisionB = $this->decision(
                 $date,
                 $persistedDates->get($calendarB)?->get($dateKey),
                 $yearMetadata->get($calendarB.'|'.$date->year),
                 $coverageB[$date->year]['state'],
+                $calendarModelB->coverageBasis(),
             );
 
             if ($decisionA['is_business_day'] !== $decisionB['is_business_day']) {
@@ -129,6 +134,7 @@ final class BusinessCalendarDiffService
         ?BusinessCalendarDate $persistedDate,
         ?BusinessCalendarYear $calendarYear,
         string $coverageState,
+        string $coverageBasis,
     ): array {
         if ($persistedDate instanceof BusinessCalendarDate) {
             return [
@@ -145,13 +151,17 @@ final class BusinessCalendarDiffService
         }
 
         $isBusinessDay = ! $date->isWeekend();
+        $usesOfficialBaseRule = $coverageBasis === BusinessCalendar::COVERAGE_BASIS_WEEKDAY_WITH_OFFICIAL_EXCEPTIONS;
 
         return [
             'is_business_day' => $isBusinessDay,
-            'description' => $isBusinessDay
-                ? 'Dia útil inferido pela ausência de exceção persistida (fallback legado).'
-                : 'Dia não útil inferido exclusivamente por ser final de semana.',
-            'source' => 'inferred',
+            'description' => match (true) {
+                $usesOfficialBaseRule && $isBusinessDay => 'Dia útil pela regra-base oficial de segunda a sexta; nenhuma exceção incide nesta data.',
+                $usesOfficialBaseRule => 'Dia não útil pela regra-base oficial de final de semana.',
+                $isBusinessDay => 'Dia útil inferido pela ausência de exceção persistida (fallback legado).',
+                default => 'Dia não útil inferido exclusivamente por ser final de semana.',
+            },
+            'source' => $usesOfficialBaseRule ? 'calendar_base_rule' : 'inferred',
             'source_document' => $calendarYear?->source_document,
             'source_revision' => $calendarYear?->source_revision,
             'revision' => (int) ($calendarYear?->revision ?? 0),

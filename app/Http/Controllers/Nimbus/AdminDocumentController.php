@@ -25,6 +25,17 @@ class AdminDocumentController extends Controller
         $this->abortIfNotScanned($document);
         $this->abortIfMissing($documentStorageService, $document->file_path);
 
+        activity('nimbus')
+            ->performedOn($document)
+            ->causedBy($request->user())
+            ->withProperties([
+                'document_id' => $document->id,
+                'action' => 'preview',
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.general_document.preview');
+
         return $documentStorageService->previewPrivate(
             $document->file_path,
             $document->file_mime,
@@ -41,6 +52,17 @@ class AdminDocumentController extends Controller
         $this->abortIfNotScanned($document);
         $this->abortIfMissing($documentStorageService, $document->file_path);
 
+        activity('nimbus')
+            ->performedOn($document)
+            ->causedBy($request->user())
+            ->withProperties([
+                'document_id' => $document->id,
+                'action' => 'download',
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.general_document.download');
+
         return $documentStorageService->downloadPrivate(
             $document->file_path,
             $document->file_original_name ?: basename($document->file_path),
@@ -55,6 +77,17 @@ class AdminDocumentController extends Controller
         $this->authorizeDocumentAccess($request->user(), 'nimbus.portal-documents.view');
         $this->abortIfNotScanned($document);
         $this->abortIfMissing($documentStorageService, $document->file_path);
+
+        activity('nimbus')
+            ->performedOn($document)
+            ->causedBy($request->user())
+            ->withProperties([
+                'document_id' => $document->id,
+                'action' => 'preview',
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.portal_document.preview');
 
         return $documentStorageService->previewPrivate(
             $document->file_path,
@@ -71,6 +104,17 @@ class AdminDocumentController extends Controller
         $this->authorizeDocumentAccess($request->user(), 'nimbus.portal-documents.view');
         $this->abortIfNotScanned($document);
         $this->abortIfMissing($documentStorageService, $document->file_path);
+
+        activity('nimbus')
+            ->performedOn($document)
+            ->causedBy($request->user())
+            ->withProperties([
+                'document_id' => $document->id,
+                'action' => 'download',
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.portal_document.download');
 
         return $documentStorageService->downloadPrivate(
             $document->file_path,

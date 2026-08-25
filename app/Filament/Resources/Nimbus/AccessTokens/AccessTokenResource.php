@@ -125,6 +125,14 @@ class AccessTokenResource extends Resource
             ->action(function (AccessToken $record): void {
                 $record->update(['status' => 'REVOKED']);
 
+                activity('nimbus')
+                    ->performedOn($record)
+                    ->causedBy(auth()->user())
+                    ->withProperties([
+                        'portal_user_id' => $record->nimbus_portal_user_id,
+                    ])
+                    ->log('nimbus.access_token.revoked');
+
                 Notification::make()
                     ->title('Chave de acesso revogada com sucesso.')
                     ->success()

@@ -16,7 +16,7 @@ it('catalogues official, legacy and pending calendars with explicit metadata', f
     $catalog = app(BusinessCalendarCatalogService::class);
     $definitions = $catalog->definitions();
 
-    expect(BusinessCalendar::query()->count())->toBe(3)
+    expect(BusinessCalendar::query()->count())->toBe(4)
         ->and($definitions[BusinessCalendarRegistry::LEGACY_B3])->toMatchArray([
             'legacy' => true,
             'available_for_new_configurations' => false,
@@ -29,10 +29,18 @@ it('catalogues official, legacy and pending calendars with explicit metadata', f
             'available_for_new_configurations' => true,
         ])
         ->and($definitions[BusinessCalendarRegistry::B3_LISTED_TRADING])->toMatchArray([
-            'official' => true,
+            'official' => false,
             'type' => 'listed_trading',
             'accepts_anbima' => false,
             'status' => 'awaiting_official_source',
+            'financial_use_allowed' => false,
+            'available_for_new_configurations' => false,
+        ])
+        ->and($definitions[BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS])->toMatchArray([
+            'official' => true,
+            'type' => 'federal_legal_holidays',
+            'materialization_policy' => 'weekday_with_official_exceptions',
+            'financial_use_allowed' => false,
             'available_for_new_configurations' => false,
         ]);
 });
@@ -52,6 +60,7 @@ it('hides HML, legacy and calendars without an approved source from new configur
     expect($newOptions)->toHaveKey(BusinessCalendarRegistry::BR_BANKING_ANBIMA)
         ->not->toHaveKey(BusinessCalendarRegistry::LEGACY_B3)
         ->not->toHaveKey(BusinessCalendarRegistry::B3_LISTED_TRADING)
+        ->not->toHaveKey(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
         ->not->toHaveKey('HML_PU_REFERENCE')
         ->and($legacyOptions)->toHaveKey(BusinessCalendarRegistry::LEGACY_B3);
 });

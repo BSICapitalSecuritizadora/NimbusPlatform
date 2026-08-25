@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Nimbus\PortalUsers\Tables;
 
 use App\Mail\Nimbus\SendPortalAccessCode;
 use App\Models\Nimbus\AccessToken;
+use App\Services\Security\PiiPseudonymizer;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -30,11 +31,13 @@ class PortalUsersTable
                 TextColumn::make('document_number')
                     ->label('CPF')
                     ->formatStateUsing(fn (?string $state): ?string => self::formatCpfForDisplay($state))
-                    ->searchable(),
+                    ->searchable(false)
+                    ->toggleable(),
                 TextColumn::make('phone_number')
                     ->label('Telefone')
                     ->formatStateUsing(fn (?string $state): ?string => self::formatPhoneForDisplay($state))
-                    ->searchable(),
+                    ->searchable(false)
+                    ->toggleable(),
                 TextColumn::make('external_id')
                     ->label('ID Externo')
                     ->searchable(),
@@ -110,6 +113,19 @@ class PortalUsersTable
 
                                 return [$code, $expiresAt];
                             });
+
+                            $token = $record->accessTokens()->where('code_hash', AccessToken::computeHash($code))->first();
+
+                            // Audit: token generation (no plaintext in properties).
+                            activity('nimbus')
+                                ->performedOn($token ?? $record)
+                                ->causedBy(auth()->user())
+                                ->withProperties([
+                                    'portal_user_id' => $record->id,
+                                    'email_hash' => PiiPseudonymizer::email($record->email),
+                                    'expires_at' => $expiresAt?->toIso8601String(),
+                                ])
+                                ->log('nimbus.access_token.generated');
 
                             Mail::mailer((string) config('nimbus.mail.mailer', config('mail.default')))
                                 ->to($record->email)

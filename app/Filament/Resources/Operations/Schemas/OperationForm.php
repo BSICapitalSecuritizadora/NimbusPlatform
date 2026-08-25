@@ -17,6 +17,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 
 class OperationForm
@@ -198,7 +199,9 @@ class OperationForm
             ->placeholder('Selecione o responsável...')
             ->relationship($relationship, 'name')
             ->searchable()
-            ->preload();
+            ->preload()
+            ->disabled(fn (?Operation $record): bool => ! Gate::allows('manageResponsibilities', $record ?? Operation::class))
+            ->dehydrated(fn (?Operation $record): bool => Gate::allows('manageResponsibilities', $record ?? Operation::class));
 
         if (filled($helperText)) {
             $select->helperText($helperText);

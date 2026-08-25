@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Models\BusinessCalendar;
 use App\Models\BusinessCalendarDate;
 use App\Models\BusinessCalendarYear;
 use App\Models\BusinessHoliday;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Cobertura e preenchimento (backfill) do calendario de dias uteis.
  *
- * Para calendarios auto-completaveis (B3 legado, por config) as datas faltantes sao geradas de forma
+ * Para calendarios legados explicitamente autorizados no catálogo, as datas faltantes sao geradas de forma
  * idempotente: fim de semana = nao util; dia de semana = util. Feriados NAO sao derivados aqui —
  * quando relevantes, devem ser cadastrados/importados manualmente (is_business_day=false). Como o
  * backfill so insere datas SEM linha persistida, fatos importados e overrides nunca sao
@@ -47,7 +48,14 @@ class BusinessCalendarCoverageService
             (array) config('pu_calculator.business_calendar.auto_completable_codes', ['B3']),
         );
 
-        return in_array(strtoupper($calendarCode), $codes, true);
+        if (! in_array(strtoupper($calendarCode), $codes, true)) {
+            return false;
+        }
+
+        return BusinessCalendar::query()
+            ->where('code', strtoupper($calendarCode))
+            ->first()
+            ?->allowsGenericWeekdayBackfill() ?? false;
     }
 
     public function willAutoComplete(string $calendarCode): bool
@@ -137,7 +145,17 @@ class BusinessCalendarCoverageService
      */
     public function backfill(string $calendarCode, CarbonImmutable $from, CarbonImmutable $to, bool $dryRun = false): array
     {
-        $calendarCode = $this->catalog->findOrFail($calendarCode)->code;
+        $calendar = $this->catalog->findOrFail($calendarCode);
+
+        if (! $calendar->allowsGenericWeekdayBackfill()) {
+            throw new \InvalidArgumentException(sprintf(
+                'O calendário %s usa a política %s e não permite backfill genérico de segunda a sexta.',
+                $calendar->code,
+                $calendar->materialization_policy,
+            ));
+        }
+
+        $calendarCode = $calendar->code;
 
         $operation = function () use ($calendarCode, $from, $to, $dryRun): array {
             $missing = $this->missingDates($calendarCode, $from, $to);

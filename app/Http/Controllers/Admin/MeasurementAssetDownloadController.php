@@ -21,7 +21,9 @@ class MeasurementAssetDownloadController extends Controller
         Gate::authorize('view', $asset->measurement);
 
         abort_unless(
-            filled($asset->storage_path) && $storage->exists($asset->storage_path, $asset->resolved_storage_disk),
+            filled($asset->storage_path)
+                && $storage->isAllowedMeasurementDisk($asset->resolved_storage_disk)
+                && $storage->exists($asset->storage_path, $asset->resolved_storage_disk),
             404,
         );
 

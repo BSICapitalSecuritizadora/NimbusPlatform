@@ -26,6 +26,10 @@ class BackfillMeasurementFileHashes extends Command
 
     public function handle(DocumentStorageService $storage): int
     {
+        $this->processed = 0;
+        $this->updated = 0;
+        $this->missing = 0;
+
         $execute = (bool) $this->option('execute');
         $limit = max(0, (int) $this->option('limit'));
 
@@ -67,7 +71,7 @@ class BackfillMeasurementFileHashes extends Command
 
         $this->table(['Processados', 'Persistidos', 'Ausentes'], [[$this->processed, $this->updated, $this->missing]]);
 
-        return self::SUCCESS;
+        return $execute && $this->missing > 0 ? self::FAILURE : self::SUCCESS;
     }
 
     /**

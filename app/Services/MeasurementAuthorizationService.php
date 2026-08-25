@@ -24,6 +24,7 @@ class MeasurementAuthorizationService
     public function canCreateMeasurement(User $user, Operation $operation): bool
     {
         return $user->can('measurements.create')
+            && ! in_array($operation->status, ['canceled', 'completed'], true)
             && ($this->isWorkflowAdministrator($user) || $operation->hasParticipant($user));
     }
 

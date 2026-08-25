@@ -63,6 +63,18 @@ class DocumentManager
                     'notes' => $dto->notes,
                 ]);
 
+                // Audit: file upload (distinct from download/preview). No PII.
+                activity('nimbus')
+                    ->performedOn($submissionFile)
+                    ->causedBy(auth()->user() ?? $submission->portalUser)
+                    ->withProperties([
+                        'submission_id' => $submission->id,
+                        'origin' => $dto->origin,
+                        'document_type' => $dto->documentType,
+                        'visible_to_user' => $dto->visibleToUser,
+                    ])
+                    ->log('nimbus.submission_file.uploaded');
+
                 ScanFileForMalware::dispatch(
                     DocumentStorageService::privateDisk(),
                     $finalPath,

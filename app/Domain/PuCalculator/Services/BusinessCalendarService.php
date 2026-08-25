@@ -27,6 +27,9 @@ class BusinessCalendarService implements BusinessDayCalendar
     /** @var array<string, string> */
     private array $coverageBases = [];
 
+    /** @var array<string, bool> */
+    private array $implicitWeekdayDecisions = [];
+
     public function __construct(
         private readonly BusinessCalendarRevisionService $revisionService,
         private readonly BusinessCalendarYearService $yearService,
@@ -38,6 +41,7 @@ class BusinessCalendarService implements BusinessDayCalendar
         $this->loadedYears = [];
         $this->warnedRevisions = [];
         $this->coverageBases = [];
+        $this->implicitWeekdayDecisions = [];
     }
 
     public function isBusinessDay(CarbonImmutable $date, ?string $calendarCode = null): bool
@@ -51,6 +55,8 @@ class BusinessCalendarService implements BusinessDayCalendar
         if (array_key_exists($dateKey, $this->cache[$resolvedCalendarCode][$year] ?? [])) {
             return $this->cache[$resolvedCalendarCode][$year][$dateKey];
         }
+
+        $this->assertImplicitWeekdayDecisionAllowed($resolvedCalendarCode, $date);
 
         return $this->cache[$resolvedCalendarCode][$year][$dateKey] = ! $date->isWeekend();
     }
@@ -121,6 +127,8 @@ class BusinessCalendarService implements BusinessDayCalendar
                 yearStatus: $coverage['status'],
             );
         }
+
+        $this->assertImplicitWeekdayDecisionAllowed($resolvedCalendarCode, $date);
 
         $isWeekend = $date->isWeekend();
         $usesOfficialBaseRule = $this->coverageBasis($resolvedCalendarCode)
@@ -249,5 +257,23 @@ class BusinessCalendarService implements BusinessDayCalendar
             ->where('code', $calendarCode)
             ->first()
             ?->coverageBasis() ?? BusinessCalendar::COVERAGE_BASIS_EXPLICIT_DATES;
+    }
+
+    private function assertImplicitWeekdayDecisionAllowed(string $calendarCode, CarbonImmutable $date): void
+    {
+        $allowed = $this->implicitWeekdayDecisions[$calendarCode] ??= BusinessCalendar::query()
+            ->where('code', $calendarCode)
+            ->first()
+            ?->allowsImplicitWeekdayDecision() ?? false;
+
+        if ($allowed) {
+            return;
+        }
+
+        throw new RuntimeException(sprintf(
+            'O calendário %s exige decisão explícita para %s; a ausência de linha não pode ser inferida como sessão útil.',
+            $calendarCode,
+            $date->toDateString(),
+        ));
     }
 }

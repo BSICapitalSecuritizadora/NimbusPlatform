@@ -32,9 +32,9 @@ it('shows the import and create actions with the expected filters on the receiva
 
     Livewire::test(ListReceivables::class)
         ->assertActionExists('import')
-        ->assertActionHasLabel('import', 'Importar Planilha')
+        ->assertActionHasLabel('import', 'Importar planilha')
         ->assertActionExists('create')
-        ->assertActionHasLabel('create', 'Cadastrar Resumo')
+        ->assertActionHasLabel('create', 'Cadastrar resumo')
         ->assertTableFilterExists('emission_id')
         ->assertTableFilterExists('reference_month')
         ->assertTableFilterExists('portfolio_id');
@@ -215,6 +215,38 @@ it('prevents duplicate manual summaries for the same emission and competence', f
         ->fillForm(makeReceivableSummaryFormData($emission->id))
         ->call('create')
         ->assertHasFormErrors(['reference_month']);
+});
+
+it('distinguishes the empty base state from the filtered empty state on the receivables list page', function () {
+    $this->actingAs(makeReceivableAdminUser());
+
+    Livewire::test(ListReceivables::class)
+        ->assertSee('Nenhum resumo de recebíveis cadastrado')
+        ->assertSee('Cadastre manualmente ou importe uma planilha para iniciar o acompanhamento da carteira.')
+        ->assertDontSee('Nenhum recebível encontrado com os filtros atuais');
+
+    $emission = Emission::factory()->create(['name' => 'CRI Conviva']);
+    $otherEmission = Emission::factory()->create(['name' => 'CRI Atlas']);
+
+    Receivable::factory()->create(['emission_id' => $emission->id]);
+
+    Livewire::test(ListReceivables::class)
+        ->filterTable('emission_id', $otherEmission->id)
+        ->assertSee('Nenhum recebível encontrado com os filtros atuais')
+        ->assertSee('Limpar filtros')
+        ->assertDontSee('Nenhum resumo de recebíveis cadastrado');
+});
+
+it('groups the receivables metrics into financial contexts on the list page', function () {
+    $this->actingAs(makeReceivableAdminUser());
+
+    $emission = Emission::factory()->create(['name' => 'CRI Alto Bellevue']);
+    Receivable::factory()->create(['emission_id' => $emission->id]);
+
+    Livewire::test(ListReceivables::class)
+        ->assertSee('Fluxo financeiro')
+        ->assertSee('Risco')
+        ->assertSee('Indicadores');
 });
 
 it('filters receivable summaries by emission', function () {

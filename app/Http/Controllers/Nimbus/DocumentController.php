@@ -78,6 +78,17 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        activity('nimbus')
+            ->performedOn($document)
+            ->causedBy($portalUser)
+            ->withProperties([
+                'document_id' => $document->id,
+                'action' => 'preview',
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.portal_document.preview');
+
         return $documentStorageService->previewPrivate(
             $document->file_path,
             $document->file_mime,
@@ -102,6 +113,17 @@ class DocumentController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        activity('nimbus')
+            ->performedOn($document)
+            ->causedBy($portalUser)
+            ->withProperties([
+                'document_id' => $document->id,
+                'action' => 'download',
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.portal_document.download');
+
         return $documentStorageService->downloadPrivate(
             $document->file_path,
             $document->file_original_name ?: basename($document->file_path),
@@ -122,6 +144,17 @@ class DocumentController extends Controller
         if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
+
+        activity('nimbus')
+            ->performedOn($document)
+            ->causedBy($request->user('nimbus'))
+            ->withProperties([
+                'document_id' => $document->id,
+                'action' => 'preview',
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.general_document.preview');
 
         return $documentStorageService->previewPrivate(
             $document->file_path,
@@ -144,6 +177,17 @@ class DocumentController extends Controller
         if (! $documentStorageService->privateExists($document->file_path)) {
             abort(Response::HTTP_NOT_FOUND);
         }
+
+        activity('nimbus')
+            ->performedOn($document)
+            ->causedBy($request->user('nimbus'))
+            ->withProperties([
+                'document_id' => $document->id,
+                'action' => 'download',
+                'ip' => $request->ip(),
+                'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.general_document.download');
 
         return $documentStorageService->downloadPrivate(
             $document->file_path,

@@ -872,7 +872,13 @@
 .dark .bsi-fund-applications-list-page .fi-ta-content-ctn,
 .dark .bsi-banks-list-page .fi-ta-content-ctn,
 .dark .bsi-expenses-list-page .fi-ta-content-ctn,
-.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn {
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn,
+.dark .bsi-contact-messages-list-page .fi-ta-content-ctn,
+.dark .bsi-vacancies-list-page .fi-ta-content-ctn,
+.dark .bsi-invitations-list-page .fi-ta-content-ctn,
+.dark .bsi-activities-list-page .fi-ta-content-ctn,
+.dark .bsi-reminder-logs-list-page .fi-ta-content-ctn,
+.dark .bsi-receivables-list-page .fi-ta-content-ctn {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
 
@@ -893,7 +899,13 @@
 .dark .bsi-fund-applications-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-banks-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-expenses-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
-.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-contact-messages-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-vacancies-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-invitations-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-activities-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
     background: transparent;
 }
 
@@ -914,7 +926,13 @@
 .dark .bsi-fund-applications-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-banks-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-expenses-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
-.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-contact-messages-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-vacancies-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-invitations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-activities-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
 }
@@ -936,7 +954,13 @@
 .dark .bsi-fund-applications-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-banks-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-expenses-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
-.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover {
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-contact-messages-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-vacancies-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-invitations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-activities-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover {
     background-color: rgba(148, 163, 184, 0.55);
 }
 
@@ -1203,7 +1227,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* ── Resource List Pages Fine-Tuning (Carteira, Investidores, Representantes, Emissões, Documentos, Quadro de Vendas, Negociações, Notas Explicativas, Obras, Medições, Fundos, Tipos de Fundo, Nomes de Fundo, Aplicações, Bancos, Despesas, Prestadores) ── */
+/* ── Resource List Pages Fine-Tuning (Carteira, Investidores, Representantes, Emissões, Documentos, Quadro de Vendas, Negociações, Notas Explicativas, Obras, Medições, Fundos, Tipos de Fundo, Nomes de Fundo, Aplicações, Bancos, Despesas, Prestadores, Recebíveis) ── */
 .bsi-proposal-list-page .fi-page,
 .bsi-investors-list-page .fi-page,
 .bsi-representatives-list-page .fi-page,
@@ -1221,7 +1245,13 @@
 .bsi-fund-applications-list-page .fi-page,
 .bsi-banks-list-page .fi-page,
 .bsi-expenses-list-page .fi-page,
-.bsi-expense-service-providers-list-page .fi-page {
+.bsi-expense-service-providers-list-page .fi-page,
+.bsi-contact-messages-list-page .fi-page,
+.bsi-vacancies-list-page .fi-page,
+.bsi-invitations-list-page .fi-page,
+.bsi-activities-list-page .fi-page,
+.bsi-reminder-logs-list-page .fi-page,
+.bsi-receivables-list-page .fi-page {
     gap: 0.75rem !important;
 }
 
@@ -1242,7 +1272,13 @@
 .bsi-fund-applications-list-page .fi-header,
 .bsi-banks-list-page .fi-header,
 .bsi-expenses-list-page .fi-header,
-.bsi-expense-service-providers-list-page .fi-header {
+.bsi-expense-service-providers-list-page .fi-header,
+.bsi-contact-messages-list-page .fi-header,
+.bsi-vacancies-list-page .fi-header,
+.bsi-invitations-list-page .fi-header,
+.bsi-activities-list-page .fi-header,
+.bsi-reminder-logs-list-page .fi-header,
+.bsi-receivables-list-page .fi-header {
     padding: 0.875rem 1.25rem !important;
     border-radius: 12px !important;
     background: linear-gradient(135deg, #091b23 0%, #12313b 100%) !important;
@@ -1266,7 +1302,13 @@
 .bsi-fund-applications-list-page .fi-header-heading,
 .bsi-banks-list-page .fi-header-heading,
 .bsi-expenses-list-page .fi-header-heading,
-.bsi-expense-service-providers-list-page .fi-header-heading {
+.bsi-expense-service-providers-list-page .fi-header-heading,
+.bsi-contact-messages-list-page .fi-header-heading,
+.bsi-vacancies-list-page .fi-header-heading,
+.bsi-invitations-list-page .fi-header-heading,
+.bsi-activities-list-page .fi-header-heading,
+.bsi-reminder-logs-list-page .fi-header-heading,
+.bsi-receivables-list-page .fi-header-heading {
     font-size: 1.25rem !important;
     font-weight: 700 !important;
     line-height: 1.2 !important;
@@ -1289,7 +1331,13 @@
 .bsi-fund-applications-list-page .fi-header-subheading,
 .bsi-banks-list-page .fi-header-subheading,
 .bsi-expenses-list-page .fi-header-subheading,
-.bsi-expense-service-providers-list-page .fi-header-subheading {
+.bsi-expense-service-providers-list-page .fi-header-subheading,
+.bsi-contact-messages-list-page .fi-header-subheading,
+.bsi-vacancies-list-page .fi-header-subheading,
+.bsi-invitations-list-page .fi-header-subheading,
+.bsi-activities-list-page .fi-header-subheading,
+.bsi-reminder-logs-list-page .fi-header-subheading,
+.bsi-receivables-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
     color: rgba(251, 250, 248, 0.72) !important;
@@ -1314,7 +1362,13 @@
 .bsi-fund-applications-list-page .fi-breadcrumbs,
 .bsi-banks-list-page .fi-breadcrumbs,
 .bsi-expenses-list-page .fi-breadcrumbs,
-.bsi-expense-service-providers-list-page .fi-breadcrumbs {
+.bsi-expense-service-providers-list-page .fi-breadcrumbs,
+.bsi-contact-messages-list-page .fi-breadcrumbs,
+.bsi-vacancies-list-page .fi-breadcrumbs,
+.bsi-invitations-list-page .fi-breadcrumbs,
+.bsi-activities-list-page .fi-breadcrumbs,
+.bsi-reminder-logs-list-page .fi-breadcrumbs,
+.bsi-receivables-list-page .fi-breadcrumbs {
     font-size: 0.75rem !important;
     margin-bottom: 0.125rem !important;
 }
@@ -1336,7 +1390,13 @@
 .bsi-fund-applications-list-page .fi-ta-table,
 .bsi-banks-list-page .fi-ta-table,
 .bsi-expenses-list-page .fi-ta-table,
-.bsi-expense-service-providers-list-page .fi-ta-table {
+.bsi-expense-service-providers-list-page .fi-ta-table,
+.bsi-contact-messages-list-page .fi-ta-table,
+.bsi-vacancies-list-page .fi-ta-table,
+.bsi-invitations-list-page .fi-ta-table,
+.bsi-activities-list-page .fi-ta-table,
+.bsi-reminder-logs-list-page .fi-ta-table,
+.bsi-receivables-list-page .fi-ta-table {
     width: 100% !important;
     min-width: 100% !important;
     table-layout: auto !important;
@@ -1359,7 +1419,13 @@
 .bsi-fund-applications-list-page .fi-ta-cell .fi-badge,
 .bsi-banks-list-page .fi-ta-cell .fi-badge,
 .bsi-expenses-list-page .fi-ta-cell .fi-badge,
-.bsi-expense-service-providers-list-page .fi-ta-cell .fi-badge {
+.bsi-expense-service-providers-list-page .fi-ta-cell .fi-badge,
+.bsi-contact-messages-list-page .fi-ta-cell .fi-badge,
+.bsi-vacancies-list-page .fi-ta-cell .fi-badge,
+.bsi-invitations-list-page .fi-ta-cell .fi-badge,
+.bsi-activities-list-page .fi-ta-cell .fi-badge,
+.bsi-reminder-logs-list-page .fi-ta-cell .fi-badge,
+.bsi-receivables-list-page .fi-ta-cell .fi-badge {
     white-space: normal !important;
     text-align: center !important;
     line-height: 1.25 !important;
@@ -1371,6 +1437,11 @@
 
 .bsi-proposal-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-emissions-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-contact-messages-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-vacancies-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-invitations-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-activities-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-reminder-logs-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-documents-list-page .fi-tabs-item .fi-badge[data-color="gray"] {
     opacity: 0.45 !important;
 }
@@ -1393,7 +1464,13 @@
     .bsi-fund-applications-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-banks-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-expenses-list-page .fi-ta-header-toolbar .fi-input-wrp,
-    .bsi-expense-service-providers-list-page .fi-ta-header-toolbar .fi-input-wrp {
+    .bsi-expense-service-providers-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-contact-messages-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-vacancies-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-invitations-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-activities-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-reminder-logs-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-receivables-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 22rem;
     }
 }
@@ -1416,7 +1493,13 @@
 .bsi-fund-applications-list-page .fi-ta-empty-state,
 .bsi-banks-list-page .fi-ta-empty-state,
 .bsi-expenses-list-page .fi-ta-empty-state,
-.bsi-expense-service-providers-list-page .fi-ta-empty-state {
+.bsi-expense-service-providers-list-page .fi-ta-empty-state,
+.bsi-contact-messages-list-page .fi-ta-empty-state,
+.bsi-vacancies-list-page .fi-ta-empty-state,
+.bsi-invitations-list-page .fi-ta-empty-state,
+.bsi-activities-list-page .fi-ta-empty-state,
+.bsi-reminder-logs-list-page .fi-ta-empty-state,
+.bsi-receivables-list-page .fi-ta-empty-state {
     padding-block: 2.5rem !important;
     padding-inline: 1.5rem !important;
 }
@@ -1438,7 +1521,13 @@
 .bsi-fund-applications-list-page .fi-ta-empty-state-icon-bg,
 .bsi-banks-list-page .fi-ta-empty-state-icon-bg,
 .bsi-expenses-list-page .fi-ta-empty-state-icon-bg,
-.bsi-expense-service-providers-list-page .fi-ta-empty-state-icon-bg {
+.bsi-expense-service-providers-list-page .fi-ta-empty-state-icon-bg,
+.bsi-contact-messages-list-page .fi-ta-empty-state-icon-bg,
+.bsi-vacancies-list-page .fi-ta-empty-state-icon-bg,
+.bsi-invitations-list-page .fi-ta-empty-state-icon-bg,
+.bsi-activities-list-page .fi-ta-empty-state-icon-bg,
+.bsi-reminder-logs-list-page .fi-ta-empty-state-icon-bg,
+.bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: #64748b !important;
     margin-bottom: 0.75rem !important;
 }
@@ -1460,7 +1549,13 @@
 .dark .bsi-fund-applications-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-banks-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-expenses-list-page .fi-ta-empty-state-icon-bg,
-.dark .bsi-expense-service-providers-list-page .fi-ta-empty-state-icon-bg {
+.dark .bsi-expense-service-providers-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-contact-messages-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-vacancies-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-invitations-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-activities-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-reminder-logs-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: rgba(251, 250, 248, 0.4) !important;
 }
 
@@ -1481,14 +1576,26 @@
 .bsi-fund-applications-list-page .fi-ta-empty-state-heading,
 .bsi-banks-list-page .fi-ta-empty-state-heading,
 .bsi-expenses-list-page .fi-ta-empty-state-heading,
-.bsi-expense-service-providers-list-page .fi-ta-empty-state-heading {
+.bsi-expense-service-providers-list-page .fi-ta-empty-state-heading,
+.bsi-contact-messages-list-page .fi-ta-empty-state-heading,
+.bsi-vacancies-list-page .fi-ta-empty-state-heading,
+.bsi-invitations-list-page .fi-ta-empty-state-heading,
+.bsi-activities-list-page .fi-ta-empty-state-heading,
+.bsi-reminder-logs-list-page .fi-ta-empty-state-heading,
+.bsi-receivables-list-page .fi-ta-empty-state-heading {
     font-size: 1rem !important;
     font-weight: 600 !important;
 }
 
-/* Despesas: algarismos tabulares para comparar valores e datas com facilidade */
+/* Despesas, Documentos, Auditoria e Recebíveis: algarismos tabulares para comparar valores e datas com facilidade */
 .bsi-expenses-list-page .fi-ta-table td,
-.bsi-documents-list-page .fi-ta-table td {
+.bsi-documents-list-page .fi-ta-table td,
+.bsi-contact-messages-list-page .fi-ta-table td,
+.bsi-vacancies-list-page .fi-ta-table td,
+.bsi-invitations-list-page .fi-ta-table td,
+.bsi-activities-list-page .fi-ta-table td,
+.bsi-reminder-logs-list-page .fi-ta-table td,
+.bsi-receivables-list-page .fi-ta-table td {
     font-variant-numeric: tabular-nums;
 }
 
@@ -1509,10 +1616,198 @@
 .bsi-fund-applications-list-page .fi-ta-empty-state-description,
 .bsi-banks-list-page .fi-ta-empty-state-description,
 .bsi-expenses-list-page .fi-ta-empty-state-description,
-.bsi-expense-service-providers-list-page .fi-ta-empty-state-description {
+.bsi-expense-service-providers-list-page .fi-ta-empty-state-description,
+.bsi-contact-messages-list-page .fi-ta-empty-state-description,
+.bsi-vacancies-list-page .fi-ta-empty-state-description,
+.bsi-invitations-list-page .fi-ta-empty-state-description,
+.bsi-activities-list-page .fi-ta-empty-state-description,
+.bsi-reminder-logs-list-page .fi-ta-empty-state-description,
+.bsi-receivables-list-page .fi-ta-empty-state-description {
     max-width: 46ch !important;
     font-size: 0.8125rem !important;
     line-height: 1.55 !important;
+}
+
+/* ── Recebíveis: central financeira de acompanhamento da carteira ── */
+
+/* Ação secundária do cabeçalho (Importar planilha) em outline: não compete com o CTA dourado */
+.bsi-receivables-list-page .fi-header .fi-btn-color-gray,
+.bsi-invitations-list-page .fi-header .fi-btn-color-gray,
+.bsi-invitations-list-page .fi-header .fi-btn[data-color="gray"],
+.bsi-receivables-list-page .fi-header .fi-btn[data-color="gray"] {
+    background: transparent !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.4) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.bsi-receivables-list-page .fi-header .fi-btn-color-gray:hover,
+.bsi-invitations-list-page .fi-header .fi-btn-color-gray:hover,
+.bsi-invitations-list-page .fi-header .fi-btn[data-color="gray"]:hover,
+.bsi-receivables-list-page .fi-header .fi-btn[data-color="gray"]:hover {
+    background: rgba(148, 163, 184, 0.14) !important;
+    border-color: rgba(148, 163, 184, 0.6) !important;
+    color: #fbfaf8 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.bsi-receivables-list-page .fi-header .fi-btn-color-gray:active,
+.bsi-invitations-list-page .fi-header .fi-btn-color-gray:active,
+.bsi-invitations-list-page .fi-header .fi-btn[data-color="gray"]:active,
+.bsi-receivables-list-page .fi-header .fi-btn[data-color="gray"]:active {
+    background: rgba(148, 163, 184, 0.2) !important;
+}
+
+.bsi-receivables-list-page .fi-header .fi-btn-color-gray .fi-icon,
+.bsi-invitations-list-page .fi-header .fi-btn-color-gray .fi-icon,
+.bsi-receivables-list-page .fi-header .fi-btn-color-gray svg,
+.bsi-invitations-list-page .fi-header .fi-btn-color-gray svg,
+.bsi-receivables-list-page .fi-header .fi-btn[data-color="gray"] .fi-icon,
+.bsi-invitations-list-page .fi-header .fi-btn[data-color="gray"] .fi-icon,
+.bsi-invitations-list-page .fi-header .fi-btn[data-color="gray"] svg,
+.bsi-receivables-list-page .fi-header .fi-btn[data-color="gray"] svg {
+    color: rgba(251, 250, 248, 0.7) !important;
+    filter: none !important;
+}
+
+/* Cabeçalho dos grupos de métricas (Carteira, Fluxo financeiro, Risco, Indicadores) */
+.bsi-invitations-list-page thead .fi-ta-header-group-cell,
+.bsi-receivables-list-page thead .fi-ta-header-group-cell {
+    color: #64748b !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    padding-block: 0.375rem !important;
+    border-color: #e2e8f0 !important;
+}
+
+.dark .bsi-invitations-list-page thead .fi-ta-header-group-cell,
+.dark .bsi-receivables-list-page thead .fi-ta-header-group-cell {
+    color: rgba(251, 250, 248, 0.5) !important;
+    border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+/* Coluna efetivamente ordenada: único destaque dourado nos cabeçalhos */
+.bsi-invitations-list-page thead .fi-ta-header-cell-sorted .fi-icon,
+.bsi-receivables-list-page thead .fi-ta-header-cell-sorted .fi-icon {
+    color: #96651f !important;
+}
+
+.dark .bsi-invitations-list-page thead .fi-ta-header-cell-sorted .fi-icon,
+.dark .bsi-receivables-list-page thead .fi-ta-header-cell-sorted .fi-icon {
+    color: #d8a94f !important;
+}
+
+/* Nomes longos de emissão: truncamento elegante dentro da coluna fixa */
+.bsi-invitations-list-page .fi-ta-cell-emission-name .fi-ta-text,
+.bsi-receivables-list-page .fi-ta-cell-emission-name .fi-ta-text {
+    min-width: 0;
+}
+
+.bsi-invitations-list-page .fi-ta-cell-emission-name .fi-ta-text-item-label,
+.bsi-receivables-list-page .fi-ta-cell-emission-name .fi-ta-text-item-label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Mobile empilhado: rótulo da métrica em tom secundário */
+.dark .bsi-invitations-list-page .fi-ta-cell-label,
+.dark .bsi-receivables-list-page .fi-ta-cell-label {
+    color: rgba(251, 250, 248, 0.55) !important;
+}
+
+/* Colunas de contexto (seleção, Emissão, Mês) fixas durante o scroll horizontal */
+@media (min-width: 640px) {
+    .bsi-receivables-list-page .fi-ta-table > thead > tr > :nth-child(1),
+    .bsi-invitations-list-page .fi-ta-table > thead > tr > :nth-child(1),
+    .bsi-invitations-list-page .fi-ta-table > tbody > tr > :nth-child(1),
+    .bsi-receivables-list-page .fi-ta-table > tbody > tr > :nth-child(1) {
+        position: sticky;
+        left: 0;
+        width: 3.5rem;
+        min-width: 3.5rem;
+        max-width: 3.5rem;
+    }
+
+    .bsi-receivables-list-page .fi-ta-table > thead > tr > :nth-child(2),
+    .bsi-invitations-list-page .fi-ta-table > thead > tr > :nth-child(2),
+    .bsi-invitations-list-page .fi-ta-table > tbody > tr > :nth-child(2),
+    .bsi-receivables-list-page .fi-ta-table > tbody > tr > :nth-child(2) {
+        position: sticky;
+        left: 3.5rem;
+        width: 15rem;
+        min-width: 15rem;
+        max-width: 15rem;
+    }
+
+    .bsi-receivables-list-page .fi-ta-table > thead > tr > :nth-child(3),
+    .bsi-invitations-list-page .fi-ta-table > thead > tr > :nth-child(3),
+    .bsi-invitations-list-page .fi-ta-table > tbody > tr > :nth-child(3),
+    .bsi-receivables-list-page .fi-ta-table > tbody > tr > :nth-child(3) {
+        position: sticky;
+        left: 18.5rem;
+        width: 7rem;
+        min-width: 7rem;
+        max-width: 7rem;
+        box-shadow: inset -1px 0 0 rgba(148, 163, 184, 0.18), 8px 0 12px -8px rgba(4, 14, 19, 0.4);
+    }
+
+    .bsi-invitations-list-page .fi-ta-table > thead > tr > :nth-child(-n + 3),
+    .bsi-receivables-list-page .fi-ta-table > thead > tr > :nth-child(-n + 3) {
+        z-index: 12;
+    }
+
+    .bsi-invitations-list-page .fi-ta-table > tbody > tr > :nth-child(-n + 3),
+    .bsi-receivables-list-page .fi-ta-table > tbody > tr > :nth-child(-n + 3) {
+        z-index: 6;
+    }
+
+    /* Fundos sólidos para que as métricas não vazem sob as colunas fixas */
+    .bsi-invitations-list-page .fi-ta-table > thead > tr.fi-ta-table-head-groups-row > :nth-child(-n + 3),
+    .bsi-receivables-list-page .fi-ta-table > thead > tr.fi-ta-table-head-groups-row > :nth-child(-n + 3) {
+        background: #f3f4f6;
+    }
+
+    .bsi-invitations-list-page .fi-ta-table > thead > tr:not(.fi-ta-table-head-groups-row) > :nth-child(-n + 3),
+    .bsi-receivables-list-page .fi-ta-table > thead > tr:not(.fi-ta-table-head-groups-row) > :nth-child(-n + 3) {
+        background: #f9fafb;
+    }
+
+    .bsi-invitations-list-page .fi-ta-table > tbody > tr > :nth-child(-n + 3),
+    .bsi-receivables-list-page .fi-ta-table > tbody > tr > :nth-child(-n + 3) {
+        background: #fbfaf8;
+    }
+
+    .bsi-invitations-list-page .fi-ta-table > tbody > tr:hover > :nth-child(-n + 3),
+    .bsi-receivables-list-page .fi-ta-table > tbody > tr:hover > :nth-child(-n + 3) {
+        background: #f2f5f7;
+    }
+
+    .dark .bsi-invitations-list-page .fi-ta-table > thead > tr.fi-ta-table-head-groups-row > :nth-child(-n + 3),
+    .dark .bsi-receivables-list-page .fi-ta-table > thead > tr.fi-ta-table-head-groups-row > :nth-child(-n + 3) {
+        background: #0a2028;
+    }
+
+    .dark .bsi-invitations-list-page .fi-ta-table > thead > tr:not(.fi-ta-table-head-groups-row) > :nth-child(-n + 3),
+    .dark .bsi-receivables-list-page .fi-ta-table > thead > tr:not(.fi-ta-table-head-groups-row) > :nth-child(-n + 3) {
+        background: #162b33;
+    }
+
+    .dark .bsi-invitations-list-page .fi-ta-table > tbody > tr > :nth-child(-n + 3),
+    .dark .bsi-receivables-list-page .fi-ta-table > tbody > tr > :nth-child(-n + 3) {
+        background: #0d252e;
+    }
+
+    .dark .bsi-invitations-list-page .fi-ta-table > tbody > tr:hover > :nth-child(-n + 3),
+    .dark .bsi-receivables-list-page .fi-ta-table > tbody > tr:hover > :nth-child(-n + 3) {
+        background: #0f2a34;
+    }
 }
 
 /* Documentos: refinamento de largura e alinhamento de colunas */
@@ -1538,6 +1833,246 @@ html:not(.dark) .bsi-documents-list-page tr.fi-ta-row:hover {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
     font-size: 0.75rem !important;
     letter-spacing: -0.01em !important;
+}
+
+/* ── Mensagens de Contato (Caixa de Entrada Administrativa / Triagem de Mensagens): Dark Mode Teal, Protagonismo de Remetente & Assunto, Empty State Refinado ── */
+.bsi-contact-messages-list-page .fi-ta-table th,
+.bsi-contact-messages-list-page .fi-ta-table td {
+    padding-block: 0.75rem !important;
+    padding-inline: 0.9375rem !important;
+}
+
+.bsi-contact-messages-list-page tr.fi-ta-row {
+    cursor: pointer !important;
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-contact-messages-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-contact-messages-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Protagonismo do Remetente (Nome) */
+.dark .bsi-contact-messages-list-page .fi-ta-cell-name .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* Assunto */
+.dark .bsi-contact-messages-list-page .fi-ta-cell-subject .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.88) !important;
+    font-size: 0.84375rem !important;
+}
+
+/* E-mail secundário */
+.dark .bsi-contact-messages-list-page .fi-ta-cell-email .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Data / Recebida em */
+.dark .bsi-contact-messages-list-page .fi-ta-cell-created_at .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.72) !important;
+    font-size: 0.75rem !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* ── Vagas (Gestão Institucional de Oportunidades & Recrutamento): Dark Mode Teal, Abas com Badges, Empty State com CTA Dourado ── */
+.bsi-vacancies-list-page .fi-ta-table th,
+.bsi-vacancies-list-page .fi-ta-table td {
+    padding-block: 0.75rem !important;
+    padding-inline: 0.9375rem !important;
+}
+
+.bsi-vacancies-list-page tr.fi-ta-row {
+    cursor: pointer !important;
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-vacancies-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-vacancies-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Protagonismo do Título da Vaga */
+.dark .bsi-vacancies-list-page .fi-ta-cell-title .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* Badges e metadados */
+.dark .bsi-vacancies-list-page .fi-ta-cell-department .fi-badge,
+.dark .bsi-vacancies-list-page .fi-ta-cell-type .fi-badge,
+.dark .bsi-vacancies-list-page .fi-ta-cell-positions .fi-badge,
+.dark .bsi-vacancies-list-page .fi-ta-cell-applications_count .fi-badge {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    color: rgba(251, 250, 248, 0.82) !important;
+}
+
+/* Link de candidaturas com hover */
+.dark .bsi-vacancies-list-page .fi-ta-cell-applications_count a:hover .fi-badge {
+    border-color: #b7832f !important;
+    color: #d49e47 !important;
+}
+
+/* Empty State CTA Button */
+.bsi-vacancies-list-page .fi-ta-empty-state .fi-btn-color-primary,
+.bsi-vacancies-list-page .fi-ta-empty-state .fi-btn[data-color="primary"] {
+    background: linear-gradient(180deg, #b7832f 0%, #a06e28 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(245, 208, 137, 0.3) !important;
+    border-radius: 10px !important;
+    padding: 0.5rem 1.125rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(4, 14, 19, 0.35) !important;
+}
+
+.bsi-vacancies-list-page .fi-ta-empty-state .fi-btn-color-primary:hover,
+.bsi-vacancies-list-page .fi-ta-empty-state .fi-btn[data-color="primary"]:hover {
+    background: linear-gradient(180deg, #c48f38 0%, #ad762c 100%) !important;
+    border-color: rgba(245, 208, 137, 0.5) !important;
+    box-shadow: 0 4px 14px rgba(160, 110, 40, 0.35) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ── Registros de Auditoria (Central Institucional de Rastreabilidade & Eventos): Dark Mode Teal, Alta Densidade, Protagonismo da Ação, Tooltips & Sticky Header ── */
+.bsi-activities-list-page .fi-ta-table th,
+.bsi-activities-list-page .fi-ta-table td {
+    padding-block: 0.625rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+.bsi-activities-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-activities-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-activities-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Protagonismo da Ação Executada */
+.dark .bsi-activities-list-page .fi-ta-cell-description .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* Badge de Log discreto e elegante */
+.dark .bsi-activities-list-page .fi-ta-cell-log_name .fi-badge {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    font-size: 0.75rem !important;
+    padding: 0.2rem 0.55rem !important;
+}
+
+/* Entidade Modificada */
+.dark .bsi-activities-list-page .fi-ta-cell-subject_type .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.82) !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Usuário Autor */
+.dark .bsi-activities-list-page .fi-ta-cell-causer-name .fi-ta-text-item-label,
+.dark .bsi-activities-list-page .fi-ta-cell-causer\.name .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+}
+
+/* Data e Hora com segundos e algarismos tabulares */
+.dark .bsi-activities-list-page .fi-ta-cell-created_at .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.75) !important;
+    font-size: 0.75rem !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* Ação Visualizar sutil */
+.dark .bsi-activities-list-page .fi-ta-actions .fi-icon-btn {
+    color: rgba(251, 250, 248, 0.5) !important;
+    transition: color 150ms ease, background-color 150ms ease !important;
+}
+
+.dark .bsi-activities-list-page tr.fi-ta-row:hover .fi-ta-actions .fi-icon-btn,
+.dark .bsi-activities-list-page .fi-ta-actions .fi-icon-btn:hover {
+    color: #d49e47 !important;
+    background-color: rgba(183, 131, 47, 0.15) !important;
+}
+
+/* ── Auditoria de Lembretes (Rastreabilidade Operacional de Envio): Dark Mode Teal, Alta Densidade, Destaque de Destinatário & Status ── */
+.bsi-reminder-logs-list-page .fi-ta-table th,
+.bsi-reminder-logs-list-page .fi-ta-table td {
+    padding-block: 0.625rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+.bsi-reminder-logs-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-reminder-logs-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-reminder-logs-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Data e Hora */
+.dark .bsi-reminder-logs-list-page .fi-ta-cell-sent_at .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.75) !important;
+    font-size: 0.75rem !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* Destinatário com protagonismo */
+.dark .bsi-reminder-logs-list-page .fi-ta-cell-recipient_email .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+/* Badges neutros de Tipo e Canal */
+.dark .bsi-reminder-logs-list-page .fi-ta-cell-type .fi-badge,
+.dark .bsi-reminder-logs-list-page .fi-ta-cell-channel .fi-badge {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    font-size: 0.75rem !important;
+    padding: 0.2rem 0.55rem !important;
+}
+
+/* Motivo com cor secundária */
+.dark .bsi-reminder-logs-list-page .fi-ta-cell-reason .fi-ta-text-item-label {
+    color: rgba(251, 250, 248, 0.72) !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Ação Visualizar sutil */
+.dark .bsi-reminder-logs-list-page .fi-ta-actions .fi-icon-btn {
+    color: rgba(251, 250, 248, 0.5) !important;
+    transition: color 150ms ease, background-color 150ms ease !important;
+}
+
+.dark .bsi-reminder-logs-list-page tr.fi-ta-row:hover .fi-ta-actions .fi-icon-btn,
+.dark .bsi-reminder-logs-list-page .fi-ta-actions .fi-icon-btn:hover {
+    color: #d49e47 !important;
+    background-color: rgba(183, 131, 47, 0.15) !important;
 }
 
 /* ── Cockpit Header Primary Action Button (Institutional BSI Gold) ── */
@@ -4122,35 +4657,25 @@ html:not(.dark) .fi-activity-card:hover {
     padding-inline: 1.5rem !important;
 }
 
-.bsi-expense-form-page .fi-sc-tabs .fi-ta-empty-state-icon {
-    width: 2.75rem !important;
-    height: 2.75rem !important;
-    color: #64748b !important;
-}
-
-.dark .bsi-expense-form-page .fi-sc-tabs .fi-ta-empty-state-icon {
-    color: rgba(251, 250, 248, 0.4) !important;
-}
-
-.bsi-expense-form-page .fi-sc-tabs .fi-ta-empty-state-heading {
-    margin-top: 0.75rem !important;
-    font-size: 1rem !important;
-    font-weight: 600 !important;
-}
-
-.bsi-expense-form-page .fi-sc-tabs .fi-ta-empty-state-description {
-    max-width: 46ch !important;
-    margin-top: 0.375rem !important;
-    font-size: 0.8125rem !important;
-    line-height: 1.55 !important;
-}
-
-/* ── Documentos (Edição / Ficha Documental Institucional): Dark Mode Teal, Stacked 100% Cards & Histórico de Versões ── */
+/* ── Documentos (Criar / Editar / Ficha Documental Institucional): Dark Mode Teal, 100% Useful Width, Proporções Refinadas & Área de Upload de Alta Presença ── */
 .bsi-document-form-page,
+.bsi-document-form-page main,
+.bsi-document-form-page .fi-main,
+.bsi-document-form-page .fi-main-ctn,
 .bsi-document-form-page .fi-page,
-.bsi-document-form-page .fi-page-main-ctn {
+.bsi-document-form-page .fi-page-ctn,
+.bsi-document-form-page .fi-page-main-ctn,
+.bsi-document-form-page .fi-page-content-ctn,
+.bsi-document-form-page .fi-page-content,
+.bsi-document-form-page form.fi-sc-form,
+.bsi-document-form-page form,
+.bsi-document-form-page .fi-sc,
+.bsi-document-form-page .fi-sc-component,
+.bsi-document-form-page .fi-section {
     width: 100% !important;
     max-width: 100% !important;
+    margin-inline: 0 !important;
+    box-sizing: border-box !important;
 }
 
 .bsi-document-form-page form.fi-sc-form {
@@ -4161,36 +4686,49 @@ html:not(.dark) .fi-activity-card:hover {
     max-width: 100% !important;
 }
 
+.bsi-document-form-page form.fi-sc-form > .fi-sc,
+.bsi-document-form-page form.fi-sc-form .fi-sc-section,
 .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section {
-    border-radius: 14px !important;
-    overflow: hidden !important;
     width: 100% !important;
+    max-width: 100% !important;
+}
+
+.bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    border-radius: 16px !important;
+    overflow: hidden !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section {
     background: #0d252e !important;
     border: 1px solid rgba(183, 131, 47, 0.22) !important;
-    box-shadow: 0 4px 16px rgba(4, 14, 19, 0.25) !important;
+    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.4) !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
     background: #0a2028 !important;
     border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
-    padding: 1.125rem 1.75rem !important;
+    padding: 1.25rem 2rem !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-section-header-heading {
     color: #fbfaf8 !important;
-    font-size: 1.0625rem !important;
+    font-size: 1.125rem !important;
     font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
     line-height: 1.3 !important;
 }
 
+.dark .bsi-document-form-page form.fi-sc-form .fi-section-header-icon {
+    color: #d49e47 !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+}
+
 .dark .bsi-document-form-page form.fi-sc-form .fi-section-header-description {
-    color: rgba(251, 250, 248, 0.68) !important;
+    color: rgba(251, 250, 248, 0.7) !important;
     font-size: 0.8125rem !important;
-    line-height: 1.4 !important;
-    margin-top: 0.125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.25rem !important;
 }
 
 .bsi-document-form-page form.fi-sc-form .fi-section-content {
@@ -4199,51 +4737,407 @@ html:not(.dark) .fi-activity-card:hover {
 
 @media (min-width: 1024px) {
     .bsi-document-form-page form.fi-sc-form .fi-section-content {
-        padding: 2rem !important;
+        padding: 2.25rem 2.5rem !important;
     }
 }
 
-/* Subseção interna de Visibilidade e Publicação */
+/* Grid interno com proporções harmônicas */
+.bsi-document-form-page form.fi-sc-form .fi-section-content .fi-grid,
+.bsi-document-form-page form.fi-sc-form .fi-section-content > div {
+    row-gap: 1.75rem !important;
+    column-gap: 1.5rem !important;
+}
+
+/* Subseção interna de Visibilidade e Publicação em 2 colunas amplas */
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section {
     background: #091b23 !important;
-    border: 1px solid rgba(148, 163, 184, 0.16) !important;
-    border-radius: 10px !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+    margin-top: 0.5rem !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header {
     background: #06151c !important;
-    padding: 0.75rem 1.25rem !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    padding: 1rem 1.75rem !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header-heading {
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+    line-height: 1.4 !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content {
-    padding: 1.25rem !important;
+    padding: 1.5rem 1.75rem !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content .fi-grid,
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content > div {
+    gap: 1.5rem !important;
+}
+
+/* Card individual para cada controle de toggle */
+.dark .bsi-document-form-page .fi-fo-toggle {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 1.125rem 1.25rem !important;
+    background: #0a2028 !important;
+    border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    border-radius: 10px !important;
+    transition: all 150ms ease-out !important;
+}
+
+.dark .bsi-document-form-page .fi-fo-toggle:hover {
+    border-color: rgba(183, 131, 47, 0.35) !important;
+    background: #0c252f !important;
+}
+
+.dark .bsi-document-form-page .fi-fo-toggle .fi-fo-field-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: #fbfaf8 !important;
+    margin-bottom: 0.375rem !important;
+}
+
+.dark .bsi-document-form-page .fi-fo-toggle .fi-fo-field-wrp-helper-text,
+.dark .bsi-document-form-page .fi-fo-toggle .fi-sc-text {
+    font-size: 0.8125rem !important;
+    line-height: 1.5 !important;
+    color: rgba(251, 250, 248, 0.65) !important;
+    margin-top: 0.375rem !important;
+}
+
+/* Labels e Asteriscos */
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label {
+    color: rgba(251, 250, 248, 0.9) !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+    letter-spacing: 0.01em !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-600,
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-500,
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400 {
+    color: #d49e47 !important;
+    font-weight: 700 !important;
+    margin-left: 0.25rem !important;
+}
+
+/* Inputs de Texto e Controles Básicos com altura confortável (46px) */
+.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp {
+    min-height: 2.875rem !important;
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    color: #fbfaf8 !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp:hover {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+    background: #0a202a !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp:focus-within {
+    background: #091b23 !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-input {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-input::placeholder {
+    color: rgba(251, 250, 248, 0.35) !important;
 }
 
 /* Campo Categoria e Select Controls */
 .bsi-document-form-page .choices__inner {
-    min-height: 2.625rem !important;
+    min-height: 2.875rem !important;
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 10px !important;
+    padding: 0.375rem 0.875rem !important;
+    display: flex !important;
+    align-items: center !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out !important;
 }
 
-.bsi-document-form-page .choices__list--single .choices__item {
+.bsi-document-form-page .choices:hover .choices__inner {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+}
+
+.bsi-document-form-page .choices:focus-within .choices__inner {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+}
+
+.dark .bsi-document-form-page .choices__list--single .choices__item {
     font-size: 0.875rem !important;
+    color: #fbfaf8 !important;
     white-space: nowrap !important;
 }
 
-/* Placeholders na Ficha Técnica */
-.dark .bsi-document-form-page .fi-fo-placeholder .fi-fo-placeholder-label {
-    color: rgba(251, 250, 248, 0.55) !important;
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.035em !important;
-    white-space: nowrap !important;
+.dark .bsi-document-form-page .choices__list--dropdown {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.28) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+    z-index: 100 !important;
 }
 
-.dark .bsi-document-form-page .fi-fo-placeholder .fi-fo-placeholder-content {
+.dark .bsi-document-form-page .choices__list--dropdown .choices__item {
     color: #fbfaf8 !important;
     font-size: 0.875rem !important;
+    padding: 0.625rem 1rem !important;
+}
+
+.dark .bsi-document-form-page .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: #0a2028 !important;
+    color: #d49e47 !important;
+}
+
+/* Multi-select Série Chips */
+.dark .bsi-document-form-page .choices__list--multiple .choices__item {
+    background: #0a2028 !important;
+    border: 1px solid rgba(183, 131, 47, 0.3) !important;
+    color: #fbfaf8 !important;
+    font-size: 0.8125rem !important;
     font-weight: 500 !important;
-    line-height: 1.45 !important;
+    border-radius: 6px !important;
+    padding: 0.3125rem 0.6875rem !important;
+    margin: 0.25rem !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .bsi-document-form-page .choices__list--multiple .choices__button {
+    border-left: 1px solid rgba(183, 131, 47, 0.3) !important;
+    opacity: 0.75 !important;
+    margin-left: 0.5rem !important;
+    padding-left: 0.5rem !important;
+    transition: opacity 150ms ease !important;
+}
+
+.dark .bsi-document-form-page .choices__list--multiple .choices__button:hover {
+    opacity: 1 !important;
+}
+
+/* Área de Upload com Alta Presença, Proporção Ampla e Acabamento Institucional */
+.bsi-document-form-page .fi-fo-file-upload {
+    width: 100% !important;
+    margin-block: 0.375rem !important;
+}
+
+.bsi-document-form-page .fi-fo-file-upload .filepond--root {
+    width: 100% !important;
+    background: #071a22 !important;
+    border: 1.5px dashed rgba(183, 131, 47, 0.38) !important;
+    border-radius: 14px !important;
+    min-height: 10rem !important;
+    transition: all 200ms ease-out !important;
+    overflow: hidden !important;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.bsi-document-form-page .fi-fo-file-upload .filepond--root:hover {
+    background: #09222c !important;
+    border-color: rgba(183, 131, 47, 0.75) !important;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 18px rgba(183, 131, 47, 0.12) !important;
+}
+
+.bsi-document-form-page .fi-fo-file-upload .filepond--panel-root {
+    background: transparent !important;
+    border: none !important;
+}
+
+.bsi-document-form-page .fi-fo-file-upload .filepond--drop-label {
+    min-height: 10rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 2rem 1.5rem !important;
+    cursor: pointer !important;
+}
+
+.bsi-document-form-page .fi-fo-file-upload .filepond--drop-label,
+.bsi-document-form-page .fi-fo-file-upload .filepond--drop-label label {
+    color: rgba(251, 250, 248, 0.88) !important;
+    font-size: 0.9375rem !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.01em !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 0.375rem !important;
+    line-height: 1.5 !important;
+}
+
+.bsi-document-form-page .fi-fo-file-upload .filepond--label-action {
+    color: #d49e47 !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    border-bottom: 1.5px solid rgba(212, 158, 71, 0.4) !important;
+    padding-bottom: 1px !important;
+    transition: all 150ms ease !important;
+}
+
+.bsi-document-form-page .fi-fo-file-upload .filepond--label-action:hover {
+    color: #e5b358 !important;
+    border-bottom-color: #e5b358 !important;
+}
+
+/* Estado após seleção do arquivo */
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--item-panel {
+    background: #0a2028 !important;
+    border: 1px solid rgba(183, 131, 47, 0.35) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--file-info-main {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--file-info-sub {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.75rem !important;
+}
+
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--action-remove-item {
+    background-color: rgba(239, 68, 68, 0.2) !important;
+    border: 1px solid rgba(239, 68, 68, 0.35) !important;
+    color: #fca5a5 !important;
+    cursor: pointer !important;
+    transition: all 150ms ease !important;
+}
+
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--action-remove-item:hover {
+    background-color: rgba(239, 68, 68, 0.4) !important;
+    border-color: rgba(239, 68, 68, 0.6) !important;
+}
+
+/* Helper text do upload integrado */
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-wrp-helper-text,
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field .fi-sc-text {
+    font-size: 0.8125rem !important;
+    line-height: 1.5 !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+    margin-top: 0.5rem !important;
+}
+
+/* Toggles customizados e refinados */
+.dark .bsi-document-form-page .fi-toggle {
+    background-color: #06151c !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease !important;
+}
+
+.dark .bsi-document-form-page .fi-toggle.fi-toggle-on,
+.dark .bsi-document-form-page .fi-toggle[aria-checked="true"] {
+    background-color: #b7832f !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 12px rgba(183, 131, 47, 0.35) !important;
+}
+
+.dark .bsi-document-form-page .fi-toggle > div {
+    background-color: #ffffff !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Ações Finais: alinhamento à esquerda, proporção uniforme e proximidade com o card */
+.bsi-document-form-page form.fi-sc-form .fi-sc-actions {
+    margin-top: 0 !important;
+    padding-top: 0.5rem !important;
+}
+
+.bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.875rem !important;
+    justify-content: flex-start !important;
+}
+
+.bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+    min-height: 2.75rem !important;
+    border-radius: 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    padding: 0.625rem 1.5rem !important;
+    transition: all 150ms ease-out !important;
+}
+
+/* Primária Dourada */
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary {
+    background-color: #b7832f !important;
+    color: #ffffff !important;
+    border: 1px solid #b7832f !important;
+    box-shadow: 0 2px 8px rgba(183, 131, 47, 0.25) !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover {
+    background-color: #a37227 !important;
+    border-color: #a37227 !important;
+    box-shadow: 0 4px 12px rgba(183, 131, 47, 0.35) !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus {
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.35) !important;
+}
+
+/* Secundária e Neutra */
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary) {
+    background-color: #0d252e !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+}
+
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover {
+    color: #ffffff !important;
+    background-color: #0f2d38 !important;
+    border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+/* Validações */
+.dark .bsi-document-form-page .fi-fo-field-wrp-error-message,
+.dark .bsi-document-form-page .fi-fo-file-upload-error-message {
+    color: #f87171 !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    margin-top: 0.375rem !important;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+    .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.625rem !important;
+    }
+
+    .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
 }
 
 /* Espaçamento e Separação para o Histórico de Versões (Relation Manager) */
@@ -4294,3 +5188,760 @@ html:not(.dark) .fi-activity-card:hover {
     max-width: 44ch !important;
 }
 
+
+/* ══════════════════════════════════════════════════════════════════
+   Ficha financeira — Cadastrar/Editar resumo de recebíveis
+   Superfícies azul-petróleo, matriz de fluxo (Juros × Amortização),
+   subgrupos de indicadores e faixas de aging uniformes.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Largura útil total ── */
+.bsi-receivable-form-page,
+.bsi-receivable-form-page main,
+.bsi-receivable-form-page .fi-main,
+.bsi-receivable-form-page .fi-main-ctn,
+.bsi-receivable-form-page .fi-page,
+.bsi-receivable-form-page .fi-page-ctn,
+.bsi-receivable-form-page .fi-page-main-ctn,
+.bsi-receivable-form-page .fi-page-content-ctn,
+.bsi-receivable-form-page .fi-page-content,
+.bsi-receivable-form-page form.fi-sc-form,
+.bsi-receivable-form-page form,
+.bsi-receivable-form-page .fi-sc,
+.bsi-receivable-form-page .fi-sc-component,
+.bsi-receivable-form-page .fi-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+    box-sizing: border-box !important;
+}
+
+.bsi-receivable-form-page form.fi-sc-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* ── Cabeçalho compacto, alinhado às listagens ── */
+.bsi-receivable-form-page .fi-header {
+    padding: 0.875rem 1.25rem !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, #091b23 0%, #12313b 100%) !important;
+    box-shadow: 0 8px 24px rgba(4, 14, 19, 0.3) !important;
+}
+
+.bsi-receivable-form-page .fi-header-heading {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+}
+
+.bsi-receivable-form-page .fi-header-subheading {
+    font-size: 0.8125rem !important;
+    line-height: 1.35 !important;
+    color: rgba(251, 250, 248, 0.72) !important;
+    margin-top: 0.125rem !important;
+    max-width: 90ch !important;
+}
+
+.bsi-receivable-form-page .fi-breadcrumbs {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.125rem !important;
+}
+
+/* ── Sections: superfície e respiração ── */
+.bsi-receivable-form-page .fi-section {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    background: #fbfaf8;
+    border: 1px solid #dbd5d3;
+    box-shadow: none;
+}
+
+.bsi-receivable-form-page .fi-section > .fi-section-header {
+    background: #f8f7f4;
+    border-bottom: 1px solid #dbd5d3;
+    padding: 1rem 1.5rem !important;
+}
+
+.bsi-receivable-form-page .fi-section-header-heading {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-receivable-form-page .fi-section-header-description {
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.125rem !important;
+}
+
+.bsi-receivable-form-page .fi-section > .fi-section-content-ctn > .fi-section-content,
+.bsi-receivable-form-page .fi-section .fi-section-content {
+    padding: 1.5rem 1.75rem !important;
+}
+
+/* Hierarquia: identificação compacta */
+.bsi-ficha-identificacao .fi-section-content {
+    padding-block: 1.25rem !important;
+}
+
+/* Hierarquia: fluxo do mês com protagonismo */
+.bsi-ficha-fluxo .fi-section-content {
+    padding: 1.75rem 2rem !important;
+}
+
+/* Hierarquia: faixas de aging densas, mas organizadas */
+.bsi-ficha-aging .fi-section-content {
+    padding: 1.25rem 1.5rem !important;
+}
+
+.bsi-ficha-aging .fi-sc.fi-sc-has-gap,
+.bsi-ficha-aging .fi-section-content > .fi-sc {
+    column-gap: 1.5rem !important;
+    row-gap: 1.5rem !important;
+}
+
+/* ── Labels ── */
+.bsi-receivable-form-page .fi-fo-field-label {
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    line-height: 1.45 !important;
+    letter-spacing: 0.01em !important;
+    margin-bottom: 0.375rem !important;
+}
+
+/* ── Inputs: altura confortável ── */
+.bsi-receivable-form-page .fi-input-wrp {
+    min-height: 2.875rem !important;
+    border-radius: 10px !important;
+}
+
+.bsi-receivable-form-page textarea.fi-input {
+    line-height: 1.55 !important;
+}
+
+/* ── Leitura numérica: monetário, percentual e quantidade ── */
+.bsi-receivable-form-page input.fi-input.bsi-num {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* Valor zerado fora de foco: contraste menor, sem esconder o zero */
+.bsi-receivable-form-page input.fi-input.bsi-num.bsi-zero:not(:focus) {
+    color: #9d918d !important;
+}
+
+/* ── Carteira e saldos devedores: grade 3×2 com respiro deliberado ── */
+.bsi-ficha-saldos .bsi-saldos-grid {
+    column-gap: 1.5rem !important;
+    row-gap: 1.75rem !important;
+}
+
+.bsi-ficha-saldos .bsi-saldos-grid .fi-fo-field-label {
+    margin-bottom: 0.5rem !important;
+}
+
+/* ── Fluxo do mês: composição matricial ── */
+.bsi-flow-head {
+    margin-bottom: -0.75rem !important;
+}
+
+.bsi-flow-head .fi-sc-text {
+    display: block !important;
+    padding-inline-end: 0.125rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 650 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    text-align: right !important;
+    color: #766c68 !important;
+}
+
+.bsi-ficha-fluxo .fi-fieldset {
+    padding-top: 0 !important;
+}
+
+.bsi-ficha-fluxo .fi-section-content > .fi-grid-col:has(.fi-fieldset) + .fi-grid-col:has(.fi-fieldset),
+.bsi-ficha-fluxo .fi-section-content > .fi-grid-col:has(.fi-fieldset) + .fi-grid-col:has(.bsi-flow-juros-mora) {
+    margin-top: 0.25rem !important;
+    padding-top: 1.25rem !important;
+    border-top: 1px solid rgba(118, 108, 104, 0.18) !important;
+}
+
+.bsi-ficha-fluxo .fi-fieldset > legend {
+    margin-inline-start: 0 !important;
+    margin-bottom: 0.625rem !important;
+    padding-inline: 0 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 650 !important;
+    color: #494340 !important;
+}
+
+.bsi-ficha-fluxo .fi-fieldset > .fi-sc,
+.bsi-ficha-fluxo .bsi-flow-head,
+.bsi-ficha-fluxo .bsi-flow-juros-mora {
+    column-gap: 1.25rem !important;
+}
+
+/* ── Subgrupos de Saldos e indicadores ── */
+.bsi-subhead {
+    padding-top: 1.25rem !important;
+    margin-top: 0.5rem !important;
+    border-top: 1px solid rgba(118, 108, 104, 0.18) !important;
+}
+
+.bsi-subhead,
+.bsi-subhead .fi-sc-text {
+    font-size: 0.75rem !important;
+    font-weight: 650 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: #766c68 !important;
+}
+
+.bsi-subhead-first {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    border-top: none !important;
+}
+
+/* ── Ações finais ── */
+.bsi-receivable-form-page form.fi-sc-form .fi-ac {
+    gap: 0.75rem !important;
+    margin-top: 0.25rem !important;
+    padding-top: 1.5rem !important;
+    border-top: 1px solid #dbd5d3 !important;
+}
+
+.bsi-receivable-form-page form.fi-sc-form .fi-ac .fi-btn {
+    min-height: 2.75rem !important;
+    padding-inline: 1.25rem !important;
+}
+
+/* ═══ Dark mode azul-petróleo ═══ */
+.dark .bsi-receivable-form-page {
+    background: #06151c !important;
+}
+
+.dark .bsi-receivable-form-page .fi-section {
+    background: #0d252e !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.4) !important;
+}
+
+.dark .bsi-receivable-form-page .fi-section > .fi-section-header {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+
+.dark .bsi-receivable-form-page .fi-section-header-heading {
+    color: #fbfaf8 !important;
+}
+
+.dark .bsi-receivable-form-page .fi-section-header-description {
+    color: rgba(148, 163, 184, 0.85) !important;
+}
+
+/* Fluxo do mês: único bloco com acento dourado contido */
+.dark .bsi-ficha-fluxo {
+    border-color: rgba(183, 131, 47, 0.32) !important;
+}
+
+.dark .bsi-ficha-fluxo > .fi-section-header {
+    border-bottom-color: rgba(183, 131, 47, 0.28) !important;
+}
+
+/* ── Labels, legends e textos auxiliares ── */
+.dark .bsi-receivable-form-page .fi-fo-field-label {
+    color: rgba(251, 250, 248, 0.88) !important;
+}
+
+.dark .bsi-receivable-form-page .fi-fo-field-label .text-danger-600,
+.dark .bsi-receivable-form-page .fi-fo-field-label .text-danger-500,
+.dark .bsi-receivable-form-page .fi-fo-field-label .text-danger-400 {
+    color: #d49e47 !important;
+}
+
+.dark .bsi-ficha-fluxo .fi-fieldset > legend {
+    color: rgba(251, 250, 248, 0.92) !important;
+}
+
+.dark .bsi-ficha-fluxo .fi-section-content > .fi-grid-col:has(.fi-fieldset) + .fi-grid-col:has(.fi-fieldset),
+.dark .bsi-ficha-fluxo .fi-section-content > .fi-grid-col:has(.fi-fieldset) + .fi-grid-col:has(.bsi-flow-juros-mora),
+.dark .bsi-subhead {
+    border-top-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+.dark .bsi-flow-head .fi-sc-text,
+.dark .bsi-subhead,
+.dark .bsi-subhead .fi-sc-text {
+    color: rgba(148, 163, 184, 0.85) !important;
+}
+
+/* ── Inputs: azul mais escuro, borda cinza-azulada, foco dourado ── */
+.dark .bsi-receivable-form-page .fi-input-wrp {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    color: #fbfaf8 !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out !important;
+}
+
+.dark .bsi-receivable-form-page .fi-input-wrp:hover {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+    background: #0a202a !important;
+}
+
+.dark .bsi-receivable-form-page .fi-input-wrp:focus-within {
+    background: #091b23 !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+}
+
+.dark .bsi-receivable-form-page .fi-input {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    caret-color: #d49e47 !important;
+}
+
+.dark .bsi-receivable-form-page .fi-input::placeholder {
+    color: rgba(148, 163, 184, 0.45) !important;
+}
+
+.dark .bsi-receivable-form-page .fi-input-wrp-prefix,
+.dark .bsi-receivable-form-page .fi-input-wrp-suffix,
+.dark .bsi-receivable-form-page .fi-input-wrp-label {
+    color: rgba(148, 163, 184, 0.8) !important;
+}
+
+.dark .bsi-receivable-form-page input.fi-input.bsi-num.bsi-zero:not(:focus) {
+    color: rgba(148, 163, 184, 0.55) !important;
+}
+
+/* ── Ações finais ── */
+.dark .bsi-receivable-form-page form.fi-sc-form .fi-ac {
+    border-top-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+/* ── Select (Choices.js) no padrão azul-petróleo ── */
+.bsi-receivable-form-page .choices__inner {
+    min-height: 2.875rem !important;
+    border-radius: 10px !important;
+    padding: 0.375rem 0.875rem !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.dark .bsi-receivable-form-page .choices__inner {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out !important;
+}
+
+.dark .bsi-receivable-form-page .choices:hover .choices__inner {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+}
+
+.dark .bsi-receivable-form-page .choices:focus-within .choices__inner {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+}
+
+.dark .bsi-receivable-form-page .choices__list--single .choices__item {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+}
+
+.dark .bsi-receivable-form-page .choices__list--dropdown {
+    background: #0d252e !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark .bsi-receivable-form-page .choices__list--dropdown .choices__item {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    padding: 0.625rem 1rem !important;
+}
+
+.dark .bsi-receivable-form-page .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: #0a2028 !important;
+    color: #d49e47 !important;
+}
+
+/* ── Responsividade: tablets estreitos ── */
+@media (max-width: 640px) {
+    .bsi-receivable-form-page .fi-section > .fi-section-content-ctn > .fi-section-content,
+    .bsi-receivable-form-page .fi-section .fi-section-content,
+    .bsi-ficha-fluxo .fi-section-content {
+        padding: 1.25rem 1rem !important;
+    }
+}
+
+/* ── Vagas (Cadastrar / Editar Vaga - Ficha Institucional de Abertura de Oportunidade): Dark Mode Teal, 100% Useful Width, Sequência Vertical e Rich Text Editors com Alta Presença ── */
+.bsi-vacancy-form-page,
+.bsi-vacancy-form-page main,
+.bsi-vacancy-form-page .fi-main,
+.bsi-vacancy-form-page .fi-main-ctn,
+.bsi-vacancy-form-page .fi-page,
+.bsi-vacancy-form-page .fi-page-ctn,
+.bsi-vacancy-form-page .fi-page-main-ctn,
+.bsi-vacancy-form-page .fi-page-content-ctn,
+.bsi-vacancy-form-page .fi-page-content,
+.bsi-vacancy-form-page form.fi-sc-form,
+.bsi-vacancy-form-page form,
+.bsi-vacancy-form-page .fi-sc,
+.bsi-vacancy-form-page .fi-sc-component,
+.bsi-vacancy-form-page .fi-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+    box-sizing: border-box !important;
+}
+
+.bsi-vacancy-form-page form.fi-sc-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.bsi-vacancy-form-page form.fi-sc-form > .fi-sc,
+.bsi-vacancy-form-page form.fi-sc-form .fi-sc-section,
+.bsi-vacancy-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.bsi-vacancy-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    border-radius: 16px !important;
+    overflow: hidden !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.4) !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    padding: 1.125rem 1.75rem !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-section-header-heading {
+    color: #fbfaf8 !important;
+    font-size: 1.0625rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+    line-height: 1.3 !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-section-header-description {
+    color: rgba(251, 250, 248, 0.7) !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.25rem !important;
+}
+
+.bsi-vacancy-form-page form.fi-sc-form .fi-section-content {
+    padding: 1.5rem 1.75rem !important;
+}
+
+@media (min-width: 1024px) {
+    .bsi-vacancy-form-page form.fi-sc-form .fi-section-content {
+        padding: 2rem 2.25rem !important;
+    }
+}
+
+.bsi-vacancy-form-page form.fi-sc-form .fi-section-content .fi-grid,
+.bsi-vacancy-form-page form.fi-sc-form .fi-section-content > div {
+    row-gap: 1.5rem !important;
+    column-gap: 1.25rem !important;
+}
+
+/* Card individual de Toggle no padrão Dark Mode */
+.dark .bsi-vacancy-form-page .fi-fo-toggle {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 1rem 1.25rem !important;
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    border-radius: 10px !important;
+    transition: all 150ms ease-out !important;
+    height: 100% !important;
+    justify-content: center !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-toggle:hover {
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    background: #0c252f !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-toggle .fi-fo-field-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: #fbfaf8 !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-toggle .fi-fo-field-wrp-helper-text {
+    font-size: 0.75rem !important;
+    line-height: 1.4 !important;
+    color: rgba(251, 250, 248, 0.65) !important;
+}
+
+/* Labels e Asteriscos */
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-fo-field-label {
+    color: rgba(251, 250, 248, 0.9) !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.375rem !important;
+    letter-spacing: 0.01em !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-fo-field-label .text-danger-600,
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-fo-field-label .text-danger-500,
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400 {
+    color: #d49e47 !important;
+    font-weight: 700 !important;
+    margin-left: 0.25rem !important;
+}
+
+/* Inputs de Texto, Selects e Data com altura confortável (46px) */
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-input-wrp {
+    min-height: 2.875rem !important;
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    color: #fbfaf8 !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-input-wrp:hover {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+    background: #0a202a !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-input-wrp:focus-within {
+    background: #091b23 !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-input {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-input::placeholder {
+    color: rgba(251, 250, 248, 0.35) !important;
+}
+
+.dark .bsi-vacancy-form-page form.fi-sc-form .fi-input-wrp-prefix {
+    color: #d49e47 !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    padding-inline-start: 0.875rem !important;
+}
+
+/* Choices Select no padrão dark mode azul-petróleo */
+.bsi-vacancy-form-page .choices__inner {
+    min-height: 2.875rem !important;
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 10px !important;
+    padding: 0.375rem 0.875rem !important;
+    display: flex !important;
+    align-items: center !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out !important;
+}
+
+.bsi-vacancy-form-page .choices:hover .choices__inner {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+}
+
+.bsi-vacancy-form-page .choices:focus-within .choices__inner {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+}
+
+.dark .bsi-vacancy-form-page .choices__list--single .choices__item {
+    font-size: 0.875rem !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .bsi-vacancy-form-page .choices__list--dropdown {
+    background: #0d252e !important;
+    border: 1px solid rgba(183, 131, 47, 0.28) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6) !important;
+    z-index: 100 !important;
+}
+
+.dark .bsi-vacancy-form-page .choices__list--dropdown .choices__item {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    padding: 0.625rem 1rem !important;
+}
+
+.dark .bsi-vacancy-form-page .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: #0a2028 !important;
+    color: #d49e47 !important;
+}
+
+/* ── Rich Text Editors (Descrição, Requisitos, Benefícios) ── */
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor:hover {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor-toolbar {
+    background: #06151c !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+    padding: 0.5rem 0.75rem !important;
+    gap: 0.25rem !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor-toolbar button {
+    color: rgba(251, 250, 248, 0.75) !important;
+    border-radius: 6px !important;
+    transition: all 120ms ease !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor-toolbar button:hover {
+    background: rgba(183, 131, 47, 0.2) !important;
+    color: #d49e47 !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor-toolbar button.is-active {
+    background: rgba(183, 131, 47, 0.3) !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor-main {
+    padding: 1rem 1.25rem !important;
+    color: #fbfaf8 !important;
+    font-size: 0.9375rem !important;
+    line-height: 1.6 !important;
+    min-height: 10rem !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor:has([name$="description"]) .fi-fo-rich-editor-main {
+    min-height: 12rem !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor:has([name$="requirements"]) .fi-fo-rich-editor-main {
+    min-height: 11rem !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor:has([name$="benefits"]) .fi-fo-rich-editor-main {
+    min-height: 9rem !important;
+}
+
+.dark .bsi-vacancy-form-page .fi-fo-rich-editor-main .ProseMirror:focus {
+    outline: none !important;
+}
+
+/* ── Informações Internas Textarea ── */
+.dark .bsi-vacancy-form-page textarea.fi-input {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 10px !important;
+    padding: 0.875rem 1rem !important;
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    line-height: 1.55 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out !important;
+}
+
+.dark .bsi-vacancy-form-page textarea.fi-input:hover {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+}
+
+.dark .bsi-vacancy-form-page textarea.fi-input:focus {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+}
+
+/* ── Barra de Ações Inferior (Form Actions) ── */
+.bsi-vacancy-form-page form.fi-sc-form .fi-form-actions,
+.bsi-vacancy-form-page form.fi-sc-form .fi-ac,
+.bsi-vacancy-form-page .fi-page-content > form > div:last-child {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1rem !important;
+    padding-top: 1rem !important;
+}
+
+.bsi-vacancy-form-page .fi-form-actions .fi-btn-color-primary,
+.bsi-vacancy-form-page .fi-form-actions .fi-btn[data-color="primary"],
+.bsi-vacancy-form-page .fi-ac .fi-btn-color-primary,
+.bsi-vacancy-form-page .fi-ac .fi-btn[data-color="primary"] {
+    background: linear-gradient(180deg, #b7832f 0%, #a06e28 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(245, 208, 137, 0.3) !important;
+    border-radius: 10px !important;
+    min-height: 2.75rem !important;
+    padding-inline: 1.5rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(4, 14, 19, 0.35) !important;
+    transition: all 150ms ease-out !important;
+}
+
+.bsi-vacancy-form-page .fi-form-actions .fi-btn-color-primary:hover,
+.bsi-vacancy-form-page .fi-form-actions .fi-btn[data-color="primary"]:hover,
+.bsi-vacancy-form-page .fi-ac .fi-btn-color-primary:hover,
+.bsi-vacancy-form-page .fi-ac .fi-btn[data-color="primary"]:hover {
+    background: linear-gradient(180deg, #c48f38 0%, #ad762c 100%) !important;
+    border-color: rgba(245, 208, 137, 0.5) !important;
+    box-shadow: 0 4px 14px rgba(160, 110, 40, 0.35) !important;
+    transform: translateY(-1px) !important;
+}
+
+.bsi-vacancy-form-page .fi-form-actions .fi-btn-color-gray,
+.bsi-vacancy-form-page .fi-form-actions .fi-btn[data-color="gray"],
+.bsi-vacancy-form-page .fi-ac .fi-btn-color-gray,
+.bsi-vacancy-form-page .fi-ac .fi-btn[data-color="gray"] {
+    background: #091b23 !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    border-radius: 10px !important;
+    min-height: 2.75rem !important;
+    padding-inline: 1.25rem !important;
+    box-shadow: none !important;
+    transition: all 150ms ease-out !important;
+}
+
+.bsi-vacancy-form-page .fi-form-actions .fi-btn-color-gray:hover,
+.bsi-vacancy-form-page .fi-form-actions .fi-btn[data-color="gray"]:hover,
+.bsi-vacancy-form-page .fi-ac .fi-btn-color-gray:hover,
+.bsi-vacancy-form-page .fi-ac .fi-btn[data-color="gray"]:hover {
+    background: #0d252e !important;
+    border-color: rgba(148, 163, 184, 0.45) !important;
+    color: #fbfaf8 !important;
+}

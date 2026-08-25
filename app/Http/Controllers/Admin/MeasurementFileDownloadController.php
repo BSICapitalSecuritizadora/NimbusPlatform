@@ -21,6 +21,7 @@ class MeasurementFileDownloadController extends Controller
 
         abort_unless(
             filled($measurement->storage_path)
+                && $storage->isAllowedMeasurementDisk($measurement->resolved_storage_disk)
                 && $storage->exists($measurement->storage_path, $measurement->resolved_storage_disk),
             404,
         );

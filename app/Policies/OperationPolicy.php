@@ -43,6 +43,16 @@ class OperationPolicy
             && $this->authorization->canViewOperation($user, $operation);
     }
 
+    public function manageResponsibilities(User $user, ?Operation $operation = null): bool
+    {
+        if ($this->authorization->isWorkflowAdministrator($user)) {
+            return true;
+        }
+
+        return $user->can('operations.manage-responsibilities')
+            && ($operation === null || $this->authorization->canViewOperation($user, $operation));
+    }
+
     /**
      * Determine whether the user can delete the model.
      */

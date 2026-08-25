@@ -207,6 +207,36 @@ class SubmissionResource extends Resource
                             ->columns(3),
                     ]),
 
+                Section::make('Histórico de Transições (Workflow)')
+                    ->icon('heroicon-o-arrow-path')
+                    ->description('Histórico imutável de mudanças de status (append-only).')
+                    ->schema([
+                        RepeatableEntry::make('statusHistories')
+                            ->hiddenLabel()
+                            ->schema([
+                                TextEntry::make('created_at')->label('Data/Hora')->dateTime('d/m/Y H:i:s'),
+                                TextEntry::make('old_status')
+                                    ->label('De')
+                                    ->formatStateUsing(fn (?string $state): string => $state ? Submission::statusLabelFor($state) : '— (criação)')
+                                    ->badge()
+                                    ->color(fn (?string $state): string => $state ? Submission::statusColorFor($state) : 'gray'),
+                                TextEntry::make('new_status')
+                                    ->label('Para')
+                                    ->formatStateUsing(fn (?string $state): string => Submission::statusLabelFor($state ?? ''))
+                                    ->badge()
+                                    ->color(fn (?string $state): string => Submission::statusColorFor($state)),
+                                TextEntry::make('actor_type')->label('Tipo de Ator')->placeholder('-')->formatStateUsing(fn (?string $state): string => $state ? class_basename($state) : '-'),
+                                TextEntry::make('actor_id')->label('ID do Ator')->placeholder('-'),
+                                TextEntry::make('reason')->label('Motivo/Observação')->placeholder('-')->columnSpanFull()->wrap(),
+                            ])
+                            ->columns(3)
+                            ->visible(fn (Submission $record): bool => $record->statusHistories->isNotEmpty()),
+                        TextEntry::make('status_histories_empty_state')
+                            ->hiddenLabel()
+                            ->state('Nenhuma transição registrada ainda.')
+                            ->visible(fn (Submission $record): bool => $record->statusHistories->isEmpty()),
+                    ]),
+
                 Section::make('Trilha de Auditoria')
                     ->icon('heroicon-o-clock')
                     ->schema([
@@ -287,6 +317,7 @@ class SubmissionResource extends Resource
         return parent::getEloquentQuery()->with([
             'portalUser',
             'notes',
+            'statusHistories',
         ]);
     }
 

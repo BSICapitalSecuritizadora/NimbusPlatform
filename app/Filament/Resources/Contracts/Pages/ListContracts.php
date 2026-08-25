@@ -8,6 +8,7 @@ use App\Actions\Contracts\ImportContractsFromSpreadsheet;
 use App\Enums\ReconciliationOutcome;
 use App\Exceptions\ContractImportConcurrencyException;
 use App\Filament\Resources\Contracts\ContractResource;
+use App\Filament\Resources\ImportRuns\ImportRunResource;
 use App\Models\ImportRun;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -22,6 +23,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Spatie\Activitylog\LogBatch;
 
 class ListContracts extends ListRecords
 {
@@ -85,6 +87,13 @@ class ListContracts extends ListRecords
                             ])
                             ->required()
                             ->live()
+                            /**
+                             * The upload is stored under a generated name, so
+                             * the name the operator recognises -- the one that
+                             * has to show up in the import history months later
+                             * -- is kept aside here.
+                             */
+                            ->storeFileNamesIn('original_file_name')
                             ->helperText('Envie a planilha completa da carteira. Contratos novos são cadastrados, os que mudaram são atualizados e os que já estão iguais são ignorados. Emissões, empreendimentos, unidades e clientes precisam já existir no sistema.'),
                     ]),
 
@@ -115,9 +124,60 @@ class ListContracts extends ListRecords
                  * click. Nothing was written when that happens -- the check runs
                  * inside the transaction, before the first statement -- so the
                  * run is not recorded either.
+                 *
+                 * Everything the confirmation writes happens inside one activity
+                 * log batch: each contract saved through the model stamps the
+                 * batch uuid on its own activity, which is what later answers
+                 * "what did this run change" without confusing it with a manual
+                 * edit made afterwards on the same contract.
+                 *
+                 * The batch wraps the transaction, never the other way round:
+                 * `withinBatch()` closes it in a `finally`, so a failed import
+                 * rolls back its writes -- activities included, they are written
+                 * by the same transaction -- and leaves no batch open for the
+                 * next execution to fall into.
                  */
                 try {
-                    $result = app(ImportContractsFromSpreadsheet::class)->handle($analysis);
+                    [$result, $run] = app(LogBatch::class)->withinBatch(function (?string $batchUuid) use ($analysis, $data): array {
+                        $result = app(ImportContractsFromSpreadsheet::class)->handle($analysis);
+
+                        $path = $this->resolvePath($data['file'] ?? null);
+
+                        $run = ImportRun::query()->create([
+                            'type' => ImportRun::TYPE_CONTRACTS,
+                            'file_name' => $this->resolveFileName($data, $path),
+                            'checksum' => is_file((string) $path) ? hash_file('sha256', (string) $path) : null,
+                            'activity_batch_uuid' => $batchUuid,
+                            'user_id' => auth()->id(),
+                            'records_analyzed' => $analysis->totalLines(),
+                            'records_created' => $result['created'],
+                            'records_updated' => $result['updated'],
+                            'records_unchanged' => $result['unchanged'],
+                            'records_critical' => $analysis->criticalUpdateCount(),
+                        ]);
+
+                        /**
+                         * Part of the same batch, deliberately: it is the entry
+                         * that describes the execution itself. It carries no
+                         * subject, which is how the change listing tells it
+                         * apart from the individual records.
+                         */
+                        activity('importacao-contratos')
+                            ->causedBy(auth()->user())
+                            ->withProperties([
+                                'arquivo' => $run->file_name,
+                                'importacao_id' => $run->getKey(),
+                                'contratos_cadastrados' => $result['created'],
+                                'contratos_atualizados' => $result['updated'],
+                                'contratos_sem_alteracao' => $result['unchanged'],
+                                'unidades_envolvidas' => $result['units'],
+                                'clientes_envolvidos' => $result['clients'],
+                                'empreendimentos_envolvidos' => $result['constructions'],
+                            ])
+                            ->log('Conciliação de contratos concluída.');
+
+                        return [$result, $run];
+                    });
                 } catch (ContractImportConcurrencyException $exception) {
                     Notification::make()
                         ->danger()
@@ -129,35 +189,7 @@ class ListContracts extends ListRecords
                     return;
                 }
 
-                $path = $this->resolvePath($data['file'] ?? null);
-
-                $run = ImportRun::query()->create([
-                    'type' => ImportRun::TYPE_CONTRACTS,
-                    'file_name' => basename((string) $path),
-                    'checksum' => is_file((string) $path) ? hash_file('sha256', (string) $path) : null,
-                    'user_id' => auth()->id(),
-                    'records_analyzed' => $analysis->totalLines(),
-                    'records_created' => $result['created'],
-                    'records_updated' => $result['updated'],
-                    'records_unchanged' => $result['unchanged'],
-                    'records_critical' => $analysis->criticalUpdateCount(),
-                ]);
-
-                activity('importacao-contratos')
-                    ->causedBy(auth()->user())
-                    ->withProperties([
-                        'arquivo' => basename((string) $path),
-                        'importacao_id' => $run->getKey(),
-                        'contratos_cadastrados' => $result['created'],
-                        'contratos_atualizados' => $result['updated'],
-                        'contratos_sem_alteracao' => $result['unchanged'],
-                        'unidades_envolvidas' => $result['units'],
-                        'clientes_envolvidos' => $result['clients'],
-                        'empreendimentos_envolvidos' => $result['constructions'],
-                    ])
-                    ->log('Conciliação de contratos concluída.');
-
-                Notification::make()
+                $notification = Notification::make()
                     ->success()
                     ->title('Posição processada com sucesso.')
                     ->body(sprintf(
@@ -166,8 +198,17 @@ class ListContracts extends ListRecords
                         $result['updated'],
                         $result['unchanged'],
                     ))
-                    ->persistent()
-                    ->send();
+                    ->persistent();
+
+                if (ImportRunResource::canViewAny()) {
+                    $notification->actions([
+                        Action::make('viewImportRun')
+                            ->label('Ver detalhes da importação')
+                            ->url(ImportRunResource::getUrl('view', ['record' => $run])),
+                    ]);
+                }
+
+                $notification->send();
             });
     }
 
@@ -290,6 +331,23 @@ class ListContracts extends ListRecords
      * The upload state is a temporary file while the wizard is open and a stored
      * path once the step is dehydrated.
      */
+    /**
+     * The name to record in the history: the one the operator uploaded, falling
+     * back to the stored name when the upload came in already saved.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function resolveFileName(array $data, ?string $path): string
+    {
+        $original = $data['original_file_name'] ?? null;
+
+        if (is_string($original) && ($original !== '')) {
+            return $original;
+        }
+
+        return basename((string) $path);
+    }
+
     private function resolvePath(mixed $file): ?string
     {
         if (is_array($file)) {

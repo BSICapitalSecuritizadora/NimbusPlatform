@@ -35,6 +35,19 @@ class DownloadPortalSubmissionFile
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        // Audit after all authorization and existence checks.
+        activity('nimbus')
+            ->performedOn($file)
+            ->causedBy($portalUser)
+            ->withProperties([
+                'submission_id' => $submission->id,
+                'file_id' => $file->id,
+                'action' => 'download',
+                'ip' => request()->ip(),
+                'user_agent' => mb_substr((string) request()->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.submission_file.download');
+
         return $this->documentStorageService->downloadPrivate($file->storage_path, $file->original_name);
     }
 }

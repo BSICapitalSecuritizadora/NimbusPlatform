@@ -9,6 +9,10 @@ class EditContactMessage extends EditRecord
 {
     protected static string $resource = ContactMessageResource::class;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('view', ['record' => $this->getRecord()]);

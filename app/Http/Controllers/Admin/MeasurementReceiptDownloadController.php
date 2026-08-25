@@ -22,6 +22,7 @@ class MeasurementReceiptDownloadController extends Controller
 
         abort_unless(
             filled($payment->receipt_path)
+                && $storage->isAllowedMeasurementDisk($payment->resolved_receipt_disk)
                 && $storage->exists($payment->receipt_path, $payment->resolved_receipt_disk),
             404,
         );

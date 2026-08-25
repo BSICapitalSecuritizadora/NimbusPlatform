@@ -26,6 +26,18 @@ class DownloadAdminSubmissionFile
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        activity('nimbus')
+            ->performedOn($file)
+            ->causedBy($user)
+            ->withProperties([
+                'submission_id' => $file->nimbus_submission_id,
+                'file_id' => $file->id,
+                'action' => 'download',
+                'ip' => request()->ip(),
+                'user_agent' => mb_substr((string) request()->userAgent(), 0, 500),
+            ])
+            ->log('nimbus.submission_file.download');
+
         return $this->documentStorageService->downloadPrivate($file->storage_path, $file->original_name);
     }
 

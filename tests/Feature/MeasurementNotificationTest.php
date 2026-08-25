@@ -154,7 +154,7 @@ it('notifies the finalizer when the last receipt is attached', function () {
         'created_by' => $manager->id,
     ]);
 
-    Storage::disk('local')->put('measurements/receipts/r.pdf', 'receipt');
+    Storage::disk('local')->put('measurements/receipts/r.pdf', '%PDF-1.7 receipt');
     app(MeasurementWorkflow::class)->attachReceipt($payment, $uploader, 'measurements/receipts/r.pdf', 'local');
 
     Notification::assertSentTo(
@@ -183,7 +183,7 @@ it('waits for every receipt before notifying the finalizer', function () {
     $paymentA = $measurement->payments()->create(['operation_id' => $operation->id, 'amount' => 100, 'pay_date' => now()]);
     $measurement->payments()->create(['operation_id' => $operation->id, 'amount' => 200, 'pay_date' => now()]);
 
-    Storage::disk('local')->put('measurements/receipts/a.pdf', 'receipt-a');
+    Storage::disk('local')->put('measurements/receipts/a.pdf', '%PDF-1.7 receipt-a');
     app(MeasurementWorkflow::class)->attachReceipt($paymentA, $uploader, 'measurements/receipts/a.pdf', 'local');
 
     Notification::assertNotSentTo($finalizer, MeasurementWorkflowNotification::class);

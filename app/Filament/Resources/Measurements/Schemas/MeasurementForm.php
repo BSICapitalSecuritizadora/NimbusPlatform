@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Measurements\Schemas;
 
+use App\Models\Measurement;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
@@ -46,6 +47,8 @@ class MeasurementForm
                             ->searchable(['title', 'code'])
                             ->preload()
                             ->required()
+                            ->disabled(fn (?Measurement $record): bool => $record instanceof Measurement)
+                            ->dehydrated()
                             ->live()
                             ->afterStateUpdated(function (Set $set, mixed $state, mixed $old): void {
                                 if ($state !== $old) {
@@ -117,7 +120,7 @@ class MeasurementForm
                                     ->required()
                                     ->afterStateUpdated(function (Set $set, ?string $state): void {
                                         $date = filled($state)
-                                            ? MeasurementPlanLine::whereKey($state)->value('measurement_date')
+                                            ? static::visiblePlanLinesQuery()->whereKey($state)->value('measurement_date')
                                             : null;
 
                                         if (filled($date)) {
@@ -134,7 +137,7 @@ class MeasurementForm
                                     ->disk(DocumentStorageService::privateDisk())
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/measurements/assets')
                                     ->acceptedFileTypes((array) config('uploads.measurement.allowed_mimes', ['application/pdf']))
-                                    ->maxSize(51200)
+                                    ->maxSize((int) config('uploads.measurement.max_kb', 51200))
                                     ->required()
                                     ->helperText('Formato PDF ou documento aprovado (máx. 50 MB).')
                                     ->validationMessages([
@@ -157,7 +160,7 @@ class MeasurementForm
             return [];
         }
 
-        return MeasurementPlanSet::query()
+        return static::visiblePlanSetsQuery()
             ->where('operation_id', $operationId)
             ->orderBy('id')
             ->pluck('id')
@@ -181,7 +184,7 @@ class MeasurementForm
             return [];
         }
 
-        return MeasurementPlanLine::query()
+        return static::visiblePlanLinesQuery()
             ->where('plan_set_id', $planSetId)
             ->whereNotNull('measurement_date')
             ->orderBy('sequence_number')
@@ -207,7 +210,7 @@ class MeasurementForm
             return [];
         }
 
-        return MeasurementPlanSet::query()
+        return static::visiblePlanSetsQuery()
             ->where('operation_id', $operationId)
             ->with('construction')
             ->get()
@@ -219,8 +222,28 @@ class MeasurementForm
 
     protected static function planSetLabel(mixed $planSetId): ?string
     {
-        $planSet = MeasurementPlanSet::query()->with('construction')->find($planSetId);
+        $planSet = static::visiblePlanSetsQuery()->with('construction')->find($planSetId);
 
         return $planSet?->construction?->development_name ?? $planSet?->name;
+    }
+
+    protected static function visiblePlanSetsQuery(): Builder
+    {
+        $user = auth()->user();
+
+        return MeasurementPlanSet::query()
+            ->whereHas('operation', fn (Builder $operations): Builder => $user === null
+                ? $operations->whereRaw('1 = 0')
+                : $operations->visibleTo($user));
+    }
+
+    protected static function visiblePlanLinesQuery(): Builder
+    {
+        $user = auth()->user();
+
+        return MeasurementPlanLine::query()
+            ->whereHas('operation', fn (Builder $operations): Builder => $user === null
+                ? $operations->whereRaw('1 = 0')
+                : $operations->visibleTo($user));
     }
 }

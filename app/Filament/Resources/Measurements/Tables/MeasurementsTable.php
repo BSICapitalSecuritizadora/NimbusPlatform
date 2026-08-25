@@ -25,7 +25,7 @@ class MeasurementsTable
             ->recordUrl(fn (Measurement $record): ?string => MeasurementResource::canView($record)
                 ? MeasurementResource::getUrl('view', ['record' => $record])
                 : (MeasurementResource::canEdit($record) ? MeasurementResource::getUrl('edit', ['record' => $record]) : null))
-            ->searchable(Measurement::query()->exists())
+            ->searchable(static::visibleMeasurementsExist())
             ->searchPlaceholder('Buscar por operação ou empreendimento...')
             ->searchDebounce('400ms')
             ->defaultSort('uploaded_at', 'desc')
@@ -132,7 +132,7 @@ class MeasurementsTable
             ->filtersFormWidth(Width::Small)
             ->filtersFormMaxHeight('420px')
             ->filters(
-                Measurement::query()->exists()
+                static::visibleMeasurementsExist()
                     ? [
                         SelectFilter::make('status')
                             ->label('Situação')
@@ -140,7 +140,13 @@ class MeasurementsTable
 
                         SelectFilter::make('operation_id')
                             ->label('Operação')
-                            ->relationship('operation', 'title')
+                            ->relationship(
+                                'operation',
+                                'title',
+                                modifyQueryUsing: fn (Builder $query): Builder => auth()->user() === null
+                                    ? $query->whereRaw('1 = 0')
+                                    : $query->visibleTo(auth()->user()),
+                            )
                             ->searchable()
                             ->preload(),
                     ]
@@ -192,5 +198,12 @@ class MeasurementsTable
         };
 
         return collect($livewire->tableFilters ?? [])->contains(fn (mixed $state): bool => $hasValue($state));
+    }
+
+    protected static function visibleMeasurementsExist(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && Measurement::query()->visibleTo($user)->exists();
     }
 }

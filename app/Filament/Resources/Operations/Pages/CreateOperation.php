@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Operations\Pages;
 
 use App\Filament\Resources\Operations\OperationResource;
+use App\Models\User;
+use App\Services\OperationResponsibilityService;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -34,6 +36,11 @@ class CreateOperation extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+
+        app(OperationResponsibilityService::class)->assertCanAssignOnCreation($actor, $data);
+
         $this->developments = $data['developments'] ?? [];
         unset($data['developments']);
 

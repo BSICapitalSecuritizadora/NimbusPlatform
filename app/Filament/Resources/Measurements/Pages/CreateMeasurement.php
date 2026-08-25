@@ -33,7 +33,12 @@ class CreateMeasurement extends CreateRecord
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $operation = Operation::query()->findOrFail($data['operation_id'] ?? null);
+        $actor = auth()->user();
+        abort_unless($actor !== null, 403);
+
+        $operation = Operation::query()
+            ->visibleTo($actor)
+            ->findOrFail($data['operation_id'] ?? null);
         Gate::authorize('createForOperation', [Measurement::class, $operation]);
 
         $data['uploaded_by'] = auth()->id();

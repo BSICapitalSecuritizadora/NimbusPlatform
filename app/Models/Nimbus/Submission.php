@@ -2,6 +2,7 @@
 
 namespace App\Models\Nimbus;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -141,7 +142,7 @@ class Submission extends Model
 
     public function statusUpdatedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'status_updated_by');
+        return $this->belongsTo(User::class, 'status_updated_by');
     }
 
     public function shareholders(): HasMany
@@ -192,6 +193,11 @@ class Submission extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'nimbus_submission_tags', 'nimbus_submission_id', 'nimbus_tag_id');
+    }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(SubmissionStatusHistory::class, 'nimbus_submission_id')->orderBy('created_at');
     }
 
     public function getStatusLabelAttribute(): string

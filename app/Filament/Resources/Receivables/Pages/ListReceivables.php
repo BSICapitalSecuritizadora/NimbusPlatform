@@ -25,11 +25,21 @@ class ListReceivables extends ListRecords
 
     protected static ?string $title = 'Recebíveis';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-receivables-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Acompanhe carteira, amortizações, inadimplência e movimentações dos recebíveis por competência.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             Action::make('import')
-                ->label('Importar Planilha')
+                ->label('Importar planilha')
+                ->color('gray')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->modalHeading('Importar resumo de recebíveis')
                 ->modalWidth('2xl')
@@ -84,7 +94,9 @@ class ListReceivables extends ListRecords
                         ->send();
                 }),
             CreateAction::make()
-                ->label('Cadastrar Resumo'),
+                ->label('Cadastrar resumo')
+                ->icon('heroicon-m-plus')
+                ->color('primary'),
         ];
     }
 

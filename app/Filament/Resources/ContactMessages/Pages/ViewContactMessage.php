@@ -3,16 +3,21 @@
 namespace App\Filament\Resources\ContactMessages\Pages;
 
 use App\Filament\Resources\ContactMessages\ContactMessageResource;
+use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewContactMessage extends ViewRecord
 {
     protected static string $resource = ContactMessageResource::class;
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\EditAction::make()->label('Atender'),
+            EditAction::make()->label('Atender'),
         ];
     }
 }

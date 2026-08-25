@@ -16,6 +16,8 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\FontFamily;
+use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -27,18 +29,30 @@ class VacanciesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->searchPlaceholder('Buscar por título, departamento ou localização...')
+            ->defaultSort('created_at', 'desc')
+            ->defaultPaginationPageOption(10)
+            ->paginationPageOptions([10, 25, 50, 100])
             ->recordUrl(fn (Vacancy $record): string => VacancyResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('title')
                     ->label('Título da Vaga')
                     ->searchable()
                     ->sortable()
-                    ->weight('medium'),
+                    ->weight(FontWeight::SemiBold),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state): string => VacancyStatus::labelFor($state))
                     ->color(fn ($state): string => VacancyStatus::colorFor($state))
+                    ->icon(fn ($state): string => match ($state instanceof VacancyStatus ? $state : VacancyStatus::tryFrom((string) $state)) {
+                        VacancyStatus::Draft => 'heroicon-m-pencil-square',
+                        VacancyStatus::Published => 'heroicon-m-check-circle',
+                        VacancyStatus::Paused => 'heroicon-m-pause-circle',
+                        VacancyStatus::Closed => 'heroicon-m-x-circle',
+                        VacancyStatus::Archived => 'heroicon-m-archive-box',
+                        default => 'heroicon-m-briefcase',
+                    })
                     ->sortable(),
                 TextColumn::make('department')
                     ->label('Departamento')
@@ -62,6 +76,8 @@ class VacanciesTable
                     ->toggleable(),
                 TextColumn::make('location')
                     ->label('Localização')
+                    ->icon('heroicon-m-map-pin')
+                    ->iconColor('gray')
                     ->searchable()
                     ->toggleable(),
                 TextColumn::make('positions')
@@ -87,12 +103,14 @@ class VacanciesTable
                 TextColumn::make('expires_at')
                     ->label('Expira em')
                     ->date('d/m/Y')
+                    ->fontFamily(FontFamily::Mono)
                     ->placeholder('—')
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('Cadastrada em')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime('d/m/Y · H:i')
+                    ->fontFamily(FontFamily::Mono)
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -222,12 +240,14 @@ class VacanciesTable
                     }),
             ])
             ->emptyStateHeading('Nenhuma vaga encontrada')
-            ->emptyStateDescription('Não há vagas cadastradas nesta etapa ou que correspondam aos filtros aplicados.')
+            ->emptyStateDescription('Não há vagas cadastradas nesta etapa ou que correspondam aos filtros aplicados. Cadastre uma nova oportunidade para iniciar o processo seletivo.')
             ->emptyStateIcon('heroicon-o-briefcase')
             ->emptyStateActions([
                 Action::make('create')
                     ->label('Cadastrar Vaga')
-                    ->icon('heroicon-o-plus-circle')
+                    ->icon('heroicon-m-plus')
+                    ->button()
+                    ->color('primary')
                     ->url(fn (): string => VacancyResource::getUrl('create'))
                     ->visible(fn (): bool => Gate::allows('create', Vacancy::class)),
             ])

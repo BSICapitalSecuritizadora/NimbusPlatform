@@ -127,6 +127,7 @@ enum AccessPermission: string
     case OperationsView = 'operations.view';
     case OperationsCreate = 'operations.create';
     case OperationsUpdate = 'operations.update';
+    case OperationsManageResponsibilities = 'operations.manage-responsibilities';
     case OperationsDelete = 'operations.delete';
     case MeasurementsView = 'measurements.view';
     case MeasurementsCreate = 'measurements.create';
@@ -195,6 +196,7 @@ enum AccessPermission: string
     case ReminderLogsView = 'reminder-logs.view';
     case AuditActivitiesView = 'audit.activities.view';
     case AuditDocumentDownloadsView = 'audit.document-downloads.view';
+    case AuditImportRunsView = 'audit.import-runs.view';
     case ReportsView = 'reports.view';
     case ReportsCommentsView = 'reports.comments.view';
     case ReportsCommentsCreate = 'reports.comments.create';
@@ -366,6 +368,7 @@ enum AccessPermission: string
             self::OperationsView => 'Operações de obra: visualizar',
             self::OperationsCreate => 'Operações de obra: criar',
             self::OperationsUpdate => 'Operações de obra: editar',
+            self::OperationsManageResponsibilities => 'Operações de obra: gerir responsáveis do workflow',
             self::OperationsDelete => 'Operações de obra: excluir',
             self::MeasurementsView => 'Medições: visualizar',
             self::MeasurementsCreate => 'Medições: criar',
@@ -434,6 +437,7 @@ enum AccessPermission: string
             self::ReminderLogsView => 'Auditoria de lembretes: visualizar',
             self::AuditActivitiesView => 'Auditoria logs do sistema: visualizar',
             self::AuditDocumentDownloadsView => 'Auditoria downloads do portal: visualizar',
+            self::AuditImportRunsView => 'Histórico de importações: visualizar',
             self::ReportsView => 'Relatórios: visualizar',
             self::ReportsCommentsView => 'Relatórios — comentários: visualizar',
             self::ReportsCommentsCreate => 'Relatórios — comentários: criar',
@@ -565,6 +569,7 @@ enum AccessPermission: string
                 self::OperationsView,
                 self::OperationsCreate,
                 self::OperationsUpdate,
+                self::OperationsManageResponsibilities,
                 self::OperationsDelete,
                 self::MeasurementsView,
                 self::MeasurementsCreate,

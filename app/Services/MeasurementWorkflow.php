@@ -48,6 +48,7 @@ class MeasurementWorkflow
         private MeasurementAuthorizationService $authorization,
         private MeasurementEngineeringService $engineering,
         private DocumentStorageService $storage,
+        private MeasurementFileValidationService $fileValidation,
     ) {}
 
     public function unifiedStage(Measurement $measurement): int
@@ -147,7 +148,7 @@ class MeasurementWorkflow
             $locked->reviews()->updateOrCreate(
                 ['stage' => self::STAGE_ENGINEERING],
                 [
-                    'reviewer_user_id' => $locked->operation->stageResponsibleId(self::STAGE_ENGINEERING),
+                    'reviewer_user_id' => null,
                     'status' => 'pending',
                     'notes' => null,
                     'reviewed_at' => null,
@@ -158,6 +159,7 @@ class MeasurementWorkflow
             $locked->forceFill([
                 'current_stage' => self::STAGE_ENGINEERING,
                 'status' => 'in_review',
+                'workflow_revision' => (int) $locked->workflow_revision + 1,
             ])->save();
 
             $this->audit($locked, $actor, 'measurement_submitted', [
@@ -181,16 +183,24 @@ class MeasurementWorkflow
         User $actor,
         ?string $notes = null,
         array $engineeringProgress = [],
+        ?int $expectedStage = null,
+        ?int $expectedRevision = null,
     ): void {
-        $result = DB::transaction(function () use ($measurement, $actor, $notes, $engineeringProgress): array {
+        $expectedStage ??= $this->unifiedStage($measurement);
+        $expectedRevision ??= (int) $measurement->workflow_revision;
+
+        $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress): array {
             $locked = $this->lockMeasurement($measurement);
             $stage = $this->unifiedStage($locked);
+
+            $this->assertExpectedState($locked, $expectedRevision, $expectedStage);
 
             $this->authorizeStageDecision($locked, $actor, $stage);
             $review = $this->lockPendingReview($locked, $stage);
 
             if ($stage === self::STAGE_ENGINEERING) {
-                $this->engineering->validateAndRecord($locked, $engineeringProgress);
+                $engineeringSnapshot = $this->engineering->validateAndRecord($locked, $engineeringProgress);
+                $locked->forceFill(['engineering_snapshot' => $engineeringSnapshot])->save();
             }
 
             if ($stage === self::STAGE_PAYMENT) {
@@ -200,7 +210,7 @@ class MeasurementWorkflow
             $fromStatus = $locked->status;
 
             $review->forceFill([
-                'reviewer_user_id' => $review->reviewer_user_id ?: $actor->getKey(),
+                'reviewer_user_id' => $actor->getKey(),
                 'status' => 'approved',
                 'notes' => filled($notes) ? trim((string) $notes) : null,
                 'reviewed_at' => now(),
@@ -211,7 +221,7 @@ class MeasurementWorkflow
                 $locked->reviews()->updateOrCreate(
                     ['stage' => $nextStage],
                     [
-                        'reviewer_user_id' => $locked->operation->stageResponsibleId($nextStage),
+                        'reviewer_user_id' => null,
                         'status' => 'pending',
                         'notes' => null,
                         'reviewed_at' => null,
@@ -234,7 +244,7 @@ class MeasurementWorkflow
                 $locked->reviews()->updateOrCreate(
                     ['stage' => self::STAGE_FINALIZATION],
                     [
-                        'reviewer_user_id' => $locked->operation->stageResponsibleId(self::STAGE_FINALIZATION),
+                        'reviewer_user_id' => null,
                         'status' => 'pending',
                         'notes' => null,
                         'reviewed_at' => null,
@@ -247,12 +257,15 @@ class MeasurementWorkflow
                 ])->save();
             }
 
+            $this->advanceRevision($locked);
+
             $this->audit($locked, $actor, 'measurement_stage_approved', [
                 'stage' => $stage,
                 'from_status' => $fromStatus,
                 'to_status' => $toStatus,
                 'notes' => $notes,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
+                'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
             ]);
 
             return [
@@ -280,24 +293,34 @@ class MeasurementWorkflow
         $this->notifyUsers($locked, $event, [$locked->operation->stageResponsibleId($result['next_stage'])]);
     }
 
-    public function reject(Measurement $measurement, User $actor, string $notes): void
-    {
+    public function reject(
+        Measurement $measurement,
+        User $actor,
+        string $notes,
+        ?int $expectedStage = null,
+        ?int $expectedRevision = null,
+    ): void {
+        $expectedStage ??= $this->unifiedStage($measurement);
+        $expectedRevision ??= (int) $measurement->workflow_revision;
+
         $notes = trim($notes);
 
         if ($notes === '') {
             throw ValidationException::withMessages(['notes' => 'Informe o motivo da recusa.']);
         }
 
-        $result = DB::transaction(function () use ($measurement, $actor, $notes): array {
+        $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes): array {
             $locked = $this->lockMeasurement($measurement);
             $stage = $this->unifiedStage($locked);
+
+            $this->assertExpectedState($locked, $expectedRevision, $expectedStage);
 
             $this->authorizeStageDecision($locked, $actor, $stage);
             $review = $this->lockPendingReview($locked, $stage);
             $fromStatus = $locked->status;
 
             $review->forceFill([
-                'reviewer_user_id' => $review->reviewer_user_id ?: $actor->getKey(),
+                'reviewer_user_id' => $actor->getKey(),
                 'status' => 'rejected',
                 'notes' => $notes,
                 'reviewed_at' => now(),
@@ -317,6 +340,8 @@ class MeasurementWorkflow
                 $this->reopenStage($locked, $targetStage, $notes);
             }
 
+            $this->advanceRevision($locked);
+
             $this->audit($locked, $actor, 'measurement_stage_rejected', [
                 'stage' => $stage,
                 'target_stage' => $targetStage ?: null,
@@ -324,6 +349,7 @@ class MeasurementWorkflow
                 'to_status' => $toStatus,
                 'notes' => $notes,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
+                'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
             ]);
 
             return compact('locked', 'stage', 'targetStage');
@@ -343,8 +369,17 @@ class MeasurementWorkflow
         $this->notifyUsers($locked, 'returned', [$locked->operation->stageResponsibleId($result['targetStage'])]);
     }
 
-    public function returnToStage(Measurement $measurement, User $actor, int $target, ?string $reason = null): void
-    {
+    public function returnToStage(
+        Measurement $measurement,
+        User $actor,
+        int $target,
+        ?string $reason = null,
+        ?int $expectedRevision = null,
+        ?string $expectedStatus = null,
+    ): void {
+        $expectedRevision ??= (int) $measurement->workflow_revision;
+        $expectedStatus ??= (string) $measurement->status;
+
         $reason = trim((string) $reason);
 
         if (! in_array($target, [1, 2, 3, self::STAGE_PAYMENT], true)) {
@@ -355,8 +390,10 @@ class MeasurementWorkflow
             throw ValidationException::withMessages(['reason' => 'Informe o motivo da devolução.']);
         }
 
-        $locked = DB::transaction(function () use ($measurement, $actor, $target, $reason): Measurement {
+        $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus, $target, $reason): Measurement {
             $locked = $this->lockMeasurement($measurement);
+
+            $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
 
             if (! $this->canReturnFromFinalization($locked, $actor)) {
                 $this->throwAuthorizationOrState(
@@ -372,19 +409,20 @@ class MeasurementWorkflow
             if (! $finalizationReview instanceof MeasurementReview) {
                 $finalizationReview = $locked->reviews()->create([
                     'stage' => self::STAGE_FINALIZATION,
-                    'reviewer_user_id' => $actor->getKey(),
+                    'reviewer_user_id' => null,
                     'status' => 'pending',
                 ]);
             }
 
             $finalizationReview->forceFill([
-                'reviewer_user_id' => $finalizationReview->reviewer_user_id ?: $actor->getKey(),
+                'reviewer_user_id' => $actor->getKey(),
                 'status' => 'rejected',
                 'notes' => $reason,
                 'reviewed_at' => now(),
             ])->save();
 
             $this->reopenStage($locked, $target, $reason);
+            $this->advanceRevision($locked);
 
             $this->audit($locked, $actor, 'measurement_finalization_returned', [
                 'stage' => self::STAGE_FINALIZATION,
@@ -393,6 +431,7 @@ class MeasurementWorkflow
                 'to_status' => $locked->status,
                 'notes' => $reason,
                 'responsibility' => 'payment_finalizer_user_id',
+                'expected_responsible_user_id' => $locked->operation->payment_finalizer_user_id,
             ]);
 
             return $locked;
@@ -401,17 +440,27 @@ class MeasurementWorkflow
         $this->notifyUsers($locked, 'returned', [$locked->operation->stageResponsibleId($target)]);
     }
 
-    public function pause(Measurement $measurement, User $actor, string $reason): void
-    {
+    public function pause(
+        Measurement $measurement,
+        User $actor,
+        string $reason,
+        ?int $expectedStage = null,
+        ?int $expectedRevision = null,
+    ): void {
+        $expectedStage ??= $this->unifiedStage($measurement);
+        $expectedRevision ??= (int) $measurement->workflow_revision;
+
         $reason = trim($reason);
 
         if ($reason === '') {
             throw ValidationException::withMessages(['reason' => 'Informe o motivo da pausa.']);
         }
 
-        $locked = DB::transaction(function () use ($measurement, $actor, $reason): Measurement {
+        $locked = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $reason): Measurement {
             $locked = $this->lockMeasurement($measurement);
             $stage = $this->unifiedStage($locked);
+
+            $this->assertExpectedState($locked, $expectedRevision, $expectedStage);
 
             if (! $this->canPause($locked, $actor)) {
                 $this->throwAuthorizationOrState(
@@ -441,6 +490,7 @@ class MeasurementWorkflow
             ]);
 
             $locked->forceFill(['status' => 'paused'])->save();
+            $this->advanceRevision($locked);
 
             $this->audit($locked, $actor, 'measurement_stage_paused', [
                 'stage' => $stage,
@@ -448,6 +498,7 @@ class MeasurementWorkflow
                 'to_status' => 'paused',
                 'notes' => $reason,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
+                'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
             ]);
 
             return $locked;
@@ -456,14 +507,29 @@ class MeasurementWorkflow
         $this->notifyUsers($locked, 'paused', [$locked->uploaded_by, $locked->operation->stageResponsibleId($locked->current_stage)]);
     }
 
-    public function resume(Measurement $measurement, User $actor): void
-    {
-        $locked = DB::transaction(function () use ($measurement, $actor): Measurement {
+    public function resume(
+        Measurement $measurement,
+        User $actor,
+        ?int $expectedStage = null,
+        ?int $expectedRevision = null,
+        ?int $expectedPauseId = null,
+    ): void {
+        $expectedStage ??= $this->unifiedStage($measurement);
+        $expectedRevision ??= (int) $measurement->workflow_revision;
+        $expectedPauseId ??= (int) $measurement->pauses()
+            ->whereNull('resumed_at')
+            ->latest('paused_at')
+            ->value('id');
+
+        $locked = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $expectedPauseId): Measurement {
             $locked = $this->lockMeasurement($measurement);
+            $this->assertExpectedState($locked, $expectedRevision, $expectedStage, 'paused');
             $openPause = $locked->pauses()->whereNull('resumed_at')->latest('paused_at')->lockForUpdate()->first();
             $stage = (int) ($openPause?->stage ?? $locked->current_stage);
 
-            if (! $openPause instanceof MeasurementPause || $locked->status !== 'paused') {
+            if (! $openPause instanceof MeasurementPause
+                || $locked->status !== 'paused'
+                || (int) $openPause->getKey() !== $expectedPauseId) {
                 throw $this->invalidState($locked, 'A medição não possui uma pausa aberta.');
             }
 
@@ -497,12 +563,14 @@ class MeasurementWorkflow
                 'status' => $restoreStatus,
                 'current_stage' => $stage,
             ])->save();
+            $this->advanceRevision($locked);
 
             $this->audit($locked, $actor, 'measurement_stage_resumed', [
                 'stage' => $stage,
                 'from_status' => 'paused',
                 'to_status' => $restoreStatus,
                 'responsibility' => $this->authorization->responsibilityForStage($stage),
+                'expected_responsible_user_id' => $locked->operation->stageResponsibleId($stage),
             ]);
 
             return $locked;
@@ -514,19 +582,31 @@ class MeasurementWorkflow
     /**
      * @param  array{pay_date: mixed, amount: mixed, method?: ?string, notes?: ?string, plan_set_id?: ?int}  $data
      */
-    public function registerPayment(Measurement $measurement, User $actor, array $data): MeasurementPayment
-    {
-        return $this->registerPayments($measurement, $actor, [$data])->firstOrFail();
+    public function registerPayment(
+        Measurement $measurement,
+        User $actor,
+        array $data,
+        ?int $expectedRevision = null,
+    ): MeasurementPayment {
+        return $this->registerPayments($measurement, $actor, [$data], $expectedRevision)->firstOrFail();
     }
 
     /**
      * @param  array<int, array{pay_date: mixed, amount: mixed, method?: ?string, notes?: ?string, plan_set_id?: ?int}>  $rows
      * @return Collection<int, MeasurementPayment>
      */
-    public function registerPayments(Measurement $measurement, User $actor, array $rows): Collection
-    {
-        $created = DB::transaction(function () use ($measurement, $actor, $rows): Collection {
+    public function registerPayments(
+        Measurement $measurement,
+        User $actor,
+        array $rows,
+        ?int $expectedRevision = null,
+    ): Collection {
+        $expectedRevision ??= (int) $measurement->workflow_revision;
+
+        $created = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $rows): Collection {
             $locked = $this->lockMeasurement($measurement);
+
+            $this->assertExpectedState($locked, $expectedRevision, self::STAGE_PAYMENT, 'awaiting_payment');
 
             if (! $this->canRegisterPayment($locked, $actor)) {
                 $this->throwAuthorizationOrState(
@@ -582,7 +662,10 @@ class MeasurementWorkflow
                 'amount' => $payments->sum(fn (MeasurementPayment $payment): float => (float) $payment->amount),
                 'payment_ids' => $payments->pluck('id')->all(),
                 'responsibility' => 'payment_manager_user_id',
+                'expected_responsible_user_id' => $locked->operation->payment_manager_user_id,
             ]);
+
+            $this->advanceRevision($locked);
 
             return $payments;
         });
@@ -598,12 +681,14 @@ class MeasurementWorkflow
         User $actor,
         string $path,
         ?string $disk = null,
+        ?int $expectedRevision = null,
+        ?string $expectedStatus = null,
     ): void {
         $disk ??= DocumentStorageService::privateDisk();
+        $expectedRevision ??= (int) $payment->measurement->workflow_revision;
+        $expectedStatus ??= (string) $payment->measurement->status;
 
-        if (blank($path) || ! $this->storage->exists($path, $disk)) {
-            throw ValidationException::withMessages(['receipt' => 'O comprovante enviado não foi encontrado no armazenamento.']);
-        }
+        $this->fileValidation->validateReceipt($path, $disk);
 
         $checksum = $this->storage->checksum($path, $disk);
 
@@ -611,8 +696,9 @@ class MeasurementWorkflow
             throw ValidationException::withMessages(['receipt' => 'Não foi possível calcular o SHA-256 do comprovante.']);
         }
 
-        $result = DB::transaction(function () use ($payment, $actor, $path, $disk, $checksum): array {
+        $result = DB::transaction(function () use ($payment, $actor, $expectedRevision, $expectedStatus, $path, $disk, $checksum): array {
             $locked = $this->lockMeasurement($payment->measurement);
+            $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
             $lockedPayment = $locked->payments()->whereKey($payment->getKey())->lockForUpdate()->first();
 
             if (! $lockedPayment instanceof MeasurementPayment) {
@@ -660,7 +746,10 @@ class MeasurementWorkflow
                 'from_status' => $becameReady ? 'awaiting_receipt' : $locked->status,
                 'to_status' => $locked->status,
                 'responsibility' => 'payment_receipt_uploader_user_id',
+                'expected_responsible_user_id' => $locked->operation->payment_receipt_uploader_user_id,
             ]);
+
+            $this->advanceRevision($locked);
 
             return compact('locked', 'becameReady', 'oldPath', 'oldDisk');
         });
@@ -680,10 +769,18 @@ class MeasurementWorkflow
         $this->notifyUsers($result['locked'], 'receipt_attached', [$result['locked']->operation->payment_manager_user_id]);
     }
 
-    public function deleteReceipt(MeasurementPayment $payment, User $actor): void
-    {
-        $result = DB::transaction(function () use ($payment, $actor): array {
+    public function deleteReceipt(
+        MeasurementPayment $payment,
+        User $actor,
+        ?int $expectedRevision = null,
+        ?string $expectedStatus = null,
+    ): void {
+        $expectedRevision ??= (int) $payment->measurement->workflow_revision;
+        $expectedStatus ??= (string) $payment->measurement->status;
+
+        $result = DB::transaction(function () use ($payment, $actor, $expectedRevision, $expectedStatus): array {
             $locked = $this->lockMeasurement($payment->measurement);
+            $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
             $lockedPayment = $locked->payments()->whereKey($payment->getKey())->lockForUpdate()->first();
 
             if (! $lockedPayment instanceof MeasurementPayment || ! $lockedPayment->hasReceipt()) {
@@ -724,7 +821,10 @@ class MeasurementWorkflow
                 'from_status' => $fromStatus,
                 'to_status' => $locked->status,
                 'responsibility' => 'payment_receipt_uploader_user_id',
+                'expected_responsible_user_id' => $locked->operation->payment_receipt_uploader_user_id,
             ]);
+
+            $this->advanceRevision($locked);
 
             return compact('locked', 'path', 'disk');
         });
@@ -735,10 +835,19 @@ class MeasurementWorkflow
         );
     }
 
-    public function finalize(Measurement $measurement, User $actor): void
-    {
-        $locked = DB::transaction(function () use ($measurement, $actor): Measurement {
+    public function finalize(
+        Measurement $measurement,
+        User $actor,
+        ?int $expectedRevision = null,
+        ?string $expectedStatus = null,
+    ): void {
+        $expectedRevision ??= (int) $measurement->workflow_revision;
+        $expectedStatus ??= (string) $measurement->status;
+
+        $locked = DB::transaction(function () use ($measurement, $actor, $expectedRevision, $expectedStatus): Measurement {
             $locked = $this->lockMeasurement($measurement);
+
+            $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
 
             if (! $this->canFinalize($locked, $actor)) {
                 $this->throwAuthorizationOrState(
@@ -764,6 +873,7 @@ class MeasurementWorkflow
                 throw $this->invalidState($locked, 'Todos os pagamentos precisam possuir comprovante antes da Finalização.');
             }
 
+            $this->ensureEngineeringCoverageIsIntact($locked);
             $this->ensureStoredFilesAreIntact($locked);
 
             $fromStatus = $locked->status;
@@ -782,12 +892,14 @@ class MeasurementWorkflow
                 'analyzed_by' => $actor->getKey(),
                 'analyzed_at' => now(),
             ])->save();
+            $this->advanceRevision($locked);
 
             $this->audit($locked, $actor, 'measurement_finalized', [
                 'stage' => self::STAGE_FINALIZATION,
                 'from_status' => $fromStatus,
                 'to_status' => 'finalized',
                 'responsibility' => 'payment_finalizer_user_id',
+                'expected_responsible_user_id' => $locked->operation->payment_finalizer_user_id,
             ]);
 
             return $locked;
@@ -853,7 +965,7 @@ class MeasurementWorkflow
         $measurement->reviews()->updateOrCreate(
             ['stage' => $target],
             [
-                'reviewer_user_id' => $measurement->operation->stageResponsibleId($target),
+                'reviewer_user_id' => null,
                 'status' => 'pending',
                 'notes' => $note,
                 'reviewed_at' => null,
@@ -864,10 +976,16 @@ class MeasurementWorkflow
             ],
         );
 
-        $measurement->forceFill([
+        $state = [
             'current_stage' => $target,
             'status' => $target === self::STAGE_PAYMENT ? 'awaiting_payment' : 'in_review',
-        ])->save();
+        ];
+
+        if ($target === self::STAGE_ENGINEERING) {
+            $state['engineering_snapshot'] = null;
+        }
+
+        $measurement->forceFill($state)->save();
     }
 
     private function ensureValidPaymentExists(Measurement $measurement): void
@@ -906,19 +1024,35 @@ class MeasurementWorkflow
             ]);
         }
 
-        $measurement->assets()->get()->each(fn ($asset) => $files->push([
-            'path' => $asset->storage_path,
-            'disk' => $asset->resolved_storage_disk,
-            'hash' => $asset->sha256,
-            'label' => "arquivo de medição #{$asset->getKey()}",
-        ]));
+        $measurement->assets()->get()->each(function ($asset) use ($files, $measurement): void {
+            try {
+                $this->fileValidation->validateAsset($asset->storage_path, $asset->resolved_storage_disk);
+            } catch (ValidationException) {
+                throw $this->invalidState($measurement, "O arquivo de medição #{$asset->getKey()} é inválido ou está ausente.");
+            }
 
-        $measurement->payments()->get()->each(fn (MeasurementPayment $payment) => $files->push([
-            'path' => $payment->receipt_path,
-            'disk' => $payment->resolved_receipt_disk,
-            'hash' => $payment->receipt_sha256,
-            'label' => "comprovante #{$payment->getKey()}",
-        ]));
+            $files->push([
+                'path' => $asset->storage_path,
+                'disk' => $asset->resolved_storage_disk,
+                'hash' => $asset->sha256,
+                'label' => "arquivo de medição #{$asset->getKey()}",
+            ]);
+        });
+
+        $measurement->payments()->get()->each(function (MeasurementPayment $payment) use ($files, $measurement): void {
+            try {
+                $this->fileValidation->validateReceipt($payment->receipt_path, $payment->resolved_receipt_disk);
+            } catch (ValidationException) {
+                throw $this->invalidState($measurement, "O comprovante #{$payment->getKey()} é inválido ou está ausente.");
+            }
+
+            $files->push([
+                'path' => $payment->receipt_path,
+                'disk' => $payment->resolved_receipt_disk,
+                'hash' => $payment->receipt_sha256,
+                'label' => "comprovante #{$payment->getKey()}",
+            ]);
+        });
 
         foreach ($files as $file) {
             $hash = $file['hash'];
@@ -936,6 +1070,77 @@ class MeasurementWorkflow
                 );
             }
         }
+    }
+
+    private function ensureEngineeringCoverageIsIntact(Measurement $measurement): void
+    {
+        $requirements = collect($measurement->engineering_snapshot['plan_sets'] ?? []);
+
+        if ($requirements->isEmpty()
+            || $requirements->pluck('plan_set_id')->filter()->unique()->count() !== $requirements->count()) {
+            throw $this->invalidState($measurement, 'O snapshot obrigatório da Engenharia está ausente ou possui cardinalidade inválida.');
+        }
+
+        $expectedPlanSetIds = $requirements->pluck('plan_set_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $planSets = $measurement->operation->planSets()
+            ->whereKey($expectedPlanSetIds)
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+        $assets = $measurement->assets()
+            ->with('planLine')
+            ->lockForUpdate()
+            ->get();
+
+        if ($planSets->count() !== count($expectedPlanSetIds)
+            || $assets->count() !== count($expectedPlanSetIds)
+            || $assets->pluck('plan_set_id')->filter()->unique()->count() !== count($expectedPlanSetIds)) {
+            throw $this->invalidState($measurement, 'A cobertura de arquivos não corresponde aos empreendimentos aprovados pela Engenharia.');
+        }
+
+        $assetsByPlanSet = $assets->keyBy('plan_set_id');
+
+        foreach ($requirements as $requirement) {
+            $planSetId = (int) ($requirement['plan_set_id'] ?? 0);
+            $asset = $assetsByPlanSet->get($planSetId);
+
+            if (! $planSets->has($planSetId)
+                || $asset === null
+                || (int) $asset->measurement_id !== (int) $measurement->getKey()
+                || (int) $asset->getKey() !== (int) ($requirement['asset_id'] ?? 0)
+                || (int) $asset->plan_line_id !== (int) ($requirement['plan_line_id'] ?? 0)
+                || (int) $asset->planLine?->plan_set_id !== $planSetId
+                || (int) $asset->planLine?->operation_id !== (int) $measurement->operation_id
+                || $asset->storage_path !== ($requirement['storage_path'] ?? null)
+                || $asset->resolved_storage_disk !== ($requirement['storage_disk'] ?? null)
+                || ! is_string($asset->sha256)
+                || ! hash_equals((string) ($requirement['sha256'] ?? ''), $asset->sha256)) {
+                throw $this->invalidState($measurement, "A evidência de Engenharia do empreendimento #{$planSetId} foi removida ou substituída.");
+            }
+        }
+    }
+
+    private function assertExpectedState(
+        Measurement $measurement,
+        int $expectedRevision,
+        ?int $expectedStage = null,
+        ?string $expectedStatus = null,
+    ): void {
+        if ((int) $measurement->workflow_revision !== $expectedRevision
+            || ($expectedStage !== null && $this->unifiedStage($measurement) !== $expectedStage)
+            || ($expectedStatus !== null && $measurement->status !== $expectedStatus)) {
+            throw $this->invalidState(
+                $measurement,
+                'A etapa desta medição foi alterada por outra ação. Atualize a página.',
+            );
+        }
+    }
+
+    private function advanceRevision(Measurement $measurement): void
+    {
+        $measurement->forceFill([
+            'workflow_revision' => (int) $measurement->workflow_revision + 1,
+        ])->save();
     }
 
     private function throwAuthorizationOrState(
@@ -972,6 +1177,8 @@ class MeasurementWorkflow
                 'operation_id' => $measurement->operation_id,
                 'measurement_id' => $measurement->getKey(),
                 'delegated' => false,
+                'actual_actor_user_id' => $actor->getKey(),
+                'workflow_revision' => (int) $measurement->workflow_revision,
             ], $properties))
             ->log($event);
     }

@@ -6,6 +6,7 @@ use App\DTOs\Nimbus\StoreSubmissionFileDTO;
 use App\DTOs\Nimbus\SubmissionReplyDTO;
 use App\Models\Nimbus\PortalUser;
 use App\Models\Nimbus\Submission;
+use App\Services\Nimbus\SubmissionWorkflowService;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -13,6 +14,7 @@ class ReplyToSubmission
 {
     public function __construct(
         protected StoreSubmissionFile $storeSubmissionFile,
+        protected SubmissionWorkflowService $workflowService,
     ) {}
 
     public function handle(
@@ -39,6 +41,15 @@ class ReplyToSubmission
                     notes: 'Arquivo enviado pelo solicitante em resposta a uma solicitação de correção.',
                     directory: "submissions/{$submission->id}/corrections",
                 ));
+
+                activity('nimbus')
+                    ->performedOn($submission)
+                    ->causedBy($portalUser)
+                    ->withProperties([
+                        'file_type' => 'OTHER',
+                        'origin' => 'USER',
+                    ])
+                    ->log('nimbus.submission.correction_attachment');
             }
 
             if ($dto->comment !== null) {
@@ -47,13 +58,23 @@ class ReplyToSubmission
                     'visibility' => 'ADMIN_ONLY',
                     'message' => $dto->comment,
                 ]);
+
+                activity('nimbus')
+                    ->performedOn($submission)
+                    ->causedBy($portalUser)
+                    ->withProperties([
+                        'visibility' => 'ADMIN_ONLY',
+                    ])
+                    ->log('nimbus.submission.correction_response');
             }
 
-            $submission->update([
-                'status' => Submission::STATUS_UNDER_REVIEW,
-                'status_updated_at' => now(),
-                'status_updated_by' => null,
-            ]);
+            // Centralized workflow transition ensures history + audit.
+            $this->workflowService->transition(
+                $submission->refresh(),
+                Submission::STATUS_UNDER_REVIEW,
+                $portalUser,
+                $dto->comment,
+            );
         });
 
         return $submission->refresh();

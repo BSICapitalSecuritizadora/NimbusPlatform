@@ -37,6 +37,7 @@ final class BusinessCalendarCatalogService
                     'source' => $calendar->source,
                     'status' => $calendar->status,
                     'import_mode' => $calendar->import_mode,
+                    'materialization_policy' => $calendar->materialization_policy,
                     'coverage_basis' => $calendar->coverageBasis(),
                     'official' => $calendar->is_official,
                     'financial_use_allowed' => $calendar->financial_use_allowed,

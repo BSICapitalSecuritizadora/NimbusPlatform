@@ -13,6 +13,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 
 class PlanLinesRelationManager extends RelationManager
 {
@@ -82,6 +83,7 @@ class PlanLinesRelationManager extends RelationManager
                 Action::make('editPlanned')
                     ->label('Editar previsto')
                     ->icon('heroicon-o-calculator')
+                    ->authorize(fn (): bool => Gate::allows('update', $this->getOwnerRecord()))
                     ->fillForm(fn (MeasurementPlanLine $record): array => [
                         'planned_monthly_percent' => $record->planned_monthly_percent,
                         'planned_cumulative_percent' => $record->planned_cumulative_percent,

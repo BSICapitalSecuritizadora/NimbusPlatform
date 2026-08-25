@@ -142,6 +142,9 @@ return [
     ],
 
     'measurement' => [
+        'max_kb' => (int) env('UPLOAD_MEASUREMENT_MAX_KB', 51200),
+        'max_bytes' => (int) env('UPLOAD_MEASUREMENT_MAX_KB', 51200) * 1024,
+        'allowed_extensions' => ['pdf', 'jpg', 'jpeg', 'png'],
         'allowed_mimes' => [
             'application/pdf',
             'image/jpeg',
@@ -150,6 +153,9 @@ return [
     ],
 
     'measurement_receipt' => [
+        'max_kb' => (int) env('UPLOAD_MEASUREMENT_RECEIPT_MAX_KB', 10240),
+        'max_bytes' => (int) env('UPLOAD_MEASUREMENT_RECEIPT_MAX_KB', 10240) * 1024,
+        'allowed_extensions' => ['pdf', 'jpg', 'jpeg', 'png'],
         'allowed_mimes' => [
             'application/pdf',
             'image/jpeg',

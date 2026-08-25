@@ -319,6 +319,9 @@ it('persists one asset per development with its file and starts the review', fun
         'uploaded_by' => $admin->id,
         'uploaded_at' => now(),
     ]);
+    Storage::fake('local');
+    Storage::disk('local')->put('measurements/a.pdf', "%PDF-1.4\n%%EOF");
+    Storage::disk('local')->put('measurements/b.pdf', "%PDF-1.4\n%%EOF");
     $measurement->assets()->createMany([
         ['plan_set_id' => $planA->id, 'storage_path' => 'measurements/a.pdf', 'filename' => 'a.pdf'],
         ['plan_set_id' => $planB->id, 'storage_path' => 'measurements/b.pdf', 'filename' => 'b.pdf'],
@@ -359,7 +362,7 @@ it('exposes the review actions to the stage reviewer and approves a stage', func
         'current_stage' => 1,
     ]);
     Storage::fake('local');
-    Storage::disk('local')->put('measurements/test.pdf', 'measurement');
+    Storage::disk('local')->put('measurements/test.pdf', '%PDF-1.7 measurement');
     $measurement->assets()->create([
         'plan_set_id' => $planSet->id,
         'plan_line_id' => $line->id,

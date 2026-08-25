@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\OperationResponsibilityService;
 use Database\Factories\OperationFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +28,19 @@ class Operation extends Model
         'canceled' => 'Cancelada',
     ];
 
+    /**
+     * @var list<string>
+     */
+    public const RESPONSIBILITY_FIELDS = [
+        'assigned_user_id',
+        'responsible_user_id',
+        'stage2_reviewer_user_id',
+        'stage3_reviewer_user_id',
+        'payment_manager_user_id',
+        'payment_receipt_uploader_user_id',
+        'payment_finalizer_user_id',
+    ];
+
     protected $fillable = [
         'emission_id',
         'construction_id',
@@ -49,6 +63,18 @@ class Operation extends Model
 
     protected static function booted(): void
     {
+        static::updating(function (self $operation): void {
+            $actor = auth()->user();
+
+            if ($actor instanceof User && $operation->isDirty(self::RESPONSIBILITY_FIELDS)) {
+                app(OperationResponsibilityService::class)->assertCanChange(
+                    $actor,
+                    $operation,
+                    $operation->only(self::RESPONSIBILITY_FIELDS),
+                );
+            }
+        });
+
         static::created(function (self $operation): void {
             if (filled($operation->code)) {
                 return;

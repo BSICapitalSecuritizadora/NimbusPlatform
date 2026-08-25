@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Operations\Pages;
 
 use App\Filament\Resources\Operations\OperationResource;
+use App\Models\User;
+use App\Services\OperationResponsibilityService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
@@ -46,6 +48,11 @@ class EditOperation extends EditRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+
+        app(OperationResponsibilityService::class)->assertCanChange($actor, $this->record, $data);
+
         $this->developments = $data['developments'] ?? [];
         unset($data['developments']);
 

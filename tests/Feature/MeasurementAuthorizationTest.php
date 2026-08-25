@@ -131,7 +131,7 @@ it('keeps payment manager, receipt uploader and finalizer as separate responsibi
         'amount' => 1000,
         'created_by' => $manager->id,
     ]);
-    Storage::disk('local')->put('nimbus_docs/measurements/receipts/separate.pdf', 'separate-roles');
+    Storage::disk('local')->put('nimbus_docs/measurements/receipts/separate.pdf', '%PDF-1.7 separate-roles');
 
     foreach ([$manager, $finalizer, $outsider] as $unauthorized) {
         expect(fn () => app(MeasurementWorkflow::class)->attachReceipt(

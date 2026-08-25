@@ -56,7 +56,7 @@ it('builds a chronological timeline of the measurement events', function () {
         'uploaded_at' => now()->subDay(),
         'uploaded_by' => $stage1->id,
     ]);
-    Storage::disk('local')->put('measurements/timeline.pdf', 'timeline');
+    Storage::disk('local')->put('measurements/timeline.pdf', '%PDF-1.7 timeline');
     $measurement->assets()->create([
         'plan_set_id' => $planSet->id,
         'plan_line_id' => $line->id,

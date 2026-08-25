@@ -61,7 +61,7 @@ function makeWorkflowMeasurement(array $operationOverrides = []): Measurement
         'current_stage' => 1,
     ]);
     $path = "nimbus_docs/measurements/workflow/{$measurement->id}.pdf";
-    Storage::disk('local')->put($path, 'workflow-test');
+    Storage::disk('local')->put($path, '%PDF-1.7 workflow-test');
     $measurement->assets()->create([
         'plan_set_id' => $planSet->id,
         'plan_line_id' => $line->id,
@@ -81,7 +81,7 @@ it('opens the first stage review when review starts', function () {
 
     expect($measurement->status)->toBe('in_review')
         ->and($measurement->current_stage)->toBe(1)
-        ->and($measurement->reviewForStage(1)?->reviewer_user_id)->toBe($reviewer->id)
+        ->and($measurement->reviewForStage(1)?->reviewer_user_id)->toBeNull()
         ->and($measurement->reviewForStage(1)?->status)->toBe('pending');
 });
 
@@ -256,7 +256,7 @@ it('propagates the realized progress reported during validation to the schedule 
         'reference_month' => '2026-07-01',
         'storage_path' => null,
     ]);
-    Storage::disk('local')->put('measurements/progress.pdf', 'progress');
+    Storage::disk('local')->put('measurements/progress.pdf', '%PDF-1.7 progress');
     $measurement->assets()->create([
         'plan_set_id' => $planSet->id,
         'plan_line_id' => $line3->id,
@@ -301,7 +301,7 @@ it('targets the schedule line chosen on each development asset', function () {
         'reference_month' => '2026-05-01',
         'storage_path' => null,
     ]);
-    Storage::disk('local')->put('measurements/a.pdf', 'chosen-line');
+    Storage::disk('local')->put('measurements/a.pdf', '%PDF-1.7 chosen-line');
     $measurement->assets()->create([
         'plan_set_id' => $planSet->id,
         'plan_line_id' => $chosenLine->id,
@@ -395,7 +395,7 @@ it('registers a payment then attaches a receipt and finalizes', function () {
         ->and($payment->created_by)->toBe($actor->id);
 
     $workflow->approve($measurement->fresh(), $actor);
-    Storage::disk('local')->put('receipts/test.pdf', 'receipt');
+    Storage::disk('local')->put('receipts/test.pdf', '%PDF-1.7 receipt');
     $workflow->attachReceipt($payment, $actor, 'receipts/test.pdf', 'local');
     expect($payment->fresh()->hasReceipt())->toBeTrue();
 

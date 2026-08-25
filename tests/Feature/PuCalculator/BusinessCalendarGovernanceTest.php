@@ -1,6 +1,5 @@
 <?php
 
-use App\Domain\PuCalculator\Services\BusinessCalendarCoverageService;
 use App\Domain\PuCalculator\Services\BusinessCalendarOverrideService;
 use App\Domain\PuCalculator\Services\BusinessCalendarRevisionService;
 use App\Domain\PuCalculator\Services\BusinessCalendarYearService;
@@ -10,6 +9,7 @@ use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\BusinessHolidays\Pages\CompareBusinessCalendars;
 use App\Filament\Resources\BusinessHolidays\Pages\ListBusinessHolidays;
 use App\Models\BusinessCalendarDate;
+use App\Models\BusinessCalendarImportRun;
 use App\Models\BusinessCalendarOverride;
 use App\Models\BusinessCalendarYear;
 use App\Models\BusinessHoliday;
@@ -23,24 +23,25 @@ use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
-it('catalogues the two new calendars while preserving B3 as a non redirected legacy alias', function () {
+it('catalogues the governed calendars while preserving B3 as a non redirected legacy alias', function () {
     $definitions = BusinessCalendarRegistry::definitions();
 
     expect(array_keys($definitions))->toBe([
         BusinessCalendarRegistry::LEGACY_B3,
         BusinessCalendarRegistry::BR_BANKING_ANBIMA,
         BusinessCalendarRegistry::B3_LISTED_TRADING,
+        BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
     ])->and($definitions[BusinessCalendarRegistry::LEGACY_B3]['legacy'])->toBeTrue()
         ->and($definitions[BusinessCalendarRegistry::LEGACY_B3]['legacy_alias_of'])->toBe(BusinessCalendarRegistry::BR_BANKING_ANBIMA)
         ->and($definitions[BusinessCalendarRegistry::BR_BANKING_ANBIMA]['label'])->toBe('ANBIMA — calendário bancário')
         ->and($definitions[BusinessCalendarRegistry::B3_LISTED_TRADING]['label'])->toBe('B3 — sessões de negociação')
+        ->and($definitions[BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS]['label'])->toBe('Feriados Nacionais — Brasil')
         ->and(BusinessCalendarRegistry::acceptsAnbima(BusinessCalendarRegistry::BR_BANKING_ANBIMA))->toBeTrue()
         ->and(BusinessCalendarRegistry::acceptsAnbima(BusinessCalendarRegistry::B3_LISTED_TRADING))->toBeFalse();
 });
 
 it('distinguishes missing partial provisional confirmed and stale annual coverage', function () {
     $yearService = app(BusinessCalendarYearService::class);
-    $coverageService = app(BusinessCalendarCoverageService::class);
     $calendarCode = BusinessCalendarRegistry::BR_BANKING_ANBIMA;
 
     expect($yearService->coverage($calendarCode, 2026)['state'])->toBe('missing');
@@ -55,11 +56,29 @@ it('distinguishes missing partial provisional confirmed and stale annual coverag
 
     expect($yearService->coverage($calendarCode, 2026)['state'])->toBe('partial');
 
-    $coverageService->backfill(
-        $calendarCode,
-        CarbonImmutable::parse('2026-01-01'),
-        CarbonImmutable::parse('2026-12-31'),
-    );
+    $calendarYear = BusinessCalendarYear::query()->create([
+        'calendar_code' => $calendarCode,
+        'year' => 2026,
+        'status' => BusinessCalendarYear::STATUS_PROVISIONAL,
+        'source' => 'anbima',
+        'source_is_official' => true,
+        'source_document' => 'https://www.anbima.com.br/feriados/fer_nacionais/2026.asp',
+        'source_revision' => '2026-v1',
+        'revision' => 1,
+        'checksum' => str_repeat('a', 64),
+    ]);
+    BusinessCalendarImportRun::factory()->create([
+        'business_calendar_year_id' => $calendarYear->id,
+        'calendar_code' => $calendarCode,
+        'year' => 2026,
+        'source_is_official' => true,
+        'checksum' => str_repeat('a', 64),
+        'result' => BusinessCalendarImportRun::RESULT_SUCCEEDED,
+        'dry_run' => false,
+        'removals_detected' => 0,
+        'conflicts_detected' => 0,
+        'errors' => null,
+    ]);
 
     expect($yearService->coverage($calendarCode, 2026)['state'])->toBe('provisional');
 
@@ -88,40 +107,14 @@ it('distinguishes missing partial provisional confirmed and stale annual coverag
     expect($yearService->coverage($calendarCode, 2026)['state'])->toBe('stale');
 });
 
-it('explains inferred dates and manual overrides without table correlation', function () {
+it('refuses to infer missing B3 listed sessions from weekdays', function () {
     $calendar = app(BusinessDayCalendarService::class);
     $calendarCode = BusinessCalendarRegistry::B3_LISTED_TRADING;
-    $user = User::factory()->create();
 
-    $weekend = $calendar->explain(CarbonImmutable::parse('2026-01-03'), $calendarCode);
-    $weekday = $calendar->explain(CarbonImmutable::parse('2026-01-05'), $calendarCode);
-
-    expect($weekend->isBusinessDay)->toBeFalse()
-        ->and($weekend->source)->toBe('inferred')
-        ->and($weekend->inferredWeekend)->toBeTrue()
-        ->and($weekend->coverageState)->toBe('missing')
-        ->and($weekday->isBusinessDay)->toBeTrue()
-        ->and($weekday->inferredWeekend)->toBeFalse();
-
-    app(BusinessCalendarOverrideService::class)->apply(
-        $calendarCode,
-        CarbonImmutable::parse('2026-01-05'),
-        false,
-        'Sessão excepcionalmente fechada conforme evidência interna.',
-        $user->id,
-    );
-
-    $decision = $calendar->explain(CarbonImmutable::parse('2026-01-05'), $calendarCode);
-
-    expect($decision->isBusinessDay)->toBeFalse()
-        ->and($decision->source)->toBe('manual_override')
-        ->and($decision->reason)->toContain('Sessão excepcionalmente fechada')
-        ->and($decision->override)->toMatchArray([
-            'previous_is_business_day' => true,
-            'new_is_business_day' => false,
-            'user_id' => $user->id,
-            'user_name' => $user->name,
-        ]);
+    expect(fn () => $calendar->explain(CarbonImmutable::parse('2026-01-03'), $calendarCode))
+        ->toThrow(RuntimeException::class, 'exige decisão explícita')
+        ->and(fn () => $calendar->isBusinessDay(CarbonImmutable::parse('2026-01-05'), $calendarCode))
+        ->toThrow(RuntimeException::class, 'exige decisão explícita');
 });
 
 it('reloads a cached year when its shared revision changes', function () {
@@ -218,6 +211,7 @@ it('shows calendar governance actions only to authorized users', function () {
         ->assertOk()
         ->assertSee('BR_BANKING_ANBIMA — Calendário bancário ANBIMA')
         ->assertSee('B3_LISTED_TRADING — Sessões de negociação B3')
+        ->assertSee('BR_NATIONAL_HOLIDAYS — Feriados Nacionais — Brasil')
         ->assertActionVisible('compareCalendars')
         ->assertActionVisible('importAnbimaUrl')
         ->assertActionVisible('manualCalendarOverride')
