@@ -6,6 +6,7 @@ use App\Enums\ClientPersonType;
 use App\Filament\Resources\Clients\ClientResource;
 use App\Filament\Resources\Clients\Pages\ListClients;
 use App\Models\Client;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -18,6 +19,7 @@ use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -38,8 +40,16 @@ class ClientsTable
                 TextColumn::make('person_type')
                     ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn (ClientPersonType $state): string => $state->label())
-                    ->color(fn (ClientPersonType $state): string => $state->color())
+                    ->formatStateUsing(fn (ClientPersonType $state): string => match ($state) {
+                        ClientPersonType::Individual => 'PF',
+                        ClientPersonType::Company => 'PJ',
+                    })
+                    ->tooltip(fn (ClientPersonType $state): string => $state->label())
+                    ->color(fn (ClientPersonType $state): string => match ($state) {
+                        ClientPersonType::Individual => 'gray',
+                        ClientPersonType::Company => 'warning',
+                    })
+                    ->alignCenter()
                     ->sortable(),
 
                 // Only worth a column where trashed clients can show up: on the
@@ -63,7 +73,8 @@ class ClientsTable
                         ->orWhere('name', 'like', "%{$search}%")
                         ->orWhere('trade_name', 'like', "%{$search}%"))
                     ->sortable()
-                    ->weight('bold'),
+                    ->weight('bold')
+                    ->wrap(false),
 
                 TextColumn::make('document')
                     ->label('CPF/CNPJ')
@@ -75,11 +86,13 @@ class ClientsTable
                         fn (Builder $query): Builder => $query->orWhere('document', 'like', '%'.Str::digitsOnly($search).'%'),
                     ))
                     ->copyable()
-                    ->sortable(),
+                    ->sortable()
+                    ->placeholder('—'),
 
                 TextColumn::make('email')
                     ->label('E-mail')
                     ->searchable()
+                    ->copyable()
                     ->placeholder('—')
                     ->toggleable(),
 
@@ -90,6 +103,7 @@ class ClientsTable
                         Str::digitsOnly($search) !== '',
                         fn (Builder $query): Builder => $query->orWhere('phone', 'like', '%'.Str::digitsOnly($search).'%'),
                     ))
+                    ->copyable()
                     ->placeholder('—')
                     ->toggleable(),
 
@@ -99,11 +113,34 @@ class ClientsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filtersFormWidth(Width::Small)
+            ->filtersFormWidth(Width::Medium)
+            ->filtersFormMaxHeight('420px')
             ->filters([
                 SelectFilter::make('person_type')
-                    ->label('Tipo de Pessoa')
+                    ->label('Tipo de pessoa')
                     ->options(ClientPersonType::options()),
+
+                TernaryFilter::make('has_email')
+                    ->label('E-mail')
+                    ->placeholder('Todos')
+                    ->trueLabel('Com e-mail')
+                    ->falseLabel('Sem e-mail')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereNotNull('email')->where('email', '!=', ''),
+                        false: fn (Builder $query): Builder => $query->where(fn (Builder $query): Builder => $query->whereNull('email')->orWhere('email', '')),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
+
+                TernaryFilter::make('has_phone')
+                    ->label('Telefone')
+                    ->placeholder('Todos')
+                    ->trueLabel('Com telefone')
+                    ->falseLabel('Sem telefone')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereNotNull('phone')->where('phone', '!=', ''),
+                        false: fn (Builder $query): Builder => $query->where(fn (Builder $query): Builder => $query->whereNull('phone')->orWhere('phone', '')),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
             ])
             ->actions([
                 ActionGroup::make([
@@ -166,7 +203,55 @@ class ClientsTable
             ])
             ->emptyStateHeading(fn (mixed $livewire): string => self::isOnlyTrashed($livewire)
                 ? 'Nenhum cliente excluído'
-                : 'Nenhum cliente cadastrado');
+                : (self::hasActiveFiltersOrSearch($livewire)
+                    ? 'Nenhum cliente encontrado'
+                    : 'Nenhum cliente cadastrado'))
+            ->emptyStateDescription(fn (mixed $livewire): ?string => self::isOnlyTrashed($livewire)
+                ? 'Não há clientes excluídos no momento.'
+                : (self::hasActiveFiltersOrSearch($livewire)
+                    ? 'Tente buscar por outro termo ou remova os filtros aplicados.'
+                    : 'Cadastre manualmente ou importe uma planilha para iniciar sua base de clientes.'))
+            ->emptyStateIcon('heroicon-o-users')
+            ->emptyStateActions([
+                Action::make('createClient')
+                    ->label('Novo cliente')
+                    ->icon('heroicon-o-plus')
+                    ->color('primary')
+                    ->url(fn (): string => ClientResource::getUrl('create'))
+                    ->visible(fn (mixed $livewire): bool => ! self::isOnlyTrashed($livewire)
+                        && ! self::hasActiveFiltersOrSearch($livewire)
+                        && ClientResource::canCreate()),
+
+                Action::make('clearTableFilters')
+                    ->label('Limpar filtros')
+                    ->icon('heroicon-o-x-mark')
+                    ->color('gray')
+                    ->action(function ($livewire): void {
+                        $livewire->tableSearch = '';
+                        $livewire->resetTableFiltersForm();
+                    })
+                    ->visible(fn ($livewire): bool => self::hasActiveFiltersOrSearch($livewire)),
+            ]);
+    }
+
+    /**
+     * Verifica se há busca ou filtros ativos na tabela para alternar o estado vazio.
+     */
+    protected static function hasActiveFiltersOrSearch(mixed $livewire): bool
+    {
+        if (filled($livewire->tableSearch ?? null)) {
+            return true;
+        }
+
+        $hasValue = function (mixed $value) use (&$hasValue): bool {
+            if (is_array($value)) {
+                return collect($value)->contains(fn (mixed $item): bool => $hasValue($item));
+            }
+
+            return filled($value);
+        };
+
+        return collect($livewire->tableFilters ?? [])->contains(fn (mixed $state): bool => $hasValue($state));
     }
 
     /**

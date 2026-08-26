@@ -13,6 +13,10 @@ class CreateContract extends CreateRecord
 
     protected static ?string $breadcrumb = 'Cadastrar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Contrato cadastrado com sucesso.';

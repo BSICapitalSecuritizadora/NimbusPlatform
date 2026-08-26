@@ -15,6 +15,10 @@ class EditContract extends EditRecord
 
     protected static ?string $breadcrumb = 'Editar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

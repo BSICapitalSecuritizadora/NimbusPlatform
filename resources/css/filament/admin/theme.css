@@ -1058,6 +1058,8 @@
 .dark .bsi-document-downloads-list-page .fi-ta-content-ctn,
 .dark .bsi-import-runs-list-page .fi-ta-content-ctn,
 .dark .bsi-construction-units-list-page .fi-ta-content-ctn,
+.dark .bsi-clients-list-page .fi-ta-content-ctn,
+.dark .bsi-contracts-list-page .fi-ta-content-ctn,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
@@ -1088,6 +1090,8 @@
 .dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
     background: transparent;
 }
@@ -1118,6 +1122,8 @@
 .dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
@@ -1149,7 +1155,9 @@
 .dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
-.dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover {
+.dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.55);
 }
 
@@ -1473,6 +1481,8 @@ select.fi-select-input option[selected] {
 .bsi-role-edit-page .fi-page,
 .bsi-role-create-page .fi-page,
 .bsi-construction-units-list-page .fi-page,
+.bsi-clients-list-page .fi-page,
+.bsi-contracts-list-page .fi-page,
 .bsi-receivables-list-page .fi-page {
     gap: 0.75rem !important;
 }
@@ -1510,6 +1520,8 @@ select.fi-select-input option[selected] {
 .bsi-role-edit-page .fi-header,
 .bsi-role-create-page .fi-header,
 .bsi-construction-units-list-page .fi-header,
+.bsi-clients-list-page .fi-header,
+.bsi-contracts-list-page .fi-header,
 .bsi-receivables-list-page .fi-header {
     padding: 0.875rem 1.25rem !important;
     border-radius: 12px !important;
@@ -1550,6 +1562,8 @@ select.fi-select-input option[selected] {
 .bsi-role-edit-page .fi-header-heading,
 .bsi-role-create-page .fi-header-heading,
 .bsi-construction-units-list-page .fi-header-heading,
+.bsi-clients-list-page .fi-header-heading,
+.bsi-contracts-list-page .fi-header-heading,
 .bsi-receivables-list-page .fi-header-heading {
     font-size: 1.25rem !important;
     font-weight: 700 !important;
@@ -1589,6 +1603,8 @@ select.fi-select-input option[selected] {
 .bsi-role-edit-page .fi-header-subheading,
 .bsi-role-create-page .fi-header-subheading,
 .bsi-construction-units-list-page .fi-header-subheading,
+.bsi-clients-list-page .fi-header-subheading,
+.bsi-contracts-list-page .fi-header-subheading,
 .bsi-receivables-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
@@ -1630,6 +1646,8 @@ select.fi-select-input option[selected] {
 .bsi-role-edit-page .fi-breadcrumbs,
 .bsi-role-create-page .fi-breadcrumbs,
 .bsi-construction-units-list-page .fi-breadcrumbs,
+.bsi-clients-list-page .fi-breadcrumbs,
+.bsi-contracts-list-page .fi-breadcrumbs,
 .bsi-receivables-list-page .fi-breadcrumbs {
     font-size: 0.75rem !important;
     margin-bottom: 0.125rem !important;
@@ -1663,6 +1681,8 @@ select.fi-select-input option[selected] {
 .bsi-users-list-page .fi-ta-table,
 .bsi-roles-list-page .fi-ta-table,
 .bsi-construction-units-list-page .fi-ta-table,
+.bsi-clients-list-page .fi-ta-table,
+.bsi-contracts-list-page .fi-ta-table,
 .bsi-receivables-list-page .fi-ta-table {
     width: 100% !important;
     min-width: 100% !important;
@@ -1697,6 +1717,8 @@ select.fi-select-input option[selected] {
 .bsi-users-list-page .fi-ta-cell .fi-badge,
 .bsi-roles-list-page .fi-ta-cell .fi-badge,
 .bsi-construction-units-list-page .fi-ta-cell .fi-badge,
+.bsi-clients-list-page .fi-ta-cell .fi-badge,
+.bsi-contracts-list-page .fi-ta-cell .fi-badge,
 .bsi-receivables-list-page .fi-ta-cell .fi-badge {
     white-space: normal !important;
     text-align: center !important;
@@ -1718,6 +1740,7 @@ select.fi-select-input option[selected] {
 .bsi-import-runs-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-users-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-roles-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-clients-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-documents-list-page .fi-tabs-item .fi-badge[data-color="gray"] {
     opacity: 0.45 !important;
 }
@@ -1751,6 +1774,8 @@ select.fi-select-input option[selected] {
     .bsi-users-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-roles-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-clients-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-contracts-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-receivables-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 22rem;
     }
@@ -1785,6 +1810,8 @@ select.fi-select-input option[selected] {
 .bsi-users-list-page .fi-ta-empty-state,
 .bsi-roles-list-page .fi-ta-empty-state,
 .bsi-construction-units-list-page .fi-ta-empty-state,
+.bsi-clients-list-page .fi-ta-empty-state,
+.bsi-contracts-list-page .fi-ta-empty-state,
 .bsi-receivables-list-page .fi-ta-empty-state {
     padding-block: 2.5rem !important;
     padding-inline: 1.5rem !important;
@@ -1818,6 +1845,8 @@ select.fi-select-input option[selected] {
 .bsi-users-list-page .fi-ta-empty-state-icon-bg,
 .bsi-roles-list-page .fi-ta-empty-state-icon-bg,
 .bsi-construction-units-list-page .fi-ta-empty-state-icon-bg,
+.bsi-clients-list-page .fi-ta-empty-state-icon-bg,
+.bsi-contracts-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: #64748b !important;
     margin-bottom: 0.75rem !important;
@@ -1851,6 +1880,8 @@ select.fi-select-input option[selected] {
 .dark .bsi-users-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-roles-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-construction-units-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-clients-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-contracts-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: rgba(251, 250, 248, 0.4) !important;
 }
@@ -1883,12 +1914,14 @@ select.fi-select-input option[selected] {
 .bsi-users-list-page .fi-ta-empty-state-heading,
 .bsi-roles-list-page .fi-ta-empty-state-heading,
 .bsi-construction-units-list-page .fi-ta-empty-state-heading,
+.bsi-clients-list-page .fi-ta-empty-state-heading,
+.bsi-contracts-list-page .fi-ta-empty-state-heading,
 .bsi-receivables-list-page .fi-ta-empty-state-heading {
     font-size: 1rem !important;
     font-weight: 600 !important;
 }
 
-/* Despesas, Documentos, Auditoria, Unidades e Recebíveis: algarismos tabulares para comparar valores e identificadores com facilidade */
+/* Despesas, Documentos, Auditoria, Unidades, Clientes, Contratos e Recebíveis: algarismos tabulares para comparar valores e identificadores com facilidade */
 .bsi-expenses-list-page .fi-ta-table td,
 .bsi-documents-list-page .fi-ta-table td,
 .bsi-contact-messages-list-page .fi-ta-table td,
@@ -1901,6 +1934,8 @@ select.fi-select-input option[selected] {
 .bsi-users-list-page .fi-ta-table td,
 .bsi-roles-list-page .fi-ta-table td,
 .bsi-construction-units-list-page .fi-ta-table td,
+.bsi-clients-list-page .fi-ta-table td,
+.bsi-contracts-list-page .fi-ta-table td,
 .bsi-receivables-list-page .fi-ta-table td {
     font-variant-numeric: tabular-nums;
 }
@@ -1933,6 +1968,8 @@ select.fi-select-input option[selected] {
 .bsi-users-list-page .fi-ta-empty-state-description,
 .bsi-roles-list-page .fi-ta-empty-state-description,
 .bsi-construction-units-list-page .fi-ta-empty-state-description,
+.bsi-clients-list-page .fi-ta-empty-state-description,
+.bsi-contracts-list-page .fi-ta-empty-state-description,
 .bsi-receivables-list-page .fi-ta-empty-state-description {
     max-width: 46ch !important;
     font-size: 0.8125rem !important;
@@ -2256,6 +2293,395 @@ html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
     }
 
     .bsi-construction-units-list-page .fi-ta-actions-cell {
+        width: 4.5rem;
+    }
+}
+
+/* ── Clientes: Central Cadastral de Identificação e Contato ── */
+
+/* Ações secundárias do cabeçalho (Baixar modelo e Importar clientes) em outline refinado */
+.bsi-clients-list-page .fi-header .fi-btn-color-gray,
+.bsi-clients-list-page .fi-header .fi-btn[data-color="gray"] {
+    background: transparent !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.4) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.bsi-clients-list-page .fi-header .fi-btn-color-gray:hover,
+.bsi-clients-list-page .fi-header .fi-btn[data-color="gray"]:hover {
+    background: rgba(148, 163, 184, 0.14) !important;
+    border-color: rgba(148, 163, 184, 0.6) !important;
+    color: #fbfaf8 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.bsi-clients-list-page .fi-header .fi-btn-color-gray:active,
+.bsi-clients-list-page .fi-header .fi-btn[data-color="gray"]:active {
+    background: rgba(148, 163, 184, 0.2) !important;
+}
+
+.bsi-clients-list-page .fi-header .fi-btn-color-gray .fi-icon,
+.bsi-clients-list-page .fi-header .fi-btn-color-gray svg,
+.bsi-clients-list-page .fi-header .fi-btn[data-color="gray"] .fi-icon,
+.bsi-clients-list-page .fi-header .fi-btn[data-color="gray"] svg {
+    color: rgba(251, 250, 248, 0.7) !important;
+    filter: none !important;
+}
+
+/* Densidade e padding vertical das linhas da tabela */
+.bsi-clients-list-page .fi-ta-table th,
+.bsi-clients-list-page .fi-ta-table td {
+    padding-block: 0.65rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+/* Cabeçalho da tabela fixo durante a rolagem */
+.bsi-clients-list-page thead.fi-ta-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Transição e efeito hover suave na linha: variação leve do azul-petróleo */
+.bsi-clients-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-clients-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.55) !important;
+}
+
+html:not(.dark) .bsi-clients-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.85) !important;
+}
+
+/* Linha selecionada: destaque discreto em azul-petróleo sem cobrir badges */
+.dark .bsi-clients-list-page tr.fi-ta-row.fi-selected,
+.dark .bsi-clients-list-page tr.fi-ta-row[aria-selected="true"] {
+    background-color: rgba(18, 49, 59, 0.7) !important;
+}
+
+/* Protagonismo de Nome / Razão Social: alto contraste, semibold e brilho sutil no hover */
+.bsi-clients-list-page .fi-ta-cell-name .fi-ta-text-item-label {
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-clients-list-page .fi-ta-cell-name .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.55) !important;
+    margin-top: 0.15rem !important;
+}
+
+.dark .bsi-clients-list-page tr.fi-ta-row:hover .fi-ta-cell-name .fi-ta-text-item-label {
+    color: #ffffff !important;
+    text-shadow: 0 0 12px rgba(183, 131, 47, 0.3);
+}
+
+.dark .bsi-clients-list-page tr.fi-ta-row:hover .fi-ta-cell-name .fi-ta-text-item-description {
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+/* Badge compacto e discreto para Tipo (PF / PJ) */
+.bsi-clients-list-page .fi-ta-cell-person_type .fi-badge {
+    font-weight: 700 !important;
+    font-size: 0.6875rem !important;
+    padding-inline: 0.5rem !important;
+    padding-block: 0.125rem !important;
+    border-radius: 4px !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    background: rgba(148, 163, 184, 0.1) !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    letter-spacing: 0.05em !important;
+}
+
+.dark .bsi-clients-list-page tr.fi-ta-row:hover .fi-ta-cell-person_type .fi-badge {
+    border-color: rgba(183, 131, 47, 0.35) !important;
+    background: rgba(18, 49, 59, 0.8) !important;
+    color: #ffffff !important;
+}
+
+/* Documento (CPF / CNPJ): legibilidade perfeita com tabular-nums e sem quebra */
+.bsi-clients-list-page .fi-ta-cell-document .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    font-size: 0.8125rem !important;
+    color: rgba(251, 250, 248, 0.9) !important;
+}
+
+/* Contatos: E-mail e Telefone secundários e legíveis */
+.bsi-clients-list-page .fi-ta-cell-email .fi-ta-text-item-label {
+    font-size: 0.8125rem !important;
+    color: rgba(251, 250, 248, 0.75) !important;
+    white-space: nowrap !important;
+}
+
+.bsi-clients-list-page .fi-ta-cell-phone .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    font-size: 0.8125rem !important;
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+/* Tratamento de campos não informados (—) em baixo contraste */
+.dark .bsi-clients-list-page .fi-ta-placeholder,
+.dark .bsi-clients-list-page td:has(.fi-ta-placeholder) {
+    color: rgba(251, 250, 248, 0.28) !important;
+}
+
+/* Ações da linha: discretas em repouso, nítidas no hover */
+.bsi-clients-list-page .fi-ta-actions {
+    opacity: 0.8;
+    transition: opacity 150ms ease-out;
+}
+
+.bsi-clients-list-page tr.fi-ta-row:hover .fi-ta-actions {
+    opacity: 1;
+}
+
+/* Proporções equilibradas das colunas no desktop */
+@media (min-width: 768px) {
+    .bsi-clients-list-page .fi-ta-cell-person_type {
+        width: 4.5rem;
+    }
+
+    .bsi-clients-list-page .fi-ta-cell-document {
+        width: 11.5rem;
+    }
+
+    .bsi-clients-list-page .fi-ta-cell-phone {
+        width: 10.5rem;
+    }
+
+    .bsi-clients-list-page .fi-ta-actions-cell {
+        width: 4.5rem;
+    }
+}
+
+/* ── Contratos: Central Operacional de Contratos ── */
+
+/* Ações secundárias do cabeçalho (Baixar modelo e Importar contratos) em outline refinado */
+.bsi-contracts-list-page .fi-header .fi-btn-color-gray,
+.bsi-contracts-list-page .fi-header .fi-btn[data-color="gray"] {
+    background: transparent !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.4) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.bsi-contracts-list-page .fi-header .fi-btn-color-gray:hover,
+.bsi-contracts-list-page .fi-header .fi-btn[data-color="gray"]:hover {
+    background: rgba(148, 163, 184, 0.14) !important;
+    border-color: rgba(148, 163, 184, 0.6) !important;
+    color: #fbfaf8 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.bsi-contracts-list-page .fi-header .fi-btn-color-gray:active,
+.bsi-contracts-list-page .fi-header .fi-btn[data-color="gray"]:active {
+    background: rgba(148, 163, 184, 0.2) !important;
+}
+
+.bsi-contracts-list-page .fi-header .fi-btn-color-gray .fi-icon,
+.bsi-contracts-list-page .fi-header .fi-btn-color-gray svg,
+.bsi-contracts-list-page .fi-header .fi-btn[data-color="gray"] .fi-icon,
+.bsi-contracts-list-page .fi-header .fi-btn[data-color="gray"] svg {
+    color: rgba(251, 250, 248, 0.7) !important;
+    filter: none !important;
+}
+
+/* Densidade e padding vertical das linhas da tabela */
+.bsi-contracts-list-page .fi-ta-table th,
+.bsi-contracts-list-page .fi-ta-table td {
+    padding-block: 0.65rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+/* Cabeçalho da tabela fixo durante a rolagem */
+.bsi-contracts-list-page thead.fi-ta-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Transição e efeito hover suave na linha: variação leve do azul-petróleo */
+.bsi-contracts-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-contracts-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.55) !important;
+}
+
+html:not(.dark) .bsi-contracts-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.85) !important;
+}
+
+/* Linha selecionada: destaque discreto em azul-petróleo sem cobrir badges */
+.dark .bsi-contracts-list-page tr.fi-ta-row.fi-selected,
+.dark .bsi-contracts-list-page tr.fi-ta-row[aria-selected="true"] {
+    background-color: rgba(18, 49, 59, 0.7) !important;
+}
+
+/* Operação (Emissão + Empreendimento): hierarquia e contraste refinado */
+.bsi-contracts-list-page .fi-ta-cell-construction-emission-name .fi-ta-text-item-label {
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    color: rgba(251, 250, 248, 0.92) !important;
+}
+
+.bsi-contracts-list-page .fi-ta-cell-construction-emission-name .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.55) !important;
+    margin-top: 0.125rem !important;
+}
+
+.dark .bsi-contracts-list-page tr.fi-ta-row:hover .fi-ta-cell-construction-emission-name .fi-ta-text-item-label {
+    color: #ffffff !important;
+}
+
+.dark .bsi-contracts-list-page tr.fi-ta-row:hover .fi-ta-cell-construction-emission-name .fi-ta-text-item-description {
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+/* Protagonismo da Unidade: bold, tabular-nums e destaque */
+.bsi-contracts-list-page .fi-ta-cell-construction-unit-unit .fi-ta-text-item-label {
+    font-size: 0.9375rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-contracts-list-page .fi-ta-cell-construction-unit-unit .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+    margin-top: 0.125rem !important;
+}
+
+.dark .bsi-contracts-list-page tr.fi-ta-row:hover .fi-ta-cell-construction-unit-unit .fi-ta-text-item-label {
+    color: #ffffff !important;
+    text-shadow: 0 0 12px rgba(183, 131, 47, 0.35);
+}
+
+/* Protagonismo do Cliente: semibold, alto contraste e documento secundário */
+.bsi-contracts-list-page .fi-ta-cell-client-name .fi-ta-text-item-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-contracts-list-page .fi-ta-cell-client-name .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.55) !important;
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    margin-top: 0.125rem !important;
+}
+
+.dark .bsi-contracts-list-page tr.fi-ta-row:hover .fi-ta-cell-client-name .fi-ta-text-item-label {
+    color: #ffffff !important;
+    text-shadow: 0 0 10px rgba(183, 131, 47, 0.3);
+}
+
+.dark .bsi-contracts-list-page tr.fi-ta-row:hover .fi-ta-cell-client-name .fi-ta-text-item-description {
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+/* Código do Contrato: tabular-nums, nowrap e nitidez */
+.bsi-contracts-list-page .fi-ta-cell-code .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    color: rgba(251, 250, 248, 0.9) !important;
+}
+
+.dark .bsi-contracts-list-page tr.fi-ta-row:hover .fi-ta-cell-code .fi-ta-text-item-label {
+    color: #ffffff !important;
+}
+
+/* Data da Venda: tabular-nums e compacta */
+.bsi-contracts-list-page .fi-ta-cell-sale-date .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    font-size: 0.8125rem !important;
+    color: rgba(251, 250, 248, 0.8) !important;
+}
+
+/* Valor da Venda: tabular-nums, alinhamento à direita e destaque */
+.bsi-contracts-list-page .fi-ta-cell-sale-value .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: rgba(251, 250, 248, 0.95) !important;
+}
+
+.dark .bsi-contracts-list-page tr.fi-ta-row:hover .fi-ta-cell-sale-value .fi-ta-text-item-label {
+    color: #ffffff !important;
+}
+
+/* Badges de Status refinados */
+.bsi-contracts-list-page .fi-ta-cell-status .fi-badge {
+    font-weight: 600 !important;
+    font-size: 0.75rem !important;
+    padding-inline: 0.625rem !important;
+    padding-block: 0.15rem !important;
+    border-radius: 5px !important;
+}
+
+/* Placeholder '—' em baixo contraste */
+.dark .bsi-contracts-list-page .fi-ta-placeholder,
+.dark .bsi-contracts-list-page td:has(.fi-ta-placeholder) {
+    color: rgba(251, 250, 248, 0.28) !important;
+}
+
+/* Ações da linha: discretas em repouso, nítidas no hover */
+.bsi-contracts-list-page .fi-ta-actions {
+    opacity: 0.8;
+    transition: opacity 150ms ease-out;
+}
+
+.bsi-contracts-list-page tr.fi-ta-row:hover .fi-ta-actions {
+    opacity: 1;
+}
+
+/* Proporções equilibradas das colunas no desktop */
+@media (min-width: 768px) {
+    .bsi-contracts-list-page .fi-ta-cell-construction-emission-name {
+        width: 13rem;
+    }
+
+    .bsi-contracts-list-page .fi-ta-cell-construction-unit-unit {
+        width: 7.5rem;
+    }
+
+    .bsi-contracts-list-page .fi-ta-cell-code {
+        width: 8rem;
+    }
+
+    .bsi-contracts-list-page .fi-ta-cell-sale-date {
+        width: 7.5rem;
+    }
+
+    .bsi-contracts-list-page .fi-ta-cell-sale-value {
+        width: 9.5rem;
+    }
+
+    .bsi-contracts-list-page .fi-ta-cell-status {
+        width: 6.5rem;
+    }
+
+    .bsi-contracts-list-page .fi-ta-actions-cell {
         width: 4.5rem;
     }
 }

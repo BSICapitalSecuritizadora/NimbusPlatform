@@ -154,6 +154,16 @@ provision_storage_root "PRIVATE_STORAGE_ROOT" "${PRIVATE_STORAGE_ROOT:-}" "$EFFE
 provision_storage_root "PUBLIC_STORAGE_ROOT" "${PUBLIC_STORAGE_ROOT:-}" "$EFFECTIVE_PUBLIC_STORAGE_ROOT" "$LEGACY_PUBLIC_STORAGE_ROOT"
 
 cd /home/site/wwwroot
+
+# Os diretórios efêmeros não levam conteúdo no ZIP, mas precisam existir e ser
+# graváveis em uma instalação limpa antes de qualquer comando do Laravel.
+mkdir -p \
+    storage/framework/cache/data \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs
+chown -R www-data:www-data storage/framework storage/logs 2>/dev/null || true
+
 php artisan migrate --force --isolated --no-interaction
 php artisan optimize
 

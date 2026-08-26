@@ -16,6 +16,13 @@ class ViewClient extends ViewRecord
 
     protected static ?string $breadcrumb = 'Visualizar';
 
+    /**
+     * @var array<string, mixed>
+     */
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

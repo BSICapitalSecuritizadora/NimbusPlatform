@@ -36,6 +36,15 @@ class ListContracts extends ListRecords
 
     protected static ?string $title = 'Contratos';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-contracts-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Gerencie os contratos de compra e venda vinculados às unidades e empreendimentos.';
+    }
+
     /**
      * Memoized analysis, so moving through the wizard does not re-read the file
      * on every render.
@@ -58,7 +67,8 @@ class ListContracts extends ListRecords
 
             CreateAction::make()
                 ->label('Novo Contrato')
-                ->icon('heroicon-o-plus'),
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 
@@ -67,7 +77,7 @@ class ListContracts extends ListRecords
         return Action::make('importContracts')
             ->label('Importar Contratos')
             ->icon('heroicon-o-arrow-up-tray')
-            ->color('primary')
+            ->color('gray')
             ->modalHeading('Importar Contratos')
             ->modalWidth(Width::FiveExtraLarge)
             ->modalSubmitActionLabel('Confirmar')

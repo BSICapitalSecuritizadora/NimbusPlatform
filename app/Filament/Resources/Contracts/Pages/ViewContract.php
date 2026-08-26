@@ -14,6 +14,10 @@ class ViewContract extends ViewRecord
 
     protected static ?string $breadcrumb = 'Visualizar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     public function getTitle(): string
     {
         return 'Contrato '.$this->getRecord()->code;

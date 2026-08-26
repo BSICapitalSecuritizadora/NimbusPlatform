@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\Construction;
 use App\Models\Contract;
 use App\Models\Emission;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -41,16 +42,20 @@ class ContractsTable
             ->recordUrl(fn (Contract $record): ?string => ContractResource::canView($record)
                 ? ContractResource::getUrl('view', ['record' => $record])
                 : null)
-            ->searchPlaceholder('Buscar por contrato, cliente, CPF/CNPJ, unidade, bloco, empreendimento ou emissão...')
+            ->searchPlaceholder('Buscar por contrato, cliente, CPF/CNPJ ou unidade...')
             ->defaultSort('sale_date', 'desc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
             ->columns([
                 TextColumn::make('construction.emission.name')
-                    ->label('Emissão')
+                    ->label('Operação')
+                    ->description(fn (Contract $record): ?string => $record->construction?->development_name)
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query->orWhereHas(
                         'construction.emission',
                         fn (Builder $emissionQuery): Builder => $emissionQuery->where('name', 'like', "%{$search}%"),
+                    )->orWhereHas(
+                        'construction',
+                        fn (Builder $constructionQuery): Builder => $constructionQuery->where('development_name', 'like', "%{$search}%"),
                     ))
                     ->sortable()
                     ->toggleable(),
@@ -62,7 +67,7 @@ class ContractsTable
                         fn (Builder $constructionQuery): Builder => $constructionQuery->where('development_name', 'like', "%{$search}%"),
                     ))
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('constructionUnit.unit')
                     ->label('Unidade')
@@ -80,11 +85,11 @@ class ContractsTable
 
                 TextColumn::make('client.name')
                     ->label('Cliente')
-                    // Enough to tell buyers apart without printing the document
-                    // in full on a listing.
+                    ->weight('semibold')
                     ->description(fn (Contract $record): ?string => filled($record->client?->document)
-                        ? Client::maskDocument($record->client->document)
+                        ? Client::formatDocument($record->client->document)
                         : null)
+                    ->tooltip(fn (Contract $record): ?string => $record->client?->name)
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         $digits = Str::digitsOnly($search);
 
@@ -101,6 +106,7 @@ class ContractsTable
 
                 TextColumn::make('code')
                     ->label('Contrato')
+                    ->weight('medium')
                     ->searchable()
                     ->sortable()
                     ->copyable(),
@@ -121,6 +127,7 @@ class ContractsTable
                     ->badge()
                     ->formatStateUsing(fn (ContractStatus $state): string => $state->label())
                     ->color(fn (ContractStatus $state): string => $state->color())
+                    ->alignCenter()
                     ->sortable(),
 
                 TextColumn::make('cancellation_date')
@@ -130,7 +137,8 @@ class ContractsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filtersFormWidth(Width::Small)
+            ->filtersFormWidth(Width::Medium)
+            ->filtersFormMaxHeight('420px')
             ->filters([
                 SelectFilter::make('emission')
                     ->label('Emissão')
@@ -248,6 +256,50 @@ class ContractsTable
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('Nenhum contrato cadastrado');
+            ->emptyStateHeading(fn ($livewire): string => self::hasActiveFiltersOrSearch($livewire)
+                ? 'Nenhum contrato encontrado'
+                : 'Nenhum contrato cadastrado')
+            ->emptyStateDescription(fn ($livewire): string => self::hasActiveFiltersOrSearch($livewire)
+                ? 'Tente ajustar ou limpar os filtros e termos de busca para localizar os contratos.'
+                : 'Cadastre manualmente ou importe uma planilha para iniciar.')
+            ->emptyStateIcon('heroicon-o-document-text')
+            ->emptyStateActions([
+                Action::make('createContractEmptyState')
+                    ->label('Novo Contrato')
+                    ->icon('heroicon-o-plus')
+                    ->color('primary')
+                    ->url(fn (): string => ContractResource::getUrl('create'))
+                    ->visible(fn ($livewire): bool => ! self::hasActiveFiltersOrSearch($livewire) && ContractResource::canCreate()),
+
+                Action::make('clearTableFilters')
+                    ->label('Limpar filtros')
+                    ->icon('heroicon-o-x-mark')
+                    ->color('gray')
+                    ->action(function ($livewire): void {
+                        $livewire->tableSearch = '';
+                        $livewire->resetTableFiltersForm();
+                    })
+                    ->visible(fn ($livewire): bool => self::hasActiveFiltersOrSearch($livewire)),
+            ]);
+    }
+
+    /**
+     * Verifica se há busca ou filtros ativos na tabela para alternar o estado vazio.
+     */
+    protected static function hasActiveFiltersOrSearch(mixed $livewire): bool
+    {
+        if (filled($livewire->tableSearch ?? null)) {
+            return true;
+        }
+
+        $hasValue = function (mixed $value) use (&$hasValue): bool {
+            if (is_array($value)) {
+                return collect($value)->contains(fn (mixed $item): bool => $hasValue($item));
+            }
+
+            return filled($value);
+        };
+
+        return collect($livewire->tableFilters ?? [])->contains(fn (mixed $state): bool => $hasValue($state));
     }
 }

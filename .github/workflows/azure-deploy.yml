@@ -38,12 +38,18 @@ jobs:
             -x ".env*" \
             -x "*/.env*" \
             -x "App_Data/*" \
+            -x "auth.json" \
             -x "compose.yaml" \
             -x "compose.yml" \
             -x "docs/*" \
             -x "fix_*.php" \
             -x "fix_*.py" \
             -x "infra/*" \
+            -x "nimbusplatform" \
+            -x "NimbusPlatform" \
+            -x "NimbusPlatform/" \
+            -x "NimbusPlatform/*" \
+            -x "NimbusPlatform/**" \
             -x "node_modules/*" \
             -x "tests/*" \
             -x "update_*.php" \
@@ -54,11 +60,11 @@ jobs:
             -x "storage/framework/sessions/*" \
             -x "storage/framework/views/*"
 
-      - name: Assert repository-only files are not packaged
+      - name: Assert repository-only and conflicting files are not packaged
         run: |
-          forbidden_entries="$(unzip -Z1 release.zip | grep -E '(^|/)\.env[^/]*$|^(docs|infra|App_Data)/|^compose\.ya?ml$|^fix_[^/]*\.(php|py)$|^update_[^/]*\.php$|^NUL$' || true)"
+          forbidden_entries="$(unzip -Z1 release.zip | grep -E '(^|/)\.env[^/]*$|^(docs|infra|App_Data)/|^compose\.ya?ml$|^fix_[^/]*\.(php|py)$|^update_[^/]*\.php$|^NUL$|^nimbusplatform$|^auth\.json$|^NimbusPlatform(/|$)' || true)"
           if [ -n "$forbidden_entries" ]; then
-            echo "::error::O pacote contém arquivos exclusivos do repositório ou dados operacionais."
+            echo "::error::O pacote contém arquivos exclusivos do repositório, dados operacionais ou caminhos conflitantes."
             printf '%s\n' "$forbidden_entries" | head
             exit 1
           fi

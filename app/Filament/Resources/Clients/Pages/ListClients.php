@@ -38,6 +38,18 @@ class ListClients extends ListRecords
     protected static ?string $title = 'Clientes';
 
     /**
+     * @var array<string, mixed>
+     */
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-clients-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Gerencie os clientes vinculados aos contratos e empreendimentos da plataforma.';
+    }
+
+    /**
      * @var array{path: string, analysis: ClientSpreadsheetAnalysis}|null
      */
     private ?array $memoizedAnalysis = null;
@@ -56,7 +68,8 @@ class ListClients extends ListRecords
 
             CreateAction::make()
                 ->label('Novo Cliente')
-                ->icon('heroicon-o-plus'),
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 
@@ -102,7 +115,7 @@ class ListClients extends ListRecords
         return Action::make('importClients')
             ->label('Importar Clientes')
             ->icon('heroicon-o-arrow-up-tray')
-            ->color('primary')
+            ->color('gray')
             ->modalHeading('Importar Clientes')
             ->modalWidth(Width::FiveExtraLarge)
             ->modalSubmitActionLabel('Confirmar importação')
