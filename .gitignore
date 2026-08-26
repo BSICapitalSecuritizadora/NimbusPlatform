@@ -33,6 +33,14 @@ yarn-error.log
 /update_*.php
 /NUL
 
+# Banco SQLite que o artisan cria quando DB_CONNECTION=sqlite e
+# DB_DATABASE=nimbusplatform (sem extensão). Além de ser artefato local, colide
+# com NimbusPlatform/ no mount case-insensitive do App Service.
+/nimbusplatform
+
+# Diretório aninhado criado por engano por sessões de agente (contém um clone).
+/NimbusPlatform/
+
 # Claude harness local settings (machine-specific, not shared)
 /.claude/settings.local.json
 /.claude/worktrees/

@@ -169,6 +169,19 @@ it('blocks an enabled premium without a positive business day count or both fina
         ->and($prerequisite->blockingSummary())->toContain('ao menos o Fator DI ou o Fator Spread');
 });
 
+it('blocks an enabled premium when the first interest payment is outside the curve', function () {
+    $emission = premiumCreateEmission();
+    $emission->puParameter->forceFill([
+        'curve_end_date' => '2026-01-13',
+    ])->save();
+
+    $prerequisite = app(PuCurvePrerequisiteService::class)->handle($emission->fresh());
+
+    expect($prerequisite->passes())->toBeFalse()
+        ->and($prerequisite->blockingSummary())->toContain('primeiro pagamento de juros')
+        ->and($prerequisite->blockingSummary())->toContain('dentro do período da curva');
+});
+
 it('compares scenarios with and without premium without persisting financial side effects', function () {
     $emission = premiumCreateEmission();
     $emission->puParameter->forceFill([

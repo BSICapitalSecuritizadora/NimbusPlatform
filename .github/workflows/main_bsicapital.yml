@@ -97,6 +97,18 @@ jobs:
             exit 1
           fi
 
+      # O /home do App Service é um mount SMB case-insensitive, mas o /tmp onde
+      # o Kudu extrai o pacote não é. Dois caminhos que diferem só na caixa
+      # extraem sem erro e colidem no rsync, que aborta com exit 23.
+      - name: Assert package has no case-insensitive path collisions
+        run: |
+          collisions="$(unzip -Z1 app.zip | sed 's:/*$::' | tr 'A-Z' 'a-z' | sort | uniq -d)"
+          if [ -n "$collisions" ]; then
+            echo "::error::O pacote contém caminhos que colidem no mount case-insensitive do App Service."
+            printf '%s\n' "$collisions" | head
+            exit 1
+          fi
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:

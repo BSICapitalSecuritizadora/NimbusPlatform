@@ -136,7 +136,7 @@ class PuCurvePrerequisiteService
             );
 
             if ($parameter->hasFirstCouponPreIntegralizationPremium()) {
-                $this->validateFirstCouponIntegralizationAndEvent($issues, $emission, $startDate);
+                $this->validateFirstCouponIntegralizationAndEvent($issues, $emission, $startDate, $endDate);
             }
 
             if ($indexer === PuIndexer::Cdi) {
@@ -238,6 +238,7 @@ class PuCurvePrerequisiteService
         array &$issues,
         Emission $emission,
         CarbonImmutable $startDate,
+        CarbonImmutable $endDate,
     ): void {
         $hasIntegralizationAtStart = $emission->integralizationHistories
             ->contains(fn ($history): bool => $history->date !== null
@@ -268,10 +269,21 @@ class PuCurvePrerequisiteService
             return;
         }
 
-        if (CarbonImmutable::instance($firstInterestEvent->effective_date)->lte($startDate)) {
+        $firstInterestDate = CarbonImmutable::instance($firstInterestEvent->effective_date);
+
+        if ($firstInterestDate->lte($startDate)) {
             $issues[] = PuCurvePrerequisiteIssue::blocking(
                 'first_coupon_pre_integralization_interest_event',
                 'O primeiro pagamento de juros que recebe o prêmio deve ocorrer após a integralização/curve_start_date.',
+            );
+
+            return;
+        }
+
+        if ($firstInterestDate->gt($endDate)) {
+            $issues[] = PuCurvePrerequisiteIssue::blocking(
+                'first_coupon_pre_integralization_interest_event',
+                'O primeiro pagamento de juros que recebe o prêmio deve estar dentro do período da curva.',
             );
         }
     }
