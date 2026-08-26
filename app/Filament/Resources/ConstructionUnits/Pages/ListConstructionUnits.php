@@ -31,6 +31,15 @@ class ListConstructionUnits extends ListRecords
 
     protected static ?string $title = 'Unidades';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-construction-units-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Gerencie as unidades vinculadas aos empreendimentos das emissões.';
+    }
+
     /**
      * Memoized analysis, so moving through the wizard does not re-read the file
      * on every render.
@@ -53,7 +62,8 @@ class ListConstructionUnits extends ListRecords
 
             CreateAction::make()
                 ->label('Nova Unidade')
-                ->icon('heroicon-o-plus'),
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 
@@ -62,7 +72,7 @@ class ListConstructionUnits extends ListRecords
         return Action::make('importUnits')
             ->label('Importar Unidades')
             ->icon('heroicon-o-arrow-up-tray')
-            ->color('primary')
+            ->color('gray')
             ->modalHeading('Importar Unidades')
             ->modalWidth(Width::FiveExtraLarge)
             ->modalSubmitActionLabel('Confirmar importação')

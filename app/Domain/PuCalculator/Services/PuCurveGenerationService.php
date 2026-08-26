@@ -9,6 +9,7 @@ use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
 use App\Models\EmissionPuParameter;

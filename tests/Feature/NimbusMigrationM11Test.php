@@ -45,7 +45,7 @@ function runDryRun(?string $runUuid = null, array $fixtureOverrides = []): Migra
     foreach ($fixtureOverrides as $k => $v) {
         $fixture[$k] = $v;
     }
-    $tmp = tempnam(sys_get_temp_dir(), 'nimbus_m11_');
+    $tmp = temporaryTestFilePath('nimbus-m11', 'json');
     file_put_contents($tmp, json_encode($fixture));
 
     $params = ['--dry-run' => true, '--source' => $tmp];
@@ -140,7 +140,7 @@ it('changed source fingerprint after canonical yields SOURCE_CHANGED and does no
     $changedFixture = [
         'portal_users' => [['id' => 5001, 'full_name' => 'CrossRun User CHANGED', 'email' => 'crossrun@example.com', 'document_number' => '52998224725', 'phone_number' => '11999990001', 'status' => 'ACTIVE', 'created_at' => '2026-02-23 15:07:17']],
     ];
-    $tmp = tempnam(sys_get_temp_dir(), 'nimbus_m11_changed_');
+    $tmp = temporaryTestFilePath('nimbus-m11-changed', 'json');
     file_put_contents($tmp, json_encode(array_merge([
         'portal_submissions' => [], 'portal_submission_shareholders' => [], 'portal_submission_files' => [],
         'portal_submission_notes' => [], 'portal_documents' => [], 'general_documents' => [],
@@ -290,7 +290,7 @@ it('target operational tables remain unchanged during dry-run', function () {
         'portal_documents' => [], 'general_documents' => [], 'portal_access_tokens' => [], 'notification_outbox' => [], 'audit_logs' => [], 'available_files' => [],
         'meta' => ['source_snapshot_at' => '2026-02-23 15:07:17', 'descriptor' => 'm11-target-readonly'],
     ];
-    $tmp = tempnam(sys_get_temp_dir(), 'nimbus_m11_target_');
+    $tmp = temporaryTestFilePath('nimbus-m11-target', 'json');
     file_put_contents($tmp, json_encode($fixture));
     test()->artisan('nimbus:migrate-legacy --dry-run --source='.$tmp)->assertExitCode(0);
     unlink($tmp);
@@ -315,7 +315,7 @@ it('dry-run writes only to control connection', function () {
         'portal_access_tokens' => [], 'notification_outbox' => [], 'audit_logs' => [], 'available_files' => [],
         'meta' => ['source_snapshot_at' => '2026-02-23 15:07:17', 'descriptor' => 'm11-control'],
     ];
-    $tmp = tempnam(sys_get_temp_dir(), 'nimbus_m11_control_');
+    $tmp = temporaryTestFilePath('nimbus-m11-control', 'json');
     file_put_contents($tmp, json_encode($fixture));
     test()->artisan('nimbus:migrate-legacy --dry-run --source='.$tmp.' --control-connection=sqlite')->assertExitCode(0);
     unlink($tmp);

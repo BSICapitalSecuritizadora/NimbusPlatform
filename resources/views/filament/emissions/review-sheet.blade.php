@@ -208,7 +208,7 @@
                         @endforeach
                     </div>
                 @else
-                    <span class="text-xs text-amber-400 italic">Nenhum empreendimento adicionado.</span>
+                    <span class="text-xs text-amber-400 italic">Nenhum empreendimento cadastrado.</span>
                 @endif
             </div>
         </div>

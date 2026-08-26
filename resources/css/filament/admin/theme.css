@@ -1057,6 +1057,7 @@
 .dark .bsi-reminder-logs-list-page .fi-ta-content-ctn,
 .dark .bsi-document-downloads-list-page .fi-ta-content-ctn,
 .dark .bsi-import-runs-list-page .fi-ta-content-ctn,
+.dark .bsi-construction-units-list-page .fi-ta-content-ctn,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
@@ -1086,6 +1087,7 @@
 .dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
     background: transparent;
 }
@@ -1115,6 +1117,7 @@
 .dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
@@ -1145,6 +1148,7 @@
 .dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover {
     background-color: rgba(148, 163, 184, 0.55);
 }
@@ -1468,6 +1472,7 @@ select.fi-select-input option[selected] {
 .bsi-user-create-page .fi-page,
 .bsi-role-edit-page .fi-page,
 .bsi-role-create-page .fi-page,
+.bsi-construction-units-list-page .fi-page,
 .bsi-receivables-list-page .fi-page {
     gap: 0.75rem !important;
 }
@@ -1504,6 +1509,7 @@ select.fi-select-input option[selected] {
 .bsi-user-create-page .fi-header,
 .bsi-role-edit-page .fi-header,
 .bsi-role-create-page .fi-header,
+.bsi-construction-units-list-page .fi-header,
 .bsi-receivables-list-page .fi-header {
     padding: 0.875rem 1.25rem !important;
     border-radius: 12px !important;
@@ -1543,6 +1549,7 @@ select.fi-select-input option[selected] {
 .bsi-user-create-page .fi-header-heading,
 .bsi-role-edit-page .fi-header-heading,
 .bsi-role-create-page .fi-header-heading,
+.bsi-construction-units-list-page .fi-header-heading,
 .bsi-receivables-list-page .fi-header-heading {
     font-size: 1.25rem !important;
     font-weight: 700 !important;
@@ -1581,6 +1588,7 @@ select.fi-select-input option[selected] {
 .bsi-user-create-page .fi-header-subheading,
 .bsi-role-edit-page .fi-header-subheading,
 .bsi-role-create-page .fi-header-subheading,
+.bsi-construction-units-list-page .fi-header-subheading,
 .bsi-receivables-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
@@ -1621,6 +1629,7 @@ select.fi-select-input option[selected] {
 .bsi-user-create-page .fi-breadcrumbs,
 .bsi-role-edit-page .fi-breadcrumbs,
 .bsi-role-create-page .fi-breadcrumbs,
+.bsi-construction-units-list-page .fi-breadcrumbs,
 .bsi-receivables-list-page .fi-breadcrumbs {
     font-size: 0.75rem !important;
     margin-bottom: 0.125rem !important;
@@ -1653,6 +1662,7 @@ select.fi-select-input option[selected] {
 .bsi-import-runs-list-page .fi-ta-table,
 .bsi-users-list-page .fi-ta-table,
 .bsi-roles-list-page .fi-ta-table,
+.bsi-construction-units-list-page .fi-ta-table,
 .bsi-receivables-list-page .fi-ta-table {
     width: 100% !important;
     min-width: 100% !important;
@@ -1686,6 +1696,7 @@ select.fi-select-input option[selected] {
 .bsi-import-runs-list-page .fi-ta-cell .fi-badge,
 .bsi-users-list-page .fi-ta-cell .fi-badge,
 .bsi-roles-list-page .fi-ta-cell .fi-badge,
+.bsi-construction-units-list-page .fi-ta-cell .fi-badge,
 .bsi-receivables-list-page .fi-ta-cell .fi-badge {
     white-space: normal !important;
     text-align: center !important;
@@ -1739,6 +1750,7 @@ select.fi-select-input option[selected] {
     .bsi-import-runs-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-users-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-roles-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-receivables-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 22rem;
     }
@@ -1772,6 +1784,7 @@ select.fi-select-input option[selected] {
 .bsi-import-runs-list-page .fi-ta-empty-state,
 .bsi-users-list-page .fi-ta-empty-state,
 .bsi-roles-list-page .fi-ta-empty-state,
+.bsi-construction-units-list-page .fi-ta-empty-state,
 .bsi-receivables-list-page .fi-ta-empty-state {
     padding-block: 2.5rem !important;
     padding-inline: 1.5rem !important;
@@ -1804,6 +1817,7 @@ select.fi-select-input option[selected] {
 .bsi-import-runs-list-page .fi-ta-empty-state-icon-bg,
 .bsi-users-list-page .fi-ta-empty-state-icon-bg,
 .bsi-roles-list-page .fi-ta-empty-state-icon-bg,
+.bsi-construction-units-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: #64748b !important;
     margin-bottom: 0.75rem !important;
@@ -1836,6 +1850,7 @@ select.fi-select-input option[selected] {
 .dark .bsi-import-runs-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-users-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-roles-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-construction-units-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: rgba(251, 250, 248, 0.4) !important;
 }
@@ -1867,12 +1882,13 @@ select.fi-select-input option[selected] {
 .bsi-import-runs-list-page .fi-ta-empty-state-heading,
 .bsi-users-list-page .fi-ta-empty-state-heading,
 .bsi-roles-list-page .fi-ta-empty-state-heading,
+.bsi-construction-units-list-page .fi-ta-empty-state-heading,
 .bsi-receivables-list-page .fi-ta-empty-state-heading {
     font-size: 1rem !important;
     font-weight: 600 !important;
 }
 
-/* Despesas, Documentos, Auditoria e Recebíveis: algarismos tabulares para comparar valores e datas com facilidade */
+/* Despesas, Documentos, Auditoria, Unidades e Recebíveis: algarismos tabulares para comparar valores e identificadores com facilidade */
 .bsi-expenses-list-page .fi-ta-table td,
 .bsi-documents-list-page .fi-ta-table td,
 .bsi-contact-messages-list-page .fi-ta-table td,
@@ -1884,6 +1900,7 @@ select.fi-select-input option[selected] {
 .bsi-import-runs-list-page .fi-ta-table td,
 .bsi-users-list-page .fi-ta-table td,
 .bsi-roles-list-page .fi-ta-table td,
+.bsi-construction-units-list-page .fi-ta-table td,
 .bsi-receivables-list-page .fi-ta-table td {
     font-variant-numeric: tabular-nums;
 }
@@ -1915,11 +1932,8 @@ select.fi-select-input option[selected] {
 .bsi-import-runs-list-page .fi-ta-empty-state-description,
 .bsi-users-list-page .fi-ta-empty-state-description,
 .bsi-roles-list-page .fi-ta-empty-state-description,
+.bsi-construction-units-list-page .fi-ta-empty-state-description,
 .bsi-receivables-list-page .fi-ta-empty-state-description {
-    max-width: 46ch !important;
-    font-size: 0.8125rem !important;
-    line-height: 1.55 !important;
-}-ta-empty-state-description {
     max-width: 46ch !important;
     font-size: 0.8125rem !important;
     line-height: 1.55 !important;
@@ -2104,6 +2118,145 @@ select.fi-select-input option[selected] {
     .dark .bsi-invitations-list-page .fi-ta-table > tbody > tr:hover > :nth-child(-n + 3),
     .dark .bsi-receivables-list-page .fi-ta-table > tbody > tr:hover > :nth-child(-n + 3) {
         background: #0f2a34;
+    }
+}
+
+/* ── Unidades: Central de Gestão Operacional de Unidades por Empreendimento ── */
+
+/* Ações secundárias do cabeçalho (Baixar Modelo e Importar Unidades) em outline refinado */
+.bsi-construction-units-list-page .fi-header .fi-btn-color-gray,
+.bsi-construction-units-list-page .fi-header .fi-btn[data-color="gray"] {
+    background: transparent !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.4) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.bsi-construction-units-list-page .fi-header .fi-btn-color-gray:hover,
+.bsi-construction-units-list-page .fi-header .fi-btn[data-color="gray"]:hover {
+    background: rgba(148, 163, 184, 0.14) !important;
+    border-color: rgba(148, 163, 184, 0.6) !important;
+    color: #fbfaf8 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.bsi-construction-units-list-page .fi-header .fi-btn-color-gray:active,
+.bsi-construction-units-list-page .fi-header .fi-btn[data-color="gray"]:active {
+    background: rgba(148, 163, 184, 0.2) !important;
+}
+
+.bsi-construction-units-list-page .fi-header .fi-btn-color-gray .fi-icon,
+.bsi-construction-units-list-page .fi-header .fi-btn-color-gray svg,
+.bsi-construction-units-list-page .fi-header .fi-btn[data-color="gray"] .fi-icon,
+.bsi-construction-units-list-page .fi-header .fi-btn[data-color="gray"] svg {
+    color: rgba(251, 250, 248, 0.7) !important;
+    filter: none !important;
+}
+
+/* Densidade e padding vertical das linhas da tabela */
+.bsi-construction-units-list-page .fi-ta-table th,
+.bsi-construction-units-list-page .fi-ta-table td {
+    padding-block: 0.65rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+/* Cabeçalho da tabela fixo durante a rolagem */
+.bsi-construction-units-list-page thead.fi-ta-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Transição e efeito hover suave na linha: variação leve do azul-petróleo */
+.bsi-construction-units-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-construction-units-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.55) !important;
+}
+
+html:not(.dark) .bsi-construction-units-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.85) !important;
+}
+
+/* Protagonismo da Unidade: contraste alto, tabular-nums e destaque no hover */
+.bsi-construction-units-list-page .fi-ta-cell-unit .fi-ta-text-item-label {
+    font-size: 0.9375rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: -0.01em !important;
+}
+
+.dark .bsi-construction-units-list-page tr.fi-ta-row:hover .fi-ta-cell-unit .fi-ta-text-item-label {
+    color: #ffffff !important;
+    text-shadow: 0 0 12px rgba(183, 131, 47, 0.35);
+}
+
+/* Protagonismo e clareza do Bloco */
+.bsi-construction-units-list-page .fi-ta-cell-block .fi-badge {
+    font-weight: 600 !important;
+    font-size: 0.8125rem !important;
+    padding-inline: 0.625rem !important;
+    padding-block: 0.15rem !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    background: rgba(148, 163, 184, 0.1) !important;
+    color: rgba(251, 250, 248, 0.9) !important;
+}
+
+.dark .bsi-construction-units-list-page tr.fi-ta-row:hover .fi-ta-cell-block .fi-badge {
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    background: rgba(18, 49, 59, 0.8) !important;
+    color: #ffffff !important;
+}
+
+/* Contexto (Emissão + Empreendimento): hierarquia visual harmoniosa */
+.bsi-construction-units-list-page .fi-ta-cell-construction-emission-name .fi-ta-text-item-label {
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    color: rgba(251, 250, 248, 0.9) !important;
+}
+
+.bsi-construction-units-list-page .fi-ta-cell-construction-emission-name .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.55) !important;
+    margin-top: 0.15rem !important;
+}
+
+.dark .bsi-construction-units-list-page tr.fi-ta-row:hover .fi-ta-cell-construction-emission-name .fi-ta-text-item-label {
+    color: #ffffff !important;
+}
+
+.dark .bsi-construction-units-list-page tr.fi-ta-row:hover .fi-ta-cell-construction-emission-name .fi-ta-text-item-description {
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+/* Ações da linha: discretas em repouso, nítidas no hover */
+.bsi-construction-units-list-page .fi-ta-actions {
+    opacity: 0.8;
+    transition: opacity 150ms ease-out;
+}
+
+.bsi-construction-units-list-page tr.fi-ta-row:hover .fi-ta-actions {
+    opacity: 1;
+}
+
+/* Proporções compactas e equilibradas das colunas no desktop */
+@media (min-width: 768px) {
+    .bsi-construction-units-list-page .fi-ta-cell-block {
+        width: 7.5rem;
+    }
+
+    .bsi-construction-units-list-page .fi-ta-cell-unit {
+        width: 9.5rem;
+    }
+
+    .bsi-construction-units-list-page .fi-ta-actions-cell {
+        width: 4.5rem;
     }
 }
 

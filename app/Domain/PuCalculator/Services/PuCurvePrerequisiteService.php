@@ -347,11 +347,12 @@ class PuCurvePrerequisiteService
         string $calendarCode,
         PuIndexer $indexer,
     ): void {
-        if ($this->calendarCoverage->ensureCoverage($calendarCode, $startDate, $endDate)) {
-            $this->businessDayCalendar->flushCache();
-        }
-
         $missingDates = $this->calendarCoverage->missingDates($calendarCode, $startDate, $endDate);
+
+        if ($missingDates !== [] && $this->calendarCoverage->ensureCoverage($calendarCode, $startDate, $endDate)) {
+            $this->businessDayCalendar->flushCache();
+            $missingDates = $this->calendarCoverage->missingDates($calendarCode, $startDate, $endDate);
+        }
 
         if ($missingDates !== []) {
             $issues[] = PuCurvePrerequisiteIssue::blocking(

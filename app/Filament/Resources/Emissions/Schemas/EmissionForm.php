@@ -768,17 +768,30 @@ class EmissionForm
 
         // Format and collect constructions
         $constructions = [];
+        $constructionsAreComplete = true;
         if ($isCreate) {
             $rawConstructions = array_values((array) $get(EmissionConstructionsStep::STATE_PATH));
-            foreach ($rawConstructions as $c) {
-                $devName = $c['development_name'] ?? null;
-                $refMonth = $c[EmissionConstructionsStep::SALES_BOARD_STATE_PATH]['reference_month'] ?? null;
-                if (filled($devName)) {
+
+            $constructionsAreComplete = $rawConstructions !== [];
+
+            foreach ($rawConstructions as $construction) {
+                $developmentName = $construction['development_name'] ?? null;
+                $referenceMonth = $construction[EmissionConstructionsStep::SALES_BOARD_STATE_PATH]['reference_month'] ?? null;
+
+                if (blank($developmentName) || blank($referenceMonth)) {
+                    $constructionsAreComplete = false;
                     $constructions[] = [
-                        'name' => (string) $devName,
-                        'details' => filled($refMonth) ? 'Quadro de Vendas: '.SalesBoard::formatReferenceMonthForDisplay($refMonth) : 'Quadro de Vendas pendente',
+                        'name' => 'Empreendimento incompleto',
+                        'details' => 'Quadro de Vendas pendente',
                     ];
+
+                    continue;
                 }
+
+                $constructions[] = [
+                    'name' => (string) $developmentName,
+                    'details' => 'Quadro de Vendas: '.SalesBoard::formatReferenceMonthForDisplay($referenceMonth),
+                ];
             }
         }
 
@@ -850,7 +863,7 @@ class EmissionForm
 
         $stepsValidity = [
             'dados_basicos' => filled($get('name')) && filled($get('type')),
-            'empreendimentos' => ! $isCreate || ! empty($constructions),
+            'empreendimentos' => ! $isCreate || $constructionsAreComplete,
             'participantes' => filled($get('issuer')),
             'caracteristicas_financeiras' => filled($get('issue_date')) || filled($get('maturity_date')),
             'valores_remuneracao' => filled($get('issued_volume')) || filled($get('issued_price')) || filled($get('remuneration_indexer')),

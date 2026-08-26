@@ -14,6 +14,10 @@ class ViewConstructionUnit extends ViewRecord
 
     protected static ?string $breadcrumb = 'Visualizar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getHeaderActions(): array
     {
         return [

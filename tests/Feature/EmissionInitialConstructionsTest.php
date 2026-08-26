@@ -480,7 +480,8 @@ it('lists the constructions and their initial boards on the review step', functi
                 emissionConstructionState(makeMeasurementCompany()->id),
             ],
         ])
-        ->assertSee('Residencial Aurora — Quadro de Vendas 05/2026')
+        ->assertSee('Residencial Aurora')
+        ->assertSee('Quadro de Vendas: 05/2026')
         ->assertDontSee('Empreendimento incompleto')
         ->fillForm([
             EmissionConstructionsStep::STATE_PATH => [],
