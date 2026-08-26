@@ -5,6 +5,7 @@ namespace App\Support\ActivityLog;
 use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
 use App\Enums\ProposalStatus;
+use App\Models\Client;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
@@ -159,6 +160,7 @@ final class ActivityPresenter
          * planilha, para que o operador leia a mesma palavra antes e depois de
          * confirmar a importação.
          */
+        'client_ids' => 'Compradores',
         'sale_date' => 'Data da venda',
         'sale_value' => 'Valor de venda',
         'cancellation_date' => 'Data de cancelamento',
@@ -552,6 +554,15 @@ final class ActivityPresenter
             return 'R$ '.MoneyFormatter::formatCurrencyForDisplay($value);
         }
 
+        /**
+         * O log guarda apenas ids -- nunca CPF, CNPJ, e-mail ou telefone. Os
+         * nomes são resolvidos aqui, na leitura, inclusive de clientes já
+         * arquivados; um que tenha sumido de vez cai no identificador.
+         */
+        if ($key === 'client_ids' && is_array($value)) {
+            return self::describeClients($value);
+        }
+
         if ($key === 'status') {
             if ($subject === 'Proposal') {
                 return ProposalStatus::labelFor(is_scalar($value) ? (string) $value : null);
@@ -591,6 +602,36 @@ final class ActivityPresenter
         }
 
         return (string) $value;
+    }
+
+    /**
+     * @param  array<int, mixed>  $ids
+     */
+    private static function describeClients(array $ids): ?string
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+
+        if ($ids === []) {
+            return null;
+        }
+
+        $missing = array_values(array_filter(
+            $ids,
+            fn (int $id): bool => ! array_key_exists('client:'.$id, self::$referenceCache),
+        ));
+
+        if ($missing !== []) {
+            $names = Client::withTrashed()->whereKey($missing)->pluck('name', 'id');
+
+            foreach ($missing as $id) {
+                self::$referenceCache['client:'.$id] = $names[$id] ?? null;
+            }
+        }
+
+        return implode(', ', array_map(
+            fn (int $id): string => self::$referenceCache['client:'.$id] ?? "Cliente #{$id}",
+            $ids,
+        ));
     }
 
     private static function colorForValue(string $key, mixed $value, string $subject): ?string

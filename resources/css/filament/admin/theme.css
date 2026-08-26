@@ -1060,6 +1060,7 @@
 .dark .bsi-construction-units-list-page .fi-ta-content-ctn,
 .dark .bsi-clients-list-page .fi-ta-content-ctn,
 .dark .bsi-contracts-list-page .fi-ta-content-ctn,
+.dark .bsi-contract-installments-list-page .fi-ta-content-ctn,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
@@ -1092,6 +1093,7 @@
 .dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-contract-installments-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
     background: transparent;
 }
@@ -1124,6 +1126,7 @@
 .dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-contract-installments-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
@@ -1157,6 +1160,7 @@
 .dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-contract-installments-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.55);
 }
@@ -1483,6 +1487,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-page,
 .bsi-clients-list-page .fi-page,
 .bsi-contracts-list-page .fi-page,
+.bsi-contract-installments-list-page .fi-page,
 .bsi-receivables-list-page .fi-page {
     gap: 0.75rem !important;
 }
@@ -1522,6 +1527,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-header,
 .bsi-clients-list-page .fi-header,
 .bsi-contracts-list-page .fi-header,
+.bsi-contract-installments-list-page .fi-header,
 .bsi-receivables-list-page .fi-header {
     padding: 0.875rem 1.25rem !important;
     border-radius: 12px !important;
@@ -1564,6 +1570,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-header-heading,
 .bsi-clients-list-page .fi-header-heading,
 .bsi-contracts-list-page .fi-header-heading,
+.bsi-contract-installments-list-page .fi-header-heading,
 .bsi-receivables-list-page .fi-header-heading {
     font-size: 1.25rem !important;
     font-weight: 700 !important;
@@ -1605,6 +1612,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-header-subheading,
 .bsi-clients-list-page .fi-header-subheading,
 .bsi-contracts-list-page .fi-header-subheading,
+.bsi-contract-installments-list-page .fi-header-subheading,
 .bsi-receivables-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
@@ -1648,6 +1656,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-breadcrumbs,
 .bsi-clients-list-page .fi-breadcrumbs,
 .bsi-contracts-list-page .fi-breadcrumbs,
+.bsi-contract-installments-list-page .fi-breadcrumbs,
 .bsi-receivables-list-page .fi-breadcrumbs {
     font-size: 0.75rem !important;
     margin-bottom: 0.125rem !important;
@@ -1683,6 +1692,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-ta-table,
 .bsi-clients-list-page .fi-ta-table,
 .bsi-contracts-list-page .fi-ta-table,
+.bsi-contract-installments-list-page .fi-ta-table,
 .bsi-receivables-list-page .fi-ta-table {
     width: 100% !important;
     min-width: 100% !important;
@@ -1719,6 +1729,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-ta-cell .fi-badge,
 .bsi-clients-list-page .fi-ta-cell .fi-badge,
 .bsi-contracts-list-page .fi-ta-cell .fi-badge,
+.bsi-contract-installments-list-page .fi-ta-cell .fi-badge,
 .bsi-receivables-list-page .fi-ta-cell .fi-badge {
     white-space: normal !important;
     text-align: center !important;
@@ -1776,6 +1787,7 @@ select.fi-select-input option[selected] {
     .bsi-construction-units-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-clients-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-contracts-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-contract-installments-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-receivables-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 22rem;
     }
@@ -1812,6 +1824,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-ta-empty-state,
 .bsi-clients-list-page .fi-ta-empty-state,
 .bsi-contracts-list-page .fi-ta-empty-state,
+.bsi-contract-installments-list-page .fi-ta-empty-state,
 .bsi-receivables-list-page .fi-ta-empty-state {
     padding-block: 2.5rem !important;
     padding-inline: 1.5rem !important;
@@ -1847,6 +1860,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-ta-empty-state-icon-bg,
 .bsi-clients-list-page .fi-ta-empty-state-icon-bg,
 .bsi-contracts-list-page .fi-ta-empty-state-icon-bg,
+.bsi-contract-installments-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: #64748b !important;
     margin-bottom: 0.75rem !important;
@@ -1882,6 +1896,7 @@ select.fi-select-input option[selected] {
 .dark .bsi-construction-units-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-clients-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-contracts-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-contract-installments-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: rgba(251, 250, 248, 0.4) !important;
 }
@@ -1916,12 +1931,13 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-ta-empty-state-heading,
 .bsi-clients-list-page .fi-ta-empty-state-heading,
 .bsi-contracts-list-page .fi-ta-empty-state-heading,
+.bsi-contract-installments-list-page .fi-ta-empty-state-heading,
 .bsi-receivables-list-page .fi-ta-empty-state-heading {
     font-size: 1rem !important;
     font-weight: 600 !important;
 }
 
-/* Despesas, Documentos, Auditoria, Unidades, Clientes, Contratos e Recebíveis: algarismos tabulares para comparar valores e identificadores com facilidade */
+/* Despesas, Documentos, Auditoria, Unidades, Clientes, Contratos, Parcelas e Recebíveis: algarismos tabulares para comparar valores e identificadores com facilidade */
 .bsi-expenses-list-page .fi-ta-table td,
 .bsi-documents-list-page .fi-ta-table td,
 .bsi-contact-messages-list-page .fi-ta-table td,
@@ -1936,6 +1952,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-ta-table td,
 .bsi-clients-list-page .fi-ta-table td,
 .bsi-contracts-list-page .fi-ta-table td,
+.bsi-contract-installments-list-page .fi-ta-table td,
 .bsi-receivables-list-page .fi-ta-table td {
     font-variant-numeric: tabular-nums;
 }
@@ -1970,6 +1987,7 @@ select.fi-select-input option[selected] {
 .bsi-construction-units-list-page .fi-ta-empty-state-description,
 .bsi-clients-list-page .fi-ta-empty-state-description,
 .bsi-contracts-list-page .fi-ta-empty-state-description,
+.bsi-contract-installments-list-page .fi-ta-empty-state-description,
 .bsi-receivables-list-page .fi-ta-empty-state-description {
     max-width: 46ch !important;
     font-size: 0.8125rem !important;
@@ -2682,6 +2700,244 @@ html:not(.dark) .bsi-contracts-list-page tr.fi-ta-row:hover {
     }
 
     .bsi-contracts-list-page .fi-ta-actions-cell {
+        width: 4.5rem;
+    }
+}
+
+/* ── Parcelas dos Contratos: Central Operacional de Parcelas ── */
+
+/* Ações secundárias do cabeçalho (Baixar modelo e Importar planilha) em outline refinado */
+.bsi-contract-installments-list-page .fi-header .fi-btn-color-gray,
+.bsi-contract-installments-list-page .fi-header .fi-btn[data-color="gray"] {
+    background: transparent !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    border: 1px solid rgba(148, 163, 184, 0.4) !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.bsi-contract-installments-list-page .fi-header .fi-btn-color-gray:hover,
+.bsi-contract-installments-list-page .fi-header .fi-btn[data-color="gray"]:hover {
+    background: rgba(148, 163, 184, 0.14) !important;
+    border-color: rgba(148, 163, 184, 0.6) !important;
+    color: #fbfaf8 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.bsi-contract-installments-list-page .fi-header .fi-btn-color-gray:active,
+.bsi-contract-installments-list-page .fi-header .fi-btn[data-color="gray"]:active {
+    background: rgba(148, 163, 184, 0.2) !important;
+}
+
+.bsi-contract-installments-list-page .fi-header .fi-btn-color-gray .fi-icon,
+.bsi-contract-installments-list-page .fi-header .fi-btn-color-gray svg,
+.bsi-contract-installments-list-page .fi-header .fi-btn[data-color="gray"] .fi-icon,
+.bsi-contract-installments-list-page .fi-header .fi-btn[data-color="gray"] svg {
+    color: rgba(251, 250, 248, 0.7) !important;
+    filter: none !important;
+}
+
+/* Densidade e padding vertical das linhas da tabela */
+.bsi-contract-installments-list-page .fi-ta-table th,
+.bsi-contract-installments-list-page .fi-ta-table td {
+    padding-block: 0.65rem !important;
+    padding-inline: 0.875rem !important;
+}
+
+/* Cabeçalho da tabela fixo durante a rolagem */
+.bsi-contract-installments-list-page thead.fi-ta-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Transição e efeito hover suave na linha: variação leve do azul-petróleo */
+.bsi-contract-installments-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.55) !important;
+}
+
+html:not(.dark) .bsi-contract-installments-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.85) !important;
+}
+
+/* Linha selecionada: destaque discreto em azul-petróleo sem cobrir badges */
+.dark .bsi-contract-installments-list-page tr.fi-ta-row.fi-selected,
+.dark .bsi-contract-installments-list-page tr.fi-ta-row[aria-selected="true"] {
+    background-color: rgba(18, 49, 59, 0.7) !important;
+}
+
+/* Operação (Emissão + Empreendimento): hierarquia e contraste refinado */
+.bsi-contract-installments-list-page .fi-ta-cell-contract-construction-emission-name .fi-ta-text-item-label {
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    color: rgba(251, 250, 248, 0.92) !important;
+}
+
+.bsi-contract-installments-list-page .fi-ta-cell-contract-construction-emission-name .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.55) !important;
+    margin-top: 0.125rem !important;
+}
+
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-contract-construction-emission-name .fi-ta-text-item-label {
+    color: #ffffff !important;
+}
+
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-contract-construction-emission-name .fi-ta-text-item-description {
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+/* Contrato / Unidade: destaque semibold, tabular-nums e unidade secundária */
+.bsi-contract-installments-list-page .fi-ta-cell-contract-code .fi-ta-text-item-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: -0.01em !important;
+    white-space: nowrap !important;
+}
+
+.bsi-contract-installments-list-page .fi-ta-cell-contract-code .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+    margin-top: 0.125rem !important;
+}
+
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-contract-code .fi-ta-text-item-label {
+    color: #ffffff !important;
+    text-shadow: 0 0 12px rgba(183, 131, 47, 0.35);
+}
+
+/* Cliente: destaque, legibilidade e documento secundário */
+.bsi-contract-installments-list-page .fi-ta-cell-contract-client-name .fi-ta-text-item-label {
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #ffffff !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-contract-installments-list-page .fi-ta-cell-contract-client-name .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.55) !important;
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    margin-top: 0.125rem !important;
+}
+
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-contract-client-name .fi-ta-text-item-label {
+    color: #ffffff !important;
+    text-shadow: 0 0 10px rgba(183, 131, 47, 0.3);
+}
+
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-contract-client-name .fi-ta-text-item-description {
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+/* Nº da Parcela: bold, tabular-nums e contraste */
+.bsi-contract-installments-list-page .fi-ta-cell-number .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+    font-size: 0.875rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    text-align: center !important;
+}
+
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-number .fi-ta-text-item-label {
+    color: #ffffff !important;
+}
+
+/* Vencimento: tabular-nums e compacta */
+.bsi-contract-installments-list-page .fi-ta-cell-due-date .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    font-size: 0.8125rem !important;
+}
+
+/* Valores (Previsto, Pago, Saldo): tabular-nums, alinhamento à direita e destaque */
+.bsi-contract-installments-list-page .fi-ta-cell-expected-value .fi-ta-text-item-label,
+.bsi-contract-installments-list-page .fi-ta-cell-paid-value .fi-ta-text-item-label,
+.bsi-contract-installments-list-page .fi-ta-cell-outstanding-value .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-expected-value .fi-ta-text-item-label,
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-paid-value .fi-ta-text-item-label,
+.dark .bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-cell-outstanding-value .fi-ta-text-item-label {
+    color: #ffffff !important;
+}
+
+/* Badges de Status refinados */
+.bsi-contract-installments-list-page .fi-ta-cell-status .fi-badge {
+    font-weight: 600 !important;
+    font-size: 0.75rem !important;
+    padding-inline: 0.625rem !important;
+    padding-block: 0.15rem !important;
+    border-radius: 5px !important;
+}
+
+/* Placeholder '—' em baixo contraste */
+.dark .bsi-contract-installments-list-page .fi-ta-placeholder,
+.dark .bsi-contract-installments-list-page td:has(.fi-ta-placeholder) {
+    color: rgba(251, 250, 248, 0.28) !important;
+}
+
+/* Ações da linha: discretas em repouso, nítidas no hover */
+.bsi-contract-installments-list-page .fi-ta-actions {
+    opacity: 0.8;
+    transition: opacity 150ms ease-out;
+}
+
+.bsi-contract-installments-list-page tr.fi-ta-row:hover .fi-ta-actions {
+    opacity: 1;
+}
+
+/* Proporções equilibradas das colunas no desktop */
+@media (min-width: 768px) {
+    .bsi-contract-installments-list-page .fi-ta-cell-contract-construction-emission-name {
+        width: 12rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-cell-contract-code {
+        width: 9.5rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-cell-contract-client-name {
+        width: 13rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-cell-number {
+        width: 4.5rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-cell-due-date {
+        width: 7.5rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-cell-expected-value {
+        width: 8.5rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-cell-paid-value {
+        width: 8.5rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-cell-outstanding-value {
+        width: 8.5rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-cell-status {
+        width: 7.5rem;
+    }
+
+    .bsi-contract-installments-list-page .fi-ta-actions-cell {
         width: 4.5rem;
     }
 }
@@ -4940,6 +5196,281 @@ html:not(.dark) .fi-activity-card:hover {
     .bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
         transition: none !important;
     }
+}
+
+/* ── Fundo: Histórico de Saldo (Relation Manager) ── */
+.bsi-fund-form-page .fi-resource-relation-manager,
+.bsi-fund-form-page .fi-page-relations-ctn,
+.bsi-fund-form-page [wire\:key*="balanceHistories"] {
+    margin-top: 1.75rem !important;
+}
+
+/* Card da tabela: azul-petróleo institucional (#0d252e) */
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-ctn,
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-ctn,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-ctn,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta {
+    background: #0d252e !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.35) !important;
+    overflow: hidden !important;
+}
+
+/* Cabeçalho do card: título discreto e divisor frio */
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-header,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-header,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-header {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+    padding-block: 0.875rem !important;
+    padding-inline: 1.25rem !important;
+}
+
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-header-heading,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-header-heading,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-header-heading {
+    font-size: 0.9375rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+    color: #fbfaf8 !important;
+}
+
+/* Cabeçalho das colunas (Data, Saldo): tom mais claro da família azul-petróleo (#12313b) */
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-table th,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-table th,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-table th {
+    background: #12313b !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+    color: rgba(251, 250, 248, 0.75) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    padding-block: 0.65rem !important;
+    padding-inline: 1rem !important;
+}
+
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-table th .fi-ta-header-cell-sort-icon,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-table th .fi-ta-header-cell-sort-icon,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-table th .fi-ta-header-cell-sort-icon {
+    color: rgba(148, 163, 184, 0.45) !important;
+}
+
+/* Linhas e Células: leitura financeira precisa e hover suave */
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-table td,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-table td,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-table td {
+    padding-block: 0.65rem !important;
+    padding-inline: 1rem !important;
+    font-size: 0.8125rem !important;
+    color: #fbfaf8 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1) !important;
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+}
+
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-row,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-row,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-row:hover,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-row:hover,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.55) !important;
+}
+
+/* Estado Vazio (Empty State): compacto, sem fundo escuro isolado ou círculo de erro */
+.bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state,
+.bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state,
+.bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state,
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state {
+    background: #0d252e !important;
+    padding-block: 1.5rem !important;
+    padding-inline: 1.25rem !important;
+    min-height: auto !important;
+}
+
+/* Ícone de histórico: neutro em cinza-azulado, sem círculo escuro ou caixa em volta */
+.bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state-icon-bg,
+.bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state-icon-bg,
+.bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state-icon-bg,
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state-icon-bg,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state-icon-bg,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state-icon-bg {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    color: rgba(148, 163, 184, 0.65) !important;
+    margin-bottom: 0.5rem !important;
+    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+.bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state-icon-bg svg,
+.bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state-icon,
+.bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state-icon-bg svg,
+.bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state-icon,
+.bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state-icon-bg svg,
+.bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state-icon,
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state-icon-bg svg,
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state-icon,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state-icon-bg svg,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state-icon,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state-icon-bg svg,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state-icon {
+    width: 2rem !important;
+    height: 2rem !important;
+    color: rgba(148, 163, 184, 0.65) !important;
+    background: transparent !important;
+}
+
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state-heading,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state-heading,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state-heading {
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    color: #fbfaf8 !important;
+    margin-top: 0.25rem !important;
+}
+
+.dark .bsi-fund-form-page .fi-resource-relation-manager .fi-ta-empty-state-description,
+.dark .bsi-fund-form-page .fi-page-relations-ctn .fi-ta-empty-state-description,
+.dark .bsi-fund-form-page [wire\:key*="balanceHistories"] .fi-ta-empty-state-description {
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    color: rgba(251, 250, 248, 0.55) !important;
+    max-width: 44ch !important;
+    margin-top: 0.125rem !important;
+}
+
+/* ── Nome do Fundo (Criar/Editar): card em largura total e distribuição balanceada ── */
+.bsi-fund-name-form-page form.fi-sc-form {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form > .fi-sc,
+.bsi-fund-name-form-page form.fi-sc-form .fi-sc-section,
+.bsi-fund-name-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Respiro interno do Card "Dados do nome do fundo" */
+.bsi-fund-name-form-page form.fi-sc-form .fi-section-header {
+    padding-block: 1rem 1.125rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-section-content,
+.bsi-fund-name-form-page form.fi-sc-form .fi-section-content-ctn {
+    padding-block: 1.5rem 1.75rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+/* Espaçamento dos labels */
+.bsi-fund-name-form-page form.fi-sc-form .fi-fo-field-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Altura uniforme e bordas dos campos */
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp {
+    min-height: 2.75rem !important;
+    border-radius: 10px !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-input {
+    font-size: 0.9375rem !important;
+    padding-inline: 0.75rem !important;
+}
+
+/* Alinhamento interno e ações (+ e ✎) do campo Tipo de Fundo */
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions {
+    gap: 0.375rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    padding-inline-start: 0.5rem !important;
+    margin-inline-start: 0.25rem !important;
+    border-left: 1px solid rgba(148, 163, 184, 0.25) !important;
+}
+
+.dark .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions {
+    border-left-color: rgba(183, 131, 47, 0.3) !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button {
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    max-width: 2rem !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: rgba(251, 250, 248, 0.8) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn svg,
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button svg {
+    width: 1rem !important;
+    height: 1rem !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button:hover {
+    color: #fbfaf8 !important;
+    background: rgba(183, 131, 47, 0.18) !important;
+    border-color: rgba(183, 131, 47, 0.55) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:focus-visible,
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button:focus-visible {
+    outline: none !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.3) !important;
+}
+
+/* Ações inferiores (Salvar alterações / Cancelar) */
+.bsi-fund-name-form-page form.fi-sc-form .fi-sc-actions {
+    margin-top: 1.25rem !important;
+    width: 100% !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+    gap: 0.75rem !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+    min-height: 2.75rem !important;
+    padding-inline: 1.375rem !important;
+    padding-block: 0.5625rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 /* ── Cadastros Simples (Tipo de Fundo, Aplicação): formulário administrativo de escala média confortável (660px - 720px) ── */

@@ -17,7 +17,7 @@ class EditFundName extends EditRecord
     protected ?string $subheading = 'Atualize a denominação ou o tipo de fundo vinculado.';
 
     protected array $extraBodyAttributes = [
-        'class' => 'bsi-construction-form-page bsi-fund-form-page',
+        'class' => 'bsi-cockpit-page bsi-construction-form-page bsi-fund-form-page bsi-fund-name-form-page',
     ];
 
     protected ?bool $hasUnsavedDataChangesAlert = true;

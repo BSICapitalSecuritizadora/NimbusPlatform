@@ -13,6 +13,10 @@ class CreateContractInstallment extends CreateRecord
 
     protected static ?string $breadcrumb = 'Cadastrar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');

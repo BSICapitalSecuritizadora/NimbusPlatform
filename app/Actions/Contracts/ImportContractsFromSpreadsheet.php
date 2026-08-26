@@ -86,7 +86,7 @@ class ImportContractsFromSpreadsheet
             'updated' => $updated,
             'unchanged' => $analysis->unchangedCount(),
             'units' => $touched->pluck('construction_unit_id')->unique()->count(),
-            'clients' => $touched->pluck('client_id')->unique()->count(),
+            'clients' => $touched->flatMap(fn (array $row): array => $row['client_ids'])->unique()->count(),
             'constructions' => $touched->pluck('construction_id')->unique()->count(),
         ];
     }
@@ -144,7 +144,12 @@ class ImportContractsFromSpreadsheet
 
         $rows
             ->map(fn (array $row): array => [
-                'client_id' => $row['client_id'],
+                /**
+                 * Null on purpose. The buyers of the contract are the rows
+                 * {@see linkBuyers()} writes; the legacy column has no buyer to
+                 * hold and no main buyer to invent.
+                 */
+                'client_id' => null,
                 'construction_unit_id' => $row['construction_unit_id'],
                 'construction_id' => $row['construction_id'],
                 'code' => $row['code'],
@@ -171,8 +176,9 @@ class ImportContractsFromSpreadsheet
      * The identity the file already resolved -- development plus normalized code
      * -- reads every new id back in one query, and the links go in in bulk too.
      *
-     * Two queries per chunk instead of two per contract: a file with three
-     * thousand new contracts costs a dozen statements, not six thousand.
+     * Two queries per chunk instead of two per contract, whatever the number of
+     * buyers: a file with three thousand new contracts costs a dozen statements,
+     * not six thousand.
      *
      * @param  Collection<int, array<string, mixed>>  $rows
      */
@@ -186,15 +192,18 @@ class ImportContractsFromSpreadsheet
                 ->keyBy(fn (Contract $contract): string => $contract->construction_id.'|'.$contract->code_normalized);
 
             $links = $chunk
-                ->map(function (array $row) use ($ids): ?array {
+                ->flatMap(function (array $row) use ($ids): array {
                     $contract = $ids->get($row['construction_id'].'|'.$row['code_normalized']);
 
-                    return $contract === null ? null : [
+                    if ($contract === null) {
+                        return [];
+                    }
+
+                    return array_map(fn (int $clientId): array => [
                         'contract_id' => $contract->getKey(),
-                        'client_id' => $row['client_id'],
-                    ];
+                        'client_id' => $clientId,
+                    ], $row['client_ids']);
                 })
-                ->filter()
                 ->values();
 
             if ($links->isNotEmpty()) {
@@ -212,6 +221,7 @@ class ImportContractsFromSpreadsheet
 
         $rows->chunk(self::CHUNK_SIZE)->each(function (Collection $chunk) use (&$updated): void {
             $contracts = Contract::query()
+                ->with('clients:id')
                 ->whereKey($chunk->pluck('contract_id')->all())
                 ->get()
                 ->keyBy('id');
@@ -225,12 +235,24 @@ class ImportContractsFromSpreadsheet
 
                 $contract->fill($row['comparison']->attributes());
 
-                if (! $contract->isDirty()) {
-                    continue;
+                $movedFields = $contract->isDirty();
+
+                if ($movedFields) {
+                    $contract->save();
                 }
 
-                $contract->save();
-                $updated++;
+                /**
+                 * The buyer set is compared and written apart from the columns:
+                 * a contract can gain a buyer without a single field moving, and
+                 * that is still an update -- with its own activity, which
+                 * `LogsActivity` would never write because it only watches
+                 * columns.
+                 */
+                $movedBuyers = $contract->syncBuyers($row['client_ids']);
+
+                if ($movedFields || $movedBuyers) {
+                    $updated++;
+                }
             }
         });
 

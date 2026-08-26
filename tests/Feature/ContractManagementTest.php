@@ -65,7 +65,7 @@ function fillContractForm(Emission $emission, Construction $construction, Constr
         'emission_id' => $emission->id,
         'construction_id' => $construction->id,
         'construction_unit_id' => $unit->id,
-        'client_id' => $client->id,
+        'client_ids' => [$client->id],
         'code' => 'CVC-00123',
         'sale_date' => '2024-03-10',
         'sale_value' => '850.000,00',
@@ -86,7 +86,9 @@ it('creates a contract linking the client to the unit', function () {
 
     $contract = Contract::query()->sole();
 
-    expect($contract->client_id)->toBe($client->id)
+    expect($contract->buyerIds())->toBe([$client->id])
+        // A coluna legada não é mais preenchida por contrato novo.
+        ->and($contract->client_id)->toBeNull()
         ->and($contract->construction_unit_id)->toBe($unit->id)
         ->and($contract->code)->toBe('CVC-00123')
         ->and($contract->sale_date->toDateString())->toBe('2024-03-10')
@@ -105,12 +107,12 @@ it('derives the development from the unit instead of storing it twice', function
         ->and($contract->construction->emission->name)->toBe('CRI Conviva');
 });
 
-it('relates the contract to its client and its unit', function () {
+it('relates the contract to its buyers and its unit', function () {
     [, , $unit, $client] = contractScenario();
 
     $contract = Contract::factory()->forUnit($unit)->forClient($client)->create();
 
-    expect($contract->client->is($client))->toBeTrue()
+    expect($contract->clients->pluck('id')->all())->toBe([$client->id])
         ->and($contract->constructionUnit->is($unit))->toBeTrue();
 });
 
@@ -344,7 +346,7 @@ it('allows a resale once the previous contract is distratado', function () {
         ->assertHasNoFormErrors();
 
     expect(Contract::query()->count())->toBe(2)
-        ->and($unit->activeContract()->first()->client_id)->toBe($buyer->id);
+        ->and($unit->activeContract()->first()->buyerIds())->toBe([$buyer->id]);
 });
 
 /**
@@ -689,7 +691,7 @@ it('edits a contract without touching its history', function () {
             'emission_id' => $emission->id,
             'construction_id' => $construction->id,
             'construction_unit_id' => $unit->id,
-            'client_id' => $client->id,
+            'client_ids' => [$client->id],
         ])
         ->fillForm(['sale_value' => '900.000,00'])
         ->call('save')

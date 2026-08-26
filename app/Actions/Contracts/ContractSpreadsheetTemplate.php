@@ -10,7 +10,8 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  *
  * The first sheet carries only the headers, so nothing can be imported by
  * accident. The demonstration rows live on a separate "Exemplo" sheet, which the
- * importer never reads.
+ * importer never reads -- and one of the examples is a contract with two buyers,
+ * because that is the part of the format nobody guesses.
  */
 class ContractSpreadsheetTemplate
 {
@@ -25,7 +26,17 @@ class ContractSpreadsheetTemplate
      */
     private const EXAMPLE_ROWS = [
         ['CRI Conviva', 'Conviva Camboinhas', '01', '305', '12345678900', 'CVC-00123', '10/03/2024', '850000.00', 'Ativo', ''],
-        ['CRI Conviva', 'Conviva Camboinhas', '01', '402', '98765432100', 'CVC-00124', '05/02/2024', '700000.00', 'Distratado', '15/06/2025'],
+        /**
+         * Two buyers on one contract: the contract line is repeated and only the
+         * CPF/CNPJ changes. That is how a sale to more than one person is
+         * written -- there is no "CPF 2" column and no list inside a cell, so the
+         * number of buyers has no ceiling. Lines of the same contract must repeat
+         * the same contractual data; a value that disagrees is refused instead of
+         * one of them being picked.
+         */
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '402', '98765432100', 'CVC-00124', '05/02/2024', '700000.00', 'Ativo', ''],
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '402', '11144477735', 'CVC-00124', '05/02/2024', '700000.00', 'Ativo', ''],
+        ['CRI Conviva', 'Conviva Camboinhas', '02', '101', '52998224725', 'CVC-00125', '05/02/2024', '620000.00', 'Distratado', '15/06/2025'],
     ];
 
     /**

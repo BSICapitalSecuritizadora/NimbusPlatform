@@ -41,7 +41,8 @@ function templateReservationPath(string $path): string
  * @return array<string, array{0: class-string, 1: string, 2: string, 3: int}>
  */
 dataset('geradores de modelo', [
-    'contratos' => [ContractSpreadsheetTemplate::class, 'admin.contracts.template.download', 'Contratos', 2],
+    // Quatro linhas de exemplo: uma delas é um contrato com dois compradores.
+    'contratos' => [ContractSpreadsheetTemplate::class, 'admin.contracts.template.download', 'Contratos', 4],
     'parcelas' => [ContractInstallmentSpreadsheetTemplate::class, 'admin.contract-installments.template.download', 'Parcelas', 3],
     'clientes' => [ClientSpreadsheetTemplate::class, 'admin.clients.template.download', 'Clientes', 2],
     'unidades' => [ConstructionUnitSpreadsheetTemplate::class, 'admin.construction-units.template.download', 'Unidades', 4],

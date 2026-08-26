@@ -14,6 +14,10 @@ class EditContractInstallment extends EditRecord
 
     protected static ?string $breadcrumb = 'Editar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page',
+    ];
+
     public function getTitle(): string
     {
         return 'Parcela '.$this->getRecord()->number;

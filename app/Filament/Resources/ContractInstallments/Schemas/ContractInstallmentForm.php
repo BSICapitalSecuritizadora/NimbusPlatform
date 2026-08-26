@@ -169,7 +169,7 @@ class ContractInstallmentForm
                     fn (Builder $query, mixed $constructionId): Builder => $query->where('construction_id', $constructionId),
                     fn (Builder $query): Builder => $query->whereRaw('1 = 0'),
                 )
-                ->with('client')
+                ->with('clients')
                 ->search($search)
                 ->orderBy('code')
                 ->limit(self::CONTRACT_SEARCH_LIMIT)
@@ -182,14 +182,14 @@ class ContractInstallmentForm
                     fn (Builder $query, mixed $constructionId): Builder => $query->where('construction_id', $constructionId),
                     fn (Builder $query): Builder => $query->whereRaw('1 = 0'),
                 )
-                ->with('client')
+                ->with('clients')
                 ->orderBy('code')
                 ->limit(self::CONTRACT_SEARCH_LIMIT)
                 ->get()
                 ->mapWithKeys(fn (Contract $contract): array => [$contract->getKey() => self::contractOptionLabel($contract)])
                 ->all())
             ->getOptionLabelUsing(function (mixed $value): ?string {
-                $contract = Contract::with('client')->find($value);
+                $contract = Contract::with('clients')->find($value);
 
                 return $contract === null ? null : self::contractOptionLabel($contract);
             })
@@ -323,7 +323,7 @@ class ContractInstallmentForm
 
     private static function contractOptionLabel(Contract $contract): string
     {
-        return trim(sprintf('%s — %s', $contract->code, $contract->client?->name ?? 'Cliente não informado'));
+        return trim(sprintf('%s — %s', $contract->code, $contract->buyersLabel(1)));
     }
 
     /**

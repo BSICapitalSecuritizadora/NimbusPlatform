@@ -20,7 +20,7 @@ class EditFund extends EditRecord
     protected ?string $subheading = 'Atualize a classificação, os dados bancários e os limites financeiros do fundo.';
 
     protected array $extraBodyAttributes = [
-        'class' => 'bsi-construction-form-page bsi-fund-form-page',
+        'class' => 'bsi-cockpit-page bsi-construction-form-page bsi-fund-form-page',
     ];
 
     protected ?bool $hasUnsavedDataChangesAlert = true;

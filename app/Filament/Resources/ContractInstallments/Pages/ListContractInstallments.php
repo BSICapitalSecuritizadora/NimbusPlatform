@@ -15,17 +15,29 @@ class ListContractInstallments extends ListRecords
 
     protected static ?string $title = 'Parcelas dos Contratos';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-contract-installments-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Acompanhe os vencimentos, valores previstos e liquidações das parcelas dos contratos.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            $this->installmentTemplateAction(),
+            $this->installmentTemplateAction()
+                ->color('gray'),
 
             $this->installmentImportAction()
+                ->color('gray')
                 ->visible(fn (): bool => ContractInstallmentResource::canCreate()),
 
             CreateAction::make()
                 ->label('Nova Parcela')
-                ->icon('heroicon-o-plus'),
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 }

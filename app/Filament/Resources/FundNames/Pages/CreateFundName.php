@@ -15,7 +15,7 @@ class CreateFundName extends CreateRecord
     protected static ?string $breadcrumb = 'Criar';
 
     protected array $extraBodyAttributes = [
-        'class' => 'bsi-construction-form-page bsi-fund-form-page',
+        'class' => 'bsi-cockpit-page bsi-construction-form-page bsi-fund-form-page bsi-fund-name-form-page',
     ];
 
     public function getSubheading(): ?string

@@ -47,7 +47,7 @@ it('creates the buyer table without touching the columns the contract already ha
 
 it('refuses the same buyer twice on the same contract', function () {
     $contract = buyerContract();
-    $clientId = $contract->client_id;
+    $clientId = $contract->clients->first()->getKey();
 
     expect(fn () => DB::table('contract_clients')->insert([
         'contract_id' => $contract->getKey(),
@@ -70,14 +70,13 @@ it('reads several buyers of the same contract', function () {
     $joao = Client::factory()->create(['name' => 'João da Silva']);
     $maria = Client::factory()->create(['name' => 'Maria da Silva']);
 
-    $contract = buyerContract($joao);
+    $contract = Contract::factory()
+        ->forUnit(ConstructionUnit::factory()->create())
+        ->withBuyers($joao, $maria)
+        ->create();
 
-    DB::table('contract_clients')->insert([
-        'contract_id' => $contract->getKey(),
-        'client_id' => $maria->id,
-    ]);
-
-    expect($contract->fresh()->clients->pluck('name')->all())->toBe(['João da Silva', 'Maria da Silva']);
+    expect($contract->clients->pluck('name')->all())->toBe(['João da Silva', 'Maria da Silva'])
+        ->and($contract->client_id)->toBeNull();
 });
 
 it('reads every contract of one buyer', function () {
@@ -109,33 +108,26 @@ it('refuses to erase a client that appears in a contract', function () {
     expect(fn () => $client->forceDelete())->toThrow(QueryException::class);
 });
 
-// ── Espelho transitório client_id → pivot ─────────────────────────────────
+// ── Fonte única de verdade ────────────────────────────────────────────────
 
-it('records the buyer of a contract created through the model', function () {
+it('records the buyer in the buyer table and leaves the legacy column empty', function () {
     $contract = buyerContract();
 
-    expect(DB::table('contract_clients')->where('contract_id', $contract->getKey())->pluck('client_id')->all())
-        ->toBe([$contract->client_id]);
+    expect($contract->fresh()->client_id)->toBeNull()
+        ->and(DB::table('contract_clients')->where('contract_id', $contract->getKey())->count())->toBe(1);
 });
 
-it('follows the buyer when the legacy column is changed', function () {
-    $contract = buyerContract();
-    $other = Client::factory()->create();
+it('replaces the buyer set and says whether anything moved', function () {
+    $joao = Client::factory()->create(['name' => 'João da Silva']);
+    $maria = Client::factory()->create(['name' => 'Maria da Silva']);
 
-    $contract->update(['client_id' => $other->id]);
+    $contract = buyerContract($joao);
 
-    expect(DB::table('contract_clients')->where('contract_id', $contract->getKey())->pluck('client_id')->all())
-        ->toBe([$other->id])
-        ->and($contract->fresh()->clients()->count())->toBe(1);
-});
+    expect($contract->syncBuyers([$joao->id, $maria->id]))->toBeTrue()
+        ->and($contract->fresh()->clients->pluck('name')->all())->toBe(['João da Silva', 'Maria da Silva']);
 
-it('leaves the buyer alone when the contract is saved without changing them', function () {
-    $contract = buyerContract();
-
-    $contract->update(['sale_value' => 999000.00]);
-    $contract->update(['sale_value' => 999000.00]);
-
-    expect(DB::table('contract_clients')->where('contract_id', $contract->getKey())->count())->toBe(1);
+    // Mesmo conjunto em outra ordem não é alteração.
+    expect($contract->fresh()->syncBuyers([$maria->id, $joao->id]))->toBeFalse();
 });
 
 it('drops the contract links when the contract is erased', function () {
@@ -154,9 +146,23 @@ it('keeps the links of a contract that was only archived', function () {
     expect(DB::table('contract_clients')->where('contract_id', $contract->getKey())->count())->toBe(1);
 });
 
+it('makes the legacy column nullable without losing its key or index', function () {
+    $column = collect(Schema::getColumns('contracts'))->firstWhere('name', 'client_id');
+
+    $foreignKeys = collect(Schema::getForeignKeys('contracts'))
+        ->filter(fn (array $key): bool => in_array('client_id', $key['columns'], true));
+
+    $indexes = collect(Schema::getIndexes('contracts'))
+        ->filter(fn (array $index): bool => in_array('client_id', $index['columns'], true));
+
+    expect($column['nullable'])->toBeTrue()
+        ->and($foreignKeys)->not->toBeEmpty()
+        ->and($indexes)->not->toBeEmpty();
+});
+
 // ── Invariante da fase de expansão ────────────────────────────────────────
 
-it('leaves every contract with exactly one buyer while the domain is still singular', function () {
+it('leaves no contract without a buyer and no buyer in the legacy column', function () {
     collect(range(1, 5))->each(fn () => buyerContract());
 
     $contracts = Contract::query()->count();
@@ -172,5 +178,6 @@ it('leaves every contract with exactly one buyer while the domain is still singu
 
     expect($contracts)->toBe(5)
         ->and($withBuyer)->toBe(5)
-        ->and($withMoreThanOne)->toBe(0);
+        ->and($withMoreThanOne)->toBe(0)
+        ->and(Contract::query()->whereNotNull('client_id')->count())->toBe(0);
 });

@@ -11,6 +11,7 @@ use App\Models\Construction;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
 use App\Models\Emission;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -41,39 +42,46 @@ class ContractInstallmentsTable
             ->recordUrl(fn (ContractInstallment $record): ?string => ContractResource::canView($record->contract)
                 ? ContractResource::getUrl('view', ['record' => $record->contract_id])
                 : null)
-            ->searchPlaceholder('Buscar por parcela, contrato, cliente, CPF/CNPJ, unidade, empreendimento ou emissão...')
+            ->searchPlaceholder('Buscar por parcela, contrato, cliente, CPF/CNPJ ou unidade...')
             ->defaultSort('due_date', 'asc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
             ->columns([
                 TextColumn::make('contract.construction.emission.name')
-                    ->label('Emissão')
+                    ->label('Operação')
+                    ->description(fn (ContractInstallment $record): ?string => $record->contract?->construction?->development_name)
                     ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('contract.construction.development_name')
                     ->label('Empreendimento')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('contract.code')
                     ->label('Contrato')
+                    ->weight('semibold')
                     ->description(fn (ContractInstallment $record): ?string => $record->contract?->constructionUnit?->display_name)
                     ->sortable()
                     ->copyable(),
 
-                TextColumn::make('contract.client.name')
-                    ->label('Cliente')
+                TextColumn::make('contract.clients.name')
+                    ->label('Compradores')
+                    ->weight('medium')
+                    ->state(fn (ContractInstallment $record): string => $record->contract?->buyersLabel() ?? '—')
+                    ->tooltip(fn (ContractInstallment $record): ?string => $record->contract?->clients->pluck('name')->implode(', ') ?: null)
                     ->toggleable(),
 
                 TextColumn::make('number')
                     ->label('Nº')
                     ->weight('bold')
+                    ->alignCenter()
                     ->sortable(),
 
                 TextColumn::make('due_date')
                     ->label('Vencimento')
                     ->date('d/m/Y')
+                    ->color(fn (ContractInstallment $record): string => $record->status === ContractInstallmentStatus::Overdue ? 'danger' : 'gray')
                     ->sortable(),
 
                 TextColumn::make('expected_value')
@@ -99,7 +107,7 @@ class ContractInstallmentsTable
                     ->formatStateUsing(fn (int $state): string => $state > 0 ? (string) $state : '—')
                     ->color(fn (int $state): string => $state > 0 ? 'danger' : 'gray')
                     ->alignEnd()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('payment_date')
                     ->label('Data Pagamento')
@@ -116,7 +124,8 @@ class ContractInstallmentsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filtersFormWidth(Width::Small)
+            ->filtersFormWidth(Width::Medium)
+            ->filtersFormMaxHeight('420px')
             ->filters(self::filters())
             ->actions([
                 ActionGroup::make(self::rowActions())
@@ -128,7 +137,31 @@ class ContractInstallmentsTable
                     DeleteBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('Nenhuma parcela cadastrada');
+            ->emptyStateHeading(fn ($livewire): string => self::hasActiveFiltersOrSearch($livewire)
+                ? 'Nenhuma parcela encontrada'
+                : 'Nenhuma parcela cadastrada')
+            ->emptyStateDescription(fn ($livewire): string => self::hasActiveFiltersOrSearch($livewire)
+                ? 'Tente ajustar ou limpar os filtros e termos de busca para localizar as parcelas.'
+                : 'Cadastre manualmente ou importe uma planilha para começar o acompanhamento financeiro.')
+            ->emptyStateIcon('heroicon-o-banknotes')
+            ->emptyStateActions([
+                Action::make('createInstallmentEmptyState')
+                    ->label('Nova Parcela')
+                    ->icon('heroicon-o-plus')
+                    ->color('primary')
+                    ->url(fn (): string => ContractInstallmentResource::getUrl('create'))
+                    ->visible(fn ($livewire): bool => ! self::hasActiveFiltersOrSearch($livewire) && ContractInstallmentResource::canCreate()),
+
+                Action::make('clearTableFilters')
+                    ->label('Limpar filtros')
+                    ->icon('heroicon-o-x-mark')
+                    ->color('gray')
+                    ->action(function ($livewire): void {
+                        $livewire->tableSearch = '';
+                        $livewire->resetTableFiltersForm();
+                    })
+                    ->visible(fn ($livewire): bool => self::hasActiveFiltersOrSearch($livewire)),
+            ]);
     }
 
     /**
@@ -155,6 +188,7 @@ class ContractInstallmentsTable
         return TextColumn::make('status')
             ->label('Status')
             ->badge()
+            ->alignCenter()
             ->state(fn (ContractInstallment $record): ContractInstallmentStatus => $record->status)
             ->formatStateUsing(fn (ContractInstallmentStatus $state): string => $state->label())
             ->color(fn (ContractInstallmentStatus $state): string => $state->color());
@@ -208,7 +242,7 @@ class ContractInstallmentsTable
                 ->getOptionLabelUsing(fn (mixed $value): ?string => Contract::withTrashed()->find($value)?->code),
 
             SelectFilter::make('client')
-                ->label('Cliente')
+                ->label('Comprador')
                 ->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Client::query()
                     ->search($search)
@@ -219,9 +253,17 @@ class ContractInstallmentsTable
                 ->getOptionLabelUsing(fn (mixed $value): ?string => Client::withTrashed()->find($value)?->name)
                 ->query(fn (Builder $query, array $data): Builder => $query->when(
                     $data['value'] ?? null,
+                    /**
+                     * Through the buyer set of the contract: a buyer reaches the
+                     * installments of every contract they are part of, not only
+                     * the ones where they happen to be listed first.
+                     */
                     fn (Builder $query, mixed $clientId): Builder => $query->whereHas(
                         'contract',
-                        fn (Builder $contractQuery): Builder => $contractQuery->where('client_id', $clientId),
+                        fn (Builder $contractQuery): Builder => $contractQuery->whereHas(
+                            'clients',
+                            fn (Builder $clientQuery): Builder => $clientQuery->whereKey($clientId),
+                        ),
                     ),
                 )),
 
@@ -309,5 +351,25 @@ class ContractInstallmentsTable
                 ->label('Restaurar')
                 ->visible(fn (ContractInstallment $record): bool => ContractInstallmentResource::canRestore($record)),
         ];
+    }
+
+    /**
+     * Verifica se há busca ou filtros ativos na tabela para alternar o estado vazio.
+     */
+    protected static function hasActiveFiltersOrSearch(mixed $livewire): bool
+    {
+        if (filled($livewire->tableSearch ?? null)) {
+            return true;
+        }
+
+        $hasValue = function (mixed $value) use (&$hasValue): bool {
+            if (is_array($value)) {
+                return collect($value)->contains(fn (mixed $item): bool => $hasValue($item));
+            }
+
+            return filled($value);
+        };
+
+        return collect($livewire->tableFilters ?? [])->contains(fn (mixed $state): bool => $hasValue($state));
     }
 }

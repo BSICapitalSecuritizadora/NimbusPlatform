@@ -104,7 +104,7 @@ class ListContracts extends ListRecords
                              * -- is kept aside here.
                              */
                             ->storeFileNamesIn('original_file_name')
-                            ->helperText('Envie a planilha completa da carteira. Contratos novos são cadastrados, os que mudaram são atualizados e os que já estão iguais são ignorados. Emissões, empreendimentos, unidades e clientes precisam já existir no sistema.'),
+                            ->helperText('Envie a planilha completa da carteira. Contratos novos são cadastrados, os que mudaram são atualizados e os que já estão iguais são ignorados. Um contrato com mais de um comprador ocupa uma linha por comprador, repetindo os mesmos dados contratuais. Emissões, empreendimentos, unidades e clientes precisam já existir no sistema.'),
                     ]),
 
                 Step::make('Conferência')
@@ -287,7 +287,12 @@ class ListContracts extends ListRecords
             }
 
             return '<tr>'
-                .'<td style="padding:.25rem .5rem;">'.$row['line'].'</td>'
+                /**
+                 * The lines of a contract with several buyers were collapsed into
+                 * one entry, so the cell names all of them: "12, 13" reads back
+                 * to the file the operator is holding.
+                 */
+                .'<td style="padding:.25rem .5rem;">'.e(implode(', ', $row['lines'] ?? [$row['line']])).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['construction']).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) $row['unit_label']).'</td>'
                 .'<td style="padding:.25rem .5rem;">'.e((string) ($row['client_label'] ?? '—')).'</td>'
@@ -312,7 +317,7 @@ class ListContracts extends ListRecords
             .'<th style="text-align:left;padding:.25rem .5rem;">Linha</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Empreendimento</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Unidade</th>'
-            .'<th style="text-align:left;padding:.25rem .5rem;">Cliente</th>'
+            .'<th style="text-align:left;padding:.25rem .5rem;">Compradores</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Contrato</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Resultado</th>'
             .'<th style="text-align:left;padding:.25rem .5rem;">Diferenças</th>'

@@ -43,7 +43,7 @@ class ContractForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Unidade e Cliente')
+            Section::make('Unidade e Compradores')
                 ->description('Quem comprou e qual imóvel. A seleção desce da emissão até a unidade.')
                 ->columnSpanFull()
                 ->columns(2)
@@ -159,10 +159,23 @@ class ContractForm
             ]);
     }
 
+    /**
+     * The buyers of the contract.
+     *
+     * Plural because a sale can be made to more than one person, and there is no
+     * hierarchy between them: no main buyer, no order, no share. The set is the
+     * relationship.
+     *
+     * Only live clients can be picked -- an archived one keeps appearing on the
+     * contracts it already signed, but must not be given a new one -- while the
+     * label resolver reads through the archive so an existing contract still
+     * renders the buyer it has.
+     */
     private static function clientField(): Select
     {
-        return Select::make('client_id')
-            ->label('Cliente')
+        return Select::make('client_ids')
+            ->label('Compradores')
+            ->multiple()
             ->required()
             ->searchable()
             ->getSearchResultsUsing(fn (string $search): array => Client::query()
@@ -172,12 +185,12 @@ class ContractForm
                 ->get()
                 ->mapWithKeys(fn (Client $client): array => [$client->getKey() => self::clientOptionLabel($client)])
                 ->all())
-            ->getOptionLabelUsing(function (mixed $value): ?string {
-                $client = Client::withTrashed()->find($value);
-
-                return $client === null ? null : self::clientOptionLabel($client);
-            })
-            ->helperText('Busque por nome, razão social ou CPF/CNPJ.')
+            ->getOptionLabelsUsing(fn (array $values): array => Client::withTrashed()
+                ->whereKey($values)
+                ->get()
+                ->mapWithKeys(fn (Client $client): array => [$client->getKey() => self::clientOptionLabel($client)])
+                ->all())
+            ->helperText('Busque por nome, razão social ou CPF/CNPJ. Um contrato pode ter mais de um comprador.')
             /**
              * Opens the very same Client registration, in another tab: a buyer
              * created from here must be the same record the Clients module
@@ -192,7 +205,7 @@ class ContractForm
             )
             ->columnSpanFull()
             ->validationMessages([
-                'required' => 'Selecione o cliente.',
+                'required' => 'Selecione ao menos um comprador.',
             ]);
     }
 
@@ -410,8 +423,9 @@ class ContractForm
     private static function clientOptionLabel(Client $client): string
     {
         return sprintf(
-            '%s — %s: %s',
+            '%s%s — %s: %s',
             $client->name,
+            $client->trashed() ? ' (arquivado)' : '',
             $client->person_type->documentLabel(),
             Client::maskDocument($client->document),
         );

@@ -63,7 +63,7 @@ class ContractResource extends Resource
         return parent::getEloquentQuery()
             ->withoutGlobalScopes([SoftDeletingScope::class])
             ->with([
-                'client',
+                'clients',
                 'constructionUnit',
                 'construction.emission',
             ]);
@@ -74,7 +74,7 @@ class ContractResource extends Resource
      */
     public static function getGloballySearchableAttributes(): array
     {
-        return ['code', 'client.name', 'client.document', 'constructionUnit.unit', 'construction.development_name'];
+        return ['code', 'clients.name', 'clients.document', 'constructionUnit.unit', 'construction.development_name'];
     }
 
     public static function getGlobalSearchResultTitle(Model $record): string
@@ -88,7 +88,7 @@ class ContractResource extends Resource
     public static function getGlobalSearchResultDetails(Model $record): array
     {
         return [
-            'Cliente' => $record->client?->name ?? '—',
+            'Compradores' => $record->buyersLabel(),
             'Unidade' => $record->constructionUnit?->display_name ?? '—',
         ];
     }

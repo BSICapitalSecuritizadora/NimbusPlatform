@@ -6,6 +6,7 @@ use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
 use App\Models\Client;
 use App\Models\Contract;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -38,24 +39,32 @@ class ContractInfolist
                         ->visible(fn (Contract $record): bool => $record->trashed()),
                 ]),
 
-            Section::make('Dados do Cliente')
+            /**
+             * Every buyer, never only the first: on the contract page the whole
+             * set is the point. The document stays masked here as it always did
+             * -- enough to tell two buyers apart, the full value lives in the
+             * client record behind its own permission.
+             */
+            Section::make('Compradores')
                 ->columnSpanFull()
-                ->columns(2)
                 ->schema([
-                    TextEntry::make('client.name')
-                        ->label('Nome / Razão Social')
-                        ->weight('bold')
-                        ->columnSpanFull(),
+                    RepeatableEntry::make('clients')
+                        ->hiddenLabel()
+                        ->columns(3)
+                        ->schema([
+                            TextEntry::make('name')
+                                ->label('Nome / Razão Social')
+                                ->weight('bold')
+                                ->suffix(fn (Client $record): string => $record->trashed() ? ' (arquivado)' : ''),
 
-                    TextEntry::make('client.document')
-                        ->label(fn (Contract $record): string => $record->client?->person_type->documentLabel() ?? 'CPF/CNPJ')
-                        // Enough to tell buyers apart; the full document lives in
-                        // the client record, behind its own permission.
-                        ->formatStateUsing(fn (?string $state): string => Client::maskDocument($state)),
+                            TextEntry::make('document')
+                                ->label(fn (Client $record): string => $record->person_type->documentLabel())
+                                ->formatStateUsing(fn (?string $state): string => Client::maskDocument($state)),
 
-                    TextEntry::make('client.person_type')
-                        ->label('Tipo de Pessoa')
-                        ->formatStateUsing(fn (mixed $state): string => $state?->label() ?? '—'),
+                            TextEntry::make('person_type')
+                                ->label('Tipo de Pessoa')
+                                ->formatStateUsing(fn (mixed $state): string => $state?->label() ?? '—'),
+                        ]),
                 ]),
 
             Section::make('Unidade')

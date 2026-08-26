@@ -36,31 +36,12 @@ class ContractReconciler
     public function compare(Contract $contract, array $row): RecordComparison
     {
         return RecordComparison::of(array_filter([
-            $this->client($contract, $row),
             $this->constructionUnit($contract, $row),
             $this->saleDate($contract, $row),
             $this->saleValue($contract, $row),
             $this->status($contract, $row),
             $this->cancellationDate($contract, $row),
         ]));
-    }
-
-    /**
-     * @param  array<string, mixed>  $row
-     */
-    private function client(Contract $contract, array $row): ?FieldChange
-    {
-        if ((int) $contract->client_id === (int) $row['client_id']) {
-            return null;
-        }
-
-        return new FieldChange(
-            field: 'client_id',
-            label: 'Cliente',
-            current: $contract->client?->name,
-            new: $row['client_label'],
-            severity: ChangeSeverity::Blocked,
-        );
     }
 
     /**

@@ -50,7 +50,7 @@ final class ContractOccupancyPeriod
     {
         return new self(
             code: (string) $contract->code,
-            clientName: $contract->client?->name,
+            clientName: $contract->buyersLabel(),
             startsOn: (string) ValueComparator::date($contract->sale_date),
             endsOn: $contract->occupiesUnit() ? null : ValueComparator::date($contract->cancellation_date),
             isSubject: $isSubject,

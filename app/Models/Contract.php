@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Actions\Contracts\ImportContractsFromSpreadsheet;
 use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
 use App\Support\Contracts\ContractOccupancyPeriod;
@@ -18,7 +17,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -47,7 +45,6 @@ class Contract extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'client_id',
         'construction_unit_id',
         'code',
         'sale_date',
@@ -73,10 +70,6 @@ class Contract extends Model
 
     protected static function booted(): void
     {
-        static::saved(function (self $contract): void {
-            $contract->mirrorSingleBuyerIntoPivot();
-        });
-
         static::saving(function (self $contract): void {
             $contract->construction_id = self::resolveConstructionId($contract->construction_unit_id);
 
@@ -103,28 +96,16 @@ class Contract extends Model
     }
 
     /**
-     * The single buyer the contract was born with.
-     *
-     * Transitional: `contracts.client_id` is being replaced by {@see clients()}.
-     * It is still the column the application writes, and the pivot is kept in
-     * step with it, so the two agree for as long as both exist. It stops being
-     * written -- and this relation stops being used -- in the release that turns
-     * the buyer set plural.
-     *
-     * @deprecated Use {@see clients()}.
-     */
-    public function client(): BelongsTo
-    {
-        return $this->belongsTo(Client::class);
-    }
-
-    /**
      * Everyone who bought under this contract.
      *
-     * `withTrashed()` on purpose: a buyer that was archived years later is still
-     * who signed, and a historical contract that hid them would be lying. The
-     * rule about not giving new contracts to an archived client belongs to the
-     * write path, not to reading the past.
+     * The source of truth for the commercial relationship. `contracts.client_id`
+     * still exists in the schema but nothing reads or writes it any more: it is
+     * legacy waiting to be dropped, not a buyer.
+     *
+     * `withTrashed()` on purpose: a buyer archived years later is still who
+     * signed, and a historical contract that hid them would be lying. Refusing
+     * to give a *new* contract to an archived client is a rule of the write
+     * path, not of reading the past.
      *
      * @return BelongsToMany<Client, $this>
      */
@@ -133,35 +114,6 @@ class Contract extends Model
         return $this->belongsToMany(Client::class, 'contract_clients')
             ->withTrashed()
             ->orderBy('clients.name');
-    }
-
-    /**
-     * Keeps the buyer table in step with the column that still writes it.
-     *
-     * Transitional, and deliberately narrow: while the domain has exactly one
-     * buyer, `client_id` translates into the pivot with no interpretation --
-     * there is no "main buyer" being chosen here, there is only ever one. The
-     * release that makes the set plural deletes this method along with the
-     * writes to `client_id`.
-     *
-     * Bulk inserts skip model events, so the contract import fills the pivot
-     * itself; see {@see ImportContractsFromSpreadsheet}.
-     */
-    private function mirrorSingleBuyerIntoPivot(): void
-    {
-        if ($this->client_id === null) {
-            return;
-        }
-
-        DB::table('contract_clients')
-            ->where('contract_id', $this->getKey())
-            ->where('client_id', '!=', $this->client_id)
-            ->delete();
-
-        DB::table('contract_clients')->insertOrIgnore([
-            'contract_id' => $this->getKey(),
-            'client_id' => $this->client_id,
-        ]);
     }
 
     public function constructionUnit(): BelongsTo
@@ -322,10 +274,10 @@ class Contract extends Model
         }
 
         return self::query()
-            ->with('client:id,name')
+            ->with('clients:id,name')
             ->where('construction_unit_id', $constructionUnitId)
             ->when($ignoreId, fn (Builder $query): Builder => $query->whereKeyNot($ignoreId))
-            ->get(['id', 'client_id', 'code', 'sale_date', 'cancellation_date', 'status'])
+            ->get(['id', 'code', 'sale_date', 'cancellation_date', 'status'])
             ->map(fn (self $contract): ContractOccupancyPeriod => ContractOccupancyPeriod::fromContract($contract))
             ->all();
     }
@@ -341,11 +293,82 @@ class Contract extends Model
         }
 
         return self::query()
-            ->with('client')
+            ->with('clients')
             ->where('construction_unit_id', $constructionUnitId)
             ->whereIn('status', ContractStatus::occupyingValues())
             ->when($ignoreId, fn (Builder $query): Builder => $query->whereKeyNot($ignoreId))
             ->first();
+    }
+
+    /**
+     * The ids of everyone who bought under this contract.
+     *
+     * @return list<int>
+     */
+    public function buyerIds(): array
+    {
+        return $this->clients->map(fn (Client $client): int => (int) $client->getKey())->all();
+    }
+
+    /**
+     * A compact reading of the buyers, for a table cell or a select option.
+     *
+     * Names only -- the document belongs to the client record, not to every
+     * place the contract is mentioned.
+     */
+    public function buyersLabel(int $limit = 2): string
+    {
+        $names = $this->clients->pluck('name');
+
+        if ($names->isEmpty()) {
+            return 'Sem comprador';
+        }
+
+        $shown = $names->take($limit);
+        $rest = $names->count() - $shown->count();
+
+        return $shown->implode(', ').($rest > 0 ? " +{$rest}" : '');
+    }
+
+    /**
+     * Replaces the buyer set and records what moved.
+     *
+     * The activity is written by hand rather than by `LogsActivity`, which only
+     * watches columns: the buyers are rows of another table, so nothing would be
+     * logged otherwise. It carries ids and never documents -- a name can be
+     * resolved for display, a CPF in an audit trail cannot be taken back.
+     *
+     * Silent when the set holds, including when the file lists the same buyers
+     * in a different order: a set has no order, so there is nothing to record.
+     *
+     * @param  list<int>  $clientIds
+     * @return bool whether anything changed
+     */
+    public function syncBuyers(array $clientIds): bool
+    {
+        $before = $this->buyerIds();
+        sort($before);
+
+        $after = array_values(array_unique(array_map('intval', $clientIds)));
+        sort($after);
+
+        if ($before === $after) {
+            return false;
+        }
+
+        $this->clients()->sync($after);
+        $this->unsetRelation('clients');
+
+        activity()
+            ->performedOn($this)
+            ->event('updated')
+            ->withProperties([
+                'old' => ['client_ids' => $before],
+                'attributes' => ['client_ids' => $after],
+            ])
+            ->log('updated');
+
+        return true;
     }
 
     /**
@@ -402,7 +425,7 @@ class Contract extends Model
 
         $query->where(function (Builder $query) use ($term, $digits): void {
             $query->where('code', 'like', "%{$term}%")
-                ->orWhereHas('client', function (Builder $clientQuery) use ($term, $digits): void {
+                ->orWhereHas('clients', function (Builder $clientQuery) use ($term, $digits): void {
                     $clientQuery->where('name', 'like', "%{$term}%")
                         ->orWhere('trade_name', 'like', "%{$term}%");
 

@@ -34,12 +34,16 @@ class FundBalanceHistoriesRelationManager extends RelationManager
                 TextColumn::make('balance')
                     ->label('Saldo')
                     ->money('BRL')
+                    ->weight('semibold')
+                    ->alignEnd()
                     ->sortable(),
             ])
             ->defaultSort('date', 'desc')
             ->headerActions([])
             ->actions([])
             ->bulkActions([])
-            ->emptyStateHeading('Nenhum histórico de saldo registrado');
+            ->emptyStateHeading('Nenhum histórico de saldo registrado')
+            ->emptyStateDescription('Os saldos registrados ao longo do tempo serão exibidos aqui.')
+            ->emptyStateIcon('heroicon-o-clock');
     }
 }

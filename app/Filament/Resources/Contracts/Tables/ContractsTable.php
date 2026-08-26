@@ -42,7 +42,7 @@ class ContractsTable
             ->recordUrl(fn (Contract $record): ?string => ContractResource::canView($record)
                 ? ContractResource::getUrl('view', ['record' => $record])
                 : null)
-            ->searchPlaceholder('Buscar por contrato, cliente, CPF/CNPJ ou unidade...')
+            ->searchPlaceholder('Buscar por contrato, comprador, CPF/CNPJ ou unidade...')
             ->defaultSort('sale_date', 'desc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
@@ -83,17 +83,23 @@ class ContractsTable
                     ->sortable()
                     ->weight('bold'),
 
-                TextColumn::make('client.name')
-                    ->label('Cliente')
+                /**
+                 * Compact on purpose: a contract with four buyers must not make
+                 * its row four lines tall. The names beyond the second are
+                 * counted, and the full list is one click away on the contract.
+                 */
+                TextColumn::make('clients.name')
+                    ->label('Compradores')
                     ->weight('semibold')
-                    ->description(fn (Contract $record): ?string => filled($record->client?->document)
-                        ? Client::formatDocument($record->client->document)
+                    ->state(fn (Contract $record): string => $record->buyersLabel())
+                    ->description(fn (Contract $record): ?string => $record->clients->count() > 1
+                        ? $record->clients->count().' compradores'
                         : null)
-                    ->tooltip(fn (Contract $record): ?string => $record->client?->name)
+                    ->tooltip(fn (Contract $record): ?string => $record->clients->pluck('name')->implode(', ') ?: null)
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         $digits = Str::digitsOnly($search);
 
-                        return $query->orWhereHas('client', function (Builder $clientQuery) use ($search, $digits): void {
+                        return $query->orWhereHas('clients', function (Builder $clientQuery) use ($search, $digits): void {
                             $clientQuery->where('name', 'like', "%{$search}%")
                                 ->orWhere('trade_name', 'like', "%{$search}%");
 
@@ -101,8 +107,7 @@ class ContractsTable
                                 $clientQuery->orWhere('document', 'like', "%{$digits}%");
                             }
                         });
-                    })
-                    ->sortable(),
+                    }),
 
                 TextColumn::make('code')
                     ->label('Contrato')
@@ -167,8 +172,13 @@ class ContractsTable
                     ->label('Status')
                     ->options(ContractStatus::options()),
 
-                SelectFilter::make('client_id')
-                    ->label('Cliente')
+                /**
+                 * Through the relation: a buyer selected here matches every
+                 * contract they are part of, not only the ones where they happen
+                 * to be listed first.
+                 */
+                SelectFilter::make('buyer')
+                    ->label('Comprador')
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search): array => Client::query()
                         ->search($search)
@@ -176,7 +186,14 @@ class ContractsTable
                         ->limit(self::CLIENT_SEARCH_LIMIT)
                         ->pluck('name', 'id')
                         ->all())
-                    ->getOptionLabelUsing(fn (mixed $value): ?string => Client::withTrashed()->find($value)?->name),
+                    ->getOptionLabelUsing(fn (mixed $value): ?string => Client::withTrashed()->find($value)?->name)
+                    ->query(fn (Builder $query, array $data): Builder => $query->when(
+                        $data['value'] ?? null,
+                        fn (Builder $query, mixed $clientId): Builder => $query->whereHas(
+                            'clients',
+                            fn (Builder $clientQuery): Builder => $clientQuery->whereKey($clientId),
+                        ),
+                    )),
 
                 Filter::make('sale_date')
                     ->label('Data da Venda')

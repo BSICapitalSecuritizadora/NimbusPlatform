@@ -65,7 +65,7 @@ class ContractInstallmentResource extends Resource
         return parent::getEloquentQuery()
             ->withoutGlobalScopes([SoftDeletingScope::class])
             ->with([
-                'contract.client',
+                'contract.clients',
                 'contract.constructionUnit',
                 'contract.construction.emission',
             ]);

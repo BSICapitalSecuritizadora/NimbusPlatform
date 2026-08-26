@@ -21,6 +21,14 @@ class ContractFactory extends Factory
     public function definition(): array
     {
         return [
+            /**
+             * Carrier, not a buyer. `contracts.client_id` is legacy and nothing
+             * in the application reads it any more, so the factory uses it only
+             * to carry the intended buyer from the state into `configure()`,
+             * which moves it to the buyer table and clears the column. A
+             * contract built here therefore comes out exactly like one the
+             * application creates: `client_id` NULL, buyers in the pivot.
+             */
             'client_id' => Client::factory(),
             'construction_unit_id' => ConstructionUnit::factory(),
             'code' => 'CVC-'.fake()->unique()->numberBetween(10000, 99999),
@@ -39,18 +47,47 @@ class ContractFactory extends Factory
     }
 
     /**
-     * The buyer of the contract.
-     *
-     * Still written through `contracts.client_id`: the model mirrors it into the
-     * buyer table on save, so a contract built by this factory comes out with
-     * exactly one buyer on both sides. When the domain goes plural this state
-     * becomes the single-buyer shorthand and a `withBuyers()` state joins it.
+     * Moves the carrier column into the buyer table and clears it, so every
+     * contract this factory builds ends up in the plural shape.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Contract $contract): void {
+            if ($contract->client_id === null) {
+                return;
+            }
+
+            $contract->clients()->syncWithoutDetaching([$contract->client_id]);
+            $contract->forceFill(['client_id' => null])->saveQuietly();
+        });
+    }
+
+    /**
+     * The single buyer of the contract -- the common case, and the shorthand the
+     * suite already reads everywhere.
      */
     public function forClient(Client $client): static
     {
         return $this->state(fn (): array => [
-            'client_id' => $client->id,
+            'client_id' => $client->getKey(),
         ]);
+    }
+
+    /**
+     * Two or more buyers on one contract.
+     *
+     * Bypasses the carrier entirely: the column can hold one id and this is the
+     * state that exists because a contract can have more.
+     */
+    public function withBuyers(Client ...$clients): static
+    {
+        return $this
+            ->state(fn (): array => ['client_id' => null])
+            ->afterCreating(function (Contract $contract) use ($clients): void {
+                $contract->clients()->syncWithoutDetaching(
+                    collect($clients)->map(fn (Client $client): int => (int) $client->getKey())->all(),
+                );
+            });
     }
 
     public function settled(): static

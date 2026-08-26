@@ -14,6 +14,8 @@ use App\Support\Reconciliation\ValueComparator;
 use Carbon\Carbon;
 use DateTime;
 use DateTimeInterface;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
 
@@ -68,11 +70,13 @@ class AnalyzeContractSpreadsheet
     private array $unitMaps = [];
 
     /**
-     * "construction id|code" already registered, seen inside the file.
+     * Client id => name, collected as the rows resolve their documents. The
+     * grouping messages name buyers, and asking the database again for a name
+     * already in hand would be a query per contract.
      *
-     * @var array<string, int>
+     * @var array<int, string>
      */
-    private array $seenCodes = [];
+    private array $clientNames = [];
 
     /**
      * Unit id => every contract of that unit, read once per unit and kept for the
@@ -99,6 +103,7 @@ class AnalyzeContractSpreadsheet
     public function __construct(
         private readonly ContractReconciler $reconciler = new ContractReconciler,
         private readonly ContractBatchProjection $projection = new ContractBatchProjection,
+        private readonly ContractBuyerGrouping $grouping = new ContractBuyerGrouping,
     ) {}
 
     public function handle(string $path): ContractSpreadsheetAnalysis
@@ -141,6 +146,17 @@ class AnalyzeContractSpreadsheet
             });
 
         /**
+         * The lines of one contract become one entry before anything else looks
+         * at them: the projection below counts contracts against units, and two
+         * lines for one contract would read as two contracts on one unit.
+         */
+        $analyzedRows = $this->grouping->collapse(
+            $analyzedRows,
+            $this->currentBuyers($analyzedRows),
+            $this->clientNames,
+        );
+
+        /**
          * Only now, with every row classified, can occupancy be decided: the
          * file is a position, not a sequence, and a distrato anywhere in it
          * frees the unit for a new contract anywhere else.
@@ -149,6 +165,43 @@ class AnalyzeContractSpreadsheet
             ->resolve($analyzedRows, $this->unitContracts);
 
         return new ContractSpreadsheetAnalysis($analyzedRows, unitOccupancies: $occupancies);
+    }
+
+    /**
+     * The buyers the touched contracts hold today, in one query for the whole
+     * file rather than one per contract.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return array<int, list<int>>
+     */
+    private function currentBuyers(array $rows): array
+    {
+        $contractIds = collect($rows)
+            ->pluck('contract_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($contractIds->isEmpty()) {
+            return [];
+        }
+
+        $buyers = DB::table('contract_clients')
+            ->whereIn('contract_id', $contractIds->all())
+            ->get(['contract_id', 'client_id']);
+
+        $names = Client::withTrashed()
+            ->whereIn('id', $buyers->pluck('client_id')->unique()->all())
+            ->pluck('name', 'id');
+
+        foreach ($names as $id => $name) {
+            $this->clientNames[(int) $id] = $name;
+        }
+
+        return $buyers
+            ->groupBy('contract_id')
+            ->map(fn (Collection $rows): array => $rows->pluck('client_id')->map('intval')->values()->all())
+            ->all();
     }
 
     /**
@@ -249,7 +302,7 @@ class AnalyzeContractSpreadsheet
         $takenCodes = ($constructionIds->isEmpty() || $codes->isEmpty())
             ? collect()
             : Contract::withTrashed()
-                ->with(['client', 'constructionUnit'])
+                ->with(['clients', 'constructionUnit'])
                 ->whereIn('construction_id', $constructionIds->all())
                 ->whereIn('code_normalized', $codes->all())
                 ->get();
@@ -295,15 +348,15 @@ class AnalyzeContractSpreadsheet
         }
 
         Contract::query()
-            ->with('client:id,name')
+            ->with('clients:id,name')
             ->whereIn('construction_unit_id', $pending)
-            ->get(['id', 'client_id', 'construction_unit_id', 'code', 'status', 'sale_date', 'cancellation_date'])
+            ->get(['id', 'construction_unit_id', 'code', 'status', 'sale_date', 'cancellation_date'])
             ->each(function (Contract $contract): void {
                 $this->unitContracts[(int) $contract->construction_unit_id][] = [
                     'id' => (int) $contract->getKey(),
                     'code' => (string) $contract->code,
                     'status' => $contract->status,
-                    'client' => $contract->client?->name,
+                    'client' => $contract->buyersLabel(),
                     'sale_date' => ValueComparator::date($contract->sale_date),
                     'cancellation_date' => ValueComparator::date($contract->cancellation_date),
                 ];
@@ -363,6 +416,9 @@ class AnalyzeContractSpreadsheet
             'code_normalized' => $row['code_normalized'],
             'client_label' => null,
             'client_id' => null,
+            'client_ids' => [],
+            'buyer_comparison' => null,
+            'lines' => [$row['line']],
             'construction_unit_id' => null,
             'construction_id' => null,
             'contract_id' => null,
@@ -435,6 +491,8 @@ class AnalyzeContractSpreadsheet
         $base['client_id'] = (int) $client->getKey();
         $base['client_label'] = $client->name;
 
+        $this->clientNames[(int) $client->getKey()] = $client->name;
+
         $status = ContractStatus::tryFromLabel($row['status_raw']);
 
         if ($status === null) {
@@ -467,17 +525,14 @@ class AnalyzeContractSpreadsheet
 
         $base['cancellation_date'] = $cancellationDate;
 
+        /**
+         * A repeated contract code is no longer a defect: one line per buyer is
+         * the format, so the same contract legitimately appears as many times as
+         * it has buyers. What the lines must agree on, and whether a buyer was
+         * listed twice, is decided once the whole file is read --
+         * see {@see ContractBuyerGrouping}.
+         */
         $codeKey = self::codeKey($construction['id'], $row['code_normalized']);
-
-        if (isset($this->seenCodes[$codeKey])) {
-            return [
-                ...$base,
-                'outcome' => ReconciliationOutcome::DuplicatedInFile,
-                'message' => "Contrato repetido na planilha (linha {$this->seenCodes[$codeKey]}). Maiúsculas, minúsculas e espaços não distinguem um código do outro.",
-            ];
-        }
-
-        $this->seenCodes[$codeKey] = $row['line'];
 
         $existing = $context['codes'][$codeKey] ?? null;
 

@@ -7,7 +7,7 @@ namespace App\Enums;
  *
  * The distinction is the whole point of comparing instead of overwriting: a
  * payment landing on an installment is routine, a due date moving is a change to
- * the financial schedule, and a contract changing buyer is not an update at all.
+ * the financial schedule, and a contract losing a buyer is not an update at all.
  */
 enum ChangeSeverity: string
 {

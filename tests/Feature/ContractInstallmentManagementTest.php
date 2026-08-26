@@ -106,7 +106,7 @@ it('reaches the client and the unit through the contract instead of storing them
         ->and(Schema::hasColumn('contract_installments', 'construction_unit_id'))->toBeFalse()
         ->and(Schema::hasColumn('contract_installments', 'construction_id'))->toBeFalse()
         ->and(Schema::hasColumn('contract_installments', 'emission_id'))->toBeFalse()
-        ->and($installment->contract->client->name)->toBe('João da Silva')
+        ->and($installment->contract->clients->pluck('name')->all())->toBe(['João da Silva'])
         ->and($installment->contract->constructionUnit->unit)->toBe('305')
         ->and($installment->contract->construction->id)->toBe($construction->id)
         ->and($installment->contract->construction->emission_id)->toBe($emission->id);

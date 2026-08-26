@@ -114,10 +114,14 @@ it('builds a template whose data sheet carries only the headers', function () {
     $exampleRows = SimpleExcelReader::create($path)->fromSheetName(ContractSpreadsheetTemplate::EXAMPLE_SHEET)->getRows()->all();
 
     expect($dataRows)->toBe([])
-        ->and($exampleRows)->toHaveCount(2)
+        ->and($exampleRows)->toHaveCount(4)
         ->and(array_keys($exampleRows[0]))->toBe(ContractSpreadsheetColumns::headers())
         ->and($exampleRows[0]['Contrato'])->toBe('CVC-00123')
-        ->and($exampleRows[1]['Status'])->toBe('Distratado');
+        ->and($exampleRows[3]['Status'])->toBe('Distratado')
+        // O exemplo precisa ensinar o formato plural: mesmo contrato, dois CPFs.
+        ->and($exampleRows[1]['Contrato'])->toBe($exampleRows[2]['Contrato'])
+        ->and($exampleRows[1]['CPF/CNPJ'])->not->toBe($exampleRows[2]['CPF/CNPJ'])
+        ->and($exampleRows[1]['Valor Venda'])->toBe($exampleRows[2]['Valor Venda']);
 
     // The example sheet is never read by the importer.
     expect(app(AnalyzeContractSpreadsheet::class)->handle($path)->fileErrors)
@@ -199,12 +203,15 @@ it('persists the approved rows inside a single transaction', function () {
     $active = Contract::query()->where('code', 'CVC-00123')->sole();
     $cancelled = Contract::query()->where('code', 'CVC-00124')->sole();
 
-    expect($active->client_id)->toBe($client->id)
+    expect($active->buyerIds())->toBe([$client->id])
+        // A coluna legada nasce vazia: o comprador vive na pivot.
+        ->and($active->client_id)->toBeNull()
         ->and($active->construction_unit_id)->toBe($unit305->id)
         ->and($active->status)->toBe(ContractStatus::Active)
         ->and($active->cancellation_date)->toBeNull()
         ->and((float) $active->sale_value)->toBe(850000.00)
-        ->and($cancelled->client_id)->toBe($buyer->id)
+        ->and($cancelled->buyerIds())->toBe([$buyer->id])
+        ->and($cancelled->client_id)->toBeNull()
         ->and($cancelled->construction_unit_id)->toBe($unit402->id)
         ->and($cancelled->status)->toBe(ContractStatus::Cancelled)
         ->and($cancelled->cancellation_date->toDateString())->toBe('2025-06-15');
@@ -295,7 +302,7 @@ it('refuses to move an existing contract to another buyer or unit', function () 
     expect($analysis->conflictCount())->toBe(1)
         ->and($analysis->newCount())->toBe(0)
         ->and($analysis->canImport())->toBeFalse()
-        ->and($analysis->rows[0]['message'])->toContain('Cliente')
+        ->and($analysis->rows[0]['message'])->toContain('Compradores')
         ->and($analysis->rows[0]['message'])->toContain('Unidade');
 });
 
@@ -360,7 +367,12 @@ it('never opens a new contract over a code held by a deleted one', function () {
         ->and(Contract::query()->count())->toBe(0);
 });
 
-it('detects two codes differing only by case inside the spreadsheet', function () {
+/**
+ * O código repetido deixou de ser defeito em si: uma linha por comprador é o
+ * formato. O que continua sendo refutado é o mesmo contrato descrito de duas
+ * maneiras -- aqui, em duas unidades diferentes.
+ */
+it('refuses two lines that claim the same contract on different units', function () {
     contractImportScenario();
 
     $analysis = analyzeContractSpreadsheet([
@@ -368,9 +380,10 @@ it('detects two codes differing only by case inside the spreadsheet', function (
         contractRow(['unit' => '402', 'document' => '52998224725', 'code' => 'a606']),
     ]);
 
-    expect($analysis->duplicatedInFileCount())->toBe(1)
+    expect($analysis->conflictCount())->toBe(1)
         ->and($analysis->canImport())->toBeFalse()
-        ->and($analysis->rows[1]['message'])->toStartWith('Contrato repetido na planilha (linha 2).');
+        ->and($analysis->collect()->first()['message'])->toContain('valores divergentes')
+        ->and($analysis->collect()->first()['message'])->toContain('Unidade');
 });
 
 it('keeps the same code in two developments as two different contracts', function () {
@@ -406,7 +419,11 @@ it('persists the identity alongside the code the spreadsheet carried', function 
         ->and($contract->code_normalized)->toBe('CTR-001');
 });
 
-it('rejects a line repeated inside the spreadsheet', function () {
+/**
+ * Mesmo contrato, mesmo comprador, unidades diferentes: as linhas se contradizem
+ * sobre o que o contrato é, e nenhuma delas pode ser escolhida.
+ */
+it('rejects two lines of one contract that disagree about the unit', function () {
     contractImportScenario();
 
     $analysis = analyzeContractSpreadsheet([
@@ -414,8 +431,9 @@ it('rejects a line repeated inside the spreadsheet', function () {
         contractRow(['unit' => '402']),
     ]);
 
-    expect($analysis->duplicatedInFileCount())->toBe(1)
-        ->and($analysis->rows[1]['message'])->toStartWith('Contrato repetido na planilha (linha 2).');
+    expect($analysis->conflictCount())->toBe(1)
+        ->and($analysis->canImport())->toBeFalse()
+        ->and($analysis->collect()->first()['message'])->toContain('valores divergentes');
 });
 
 it('rejects two live contracts for the same unit inside the spreadsheet', function () {
@@ -754,7 +772,7 @@ describe('distrato e revenda no mesmo lote', function () {
             ->and($existing->cancellation_date->toDateString())->toBe('2026-08-15')
             ->and($resale->status)->toBe(ContractStatus::Active)
             ->and($resale->sale_date->toDateString())->toBe('2026-08-20')
-            ->and($resale->client->name)->toBe('Maria Oliveira')
+            ->and($resale->clients->pluck('name')->all())->toBe(['Maria Oliveira'])
             ->and($unit305->contracts()->count())->toBe(2)
             ->and($unit305->activeContract()->first()->code)->toBe('CVC-00002');
     });
