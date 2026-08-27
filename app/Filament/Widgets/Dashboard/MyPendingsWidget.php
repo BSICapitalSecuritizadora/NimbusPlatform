@@ -6,6 +6,7 @@ use App\Filament\Pages\ObligationDashboard;
 use App\Filament\Resources\Proposals\ProposalResource;
 use App\Models\Obligation;
 use App\Models\Proposal;
+use App\Services\MeasurementPendingService;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\Auth;
 
@@ -68,7 +69,10 @@ class MyPendingsWidget extends Widget
                 ->get();
         }
 
-        $totalPendingCount = $obligationCount + $proposalCount;
+        $measurementSummary = app(MeasurementPendingService::class)->summaryFor($user, self::PREVIEW_LIMIT);
+        $measurementCount = $measurementSummary['count'];
+        $measurements = collect($measurementSummary['items']);
+        $totalPendingCount = $obligationCount + $proposalCount + $measurementCount;
 
         return [
             'proposals' => $proposals,
@@ -85,6 +89,11 @@ class MyPendingsWidget extends Widget
             'obligationsUrl' => ObligationDashboard::canAccess()
                 ? ObligationDashboard::getUrl(['filters' => ['responsible_user_id' => $user->id]])
                 : null,
+            'measurements' => $measurements,
+            'measurementCount' => $measurementCount,
+            'measurementHiddenCount' => max($measurementCount - $measurements->count(), 0),
+            'overdueMeasurementCount' => $measurementSummary['overdue_count'],
+            'delegatedMeasurementCount' => $measurementSummary['delegated_count'],
             'totalPendingCount' => $totalPendingCount,
             'sectionDescription' => $totalPendingCount === 0
                 ? 'Seu fluxo pessoal está sob controle.'

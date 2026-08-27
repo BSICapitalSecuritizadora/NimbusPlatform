@@ -137,6 +137,10 @@ enum AccessPermission: string
     case MeasurementsPay = 'measurements.pay';
     case MeasurementsReceipts = 'measurements.receipts';
     case MeasurementsFinalize = 'measurements.finalize';
+    case DelegationsView = 'delegations.view';
+    case DelegationsCreate = 'delegations.create';
+    case DelegationsRevoke = 'delegations.revoke';
+    case DelegationsManage = 'delegations.manage';
     case RecruitmentVacanciesView = 'recruitment.vacancies.view';
     case RecruitmentVacanciesCreate = 'recruitment.vacancies.create';
     case RecruitmentVacanciesUpdate = 'recruitment.vacancies.update';
@@ -378,6 +382,10 @@ enum AccessPermission: string
             self::MeasurementsPay => 'Medições: registrar e analisar pagamentos',
             self::MeasurementsReceipts => 'Medições: anexar e remover comprovantes',
             self::MeasurementsFinalize => 'Medições: finalizar',
+            self::DelegationsView => 'Delegações: visualizar',
+            self::DelegationsCreate => 'Delegações: criar',
+            self::DelegationsRevoke => 'Delegações: revogar',
+            self::DelegationsManage => 'Delegações: gerir todas',
             self::RecruitmentVacanciesView => 'Vagas: visualizar',
             self::RecruitmentVacanciesCreate => 'Vagas: criar',
             self::RecruitmentVacanciesUpdate => 'Vagas: editar',
@@ -571,6 +579,10 @@ enum AccessPermission: string
                 self::OperationsUpdate,
                 self::OperationsManageResponsibilities,
                 self::OperationsDelete,
+                self::DelegationsView,
+                self::DelegationsCreate,
+                self::DelegationsRevoke,
+                self::DelegationsManage,
                 self::MeasurementsView,
                 self::MeasurementsCreate,
                 self::MeasurementsUpdate,
@@ -606,7 +618,8 @@ enum AccessPermission: string
             str_starts_with($this->value, 'receivables.'),
             str_starts_with($this->value, 'negotiations.'),
             str_starts_with($this->value, 'operations.'),
-            str_starts_with($this->value, 'measurements.') => 'Emissões & Operações',
+            str_starts_with($this->value, 'measurements.'),
+            str_starts_with($this->value, 'delegations.') => 'Emissões & Operações',
 
             str_starts_with($this->value, 'obligations.') => 'Obrigações',
 

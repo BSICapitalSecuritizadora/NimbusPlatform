@@ -14,9 +14,15 @@ class NimbusStatsOverview extends BaseWidget
 
     protected int|string|array $columnSpan = 'full';
 
-    protected function getColumns(): int
+    protected function getColumns(): int|array
     {
-        return 3;
+        return [
+            'default' => 1,
+            'sm' => 2,
+            'md' => 2,
+            'lg' => 3,
+            'xl' => 3,
+        ];
     }
 
     protected function getStats(): array
@@ -24,7 +30,8 @@ class NimbusStatsOverview extends BaseWidget
         return [
             Stat::make('Envios recebidos', Submission::count())
                 ->icon('heroicon-m-inbox-arrow-down')
-                ->extraAttributes(['class' => 'nimbus-stat-card bg-slate-500 border border-slate-600 shadow-sm']),
+                ->description('Total de submissões')
+                ->extraAttributes(['class' => 'nimbus-stat-card nimbus-stat-received']),
 
             Stat::make('Aguardando análise', Submission::whereIn('status', [
                 Submission::STATUS_PENDING,
@@ -32,23 +39,28 @@ class NimbusStatsOverview extends BaseWidget
                 Submission::STATUS_NEEDS_CORRECTION,
             ])->count())
                 ->icon('heroicon-m-clock')
-                ->extraAttributes(['class' => 'nimbus-stat-card bg-amber-500 border border-amber-600 shadow-sm']),
+                ->description('Pendentes ou em revisão')
+                ->extraAttributes(['class' => 'nimbus-stat-card nimbus-stat-pending']),
 
             Stat::make('Aprovados', Submission::where('status', Submission::STATUS_COMPLETED)->count())
                 ->icon('heroicon-m-check-badge')
-                ->extraAttributes(['class' => 'nimbus-stat-card bg-emerald-500 border border-emerald-600 shadow-sm']),
+                ->description('Finalizados com sucesso')
+                ->extraAttributes(['class' => 'nimbus-stat-card nimbus-stat-approved']),
 
             Stat::make('Rejeitados', Submission::where('status', Submission::STATUS_REJECTED)->count())
                 ->icon('heroicon-m-x-circle')
-                ->extraAttributes(['class' => 'nimbus-stat-card bg-rose-500 border border-rose-600 shadow-sm']),
+                ->description('Recusados na análise')
+                ->extraAttributes(['class' => 'nimbus-stat-card nimbus-stat-rejected']),
 
             Stat::make('Usuários cadastrados', PortalUser::where('status', 'ACTIVE')->count())
                 ->icon('heroicon-m-users')
-                ->extraAttributes(['class' => 'nimbus-stat-card bg-yellow-500 border border-yellow-600 shadow-sm']),
+                ->description('Contas ativas no portal')
+                ->extraAttributes(['class' => 'nimbus-stat-card nimbus-stat-users']),
 
             Stat::make('Documentos vigentes', GeneralDocument::where('is_active', true)->count())
                 ->icon('heroicon-m-document-text')
-                ->extraAttributes(['class' => 'nimbus-stat-card bg-sky-500 border border-sky-600 shadow-sm']),
+                ->description('Biblioteca ativa')
+                ->extraAttributes(['class' => 'nimbus-stat-card nimbus-stat-documents']),
         ];
     }
 }

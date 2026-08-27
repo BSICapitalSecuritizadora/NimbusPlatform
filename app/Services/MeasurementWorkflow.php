@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\MeasurementResponsibility;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Construction;
 use App\Models\Measurement;
@@ -11,6 +12,8 @@ use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\MeasurementReview;
+use App\Models\Operation;
+use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -58,10 +61,11 @@ class MeasurementWorkflow
     public function unifiedStage(Measurement $measurement): int
     {
         if ($measurement->status === 'paused') {
-            return (int) ($measurement->pauses()
-                ->whereNull('resumed_at')
-                ->latest('paused_at')
-                ->value('stage') ?? $measurement->current_stage);
+            $openPause = $measurement->relationLoaded('pauses')
+                ? $measurement->pauses->whereNull('resumed_at')->sortByDesc('paused_at')->first()
+                : $measurement->pauses()->whereNull('resumed_at')->latest('paused_at')->first();
+
+            return (int) ($openPause?->stage ?? $measurement->current_stage);
         }
 
         return match ($measurement->status) {
@@ -108,9 +112,13 @@ class MeasurementWorkflow
 
     public function canRegisterPayment(Measurement $measurement, User $actor): bool
     {
+        $hasPendingReview = $measurement->relationLoaded('reviews')
+            ? $measurement->reviews->contains(fn (MeasurementReview $review): bool => (int) $review->stage === self::STAGE_PAYMENT && $review->status === 'pending')
+            : $measurement->reviews()->where('stage', self::STAGE_PAYMENT)->where('status', 'pending')->exists();
+
         return $measurement->status === 'awaiting_payment'
             && (int) $measurement->current_stage === self::STAGE_PAYMENT
-            && $measurement->reviews()->where('stage', self::STAGE_PAYMENT)->where('status', 'pending')->exists()
+            && $hasPendingReview
             && $this->authorization->canRegisterPayment($actor, $measurement);
     }
 
@@ -194,7 +202,9 @@ class MeasurementWorkflow
         $expectedRevision ??= (int) $measurement->workflow_revision;
 
         $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress): array {
-            $locked = $this->lockMeasurement($measurement);
+            $locked = $expectedStage === self::STAGE_ENGINEERING
+                ? $this->lockEngineeringMeasurement($measurement)
+                : $this->lockMeasurement($measurement);
             $stage = $this->unifiedStage($locked);
 
             $this->assertExpectedState($locked, $expectedRevision, $expectedStage);
@@ -626,6 +636,8 @@ class MeasurementWorkflow
                 );
             }
 
+            $this->ensureEngineeringSnapshotTopLevelIsIntact($locked);
+
             $rows = collect($rows)
                 ->filter(fn (array $row): bool => filled($row['amount'] ?? null))
                 ->values()
@@ -952,6 +964,42 @@ class MeasurementWorkflow
         return $locked;
     }
 
+    /**
+     * Engineering approval shares this deterministic lock order with material
+     * Operation mutation: Operation, Measurement, review, then snapshot rows.
+     */
+    private function lockEngineeringMeasurement(Measurement $measurement): Measurement
+    {
+        $operationId = Measurement::query()
+            ->whereKey($measurement->getKey())
+            ->value('operation_id');
+
+        $operation = filled($operationId)
+            ? Operation::query()->whereKey($operationId)->lockForUpdate()->first()
+            : null;
+
+        if (! $operation instanceof Operation) {
+            throw new MeasurementWorkflowException('A operação da medição não foi encontrada.');
+        }
+
+        $locked = Measurement::query()
+            ->whereKey($measurement->getKey())
+            ->lockForUpdate()
+            ->first();
+
+        if (! $locked instanceof Measurement) {
+            throw new MeasurementWorkflowException('A medição não foi encontrada.');
+        }
+
+        if ((int) $locked->operation_id !== (int) $operation->getKey()) {
+            throw $this->invalidState($locked, 'A operação da medição foi alterada durante a aprovação da Engenharia.');
+        }
+
+        $locked->setRelation('operation', $operation);
+
+        return $locked;
+    }
+
     private function authorizeStageDecision(Measurement $measurement, User $actor, int $stage): void
     {
         if (! $this->authorization->canDecideStage($actor, $measurement, $stage)) {
@@ -985,8 +1033,13 @@ class MeasurementWorkflow
             : in_array($measurement->status, ['pending', 'in_review'], true)
                 && (int) $measurement->current_stage === $stage;
 
-        return $hasExpectedStatus
-            && $measurement->reviews()->where('stage', $stage)->where('status', 'pending')->whereNull('paused_at')->exists();
+        $hasPendingReview = $measurement->relationLoaded('reviews')
+            ? $measurement->reviews->contains(fn (MeasurementReview $review): bool => (int) $review->stage === $stage
+                && $review->status === 'pending'
+                && $review->paused_at === null)
+            : $measurement->reviews()->where('stage', $stage)->where('status', 'pending')->whereNull('paused_at')->exists();
+
+        return $hasExpectedStatus && $hasPendingReview;
     }
 
     private function reopenStage(Measurement $measurement, User $actor, int $target, ?string $note): void
@@ -1132,15 +1185,12 @@ class MeasurementWorkflow
 
     private function ensureEngineeringCoverageIsIntact(Measurement $measurement): void
     {
+        $this->ensureEngineeringSnapshotTopLevelIsIntact($measurement);
+
         $snapshot = $measurement->engineering_snapshot;
         $requirements = collect(is_array($snapshot) ? ($snapshot['plan_sets'] ?? []) : []);
 
-        if (! is_array($snapshot)
-            || (int) ($snapshot['schema_version'] ?? 0) !== MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION
-            || (int) ($snapshot['measurement_id'] ?? 0) !== (int) $measurement->getKey()
-            || (int) ($snapshot['operation_id'] ?? 0) !== (int) $measurement->operation_id
-            || ! $this->nullableIntMatches($measurement->operation->emission_id, $snapshot['emission_id'] ?? null)
-            || ($measurement->reference_month?->toDateString() ?? '') !== ($snapshot['reference_month'] ?? null)
+        if (($measurement->reference_month?->toDateString() ?? '') !== ($snapshot['reference_month'] ?? null)
             || $requirements->isEmpty()
             || $requirements->pluck('plan_set_id')->filter()->unique()->count() !== $requirements->count()) {
             throw $this->invalidState($measurement, 'O snapshot obrigatório da Engenharia está ausente, desatualizado ou possui cardinalidade inválida.');
@@ -1221,6 +1271,19 @@ class MeasurementWorkflow
                 || ! hash_equals((string) ($requirement['sha256'] ?? ''), $asset->sha256)) {
                 throw $this->invalidState($measurement, "O contexto aprovado pela Engenharia para o plano #{$planSetId} foi alterado.");
             }
+        }
+    }
+
+    private function ensureEngineeringSnapshotTopLevelIsIntact(Measurement $measurement): void
+    {
+        $snapshot = $measurement->engineering_snapshot;
+
+        if (! is_array($snapshot)
+            || (int) ($snapshot['schema_version'] ?? 0) !== MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION
+            || (int) ($snapshot['measurement_id'] ?? 0) !== (int) $measurement->getKey()
+            || (int) ($snapshot['operation_id'] ?? 0) !== (int) $measurement->operation_id
+            || ! $this->nullableIntMatches($measurement->operation->emission_id, $snapshot['emission_id'] ?? null)) {
+            throw $this->invalidState($measurement, 'O contexto principal aprovado pela Engenharia está ausente ou divergente.');
         }
     }
 
@@ -1307,17 +1370,58 @@ class MeasurementWorkflow
      */
     private function audit(Measurement $measurement, User $actor, string $event, array $properties): void
     {
+        $delegationContext = $this->resolveDelegationContext(
+            $measurement,
+            $actor,
+            $properties['responsibility'] ?? $properties['stage'] ?? null,
+        );
+
         activity('measurement_workflow')
             ->performedOn($measurement)
             ->causedBy($actor)
             ->withProperties(array_merge([
                 'operation_id' => $measurement->operation_id,
                 'measurement_id' => $measurement->getKey(),
-                'delegated' => false,
+                'delegated' => $delegationContext !== null,
+                'delegation_id' => $delegationContext?->getKey(),
+                'delegator_user_id' => $delegationContext?->delegator_user_id,
+                'delegation_scope' => $delegationContext ? [
+                    'type' => $delegationContext->scope_type,
+                    'operation_id' => $delegationContext->scope_operation_id,
+                    'stage' => $delegationContext->scope_stage,
+                    'responsibility' => $delegationContext->scope_responsibility,
+                ] : null,
                 'actual_actor_user_id' => $actor->getKey(),
                 'workflow_revision' => (int) $measurement->workflow_revision,
             ], $properties))
             ->log($event);
+    }
+
+    private function resolveDelegationContext(Measurement $measurement, User $actor, mixed $responsibility): ?ResponsibilityDelegation
+    {
+        $resolved = is_int($responsibility)
+            ? MeasurementResponsibility::primaryForStage($responsibility)
+            : MeasurementResponsibility::fromOperationColumn((string) $responsibility);
+
+        if (! $resolved instanceof MeasurementResponsibility) {
+            return null;
+        }
+
+        // If actor is directly responsible, no delegation
+        $operation = $measurement->operation;
+        if (! $operation instanceof Operation) {
+            return null;
+        }
+
+        if ($operation->hasDirectResponsibility($actor, $resolved)) {
+            return null;
+        }
+
+        if (app(MeasurementAuthorizationService::class)->isWorkflowAdministrator($actor)) {
+            return null;
+        }
+
+        return app(MeasurementAuthorizationService::class)->activeDelegationFor($actor, $measurement, $resolved);
     }
 
     /**

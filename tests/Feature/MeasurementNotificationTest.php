@@ -5,6 +5,7 @@ use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
+use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementWorkflow;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -114,9 +115,16 @@ it('notifies the payment manager to attach receipts when a payment is registered
         'status' => 'awaiting_payment',
         'current_stage' => MeasurementWorkflow::STAGE_PAYMENT,
         'engineering_snapshot' => [
+            'schema_version' => MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION,
+            'measurement_id' => 0,
+            'operation_id' => $operation->id,
+            'emission_id' => $operation->emission_id,
             'plan_sets' => [['plan_set_id' => $planSet->id, 'is_default' => true]],
         ],
     ]);
+    $snapshot = $measurement->engineering_snapshot;
+    $snapshot['measurement_id'] = $measurement->id;
+    $measurement->forceFill(['engineering_snapshot' => $snapshot])->save();
     $measurement->reviews()->create([
         'stage' => MeasurementWorkflow::STAGE_PAYMENT,
         'reviewer_user_id' => $manager->id,

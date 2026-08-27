@@ -587,11 +587,13 @@ it('renders emission and obligation links in the operational widget', function (
 
     $component
         ->assertSee(EmissionResource::getUrl('edit', ['record' => $emission]))
-        ->assertSee(EmissionResource::getUrl('edit', [
-            'record' => $emission,
-            'relation' => ObligationsRelationManager::class,
-        ]))
         ->assertCanSeeTableRecords([$obligation]);
+
+    // Quick-view modal replaces direct row navigation; secondary action keeps full details access
+    $widget = $component->instance();
+    $table = $widget->getTable();
+    expect($table->getRecordUrl($obligation))->toBeNull();
+    expect($table->getRecordAction($obligation))->toBe('quickView');
 });
 
 it('surfaces concluded obligations without approved evidence for evidence viewers', function () {

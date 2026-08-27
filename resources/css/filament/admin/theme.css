@@ -389,28 +389,89 @@
  * Tailwind v4 source(none) resolution issues with utility classes.
  */
 
-/* ── Nimbus stat card overrides ── */
-.nimbus-stat-card {
-    color: #fff !important;
+/* ── Nimbus Dashboard (Visão Geral) Refinements ── */
+.bsi-nimbus-dashboard .fi-page {
+    gap: 1.5rem;
 }
 
-.nimbus-stat-card .fi-icon {
-    color: rgba(255, 255, 255, 0.9) !important;
+/* ── Nimbus Stat Cards (Unified Petrol-Teal Surface) ── */
+.nimbus-stat-card {
+    background: #0d252e !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    border-radius: 14px !important;
+    padding: 1.125rem 1.25rem !important;
+    box-shadow: 0 4px 20px rgba(4, 14, 19, 0.3) !important;
+    transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 7.25rem;
+}
+
+.nimbus-stat-card:hover {
+    border-color: rgba(183, 131, 47, 0.35) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(4, 14, 19, 0.45) !important;
+}
+
+.nimbus-stat-card .fi-wi-stats-overview-stat-label-ctn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.375rem;
 }
 
 .nimbus-stat-card .fi-wi-stats-overview-stat-label {
-    font-size: 0.875rem !important;
+    font-size: 0.75rem !important;
     font-weight: 600 !important;
-    color: rgba(255, 255, 255, 0.9) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: rgba(251, 250, 248, 0.65) !important;
+    line-height: 1.3 !important;
 }
 
 .nimbus-stat-card .fi-wi-stats-overview-stat-value {
-    font-size: 2.25rem !important;
-    line-height: 2.5rem !important;
+    font-size: 2.125rem !important;
+    line-height: 2.375rem !important;
     font-weight: 700 !important;
+    font-variant-numeric: tabular-nums !important;
     letter-spacing: -0.025em !important;
-    color: #fff !important;
+    margin-bottom: 0.25rem;
 }
+
+.nimbus-stat-card .fi-wi-stats-overview-stat-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.5) !important;
+    font-weight: 400 !important;
+    line-height: 1.25 !important;
+}
+
+.nimbus-stat-card .fi-icon {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+}
+
+/* Individual semantic accents on stats (subtle, high hierarchy) */
+.nimbus-stat-received .fi-wi-stats-overview-stat-value { color: #fbfaf8 !important; }
+.nimbus-stat-received .fi-icon { color: #38bdf8 !important; }
+
+.nimbus-stat-pending .fi-wi-stats-overview-stat-value { color: #fbbf24 !important; }
+.nimbus-stat-pending .fi-icon { color: #f59e0b !important; }
+
+.nimbus-stat-approved .fi-wi-stats-overview-stat-value { color: #34d399 !important; }
+.nimbus-stat-approved .fi-icon { color: #10b981 !important; }
+
+.nimbus-stat-rejected .fi-wi-stats-overview-stat-value { color: #f87171 !important; }
+.nimbus-stat-rejected .fi-icon { color: #f43f5e !important; }
+
+.nimbus-stat-users .fi-wi-stats-overview-stat-value { color: #fbfaf8 !important; }
+.nimbus-stat-users .fi-icon { color: #d4af37 !important; }
+
+.nimbus-stat-documents .fi-wi-stats-overview-stat-value { color: #fbfaf8 !important; }
+.nimbus-stat-documents .fi-icon { color: #2dd4bf !important; }
 
 /* ── Simple layout (login page) background ── */
 .fi-simple-layout {
@@ -1061,6 +1122,10 @@
 .dark .bsi-clients-list-page .fi-ta-content-ctn,
 .dark .bsi-contracts-list-page .fi-ta-content-ctn,
 .dark .bsi-contract-installments-list-page .fi-ta-content-ctn,
+.dark .bsi-submissions-list-page .fi-ta-content-ctn,
+.dark .bsi-document-categories-list-page .fi-ta-content-ctn,
+.dark .bsi-general-documents-list-page .fi-ta-content-ctn,
+.dark .bsi-portal-documents-list-page .fi-ta-content-ctn,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
@@ -1094,6 +1159,10 @@
 .dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-contract-installments-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-submissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-document-categories-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-general-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-portal-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
     background: transparent;
 }
@@ -1127,6 +1196,10 @@
 .dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-contract-installments-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-submissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-document-categories-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-general-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-portal-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
@@ -1488,6 +1561,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-page,
 .bsi-contracts-list-page .fi-page,
 .bsi-contract-installments-list-page .fi-page,
+.bsi-submissions-list-page .fi-page,
+.bsi-document-categories-list-page .fi-page,
+.bsi-general-documents-list-page .fi-page,
+.bsi-portal-documents-list-page .fi-page,
 .bsi-receivables-list-page .fi-page {
     gap: 0.75rem !important;
 }
@@ -1528,6 +1605,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-header,
 .bsi-contracts-list-page .fi-header,
 .bsi-contract-installments-list-page .fi-header,
+.bsi-submissions-list-page .fi-header,
+.bsi-document-categories-list-page .fi-header,
+.bsi-general-documents-list-page .fi-header,
+.bsi-portal-documents-list-page .fi-header,
 .bsi-receivables-list-page .fi-header {
     padding: 0.875rem 1.25rem !important;
     border-radius: 12px !important;
@@ -1571,6 +1652,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-header-heading,
 .bsi-contracts-list-page .fi-header-heading,
 .bsi-contract-installments-list-page .fi-header-heading,
+.bsi-submissions-list-page .fi-header-heading,
+.bsi-document-categories-list-page .fi-header-heading,
+.bsi-general-documents-list-page .fi-header-heading,
+.bsi-portal-documents-list-page .fi-header-heading,
 .bsi-receivables-list-page .fi-header-heading {
     font-size: 1.25rem !important;
     font-weight: 700 !important;
@@ -1613,6 +1698,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-header-subheading,
 .bsi-contracts-list-page .fi-header-subheading,
 .bsi-contract-installments-list-page .fi-header-subheading,
+.bsi-submissions-list-page .fi-header-subheading,
+.bsi-document-categories-list-page .fi-header-subheading,
+.bsi-general-documents-list-page .fi-header-subheading,
+.bsi-portal-documents-list-page .fi-header-subheading,
 .bsi-receivables-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
@@ -1657,6 +1746,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-breadcrumbs,
 .bsi-contracts-list-page .fi-breadcrumbs,
 .bsi-contract-installments-list-page .fi-breadcrumbs,
+.bsi-submissions-list-page .fi-breadcrumbs,
+.bsi-document-categories-list-page .fi-breadcrumbs,
+.bsi-general-documents-list-page .fi-breadcrumbs,
+.bsi-portal-documents-list-page .fi-breadcrumbs,
 .bsi-receivables-list-page .fi-breadcrumbs {
     font-size: 0.75rem !important;
     margin-bottom: 0.125rem !important;
@@ -1693,6 +1786,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-ta-table,
 .bsi-contracts-list-page .fi-ta-table,
 .bsi-contract-installments-list-page .fi-ta-table,
+.bsi-submissions-list-page .fi-ta-table,
+.bsi-document-categories-list-page .fi-ta-table,
+.bsi-general-documents-list-page .fi-ta-table,
+.bsi-portal-documents-list-page .fi-ta-table,
 .bsi-receivables-list-page .fi-ta-table {
     width: 100% !important;
     min-width: 100% !important;
@@ -1730,6 +1827,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-ta-cell .fi-badge,
 .bsi-contracts-list-page .fi-ta-cell .fi-badge,
 .bsi-contract-installments-list-page .fi-ta-cell .fi-badge,
+.bsi-submissions-list-page .fi-ta-cell .fi-badge,
+.bsi-document-categories-list-page .fi-ta-cell .fi-badge,
+.bsi-general-documents-list-page .fi-ta-cell .fi-badge,
+.bsi-portal-documents-list-page .fi-ta-cell .fi-badge,
 .bsi-receivables-list-page .fi-ta-cell .fi-badge {
     white-space: normal !important;
     text-align: center !important;
@@ -1788,6 +1889,10 @@ select.fi-select-input option[selected] {
     .bsi-clients-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-contracts-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-contract-installments-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-submissions-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-document-categories-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-general-documents-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-portal-documents-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-receivables-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 22rem;
     }
@@ -1825,6 +1930,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-ta-empty-state,
 .bsi-contracts-list-page .fi-ta-empty-state,
 .bsi-contract-installments-list-page .fi-ta-empty-state,
+.bsi-submissions-list-page .fi-ta-empty-state,
+.bsi-document-categories-list-page .fi-ta-empty-state,
+.bsi-general-documents-list-page .fi-ta-empty-state,
+.bsi-portal-documents-list-page .fi-ta-empty-state,
 .bsi-receivables-list-page .fi-ta-empty-state {
     padding-block: 2.5rem !important;
     padding-inline: 1.5rem !important;
@@ -1861,6 +1970,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-ta-empty-state-icon-bg,
 .bsi-contracts-list-page .fi-ta-empty-state-icon-bg,
 .bsi-contract-installments-list-page .fi-ta-empty-state-icon-bg,
+.bsi-submissions-list-page .fi-ta-empty-state-icon-bg,
+.bsi-document-categories-list-page .fi-ta-empty-state-icon-bg,
+.bsi-general-documents-list-page .fi-ta-empty-state-icon-bg,
+.bsi-portal-documents-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: #64748b !important;
     margin-bottom: 0.75rem !important;
@@ -1897,6 +2010,10 @@ select.fi-select-input option[selected] {
 .dark .bsi-clients-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-contracts-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-contract-installments-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-submissions-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-document-categories-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-general-documents-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-portal-documents-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: rgba(251, 250, 248, 0.4) !important;
 }
@@ -1932,6 +2049,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-ta-empty-state-heading,
 .bsi-contracts-list-page .fi-ta-empty-state-heading,
 .bsi-contract-installments-list-page .fi-ta-empty-state-heading,
+.bsi-submissions-list-page .fi-ta-empty-state-heading,
+.bsi-document-categories-list-page .fi-ta-empty-state-heading,
+.bsi-general-documents-list-page .fi-ta-empty-state-heading,
+.bsi-portal-documents-list-page .fi-ta-empty-state-heading,
 .bsi-receivables-list-page .fi-ta-empty-state-heading {
     font-size: 1rem !important;
     font-weight: 600 !important;
@@ -1953,6 +2074,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-ta-table td,
 .bsi-contracts-list-page .fi-ta-table td,
 .bsi-contract-installments-list-page .fi-ta-table td,
+.bsi-submissions-list-page .fi-ta-table td,
+.bsi-document-categories-list-page .fi-ta-table td,
+.bsi-general-documents-list-page .fi-ta-table td,
+.bsi-portal-documents-list-page .fi-ta-table td,
 .bsi-receivables-list-page .fi-ta-table td {
     font-variant-numeric: tabular-nums;
 }
@@ -1988,6 +2113,10 @@ select.fi-select-input option[selected] {
 .bsi-clients-list-page .fi-ta-empty-state-description,
 .bsi-contracts-list-page .fi-ta-empty-state-description,
 .bsi-contract-installments-list-page .fi-ta-empty-state-description,
+.bsi-submissions-list-page .fi-ta-empty-state-description,
+.bsi-document-categories-list-page .fi-ta-empty-state-description,
+.bsi-general-documents-list-page .fi-ta-empty-state-description,
+.bsi-portal-documents-list-page .fi-ta-empty-state-description,
 .bsi-receivables-list-page .fi-ta-empty-state-description {
     max-width: 46ch !important;
     font-size: 0.8125rem !important;
@@ -5365,14 +5494,30 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* Respiro interno do Card "Dados do nome do fundo" */
 .bsi-fund-name-form-page form.fi-sc-form .fi-section-header {
-    padding-block: 1rem 1.125rem !important;
-    padding-inline: 1.5rem !important;
+    padding-block: 1.125rem 1.25rem !important;
+    padding-inline: 1.75rem !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-section-header-heading {
+    font-size: 1.0625rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
 }
 
 .bsi-fund-name-form-page form.fi-sc-form .fi-section-content,
 .bsi-fund-name-form-page form.fi-sc-form .fi-section-content-ctn {
     padding-block: 1.5rem 1.75rem !important;
-    padding-inline: 1.5rem !important;
+    padding-inline: 1.75rem !important;
+}
+
+/* Garante min-width: 0 em cada coluna do grid para evitar quebras anômalas */
+.bsi-fund-name-form-page form.fi-sc-form .fi-sc-section .fi-section-content-ctn > * {
+    min-width: 0 !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-fo-field-wrp {
+    min-width: 0 !important;
+    width: 100% !important;
 }
 
 /* Espaçamento dos labels */
@@ -5382,79 +5527,152 @@ html:not(.dark) .fi-activity-card:hover {
     margin-bottom: 0.5rem !important;
 }
 
-/* Altura uniforme e bordas dos campos */
+/* Altura uniforme padrão do sistema e bordas dos campos */
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp {
     min-height: 2.75rem !important;
+    height: 2.75rem !important;
+    padding-inline: 0.75rem 0.375rem !important;
     border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.375rem !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp {
+    min-height: 2.75rem !important;
+    height: 2.75rem !important;
+}
+
+/* Valor do select em linha única sem quebras (white-space: nowrap) */
+.bsi-fund-name-form-page form.fi-sc-form .fi-input,
+.bsi-fund-name-form-page form.fi-sc-form .fi-select-input,
+.bsi-fund-name-form-page form.fi-sc-form .choices__inner,
+.bsi-fund-name-form-page form.fi-sc-form .choices__item,
+.bsi-fund-name-form-page form.fi-sc-form [data-slot="value"] {
+    font-size: 0.875rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-width: 0 !important;
 }
 
 .bsi-fund-name-form-page form.fi-sc-form .fi-input {
-    font-size: 0.9375rem !important;
-    padding-inline: 0.75rem !important;
+    padding-inline: 0.25rem !important;
 }
 
-/* Alinhamento interno e ações (+ e ✎) do campo Tipo de Fundo */
-.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions {
-    gap: 0.375rem !important;
+.bsi-fund-name-form-page form.fi-sc-form .fi-select-input {
+    padding-inline-start: 0.25rem !important;
+}
+
+/* Sufixo do select (limpar e chevron) */
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-suffix {
     display: inline-flex !important;
     align-items: center !important;
     flex-shrink: 0 !important;
-    padding-inline-start: 0.5rem !important;
+    gap: 0.25rem !important;
+}
+
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-suffix svg.fi-icon:not(.fi-input-wrp-actions svg) {
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+    color: rgba(251, 250, 248, 0.5) !important;
+    flex-shrink: 0 !important;
+}
+
+/* Divisor sutil e container do button group (+ e ✎) do campo Tipo de Fundo */
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions {
+    gap: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    align-self: center !important;
+    flex-shrink: 0 !important;
+    padding-inline-start: 0.375rem !important;
     margin-inline-start: 0.25rem !important;
-    border-left: 1px solid rgba(148, 163, 184, 0.25) !important;
+    border-left: 1px solid rgba(148, 163, 184, 0.2) !important;
 }
 
 .dark .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions {
-    border-left-color: rgba(183, 131, 47, 0.3) !important;
+    border-left-color: rgba(183, 131, 47, 0.25) !important;
 }
 
+/* Button Group integrado: botões simétricos, compactos e alinhados */
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button {
-    width: 2rem !important;
-    height: 2rem !important;
-    min-width: 2rem !important;
-    max-width: 2rem !important;
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    min-width: 1.75rem !important;
+    max-width: 1.75rem !important;
     flex-shrink: 0 !important;
     padding: 0 !important;
-    border-radius: 8px !important;
+    margin: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    position: relative !important;
     color: rgba(251, 250, 248, 0.8) !important;
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(148, 163, 184, 0.22) !important;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    transition: color 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out, box-shadow 140ms ease-out !important;
 }
 
+/* Canto esquerdo arredondado no botão + (primeiro botão) */
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:first-child,
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button:first-child {
+    border-top-left-radius: 6px !important;
+    border-bottom-left-radius: 6px !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-right: none !important;
+}
+
+/* Canto direito arredondado no botão ✎ (último botão) com divisor interno sutil */
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:last-child,
+.bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button:last-child {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-top-right-radius: 6px !important;
+    border-bottom-right-radius: 6px !important;
+    border-left: 1px solid rgba(148, 163, 184, 0.16) !important;
+}
+
+/* Ícones perfeitamente centralizados */
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn svg,
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button svg {
-    width: 1rem !important;
-    height: 1rem !important;
+    width: 0.8125rem !important;
+    height: 0.8125rem !important;
+    display: block !important;
+    margin: auto !important;
+    flex-shrink: 0 !important;
 }
 
+/* Hover refinado com realce evidente no tema dourado/petróleo */
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button:hover {
-    color: #fbfaf8 !important;
-    background: rgba(183, 131, 47, 0.18) !important;
+    color: #ffffff !important;
+    background: rgba(183, 131, 47, 0.22) !important;
     border-color: rgba(183, 131, 47, 0.55) !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+    z-index: 2 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
 
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:focus-visible,
 .bsi-fund-name-form-page form.fi-sc-form .fi-input-wrp-actions button:focus-visible {
     outline: none !important;
     border-color: #b7832f !important;
-    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.3) !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.35) !important;
+    z-index: 2 !important;
 }
 
 /* Ações inferiores (Salvar alterações / Cancelar) */
 .bsi-fund-name-form-page form.fi-sc-form .fi-sc-actions {
-    margin-top: 1.25rem !important;
+    margin-top: 1.5rem !important;
     width: 100% !important;
 }
 
 .bsi-fund-name-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
-    gap: 0.75rem !important;
+    gap: 0.875rem !important;
     display: flex !important;
     flex-wrap: wrap !important;
     align-items: center !important;
@@ -5473,7 +5691,430 @@ html:not(.dark) .fi-activity-card:hover {
     justify-content: center !important;
 }
 
-/* ── Cadastros Simples (Tipo de Fundo, Aplicação): formulário administrativo de escala média confortável (660px - 720px) ── */
+/* ── Aplicação de Fundos (Criar/Editar): card em largura total (100%) com campo com largura confortável ── */
+.bsi-fund-application-form-page form.fi-sc-form {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+}
+
+.bsi-fund-application-form-page form.fi-sc-form > .fi-sc,
+.bsi-fund-application-form-page form.fi-sc-form .fi-sc-section,
+.bsi-fund-application-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Cabeçalho do Card "Dados da aplicação" */
+.bsi-fund-application-form-page form.fi-sc-form .fi-section-header {
+    padding-block: 1rem 1.125rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+.bsi-fund-application-form-page form.fi-sc-form .fi-section-header-heading {
+    font-size: 1rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-fund-application-form-page form.fi-sc-form .fi-section-header-description {
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.25rem !important;
+}
+
+/* Conteúdo do Card: compacto e proporcional */
+.bsi-fund-application-form-page form.fi-sc-form .fi-section-content,
+.bsi-fund-application-form-page form.fi-sc-form .fi-section-content-ctn {
+    padding-block: 1.25rem 1.5rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+/* Campo Nome: largura confortável (768px no desktop) alinhado à esquerda */
+.bsi-fund-application-form-page form.fi-sc-form .fi-fo-field-wrp {
+    width: 100% !important;
+    max-width: 48rem !important;
+}
+
+.bsi-fund-application-form-page form.fi-sc-form .fi-fo-field-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.375rem !important;
+    text-align: start !important;
+}
+
+.bsi-fund-application-form-page form.fi-sc-form .fi-input-wrp {
+    min-height: 2.75rem !important;
+    height: 2.75rem !important;
+    padding-inline: 0.75rem !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.bsi-fund-application-form-page form.fi-sc-form .fi-input {
+    font-size: 0.875rem !important;
+    padding-inline: 0.25rem !important;
+    text-align: start !important;
+}
+
+/* Ações inferiores (Salvar alterações / Cancelar) */
+.bsi-fund-application-form-page form.fi-sc-form .fi-sc-actions {
+    margin-top: 1.25rem !important;
+    width: 100% !important;
+}
+
+.bsi-fund-application-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+    gap: 0.75rem !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+
+.bsi-fund-application-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+    min-height: 2.625rem !important;
+    padding-inline: 1.25rem !important;
+    padding-block: 0.5rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+@media (max-width: 640px) {
+    .bsi-fund-application-form-page form.fi-sc-form .fi-fo-field-wrp {
+        max-width: 100% !important;
+    }
+
+    .bsi-fund-application-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .bsi-fund-application-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+        width: 100% !important;
+    }
+}
+
+/* ── Instituição Bancária (Criar/Editar): card vertical em largura total sem divisão de colunas ── */
+.bsi-bank-form-page form.fi-sc-form {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form > .fi-sc,
+.bsi-bank-form-page form.fi-sc-form .fi-sc-section,
+.bsi-bank-form-page form.fi-sc-form .fi-sc-section .fi-section {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Cabeçalho do Card "Dados da Instituição Bancária" */
+.bsi-bank-form-page form.fi-sc-form .fi-section-header {
+    padding-block: 1rem 1.125rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form .fi-section-header-heading {
+    font-size: 1rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form .fi-section-header-description {
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.25rem !important;
+}
+
+/* Conteúdo do Card */
+.bsi-bank-form-page form.fi-sc-form .fi-section-content,
+.bsi-bank-form-page form.fi-sc-form .fi-section-content-ctn {
+    padding-block: 1.5rem 1.75rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+/* Campo Nome do banco: largura total e alinhamento equilibrado */
+.bsi-bank-form-page .bsi-bank-name-field {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form .fi-fo-field-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.375rem !important;
+    text-align: start !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form .fi-input-wrp {
+    min-height: 2.75rem !important;
+    height: 2.75rem !important;
+    padding-inline: 0.75rem !important;
+    border-radius: 10px !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form .fi-input {
+    font-size: 0.875rem !important;
+    padding-inline: 0.25rem !important;
+    text-align: start !important;
+    width: 100% !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form .fi-fo-field-wrp-helper-text {
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+    margin-top: 0.375rem !important;
+}
+
+/* Divisor sutil e cabeçalho da seção de Identidade Visual */
+.bsi-bank-identity-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-top: 1.5rem;
+    padding-bottom: 0.875rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.15);
+    width: 100%;
+}
+
+.bsi-bank-identity-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bsi-bank-identity-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: #e5b358;
+    flex-shrink: 0;
+}
+
+.bsi-bank-identity-title {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    color: #fbfaf8;
+    letter-spacing: -0.01em;
+}
+
+.bsi-bank-identity-subtitle {
+    font-size: 0.75rem;
+    color: rgba(251, 250, 248, 0.55);
+    line-height: 1.35;
+}
+
+/* Card de preview do logotipo em largura total */
+.bsi-bank-current-logo-card {
+    background: #091b23;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 1rem;
+    transition: border-color 150ms ease-out;
+}
+
+.bsi-bank-current-logo-card:hover {
+    border-color: rgba(183, 131, 47, 0.45);
+}
+
+.bsi-bank-logo-stage-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.bsi-bank-stage-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(251, 250, 248, 0.85);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.bsi-bank-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-radius: 9999px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.bsi-bank-logo-stage {
+    width: 100%;
+    height: 130px;
+    min-height: 120px;
+    max-height: 150px;
+    background: radial-gradient(circle at center, #0f2d3a 0%, #081a21 100%);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow: hidden;
+}
+
+.bsi-bank-logo-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+}
+
+.bsi-bank-logo-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bsi-bank-logo-meta-text {
+    font-size: 0.75rem;
+    color: rgba(251, 250, 248, 0.65);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+/* Área de Upload em largura total */
+.bsi-bank-form-page .fi-fo-file-upload {
+    width: 100% !important;
+}
+
+.bsi-bank-form-page .fi-fo-file-upload .filepond--root {
+    width: 100% !important;
+    background: #091b23 !important;
+    border: 1.5px dashed rgba(183, 131, 47, 0.35) !important;
+    border-radius: 12px !important;
+    min-height: 6.5rem !important;
+    transition: all 180ms ease-out !important;
+    overflow: hidden !important;
+}
+
+.bsi-bank-form-page .fi-fo-file-upload .filepond--root:hover {
+    background: #0c2530 !important;
+    border-color: rgba(183, 131, 47, 0.7) !important;
+    box-shadow: 0 0 14px rgba(183, 131, 47, 0.12) !important;
+}
+
+.bsi-bank-form-page .fi-fo-file-upload .filepond--panel-root {
+    background: transparent !important;
+    border: none !important;
+}
+
+.bsi-bank-form-page .fi-fo-file-upload .filepond--drop-label {
+    min-height: 6.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 1.25rem 1rem !important;
+    cursor: pointer !important;
+}
+
+.bsi-bank-form-page .fi-fo-file-upload .filepond--drop-label,
+.bsi-bank-form-page .fi-fo-file-upload .filepond--drop-label label {
+    color: rgba(251, 250, 248, 0.85) !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+}
+
+.bsi-bank-form-page .fi-fo-file-upload .filepond--label-action {
+    color: #d49e47 !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    border-bottom: 1.5px solid rgba(212, 158, 71, 0.4) !important;
+    padding-bottom: 1px !important;
+}
+
+.bsi-bank-form-page .fi-fo-file-upload .filepond--label-action:hover {
+    color: #e5b358 !important;
+    border-bottom-color: #e5b358 !important;
+}
+
+.dark .bsi-bank-form-page .fi-fo-file-upload .filepond--item-panel {
+    background: #0a2028 !important;
+    border: 1px solid rgba(183, 131, 47, 0.35) !important;
+    border-radius: 10px !important;
+}
+
+.dark .bsi-bank-form-page .fi-fo-file-upload .filepond--file-info-main {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+.dark .bsi-bank-form-page .fi-fo-file-upload .filepond--file-info-sub {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.75rem !important;
+}
+
+.dark .bsi-bank-form-page .fi-fo-file-upload .filepond--action-remove-item {
+    background-color: rgba(239, 68, 68, 0.2) !important;
+    border: 1px solid rgba(239, 68, 68, 0.35) !important;
+    color: #fca5a5 !important;
+}
+
+/* Ações inferiores (Salvar alterações / Cancelar) */
+.bsi-bank-form-page form.fi-sc-form .fi-sc-actions {
+    margin-top: 1.5rem !important;
+    width: 100% !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+    gap: 0.75rem !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+
+.bsi-bank-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+    min-height: 2.625rem !important;
+    padding-inline: 1.25rem !important;
+    padding-block: 0.5rem !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+@media (max-width: 640px) {
+    .bsi-bank-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .bsi-bank-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+        width: 100% !important;
+    }
+}
+
+/* ── Cadastros Simples (Tipo de Fundo): formulário administrativo de escala média confortável (660px - 720px) ── */
 .bsi-simple-form-page form.fi-sc-form {
     width: 100% !important;
     max-width: 44rem !important;
@@ -5658,14 +6299,47 @@ html:not(.dark) .fi-activity-card:hover {
     overflow: visible !important;
 }
 
-/* Grid do Formulário: largura total com proporções 58% / 42% na linha 1 e 100% na linha 2 */
+/* Grid do Formulário: coluna esquerda dominante (1.4fr / ~58.3%) e coluna direita (1fr / ~41.7%) */
 .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-sc,
 .bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn .fi-sc,
 .bsi-service-provider-form-page form.fi-sc-form .fi-section-content .fi-sc {
     width: 100% !important;
     max-width: 100% !important;
-    column-gap: 2rem !important;   /* Separação horizontal ampla e confortável */
-    row-gap: 1.5rem !important;    /* Separação vertical nítida */
+    column-gap: 1.5rem !important;
+    row-gap: 1.5rem !important;
+}
+
+@media (min-width: 640px) {
+    .bsi-service-provider-form-page form.fi-sc-form .fi-sc-section .fi-sc,
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content-ctn .fi-sc,
+    .bsi-service-provider-form-page form.fi-sc-form .fi-section-content .fi-sc {
+        display: grid !important;
+        grid-template-columns: 1.4fr 1fr !important;
+        column-gap: 1.5rem !important;
+        row-gap: 1.5rem !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(.fi-fo-select-wrp),
+    .bsi-service-provider-form-page form.fi-sc-form .fi-fo-field:has(.fi-fo-select-wrp),
+    .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp {
+        grid-column: 1 / 2 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(input[id*="cnpj"]),
+    .bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(input[name*="cnpj"]) {
+        grid-column: 2 / 3 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(input[id*="name"]),
+    .bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(input[name*="name"]) {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
 }
 
 /* Prevenção de restrição indevida do CSS Grid e sub-wrappers */
@@ -5736,9 +6410,11 @@ html:not(.dark) .fi-activity-card:hover {
     box-sizing: border-box !important;
 }
 
-/* CNPJ: largura total no bloco de 41.7%, dígitos integrais visíveis sem corte */
+/* CNPJ: largura total no bloco de proporção 1fr, dígitos integrais visíveis sem corte */
 .bsi-service-provider-form-page form.fi-sc-form input.fi-input[id*="cnpj"],
 .bsi-service-provider-form-page form.fi-sc-form input[name*="cnpj"] {
+    width: 100% !important;
+    min-width: 0 !important;
     white-space: nowrap !important;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
     font-variant-numeric: tabular-nums !important;
@@ -5759,240 +6435,424 @@ html:not(.dark) .fi-activity-card:hover {
     white-space: nowrap !important;
 }
 
-/* ── Select (Tipo): exibição unilinear e suporte a textos longos (Devedor, Banco Liquidante, Escritório de Advocacia, etc.) ── */
-.bsi-service-provider-form-page form.fi-sc-form .fi-select-input,
-.bsi-service-provider-form-page form.fi-sc-form .choices {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    height: 100% !important;
-    margin-bottom: 0 !important;
+/* ── Select (Tipo): trigger limpo, alinhamento preciso e botão [+] desacoplado ── */
+
+/* 1. Estrutura base do campo de select no formulário de prestadores */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(.fi-fo-select-wrp),
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp {
     position: relative !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
 }
 
-.bsi-service-provider-form-page form.fi-sc-form .choices__inner {
+/* 2. O wrapper externo atua como container flex com gap de 8px (0.5rem) para o botão [+] */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(.fi-fo-select-wrp) .fi-input-wrp {
     display: flex !important;
     align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem !important;
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
-    min-height: 2.8125rem !important;
-    height: 100% !important;
-    padding-inline: 0.875rem 0.25rem !important;
-    padding-block: 0 !important;
+    min-height: 2.875rem !important;
+    height: 2.875rem !important;
+    padding: 0 !important;
+    margin: 0 !important;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    border-radius: 0 !important;
-    overflow: hidden !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    overflow: visible !important;
 }
 
-.bsi-service-provider-form-page form.fi-sc-form .choices__list--single {
-    display: flex !important;
-    align-items: center !important;
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp:focus-within,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(.fi-fo-select-wrp) .fi-input-wrp:focus-within {
+    border: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+/* 3. Coluna de conteúdo do select ocupa todo o espaço restante (flex: 1 1 0%) */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-content-ctn,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-field-wrp:has(.fi-fo-select-wrp) .fi-input-wrp-content-ctn {
     flex: 1 1 0% !important;
+    flex-grow: 1 !important;
     min-width: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     height: 100% !important;
-    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    overflow: visible !important;
     margin: 0 !important;
-    overflow: hidden !important;
+    padding: 0 !important;
 }
 
-.bsi-service-provider-form-page form.fi-sc-form .choices__list--single .choices__item,
-.bsi-service-provider-form-page form.fi-sc-form .choices__list--single .choices__item--selectable,
-.bsi-service-provider-form-page form.fi-sc-form .choices__item {
-    display: block !important;
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-content-ctn > div:not(.fi-hidden),
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp div[x-ref="select"],
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-ctn {
+    flex: 1 1 0% !important;
+    flex-grow: 1 !important;
     width: 100% !important;
-    max-width: 100% !important;
     min-width: 0 !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* 4. Trigger fechado do Select: ocupa todo o espaço da coluna flex (flex: 1) de forma dominante */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn {
+    flex: 1 1 0% !important;
+    flex-grow: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 2.875rem !important;
+    min-height: 2.875rem !important;
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 10px !important;
+    padding-inline: 0.875rem 2.25rem !important;
+    padding-block: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    color: #fbfaf8 !important;
+    font-size: 0.9375rem !important;
+    font-weight: 500 !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease !important;
+    cursor: pointer !important;
+    outline: none !important;
+    position: relative !important;
+    user-select: none !important;
+    margin: 0 !important;
+}
+
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn {
+    background: #ffffff !important;
+    border-color: #dbd5d3 !important;
+    color: #221f1e !important;
+    box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Hover no trigger */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn:hover {
+    border-color: rgba(148, 163, 184, 0.38) !important;
+}
+
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn:hover {
+    border-color: #9d918d !important;
+}
+
+/* Foco sutil (1-2px com baixa opacidade dourada, sem contorno duplo) */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn:focus,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn:focus-visible,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn[aria-expanded="true"] {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.22) !important;
+    outline: none !important;
+}
+
+/* Chevron discreto no canto direito do trigger */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn::after {
+    content: '' !important;
+    position: absolute !important;
+    right: 0.875rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%239d918d'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+    pointer-events: none !important;
+    transition: transform 180ms ease, opacity 180ms ease !important;
+    opacity: 0.75 !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-btn[aria-expanded="true"]::after {
+    transform: translateY(-50%) rotate(180deg) !important;
+    opacity: 1 !important;
+}
+
+/* 5. Conteúdo textual do trigger: valor selecionado ou placeholder */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-value-ctn {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: 100% !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    word-break: normal !important;
-    overflow-wrap: normal !important;
-    word-wrap: normal !important;
-    hyphens: manual !important;
-    font-size: 0.9375rem !important;
-    font-weight: 500 !important;
     line-height: 1.5 !important;
-    float: none !important;
+    text-align: left !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-placeholder {
+    color: rgba(251, 250, 248, 0.48) !important;
+    font-weight: 400 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-placeholder {
+    color: #766c68 !important;
+}
+
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-value-label {
+    color: #fbfaf8 !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-value-label {
     color: #221f1e !important;
 }
 
-.dark .bsi-service-provider-form-page form.fi-sc-form .choices__list--single .choices__item,
-.dark .bsi-service-provider-form-page form.fi-sc-form .choices__list--single .choices__item--selectable,
-.dark .bsi-service-provider-form-page form.fi-sc-form .choices__item {
-    color: #fbfaf8 !important;
+/* 6. Botão de limpar seleção (×) posicionado com respiro sem sobreposição */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-value-remove-btn {
+    position: absolute !important;
+    right: 2.125rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 1.375rem !important;
+    height: 1.375rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 4px !important;
+    color: rgba(251, 250, 248, 0.45) !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    z-index: 2 !important;
+    transition: color 150ms ease, background-color 150ms ease !important;
 }
 
-/* Isolamento do input fantasma de Choices.js no modo de seleção única */
-.bsi-service-provider-form-page form.fi-sc-form .choices__inner > input.choices__input {
-    position: absolute !important;
-    left: -9999px !important;
-    top: -9999px !important;
-    width: 1px !important;
-    height: 1px !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-value-remove-btn:hover {
+    color: #fbfaf8 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-value-remove-btn {
+    color: #9d918d !important;
+}
+
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-value-remove-btn:hover {
+    color: #221f1e !important;
+    background: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Padding direito reservado para acomodar × e chevron simultaneamente */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-select-input-ctn-clearable .fi-select-input-btn {
+    padding-inline-end: 3.875rem !important;
+}
+
+/* 7. Botão [+] (Criar tipo de prestador): separado com gap de 8px, quadrado, azul-petróleo e dourado no hover */
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-suffix {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    width: auto !important;
     margin: 0 !important;
     padding: 0 !important;
 }
 
-/* ── Ações laterais do Select: [ valor selecionado ] [×] [⌄] | [+] [✎] ── */
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix {
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions {
     display: inline-flex !important;
     align-items: center !important;
-    flex-shrink: 0 !important;
-    margin-inline-start: 0.625rem !important;
-    padding-inline: 0 0.5rem !important;
-    gap: 0.5rem !important;
+    gap: 0.375rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
 }
 
-/* Ícone de limpar (x) e chevron (⌄) nativos */
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix > .fi-icon-btn,
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix > button {
-    width: 1.625rem !important;
-    height: 1.625rem !important;
-    min-width: 1.625rem !important;
-    max-width: 1.625rem !important;
-    padding: 0 !important;
-    border-radius: 6px !important;
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions .fi-icon-btn,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions button {
+    width: 2.75rem !important;
+    height: 2.875rem !important;
+    min-width: 2.75rem !important;
+    max-width: 2.75rem !important;
+    flex: 0 0 2.75rem !important;
+    border-radius: 10px !important;
+    background: #102a33 !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    color: #fbfaf8 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    color: #78716c !important;
-    background: transparent !important;
-    border: none !important;
-    transition: all 150ms ease !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
 }
 
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix > .fi-icon-btn:hover,
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix > button:hover {
-    color: #1a1918 !important;
-    background: rgba(0, 0, 0, 0.06) !important;
-}
-
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix > .fi-icon-btn,
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix > button {
-    color: rgba(251, 250, 248, 0.55) !important;
-    background: transparent !important;
-}
-
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix > .fi-icon-btn:hover,
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix > button:hover {
-    color: #fbfaf8 !important;
-    background: rgba(255, 255, 255, 0.08) !important;
-}
-
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-input-wrp-suffix-icon-ctn,
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix svg.fi-icon:not(.fi-input-wrp-actions svg) {
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions .fi-icon-btn svg,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions button svg {
     width: 1.125rem !important;
     height: 1.125rem !important;
-    color: #78716c !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    flex-shrink: 0 !important;
 }
 
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-input-wrp-suffix-icon-ctn,
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-suffix svg.fi-icon:not(.fi-input-wrp-actions svg) {
-    color: rgba(251, 250, 248, 0.55) !important;
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions .fi-icon-btn:hover,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions button:hover {
+    background: #143540 !important;
+    border-color: #b7832f !important;
+    color: #e2c068 !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.22), 0 2px 6px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* Divisor sutil e agrupador das ações CRUD (+ e ✎) */
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions {
-    gap: 0.375rem !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    flex-shrink: 0 !important;
-    padding-inline-start: 0.5rem !important;
-    margin-inline-start: 0.25rem !important;
-    border-left: 1px solid rgba(148, 163, 184, 0.25) !important;
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions .fi-icon-btn:focus-visible,
+.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions button:focus-visible {
+    outline: none !important;
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.35) !important;
 }
 
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions {
-    border-left-color: rgba(183, 131, 47, 0.3) !important;
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions .fi-icon-btn,
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions button {
+    background: #eef2f5 !important;
+    border-color: #dbd5d3 !important;
+    color: #12313b !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
-/* Botões de ação (+ e ✎): mini-ações integradas elegantes com área clicável confortável */
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button {
-    width: 2rem !important;
-    height: 2rem !important;
-    min-width: 2rem !important;
-    max-width: 2rem !important;
-    flex-shrink: 0 !important;
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions .fi-icon-btn:hover,
+:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp-actions button:hover {
+    background: #e2e8ed !important;
+    border-color: #b7832f !important;
+    color: #96651f !important;
+}
+
+/* 8. Painel do dropdown aberto: azul profundo, borda refinada, sombra elegante e sem clipping */
+.bsi-service-provider-form-page .fi-dropdown-panel,
+.bsi-service-provider-form-page .fi-fo-select-wrp .fi-dropdown-panel,
+.fi-select-input .fi-dropdown-panel {
+    background: #06151c !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+    max-height: 20rem !important; /* ~320px */
+    min-width: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    z-index: 9999 !important;
+    margin-top: 4px !important;
     padding: 0 !important;
-    border-radius: 8px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    color: rgba(251, 250, 248, 0.8) !important;
-    background: rgba(255, 255, 255, 0.05) !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(183, 131, 47, 0.35) transparent;
+}
+
+/* 9. Barra de busca fixa no topo do painel aberto */
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn,
+.fi-dropdown-panel .fi-select-input-search-ctn {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    padding: 0.625rem 0.75rem !important;
+    background: #06151c !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.15) !important;
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input,
+.fi-dropdown-panel .fi-select-input-search-ctn .fi-input {
+    background: #091b23 !important;
     border: 1px solid rgba(148, 163, 184, 0.22) !important;
-    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn svg,
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button svg {
-    width: 1rem !important;
-    height: 1rem !important;
-}
-
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button:hover {
+    border-radius: 8px !important;
     color: #fbfaf8 !important;
-    background: rgba(183, 131, 47, 0.18) !important;
-    border-color: rgba(183, 131, 47, 0.55) !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2) !important;
-}
-
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:focus-visible,
-.bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button:focus-visible {
+    font-size: 0.875rem !important;
+    padding: 0.5rem 0.75rem !important;
+    height: 2.375rem !important;
+    min-height: 2.375rem !important;
+    width: 100% !important;
     outline: none !important;
-    border-color: #b7832f !important;
-    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.3) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease !important;
 }
 
-/* Light mode para botões de ação (+ e ✎) */
-:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn,
-:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button {
-    color: #494340 !important;
-    background: #f8f7f4 !important;
-    border: 1px solid #dbd5d3 !important;
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input::placeholder,
+.fi-dropdown-panel .fi-select-input-search-ctn .fi-input::placeholder {
+    color: rgba(251, 250, 248, 0.48) !important;
 }
 
-:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:hover,
-:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button:hover {
-    color: #1a1918 !important;
-    background: #efece8 !important;
-    border-color: #b7832f !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
-}
-
-:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions .fi-icon-btn:focus-visible,
-:not(.dark) .bsi-service-provider-form-page form.fi-sc-form .fi-input-wrp-actions button:focus-visible {
-    outline: none !important;
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus,
+.fi-dropdown-panel .fi-select-input-search-ctn .fi-input:focus {
     border-color: #b7832f !important;
     box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
+    outline: none !important;
 }
 
-/* Estados de Foco do Select Wrapper */
-.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp:focus-within,
-.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp:has(.choices.is-open),
-.bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp:has(.choices.is-focused) {
-    border-color: #b7832f !important;
-    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.14) !important;
+/* 10. Lista de opções do dropdown */
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-dropdown-list,
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-options-ctn {
+    padding: 0.375rem !important;
+    margin: 0 !important;
+    background: transparent !important;
+    list-style: none !important;
 }
 
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp:focus-within,
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp:has(.choices.is-open),
-.dark .bsi-service-provider-form-page form.fi-sc-form .fi-fo-select-wrp .fi-input-wrp:has(.choices.is-focused) {
-    border-color: #b7832f !important;
-    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.2) !important;
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-option,
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-dropdown-list-item {
+    padding: 0.625rem 0.875rem !important;
+    min-height: 2.375rem !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 0.875rem !important;
+    font-weight: 450 !important;
+    line-height: 1.35 !important;
+    border-radius: 6px !important;
+    margin: 2px 0 !important;
+    cursor: pointer !important;
+    color: #fbfaf8 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    transition: background-color 120ms ease, color 120ms ease !important;
+}
+
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-option:hover,
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-dropdown-list-item:hover,
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-option:focus,
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-dropdown-list-item:focus {
+    background: #12313b !important;
+    color: #ffffff !important;
+}
+
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-option.fi-selected,
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-dropdown-list-item.fi-selected,
+.bsi-service-provider-form-page .fi-dropdown-panel [aria-selected="true"] {
+    background: #102a33 !important;
+    border-left: 3px solid #b7832f !important;
+    color: #e2c068 !important;
+    font-weight: 600 !important;
+}
+
+/* 11. Empty State e Mensagens de Carregamento */
+.bsi-service-provider-form-page .fi-dropdown-panel .fi-select-input-message,
+.fi-dropdown-panel .fi-select-input-message {
+    padding: 1.25rem 0.875rem !important;
+    font-size: 0.875rem !important;
+    color: rgba(251, 250, 248, 0.62) !important;
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 /* ── Ações do Formulário (Salvar alterações / Cancelar): alinhadas à esquerda do card 100% ── */
@@ -6385,28 +7245,53 @@ html:not(.dark) .fi-activity-card:hover {
     padding-inline: 1.5rem !important;
 }
 
-/* ── Documentos (Criar / Editar / Ficha Documental Institucional): Dark Mode Teal, 100% Useful Width, Proporções Refinadas & Área de Upload de Alta Presença ── */
+/* ── Documentos e Documentos por Usuário (Criar / Editar / Ficha Documental Institucional): Dark Mode Teal, 100% Useful Width, Proporções Refinadas & Área de Upload de Alta Presença ── */
 .bsi-document-form-page,
+.bsi-portal-document-form-page,
 .bsi-document-form-page main,
+.bsi-portal-document-form-page main,
 .bsi-document-form-page .fi-main,
+.bsi-portal-document-form-page .fi-main,
 .bsi-document-form-page .fi-main-ctn,
+.bsi-portal-document-form-page .fi-main-ctn,
 .bsi-document-form-page .fi-page,
+.bsi-portal-document-form-page .fi-page,
 .bsi-document-form-page .fi-page-ctn,
+.bsi-portal-document-form-page .fi-page-ctn,
 .bsi-document-form-page .fi-page-main-ctn,
+.bsi-portal-document-form-page .fi-page-main-ctn,
 .bsi-document-form-page .fi-page-content-ctn,
+.bsi-portal-document-form-page .fi-page-content-ctn,
 .bsi-document-form-page .fi-page-content,
-.bsi-document-form-page form.fi-sc-form,
+.bsi-portal-document-form-page .fi-page-content,
+.bsi-document-form-page .fi-form,
+.bsi-portal-document-form-page .fi-form,
 .bsi-document-form-page form,
+.bsi-portal-document-form-page form,
+.bsi-document-form-page form.fi-form,
+.bsi-portal-document-form-page form.fi-form,
+.bsi-document-form-page form.fi-sc-form,
+.bsi-portal-document-form-page form.fi-sc-form,
 .bsi-document-form-page .fi-sc,
+.bsi-portal-document-form-page .fi-sc,
 .bsi-document-form-page .fi-sc-component,
-.bsi-document-form-page .fi-section {
+.bsi-portal-document-form-page .fi-sc-component,
+.bsi-document-form-page .fi-section,
+.bsi-portal-document-form-page .fi-section,
+.bsi-document-form-page .fi-section-content-ctn,
+.bsi-portal-document-form-page .fi-section-content-ctn {
     width: 100% !important;
     max-width: 100% !important;
     margin-inline: 0 !important;
     box-sizing: border-box !important;
 }
 
-.bsi-document-form-page form.fi-sc-form {
+.bsi-document-form-page form,
+.bsi-portal-document-form-page form,
+.bsi-document-form-page form.fi-form,
+.bsi-portal-document-form-page form.fi-form,
+.bsi-document-form-page form.fi-sc-form,
+.bsi-portal-document-form-page form.fi-sc-form {
     display: flex !important;
     flex-direction: column !important;
     gap: 1.75rem !important;
@@ -6414,31 +7299,44 @@ html:not(.dark) .fi-activity-card:hover {
     max-width: 100% !important;
 }
 
-.bsi-document-form-page form.fi-sc-form > .fi-sc,
-.bsi-document-form-page form.fi-sc-form .fi-sc-section,
-.bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section {
+.bsi-document-form-page form > .fi-sc,
+.bsi-portal-document-form-page form > .fi-sc,
+.bsi-document-form-page form > .fi-grid,
+.bsi-portal-document-form-page form > .fi-grid,
+.bsi-document-form-page form .fi-sc-section,
+.bsi-portal-document-form-page form .fi-sc-section,
+.bsi-document-form-page form .fi-section,
+.bsi-portal-document-form-page form .fi-section,
+.bsi-document-form-page .fi-section,
+.bsi-portal-document-form-page .fi-section {
     width: 100% !important;
     max-width: 100% !important;
-}
-
-.bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section {
     border-radius: 16px !important;
     overflow: hidden !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section {
+.dark .bsi-document-form-page .fi-section,
+.dark .bsi-portal-document-form-page .fi-section,
+.dark .bsi-document-form-page form .fi-section,
+.dark .bsi-portal-document-form-page form .fi-section {
     background: #0d252e !important;
     border: 1px solid rgba(183, 131, 47, 0.22) !important;
     box-shadow: 0 10px 30px rgba(4, 14, 19, 0.4) !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-section-header {
+.dark .bsi-document-form-page .fi-section-header,
+.dark .bsi-portal-document-form-page .fi-section-header,
+.dark .bsi-document-form-page form .fi-section-header,
+.dark .bsi-portal-document-form-page form .fi-section-header {
     background: #0a2028 !important;
     border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
     padding: 1.25rem 2rem !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-section-header-heading {
+.dark .bsi-document-form-page .fi-section-header-heading,
+.dark .bsi-portal-document-form-page .fi-section-header-heading,
+.dark .bsi-document-form-page form .fi-section-header-heading,
+.dark .bsi-portal-document-form-page form .fi-section-header-heading {
     color: #fbfaf8 !important;
     font-size: 1.125rem !important;
     font-weight: 700 !important;
@@ -6446,38 +7344,61 @@ html:not(.dark) .fi-activity-card:hover {
     line-height: 1.3 !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-section-header-icon {
+.dark .bsi-document-form-page .fi-section-header-icon,
+.dark .bsi-portal-document-form-page .fi-section-header-icon,
+.dark .bsi-document-form-page form .fi-section-header-icon,
+.dark .bsi-portal-document-form-page form .fi-section-header-icon {
     color: #d49e47 !important;
     width: 1.5rem !important;
     height: 1.5rem !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-section-header-description {
+.dark .bsi-document-form-page .fi-section-header-description,
+.dark .bsi-portal-document-form-page .fi-section-header-description,
+.dark .bsi-document-form-page form .fi-section-header-description,
+.dark .bsi-portal-document-form-page form .fi-section-header-description {
     color: rgba(251, 250, 248, 0.7) !important;
     font-size: 0.8125rem !important;
     line-height: 1.45 !important;
     margin-top: 0.25rem !important;
 }
 
-.bsi-document-form-page form.fi-sc-form .fi-section-content {
+.bsi-document-form-page .fi-section-content,
+.bsi-portal-document-form-page .fi-section-content,
+.bsi-document-form-page form .fi-section-content,
+.bsi-portal-document-form-page form .fi-section-content {
     padding: 1.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
 @media (min-width: 1024px) {
-    .bsi-document-form-page form.fi-sc-form .fi-section-content {
+    .bsi-document-form-page .fi-section-content,
+    .bsi-portal-document-form-page .fi-section-content,
+    .bsi-document-form-page form .fi-section-content,
+    .bsi-portal-document-form-page form .fi-section-content {
         padding: 2.25rem 2.5rem !important;
     }
 }
 
 /* Grid interno com proporções harmônicas */
-.bsi-document-form-page form.fi-sc-form .fi-section-content .fi-grid,
-.bsi-document-form-page form.fi-sc-form .fi-section-content > div {
+.bsi-document-form-page .fi-section-content .fi-grid,
+.bsi-portal-document-form-page .fi-section-content .fi-grid,
+.bsi-document-form-page .fi-section-content > div,
+.bsi-portal-document-form-page .fi-section-content > div,
+.bsi-document-form-page form .fi-section-content .fi-grid,
+.bsi-portal-document-form-page form .fi-section-content .fi-grid,
+.bsi-document-form-page form .fi-section-content > div,
+.bsi-portal-document-form-page form .fi-section-content > div {
     row-gap: 1.75rem !important;
     column-gap: 1.5rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
 /* Subseção interna de Visibilidade e Publicação em 2 colunas amplas */
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section {
     background: #091b23 !important;
     border: 1px solid rgba(148, 163, 184, 0.18) !important;
     border-radius: 12px !important;
@@ -6485,35 +7406,42 @@ html:not(.dark) .fi-activity-card:hover {
     margin-top: 0.5rem !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header {
     background: #06151c !important;
     border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
     padding: 1rem 1.75rem !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header-heading {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header-heading,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header-heading {
     font-size: 0.9375rem !important;
     font-weight: 600 !important;
     color: #fbfaf8 !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header-description {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header-description,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-header-description {
     font-size: 0.75rem !important;
     color: rgba(251, 250, 248, 0.6) !important;
     line-height: 1.4 !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content {
     padding: 1.5rem 1.75rem !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content .fi-grid,
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content > div {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content .fi-grid,
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content > div,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-section .fi-sc-section .fi-section-content > div {
     gap: 1.5rem !important;
 }
 
 /* Card individual para cada controle de toggle */
-.dark .bsi-document-form-page .fi-fo-toggle {
+.dark .bsi-document-form-page .fi-fo-toggle,
+.dark .bsi-portal-document-form-page .fi-fo-toggle {
     display: flex !important;
     flex-direction: column !important;
     padding: 1.125rem 1.25rem !important;
@@ -6523,12 +7451,14 @@ html:not(.dark) .fi-activity-card:hover {
     transition: all 150ms ease-out !important;
 }
 
-.dark .bsi-document-form-page .fi-fo-toggle:hover {
+.dark .bsi-document-form-page .fi-fo-toggle:hover,
+.dark .bsi-portal-document-form-page .fi-fo-toggle:hover {
     border-color: rgba(183, 131, 47, 0.35) !important;
     background: #0c252f !important;
 }
 
-.dark .bsi-document-form-page .fi-fo-toggle .fi-fo-field-label {
+.dark .bsi-document-form-page .fi-fo-toggle .fi-fo-field-label,
+.dark .bsi-portal-document-form-page .fi-fo-toggle .fi-fo-field-label {
     font-size: 0.875rem !important;
     font-weight: 600 !important;
     color: #fbfaf8 !important;
@@ -6536,7 +7466,9 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 .dark .bsi-document-form-page .fi-fo-toggle .fi-fo-field-wrp-helper-text,
-.dark .bsi-document-form-page .fi-fo-toggle .fi-sc-text {
+.dark .bsi-portal-document-form-page .fi-fo-toggle .fi-fo-field-wrp-helper-text,
+.dark .bsi-document-form-page .fi-fo-toggle .fi-sc-text,
+.dark .bsi-portal-document-form-page .fi-fo-toggle .fi-sc-text {
     font-size: 0.8125rem !important;
     line-height: 1.5 !important;
     color: rgba(251, 250, 248, 0.65) !important;
@@ -6544,7 +7476,8 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 /* Labels e Asteriscos */
-.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label {
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label {
     color: rgba(251, 250, 248, 0.9) !important;
     font-size: 0.8125rem !important;
     font-weight: 600 !important;
@@ -6553,15 +7486,19 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-600,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-600,
 .dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-500,
-.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400 {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-500,
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400 {
     color: #d49e47 !important;
     font-weight: 700 !important;
     margin-left: 0.25rem !important;
 }
 
 /* Inputs de Texto e Controles Básicos com altura confortável (46px) */
-.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp {
+.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp {
     min-height: 2.875rem !important;
     background: #091b23 !important;
     border: 1px solid rgba(148, 163, 184, 0.22) !important;
@@ -6571,29 +7508,34 @@ html:not(.dark) .fi-activity-card:hover {
     transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background-color 150ms ease-out !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp:hover {
+.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp:hover,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp:hover {
     border-color: rgba(183, 131, 47, 0.45) !important;
     background: #0a202a !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp:focus-within {
+.dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp:focus-within {
     background: #091b23 !important;
     border-color: #b7832f !important;
     box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-input {
+.dark .bsi-document-form-page form.fi-sc-form .fi-input,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input {
     color: #fbfaf8 !important;
     font-size: 0.875rem !important;
     padding-inline: 0.875rem !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-input::placeholder {
+.dark .bsi-document-form-page form.fi-sc-form .fi-input::placeholder,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input::placeholder {
     color: rgba(251, 250, 248, 0.35) !important;
 }
 
 /* Campo Categoria e Select Controls */
-.bsi-document-form-page .choices__inner {
+.bsi-document-form-page .choices__inner,
+.bsi-portal-document-form-page .choices__inner {
     min-height: 2.875rem !important;
     background: #091b23 !important;
     border: 1px solid rgba(148, 163, 184, 0.22) !important;
@@ -6605,22 +7547,26 @@ html:not(.dark) .fi-activity-card:hover {
     transition: border-color 150ms ease-out, box-shadow 150ms ease-out !important;
 }
 
-.bsi-document-form-page .choices:hover .choices__inner {
+.bsi-document-form-page .choices:hover .choices__inner,
+.bsi-portal-document-form-page .choices:hover .choices__inner {
     border-color: rgba(183, 131, 47, 0.45) !important;
 }
 
-.bsi-document-form-page .choices:focus-within .choices__inner {
+.bsi-document-form-page .choices:focus-within .choices__inner,
+.bsi-portal-document-form-page .choices:focus-within .choices__inner {
     border-color: #b7832f !important;
     box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
 }
 
-.dark .bsi-document-form-page .choices__list--single .choices__item {
+.dark .bsi-document-form-page .choices__list--single .choices__item,
+.dark .bsi-portal-document-form-page .choices__list--single .choices__item {
     font-size: 0.875rem !important;
     color: #fbfaf8 !important;
     white-space: nowrap !important;
 }
 
-.dark .bsi-document-form-page .choices__list--dropdown {
+.dark .bsi-document-form-page .choices__list--dropdown,
+.dark .bsi-portal-document-form-page .choices__list--dropdown {
     background: #0d252e !important;
     border: 1px solid rgba(183, 131, 47, 0.28) !important;
     border-radius: 10px !important;
@@ -6628,19 +7574,22 @@ html:not(.dark) .fi-activity-card:hover {
     z-index: 100 !important;
 }
 
-.dark .bsi-document-form-page .choices__list--dropdown .choices__item {
+.dark .bsi-document-form-page .choices__list--dropdown .choices__item,
+.dark .bsi-portal-document-form-page .choices__list--dropdown .choices__item {
     color: #fbfaf8 !important;
     font-size: 0.875rem !important;
     padding: 0.625rem 1rem !important;
 }
 
-.dark .bsi-document-form-page .choices__list--dropdown .choices__item--selectable.is-highlighted {
+.dark .bsi-document-form-page .choices__list--dropdown .choices__item--selectable.is-highlighted,
+.dark .bsi-portal-document-form-page .choices__list--dropdown .choices__item--selectable.is-highlighted {
     background: #0a2028 !important;
     color: #d49e47 !important;
 }
 
 /* Multi-select Série Chips */
-.dark .bsi-document-form-page .choices__list--multiple .choices__item {
+.dark .bsi-document-form-page .choices__list--multiple .choices__item,
+.dark .bsi-portal-document-form-page .choices__list--multiple .choices__item {
     background: #0a2028 !important;
     border: 1px solid rgba(183, 131, 47, 0.3) !important;
     color: #fbfaf8 !important;
@@ -6652,7 +7601,8 @@ html:not(.dark) .fi-activity-card:hover {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
 
-.dark .bsi-document-form-page .choices__list--multiple .choices__button {
+.dark .bsi-document-form-page .choices__list--multiple .choices__button,
+.dark .bsi-portal-document-form-page .choices__list--multiple .choices__button {
     border-left: 1px solid rgba(183, 131, 47, 0.3) !important;
     opacity: 0.75 !important;
     margin-left: 0.5rem !important;
@@ -6660,17 +7610,20 @@ html:not(.dark) .fi-activity-card:hover {
     transition: opacity 150ms ease !important;
 }
 
-.dark .bsi-document-form-page .choices__list--multiple .choices__button:hover {
+.dark .bsi-document-form-page .choices__list--multiple .choices__button:hover,
+.dark .bsi-portal-document-form-page .choices__list--multiple .choices__button:hover {
     opacity: 1 !important;
 }
 
 /* Área de Upload com Alta Presença, Proporção Ampla e Acabamento Institucional */
-.bsi-document-form-page .fi-fo-file-upload {
+.bsi-document-form-page .fi-fo-file-upload,
+.bsi-portal-document-form-page .fi-fo-file-upload {
     width: 100% !important;
     margin-block: 0.375rem !important;
 }
 
-.bsi-document-form-page .fi-fo-file-upload .filepond--root {
+.bsi-document-form-page .fi-fo-file-upload .filepond--root,
+.bsi-portal-document-form-page .fi-fo-file-upload .filepond--root {
     width: 100% !important;
     background: #071a22 !important;
     border: 1.5px dashed rgba(183, 131, 47, 0.38) !important;
@@ -6681,18 +7634,21 @@ html:not(.dark) .fi-activity-card:hover {
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-.bsi-document-form-page .fi-fo-file-upload .filepond--root:hover {
+.bsi-document-form-page .fi-fo-file-upload .filepond--root:hover,
+.bsi-portal-document-form-page .fi-fo-file-upload .filepond--root:hover {
     background: #09222c !important;
     border-color: rgba(183, 131, 47, 0.75) !important;
     box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 18px rgba(183, 131, 47, 0.12) !important;
 }
 
-.bsi-document-form-page .fi-fo-file-upload .filepond--panel-root {
+.bsi-document-form-page .fi-fo-file-upload .filepond--panel-root,
+.bsi-portal-document-form-page .fi-fo-file-upload .filepond--panel-root {
     background: transparent !important;
     border: none !important;
 }
 
-.bsi-document-form-page .fi-fo-file-upload .filepond--drop-label {
+.bsi-document-form-page .fi-fo-file-upload .filepond--drop-label,
+.bsi-portal-document-form-page .fi-fo-file-upload .filepond--drop-label {
     min-height: 10rem !important;
     display: flex !important;
     flex-direction: column !important;
@@ -6704,7 +7660,9 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 .bsi-document-form-page .fi-fo-file-upload .filepond--drop-label,
-.bsi-document-form-page .fi-fo-file-upload .filepond--drop-label label {
+.bsi-portal-document-form-page .fi-fo-file-upload .filepond--drop-label,
+.bsi-document-form-page .fi-fo-file-upload .filepond--drop-label label,
+.bsi-portal-document-form-page .fi-fo-file-upload .filepond--drop-label label {
     color: rgba(251, 250, 248, 0.88) !important;
     font-size: 0.9375rem !important;
     font-weight: 500 !important;
@@ -6717,7 +7675,8 @@ html:not(.dark) .fi-activity-card:hover {
     line-height: 1.5 !important;
 }
 
-.bsi-document-form-page .fi-fo-file-upload .filepond--label-action {
+.bsi-document-form-page .fi-fo-file-upload .filepond--label-action,
+.bsi-portal-document-form-page .fi-fo-file-upload .filepond--label-action {
     color: #d49e47 !important;
     font-weight: 600 !important;
     text-decoration: none !important;
@@ -6726,31 +7685,36 @@ html:not(.dark) .fi-activity-card:hover {
     transition: all 150ms ease !important;
 }
 
-.bsi-document-form-page .fi-fo-file-upload .filepond--label-action:hover {
+.bsi-document-form-page .fi-fo-file-upload .filepond--label-action:hover,
+.bsi-portal-document-form-page .fi-fo-file-upload .filepond--label-action:hover {
     color: #e5b358 !important;
     border-bottom-color: #e5b358 !important;
 }
 
 /* Estado após seleção do arquivo */
-.dark .bsi-document-form-page .fi-fo-file-upload .filepond--item-panel {
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--item-panel,
+.dark .bsi-portal-document-form-page .fi-fo-file-upload .filepond--item-panel {
     background: #0a2028 !important;
     border: 1px solid rgba(183, 131, 47, 0.35) !important;
     border-radius: 10px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
-.dark .bsi-document-form-page .fi-fo-file-upload .filepond--file-info-main {
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--file-info-main,
+.dark .bsi-portal-document-form-page .fi-fo-file-upload .filepond--file-info-main {
     color: #fbfaf8 !important;
     font-size: 0.875rem !important;
     font-weight: 600 !important;
 }
 
-.dark .bsi-document-form-page .fi-fo-file-upload .filepond--file-info-sub {
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--file-info-sub,
+.dark .bsi-portal-document-form-page .fi-fo-file-upload .filepond--file-info-sub {
     color: rgba(251, 250, 248, 0.65) !important;
     font-size: 0.75rem !important;
 }
 
-.dark .bsi-document-form-page .fi-fo-file-upload .filepond--action-remove-item {
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--action-remove-item,
+.dark .bsi-portal-document-form-page .fi-fo-file-upload .filepond--action-remove-item {
     background-color: rgba(239, 68, 68, 0.2) !important;
     border: 1px solid rgba(239, 68, 68, 0.35) !important;
     color: #fca5a5 !important;
@@ -6758,14 +7722,17 @@ html:not(.dark) .fi-activity-card:hover {
     transition: all 150ms ease !important;
 }
 
-.dark .bsi-document-form-page .fi-fo-file-upload .filepond--action-remove-item:hover {
+.dark .bsi-document-form-page .fi-fo-file-upload .filepond--action-remove-item:hover,
+.dark .bsi-portal-document-form-page .fi-fo-file-upload .filepond--action-remove-item:hover {
     background-color: rgba(239, 68, 68, 0.4) !important;
     border-color: rgba(239, 68, 68, 0.6) !important;
 }
 
 /* Helper text do upload integrado */
 .dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-wrp-helper-text,
-.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field .fi-sc-text {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-wrp-helper-text,
+.dark .bsi-document-form-page form.fi-sc-form .fi-fo-field .fi-sc-text,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field .fi-sc-text {
     font-size: 0.8125rem !important;
     line-height: 1.5 !important;
     color: rgba(251, 250, 248, 0.6) !important;
@@ -6773,38 +7740,45 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 /* Toggles customizados e refinados */
-.dark .bsi-document-form-page .fi-toggle {
+.dark .bsi-document-form-page .fi-toggle,
+.dark .bsi-portal-document-form-page .fi-toggle {
     background-color: #06151c !important;
     border: 1px solid rgba(148, 163, 184, 0.25) !important;
     transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease !important;
 }
 
 .dark .bsi-document-form-page .fi-toggle.fi-toggle-on,
-.dark .bsi-document-form-page .fi-toggle[aria-checked="true"] {
+.dark .bsi-portal-document-form-page .fi-toggle.fi-toggle-on,
+.dark .bsi-document-form-page .fi-toggle[aria-checked="true"],
+.dark .bsi-portal-document-form-page .fi-toggle[aria-checked="true"] {
     background-color: #b7832f !important;
     border-color: #b7832f !important;
     box-shadow: 0 0 12px rgba(183, 131, 47, 0.35) !important;
 }
 
-.dark .bsi-document-form-page .fi-toggle > div {
+.dark .bsi-document-form-page .fi-toggle > div,
+.dark .bsi-portal-document-form-page .fi-toggle > div {
     background-color: #ffffff !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Ações Finais: alinhamento à esquerda, proporção uniforme e proximidade com o card */
-.bsi-document-form-page form.fi-sc-form .fi-sc-actions {
+.bsi-document-form-page form.fi-sc-form .fi-sc-actions,
+.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions {
     margin-top: 0 !important;
     padding-top: 0.5rem !important;
 }
 
-.bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+.bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
     display: flex !important;
     align-items: center !important;
     gap: 0.875rem !important;
     justify-content: flex-start !important;
 }
 
-.bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+.bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
     min-height: 2.75rem !important;
     border-radius: 8px !important;
     font-size: 0.875rem !important;
@@ -6814,31 +7788,36 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 /* Primária Dourada */
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary {
     background-color: #b7832f !important;
     color: #ffffff !important;
     border: 1px solid #b7832f !important;
     box-shadow: 0 2px 8px rgba(183, 131, 47, 0.25) !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover {
     background-color: #a37227 !important;
     border-color: #a37227 !important;
     box-shadow: 0 4px 12px rgba(183, 131, 47, 0.35) !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus {
     box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.35) !important;
 }
 
 /* Secundária e Neutra */
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary) {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary) {
     background-color: #0d252e !important;
     color: rgba(251, 250, 248, 0.85) !important;
     border: 1px solid rgba(148, 163, 184, 0.25) !important;
 }
 
-.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover {
+.dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover {
     color: #ffffff !important;
     background-color: #0f2d38 !important;
     border-color: rgba(148, 163, 184, 0.4) !important;
@@ -6846,7 +7825,9 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* Validações */
 .dark .bsi-document-form-page .fi-fo-field-wrp-error-message,
-.dark .bsi-document-form-page .fi-fo-file-upload-error-message {
+.dark .bsi-portal-document-form-page .fi-fo-field-wrp-error-message,
+.dark .bsi-document-form-page .fi-fo-file-upload-error-message,
+.dark .bsi-portal-document-form-page .fi-fo-file-upload-error-message {
     color: #f87171 !important;
     font-size: 0.75rem !important;
     font-weight: 500 !important;
@@ -6855,14 +7836,16 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* Mobile */
 @media (max-width: 640px) {
-    .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+    .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+    .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
         width: 100% !important;
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 0.625rem !important;
     }
 
-    .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+    .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
         width: 100% !important;
         justify-content: center !important;
     }
@@ -8388,5 +9371,408 @@ body.bsi-sales-board-view-page,
     max-width: 50ch !important;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   CADASTRO DE DOCUMENTOS EM LOTE (BSI INSTITUTIONAL REFINEMENT)
+   ══════════════════════════════════════════════════════════════════════════ */
 
+/* ── 1. Page Header & Actions ── */
+.bsi-batch-create-documents-page .fi-header-heading {
+    color: #fbfaf8 !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+}
 
+.bsi-batch-create-documents-page .fi-header-subheading {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.875rem !important;
+    margin-top: 0.25rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-header .fi-ac .fi-btn {
+    border-radius: 9px !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    min-height: 2.375rem !important;
+    padding: 0.5rem 1rem !important;
+    background: rgba(16, 42, 51, 0.45) !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.bsi-batch-create-documents-page .fi-header .fi-ac .fi-btn:hover {
+    background: rgba(16, 42, 51, 0.8) !important;
+    border-color: rgba(183, 131, 47, 0.45) !important;
+    color: #fbfaf8 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ── 2. Stepper / Wizard Header ── */
+.bsi-batch-create-documents-page .fi-sc-wizard-header {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    border-radius: 14px !important;
+    padding: 0.5rem 0.75rem !important;
+    margin-bottom: 1.75rem !important;
+    box-shadow: 0 4px 18px rgba(4, 14, 19, 0.35) !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step-btn {
+    padding: 0.625rem 1rem !important;
+    border-radius: 10px !important;
+}
+
+/* Active Step */
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step.fi-active {
+    background: linear-gradient(180deg, rgba(183, 131, 47, 0.14) 0%, rgba(183, 131, 47, 0.03) 100%) !important;
+    border-radius: 10px !important;
+    box-shadow: inset 0 -2px 0 #b7832f !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-icon-ctn {
+    background: rgba(183, 131, 47, 0.22) !important;
+    border: 1.5px solid #b7832f !important;
+    color: #e2c068 !important;
+    width: 2rem !important;
+    height: 2rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-label {
+    color: #fbfaf8 !important;
+    font-weight: 650 !important;
+    font-size: 0.875rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step.fi-active .fi-sc-wizard-header-step-description {
+    color: #d4af37 !important;
+    font-size: 0.75rem !important;
+}
+
+/* Upcoming / Future Step */
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step:not(.fi-active):not(.fi-completed) .fi-sc-wizard-header-step-icon-ctn {
+    background: transparent !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    color: rgba(251, 250, 248, 0.38) !important;
+    width: 2rem !important;
+    height: 2rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step:not(.fi-active):not(.fi-completed) .fi-sc-wizard-header-step-label {
+    color: rgba(251, 250, 248, 0.45) !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step:not(.fi-active):not(.fi-completed) .fi-sc-wizard-header-step-description {
+    color: rgba(251, 250, 248, 0.3) !important;
+    font-size: 0.75rem !important;
+}
+
+/* Completed Step */
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step.fi-completed .fi-sc-wizard-header-step-icon-ctn {
+    background: rgba(183, 131, 47, 0.16) !important;
+    border: 1px solid rgba(183, 131, 47, 0.4) !important;
+    color: #e2c068 !important;
+    width: 2rem !important;
+    height: 2rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-header-step.fi-completed .fi-sc-wizard-header-step-label {
+    color: rgba(251, 250, 248, 0.85) !important;
+    font-weight: 550 !important;
+}
+
+/* ── 3. Section Cards & Hierarchy ── */
+.bsi-batch-create-documents-page .fi-section {
+    background: #0d252e !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.35) !important;
+    margin-bottom: 1.5rem !important;
+    overflow: hidden !important;
+}
+
+.bsi-batch-create-documents-page .fi-section-header {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    padding: 1.125rem 1.75rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-section-header-heading {
+    color: #fbfaf8 !important;
+    font-size: 1.0625rem !important;
+    font-weight: 650 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.bsi-batch-create-documents-page .fi-section-header-description {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.25rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-section-content {
+    padding: 1.75rem !important;
+}
+
+/* ── 4. Form Controls (Categoria & Série) ── */
+.bsi-batch-create-documents-page .fi-fo-field-label {
+    color: #fbfaf8 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-field-label .text-danger-600,
+.bsi-batch-create-documents-page .fi-fo-field-label .text-danger-500,
+.bsi-batch-create-documents-page .fi-fo-field-label .text-danger-400 {
+    color: #d49e47 !important;
+    font-weight: 700 !important;
+}
+
+.bsi-batch-create-documents-page .fi-input-wrp,
+.bsi-batch-create-documents-page .choices__inner {
+    background: #06151c !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 10px !important;
+    min-height: 2.875rem !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+    transition: all 150ms ease-out !important;
+}
+
+.bsi-batch-create-documents-page .fi-input-wrp:hover,
+.bsi-batch-create-documents-page .choices:hover .choices__inner {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+    background: #081a22 !important;
+}
+
+.bsi-batch-create-documents-page .fi-input-wrp:focus-within,
+.bsi-batch-create-documents-page .choices:focus-within .choices__inner {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
+    background: #06151c !important;
+}
+
+/* ── 5. Compact Draft Callout ── */
+.bsi-batch-create-documents-page .fi-sc-callout {
+    background: rgba(8, 26, 33, 0.85) !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    border-left: 3.5px solid #b7832f !important;
+    border-radius: 10px !important;
+    padding: 0.875rem 1.25rem !important;
+    margin-top: 0.5rem !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-callout-header {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-callout-icon {
+    color: #d4af37 !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    flex-shrink: 0 !important;
+    margin-top: 0.125rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-callout-heading {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-callout-description {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.25rem !important;
+}
+
+/* ── 6. Files Upload Dropzone (Prominent & Welcoming) ── */
+.bsi-batch-create-documents-page .fi-fo-file-upload {
+    width: 100% !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--root {
+    background: #06151c !important;
+    border: 2px dashed rgba(183, 131, 47, 0.35) !important;
+    border-radius: 14px !important;
+    min-height: 9.5rem !important;
+    transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+    overflow: hidden !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--root:hover {
+    border-color: #b7832f !important;
+    background: #081e28 !important;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 20px rgba(183, 131, 47, 0.14) !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--drop-label {
+    min-height: 9.5rem !important;
+    padding: 2rem 1.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.375rem !important;
+    text-align: center !important;
+    cursor: pointer !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--drop-label label {
+    color: #fbfaf8 !important;
+    font-size: 0.9375rem !important;
+    font-weight: 550 !important;
+    line-height: 1.45 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.25rem !important;
+    cursor: pointer !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--label-action {
+    color: #e2c068 !important;
+    font-weight: 600 !important;
+    text-decoration: underline !important;
+    text-underline-offset: 3px !important;
+    cursor: pointer !important;
+    transition: color 150ms ease !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--label-action:hover {
+    color: #f3d88b !important;
+}
+
+/* ── 7. Selected Files List ── */
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--list-scroller {
+    margin-top: 0.75rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--item {
+    margin-bottom: 0.5rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--item-panel {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    border-radius: 9px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--file-info-main {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--file-info-sub {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.75rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--action-remove-item {
+    background-color: rgba(239, 68, 68, 0.18) !important;
+    border: 1px solid rgba(239, 68, 68, 0.35) !important;
+    color: #fca5a5 !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: all 150ms ease !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-file-upload .filepond--action-remove-item:hover {
+    background-color: rgba(239, 68, 68, 0.35) !important;
+    border-color: rgba(239, 68, 68, 0.6) !important;
+    color: #ffffff !important;
+}
+
+/* ── 8. Batch Summary Status Text ── */
+.bsi-batch-create-documents-page .fi-sc-text {
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    color: rgba(251, 250, 248, 0.7) !important;
+    padding: 0.375rem 0.25rem !important;
+}
+
+/* ── 9. Wizard Navigation Footer ── */
+.bsi-batch-create-documents-page .fi-sc-wizard-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding-top: 1.5rem !important;
+    margin-top: 1.5rem !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-footer .fi-btn {
+    min-height: 2.75rem !important;
+    border-radius: 10px !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    padding: 0.625rem 1.625rem !important;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Secondary / Cancel / Previous Button */
+.bsi-batch-create-documents-page .fi-sc-wizard-footer .fi-btn:not(.fi-color-primary) {
+    background: rgba(16, 42, 51, 0.5) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-footer .fi-btn:not(.fi-color-primary):hover {
+    background: rgba(16, 42, 51, 0.85) !important;
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    color: #fbfaf8 !important;
+}
+
+/* Primary / Next / Submit Button */
+.bsi-batch-create-documents-page .fi-sc-wizard-footer .fi-btn.fi-color-primary {
+    background: #b7832f !important;
+    border: 1px solid #c9933b !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 10px rgba(183, 131, 47, 0.35) !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-footer .fi-btn.fi-color-primary:hover {
+    background: #cf9739 !important;
+    border-color: #dfaa4e !important;
+    box-shadow: 0 4px 16px rgba(183, 131, 47, 0.45) !important;
+}
+
+.bsi-batch-create-documents-page .fi-sc-wizard-footer .fi-btn.fi-color-primary:focus {
+    box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.35) !important;
+}
+
+/* ── 10. Review Step Repeater Items ── */
+.bsi-batch-create-documents-page .fi-fo-repeater-item {
+    background: #091b23 !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    border-radius: 12px !important;
+    margin-bottom: 0.75rem !important;
+    padding: 1.25rem 1.5rem !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-repeater-item-header {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1) !important;
+    padding-bottom: 0.75rem !important;
+    margin-bottom: 1rem !important;
+}
+
+.bsi-batch-create-documents-page .fi-fo-repeater-item input.fi-input {
+    background: #06151c !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    border-radius: 8px !important;
+    color: #fbfaf8 !important;
+}

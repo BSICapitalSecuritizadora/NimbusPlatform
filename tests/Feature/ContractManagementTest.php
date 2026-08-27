@@ -87,8 +87,6 @@ it('creates a contract linking the client to the unit', function () {
     $contract = Contract::query()->sole();
 
     expect($contract->buyerIds())->toBe([$client->id])
-        // A coluna legada não é mais preenchida por contrato novo.
-        ->and($contract->client_id)->toBeNull()
         ->and($contract->construction_unit_id)->toBe($unit->id)
         ->and($contract->code)->toBe('CVC-00123')
         ->and($contract->sale_date->toDateString())->toBe('2024-03-10')

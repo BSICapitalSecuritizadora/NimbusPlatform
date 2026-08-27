@@ -126,15 +126,16 @@
                                 >
                                     @foreach($group['items'] as $item)
                                         <li wire:key="deadline-{{ $group['key'] }}-{{ $item['id'] }}" class="min-w-0">
-                                            <a
-                                                href="{{ $item['url'] }}"
-                                                class="group/item flex min-h-24 flex-col justify-between rounded-lg border border-gray-200/90 bg-white p-3 shadow-xs transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-bsi-gold-500/60 hover:bg-white hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-bsi-gold-500/15 dark:bg-[#091f28]/75 dark:shadow-[0_1px_3px_rgba(4,14,19,0.25)] dark:hover:border-bsi-gold-500/50 dark:hover:bg-[#0e2c38] dark:hover:shadow-[0_4px_14px_rgba(4,14,19,0.4)]"
+                                            <button
+                                                type="button"
+                                                wire:click="mountAction('quickView', {record: {{ $item['id'] }}})"
+                                                class="group/item flex min-h-24 w-full flex-col justify-between rounded-lg border border-gray-200/90 bg-white p-3 text-left shadow-xs transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-bsi-gold-500/60 hover:bg-white hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-bsi-gold-500/15 dark:bg-[#091f28]/75 dark:shadow-[0_1px_3px_rgba(4,14,19,0.25)] dark:hover:border-bsi-gold-500/50 dark:hover:bg-[#0e2c38] dark:hover:shadow-[0_4px_14px_rgba(4,14,19,0.4)]"
                                                 aria-label="Abrir obrigação: {{ $item['title'] }}"
                                             >
                                                 <div>
                                                     <div class="flex items-start justify-between gap-1.5">
                                                         <span class="line-clamp-2 text-sm font-semibold leading-snug text-gray-950 dark:text-white" title="{{ $item['title'] }}">{{ $item['title'] }}</span>
-                                                        <x-heroicon-o-chevron-right class="mt-0.5 size-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-out group-hover/item:translate-x-0.5 group-hover/item:text-bsi-gold-500 motion-reduce:transition-none dark:text-gray-500 dark:group-hover/item:text-bsi-gold-400" aria-hidden="true" />
+                                                        <x-heroicon-o-eye class="mt-0.5 size-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-out group-hover/item:text-bsi-gold-500 motion-reduce:transition-none dark:text-gray-500 dark:group-hover/item:text-bsi-gold-400" aria-hidden="true" />
                                                     </div>
                                                     <span class="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
                                                         <x-heroicon-m-building-office-2 class="size-3.5 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
@@ -155,7 +156,7 @@
                                                         {{ $item['priority'] }}
                                                     </span>
                                                 </div>
-                                            </a>
+                                            </button>
                                         </li>
                                     @endforeach
                                 </ul>
@@ -217,15 +218,16 @@
                         <ul class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" aria-label="Prévia das obrigações sem prazo">
                             @foreach($withoutDeadlineGroup['items'] as $item)
                                 <li wire:key="deadline-without-deadline-{{ $item['id'] }}" class="min-w-0">
-                                    <a
-                                        href="{{ $item['url'] }}"
-                                        class="group/item flex min-h-24 flex-col justify-between rounded-lg border border-gray-200/90 bg-white p-3 shadow-xs transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-bsi-gold-500/60 hover:bg-white hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-bsi-gold-500/15 dark:bg-[#091f28]/75 dark:shadow-[0_1px_3px_rgba(4,14,19,0.25)] dark:hover:border-bsi-gold-500/50 dark:hover:bg-[#0e2c38] dark:hover:shadow-[0_4px_14px_rgba(4,14,19,0.4)]"
+                                    <button
+                                        type="button"
+                                        wire:click="mountAction('quickView', {record: {{ $item['id'] }}})"
+                                        class="group/item flex min-h-24 w-full flex-col justify-between rounded-lg border border-gray-200/90 bg-white p-3 text-left shadow-xs transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:border-bsi-gold-500/60 hover:bg-white hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-bsi-gold-500/15 dark:bg-[#091f28]/75 dark:shadow-[0_1px_3px_rgba(4,14,19,0.25)] dark:hover:border-bsi-gold-500/50 dark:hover:bg-[#0e2c38] dark:hover:shadow-[0_4px_14px_rgba(4,14,19,0.4)]"
                                         aria-label="Abrir obrigação: {{ $item['title'] }}"
                                     >
                                         <div>
                                             <div class="flex items-start justify-between gap-1.5">
                                                 <span class="line-clamp-2 text-sm font-semibold leading-snug text-gray-950 dark:text-white" title="{{ $item['title'] }}">{{ $item['title'] }}</span>
-                                                <x-heroicon-o-chevron-right class="mt-0.5 size-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-out group-hover/item:translate-x-0.5 group-hover/item:text-bsi-gold-500 motion-reduce:transition-none dark:text-gray-500 dark:group-hover/item:text-bsi-gold-400" aria-hidden="true" />
+                                                <x-heroicon-o-eye class="mt-0.5 size-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-out group-hover/item:text-bsi-gold-500 motion-reduce:transition-none dark:text-gray-500 dark:group-hover/item:text-bsi-gold-400" aria-hidden="true" />
                                             </div>
                                             <span class="mt-1.5 flex min-w-0 items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
                                                 <x-heroicon-m-building-office-2 class="size-3.5 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
@@ -247,7 +249,7 @@
                                                 {{ $item['priority'] }}
                                             </span>
                                         </div>
-                                    </a>
+                                    </button>
                                 </li>
                             @endforeach
                         </ul>
@@ -256,4 +258,6 @@
             @endif
         @endif
     </x-filament::section>
+
+    <x-filament-actions::modals />
 </x-filament-widgets::widget>

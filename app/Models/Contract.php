@@ -98,10 +98,6 @@ class Contract extends Model
     /**
      * Everyone who bought under this contract.
      *
-     * The source of truth for the commercial relationship. `contracts.client_id`
-     * still exists in the schema but nothing reads or writes it any more: it is
-     * legacy waiting to be dropped, not a buyer.
-     *
      * `withTrashed()` on purpose: a buyer archived years later is still who
      * signed, and a historical contract that hid them would be lying. Refusing
      * to give a *new* contract to an archived client is a rule of the write

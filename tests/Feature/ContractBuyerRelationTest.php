@@ -41,8 +41,8 @@ it('creates the buyer table without touching the columns the contract already ha
         // Sem timestamps: a data técnica do vínculo não é data comercial.
         ->and(Schema::hasColumn('contract_clients', 'created_at'))->toBeFalse()
         ->and(Schema::hasColumn('contract_clients', 'updated_at'))->toBeFalse()
-        // A coluna antiga continua no lugar durante a fase de expansão.
-        ->and(Schema::hasColumn('contracts', 'client_id'))->toBeTrue();
+        // A coluna do modelo singular não existe mais.
+        ->and(Schema::hasColumn('contracts', 'client_id'))->toBeFalse();
 });
 
 it('refuses the same buyer twice on the same contract', function () {
@@ -110,11 +110,12 @@ it('refuses to erase a client that appears in a contract', function () {
 
 // ── Fonte única de verdade ────────────────────────────────────────────────
 
-it('records the buyer in the buyer table and leaves the legacy column empty', function () {
+it('records the buyer in the buyer table, the only place it can live', function () {
     $contract = buyerContract();
 
-    expect($contract->fresh()->client_id)->toBeNull()
-        ->and(DB::table('contract_clients')->where('contract_id', $contract->getKey())->count())->toBe(1);
+    expect(DB::table('contract_clients')->where('contract_id', $contract->getKey())->pluck('client_id')->all())
+        ->toBe([$contract->clients->first()->getKey()])
+        ->and($contract->clients)->toHaveCount(1);
 });
 
 it('replaces the buyer set and says whether anything moved', function () {
@@ -146,23 +147,46 @@ it('keeps the links of a contract that was only archived', function () {
     expect(DB::table('contract_clients')->where('contract_id', $contract->getKey())->count())->toBe(1);
 });
 
-it('makes the legacy column nullable without losing its key or index', function () {
-    $column = collect(Schema::getColumns('contracts'))->firstWhere('name', 'client_id');
+/**
+ * O objetivo da remoção: nenhum código novo consegue escrever
+ * `$contract->client_id`, não por convenção, mas porque não há onde escrever.
+ * Nem coluna, nem chave estrangeira, nem índice órfão.
+ */
+it('leaves no trace of the single-buyer column on the contracts table', function () {
+    $columns = collect(Schema::getColumns('contracts'))->pluck('name');
 
-    $foreignKeys = collect(Schema::getForeignKeys('contracts'))
-        ->filter(fn (array $key): bool => in_array('client_id', $key['columns'], true));
+    $foreignKeysToClients = collect(Schema::getForeignKeys('contracts'))
+        ->filter(fn (array $key): bool => $key['foreign_table'] === 'clients');
 
-    $indexes = collect(Schema::getIndexes('contracts'))
+    $indexesOnClient = collect(Schema::getIndexes('contracts'))
         ->filter(fn (array $index): bool => in_array('client_id', $index['columns'], true));
 
-    expect($column['nullable'])->toBeTrue()
-        ->and($foreignKeys)->not->toBeEmpty()
-        ->and($indexes)->not->toBeEmpty();
+    expect($columns)->not->toContain('client_id')
+        ->and($foreignKeysToClients)->toBeEmpty()
+        ->and($indexesOnClient)->toBeEmpty()
+        // O resto da tabela sobreviveu intacto, inclusive a coluna gerada.
+        ->and($columns)->toContain('construction_unit_id', 'code_normalized', 'occupied_unit_lock')
+        ->and(collect(Schema::getIndexes('contracts'))
+            ->filter(fn (array $index): bool => $index['columns'] === ['occupied_unit_lock']))
+        ->not->toBeEmpty();
+});
+
+/**
+ * A relação com o cliente passa a existir por um único caminho.
+ */
+it('keeps the only path from a contract to a client on the buyer table', function () {
+    $keys = collect(Schema::getForeignKeys('contract_clients'))
+        ->pluck('foreign_table')
+        ->sort()
+        ->values();
+
+    expect($keys->all())->toBe(['clients', 'contracts'])
+        ->and(Schema::hasColumns('contract_clients', ['id', 'contract_id', 'client_id']))->toBeTrue();
 });
 
 // ── Invariante da fase de expansão ────────────────────────────────────────
 
-it('leaves no contract without a buyer and no buyer in the legacy column', function () {
+it('leaves no contract without a buyer', function () {
     collect(range(1, 5))->each(fn () => buyerContract());
 
     $contracts = Contract::query()->count();
@@ -178,6 +202,86 @@ it('leaves no contract without a buyer and no buyer in the legacy column', funct
 
     expect($contracts)->toBe(5)
         ->and($withBuyer)->toBe(5)
-        ->and($withMoreThanOne)->toBe(0)
-        ->and(Contract::query()->whereNotNull('client_id')->count())->toBe(0);
+        ->and($withMoreThanOne)->toBe(0);
+});
+
+// ── A própria migration da Fase C ─────────────────────────────────────────
+
+/**
+ * O DROP acontece com contratos já na base, não numa tabela vazia: é o caso do
+ * ambiente local, e é onde um erro custaria vínculos.
+ */
+it('leaves existing contracts and their buyers untouched by the drop', function () {
+    $joao = Client::factory()->create(['name' => 'João da Silva']);
+    $maria = Client::factory()->create(['name' => 'Maria da Silva']);
+
+    $single = buyerContract($joao);
+    $couple = Contract::factory()
+        ->forUnit(ConstructionUnit::factory()->create())
+        ->withBuyers($joao, $maria)
+        ->create();
+
+    $before = DB::table('contract_clients')->orderBy('contract_id')->orderBy('client_id')->get()->toArray();
+
+    // Reaplica a remoção sobre a base já povoada.
+    $migration = require database_path('migrations/2026_08_26_400001_drop_client_id_from_contracts_table.php');
+    $migration->down();
+    $migration->up();
+
+    expect(Schema::hasColumn('contracts', 'client_id'))->toBeFalse()
+        ->and(DB::table('contract_clients')->orderBy('contract_id')->orderBy('client_id')->get()->toArray())->toEqual($before)
+        ->and($single->fresh()->buyerIds())->toBe([$joao->id])
+        ->and($couple->fresh()->clients->pluck('name')->all())->toBe(['João da Silva', 'Maria da Silva']);
+});
+
+/**
+ * A coluna some enquanto for a única referência de comprador de alguém.
+ */
+it('refuses to drop the column while some contract has no buyer', function () {
+    $contract = buyerContract();
+
+    $migration = require database_path('migrations/2026_08_26_400001_drop_client_id_from_contracts_table.php');
+    $migration->down();
+
+    // Um contrato órfão na tabela de compradores.
+    DB::table('contract_clients')->where('contract_id', $contract->getKey())->delete();
+
+    expect(fn () => $migration->up())
+        ->toThrow(RuntimeException::class, 'não possuem comprador');
+
+    // Aborta antes de qualquer DDL: o schema continua como estava.
+    expect(Schema::hasColumn('contracts', 'client_id'))->toBeTrue();
+});
+
+/**
+ * Rollback devolve a forma da tabela, nunca um comprador inventado.
+ */
+it('restores the column empty, with its key and index, and no buyer', function () {
+    $joao = Client::factory()->create();
+    $maria = Client::factory()->create();
+
+    $contract = Contract::factory()
+        ->forUnit(ConstructionUnit::factory()->create())
+        ->withBuyers($joao, $maria)
+        ->create();
+
+    $migration = require database_path('migrations/2026_08_26_400001_drop_client_id_from_contracts_table.php');
+    $migration->down();
+
+    $column = collect(Schema::getColumns('contracts'))->firstWhere('name', 'client_id');
+
+    $foreignKeys = collect(Schema::getForeignKeys('contracts'))
+        ->filter(fn (array $key): bool => in_array('client_id', $key['columns'], true));
+
+    $indexes = collect(Schema::getIndexes('contracts'))
+        ->filter(fn (array $index): bool => in_array('client_id', $index['columns'], true));
+
+    expect($column)->not->toBeNull()
+        ->and($column['nullable'])->toBeTrue()
+        ->and($foreignKeys)->not->toBeEmpty()
+        ->and($indexes)->not->toBeEmpty()
+        // Nenhum comprador foi escolhido para preencher a coluna.
+        ->and(DB::table('contracts')->whereNotNull('client_id')->count())->toBe(0)
+        // E os compradores de verdade continuam onde sempre estiveram.
+        ->and($contract->fresh()->clients)->toHaveCount(2);
 });

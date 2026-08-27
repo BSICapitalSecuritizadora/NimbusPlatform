@@ -44,6 +44,21 @@ class InstrumentPositionResolver
     }
 
     /**
+     * Campos consolidados de um instrumento numa data, sem resolver garantias.
+     *
+     * Existe para que outros domínios (o gate de prontidão de PU, por exemplo)
+     * reutilizem a MESMA política de vigência — versão confirmada de maior
+     * `effective_date` até a data, empate desfeito pelo `id` — em vez de
+     * reimplementar a regra e divergir dela.
+     *
+     * @return Collection<string, ConsolidatedFieldData>
+     */
+    public function fieldsAsOf(LegalInstrument $instrument, CarbonInterface|string|null $asOf = null): Collection
+    {
+        return $this->resolveFields($instrument, $this->normalizeDate($asOf));
+    }
+
+    /**
      * Campos consolidados, indexados pelo `field_key`.
      *
      * @return Collection<string, ConsolidatedFieldData>

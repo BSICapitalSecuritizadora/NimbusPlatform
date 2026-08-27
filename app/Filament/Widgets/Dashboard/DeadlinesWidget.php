@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets\Dashboard;
 
+use App\Enums\AccessPermission;
 use App\Filament\Pages\ObligationDashboard;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
@@ -10,12 +11,21 @@ use App\Services\Obligations\ObligationDashboardData;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Closure;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Support\Enums\Width;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
-class DeadlinesWidget extends Widget
+class DeadlinesWidget extends Widget implements HasActions, HasSchemas
 {
+    use InteractsWithActions;
+    use InteractsWithSchemas;
+
     private const PREVIEW_LIMIT = 5;
 
     protected string $view = 'filament.widgets.dashboard.deadlines-widget';
@@ -235,6 +245,73 @@ class DeadlinesWidget extends Widget
                 'relation' => ObligationsRelationManager::class,
             ]),
         ];
+    }
+
+    public function quickViewAction(): Action
+    {
+        return Action::make('quickView')
+            ->modalHeading(function (array $arguments): string {
+                $id = $arguments['record'] ?? null;
+                if (filled($id)) {
+                    $obligation = Obligation::query()->find($id);
+                    if ($obligation) {
+                        return $obligation->operational_title;
+                    }
+                }
+
+                return 'Obrigação';
+            })
+            ->modalDescription(function (array $arguments): string {
+                $id = $arguments['record'] ?? null;
+                if (filled($id)) {
+                    $obligation = Obligation::with('emission:id,name')->find($id);
+                    if ($obligation?->emission) {
+                        return $obligation->emission->name;
+                    }
+                }
+
+                return 'Obrigação';
+            })
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Fechar')
+            ->authorize(fn (): bool => (bool) auth()->user()?->can(AccessPermission::ObligationsView->value))
+            ->modalContent(function (array $arguments) {
+                $id = $arguments['record'] ?? null;
+                $obligation = Obligation::with(['emission', 'responsibleUser', 'series'])->findOrFail($id);
+                $user = auth()->user();
+                $canViewEvidence = (bool) $user?->can(AccessPermission::ObligationsViewEvidence->value);
+                $canViewComments = (bool) $user?->can(AccessPermission::ObligationsViewComments->value);
+
+                return view('filament.obligations.quick-view', [
+                    'obligation' => $obligation->loadMissing(['emission', 'responsibleUser', 'series']),
+                    'canViewEvidence' => $canViewEvidence,
+                    'canViewComments' => $canViewComments,
+                ]);
+            })
+            ->extraModalFooterActions(function (array $arguments): array {
+                $id = $arguments['record'] ?? null;
+                $obligation = $id ? Obligation::query()->find($id) : null;
+                if (! $obligation) {
+                    return [];
+                }
+                $canOpenEmission = (bool) auth()->user()?->can(AccessPermission::EmissionsView->value);
+
+                return [
+                    Action::make('viewIssuance')
+                        ->label('View issuance')
+                        ->icon('heroicon-o-building-office-2')
+                        ->color('gray')
+                        ->url(fn (): ?string => $canOpenEmission ? EmissionResource::getUrl('edit', ['record' => $obligation->emission_id]) : null)
+                        ->visible(fn (): bool => $canOpenEmission),
+                    Action::make('viewFull')
+                        ->label('View full obligation')
+                        ->icon('heroicon-o-arrow-top-right-on-square')
+                        ->color('primary')
+                        ->url(fn (): ?string => $canOpenEmission ? EmissionResource::getUrl('edit', ['record' => $obligation->emission_id, 'relation' => ObligationsRelationManager::class]) : null)
+                        ->visible(fn (): bool => $canOpenEmission),
+                ];
+            });
     }
 
     private function deadlineLabel(Obligation $obligation, CarbonInterface $today): string

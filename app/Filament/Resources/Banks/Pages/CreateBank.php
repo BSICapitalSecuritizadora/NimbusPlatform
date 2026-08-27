@@ -18,8 +18,10 @@ class CreateBank extends CreateRecord
     protected static ?string $breadcrumb = 'Criar';
 
     protected array $extraBodyAttributes = [
-        'class' => 'bsi-fund-form-page bsi-simple-form-page bsi-bank-form-page',
+        'class' => 'bsi-cockpit-page bsi-fund-form-page bsi-bank-form-page',
     ];
+
+    protected ?bool $hasUnsavedDataChangesAlert = true;
 
     public function getSubheading(): ?string
     {
@@ -30,7 +32,8 @@ class CreateBank extends CreateRecord
     {
         return parent::getCreateFormAction()
             ->label('Criar banco')
-            ->icon('heroicon-m-plus');
+            ->icon('heroicon-m-plus')
+            ->color('primary');
     }
 
     protected function getCreateAnotherFormAction(): Action

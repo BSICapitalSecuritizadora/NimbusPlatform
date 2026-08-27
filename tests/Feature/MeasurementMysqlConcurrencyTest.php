@@ -1,5 +1,8 @@
 <?php
 
+use App\Exceptions\MeasurementWorkflowException;
+use App\Models\Construction;
+use App\Models\Emission;
 use App\Models\Measurement;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
@@ -7,7 +10,9 @@ use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementWorkflow;
+use App\Services\OperationContextMutationService;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +39,7 @@ function makeMysqlConcurrencyActor(): User
 }
 
 /**
- * @param  array{action: string, measurement_id: int, actor_id: int, stage: int, revision: int, notes?: string, payment?: array<string, mixed>, storage_root?: string}  $instruction
+ * @param  array{action: string, measurement_id: int, actor_id: int, stage: int, revision: int, notes?: string, payment?: array<string, mixed>, engineering_progress?: array<int, float|int>, operation_id?: int, emission_id?: int, storage_root?: string, lock_marker?: string, wait_for_marker?: string, hold_after_operation_lock_ms?: int}  $instruction
  */
 function mysqlWorkflowTask(array $instruction): Closure
 {
@@ -44,18 +49,48 @@ function mysqlWorkflowTask(array $instruction): Closure
             Storage::forgetDisk('local');
         }
 
+        if (isset($instruction['lock_marker'])) {
+            DB::listen(static function (QueryExecuted $query) use ($instruction): void {
+                $sql = strtolower($query->sql);
+
+                if (! str_contains($sql, 'operations') || ! str_contains($sql, 'for update')) {
+                    return;
+                }
+
+                file_put_contents($instruction['lock_marker'], 'locked');
+                usleep(((int) ($instruction['hold_after_operation_lock_ms'] ?? 0)) * 1000);
+            });
+        }
+
         $measurement = Measurement::query()->findOrFail($instruction['measurement_id']);
         $actor = User::query()->findOrFail($instruction['actor_id']);
         Notification::fake();
 
         try {
+            if (isset($instruction['wait_for_marker'])) {
+                $deadline = microtime(true) + 10;
+
+                while (! is_file($instruction['wait_for_marker']) && microtime(true) < $deadline) {
+                    usleep(10_000);
+                }
+
+                if (! is_file($instruction['wait_for_marker'])) {
+                    throw new RuntimeException('O processo concorrente não confirmou a aquisição do lock da Operation.');
+                }
+            }
+
             match ($instruction['action']) {
                 'approve' => app(MeasurementWorkflow::class)->approve(
                     $measurement,
                     $actor,
                     $instruction['notes'] ?? null,
+                    engineeringProgress: $instruction['engineering_progress'] ?? [],
                     expectedStage: $instruction['stage'],
                     expectedRevision: $instruction['revision'],
+                ),
+                'operation_update' => app(OperationContextMutationService::class)->update(
+                    Operation::query()->findOrFail($instruction['operation_id']),
+                    ['emission_id' => $instruction['emission_id']],
                 ),
                 'reject' => app(MeasurementWorkflow::class)->reject(
                     $measurement,
@@ -83,6 +118,68 @@ function mysqlWorkflowTask(array $instruction): Closure
             return ['success' => false, 'exception' => $exception::class];
         }
     };
+}
+
+/**
+ * @return array{actor: User, operation: Operation, measurement: Measurement, old_emission: Emission, new_emission: Emission, progress: array<int, int>, storage_root: string}
+ */
+function createMysqlEngineeringOperationRaceScenario(): array
+{
+    $actor = makeMysqlConcurrencyActor();
+    $oldEmission = Emission::factory()->create();
+    $newEmission = Emission::factory()->create();
+    $construction = Construction::factory()->create([
+        'emission_id' => $oldEmission->id,
+        'development_name' => 'Empreendimento concorrente',
+        'development_cnpj' => '12345678000199',
+    ]);
+    $operation = Operation::factory()->forEmission($oldEmission)->create([
+        'assigned_user_id' => $actor->id,
+        'responsible_user_id' => $actor->id,
+    ]);
+    $planSet = MeasurementPlanSet::factory()->create([
+        'operation_id' => $operation->id,
+        'construction_id' => $construction->id,
+        'is_default' => true,
+    ]);
+    $line = MeasurementPlanLine::factory()->create([
+        'operation_id' => $operation->id,
+        'plan_set_id' => $planSet->id,
+        'measurement_date' => '2026-08-01',
+        'sequence_number' => 1,
+        'initial_realized_cumulative_percent' => 0,
+    ]);
+    $measurement = Measurement::factory()->create([
+        'operation_id' => $operation->id,
+        'reference_month' => '2026-08-01',
+        'status' => 'in_review',
+        'current_stage' => MeasurementWorkflow::STAGE_ENGINEERING,
+        'workflow_revision' => 40,
+        'storage_path' => null,
+        'filename' => null,
+    ]);
+    $path = "nimbus_docs/measurements/assets/mysql-race-{$measurement->id}.pdf";
+    Storage::disk('local')->put($path, "%PDF-1.7\nmysql-operation-race\n%%EOF");
+    $measurement->assets()->create([
+        'plan_set_id' => $planSet->id,
+        'plan_line_id' => $line->id,
+        'storage_path' => $path,
+        'storage_disk' => 'local',
+    ]);
+    $measurement->reviews()->create([
+        'stage' => MeasurementWorkflow::STAGE_ENGINEERING,
+        'status' => 'pending',
+    ]);
+
+    return [
+        'actor' => $actor,
+        'operation' => $operation,
+        'measurement' => $measurement,
+        'old_emission' => $oldEmission,
+        'new_emission' => $newEmission,
+        'progress' => [$planSet->id => 10],
+        'storage_root' => Storage::disk('local')->path(''),
+    ];
 }
 
 /**
@@ -161,9 +258,16 @@ it('serializes payment registration against payment approval on MySQL', function
         'current_stage' => 4,
         'workflow_revision' => 20,
         'engineering_snapshot' => [
+            'schema_version' => MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION,
+            'measurement_id' => 0,
+            'operation_id' => $operation->id,
+            'emission_id' => $operation->emission_id,
             'plan_sets' => [['plan_set_id' => $planSet->id]],
         ],
     ]);
+    $snapshot = $measurement->engineering_snapshot;
+    $snapshot['measurement_id'] = $measurement->id;
+    $measurement->forceFill(['engineering_snapshot' => $snapshot])->save();
     $measurement->reviews()->create(['stage' => 4, 'status' => 'pending']);
     $measurement->payments()->create([
         'operation_id' => $operation->id,
@@ -192,6 +296,75 @@ it('serializes payment registration against payment approval on MySQL', function
 
     expect(collect($results)->where('success', true))->toHaveCount(1)
         ->and($measurement->fresh()->workflow_revision)->toBe(21);
+})->group('mysql');
+
+it('serializes an Operation emission update behind Engineering approval on MySQL', function () {
+    $scenario = createMysqlEngineeringOperationRaceScenario();
+    $marker = temporaryTestFilePath('p03-approve-lock', 'lock');
+    $base = [
+        'measurement_id' => $scenario['measurement']->id,
+        'actor_id' => $scenario['actor']->id,
+        'operation_id' => $scenario['operation']->id,
+        'stage' => MeasurementWorkflow::STAGE_ENGINEERING,
+        'revision' => 40,
+        'storage_root' => $scenario['storage_root'],
+    ];
+
+    $results = Concurrency::driver('process')->run([
+        mysqlWorkflowTask([
+            'action' => 'approve',
+            'engineering_progress' => $scenario['progress'],
+            'lock_marker' => $marker,
+            'hold_after_operation_lock_ms' => 750,
+        ] + $base),
+        mysqlWorkflowTask([
+            'action' => 'operation_update',
+            'emission_id' => $scenario['new_emission']->id,
+            'wait_for_marker' => $marker,
+        ] + $base),
+    ]);
+    @unlink($marker);
+
+    $measurement = $scenario['measurement']->fresh();
+    expect($results[0]['success'])->toBeTrue()
+        ->and($results[1]['success'])->toBeFalse()
+        ->and($results[1]['exception'])->toBe(MeasurementWorkflowException::class)
+        ->and($measurement->engineering_snapshot['emission_id'])->toBe($scenario['old_emission']->id)
+        ->and($scenario['operation']->fresh()->emission_id)->toBe($scenario['old_emission']->id);
+})->group('mysql');
+
+it('forms the Engineering snapshot from the committed Operation emission on MySQL', function () {
+    $scenario = createMysqlEngineeringOperationRaceScenario();
+    $marker = temporaryTestFilePath('p03-operation-lock', 'lock');
+    $base = [
+        'measurement_id' => $scenario['measurement']->id,
+        'actor_id' => $scenario['actor']->id,
+        'operation_id' => $scenario['operation']->id,
+        'stage' => MeasurementWorkflow::STAGE_ENGINEERING,
+        'revision' => 40,
+        'storage_root' => $scenario['storage_root'],
+    ];
+
+    $results = Concurrency::driver('process')->run([
+        mysqlWorkflowTask([
+            'action' => 'operation_update',
+            'emission_id' => $scenario['new_emission']->id,
+            'lock_marker' => $marker,
+            'hold_after_operation_lock_ms' => 750,
+        ] + $base),
+        mysqlWorkflowTask([
+            'action' => 'approve',
+            'engineering_progress' => $scenario['progress'],
+            'wait_for_marker' => $marker,
+        ] + $base),
+    ]);
+    @unlink($marker);
+
+    $measurement = $scenario['measurement']->fresh();
+    expect($results[0]['success'])->toBeTrue()
+        ->and($results[1]['success'])->toBeTrue()
+        ->and($measurement->engineering_snapshot['emission_id'])->toBe($scenario['new_emission']->id)
+        ->and($scenario['operation']->fresh()->emission_id)->toBe($scenario['new_emission']->id);
 })->group('mysql');
 
 it('serializes finalize against finalize on MySQL', function () {

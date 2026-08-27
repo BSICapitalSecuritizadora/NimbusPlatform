@@ -21,6 +21,7 @@ class FundApplicationForm
                 ->required()
                 ->maxLength(255)
                 ->unique(ignoreRecord: true, table: FundApplication::class)
+                ->columnSpanFull()
                 ->validationMessages([
                     'required' => 'Informe o nome da aplicação.',
                     'unique' => 'Já existe uma aplicação cadastrada com este nome.',
@@ -30,10 +31,13 @@ class FundApplicationForm
 
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Dados da aplicação')
-                ->description('Defina o nome utilizado para identificar a aplicação nos fundos cadastrados.')
-                ->schema(static::fields()),
-        ]);
+        return $schema
+            ->columns(1)
+            ->components([
+                Section::make('Dados da aplicação')
+                    ->description('Defina o nome utilizado para identificar a aplicação nos fundos cadastrados.')
+                    ->schema(static::fields())
+                    ->columnSpanFull(),
+            ]);
     }
 }

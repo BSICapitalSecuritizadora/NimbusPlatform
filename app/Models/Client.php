@@ -103,9 +103,8 @@ class Client extends Model
     /**
      * Every sale ever made to this client, across units and developments.
      *
-     * Through the buyer table rather than through `contracts.client_id`: a sale
-     * can have more than one buyer, and this client is one of them whether or
-     * not they happen to be the one the legacy column names.
+     * Through the buyer table: a sale can have more than one buyer, and this
+     * client is one of them.
      *
      * @return BelongsToMany<Contract, $this>
      */

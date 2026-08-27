@@ -99,6 +99,22 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        'nimbus_ops_legacy' => [
+            'driver' => env('NIMBUS_OPS_LEGACY_DB_CONNECTION', env('DB_CONNECTION', 'mysql')),
+            'url' => env('NIMBUS_OPS_LEGACY_DB_URL'),
+            'host' => env('NIMBUS_OPS_LEGACY_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('NIMBUS_OPS_LEGACY_DB_PORT', env('DB_PORT', '3306')),
+            'database' => env('NIMBUS_OPS_LEGACY_DB_DATABASE', 'nimbus_ops_legacy'),
+            'username' => env('NIMBUS_OPS_LEGACY_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('NIMBUS_OPS_LEGACY_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

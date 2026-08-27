@@ -6,6 +6,7 @@ use App\Enums\ContractStatus;
 use App\Models\Client;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,15 +22,6 @@ class ContractFactory extends Factory
     public function definition(): array
     {
         return [
-            /**
-             * Carrier, not a buyer. `contracts.client_id` is legacy and nothing
-             * in the application reads it any more, so the factory uses it only
-             * to carry the intended buyer from the state into `configure()`,
-             * which moves it to the buyer table and clears the column. A
-             * contract built here therefore comes out exactly like one the
-             * application creates: `client_id` NULL, buyers in the pivot.
-             */
-            'client_id' => Client::factory(),
             'construction_unit_id' => ConstructionUnit::factory(),
             'code' => 'CVC-'.fake()->unique()->numberBetween(10000, 99999),
             'sale_date' => fake()->dateTimeBetween('-4 years', '-1 month')->format('Y-m-d'),
@@ -47,18 +39,24 @@ class ContractFactory extends Factory
     }
 
     /**
-     * Moves the carrier column into the buyer table and clears it, so every
-     * contract this factory builds ends up in the plural shape.
+     * A contract needs at least one buyer, and buyers live in
+     * `contract_clients`. A bare `Contract::factory()` therefore gets one, so it
+     * still produces a valid contract.
+     *
+     * This runs after the buyers a state named, never before: {@see forClient()}
+     * and {@see withBuyers()} attach through `hasAttached()`, which Laravel
+     * resolves while storing the model -- ahead of every `afterCreating`. So the
+     * check below sees them and steps aside, and no throwaway client is ever
+     * created for a fixture that already said who bought.
      */
     public function configure(): static
     {
         return $this->afterCreating(function (Contract $contract): void {
-            if ($contract->client_id === null) {
+            if ($contract->clients()->exists()) {
                 return;
             }
 
-            $contract->clients()->syncWithoutDetaching([$contract->client_id]);
-            $contract->forceFill(['client_id' => null])->saveQuietly();
+            $contract->clients()->attach(Client::factory()->create());
         });
     }
 
@@ -68,26 +66,15 @@ class ContractFactory extends Factory
      */
     public function forClient(Client $client): static
     {
-        return $this->state(fn (): array => [
-            'client_id' => $client->getKey(),
-        ]);
+        return $this->hasAttached($client, [], 'clients');
     }
 
     /**
      * Two or more buyers on one contract.
-     *
-     * Bypasses the carrier entirely: the column can hold one id and this is the
-     * state that exists because a contract can have more.
      */
     public function withBuyers(Client ...$clients): static
     {
-        return $this
-            ->state(fn (): array => ['client_id' => null])
-            ->afterCreating(function (Contract $contract) use ($clients): void {
-                $contract->clients()->syncWithoutDetaching(
-                    collect($clients)->map(fn (Client $client): int => (int) $client->getKey())->all(),
-                );
-            });
+        return $this->hasAttached(new Collection($clients), [], 'clients');
     }
 
     public function settled(): static

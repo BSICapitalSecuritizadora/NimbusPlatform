@@ -40,7 +40,7 @@ class OperationPolicy
     public function update(User $user, Operation $operation): bool
     {
         return $user->can('operations.update')
-            && $this->authorization->canViewOperation($user, $operation);
+            && $this->authorization->hasDirectOperationalParticipation($user, $operation);
     }
 
     public function manageResponsibilities(User $user, ?Operation $operation = null): bool
@@ -50,7 +50,7 @@ class OperationPolicy
         }
 
         return $user->can('operations.manage-responsibilities')
-            && ($operation === null || $this->authorization->canViewOperation($user, $operation));
+            && ($operation === null || $this->authorization->hasDirectOperationalParticipation($user, $operation));
     }
 
     /**
@@ -59,7 +59,7 @@ class OperationPolicy
     public function delete(User $user, Operation $operation): bool
     {
         return $user->can('operations.delete')
-            && $this->authorization->canViewOperation($user, $operation);
+            && $this->authorization->hasDirectOperationalParticipation($user, $operation);
     }
 
     /**

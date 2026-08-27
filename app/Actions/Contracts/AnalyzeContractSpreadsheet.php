@@ -415,7 +415,7 @@ class AnalyzeContractSpreadsheet
             'code' => $row['code'],
             'code_normalized' => $row['code_normalized'],
             'client_label' => null,
-            'client_id' => null,
+            'buyer_id' => null,
             'client_ids' => [],
             'buyer_comparison' => null,
             'lines' => [$row['line']],
@@ -488,7 +488,7 @@ class AnalyzeContractSpreadsheet
             return $this->error($base, sprintf('O cliente %s está excluído e não pode receber novos contratos.', $client->name));
         }
 
-        $base['client_id'] = (int) $client->getKey();
+        $base['buyer_id'] = (int) $client->getKey();
         $base['client_label'] = $client->name;
 
         $this->clientNames[(int) $client->getKey()] = $client->name;

@@ -144,12 +144,6 @@ class ImportContractsFromSpreadsheet
 
         $rows
             ->map(fn (array $row): array => [
-                /**
-                 * Null on purpose. The buyers of the contract are the rows
-                 * {@see linkBuyers()} writes; the legacy column has no buyer to
-                 * hold and no main buyer to invent.
-                 */
-                'client_id' => null,
                 'construction_unit_id' => $row['construction_unit_id'],
                 'construction_id' => $row['construction_id'],
                 'code' => $row['code'],

@@ -13,6 +13,7 @@ use App\Models\Operation;
 use App\Models\User;
 use App\Services\MeasurementEngineeringService;
 use App\Services\MeasurementWorkflow;
+use App\Services\OperationContextMutationService;
 use App\Services\OperationContextVisibilityService;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -233,6 +234,55 @@ it('blocks material model mutations after Engineering while allowing them before
         ->and(fn () => $scenario['operation']->fresh()->delete())
         ->toThrow(MeasurementWorkflowException::class);
 });
+
+it('uses the transactional Operation path and snapshots the emission that won the lock', function () {
+    $scenario = createP02EngineeringScenario();
+    $newEmission = Emission::factory()->create();
+    $blockedEmission = Emission::factory()->create();
+
+    app(OperationContextMutationService::class)->update(
+        $scenario['operation']->fresh(),
+        ['emission_id' => $newEmission->id],
+    );
+    approveP02Engineering($scenario);
+
+    expect($scenario['measurement']->fresh()->engineering_snapshot['emission_id'])->toBe($newEmission->id)
+        ->and($scenario['operation']->fresh()->emission_id)->toBe($newEmission->id)
+        ->and(fn () => app(OperationContextMutationService::class)->update(
+            $scenario['operation']->fresh(),
+            ['emission_id' => $blockedEmission->id],
+        ))->toThrow(MeasurementWorkflowException::class)
+        ->and($scenario['operation']->fresh()->emission_id)->toBe($newEmission->id);
+});
+
+it('rejects payment when a top-level Engineering snapshot invariant diverges', function (string $tamper) {
+    $scenario = createP02EngineeringScenario();
+    $workflow = app(MeasurementWorkflow::class);
+    approveP02Engineering($scenario);
+    $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
+    $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
+    $snapshot = $scenario['measurement']->fresh()->engineering_snapshot;
+
+    if ($tamper === 'emission_id') {
+        DB::table('operations')->where('id', $scenario['operation']->id)->update([
+            'emission_id' => Emission::factory()->create()->id,
+        ]);
+    } else {
+        $snapshot[$tamper] = $tamper === 'schema_version'
+            ? MeasurementEngineeringService::SNAPSHOT_SCHEMA_VERSION + 1
+            : 999999;
+        DB::table('measurements')->where('id', $scenario['measurement']->id)->update([
+            'engineering_snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR),
+        ]);
+    }
+
+    expect(fn () => $workflow->registerPayment($scenario['measurement']->fresh(), $scenario['actor'], [
+        'plan_set_id' => $scenario['planSets']->first()->id,
+        'pay_date' => '2026-08-26',
+        'amount' => 100,
+    ]))->toThrow(MeasurementWorkflowException::class)
+        ->and($scenario['measurement']->payments()->count())->toBe(0);
+})->with(['schema_version', 'measurement_id', 'operation_id', 'emission_id']);
 
 it('blocks finalization after direct database divergence of any approved material invariant', function (string $tamper) {
     $scenario = createP02EngineeringScenario();

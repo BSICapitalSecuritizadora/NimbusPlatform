@@ -170,7 +170,7 @@ it('accepts a valid spreadsheet and resolves every relationship into ids', funct
 
     $row = $analysis->rowsToCreate()->first();
 
-    expect($row['client_id'])->toBe($client->id)
+    expect($row['buyer_id'])->toBe($client->id)
         ->and($row['construction_unit_id'])->toBe($unit305->id)
         ->and($row['construction_id'])->toBe($construction->id)
         ->and($row['sale_date'])->toBe('2024-03-10')
@@ -204,14 +204,11 @@ it('persists the approved rows inside a single transaction', function () {
     $cancelled = Contract::query()->where('code', 'CVC-00124')->sole();
 
     expect($active->buyerIds())->toBe([$client->id])
-        // A coluna legada nasce vazia: o comprador vive na pivot.
-        ->and($active->client_id)->toBeNull()
         ->and($active->construction_unit_id)->toBe($unit305->id)
         ->and($active->status)->toBe(ContractStatus::Active)
         ->and($active->cancellation_date)->toBeNull()
         ->and((float) $active->sale_value)->toBe(850000.00)
         ->and($cancelled->buyerIds())->toBe([$buyer->id])
-        ->and($cancelled->client_id)->toBeNull()
         ->and($cancelled->construction_unit_id)->toBe($unit402->id)
         ->and($cancelled->status)->toBe(ContractStatus::Cancelled)
         ->and($cancelled->cancellation_date->toDateString())->toBe('2025-06-15');
@@ -1164,14 +1161,16 @@ describe('distrato e revenda no mesmo lote', function () {
         // statements, not the dates. Writing it before CVC-00001 releases the
         // unit would put two holders on it for the length of one statement,
         // which is exactly what the unique index refuses.
-        $returning = Contract::factory()->forUnit($unit305)->create([
-            'code' => 'CVC-00050',
-            'client_id' => Client::query()->where('document', '11144477735')->value('id'),
-            'sale_date' => '2026-08-16',
-            'sale_value' => '700000.00',
-            'status' => ContractStatus::Cancelled,
-            'cancellation_date' => '2026-08-18',
-        ]);
+        $returning = Contract::factory()
+            ->forUnit($unit305)
+            ->forClient(Client::query()->where('document', '11144477735')->sole())
+            ->create([
+                'code' => 'CVC-00050',
+                'sale_date' => '2026-08-16',
+                'sale_value' => '700000.00',
+                'status' => ContractStatus::Cancelled,
+                'cancellation_date' => '2026-08-18',
+            ]);
 
         $analysis = analyzeContractSpreadsheet([
             // Deliberately first: the order of the file must not decide the

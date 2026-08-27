@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\MeasurementResponsibility;
 use App\Exceptions\MeasurementWorkflowException;
+use App\Services\OperationContextMutationService;
 use App\Services\OperationContextVisibilityService;
 use App\Services\OperationResponsibilityService;
+use App\Services\ResponsibilityDelegationService;
 use Database\Factories\OperationFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -68,7 +71,11 @@ class Operation extends Model
         static::updating(function (self $operation): void {
             $actor = auth()->user();
 
-            if ($operation->isDirty(['emission_id', 'construction_id'])
+            if ($operation->isDirty('emission_id')) {
+                app(OperationContextMutationService::class)->assertEmissionCanChange($operation);
+            }
+
+            if ($operation->isDirty('construction_id')
                 && $operation->measurements()
                     ->whereHas('reviews', fn (Builder $reviews): Builder => $reviews
                         ->where('stage', 1)
@@ -289,14 +296,23 @@ class Operation extends Model
      */
     public function stageResponsibleId(int $stage): ?int
     {
-        return match ($stage) {
-            1 => $this->responsible_user_id,
-            2 => $this->stage2_reviewer_user_id,
-            3 => $this->stage3_reviewer_user_id,
-            4 => $this->payment_manager_user_id,
-            5 => $this->payment_finalizer_user_id,
-            default => null,
-        };
+        $responsibility = MeasurementResponsibility::primaryForStage($stage);
+
+        return $responsibility instanceof MeasurementResponsibility
+            ? $this->responsibleUserIdFor($responsibility)
+            : null;
+    }
+
+    public function responsibleUserIdFor(MeasurementResponsibility $responsibility): ?int
+    {
+        $userId = $this->getAttribute($responsibility->operationColumn());
+
+        return filled($userId) ? (int) $userId : null;
+    }
+
+    public function hasDirectResponsibility(User $user, MeasurementResponsibility $responsibility): bool
+    {
+        return $this->responsibleUserIdFor($responsibility) === (int) $user->getKey();
     }
 
     public function hasParticipant(User $user): bool
@@ -321,21 +337,7 @@ class Operation extends Model
      */
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        if ($user->hasAnyRole(['super-admin', 'admin'])) {
-            return $query;
-        }
-
-        return $query->where(function (Builder $participantQuery) use ($user): void {
-            $participantQuery
-                ->where('assigned_user_id', $user->getKey())
-                ->orWhere('responsible_user_id', $user->getKey())
-                ->orWhere('stage2_reviewer_user_id', $user->getKey())
-                ->orWhere('stage3_reviewer_user_id', $user->getKey())
-                ->orWhere('payment_manager_user_id', $user->getKey())
-                ->orWhere('payment_receipt_uploader_user_id', $user->getKey())
-                ->orWhere('payment_finalizer_user_id', $user->getKey())
-                ->orWhereHas('rejectionNotifyUsers', fn (Builder $users): Builder => $users->whereKey($user->getKey()));
-        });
+        return app(ResponsibilityDelegationService::class)->scopeVisibleOperationsTo($query, $user);
     }
 
     private static function generateCode(self $operation): string

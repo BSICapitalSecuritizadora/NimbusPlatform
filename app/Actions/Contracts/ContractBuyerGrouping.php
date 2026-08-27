@@ -90,7 +90,7 @@ class ContractBuyerGrouping
      */
     private function identityOf(array $row): ?string
     {
-        if (($row['construction_id'] === null) || ($row['client_id'] === null)) {
+        if (($row['construction_id'] === null) || ($row['buyer_id'] === null)) {
             return null;
         }
 
@@ -205,7 +205,7 @@ class ContractBuyerGrouping
         $linesByClient = [];
 
         foreach ($group as $row) {
-            $clientId = (int) $row['client_id'];
+            $clientId = (int) $row['buyer_id'];
 
             $linesByClient[$clientId][] = $row['line'];
 

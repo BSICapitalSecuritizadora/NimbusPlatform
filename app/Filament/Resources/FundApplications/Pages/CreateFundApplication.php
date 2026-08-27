@@ -5,29 +5,32 @@ namespace App\Filament\Resources\FundApplications\Pages;
 use App\Filament\Resources\FundApplications\FundApplicationResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Enums\Width;
 
 class CreateFundApplication extends CreateRecord
 {
     protected static string $resource = FundApplicationResource::class;
 
+    protected Width|string|null $maxContentWidth = Width::Full;
+
     protected static ?string $title = 'Criar aplicação';
 
     protected static ?string $breadcrumb = 'Criar';
 
+    protected ?string $subheading = 'Cadastre uma aplicação para utilizá-la na configuração financeira dos fundos.';
+
     protected array $extraBodyAttributes = [
-        'class' => 'bsi-fund-form-page bsi-simple-form-page',
+        'class' => 'bsi-cockpit-page bsi-fund-form-page bsi-fund-application-form-page',
     ];
 
-    public function getSubheading(): ?string
-    {
-        return 'Cadastre uma aplicação para utilizá-la na configuração financeira dos fundos.';
-    }
+    protected ?bool $hasUnsavedDataChangesAlert = true;
 
     protected function getCreateFormAction(): Action
     {
         return parent::getCreateFormAction()
             ->label('Criar aplicação')
-            ->icon('heroicon-m-plus');
+            ->icon('heroicon-m-plus')
+            ->color('primary');
     }
 
     protected function getCreateAnotherFormAction(): Action

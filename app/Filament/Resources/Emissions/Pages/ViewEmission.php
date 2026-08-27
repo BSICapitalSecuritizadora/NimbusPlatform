@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Emissions\Pages;
 
+use App\Domain\PuCalculator\Services\PuBaselineReadinessService;
 use App\Filament\Resources\Emissions\EmissionResource;
+use App\Filament\Widgets\PuCalculator\PuBaselineReadinessWidget;
 use App\Models\Emission;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -51,6 +53,19 @@ class ViewEmission extends ViewRecord
                 ->label('Editar')
                 ->icon('heroicon-m-pencil-square')
                 ->color('gray'),
+        ];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        if (! app(PuBaselineReadinessService::class)->supports($this->getRecord())) {
+            return [];
+        }
+
+        return [
+            PuBaselineReadinessWidget::make([
+                'record' => $this->getRecord(),
+            ]),
         ];
     }
 }

@@ -20,6 +20,7 @@ use App\Models\JobApplication;
 use App\Models\Measurement;
 use App\Models\Nimbus\Submission;
 use App\Models\Operation;
+use App\Models\ResponsibilityDelegation;
 use App\Models\Vacancy;
 use App\Policies\ContractInstallmentPolicy;
 use App\Policies\DocumentPolicy;
@@ -27,6 +28,7 @@ use App\Policies\JobApplicationPolicy;
 use App\Policies\MeasurementPolicy;
 use App\Policies\Nimbus\SubmissionPolicy;
 use App\Policies\OperationPolicy;
+use App\Policies\ResponsibilityDelegationPolicy;
 use App\Policies\VacancyPolicy;
 use App\Services\ConstructionProgressProvider;
 use App\Services\MeasurementPlanProgressProvider;
@@ -95,6 +97,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(JobApplication::class, JobApplicationPolicy::class);
         Gate::policy(Operation::class, OperationPolicy::class);
         Gate::policy(Measurement::class, MeasurementPolicy::class);
+        Gate::policy(ResponsibilityDelegation::class, ResponsibilityDelegationPolicy::class);
 
         Gate::before(function ($user, $ability) {
             return (method_exists($user, 'hasRole') && $user->hasRole('super-admin')) ? true : null;

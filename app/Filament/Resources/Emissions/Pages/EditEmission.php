@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Emissions\Pages;
 use App\Actions\Emissions\HomologatePuCurve;
 use App\Actions\Emissions\InvalidatePuCurve;
 use App\Domain\PuCalculator\Enums\IpcaProjectionPolicy;
+use App\Domain\PuCalculator\Enums\PuBaselineReadinessStatus;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuValidationMode;
@@ -13,11 +14,13 @@ use App\Domain\PuCalculator\Services\BusinessCalendarCatalogService;
 use App\Domain\PuCalculator\Services\BusinessCalendarSelectionEvidenceService;
 use App\Domain\PuCalculator\Services\FirstCouponPreIntegralizationPremiumCalculator;
 use App\Domain\PuCalculator\Services\PuAuditLogService;
+use App\Domain\PuCalculator\Services\PuBaselineReadinessService;
 use App\Domain\PuCalculator\Services\PuCurveExportService;
 use App\Domain\PuCalculator\Services\PuCurvePrerequisiteService;
 use App\Domain\PuCalculator\Services\PuCurveVersionService;
 use App\Domain\PuCalculator\Services\PuIndexCoverageService;
 use App\Domain\PuCalculator\Services\PuValidationSpreadsheetLocatorService;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Filament\Resources\Emissions\Schemas\EmissionForm;
 use App\Jobs\GeneratePuDailyCurveJob;
@@ -34,9 +37,9 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 // Filament v5: closures de schema recebem Filament\Schemas\Components\Utilities\Get (NAO Filament\Forms\Get).
 // Usar o import errado quebra o mount do formulario configurePuCalculation (campo CDI com Select->live()).
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Utilities\Get;
@@ -44,7 +47,9 @@ use Filament\Support\Enums\Width;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
+use Throwable;
 
 class EditEmission extends EditRecord
 {
@@ -236,6 +241,23 @@ class EditEmission extends EditRecord
 
                         if (! (bool) ($parameterData['first_coupon_pre_integralization_premium_enabled'] ?? false)) {
                             $parameterData['first_coupon_pre_integralization_business_days'] = null;
+                        }
+
+                        $readiness = app(PuBaselineReadinessService::class);
+
+                        if ($readiness->supports($this->getRecord())) {
+                            try {
+                                $readiness->assertCandidateCanBePersisted($this->getRecord(), $parameterData);
+                            } catch (ValidationException $exception) {
+                                Notification::make()
+                                    ->title('Configuração bloqueada pelo gate do baseline.')
+                                    ->body(collect($exception->errors())->flatten()->implode("\n"))
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+
+                                return;
+                            }
                         }
 
                         $before = $this->getRecord()->puParameter?->only(array_keys($parameterData)) ?? [];
@@ -751,9 +773,7 @@ class EditEmission extends EditRecord
                 ->required(),
             Select::make('calendar_code')
                 ->label('Calendário de dias úteis')
-                ->options(fn (): array => app(BusinessCalendarCatalogService::class)->optionsForNewConfiguration(
-                    $this->getRecord()->puParameter?->calendar_code,
-                ))
+                ->options(fn (): array => $this->puCalendarOptions())
                 ->helperText('Seleção explícita obrigatória. B3 legado só permanece disponível quando já está gravado; calendários HML não aparecem aqui.')
                 ->searchable()
                 ->required(),
@@ -847,44 +867,102 @@ class EditEmission extends EditRecord
     }
 
     /**
+     * Calendários selecionáveis, mais o calendário COMPROVADO pelo contrato.
+     *
+     * O catálogo esconde calendários que ainda não passaram por governança. O
+     * gate não relaxa essa regra em geral: ele apenas libera o código que a
+     * emissão comprovou documentalmente e cuja cobertura já não bloqueia o
+     * baseline. Nenhum calendário é fixado por nome aqui.
+     *
+     * @return array<string, string>
+     */
+    private function puCalendarOptions(): array
+    {
+        $catalog = app(BusinessCalendarCatalogService::class);
+        $options = $catalog->optionsForNewConfiguration($this->getRecord()->puParameter?->calendar_code);
+        $readiness = app(PuBaselineReadinessService::class);
+
+        if (! $readiness->supports($this->getRecord())) {
+            return $options;
+        }
+
+        $report = $readiness->evaluate($this->getRecord());
+
+        if ($report->status === PuBaselineReadinessStatus::Blocked) {
+            return $options;
+        }
+
+        $provenCode = $report->candidateConfiguration['calendar_code'] ?? null;
+
+        if (! is_string($provenCode) || $provenCode === 'PENDING' || array_key_exists($provenCode, $options)) {
+            return $options;
+        }
+
+        try {
+            $calendar = $catalog->findOrFail(BusinessCalendarRegistry::normalize($provenCode));
+        } catch (Throwable) {
+            return $options;
+        }
+
+        $options[$calendar->code] = $calendar->selectionLabel().' — comprovado pelo contrato e liberado pelo gate';
+
+        return $options;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function getPuCalculationDefaults(): array
     {
         $parameter = $this->getRecord()->puParameter;
+        $readiness = app(PuBaselineReadinessService::class);
+        $baselineReport = $parameter === null && $readiness->supports($this->getRecord())
+            ? $readiness->evaluate($this->getRecord())
+            : null;
+        $candidate = $baselineReport?->candidateConfiguration ?? [];
+        $candidateCurveStartDate = ($candidate['curve_start_date'] ?? null) === 'PENDING'
+            ? null
+            : ($candidate['curve_start_date'] ?? null);
+        $defaultCurveStartDate = $baselineReport !== null
+            ? $candidateCurveStartDate
+            : $this->getRecord()->issue_date?->toDateString();
+        $candidateCalendarCode = $baselineReport !== null
+            && $baselineReport->status !== PuBaselineReadinessStatus::Blocked
+                ? ($candidate['calendar_code'] ?? null)
+                : null;
 
         return [
-            'curve_start_date' => $parameter?->curve_start_date?->toDateString() ?? $this->getRecord()->issue_date?->toDateString(),
-            'curve_end_date' => $parameter?->curve_end_date?->toDateString() ?? $this->getRecord()->maturity_date?->toDateString(),
-            'initial_unit_value' => $parameter?->getRawOriginal('initial_unit_value') ?? $this->getRecord()->getRawOriginal('issued_price') ?? '1000.0000000000000000',
-            'spread_rate' => $parameter?->getRawOriginal('spread_rate') ?? $this->getRecord()->getRawOriginal('remuneration_rate') ?? '0.00000000',
+            'curve_start_date' => $parameter?->curve_start_date?->toDateString() ?? $defaultCurveStartDate,
+            'curve_end_date' => $parameter?->curve_end_date?->toDateString() ?? ($candidate['curve_end_date'] ?? null) ?? $this->getRecord()->maturity_date?->toDateString(),
+            'initial_unit_value' => $parameter?->getRawOriginal('initial_unit_value') ?? ($candidate['initial_unit_value'] ?? null) ?? $this->getRecord()->getRawOriginal('issued_price') ?? '1000.0000000000000000',
+            'spread_rate' => $parameter?->getRawOriginal('spread_rate') ?? ($candidate['spread_rate'] ?? null) ?? $this->getRecord()->getRawOriginal('remuneration_rate') ?? '0.00000000',
             'annual_rate' => $parameter?->getRawOriginal('annual_rate'),
-            'indexer' => $parameter?->indexer ?? PuIndexer::Cdi->value,
+            'indexer' => $parameter?->indexer ?? ($candidate['indexer'] ?? PuIndexer::Cdi->value),
             'base_index_date' => $parameter?->base_index_date?->toDateString(),
             'index_lag_months' => $parameter?->index_lag_months ?? 2,
             'correction_frequency' => $parameter?->correction_frequency ?? 'monthly',
             'index_projection_policy' => $parameter?->index_projection_policy ?? IpcaProjectionPolicy::PublishedOnly->value,
-            'business_day_basis' => $parameter?->business_day_basis ?? 252,
-            'calendar_code' => $parameter?->calendar_code,
+            'business_day_basis' => $parameter?->business_day_basis ?? ($candidate['business_day_basis'] ?? 252),
+            'calendar_code' => $parameter?->calendar_code ?? $candidateCalendarCode,
             'calendar_evidence_document' => null,
             'calendar_evidence_clause' => null,
             'calendar_evidence_page' => null,
             'calendar_evidence_excerpt' => null,
             'calendar_evidence_notes' => null,
             'calendar_evidence_confirmed' => false,
-            'index_rate_lookup_mode' => $parameter?->index_rate_lookup_mode ?? PuIndexRateLookupMode::PreviousAvailableBusinessDay->value,
-            'index_rate_lag_business_days' => $parameter?->index_rate_lag_business_days ?? -1,
-            'first_coupon_pre_integralization_premium_enabled' => $parameter?->first_coupon_pre_integralization_premium_enabled ?? false,
-            'first_coupon_pre_integralization_business_days' => $parameter?->first_coupon_pre_integralization_business_days,
-            'first_coupon_pre_integralization_apply_index_factor' => $parameter?->first_coupon_pre_integralization_apply_index_factor ?? true,
-            'first_coupon_pre_integralization_apply_spread_factor' => $parameter?->first_coupon_pre_integralization_apply_spread_factor ?? true,
+            'index_rate_lookup_mode' => $parameter?->index_rate_lookup_mode ?? ($candidate['index_rate_lookup_mode'] ?? PuIndexRateLookupMode::PreviousAvailableBusinessDay->value),
+            'index_rate_lag_business_days' => $parameter?->index_rate_lag_business_days ?? ($candidate['index_rate_lag_business_days'] ?? -1),
+            'first_coupon_pre_integralization_premium_enabled' => $parameter?->first_coupon_pre_integralization_premium_enabled ?? ($candidate['first_coupon_pre_integralization_premium_enabled'] ?? false),
+            'first_coupon_pre_integralization_business_days' => $parameter?->first_coupon_pre_integralization_business_days ?? ($candidate['first_coupon_pre_integralization_business_days'] ?? null),
+            'first_coupon_pre_integralization_apply_index_factor' => $parameter?->first_coupon_pre_integralization_apply_index_factor ?? ($candidate['first_coupon_pre_integralization_apply_index_factor'] ?? true),
+            'first_coupon_pre_integralization_apply_spread_factor' => $parameter?->first_coupon_pre_integralization_apply_spread_factor ?? ($candidate['first_coupon_pre_integralization_apply_spread_factor'] ?? true),
             'first_coupon_premium_evidence_document' => null,
             'first_coupon_premium_evidence_clause' => null,
             'first_coupon_premium_evidence_page' => null,
             'first_coupon_premium_evidence_excerpt' => null,
             'first_coupon_premium_evidence_notes' => null,
             'first_coupon_premium_evidence_confirmed' => false,
-            'legacy_projection_enabled' => $parameter?->legacy_projection_enabled ?? true,
+            'legacy_projection_enabled' => $parameter?->legacy_projection_enabled ?? ($candidate['legacy_projection_enabled'] ?? true),
         ];
     }
 

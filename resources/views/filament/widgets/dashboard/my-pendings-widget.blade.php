@@ -8,6 +8,59 @@
         persist-collapsed
         collapse-id="cockpit-my-pendings"
     >
+        @if($measurementCount > 0)
+            <section class="mb-5 border-b border-gray-200/80 pb-5 dark:border-white/10" aria-labelledby="cockpit-measurements-heading">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">
+                            <x-heroicon-o-clipboard-document-list class="size-4" aria-hidden="true" />
+                        </span>
+                        <div>
+                            <h3 id="cockpit-measurements-heading" class="text-sm font-semibold text-gray-950 dark:text-white">Medições operacionais</h3>
+                            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                                {{ $measurementCount }} {{ $measurementCount === 1 ? 'ação disponível' : 'ações disponíveis' }}
+                                @if($delegatedMeasurementCount > 0)
+                                    · {{ $delegatedMeasurementCount }} {{ $delegatedMeasurementCount === 1 ? 'delegada' : 'delegadas' }} para você
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                    @if($overdueMeasurementCount > 0)
+                        <x-filament::badge color="danger">{{ $overdueMeasurementCount }} {{ $overdueMeasurementCount === 1 ? 'vencida' : 'vencidas' }}</x-filament::badge>
+                    @endif
+                </div>
+
+                <ul class="mt-3 divide-y divide-gray-200/70 border-t border-gray-200/70 dark:divide-white/8 dark:border-white/8" aria-label="Prévia das medições pendentes">
+                    @foreach($measurements as $pendingMeasurement)
+                        <li wire:key="cockpit-measurement-{{ $pendingMeasurement['measurement_id'] }}">
+                            <a href="{{ $pendingMeasurement['url'] }}" class="group -mx-2 flex min-h-16 items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-primary-50/60 focus-visible:outline-2 focus-visible:outline-primary-600 dark:hover:bg-primary-500/10">
+                                <span class="min-w-0 flex-1">
+                                    <span class="flex flex-wrap items-center gap-2">
+                                        <span class="text-sm font-medium text-gray-950 dark:text-white">{{ $pendingMeasurement['operation_code'] }} · Medição #{{ $pendingMeasurement['measurement_id'] }}</span>
+                                        @if($pendingMeasurement['sla_status'] === 'overdue')
+                                            <x-filament::badge color="danger" size="sm">SLA vencido</x-filament::badge>
+                                        @elseif($pendingMeasurement['sla_status'] === 'approaching')
+                                            <x-filament::badge color="warning" size="sm">SLA em atenção</x-filament::badge>
+                                        @endif
+                                    </span>
+                                    <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ $pendingMeasurement['action_label'] }} · referência {{ $pendingMeasurement['reference_month'] ?? 'não informada' }}</span>
+                                    @if($pendingMeasurement['delegated'])
+                                        <span class="mt-1 block text-xs font-medium text-info-700 dark:text-info-300">
+                                            Responsabilidade original de {{ $pendingMeasurement['delegator_name'] }}; delegada para você até {{ $pendingMeasurement['delegation_ends_at']?->format('d/m/Y H:i') }}.
+                                        </span>
+                                    @endif
+                                </span>
+                                <x-heroicon-o-chevron-right class="size-4 shrink-0 text-gray-400 group-hover:text-primary-600" aria-hidden="true" />
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+                @if($measurementHiddenCount > 0)
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">+ {{ $measurementHiddenCount }} na lista completa de medições</p>
+                @endif
+            </section>
+        @endif
+
         @if($totalPendingCount === 0)
             <div
                 data-pending-state="empty"
@@ -20,7 +73,7 @@
                     <div class="min-w-0">
                         <h3 class="text-base font-semibold text-gray-950 dark:text-white">Tudo em dia</h3>
                         <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                            Você não possui obrigações ou propostas pendentes no momento.
+                            Você não possui medições, obrigações ou propostas pendentes no momento.
                         </p>
                     </div>
                 </div>
@@ -33,6 +86,10 @@
                     <span class="flex items-center gap-2">
                         <x-heroicon-m-check class="size-4 shrink-0 text-success-600 dark:text-success-300" aria-hidden="true" />
                         Nenhuma proposta aguardando sua ação
+                    </span>
+                    <span class="flex items-center gap-2">
+                        <x-heroicon-m-check class="size-4 shrink-0 text-success-600 dark:text-success-300" aria-hidden="true" />
+                        Nenhuma medição aguardando sua ação
                     </span>
                 </div>
             </div>

@@ -2,40 +2,51 @@
 
 namespace App\Services;
 
+use App\Enums\MeasurementResponsibility;
 use App\Models\Measurement;
 use App\Models\Operation;
+use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 
 class MeasurementAuthorizationService
 {
+    public function __construct(private ResponsibilityDelegationService $delegations) {}
+
     public function canViewOperation(User $user, Operation $operation): bool
     {
         return $user->can('operations.view')
-            && ($this->isWorkflowAdministrator($user) || $operation->hasParticipant($user));
+            && ($this->isWorkflowAdministrator($user)
+                || $operation->hasParticipant($user)
+                || $this->delegations->hasAnyActiveDelegatedResponsibility($user, $operation));
     }
 
     public function canViewMeasurement(User $user, Measurement $measurement): bool
     {
         return $user->can('measurements.view')
             && $measurement->operation instanceof Operation
-            && ($this->isWorkflowAdministrator($user) || $measurement->operation->hasParticipant($user));
+            && ($this->isWorkflowAdministrator($user)
+                || $measurement->operation->hasParticipant($user)
+                || $this->delegations->hasAnyActiveDelegatedResponsibility($user, $measurement->operation));
     }
 
     public function canCreateMeasurement(User $user, Operation $operation): bool
     {
         return $user->can('measurements.create')
             && ! in_array($operation->status, ['canceled', 'completed'], true)
-            && ($this->isWorkflowAdministrator($user) || $operation->hasParticipant($user));
+            && $this->hasDirectOperationalParticipation($user, $operation);
+    }
+
+    public function hasDirectOperationalParticipation(User $user, Operation $operation): bool
+    {
+        return $this->isWorkflowAdministrator($user) || $operation->hasParticipant($user);
     }
 
     public function canDecideStage(User $user, Measurement $measurement, int $stage): bool
     {
-        $permission = $stage === MeasurementWorkflow::STAGE_PAYMENT
-            ? 'measurements.pay'
-            : 'measurements.review';
+        $responsibility = MeasurementResponsibility::primaryForStage($stage);
 
-        return $user->can($permission)
-            && $this->hasStageResponsibility($user, $measurement, $stage);
+        return $responsibility instanceof MeasurementResponsibility
+            && $this->hasResponsibility($user, $measurement, $responsibility);
     }
 
     public function canPauseStage(User $user, Measurement $measurement, int $stage): bool
@@ -45,20 +56,17 @@ class MeasurementAuthorizationService
 
     public function canRegisterPayment(User $user, Measurement $measurement): bool
     {
-        return $user->can('measurements.pay')
-            && $this->hasOperationResponsibility($user, $measurement, 'payment_manager_user_id');
+        return $this->hasResponsibility($user, $measurement, MeasurementResponsibility::PaymentManager);
     }
 
     public function canManageReceipts(User $user, Measurement $measurement): bool
     {
-        return $user->can('measurements.receipts')
-            && $this->hasOperationResponsibility($user, $measurement, 'payment_receipt_uploader_user_id');
+        return $this->hasResponsibility($user, $measurement, MeasurementResponsibility::ReceiptUploader);
     }
 
     public function canFinalize(User $user, Measurement $measurement): bool
     {
-        return $user->can('measurements.finalize')
-            && $this->hasOperationResponsibility($user, $measurement, 'payment_finalizer_user_id');
+        return $this->hasResponsibility($user, $measurement, MeasurementResponsibility::Finalizer);
     }
 
     public function isWorkflowAdministrator(User $user): bool
@@ -68,31 +76,63 @@ class MeasurementAuthorizationService
 
     public function responsibilityForStage(int $stage): string
     {
-        return match ($stage) {
-            1 => 'responsible_user_id',
-            2 => 'stage2_reviewer_user_id',
-            3 => 'stage3_reviewer_user_id',
-            4 => 'payment_manager_user_id',
-            5 => 'payment_finalizer_user_id',
-            default => 'unknown',
-        };
+        return MeasurementResponsibility::primaryForStage($stage)?->operationColumn() ?? 'unknown';
     }
 
-    private function hasStageResponsibility(User $user, Measurement $measurement, int $stage): bool
-    {
+    public function activeDelegationFor(
+        User $user,
+        Measurement $measurement,
+        MeasurementResponsibility|int|string $responsibility,
+    ): ?ResponsibilityDelegation {
+        if ($this->isWorkflowAdministrator($user) || ! $measurement->operation instanceof Operation) {
+            return null;
+        }
+
+        $resolved = $this->resolveResponsibility($responsibility);
+
+        if (! $resolved instanceof MeasurementResponsibility
+            || $measurement->operation->hasDirectResponsibility($user, $resolved)) {
+            return null;
+        }
+
+        return $this->delegations->activeDelegationFor($user, $measurement->operation, $resolved);
+    }
+
+    private function hasResponsibility(
+        User $user,
+        Measurement $measurement,
+        MeasurementResponsibility $responsibility,
+    ): bool {
+        if (! $user->can($responsibility->permission())) {
+            return false;
+        }
+
         if ($this->isWorkflowAdministrator($user)) {
             return true;
         }
 
-        return (int) $measurement->operation?->stageResponsibleId($stage) === (int) $user->getKey();
-    }
+        $operation = $measurement->operation;
 
-    private function hasOperationResponsibility(User $user, Measurement $measurement, string $column): bool
-    {
-        if ($this->isWorkflowAdministrator($user)) {
-            return true;
+        if (! $operation instanceof Operation) {
+            return false;
         }
 
-        return (int) $measurement->operation?->getAttribute($column) === (int) $user->getKey();
+        return $operation->hasDirectResponsibility($user, $responsibility)
+            || $this->delegations->activeDelegationFor($user, $operation, $responsibility) instanceof ResponsibilityDelegation;
+    }
+
+    private function resolveResponsibility(
+        MeasurementResponsibility|int|string $responsibility,
+    ): ?MeasurementResponsibility {
+        if ($responsibility instanceof MeasurementResponsibility) {
+            return $responsibility;
+        }
+
+        if (is_int($responsibility)) {
+            return MeasurementResponsibility::primaryForStage($responsibility);
+        }
+
+        return MeasurementResponsibility::tryFrom($responsibility)
+            ?? MeasurementResponsibility::fromOperationColumn($responsibility);
     }
 }

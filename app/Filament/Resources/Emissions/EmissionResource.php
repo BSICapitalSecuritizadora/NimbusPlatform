@@ -13,6 +13,7 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\Obligatio
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\ObligationSuggestionsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PaymentsRelationManager;
+use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuBaselineEvidencesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuCalendarHomologationsRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuDailyCurvesRelationManager;
 use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\PuEventsRelationManager;
@@ -278,6 +279,7 @@ class EmissionResource extends Resource
     public static function getRelations(): array
     {
         return [
+            PuBaselineEvidencesRelationManager::class,
             PaymentsRelationManager::class,
             PuHistoriesRelationManager::class,
             PuCalendarHomologationsRelationManager::class,

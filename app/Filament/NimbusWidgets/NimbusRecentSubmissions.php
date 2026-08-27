@@ -14,12 +14,18 @@ class NimbusRecentSubmissions extends BaseWidget
 {
     protected static ?string $heading = 'Envios recentes';
 
-    // Span 2 of 3 columns
-    protected int|string|array $columnSpan = 2;
+    // Span 8 of 12 columns (~67%)
+    protected int|string|array $columnSpan = [
+        'default' => 'full',
+        'lg' => 8,
+        'xl' => 8,
+    ];
 
     public function table(Table $table): Table
     {
         return $table
+            ->heading('Envios recentes')
+            ->description('Últimas solicitações recebidas para análise')
             ->query(
                 Submission::query()
                     ->latest('submitted_at')
@@ -31,10 +37,13 @@ class NimbusRecentSubmissions extends BaseWidget
             ->columns([
                 Tables\Columns\TextColumn::make('portalUser.full_name')
                     ->label('Solicitante')
-                    ->searchable(),
+                    ->searchable()
+                    ->weight('medium')
+                    ->description(fn (Submission $record): ?string => $record->company_name ?: null),
                 Tables\Columns\TextColumn::make('submitted_at')
                     ->label('Data de envio')
-                    ->dateTime('d/m/Y H:i'),
+                    ->dateTime('d/m/Y H:i')
+                    ->color('gray'),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Situação')
                     ->badge()
@@ -45,8 +54,12 @@ class NimbusRecentSubmissions extends BaseWidget
                 Action::make('Ver detalhes')
                     ->icon('heroicon-m-chevron-right')
                     ->iconButton()
+                    ->tooltip('Ver detalhes da solicitação')
                     ->url(fn (Submission $record): string => SubmissionResource::getUrl('view', ['record' => $record], panel: 'admin')),
             ])
+            ->emptyStateIcon('heroicon-o-inbox')
+            ->emptyStateHeading('Nenhum envio recente')
+            ->emptyStateDescription('Os envios mais recentes aparecerão aqui.')
             ->paginated(false);
     }
 }

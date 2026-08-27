@@ -5,10 +5,13 @@ namespace App\Filament\Resources\FundNames\Pages;
 use App\Filament\Resources\FundNames\FundNameResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Enums\Width;
 
 class EditFundName extends EditRecord
 {
     protected static string $resource = FundNameResource::class;
+
+    protected Width|string|null $maxContentWidth = Width::Full;
 
     protected static ?string $title = 'Editar nome de fundo';
 

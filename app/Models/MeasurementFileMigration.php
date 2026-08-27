@@ -16,6 +16,8 @@ class MeasurementFileMigration extends Model
 
     public const STATE_PUBLIC_RESIDUE = 'public_residue';
 
+    public const STATE_SHARED_SOURCE_RETAINED = 'shared_source_retained';
+
     public const STATE_COMPLETED = 'completed';
 
     protected $fillable = [

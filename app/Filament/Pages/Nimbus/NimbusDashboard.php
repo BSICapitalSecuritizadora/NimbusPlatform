@@ -24,14 +24,29 @@ class NimbusDashboard extends BaseDashboard
 
     protected static string $routePath = '/gestao-documental-externa-dashboard';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-nimbus-dashboard',
+    ];
+
     public static function canAccess(): bool
     {
         return Filament::auth()->user()?->can('nimbus.submissions.view') ?? false;
     }
 
+    public function getSubheading(): ?string
+    {
+        return 'Painel de controle de envios, solicitações e atividades de usuários no portal.';
+    }
+
     public function getColumns(): int|array
     {
-        return 3;
+        return [
+            'default' => 1,
+            'sm' => 1,
+            'md' => 2,
+            'lg' => 12,
+            'xl' => 12,
+        ];
     }
 
     public function getWidgets(): array

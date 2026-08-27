@@ -3,6 +3,7 @@
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementFileMigration;
+use App\Models\MeasurementPayment;
 use App\Models\Operation;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -46,6 +47,17 @@ function createP02LegacyAsset(Measurement $measurement, string $path): Measureme
         'storage_path' => $path,
         'storage_disk' => null,
         'uploaded_at' => now(),
+    ]));
+}
+
+function createP02LegacyReceipt(Measurement $measurement, Operation $operation, string $path): MeasurementPayment
+{
+    return MeasurementPayment::withoutEvents(fn (): MeasurementPayment => $measurement->payments()->create([
+        'operation_id' => $operation->id,
+        'pay_date' => now(),
+        'amount' => 100,
+        'receipt_path' => $path,
+        'receipt_disk' => null,
     ]));
 }
 
@@ -219,6 +231,185 @@ it('never collides two exact sources with the same basename and SHA', function (
     $journal = MeasurementFileMigration::query()->firstOrFail();
     expect($journal->source_path)->toBe($firstPath);
 });
+
+it('retains an exact shared source until the second asset is private and readable', function () {
+    $scenario = createP02LegacyBase();
+    $source = 'measurements/shared/two-assets.pdf';
+    $content = '%PDF-1.7 shared-two-assets';
+    Storage::disk('public')->put($source, $content);
+    $first = createP02LegacyAsset($scenario['measurement'], $source);
+    $second = createP02LegacyAsset($scenario['measurement'], $source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])
+        ->expectsOutputToContain('shared_source_retained')
+        ->assertSuccessful();
+
+    expect($first->fresh()->storage_disk)->toBe('local')
+        ->and($second->fresh()->storage_disk)->toBeNull()
+        ->and($first->fileMigrationJournal?->state)->toBe(MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED)
+        ->and(Storage::disk('public')->get($source))->toBe($content);
+    Storage::disk('public')->assertExists($source);
+    $this->actingAs($scenario['user'])
+        ->get(route('admin.measurements.assets.download', $second))
+        ->assertOk();
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true])->assertSuccessful();
+
+    $first->refresh();
+    $second->refresh();
+    expect($first->storage_disk)->toBe('local')
+        ->and($second->storage_disk)->toBe('local')
+        ->and(Storage::disk('local')->get($first->storage_path))->toBe($content)
+        ->and(Storage::disk('local')->get($second->storage_path))->toBe($content)
+        ->and(MeasurementFileMigration::query()->where('state', MeasurementFileMigration::STATE_COMPLETED)->count())->toBe(2);
+    Storage::disk('public')->assertMissing($source);
+});
+
+it('migrates every supported role sharing one source and only the last role removes it', function () {
+    $scenario = createP02LegacyBase();
+    $source = 'measurements/shared/all-roles.pdf';
+    $content = '%PDF-1.7 shared-all-roles';
+    Storage::disk('public')->put($source, $content);
+    DB::table('measurements')->where('id', $scenario['measurement']->id)->update([
+        'storage_path' => $source,
+        'storage_disk' => null,
+        'filename' => basename($source),
+    ]);
+    $asset = createP02LegacyAsset($scenario['measurement'], $source);
+    $receipt = createP02LegacyReceipt($scenario['measurement'], $scenario['operation'], $source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
+    expect($scenario['measurement']->fresh()->storage_disk)->toBe('local')
+        ->and($asset->fresh()->storage_disk)->toBeNull()
+        ->and($receipt->fresh()->receipt_disk)->toBeNull();
+    Storage::disk('public')->assertExists($source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
+    expect($asset->fresh()->storage_disk)->toBe('local')
+        ->and($receipt->fresh()->receipt_disk)->toBeNull();
+    Storage::disk('public')->assertExists($source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
+    expect($scenario['measurement']->fresh()->storage_disk)->toBe('local')
+        ->and($asset->fresh()->storage_disk)->toBe('local')
+        ->and($receipt->fresh()->receipt_disk)->toBe('local')
+        ->and(MeasurementFileMigration::query()->where('state', MeasurementFileMigration::STATE_COMPLETED)->count())->toBe(3);
+    Storage::disk('public')->assertMissing($source);
+});
+
+it('produces the same safe result when the logical second record migrates first', function () {
+    $scenario = createP02LegacyBase();
+    $source = 'measurements/shared/reverse-order.pdf';
+    $content = '%PDF-1.7 reverse-order';
+    Storage::disk('public')->put($source, $content);
+    $second = createP02LegacyAsset($scenario['measurement'], $source);
+    $first = createP02LegacyAsset($scenario['measurement'], $source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
+    expect($second->fresh()->storage_disk)->toBe('local')
+        ->and($first->fresh()->storage_disk)->toBeNull();
+    Storage::disk('public')->assertExists($source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true])->assertSuccessful();
+    expect($second->fresh()->storage_disk)->toBe('local')
+        ->and($first->fresh()->storage_disk)->toBe('local');
+    Storage::disk('public')->assertMissing($source);
+});
+
+it('ignores null and divergent legacy hashes when counting exact shared references', function () {
+    $scenario = createP02LegacyBase();
+    $source = 'measurements/shared/hash-metadata.pdf';
+    Storage::disk('public')->put($source, '%PDF-1.7 shared-hash-metadata');
+    $first = createP02LegacyAsset($scenario['measurement'], $source);
+    $nullHash = createP02LegacyAsset($scenario['measurement'], $source);
+    $divergentHash = createP02LegacyAsset($scenario['measurement'], $source);
+    DB::table('measurement_assets')->where('id', $nullHash->id)->update(['sha256' => null]);
+    DB::table('measurement_assets')->where('id', $divergentHash->id)->update(['sha256' => str_repeat('f', 64)]);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
+    expect($first->fileMigrationJournal?->state)->toBe(MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED);
+    Storage::disk('public')->assertExists($source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
+    expect($nullHash->fileMigrationJournal?->fresh()->state)->toBe(MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED);
+    Storage::disk('public')->assertExists($source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
+    expect($divergentHash->fresh()->storage_disk)->toBe('local')
+        ->and(MeasurementFileMigration::query()->where('state', MeasurementFileMigration::STATE_COMPLETED)->count())->toBe(3);
+    Storage::disk('public')->assertMissing($source);
+});
+
+it('does not count an old journal as an active domain reference', function () {
+    $scenario = createP02LegacyBase();
+    $source = 'measurements/shared/old-journal.pdf';
+    $oldAsset = createP02LegacyAsset($scenario['measurement'], $source);
+    $checkpoint = createP02MigrationCheckpoint(
+        $oldAsset,
+        $source,
+        MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED,
+        databaseIsPrivate: true,
+        publicExists: true,
+    );
+    $active = createP02LegacyAsset($scenario['measurement'], $source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true])->assertSuccessful();
+
+    expect($active->fresh()->storage_disk)->toBe('local')
+        ->and($checkpoint['journal']->fresh()->state)->toBe(MeasurementFileMigration::STATE_COMPLETED);
+    Storage::disk('public')->assertMissing($source);
+});
+
+it('reconciles a retained source when the last active reference disappears before rerun', function () {
+    $scenario = createP02LegacyBase();
+    $source = 'measurements/shared/rerun-cleanup.pdf';
+    $content = '%PDF-1.7 rerun-cleanup';
+    Storage::disk('public')->put($source, $content);
+    $first = createP02LegacyAsset($scenario['measurement'], $source);
+    $second = createP02LegacyAsset($scenario['measurement'], $source);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true, '--limit' => 1])->assertSuccessful();
+    $privatePath = "nimbus_docs/measurements/assets/external-{$second->id}.pdf";
+    Storage::disk('local')->put($privatePath, $content);
+    DB::table('measurement_assets')->where('id', $second->id)->update([
+        'storage_path' => $privatePath,
+        'storage_disk' => 'local',
+        'sha256' => hash('sha256', $content),
+        'mime_type' => 'application/pdf',
+        'size' => strlen($content),
+    ]);
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true])
+        ->expectsOutputToContain('cleanup compartilhado reconciliado')
+        ->assertSuccessful();
+
+    expect($first->fileMigrationJournal?->fresh()->state)->toBe(MeasurementFileMigration::STATE_COMPLETED)
+        ->and($second->fresh()->storage_path)->toBe($privatePath);
+    Storage::disk('public')->assertMissing($source);
+});
+
+it('recovers shared cleanup idempotently across a crash around exact source deletion', function (bool $publicExists) {
+    $scenario = createP02LegacyBase();
+    $source = 'measurements/shared/crash-'.($publicExists ? 'before' : 'after').'.pdf';
+    $asset = createP02LegacyAsset($scenario['measurement'], $source);
+    $checkpoint = createP02MigrationCheckpoint(
+        $asset,
+        $source,
+        MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED,
+        databaseIsPrivate: true,
+        publicExists: $publicExists,
+    );
+
+    $this->artisan('measurements:secure-legacy-files', ['--execute' => true])->assertSuccessful();
+
+    expect($checkpoint['journal']->fresh()->state)->toBe(MeasurementFileMigration::STATE_COMPLETED)
+        ->and(Storage::disk('local')->get($checkpoint['destination']))->toBe('%PDF-1.7 deterministic-legacy-content');
+    Storage::disk('public')->assertMissing($source);
+    Storage::disk('local')->assertMissing($checkpoint['recovery']);
+})->with([
+    'crash before delete' => true,
+    'crash after delete' => false,
+]);
 
 it('rejects public for new assets and receipts while authorized legacy public remains readable', function () {
     $scenario = createP02LegacyBase();

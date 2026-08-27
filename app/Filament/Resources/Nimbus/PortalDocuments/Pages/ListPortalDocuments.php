@@ -14,10 +14,22 @@ class ListPortalDocuments extends ListRecords
 
     protected static ?string $breadcrumb = 'Listar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-portal-documents-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Gerencie os documentos disponibilizados individualmente aos usuários do portal.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()->label('Novo documento do usuário'),
+            CreateAction::make()
+                ->label('Novo documento do usuário')
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 }

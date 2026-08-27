@@ -5,13 +5,17 @@ use App\Actions\Contracts\ContractSpreadsheetColumns;
 use App\Actions\Contracts\ImportContractsFromSpreadsheet;
 use App\Enums\ContractStatus;
 use App\Enums\ReconciliationOutcome;
+use App\Filament\Resources\ContractInstallments\Pages\ListContractInstallments;
+use App\Filament\Resources\Contracts\ContractResource;
 use App\Filament\Resources\Contracts\Pages\CreateContract;
 use App\Filament\Resources\Contracts\Pages\EditContract;
 use App\Filament\Resources\Contracts\Pages\ListContracts;
+use App\Filament\Resources\Contracts\Pages\ViewContract;
 use App\Models\Client;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Contract;
+use App\Models\ContractInstallment;
 use App\Models\Emission;
 use App\Models\ImportRun;
 use App\Support\ActivityLog\ActivityPresenter;
@@ -19,6 +23,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
@@ -105,8 +110,7 @@ it('creates one contract with one buyer', function () {
     $contract = Contract::query()->sole();
 
     expect($result['created'])->toBe(1)
-        ->and($contract->buyerIds())->toHaveCount(1)
-        ->and($contract->client_id)->toBeNull();
+        ->and($contract->buyerIds())->toHaveCount(1);
 });
 
 it('creates one contract from two lines that differ only by the buyer', function () {
@@ -127,7 +131,6 @@ it('creates one contract from two lines that differ only by the buyer', function
     expect($result['created'])->toBe(1)
         ->and(Contract::query()->count())->toBe(1)
         ->and($contract->clients->pluck('name')->all())->toBe(['João da Silva', 'Maria da Silva'])
-        ->and($contract->client_id)->toBeNull()
         ->and(collect($contract->buyerIds())->sort()->values()->all())
         ->toBe(collect([$joao->id, $maria->id])->sort()->values()->all());
 });
@@ -386,8 +389,7 @@ it('creates a contract with two buyers through the form', function () {
 
     $contract = Contract::query()->sole();
 
-    expect($contract->clients->pluck('name')->all())->toBe(['João da Silva', 'Maria da Silva'])
-        ->and($contract->client_id)->toBeNull();
+    expect($contract->clients->pluck('name')->all())->toBe(['João da Silva', 'Maria da Silva']);
 });
 
 it('refuses a contract with no buyer at all', function () {
@@ -585,4 +587,118 @@ it('puts a buyer change confirmed by an import inside the run batch', function (
 
     expect($run->activities()->where('subject_type', Contract::class)->count())->toBe(1)
         ->and(Activity::query()->where('subject_type', Contract::class)->where('event', 'updated')->count())->toBe(2);
+});
+
+// ── A coluna legada realmente morreu ──────────────────────────────────────
+
+/**
+ * O teste decisivo da Fase C.
+ *
+ * Na Fase B esta prova era feita gravando um cliente divergente em
+ * `contracts.client_id` e mostrando que nenhuma leitura o consultava. Agora a
+ * coluna não existe, então a prova mudou de natureza e ficou mais forte: todos
+ * os caminhos de leitura são exercitados contra uma tabela que não tem a coluna.
+ * Qualquer consulta que ainda a mencionasse quebraria com erro de SQL, não com
+ * uma asserção -- não há como esse teste passar por acidente.
+ */
+it('runs every read path with the single-buyer column physically absent', function () {
+    $this->actingAs(makeAdminUser());
+
+    [, , $unit305, $unit402, $joao, $maria] = buyersScenario();
+
+    expect(Schema::hasColumn('contracts', 'client_id'))->toBeFalse();
+
+    $shared = Contract::factory()->forUnit($unit305)->withBuyers($joao, $maria)->create([
+        'code' => 'CVC-00123',
+        'sale_date' => '2024-03-10',
+        'sale_value' => 850000.00,
+        'status' => ContractStatus::Active,
+    ]);
+
+    $other = Contract::factory()->forUnit($unit402)->forClient(
+        Client::factory()->create(['name' => 'Outra Pessoa', 'document' => '39053344705'])
+    )->create(['code' => 'CVC-00999']);
+
+    // Listagem e busca por qualquer comprador.
+    foreach (['João da Silva', 'Maria da Silva', '52998224725', '11144477735'] as $term) {
+        Livewire::test(ListContracts::class)
+            ->assertSuccessful()
+            ->searchTable($term)
+            ->assertCanSeeTableRecords([$shared])
+            ->assertCanNotSeeTableRecords([$other]);
+    }
+
+    // Filtro por comprador.
+    Livewire::test(ListContracts::class)
+        ->filterTable('buyer', $maria->id)
+        ->assertCanSeeTableRecords([$shared])
+        ->assertCanNotSeeTableRecords([$other]);
+
+    // Global search do Filament.
+    expect(ContractResource::getGloballySearchableAttributes())
+        ->toContain('clients.name', 'clients.document')
+        ->and(ContractResource::getGlobalSearchResultDetails($shared))
+        ->toHaveKey('Compradores');
+
+    // Visualização detalhada.
+    Livewire::test(ViewContract::class, ['record' => $shared->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('João da Silva')
+        ->assertSee('Maria da Silva');
+
+    // Conciliação: o conjunto do arquivo é igual ao do banco.
+    $analysis = analyzeBuyers([buyerRow(), buyerRow(['document' => '11144477735'])]);
+
+    expect($analysis->unchangedCount())->toBe(1)
+        ->and($analysis->writeCount())->toBe(0);
+
+    // Parcelas: Contract -> Clients, e o filtro por comprador atravessa os dois.
+    $installment = ContractInstallment::factory()->for($shared)->create(['number' => '001']);
+
+    Livewire::test(ListContractInstallments::class)
+        ->assertSuccessful()
+        ->filterTable('client', $joao->id)
+        ->assertCanSeeTableRecords([$installment]);
+
+    // Activity da relação, ainda legível.
+    $shared->syncBuyers([$joao->id]);
+
+    $activity = Activity::query()->where('subject_type', Contract::class)->where('event', 'updated')->sole();
+
+    expect($activity->properties->get('attributes')['client_ids'])->toBe([$joao->id]);
+
+    // Ocupação e timeline seguem decididas pelo contrato, não pelos compradores.
+    expect(Contract::occupyingContract($unit305->id)?->getKey())->toBe($shared->getKey())
+        ->and(Contract::occupancyPeriodsFor($unit305->id))->toHaveCount(1);
+});
+
+it('creates contracts through every path with no single-buyer column to write', function () {
+    $this->actingAs(makeAdminUser());
+
+    [$emission, $construction, $unit305, $unit402, $joao, $maria] = buyersScenario();
+
+    // Formulário.
+    Livewire::test(CreateContract::class)
+        ->fillForm([
+            'emission_id' => $emission->id,
+            'construction_id' => $construction->id,
+            'construction_unit_id' => $unit402->id,
+            'client_ids' => [$joao->id, $maria->id],
+            'code' => 'CVC-00888',
+            'sale_date' => '2024-03-10',
+            'sale_value' => '850.000,00',
+            'status' => ContractStatus::Active->value,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    // Importação.
+    app(ImportContractsFromSpreadsheet::class)->handle(analyzeBuyers([
+        buyerRow(),
+        buyerRow(['document' => '11144477735']),
+    ]));
+
+    expect(Contract::query()->count())->toBe(2)
+        ->and(Schema::hasColumn('contracts', 'client_id'))->toBeFalse()
+        ->and(DB::table('contract_clients')->count())->toBe(4);
 });

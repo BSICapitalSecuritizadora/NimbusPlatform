@@ -10,7 +10,9 @@ use App\Filament\Resources\Emissions\EmissionResource\RelationManagers\Obligatio
 use App\Filament\Resources\Emissions\Schemas\ObligationFormFields;
 use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
+use Filament\Actions\Action;
 use Filament\Actions\ExportAction;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -35,6 +37,8 @@ class ObligationOperationalTableWidget extends TableWidget
         $user = auth()->user();
         $canViewEvidence = (bool) $user?->can(AccessPermission::ObligationsViewEvidence->value);
         $canOpenEmission = (bool) $user?->can(AccessPermission::EmissionsView->value);
+        $canViewComments = (bool) $user?->can(AccessPermission::ObligationsViewComments->value);
+        $canViewObligation = (bool) $user?->can(AccessPermission::ObligationsView->value);
         $canExport = (bool) $user?->can(AccessPermission::ObligationsView->value)
             && (bool) $user?->can(AccessPermission::ObligationsViewDashboard->value)
             && (bool) $user?->can(AccessPermission::ObligationsExport->value);
@@ -42,13 +46,6 @@ class ObligationOperationalTableWidget extends TableWidget
 
         $emissionUrl = static fn (Obligation $record): ?string => $canOpenEmission
             ? EmissionResource::getUrl('edit', ['record' => $record->emission_id])
-            : null;
-
-        $obligationUrl = static fn (Obligation $record): ?string => $canOpenEmission
-            ? EmissionResource::getUrl('edit', [
-                'record' => $record->emission_id,
-                'relation' => ObligationsRelationManager::class,
-            ])
             : null;
 
         $columns = [
@@ -62,8 +59,7 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->state(fn (Obligation $record): string => $record->operational_title)
                 ->searchable()
                 ->wrap()
-                ->limit(70)
-                ->url($obligationUrl),
+                ->limit(70),
             TextColumn::make('competence_date')
                 ->label('Competência')
                 ->date('m/Y')
@@ -230,12 +226,41 @@ class ObligationOperationalTableWidget extends TableWidget
                 includeConcludedWithoutApprovedEvidence: $canViewEvidence,
             ))
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['emission', 'responsibleUser', 'series']))
-            ->recordUrl($obligationUrl)
+            ->recordAction('quickView')
             ->description('Os filtros do topo recortam todo o painel. Use os filtros desta tabela apenas para refinar a fila operacional exibida abaixo.')
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
             ->columns($columns)
             ->filters($filters)
+            ->actions([
+                Action::make('quickView')
+                    ->label('Visualização rápida')
+                    ->icon('heroicon-o-eye')
+                    ->iconButton()
+                    ->tooltip('Visualização rápida')
+                    ->modalHeading(fn (Obligation $record): string => $record->operational_title)
+                    ->modalDescription(fn (Obligation $record): string => $record->emission?->name ?? 'Obrigação')
+                    ->modalWidth(Width::ThreeExtraLarge)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->authorize(fn (): bool => $canViewObligation)
+                    ->modalContent(fn (Obligation $record) => view('filament.obligations.quick-view', [
+                        'obligation' => $record->loadMissing(['emission', 'responsibleUser', 'series']),
+                        'canViewEvidence' => $canViewEvidence,
+                        'canViewComments' => $canViewComments,
+                    ]))
+                    ->extraModalFooterActions(fn (Obligation $record): array => [
+                        Action::make('viewFull')
+                            ->label('Ver detalhes completos')
+                            ->icon('heroicon-o-arrow-top-right-on-square')
+                            ->color('primary')
+                            ->url(fn (): ?string => $canOpenEmission ? EmissionResource::getUrl('edit', [
+                                'record' => $record->emission_id,
+                                'relation' => ObligationsRelationManager::class,
+                            ]) : null)
+                            ->visible(fn (): bool => (bool) $canOpenEmission),
+                    ]),
+            ])
             ->headerActions([
                 ExportAction::make()
                     ->label('Exportar visão filtrada atual')

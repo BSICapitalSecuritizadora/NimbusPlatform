@@ -59,6 +59,8 @@ class SecureLegacyMeasurementFiles extends Command
 
     private int $residues = 0;
 
+    private int $sharedRetained = 0;
+
     private int $failed = 0;
 
     private int $skipped = 0;
@@ -92,13 +94,15 @@ class SecureLegacyMeasurementFiles extends Command
             $this->processNewLegacyRecords($role, $configuration, $storage, $targetDisk, $execute, $limit);
         }
 
+        $this->reconcileRetainedSharedSources($storage, $execute);
+
         if (! $this->limitReached($limit)) {
             $this->detectUnownedLegacyResidues($storage, $targetDisk, $limit);
         }
 
         $this->table(
-            ['Processados', 'Migrados', 'Com resíduo público', 'Recuperados', 'Já seguros', 'Ignorados', 'Falhas'],
-            [[$this->processed, $this->migrated, $this->residues, $this->recovered, $this->alreadySecure, $this->skipped, $this->failed]],
+            ['Processados', 'Migrados', 'Origem compartilhada preservada', 'Com resíduo público', 'Recuperados', 'Já seguros', 'Ignorados', 'Falhas'],
+            [[$this->processed, $this->migrated, $this->sharedRetained, $this->residues, $this->recovered, $this->alreadySecure, $this->skipped, $this->failed]],
         );
 
         return $this->failed === 0 && $this->residues === 0 ? self::SUCCESS : self::FAILURE;
@@ -107,6 +111,7 @@ class SecureLegacyMeasurementFiles extends Command
     private function recoverTrackedMigrations(DocumentStorageService $storage, bool $execute, int $limit): void
     {
         MeasurementFileMigration::query()
+            ->where('state', '!=', MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED)
             ->orderBy('id')
             ->chunkById(100, function ($journals) use ($storage, $execute, $limit): bool {
                 foreach ($journals as $journal) {
@@ -373,6 +378,12 @@ class SecureLegacyMeasurementFiles extends Command
         }
 
         if ($storage->exists($journal->source_path, $journal->source_disk)) {
+            if ($this->isLegacySourceStillReferenced($journal)) {
+                $this->markSharedSourceRetained($journal);
+
+                return 'shared_source_retained';
+            }
+
             if (! $this->hasExpectedChecksum($journal->destination_path, $journal->destination_disk, $journal->source_sha256, $storage)
                 || ! $this->hasExpectedChecksum($journal->recovery_path, $journal->destination_disk, $journal->source_sha256, $storage)) {
                 throw new RuntimeException('O cleanup foi bloqueado porque as duas cópias privadas não estão íntegras.');
@@ -508,10 +519,76 @@ class SecureLegacyMeasurementFiles extends Command
         }
 
         if ($publicExists && $this->recordPointsToDestination($record, $journal, $configuration) && $destinationIsValid) {
+            if ($this->isLegacySourceStillReferenced($journal)) {
+                return 'shared_source_retained';
+            }
+
             return 'migrated_with_public_residue';
         }
 
         return 'failed';
+    }
+
+    private function reconcileRetainedSharedSources(DocumentStorageService $storage, bool $execute): void
+    {
+        MeasurementFileMigration::query()
+            ->where('state', MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED)
+            ->orderBy('id')
+            ->each(function (MeasurementFileMigration $journal) use ($storage, $execute): void {
+                if ($this->isLegacySourceStillReferenced($journal)) {
+                    if (! $execute) {
+                        $this->recordOutcome($this->journalLabel($journal), 'shared_source_retained');
+                    }
+
+                    return;
+                }
+
+                try {
+                    $outcome = $execute
+                        ? $this->executeJournal($journal, $storage, isRecovery: true)
+                        : $this->inspectJournal($journal, $storage);
+
+                    if (in_array($outcome, ['migrated_with_public_residue', 'failed', 'shared_source_retained'], true)) {
+                        $this->recordOutcome($this->journalLabel($journal), $outcome);
+
+                        return;
+                    }
+
+                    $this->line($this->journalLabel($journal).': cleanup compartilhado reconciliado.');
+                } catch (Throwable $exception) {
+                    $this->markJournalError($journal, $exception->getMessage());
+                    $this->recordOutcome($this->journalLabel($journal), 'failed', $exception->getMessage());
+                }
+            });
+    }
+
+    private function isLegacySourceStillReferenced(MeasurementFileMigration $journal): bool
+    {
+        foreach (self::FILE_CONFIGURATIONS as $role => $configuration) {
+            $modelClass = $configuration['model'];
+            $query = $modelClass::query()
+                ->where($configuration['path'], $journal->source_path)
+                ->where(function (Builder $disk) use ($configuration, $journal): void {
+                    if ($journal->source_disk === 'public') {
+                        $disk->whereNull($configuration['disk'])
+                            ->orWhere($configuration['disk'], 'public');
+
+                        return;
+                    }
+
+                    $disk->where($configuration['disk'], $journal->source_disk);
+                });
+
+            if ($configuration['model'] === $journal->migratable_type && $role === $journal->file_role) {
+                $query->whereKeyNot($journal->migratable_id);
+            }
+
+            if ($query->exists()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function detectUnownedLegacyResidues(DocumentStorageService $storage, string $targetDisk, int $limit): void
@@ -680,6 +757,18 @@ class SecureLegacyMeasurementFiles extends Command
         }
     }
 
+    private function markSharedSourceRetained(MeasurementFileMigration $journal): void
+    {
+        $saved = $journal->forceFill([
+            'state' => MeasurementFileMigration::STATE_SHARED_SOURCE_RETAINED,
+            'last_error' => null,
+        ])->saveQuietly();
+
+        if (! $saved) {
+            throw new RuntimeException('O journal não confirmou a retenção legítima da origem compartilhada.');
+        }
+    }
+
     private function markJournalError(MeasurementFileMigration $journal, string $message): void
     {
         rescue(
@@ -706,6 +795,7 @@ class SecureLegacyMeasurementFiles extends Command
 
         match ($outcome) {
             'migrated' => $this->migrated++,
+            'shared_source_retained' => $this->sharedRetained++,
             'migrated_with_public_residue' => $this->residues++,
             'recovered' => $this->recovered++,
             'already_secure' => $this->alreadySecure++,
@@ -736,6 +826,7 @@ class SecureLegacyMeasurementFiles extends Command
     {
         $this->processed = 0;
         $this->migrated = 0;
+        $this->sharedRetained = 0;
         $this->residues = 0;
         $this->failed = 0;
         $this->skipped = 0;

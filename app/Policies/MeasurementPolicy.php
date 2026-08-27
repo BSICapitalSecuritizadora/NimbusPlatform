@@ -46,7 +46,8 @@ class MeasurementPolicy
     public function update(User $user, Measurement $measurement): bool
     {
         return $user->can('measurements.update')
-            && $this->authorization->canViewMeasurement($user, $measurement)
+            && $measurement->operation instanceof Operation
+            && $this->authorization->hasDirectOperationalParticipation($user, $measurement->operation)
             && $measurement->status !== 'finalized'
             && ! $measurement->hasApprovedEngineering();
     }
@@ -57,7 +58,8 @@ class MeasurementPolicy
     public function delete(User $user, Measurement $measurement): bool
     {
         return $user->can('measurements.delete')
-            && $this->authorization->canViewMeasurement($user, $measurement)
+            && $measurement->operation instanceof Operation
+            && $this->authorization->hasDirectOperationalParticipation($user, $measurement->operation)
             && $measurement->status !== 'finalized'
             && ! $measurement->reviews()->exists();
     }

@@ -480,6 +480,11 @@ class Emission extends Model
         return $this->hasMany(PuCalendarHomologation::class);
     }
 
+    public function puBaselineEvidences(): HasMany
+    {
+        return $this->hasMany(EmissionPuBaselineEvidence::class);
+    }
+
     public function currentPuCurveVersion(): ?EmissionPuCurveVersion
     {
         return $this->puCurveVersions()->current()->first();

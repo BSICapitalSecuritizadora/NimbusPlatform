@@ -12,8 +12,12 @@ class NimbusRecentActivities extends Widget
 {
     protected string $view = 'filament.widgets.nimbus-recent-activities';
 
-    // Span 1 column out of 3
-    protected int|string|array $columnSpan = 1;
+    // Span 4 of 12 columns (~33%)
+    protected int|string|array $columnSpan = [
+        'default' => 'full',
+        'lg' => 4,
+        'xl' => 4,
+    ];
 
     protected function getViewData(): array
     {

@@ -30,13 +30,28 @@ enum LegalInstrumentFieldKey: string
     case OriginalAmount = 'original_amount';
     case PrincipalAmount = 'principal_amount';
     case Indexer = 'indexer';
+    case IndexPercentage = 'index_percentage';
     case Remuneration = 'remuneration';
     case InterestRate = 'interest_rate';
     case Spread = 'spread';
+    case BusinessDayBasis = 'business_day_basis';
+    case DayCountRule = 'day_count_rule';
+    case BusinessDayDefinition = 'business_day_definition';
+    case CalendarCode = 'calendar_code';
+    case IndexRateLookupMode = 'index_rate_lookup_mode';
+    case IndexRateLagBusinessDays = 'index_rate_lag_business_days';
+    case InitialUnitValue = 'initial_unit_value';
     case DefaultInterest = 'default_interest';
     case Penalty = 'penalty';
     case PaymentSchedule = 'payment_schedule';
+    case FirstInterestPaymentDate = 'first_interest_payment_date';
+    case InterestPaymentFrequency = 'interest_payment_frequency';
     case Amortization = 'amortization';
+    case PaymentConvention = 'payment_convention';
+    case FirstCouponPreIntegralizationPremiumEnabled = 'first_coupon_pre_integralization_premium_enabled';
+    case FirstCouponPreIntegralizationBusinessDays = 'first_coupon_pre_integralization_business_days';
+    case FirstCouponPreIntegralizationApplyIndexFactor = 'first_coupon_pre_integralization_apply_index_factor';
+    case FirstCouponPreIntegralizationApplySpreadFactor = 'first_coupon_pre_integralization_apply_spread_factor';
     case GracePeriod = 'grace_period';
     case MaturityDate = 'maturity_date';
 
@@ -94,13 +109,28 @@ enum LegalInstrumentFieldKey: string
             self::OriginalAmount => 'Valor original',
             self::PrincipalAmount => 'Valor principal',
             self::Indexer => 'Indexador',
+            self::IndexPercentage => 'Percentual do indexador',
             self::Remuneration => 'Remuneração',
             self::InterestRate => 'Taxa de juros',
             self::Spread => 'Spread',
+            self::BusinessDayBasis => 'Base de Dias Úteis',
+            self::DayCountRule => 'Regra de contagem',
+            self::BusinessDayDefinition => 'Definição de Dia Útil',
+            self::CalendarCode => 'Calendário contratual',
+            self::IndexRateLookupMode => 'Modo de consulta do índice',
+            self::IndexRateLagBusinessDays => 'Lag do índice em Dias Úteis',
+            self::InitialUnitValue => 'Valor nominal unitário inicial',
             self::DefaultInterest => 'Juros de mora',
             self::Penalty => 'Multa',
             self::PaymentSchedule => 'Cronograma de pagamento',
+            self::FirstInterestPaymentDate => 'Primeiro pagamento de juros',
+            self::InterestPaymentFrequency => 'Frequência dos juros',
             self::Amortization => 'Amortização',
+            self::PaymentConvention => 'Convenção de pagamento',
+            self::FirstCouponPreIntegralizationPremiumEnabled => 'Prêmio pré-integralização do primeiro cupom',
+            self::FirstCouponPreIntegralizationBusinessDays => 'Dias Úteis do prêmio pré-integralização',
+            self::FirstCouponPreIntegralizationApplyIndexFactor => 'Fator do índice no prêmio pré-integralização',
+            self::FirstCouponPreIntegralizationApplySpreadFactor => 'Fator de spread no prêmio pré-integralização',
             self::GracePeriod => 'Carência',
             self::MaturityDate => 'Vencimento final',
             self::AffirmativeCovenants => 'Obrigações de fazer',
@@ -139,9 +169,18 @@ enum LegalInstrumentFieldKey: string
             self::Guarantors, self::Avalists => 'Identificação',
 
             self::OriginalAmount, self::PrincipalAmount, self::Indexer,
-            self::Remuneration, self::InterestRate, self::Spread,
+            self::IndexPercentage, self::Remuneration, self::InterestRate, self::Spread,
+            self::BusinessDayBasis, self::DayCountRule, self::BusinessDayDefinition,
+            self::CalendarCode, self::IndexRateLookupMode, self::IndexRateLagBusinessDays,
+            self::InitialUnitValue,
             self::DefaultInterest, self::Penalty, self::PaymentSchedule,
-            self::Amortization, self::GracePeriod, self::MaturityDate => 'Financeiro',
+            self::FirstInterestPaymentDate, self::InterestPaymentFrequency,
+            self::Amortization, self::PaymentConvention,
+            self::FirstCouponPreIntegralizationPremiumEnabled,
+            self::FirstCouponPreIntegralizationBusinessDays,
+            self::FirstCouponPreIntegralizationApplyIndexFactor,
+            self::FirstCouponPreIntegralizationApplySpreadFactor,
+            self::GracePeriod, self::MaturityDate => 'Financeiro',
 
             self::AffirmativeCovenants, self::NegativeCovenants,
             self::AccelerationEvents, self::InformationObligations => 'Obrigações',
@@ -155,12 +194,14 @@ enum LegalInstrumentFieldKey: string
     public function valueType(): LegalInstrumentFieldValueType
     {
         return match ($this) {
-            self::OriginalAmount, self::PrincipalAmount, self::PropertyValue,
+            self::OriginalAmount, self::PrincipalAmount, self::InitialUnitValue, self::PropertyValue,
             self::GuaranteeValue => LegalInstrumentFieldValueType::Money,
-            self::InterestRate, self::Spread, self::MinimumCoverage,
+            self::InterestRate, self::Spread, self::IndexPercentage, self::MinimumCoverage,
             self::QuotaPercentage, self::AssignedPercentage => LegalInstrumentFieldValueType::Percentage,
-            self::QuotaQuantity => LegalInstrumentFieldValueType::Number,
-            self::IssueDate, self::MaturityDate => LegalInstrumentFieldValueType::Date,
+            self::QuotaQuantity, self::BusinessDayBasis, self::IndexRateLagBusinessDays,
+            self::FirstCouponPreIntegralizationBusinessDays => LegalInstrumentFieldValueType::Number,
+            self::IssueDate, self::MaturityDate,
+            self::FirstInterestPaymentDate => LegalInstrumentFieldValueType::Date,
             default => LegalInstrumentFieldValueType::Text,
         };
     }
@@ -175,6 +216,8 @@ enum LegalInstrumentFieldKey: string
     {
         return match ($this) {
             self::OriginalAmount, self::PrincipalAmount, self::MaturityDate,
+            self::Indexer, self::IndexPercentage, self::Spread, self::CalendarCode,
+            self::IndexRateLookupMode, self::IndexRateLagBusinessDays, self::InitialUnitValue,
             self::MinimumCoverage, self::PropertyRegistration, self::QuotaPercentage,
             self::AssignedPercentage, self::Issuer, self::Creditor,
             self::Guarantors, self::Avalists, self::AccountNumber,

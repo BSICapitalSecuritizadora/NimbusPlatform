@@ -1,8 +1,12 @@
 <?php
 
+use App\Filament\Resources\Banks\BankResource;
 use App\Filament\Resources\Banks\Pages\CreateBank;
+use App\Filament\Resources\Banks\Pages\EditBank;
 use App\Filament\Resources\Banks\Pages\ListBanks;
+use App\Filament\Resources\FundApplications\FundApplicationResource;
 use App\Filament\Resources\FundApplications\Pages\CreateFundApplication;
+use App\Filament\Resources\FundApplications\Pages\EditFundApplication;
 use App\Filament\Resources\FundApplications\Pages\ListFundApplications;
 use App\Filament\Resources\FundNames\Pages\CreateFundName;
 use App\Filament\Resources\FundNames\Pages\ListFundNames;
@@ -18,6 +22,8 @@ use App\Models\FundName;
 use App\Models\FundType;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Support\RawJs;
@@ -540,6 +546,86 @@ it('creates a fund application through the create page with a success notificati
     expect(FundApplication::query()->where('name', 'Renda Fixa Ativa')->exists())->toBeTrue();
 });
 
+it('renders the edit fund application page with contextual title, subheading, full-width attributes and actions', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $application = FundApplication::factory()->create(['name' => 'Aplicação de Oliveira-Assunção']);
+
+    $test = Livewire::test(EditFundApplication::class, [
+        'record' => $application->getRouteKey(),
+    ]);
+
+    $test->assertOk()
+        ->assertSee('Editar Aplicação de Oliveira-Assunção')
+        ->assertSee('Atualize a identificação utilizada nos fundos vinculados.')
+        ->assertSee('Dados da aplicação')
+        ->assertSee('Defina o nome utilizado para identificar a aplicação nos fundos cadastrados.')
+        ->assertSee('Salvar alterações')
+        ->assertSee('Cancelar')
+        ->assertFormFieldExists('name');
+
+    $page = $test->instance();
+    expect($page->getExtraBodyAttributes()['class'])->toContain('bsi-fund-application-form-page')
+        ->and($page->getExtraBodyAttributes()['class'])->toContain('bsi-fund-form-page')
+        ->and(invade($page)->hasUnsavedDataChangesAlert())->toBeTrue();
+});
+
+it('tucks the destructive delete action into a secondary ellipsis menu with confirmation on edit fund application', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $application = FundApplication::factory()->create();
+
+    $page = Livewire::test(EditFundApplication::class, [
+        'record' => $application->getRouteKey(),
+    ])->instance();
+
+    $headerActions = invade($page)->getHeaderActions();
+
+    expect($headerActions)->toHaveCount(1)
+        ->and($headerActions[0])->toBeInstanceOf(ActionGroup::class);
+
+    $deleteAction = collect($headerActions[0]->getFlatActions())
+        ->first(fn ($action): bool => $action instanceof DeleteAction);
+
+    expect($deleteAction)->not->toBeNull()
+        ->and($deleteAction->getLabel())->toBe('Excluir aplicação')
+        ->and($deleteAction->isConfirmationRequired())->toBeTrue();
+});
+
+it('updates a fund application through the edit page with a success notification', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $application = FundApplication::factory()->create(['name' => 'Nome Antigo']);
+
+    Livewire::test(EditFundApplication::class, [
+        'record' => $application->getRouteKey(),
+    ])
+        ->fillForm(['name' => 'Nome Atualizado'])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified('Aplicação atualizada com sucesso.');
+
+    expect($application->fresh()->name)->toBe('Nome Atualizado');
+});
+
+it('hides the delete action when funds are linked to the application', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $application = FundApplication::factory()->create();
+    Fund::factory()->create(['fund_application_id' => $application->id]);
+
+    $page = Livewire::test(EditFundApplication::class, [
+        'record' => $application->getRouteKey(),
+    ])->instance();
+
+    $headerActions = invade($page)->getHeaderActions();
+    $deleteAction = collect($headerActions[0]->getFlatActions())
+        ->first(fn ($action): bool => $action instanceof DeleteAction);
+
+    expect($deleteAction->record($application)->isVisible())->toBeFalse()
+        ->and(FundApplicationResource::canDelete($application))->toBeFalse();
+});
+
 it('renders the banks list page with custom subheading and empty state', function () {
     $this->actingAs(makeFundAdminUser());
 
@@ -594,6 +680,92 @@ it('renders the create bank form page with custom subheading and fields', functi
         ->assertSee('Cancelar')
         ->assertFormFieldExists('name')
         ->assertFormFieldExists('logo_path');
+});
+
+it('renders the edit bank form page with contextual title, subheading, full-width attributes, logo preview and actions', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $bank = Bank::factory()->create([
+        'name' => 'Banco Bradesco S.A.',
+        'logo_path' => 'banks/logos/bradesco.png',
+    ]);
+
+    $test = Livewire::test(EditBank::class, [
+        'record' => $bank->getRouteKey(),
+    ]);
+
+    $test->assertOk()
+        ->assertSee('Editar Banco Bradesco S.A.')
+        ->assertSee('Atualize os dados cadastrais e o logotipo institucional da instituição bancária.')
+        ->assertSee('Dados da Instituição Bancária')
+        ->assertSee('Informe a denominação e envie o logotipo oficial do banco.')
+        ->assertSee('Logotipo atual')
+        ->assertSee('Substituir logotipo')
+        ->assertSee('Salvar alterações')
+        ->assertSee('Cancelar')
+        ->assertFormFieldExists('name')
+        ->assertFormFieldExists('logo_path');
+
+    $page = $test->instance();
+    expect($page->getExtraBodyAttributes()['class'])->toContain('bsi-bank-form-page')
+        ->and($page->getExtraBodyAttributes()['class'])->toContain('bsi-fund-form-page')
+        ->and(invade($page)->hasUnsavedDataChangesAlert())->toBeTrue();
+});
+
+it('tucks the destructive delete action into an ellipsis menu with confirmation on edit bank', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $bank = Bank::factory()->create();
+
+    $page = Livewire::test(EditBank::class, [
+        'record' => $bank->getRouteKey(),
+    ])->instance();
+
+    $headerActions = invade($page)->getHeaderActions();
+
+    expect($headerActions)->toHaveCount(1)
+        ->and($headerActions[0])->toBeInstanceOf(ActionGroup::class);
+
+    $deleteAction = collect($headerActions[0]->getFlatActions())
+        ->first(fn ($action): bool => $action instanceof DeleteAction);
+
+    expect($deleteAction)->not->toBeNull()
+        ->and($deleteAction->getLabel())->toBe('Excluir banco')
+        ->and($deleteAction->isConfirmationRequired())->toBeTrue();
+});
+
+it('updates a bank through the edit page with a success notification', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $bank = Bank::factory()->create(['name' => 'Banco Antigo']);
+
+    Livewire::test(EditBank::class, [
+        'record' => $bank->getRouteKey(),
+    ])
+        ->fillForm(['name' => 'Banco Atualizado'])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNotified('Banco atualizado com sucesso.');
+
+    expect($bank->fresh()->name)->toBe('Banco Atualizado');
+});
+
+it('hides the delete action when funds are linked to the bank', function () {
+    $this->actingAs(makeFundAdminUser());
+
+    $bank = Bank::factory()->create();
+    Fund::factory()->create(['bank_id' => $bank->id]);
+
+    $page = Livewire::test(EditBank::class, [
+        'record' => $bank->getRouteKey(),
+    ])->instance();
+
+    $headerActions = invade($page)->getHeaderActions();
+    $deleteAction = collect($headerActions[0]->getFlatActions())
+        ->first(fn ($action): bool => $action instanceof DeleteAction);
+
+    expect($deleteAction->record($bank)->isVisible())->toBeFalse()
+        ->and(BankResource::canDelete($bank))->toBeFalse();
 });
 
 function makeFundAdminUser(): User

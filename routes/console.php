@@ -64,9 +64,9 @@ Schedule::command('invitations:prune')
     ->weekly()
     ->name('prune-expired-invitations');
 
-Schedule::command('activitylog:clean')
+Schedule::command('audit:clean-filtered')
     ->dailyAt('04:00')
-    ->name('audit-log-cleanup');
+    ->name('audit-log-cleanup-filtered');
 
 Schedule::job(SyncContaAzulExpensesJob::class)
     ->dailyAt('06:00')
@@ -134,4 +134,14 @@ Schedule::command('lgpd:purge-job-applications')
 Schedule::command('lgpd:purge-contact-messages')
     ->monthlyOn(1, '01:15')
     ->name('lgpd-purge-contact-messages')
+    ->withoutOverlapping();
+
+Schedule::command('measurements:evaluate-sla')
+    ->hourlyAt(15)
+    ->name('measurements-evaluate-sla')
+    ->withoutOverlapping();
+
+Schedule::command('delegations:warn-expiring')
+    ->dailyAt('08:00')
+    ->name('delegations-warn-expiring')
     ->withoutOverlapping();

@@ -18,47 +18,64 @@ class PortalDocumentForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $maxKb = (int) config('uploads.document.max_kb', 102400);
+        $maxMb = (int) ceil($maxKb / 1024);
+
         return $schema
             ->components([
                 Grid::make([
                     'default' => 1,
                 ])
+                    ->columnSpanFull()
                     ->schema([
                         Section::make('Dados do Documento')
-                            ->description('Envio de documento específico para um usuário do portal.')
+                            ->description('Envie um documento específico para um usuário do portal, com título, descrição e arquivo.')
                             ->icon('heroicon-o-folder-open')
                             ->columnSpanFull()
                             ->columns([
                                 'default' => 1,
+                                'md' => 2,
                                 '3xl' => 2,
                             ])
                             ->schema([
                                 Select::make('nimbus_portal_user_id')
                                     ->label('Usuário do Portal')
+                                    ->placeholder('Selecione o usuário do portal')
                                     ->relationship('portalUser', 'full_name')
                                     ->getOptionLabelFromRecordUsing(fn (PortalUser $record): string => filled($record->email) ? "{$record->full_name} ({$record->email})" : $record->full_name)
-                                    ->searchable(['full_name', 'email'])
+                                    ->searchable(['full_name', 'email', 'document_number'])
                                     ->preload()
                                     ->required()
-                                    ->columnSpanFull(),
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                        '3xl' => 1,
+                                    ]),
+
                                 TextInput::make('title')
                                     ->label('Título')
                                     ->placeholder('Ex: Contrato Social Atualizado')
                                     ->required()
                                     ->maxLength(255)
-                                    ->columnSpanFull(),
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                        '3xl' => 1,
+                                    ]),
+
                                 Textarea::make('description')
                                     ->label('Descrição')
                                     ->placeholder('Informações adicionais sobre o documento destinadas ao usuário.')
-                                    ->rows(4)
+                                    ->rows(3)
                                     ->columnSpanFull(),
+
                                 FileUpload::make('file_path')
                                     ->label('Arquivo')
                                     ->required()
                                     ->disk(DocumentStorageService::privateDisk())
                                     ->directory(DocumentStorageService::PRIVATE_PREFIX.'/portal-documents')
-                                    ->maxSize((int) config('uploads.document.max_kb', 102400))
-                                    ->helperText('Tamanho máximo permitido: '.(int) ceil(config('uploads.document.max_kb', 102400) / 1024).' MB.')
+                                    ->maxSize($maxKb)
+                                    ->helperText("Formatos aceitos: PDF, DOCX, XLSX, PNG, JPG e ZIP. Tamanho máximo: {$maxMb} MB.")
                                     ->acceptedFileTypes([
                                         'application/pdf',
                                         'application/msword',
@@ -71,9 +88,14 @@ class PortalDocumentForm
                                     ])
                                     ->columnSpanFull(),
                             ]),
+
                         Section::make('Informações do Arquivo')
                             ->icon('heroicon-o-document-text')
                             ->columnSpanFull()
+                            ->columns([
+                                'default' => 1,
+                                'md' => 3,
+                            ])
                             ->schema([
                                 Placeholder::make('file_original_name_display')
                                     ->label('Arquivo Atual')
@@ -81,7 +103,7 @@ class PortalDocumentForm
                                     ->visibleOn('edit'),
                                 Placeholder::make('file_size_display')
                                     ->label('Tamanho')
-                                    ->content(fn ($record): string => $record?->file_size ? Number::fileSize($record->file_size) : '—')
+                                    ->content(fn ($record): string => $record?->file_size ? Number::fileSize($record->file_size, 1) : '—')
                                     ->visibleOn('edit'),
                                 Placeholder::make('file_mime_display')
                                     ->label('Tipo de Arquivo')

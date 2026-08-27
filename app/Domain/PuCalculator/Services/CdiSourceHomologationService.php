@@ -46,6 +46,11 @@ final class CdiSourceHomologationService
             'classification' => $classification,
             'started_at' => $startedAt->toIso8601String(),
             'completed_at' => CarbonImmutable::now()->toIso8601String(),
+            'executor' => [
+                'type' => 'console_command',
+                'label' => 'php artisan pu:index-rates:homologate-di-source',
+                'user_id' => null,
+            ],
             'requested_period' => [
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
@@ -268,6 +273,11 @@ final class CdiSourceHomologationService
             'classification' => 'D — Inconclusivo',
             'started_at' => $startedAt->toIso8601String(),
             'completed_at' => CarbonImmutable::now()->toIso8601String(),
+            'executor' => [
+                'type' => 'console_command',
+                'label' => 'php artisan pu:index-rates:homologate-di-source',
+                'user_id' => null,
+            ],
             'requested_period' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
             'reason' => 'Uma ou ambas as fontes não retornaram datas que permitissem estabelecer período comum.',
             'sources' => [

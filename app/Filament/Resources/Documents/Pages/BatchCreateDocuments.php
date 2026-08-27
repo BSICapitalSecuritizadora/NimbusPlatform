@@ -31,6 +31,7 @@ use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\IconPosition;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Number;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -57,6 +58,8 @@ class BatchCreateDocuments extends Page
 
     protected static ?string $breadcrumb = 'Cadastro em lote';
 
+    protected ?string $subheading = 'Defina os dados comuns e selecione os documentos que serão cadastrados.';
+
     /**
      * @var array<string, mixed>
      */
@@ -77,6 +80,18 @@ class BatchCreateDocuments extends Page
     public array $createdFileKeys = [];
 
     public ?string $previousUrl = null;
+
+    public function getExtraBodyAttributes(): array
+    {
+        return [
+            'class' => 'bsi-cockpit-page bsi-document-form-page bsi-batch-create-documents-page',
+        ];
+    }
+
+    public function getSubheading(): ?string
+    {
+        return $this->subheading;
+    }
 
     public static function canAccess(array $parameters = []): bool
     {
@@ -121,6 +136,18 @@ class BatchCreateDocuments extends Page
                     $this->getBatchDataStep(),
                     $this->getReviewStep(),
                 ])
+                    ->nextAction(fn (Action $action): Action => $action
+                        ->label('Próximo')
+                        ->icon(Heroicon::OutlinedArrowRight)
+                        ->iconPosition(IconPosition::After)
+                        ->color('primary')
+                    )
+                    ->previousAction(fn (Action $action): Action => $action
+                        ->label('Anterior')
+                        ->icon(Heroicon::OutlinedArrowLeft)
+                        ->color('gray')
+                        ->outlined()
+                    )
                     ->submitAction($this->getSubmitFormAction())
                     ->cancelAction($this->getCancelFormAction())
                     ->alpineSubmitHandler('$wire.create()')
@@ -131,6 +158,8 @@ class BatchCreateDocuments extends Page
     protected function getBatchDataStep(): Step
     {
         $limits = $this->limits();
+        $maxFileFormatted = Number::fileSize($limits->maxFileBytes());
+        $maxTotalFormatted = Number::fileSize($limits->maxTotalBytes());
 
         return Step::make('Dados do lote')
             ->description('Informações comuns e seleção dos arquivos')
@@ -144,6 +173,7 @@ class BatchCreateDocuments extends Page
                             ->options(Document::CATEGORY_OPTIONS)
                             ->searchable()
                             ->required()
+                            ->placeholder('Selecione a categoria')
                             ->validationMessages([
                                 'required' => 'Selecione a categoria dos documentos do lote.',
                             ]),
@@ -166,14 +196,17 @@ class BatchCreateDocuments extends Page
 
                         Callout::make()
                             ->info()
-                            ->heading('Todos os documentos entram como rascunho')
-                            ->description('Nenhum documento do lote é publicado no portal nem no site público. A publicação continua sendo feita documento a documento na listagem.')
+                            ->heading('Todos os documentos serão cadastrados como rascunho.')
+                            ->description('A publicação continua sendo realizada individualmente na listagem de documentos.')
                             ->columnSpanFull(),
                     ])
-                    ->columns(2),
+                    ->columns([
+                        'default' => 1,
+                        'sm' => 2,
+                    ]),
 
                 Section::make('Arquivos')
-                    ->description($limits->summaryText())
+                    ->description("Até {$limits->maxFiles()} arquivos · {$maxFileFormatted} por arquivo · {$maxTotalFormatted} no total")
                     ->schema([
                         FileUpload::make('upload')
                             ->label('Arquivos do lote')
@@ -186,7 +219,7 @@ class BatchCreateDocuments extends Page
                             ->acceptedFileTypes($limits->allowedMimeTypes())
                             ->maxFiles($limits->maxFiles())
                             ->maxSize($limits->maxFileKilobytes())
-                            ->helperText('Selecione vários arquivos de uma vez. Eles só são gravados quando você confirmar o cadastro na etapa de conferência.')
+                            ->helperText('Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG, JPEG. Os arquivos só são gravados ao confirmar na etapa de conferência.')
                             ->validationMessages([
                                 'required' => 'Selecione ao menos um arquivo.',
                                 'max' => "O lote aceita no máximo {$limits->maxFiles()} arquivos.",
@@ -285,6 +318,7 @@ class BatchCreateDocuments extends Page
         return Action::make('cancel')
             ->label('Cancelar')
             ->color('gray')
+            ->outlined()
             ->url($this->previousUrl ?? static::getResource()::getUrl());
     }
 
@@ -295,6 +329,7 @@ class BatchCreateDocuments extends Page
                 ->label('Cadastro individual')
                 ->icon(Heroicon::OutlinedDocumentPlus)
                 ->color('gray')
+                ->outlined()
                 ->url(fn (): string => static::getResource()::getUrl('create')),
         ];
     }
@@ -666,7 +701,7 @@ class BatchCreateDocuments extends Page
         $files = $this->resolveUploadedFiles($get('upload'));
 
         if ($files === []) {
-            return 'Nenhum arquivo selecionado.';
+            return '0 arquivos selecionados';
         }
 
         $limits = $this->limits();
@@ -675,11 +710,14 @@ class BatchCreateDocuments extends Page
             $files,
         ));
 
-        $summary = count($files).' arquivo(s) · '.Number::fileSize($totalBytes)
-            .' de '.Number::fileSize($limits->maxTotalBytes()).' permitidos no lote.';
+        $count = count($files);
+        $countText = $count === 1 ? '1 arquivo selecionado' : "{$count} arquivos selecionados";
+        $sizeText = Number::fileSize($totalBytes).' de '.Number::fileSize($limits->maxTotalBytes());
+
+        $summary = "{$countText} · {$sizeText}";
 
         return $totalBytes > $limits->maxTotalBytes()
-            ? $summary.' Remova arquivos para conseguir confirmar o cadastro.'
+            ? "{$summary} · Limite total excedido (remova arquivos para continuar)"
             : $summary;
     }
 

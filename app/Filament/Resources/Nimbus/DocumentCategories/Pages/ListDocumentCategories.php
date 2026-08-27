@@ -14,10 +14,22 @@ class ListDocumentCategories extends ListRecords
 
     protected static ?string $breadcrumb = 'Listar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-document-categories-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Organize os documentos cadastrados por classificação.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()->label('Nova categoria'),
+            CreateAction::make()
+                ->label('Nova categoria')
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 }

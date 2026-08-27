@@ -33,7 +33,12 @@ class ExpenseServiceProviderForm
                 ->required()
             : Select::make('expense_service_provider_type_id')
                 ->label('Tipo')
-                ->placeholder('Selecione o tipo...')
+                ->placeholder('Selecione o tipo')
+                ->searchPrompt('Buscar tipo...')
+                ->searchingMessage('Buscando tipos...')
+                ->noSearchResultsMessage('Nenhum tipo encontrado')
+                ->noOptionsMessage('Nenhum tipo disponível')
+                ->loadingMessage('Carregando...')
                 ->options(fn (): array => self::getServiceProviderTypeOptions())
                 ->searchable()
                 ->preload()
@@ -68,7 +73,7 @@ class ExpenseServiceProviderForm
                     fn (Action $action): Action => $action
                         ->label('Cadastrar tipo')
                         ->modalHeading('Cadastrar tipo de prestador de serviço')
-                        ->tooltip('Cadastrar novo tipo de prestador'),
+                        ->tooltip('Criar tipo de prestador'),
                 )
                 ->editOptionAction(
                     fn (Action $action): Action => $action

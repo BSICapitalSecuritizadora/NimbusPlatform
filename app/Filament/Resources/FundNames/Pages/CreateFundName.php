@@ -5,10 +5,13 @@ namespace App\Filament\Resources\FundNames\Pages;
 use App\Filament\Resources\FundNames\FundNameResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Support\Enums\Width;
 
 class CreateFundName extends CreateRecord
 {
     protected static string $resource = FundNameResource::class;
+
+    protected Width|string|null $maxContentWidth = Width::Full;
 
     protected static ?string $title = 'Criar nome de fundo';
 

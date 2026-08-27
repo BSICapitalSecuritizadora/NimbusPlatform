@@ -35,11 +35,7 @@ class FundNameForm
                 ])
                 ->createOptionForm(FundTypeForm::fields())
                 ->editOptionForm(FundTypeForm::fields())
-                ->columnSpan($lockFundType ? 12 : [
-                    'default' => 12,
-                    'md' => 5,
-                    'lg' => 5,
-                ])
+                ->columnSpan($lockFundType ? 2 : 1)
                 ->createOptionAction(
                     fn (Action $action): Action => $action
                         ->label('Cadastrar tipo')
@@ -60,11 +56,7 @@ class FundNameForm
                 ->label('Nome')
                 ->required()
                 ->maxLength(255)
-                ->columnSpan($lockFundType ? 12 : [
-                    'default' => 12,
-                    'md' => 7,
-                    'lg' => 7,
-                ])
+                ->columnSpan($lockFundType ? 2 : 1)
                 ->unique(
                     table: FundName::class,
                     column: 'name',
@@ -81,10 +73,16 @@ class FundNameForm
 
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components([
-            Section::make('Dados do nome do fundo')
-                ->schema(static::fields())
-                ->columns(12),
-        ]);
+        return $schema
+            ->columns(1)
+            ->components([
+                Section::make('Dados do nome do fundo')
+                    ->schema(static::fields())
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ])
+                    ->columnSpanFull(),
+            ]);
     }
 }

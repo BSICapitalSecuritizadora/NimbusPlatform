@@ -14,10 +14,22 @@ class ListGeneralDocuments extends ListRecords
 
     protected static ?string $breadcrumb = 'Listar';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-general-documents-list-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Centralize documentos institucionais e materiais de consulta geral.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()->label('Novo documento geral'),
+            CreateAction::make()
+                ->label('Novo documento geral')
+                ->icon('heroicon-o-plus')
+                ->color('primary'),
         ];
     }
 }
