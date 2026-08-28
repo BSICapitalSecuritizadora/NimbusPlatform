@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Resources\Banks\Pages\CreateBank;
 use App\Filament\Resources\Banks\Schemas\BankForm;
 use App\Filament\Resources\Documents\Pages\ListDocuments;
 use App\Filament\Resources\Documents\Tables\DocumentsTable;
@@ -9,6 +10,7 @@ use App\Filament\Resources\Measurements\Pages\CreateMeasurement;
 use App\Filament\Resources\Measurements\Pages\ViewMeasurement;
 use App\Filament\Resources\Measurements\Schemas\MeasurementForm;
 use App\Filament\Resources\Receivables\Pages\ListReceivables;
+use App\Models\Bank;
 use App\Models\Emission;
 use App\Models\Measurement;
 use App\Models\MeasurementPayment;
@@ -54,7 +56,8 @@ it('rejects HTML and SVG files from the vulnerable Filament uploads', function (
  */
 function filamentUploadsWithMimeAllowlists(): array
 {
-    $bankLogo = collect(BankForm::fields())
+    $bankSchema = BankForm::configure(Schema::make(new CreateBank)->model(Bank::class));
+    $bankLogo = $bankSchema->getFlatFields(withHidden: true)['logo_path'] ?? collect(BankForm::fields())
         ->first(fn (mixed $field): bool => $field instanceof FileUpload && $field->getName() === 'logo_path');
 
     $emissionSchema = EmissionForm::configure(

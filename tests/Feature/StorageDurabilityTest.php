@@ -59,7 +59,7 @@ it('keeps repository-only files out of deployment packages', function () {
             ->toContain('-x "infra/*"')
             ->toContain('-x "update_*.php"')
             ->toContain('-x "NUL"')
-            ->toContain('Assert repository-only files are not packaged')
+            ->toContain('Assert repository-only and conflicting files are not packaged')
             ->toContain("grep -E '(^|/)\\.env[^/]*$|^(docs|infra|App_Data)/|")
             ->toContain('^update_[^/]*\\.php$');
     }

@@ -126,6 +126,7 @@ it('groups the construction resources under Obras', function () {
             'Operações de Obra',
             'Medições',
             'Unidades',
+            'Workspace de Pagamentos',
         ]);
 });
 
