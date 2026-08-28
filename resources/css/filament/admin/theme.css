@@ -1126,6 +1126,10 @@
 .dark .bsi-document-categories-list-page .fi-ta-content-ctn,
 .dark .bsi-general-documents-list-page .fi-ta-content-ctn,
 .dark .bsi-portal-documents-list-page .fi-ta-content-ctn,
+.dark .bsi-portal-users-list-page .fi-ta-content-ctn,
+.dark .bsi-announcements-list-page .fi-ta-content-ctn,
+.dark .bsi-notification-outboxes-list-page .fi-ta-content-ctn,
+.dark .bsi-index-projection-series-list-page .fi-ta-content-ctn,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn {
     scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
@@ -1163,6 +1167,10 @@
 .dark .bsi-document-categories-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-general-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-portal-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-portal-users-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-announcements-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-notification-outboxes-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
+.dark .bsi-index-projection-series-list-page .fi-ta-content-ctn::-webkit-scrollbar-track,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-track {
     background: transparent;
 }
@@ -1200,6 +1208,41 @@
 .dark .bsi-document-categories-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-general-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-portal-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-announcements-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-emissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-sales-boards-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-negotiations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-report-notes-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-constructions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-operations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-measurements-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-funds-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-fund-types-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-fund-names-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-fund-applications-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-banks-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-expenses-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-expense-service-providers-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-contact-messages-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-vacancies-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-invitations-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-activities-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-reminder-logs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-document-downloads-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-import-runs-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-construction-units-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-contract-installments-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-submissions-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-document-categories-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-general-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-portal-documents-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-portal-users-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-announcements-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-notification-outboxes-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
+.dark .bsi-index-projection-series-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
@@ -1234,6 +1277,7 @@
 .dark .bsi-clients-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-contracts-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-contract-installments-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
+.dark .bsi-index-projection-series-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb:hover,
 .dark .bsi-receivables-list-page .fi-ta-content-ctn::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.55);
 }
@@ -1551,6 +1595,7 @@ select.fi-select-input option[selected] {
 .bsi-document-downloads-list-page .fi-page,
 .bsi-import-runs-list-page .fi-page,
 .bsi-settings-page .fi-page,
+.bsi-notification-settings-page .fi-page,
 .bsi-users-list-page .fi-page,
 .bsi-roles-list-page .fi-page,
 .bsi-user-edit-page .fi-page,
@@ -1565,6 +1610,13 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-page,
 .bsi-general-documents-list-page .fi-page,
 .bsi-portal-documents-list-page .fi-page,
+.bsi-portal-users-list-page .fi-page,
+.bsi-access-tokens-list-page .fi-page,
+.bsi-access-tokens-view-page .fi-page,
+.bsi-index-rates-list-page .fi-page,
+.bsi-index-projection-series-list-page .fi-page,
+.bsi-announcements-list-page .fi-page,
+.bsi-notification-outboxes-list-page .fi-page,
 .bsi-receivables-list-page .fi-page {
     gap: 0.75rem !important;
 }
@@ -1595,6 +1647,7 @@ select.fi-select-input option[selected] {
 .bsi-document-downloads-list-page .fi-header,
 .bsi-import-runs-list-page .fi-header,
 .bsi-settings-page .fi-header,
+.bsi-notification-settings-page .fi-header,
 .bsi-users-list-page .fi-header,
 .bsi-roles-list-page .fi-header,
 .bsi-user-edit-page .fi-header,
@@ -1609,6 +1662,15 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-header,
 .bsi-general-documents-list-page .fi-header,
 .bsi-portal-documents-list-page .fi-header,
+.bsi-portal-users-list-page .fi-header,
+.bsi-portal-user-form-page .fi-header,
+.bsi-access-tokens-list-page .fi-header,
+.bsi-access-tokens-view-page .fi-header,
+.bsi-index-rates-list-page .fi-header,
+.bsi-index-projection-series-list-page .fi-header,
+.bsi-announcements-list-page .fi-header,
+.bsi-notification-outboxes-list-page .fi-header,
+.bsi-notification-outbox-view-page .fi-header,
 .bsi-receivables-list-page .fi-header {
     padding: 0.875rem 1.25rem !important;
     border-radius: 12px !important;
@@ -1642,6 +1704,7 @@ select.fi-select-input option[selected] {
 .bsi-document-downloads-list-page .fi-header-heading,
 .bsi-import-runs-list-page .fi-header-heading,
 .bsi-settings-page .fi-header-heading,
+.bsi-notification-settings-page .fi-header-heading,
 .bsi-users-list-page .fi-header-heading,
 .bsi-roles-list-page .fi-header-heading,
 .bsi-user-edit-page .fi-header-heading,
@@ -1656,6 +1719,15 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-header-heading,
 .bsi-general-documents-list-page .fi-header-heading,
 .bsi-portal-documents-list-page .fi-header-heading,
+.bsi-portal-users-list-page .fi-header-heading,
+.bsi-portal-user-form-page .fi-header-heading,
+.bsi-access-tokens-list-page .fi-header-heading,
+.bsi-access-tokens-view-page .fi-header-heading,
+.bsi-index-rates-list-page .fi-header-heading,
+.bsi-index-projection-series-list-page .fi-header-heading,
+.bsi-announcements-list-page .fi-header-heading,
+.bsi-notification-outboxes-list-page .fi-header-heading,
+.bsi-notification-outbox-view-page .fi-header-heading,
 .bsi-receivables-list-page .fi-header-heading {
     font-size: 1.25rem !important;
     font-weight: 700 !important;
@@ -1688,6 +1760,7 @@ select.fi-select-input option[selected] {
 .bsi-document-downloads-list-page .fi-header-subheading,
 .bsi-import-runs-list-page .fi-header-subheading,
 .bsi-settings-page .fi-header-subheading,
+.bsi-notification-settings-page .fi-header-subheading,
 .bsi-users-list-page .fi-header-subheading,
 .bsi-roles-list-page .fi-header-subheading,
 .bsi-user-edit-page .fi-header-subheading,
@@ -1702,6 +1775,15 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-header-subheading,
 .bsi-general-documents-list-page .fi-header-subheading,
 .bsi-portal-documents-list-page .fi-header-subheading,
+.bsi-portal-users-list-page .fi-header-subheading,
+.bsi-portal-user-form-page .fi-header-subheading,
+.bsi-access-tokens-list-page .fi-header-subheading,
+.bsi-access-tokens-view-page .fi-header-subheading,
+.bsi-index-rates-list-page .fi-header-subheading,
+.bsi-index-projection-series-list-page .fi-header-subheading,
+.bsi-announcements-list-page .fi-header-subheading,
+.bsi-notification-outboxes-list-page .fi-header-subheading,
+.bsi-notification-outbox-view-page .fi-header-subheading,
 .bsi-receivables-list-page .fi-header-subheading {
     font-size: 0.8125rem !important;
     line-height: 1.35 !important;
@@ -1736,6 +1818,7 @@ select.fi-select-input option[selected] {
 .bsi-document-downloads-list-page .fi-breadcrumbs,
 .bsi-import-runs-list-page .fi-breadcrumbs,
 .bsi-settings-page .fi-breadcrumbs,
+.bsi-notification-settings-page .fi-breadcrumbs,
 .bsi-users-list-page .fi-breadcrumbs,
 .bsi-roles-list-page .fi-breadcrumbs,
 .bsi-user-edit-page .fi-breadcrumbs,
@@ -1750,6 +1833,15 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-breadcrumbs,
 .bsi-general-documents-list-page .fi-breadcrumbs,
 .bsi-portal-documents-list-page .fi-breadcrumbs,
+.bsi-portal-users-list-page .fi-breadcrumbs,
+.bsi-portal-user-form-page .fi-breadcrumbs,
+.bsi-access-tokens-list-page .fi-breadcrumbs,
+.bsi-access-tokens-view-page .fi-breadcrumbs,
+.bsi-index-rates-list-page .fi-breadcrumbs,
+.bsi-index-projection-series-list-page .fi-breadcrumbs,
+.bsi-announcements-list-page .fi-breadcrumbs,
+.bsi-notification-outboxes-list-page .fi-breadcrumbs,
+.bsi-notification-outbox-view-page .fi-breadcrumbs,
 .bsi-receivables-list-page .fi-breadcrumbs {
     font-size: 0.75rem !important;
     margin-bottom: 0.125rem !important;
@@ -1790,6 +1882,12 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-ta-table,
 .bsi-general-documents-list-page .fi-ta-table,
 .bsi-portal-documents-list-page .fi-ta-table,
+.bsi-portal-users-list-page .fi-ta-table,
+.bsi-access-tokens-list-page .fi-ta-table,
+.bsi-index-rates-list-page .fi-ta-table,
+.bsi-index-projection-series-list-page .fi-ta-table,
+.bsi-announcements-list-page .fi-ta-table,
+.bsi-notification-outboxes-list-page .fi-ta-table,
 .bsi-receivables-list-page .fi-ta-table {
     width: 100% !important;
     min-width: 100% !important;
@@ -1831,6 +1929,12 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-ta-cell .fi-badge,
 .bsi-general-documents-list-page .fi-ta-cell .fi-badge,
 .bsi-portal-documents-list-page .fi-ta-cell .fi-badge,
+.bsi-portal-users-list-page .fi-ta-cell .fi-badge,
+.bsi-access-tokens-list-page .fi-ta-cell .fi-badge,
+.bsi-index-rates-list-page .fi-ta-cell .fi-badge,
+.bsi-index-projection-series-list-page .fi-ta-cell .fi-badge,
+.bsi-announcements-list-page .fi-ta-cell .fi-badge,
+.bsi-notification-outboxes-list-page .fi-ta-cell .fi-badge,
 .bsi-receivables-list-page .fi-ta-cell .fi-badge {
     white-space: normal !important;
     text-align: center !important;
@@ -1853,6 +1957,13 @@ select.fi-select-input option[selected] {
 .bsi-users-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-roles-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-clients-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-portal-documents-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-portal-users-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-access-tokens-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-index-rates-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-index-projection-series-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-announcements-list-page .fi-tabs-item .fi-badge[data-color="gray"],
+.bsi-notification-outboxes-list-page .fi-tabs-item .fi-badge[data-color="gray"],
 .bsi-documents-list-page .fi-tabs-item .fi-badge[data-color="gray"] {
     opacity: 0.45 !important;
 }
@@ -1893,6 +2004,12 @@ select.fi-select-input option[selected] {
     .bsi-document-categories-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-general-documents-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-portal-documents-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-portal-users-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-access-tokens-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-index-rates-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-announcements-list-page .fi-ta-header-toolbar .fi-input-wrp,
+    .bsi-notification-outboxes-list-page .fi-ta-header-toolbar .fi-input-wrp,
     .bsi-receivables-list-page .fi-ta-header-toolbar .fi-input-wrp {
         min-width: 22rem;
     }
@@ -1934,6 +2051,12 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-ta-empty-state,
 .bsi-general-documents-list-page .fi-ta-empty-state,
 .bsi-portal-documents-list-page .fi-ta-empty-state,
+.bsi-portal-users-list-page .fi-ta-empty-state,
+.bsi-access-tokens-list-page .fi-ta-empty-state,
+.bsi-index-rates-list-page .fi-ta-empty-state,
+.bsi-index-projection-series-list-page .fi-ta-empty-state,
+.bsi-announcements-list-page .fi-ta-empty-state,
+.bsi-notification-outboxes-list-page .fi-ta-empty-state,
 .bsi-receivables-list-page .fi-ta-empty-state {
     padding-block: 2.5rem !important;
     padding-inline: 1.5rem !important;
@@ -1974,6 +2097,12 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-ta-empty-state-icon-bg,
 .bsi-general-documents-list-page .fi-ta-empty-state-icon-bg,
 .bsi-portal-documents-list-page .fi-ta-empty-state-icon-bg,
+.bsi-portal-users-list-page .fi-ta-empty-state-icon-bg,
+.bsi-access-tokens-list-page .fi-ta-empty-state-icon-bg,
+.bsi-index-rates-list-page .fi-ta-empty-state-icon-bg,
+.bsi-index-projection-series-list-page .fi-ta-empty-state-icon-bg,
+.bsi-announcements-list-page .fi-ta-empty-state-icon-bg,
+.bsi-notification-outboxes-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: #64748b !important;
     margin-bottom: 0.75rem !important;
@@ -2014,6 +2143,12 @@ select.fi-select-input option[selected] {
 .dark .bsi-document-categories-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-general-documents-list-page .fi-ta-empty-state-icon-bg,
 .dark .bsi-portal-documents-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-portal-users-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-access-tokens-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-index-rates-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-index-projection-series-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-announcements-list-page .fi-ta-empty-state-icon-bg,
+.dark .bsi-notification-outboxes-list-page .fi-ta-empty-state-icon-bg,
 .bsi-receivables-list-page .fi-ta-empty-state-icon-bg {
     color: rgba(251, 250, 248, 0.4) !important;
 }
@@ -2053,6 +2188,12 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-ta-empty-state-heading,
 .bsi-general-documents-list-page .fi-ta-empty-state-heading,
 .bsi-portal-documents-list-page .fi-ta-empty-state-heading,
+.bsi-portal-users-list-page .fi-ta-empty-state-heading,
+.bsi-access-tokens-list-page .fi-ta-empty-state-heading,
+.bsi-index-rates-list-page .fi-ta-empty-state-heading,
+.bsi-index-projection-series-list-page .fi-ta-empty-state-heading,
+.bsi-announcements-list-page .fi-ta-empty-state-heading,
+.bsi-notification-outboxes-list-page .fi-ta-empty-state-heading,
 .bsi-receivables-list-page .fi-ta-empty-state-heading {
     font-size: 1rem !important;
     font-weight: 600 !important;
@@ -2078,6 +2219,12 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-ta-table td,
 .bsi-general-documents-list-page .fi-ta-table td,
 .bsi-portal-documents-list-page .fi-ta-table td,
+.bsi-portal-users-list-page .fi-ta-table td,
+.bsi-access-tokens-list-page .fi-ta-table td,
+.bsi-index-rates-list-page .fi-ta-table td,
+.bsi-index-projection-series-list-page .fi-ta-table td,
+.bsi-announcements-list-page .fi-ta-table td,
+.bsi-notification-outboxes-list-page .fi-ta-table td,
 .bsi-receivables-list-page .fi-ta-table td {
     font-variant-numeric: tabular-nums;
 }
@@ -2117,6 +2264,12 @@ select.fi-select-input option[selected] {
 .bsi-document-categories-list-page .fi-ta-empty-state-description,
 .bsi-general-documents-list-page .fi-ta-empty-state-description,
 .bsi-portal-documents-list-page .fi-ta-empty-state-description,
+.bsi-portal-users-list-page .fi-ta-empty-state-description,
+.bsi-access-tokens-list-page .fi-ta-empty-state-description,
+.bsi-index-rates-list-page .fi-ta-empty-state-description,
+.bsi-index-projection-series-list-page .fi-ta-empty-state-description,
+.bsi-announcements-list-page .fi-ta-empty-state-description,
+.bsi-notification-outboxes-list-page .fi-ta-empty-state-description,
 .bsi-receivables-list-page .fi-ta-empty-state-description {
     max-width: 46ch !important;
     font-size: 0.8125rem !important;
@@ -3479,9 +3632,11 @@ html:not(.dark) .bsi-import-runs-list-page tr.fi-ta-row:hover {
     background-color: rgba(183, 131, 47, 0.15) !important;
 }
 
-/* ── Configurações > Templates de Planilhas (Central Operacional de Modelos): Dark Mode Teal, Full-Width ── */
+/* ── Configurações > Templates de Planilhas e Notificações (Central Operacional de Modelos e Comunicação): Dark Mode Teal, Full-Width ── */
 .bsi-settings-page .fi-page,
-.bsi-settings-page .fi-main-ctn {
+.bsi-settings-page .fi-main-ctn,
+.bsi-notification-settings-page .fi-page,
+.bsi-notification-settings-page .fi-main-ctn {
     max-width: 100% !important;
 }
 
@@ -3550,6 +3705,383 @@ html:not(.dark) .bsi-users-list-page tr.fi-ta-row:hover {
     color: #d49e47 !important;
     background-color: rgba(183, 131, 47, 0.15) !important;
 }
+
+/* ── Usuários do Portal (Central de Gestão de Acessos Externos): Dark Mode Teal, Full-Width, Combinação Nome+E-mail ── */
+.bsi-portal-users-list-page .fi-page,
+.bsi-portal-users-list-page .fi-main-ctn {
+    max-width: 100% !important;
+}
+
+.bsi-portal-users-list-page .fi-ta-table th,
+.bsi-portal-users-list-page .fi-ta-table td {
+    padding-block: 0.625rem !important;
+    padding-inline: 0.75rem !important;
+}
+
+.bsi-portal-users-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-portal-users-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-portal-users-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Usuário: Nome com destaque e e-mail secundário */
+.dark .bsi-portal-users-list-page .fi-ta-cell-full_name .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+.dark .bsi-portal-users-list-page .fi-ta-cell-full_name .fi-ta-text-item-description {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.75rem !important;
+}
+
+/* CPF, Telefone e Último Acesso em algarismos tabulares */
+.dark .bsi-portal-users-list-page .fi-ta-cell-document_number .fi-ta-text-item-label,
+.dark .bsi-portal-users-list-page .fi-ta-cell-phone_number .fi-ta-text-item-label,
+.dark .bsi-portal-users-list-page .fi-ta-cell-last_login_at .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* Ações de linha sutis com realce dourado */
+.dark .bsi-portal-users-list-page .fi-ta-actions .fi-icon-btn {
+    color: rgba(251, 250, 248, 0.5) !important;
+    transition: color 150ms ease, background-color 150ms ease !important;
+}
+
+.dark .bsi-portal-users-list-page tr.fi-ta-row:hover .fi-ta-actions .fi-icon-btn,
+.dark .bsi-portal-users-list-page .fi-ta-actions .fi-icon-btn:hover {
+    color: #d49e47 !important;
+    background-color: rgba(183, 131, 47, 0.15) !important;
+}
+
+/* ── Chaves de Acesso (Central de Acompanhamento de Tokens do Portal): Dark Mode Teal, Full-Width, Validade Escaneável ── */
+.bsi-access-tokens-list-page .fi-page,
+.bsi-access-tokens-list-page .fi-main-ctn,
+.bsi-access-tokens-view-page .fi-page,
+.bsi-access-tokens-view-page .fi-main-ctn {
+    max-width: 100% !important;
+}
+
+.bsi-access-tokens-list-page .fi-ta-table th,
+.bsi-access-tokens-list-page .fi-ta-table td {
+    padding-block: 0.625rem !important;
+    padding-inline: 0.75rem !important;
+}
+
+.bsi-access-tokens-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-access-tokens-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-access-tokens-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Usuário do Portal: Nome com destaque e e-mail secundário */
+.dark .bsi-access-tokens-list-page .fi-ta-cell-portalUser\.full_name .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+}
+
+.dark .bsi-access-tokens-list-page .fi-ta-cell-portalUser\.full_name .fi-ta-text-item-description {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.75rem !important;
+}
+
+/* Timestamps e IP em algarismos tabulares */
+.dark .bsi-access-tokens-list-page .fi-ta-cell-created_at .fi-ta-text-item-label,
+.dark .bsi-access-tokens-list-page .fi-ta-cell-expires_at .fi-ta-text-item-label,
+.dark .bsi-access-tokens-list-page .fi-ta-cell-used_at .fi-ta-text-item-label,
+.dark .bsi-access-tokens-list-page .fi-ta-cell-used_ip .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+}
+
+.dark .bsi-access-tokens-list-page .fi-ta-cell-expires_at .fi-ta-text-item-description {
+    font-size: 0.75rem !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+}
+
+/* Ações de linha sutis com realce dourado */
+.dark .bsi-access-tokens-list-page .fi-ta-actions .fi-icon-btn {
+    color: rgba(251, 250, 248, 0.5) !important;
+    transition: color 150ms ease, background-color 150ms ease !important;
+}
+
+.dark .bsi-access-tokens-list-page tr.fi-ta-row:hover .fi-ta-actions .fi-icon-btn,
+.dark .bsi-access-tokens-list-page .fi-ta-actions .fi-icon-btn:hover {
+    color: #d49e47 !important;
+    background-color: rgba(183, 131, 47, 0.15) !important;
+}
+
+/* ── Central Operacional de Índices Econômicos (CDI / IPCA): Resumo de Sincronização, Ações Hierárquicas e Tabela Técnica ── */
+.bsi-index-rates-list-page .fi-page,
+.bsi-index-rates-list-page .fi-main-ctn {
+    max-width: 100% !important;
+}
+
+.bsi-index-sync-overview-widget {
+    width: 100% !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.bsi-index-rates-list-page .fi-ta-table th,
+.bsi-index-rates-list-page .fi-ta-table td {
+    padding-block: 0.5rem !important;
+    padding-inline: 0.75rem !important;
+}
+
+.bsi-index-rates-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-index-rates-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+html:not(.dark) .bsi-index-rates-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Algarismos tabulares e destaque de taxa/índice */
+.dark .bsi-index-rates-list-page .fi-ta-cell-rate_date .fi-ta-text-item-label,
+.dark .bsi-index-rates-list-page .fi-ta-cell-rate_value .fi-ta-text-item-label,
+.dark .bsi-index-rates-list-page .fi-ta-cell-external_series_code .fi-ta-text-item-label,
+.dark .bsi-index-rates-list-page .fi-ta-cell-fetched_at .fi-ta-text-item-label {
+    font-variant-numeric: tabular-nums !important;
+}
+
+.dark .bsi-index-rates-list-page .fi-ta-cell-rate_value .fi-ta-text-item-label {
+    color: #fbfaf8 !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+}
+
+/* ── Central de Séries Projetadas IPCA: Listagem Refinada, Toolbar Compacta, Container Integrado e Densidade Balanceada ── */
+.bsi-index-projection-series-list-page .fi-page,
+.bsi-index-projection-series-list-page .fi-main-ctn {
+    max-width: 100% !important;
+}
+
+/* Espaçamento elegante entre breadcrumb, título e tabela */
+.bsi-index-projection-series-list-page .fi-header {
+    margin-bottom: 0.25rem !important;
+}
+
+/* Container unificado em azul-petróleo escuro com borda sutil cinza-azulada */
+.bsi-index-projection-series-list-page .fi-ta {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.bsi-index-projection-series-list-page .fi-ta-ctn {
+    background: #0d252e !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 30px rgba(4, 14, 19, 0.35) !important;
+    overflow: hidden !important;
+}
+
+/* Toolbar compacta, perfeitamente alinhada e integrada */
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar {
+    background: #0a2028 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+    padding: 0.625rem 1rem !important;
+    min-height: 3.375rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0.625rem !important;
+}
+
+/* Input de busca em azul profundo com foco dourado suave */
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-input-wrp {
+    background: #06151c !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    border-radius: 8px !important;
+    min-height: 2.375rem !important;
+    width: clamp(16rem, 24vw, 22rem) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+    transition: all 150ms ease-out !important;
+}
+
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-input-wrp:hover {
+    border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-input-wrp:focus-within {
+    background: #06151c !important;
+    border-color: #b7832f !important;
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.25),
+        0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+}
+
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-input-wrp input.fi-input {
+    color: #fbfaf8 !important;
+    caret-color: #b7832f !important;
+    font-size: 0.8125rem !important;
+    padding-block: 0.375rem !important;
+}
+
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-input-wrp input.fi-input::placeholder {
+    color: rgba(251, 250, 248, 0.5) !important;
+}
+
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-input-wrp .fi-icon {
+    color: rgba(251, 250, 248, 0.55) !important;
+}
+
+/* Botões de Filtros e Colunas: controles de 36-40px, hover suave em azul-petróleo */
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-icon-btn,
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar button.fi-btn {
+    width: 2.375rem !important;
+    height: 2.375rem !important;
+    min-width: 2.375rem !important;
+    min-height: 2.375rem !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    background: transparent !important;
+    color: rgba(251, 250, 248, 0.72) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    transition: all 150ms ease-out !important;
+}
+
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-icon-btn:hover,
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar button.fi-btn:hover {
+    background: rgba(18, 49, 59, 0.7) !important;
+    border-color: rgba(183, 131, 47, 0.35) !important;
+    color: #fbfaf8 !important;
+}
+
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar .fi-icon-btn:focus-visible,
+.bsi-index-projection-series-list-page .fi-ta-header-toolbar button.fi-btn:focus-visible {
+    outline: 2px solid #b7832f !important;
+    outline-offset: 2px !important;
+}
+
+/* Cabeçalho da tabela: azul-petróleo ligeiramente mais claro, semibold e ordenação sutil */
+.dark .bsi-index-projection-series-list-page thead.fi-ta-header {
+    background: #0f2a35 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+}
+
+.dark .bsi-index-projection-series-list-page thead.fi-ta-header th {
+    color: rgba(251, 250, 248, 0.75) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    padding-block: 0.75rem !important;
+    padding-inline: 1rem !important;
+}
+
+.dark .bsi-index-projection-series-list-page thead.fi-ta-header th .fi-icon {
+    opacity: 0.4;
+    transition: opacity 150ms ease-out;
+}
+
+.dark .bsi-index-projection-series-list-page thead.fi-ta-header th.fi-ta-header-cell-sorted .fi-icon {
+    opacity: 1 !important;
+    color: #d8a94f !important;
+}
+
+/* Linhas e células: altura confortável (48-56px), divisores sutis, hover azul-petróleo */
+.dark .bsi-index-projection-series-list-page .fi-ta-table td {
+    padding-block: 0.75rem !important;
+    padding-inline: 1rem !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
+    color: rgba(251, 250, 248, 0.85) !important;
+    font-size: 0.8125rem !important;
+    vertical-align: middle !important;
+}
+
+.bsi-index-projection-series-list-page tr.fi-ta-row {
+    transition: background-color 150ms ease-out !important;
+}
+
+.dark .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
+    background-color: rgba(18, 49, 59, 0.55) !important;
+}
+
+html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
+    background-color: rgba(240, 244, 248, 0.8) !important;
+}
+
+/* Hierarquia visual de colunas: Série destacada, números tabulares, metadados secundários */
+.dark .bsi-index-projection-series-list-page .fi-ta-cell-name .fi-ta-text-item-label {
+    font-weight: 600 !important;
+    color: #fbfaf8 !important;
+    font-size: 0.875rem !important;
+}
+
+.dark .bsi-index-projection-series-list-page tr.fi-ta-row:hover .fi-ta-cell-name .fi-ta-text-item-label {
+    color: #ffffff !important;
+}
+
+.dark .bsi-index-projection-series-list-page .fi-ta-cell-reference_date .fi-ta-text-item-label,
+.dark .bsi-index-projection-series-list-page .fi-ta-cell-rates_count .fi-badge {
+    font-variant-numeric: tabular-nums !important;
+}
+
+.dark .bsi-index-projection-series-list-page .fi-ta-cell-importedBy-name,
+.dark .bsi-index-projection-series-list-page .fi-ta-cell-approvedBy-name,
+.dark .bsi-index-projection-series-list-page .fi-ta-cell-projection_source {
+    color: rgba(251, 250, 248, 0.6) !important;
+    font-size: 0.78125rem !important;
+}
+
+/* Empty State compacto e limpo */
+.bsi-index-projection-series-list-page .fi-ta-empty-state {
+    padding-block: 2.25rem !important;
+    padding-inline: 1.5rem !important;
+}
+
+.dark .bsi-index-projection-series-list-page .fi-ta-empty-state-icon-bg {
+    color: rgba(251, 250, 248, 0.45) !important;
+    margin-bottom: 0.625rem !important;
+}
+
+.dark .bsi-index-projection-series-list-page .fi-ta-empty-state-icon-bg svg {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+}
+
+.dark .bsi-index-projection-series-list-page .fi-ta-empty-state-heading {
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    color: #fbfaf8 !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.dark .bsi-index-projection-series-list-page .fi-ta-empty-state-description {
+    font-size: 0.8125rem !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+    max-width: 44ch !important;
+    line-height: 1.5 !important;
+}
+
+/* Rodapé / Paginação */
+.dark .bsi-index-projection-series-list-page .fi-ta-pagination {
+    background: #0a2028 !important;
+    border-top: 1px solid rgba(148, 163, 184, 0.12) !important;
+    padding: 0.625rem 1rem !important;
+}
+
 
 /* ── Ficha Administrativa de Usuário e Perfil (Editar / Criar): Dark Mode Teal, Full-Width, Matriz de Permissões com Accordions ── */
 .bsi-user-edit-page .fi-page,
@@ -7248,38 +7780,72 @@ html:not(.dark) .fi-activity-card:hover {
 /* ── Documentos e Documentos por Usuário (Criar / Editar / Ficha Documental Institucional): Dark Mode Teal, 100% Useful Width, Proporções Refinadas & Área de Upload de Alta Presença ── */
 .bsi-document-form-page,
 .bsi-portal-document-form-page,
+.bsi-announcement-form-page,
+.bsi-portal-user-form-page,
 .bsi-document-form-page main,
 .bsi-portal-document-form-page main,
+.bsi-announcement-form-page main,
+.bsi-portal-user-form-page main,
 .bsi-document-form-page .fi-main,
 .bsi-portal-document-form-page .fi-main,
+.bsi-announcement-form-page .fi-main,
+.bsi-portal-user-form-page .fi-main,
 .bsi-document-form-page .fi-main-ctn,
 .bsi-portal-document-form-page .fi-main-ctn,
+.bsi-announcement-form-page .fi-main-ctn,
+.bsi-portal-user-form-page .fi-main-ctn,
 .bsi-document-form-page .fi-page,
 .bsi-portal-document-form-page .fi-page,
+.bsi-announcement-form-page .fi-page,
+.bsi-portal-user-form-page .fi-page,
 .bsi-document-form-page .fi-page-ctn,
 .bsi-portal-document-form-page .fi-page-ctn,
+.bsi-announcement-form-page .fi-page-ctn,
+.bsi-portal-user-form-page .fi-page-ctn,
 .bsi-document-form-page .fi-page-main-ctn,
 .bsi-portal-document-form-page .fi-page-main-ctn,
+.bsi-announcement-form-page .fi-page-main-ctn,
+.bsi-portal-user-form-page .fi-page-main-ctn,
 .bsi-document-form-page .fi-page-content-ctn,
 .bsi-portal-document-form-page .fi-page-content-ctn,
+.bsi-announcement-form-page .fi-page-content-ctn,
+.bsi-portal-user-form-page .fi-page-content-ctn,
 .bsi-document-form-page .fi-page-content,
 .bsi-portal-document-form-page .fi-page-content,
+.bsi-announcement-form-page .fi-page-content,
+.bsi-portal-user-form-page .fi-page-content,
 .bsi-document-form-page .fi-form,
 .bsi-portal-document-form-page .fi-form,
+.bsi-announcement-form-page .fi-form,
+.bsi-portal-user-form-page .fi-form,
 .bsi-document-form-page form,
 .bsi-portal-document-form-page form,
+.bsi-announcement-form-page form,
+.bsi-portal-user-form-page form,
 .bsi-document-form-page form.fi-form,
 .bsi-portal-document-form-page form.fi-form,
+.bsi-announcement-form-page form.fi-form,
+.bsi-portal-user-form-page form.fi-form,
 .bsi-document-form-page form.fi-sc-form,
 .bsi-portal-document-form-page form.fi-sc-form,
+.bsi-announcement-form-page form.fi-sc-form,
+.bsi-portal-user-form-page form.fi-sc-form,
 .bsi-document-form-page .fi-sc,
 .bsi-portal-document-form-page .fi-sc,
+.bsi-announcement-form-page .fi-sc,
+.bsi-portal-user-form-page .fi-sc,
 .bsi-document-form-page .fi-sc-component,
 .bsi-portal-document-form-page .fi-sc-component,
+.bsi-announcement-form-page .fi-sc-component,
+.bsi-portal-user-form-page .fi-sc-component,
 .bsi-document-form-page .fi-section,
 .bsi-portal-document-form-page .fi-section,
+.bsi-announcement-form-page .fi-section,
+.bsi-portal-user-form-page .fi-section,
 .bsi-document-form-page .fi-section-content-ctn,
-.bsi-portal-document-form-page .fi-section-content-ctn {
+.bsi-portal-document-form-page .fi-section-content-ctn,
+.bsi-announcement-form-page .fi-section-content-ctn,
+.bsi-portal-user-form-page .fi-section-content-ctn {
     width: 100% !important;
     max-width: 100% !important;
     margin-inline: 0 !important;
@@ -7288,10 +7854,16 @@ html:not(.dark) .fi-activity-card:hover {
 
 .bsi-document-form-page form,
 .bsi-portal-document-form-page form,
+.bsi-announcement-form-page form,
+.bsi-portal-user-form-page form,
 .bsi-document-form-page form.fi-form,
 .bsi-portal-document-form-page form.fi-form,
+.bsi-announcement-form-page form.fi-form,
+.bsi-portal-user-form-page form.fi-form,
 .bsi-document-form-page form.fi-sc-form,
-.bsi-portal-document-form-page form.fi-sc-form {
+.bsi-portal-document-form-page form.fi-sc-form,
+.bsi-announcement-form-page form.fi-sc-form,
+.bsi-portal-user-form-page form.fi-sc-form {
     display: flex !important;
     flex-direction: column !important;
     gap: 1.75rem !important;
@@ -7301,14 +7873,24 @@ html:not(.dark) .fi-activity-card:hover {
 
 .bsi-document-form-page form > .fi-sc,
 .bsi-portal-document-form-page form > .fi-sc,
+.bsi-announcement-form-page form > .fi-sc,
+.bsi-portal-user-form-page form > .fi-sc,
 .bsi-document-form-page form > .fi-grid,
 .bsi-portal-document-form-page form > .fi-grid,
+.bsi-announcement-form-page form > .fi-grid,
+.bsi-portal-user-form-page form > .fi-grid,
 .bsi-document-form-page form .fi-sc-section,
 .bsi-portal-document-form-page form .fi-sc-section,
+.bsi-announcement-form-page form .fi-sc-section,
+.bsi-portal-user-form-page form .fi-sc-section,
 .bsi-document-form-page form .fi-section,
 .bsi-portal-document-form-page form .fi-section,
+.bsi-announcement-form-page form .fi-section,
+.bsi-portal-user-form-page form .fi-section,
 .bsi-document-form-page .fi-section,
-.bsi-portal-document-form-page .fi-section {
+.bsi-portal-document-form-page .fi-section,
+.bsi-announcement-form-page .fi-section,
+.bsi-portal-user-form-page .fi-section {
     width: 100% !important;
     max-width: 100% !important;
     border-radius: 16px !important;
@@ -7317,8 +7899,12 @@ html:not(.dark) .fi-activity-card:hover {
 
 .dark .bsi-document-form-page .fi-section,
 .dark .bsi-portal-document-form-page .fi-section,
+.dark .bsi-announcement-form-page .fi-section,
+.dark .bsi-portal-user-form-page .fi-section,
 .dark .bsi-document-form-page form .fi-section,
-.dark .bsi-portal-document-form-page form .fi-section {
+.dark .bsi-portal-document-form-page form .fi-section,
+.dark .bsi-announcement-form-page form .fi-section,
+.dark .bsi-portal-user-form-page form .fi-section {
     background: #0d252e !important;
     border: 1px solid rgba(183, 131, 47, 0.22) !important;
     box-shadow: 0 10px 30px rgba(4, 14, 19, 0.4) !important;
@@ -7326,8 +7912,12 @@ html:not(.dark) .fi-activity-card:hover {
 
 .dark .bsi-document-form-page .fi-section-header,
 .dark .bsi-portal-document-form-page .fi-section-header,
+.dark .bsi-announcement-form-page .fi-section-header,
+.dark .bsi-portal-user-form-page .fi-section-header,
 .dark .bsi-document-form-page form .fi-section-header,
-.dark .bsi-portal-document-form-page form .fi-section-header {
+.dark .bsi-portal-document-form-page form .fi-section-header,
+.dark .bsi-announcement-form-page form .fi-section-header,
+.dark .bsi-portal-user-form-page form .fi-section-header {
     background: #0a2028 !important;
     border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
     padding: 1.25rem 2rem !important;
@@ -7335,8 +7925,12 @@ html:not(.dark) .fi-activity-card:hover {
 
 .dark .bsi-document-form-page .fi-section-header-heading,
 .dark .bsi-portal-document-form-page .fi-section-header-heading,
+.dark .bsi-announcement-form-page .fi-section-header-heading,
+.dark .bsi-portal-user-form-page .fi-section-header-heading,
 .dark .bsi-document-form-page form .fi-section-header-heading,
-.dark .bsi-portal-document-form-page form .fi-section-header-heading {
+.dark .bsi-portal-document-form-page form .fi-section-header-heading,
+.dark .bsi-announcement-form-page form .fi-section-header-heading,
+.dark .bsi-portal-user-form-page form .fi-section-header-heading {
     color: #fbfaf8 !important;
     font-size: 1.125rem !important;
     font-weight: 700 !important;
@@ -7346,8 +7940,12 @@ html:not(.dark) .fi-activity-card:hover {
 
 .dark .bsi-document-form-page .fi-section-header-icon,
 .dark .bsi-portal-document-form-page .fi-section-header-icon,
+.dark .bsi-announcement-form-page .fi-section-header-icon,
+.dark .bsi-portal-user-form-page .fi-section-header-icon,
 .dark .bsi-document-form-page form .fi-section-header-icon,
-.dark .bsi-portal-document-form-page form .fi-section-header-icon {
+.dark .bsi-portal-document-form-page form .fi-section-header-icon,
+.dark .bsi-announcement-form-page form .fi-section-header-icon,
+.dark .bsi-portal-user-form-page form .fi-section-header-icon {
     color: #d49e47 !important;
     width: 1.5rem !important;
     height: 1.5rem !important;
@@ -7355,8 +7953,12 @@ html:not(.dark) .fi-activity-card:hover {
 
 .dark .bsi-document-form-page .fi-section-header-description,
 .dark .bsi-portal-document-form-page .fi-section-header-description,
+.dark .bsi-announcement-form-page .fi-section-header-description,
+.dark .bsi-portal-user-form-page .fi-section-header-description,
 .dark .bsi-document-form-page form .fi-section-header-description,
-.dark .bsi-portal-document-form-page form .fi-section-header-description {
+.dark .bsi-portal-document-form-page form .fi-section-header-description,
+.dark .bsi-announcement-form-page form .fi-section-header-description,
+.dark .bsi-portal-user-form-page form .fi-section-header-description {
     color: rgba(251, 250, 248, 0.7) !important;
     font-size: 0.8125rem !important;
     line-height: 1.45 !important;
@@ -7365,8 +7967,12 @@ html:not(.dark) .fi-activity-card:hover {
 
 .bsi-document-form-page .fi-section-content,
 .bsi-portal-document-form-page .fi-section-content,
+.bsi-announcement-form-page .fi-section-content,
+.bsi-portal-user-form-page .fi-section-content,
 .bsi-document-form-page form .fi-section-content,
-.bsi-portal-document-form-page form .fi-section-content {
+.bsi-portal-document-form-page form .fi-section-content,
+.bsi-announcement-form-page form .fi-section-content,
+.bsi-portal-user-form-page form .fi-section-content {
     padding: 1.75rem !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -7375,8 +7981,12 @@ html:not(.dark) .fi-activity-card:hover {
 @media (min-width: 1024px) {
     .bsi-document-form-page .fi-section-content,
     .bsi-portal-document-form-page .fi-section-content,
+    .bsi-announcement-form-page .fi-section-content,
+    .bsi-portal-user-form-page .fi-section-content,
     .bsi-document-form-page form .fi-section-content,
-    .bsi-portal-document-form-page form .fi-section-content {
+    .bsi-portal-document-form-page form .fi-section-content,
+    .bsi-announcement-form-page form .fi-section-content,
+    .bsi-portal-user-form-page form .fi-section-content {
         padding: 2.25rem 2.5rem !important;
     }
 }
@@ -7384,12 +7994,20 @@ html:not(.dark) .fi-activity-card:hover {
 /* Grid interno com proporções harmônicas */
 .bsi-document-form-page .fi-section-content .fi-grid,
 .bsi-portal-document-form-page .fi-section-content .fi-grid,
+.bsi-announcement-form-page .fi-section-content .fi-grid,
+.bsi-portal-user-form-page .fi-section-content .fi-grid,
 .bsi-document-form-page .fi-section-content > div,
 .bsi-portal-document-form-page .fi-section-content > div,
+.bsi-announcement-form-page .fi-section-content > div,
+.bsi-portal-user-form-page .fi-section-content > div,
 .bsi-document-form-page form .fi-section-content .fi-grid,
 .bsi-portal-document-form-page form .fi-section-content .fi-grid,
+.bsi-announcement-form-page form .fi-section-content .fi-grid,
+.bsi-portal-user-form-page form .fi-section-content .fi-grid,
 .bsi-document-form-page form .fi-section-content > div,
-.bsi-portal-document-form-page form .fi-section-content > div {
+.bsi-portal-document-form-page form .fi-section-content > div,
+.bsi-announcement-form-page form .fi-section-content > div,
+.bsi-portal-user-form-page form .fi-section-content > div {
     row-gap: 1.75rem !important;
     column-gap: 1.5rem !important;
     width: 100% !important;
@@ -7477,7 +8095,9 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* Labels e Asteriscos */
 .dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-fo-field-label,
+.dark .bsi-portal-user-form-page .fi-fo-field-label {
     color: rgba(251, 250, 248, 0.9) !important;
     font-size: 0.8125rem !important;
     font-weight: 600 !important;
@@ -7487,10 +8107,16 @@ html:not(.dark) .fi-activity-card:hover {
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-600,
 .dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-600,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-fo-field-label .text-danger-600,
+.dark .bsi-portal-user-form-page .fi-fo-field-label .text-danger-600,
 .dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-500,
 .dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-500,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-fo-field-label .text-danger-500,
+.dark .bsi-portal-user-form-page .fi-fo-field-label .text-danger-500,
 .dark .bsi-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400 {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-fo-field-label .text-danger-400,
+.dark .bsi-portal-user-form-page .fi-fo-field-label .text-danger-400 {
     color: #d49e47 !important;
     font-weight: 700 !important;
     margin-left: 0.25rem !important;
@@ -7498,7 +8124,9 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* Inputs de Texto e Controles Básicos com altura confortável (46px) */
 .dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-input-wrp,
+.dark .bsi-portal-user-form-page .fi-input-wrp {
     min-height: 2.875rem !important;
     background: #091b23 !important;
     border: 1px solid rgba(148, 163, 184, 0.22) !important;
@@ -7509,28 +8137,47 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp:hover,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp:hover {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp:hover,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-input-wrp:hover,
+.dark .bsi-portal-user-form-page .fi-input-wrp:hover {
     border-color: rgba(183, 131, 47, 0.45) !important;
     background: #0a202a !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-input-wrp:focus-within,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp:focus-within {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-input-wrp:focus-within,
+.dark .bsi-portal-user-form-page .fi-input-wrp:focus-within {
     background: #091b23 !important;
     border-color: #b7832f !important;
     box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.22) !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-input,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-input,
+.dark .bsi-portal-user-form-page .fi-input {
     color: #fbfaf8 !important;
     font-size: 0.875rem !important;
     padding-inline: 0.875rem !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-input::placeholder,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input::placeholder {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-input::placeholder,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-input::placeholder,
+.dark .bsi-portal-user-form-page .fi-input::placeholder {
     color: rgba(251, 250, 248, 0.35) !important;
+}
+
+/* Ícone de prefixo alinhado com largura fixa e contraste secundário */
+.dark .bsi-portal-user-form-page .fi-input-wrp-icon {
+    color: rgba(251, 250, 248, 0.5) !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+}
+
+.dark .bsi-portal-user-form-page .fi-input-wrp:focus-within .fi-input-wrp-icon {
+    color: #d49e47 !important;
 }
 
 /* Campo Categoria e Select Controls */
@@ -7764,13 +8411,17 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* Ações Finais: alinhamento à esquerda, proporção uniforme e proximidade com o card */
 .bsi-document-form-page form.fi-sc-form .fi-sc-actions,
-.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions {
+.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions,
+.bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions,
+.bsi-portal-user-form-page .fi-form-actions {
     margin-top: 0 !important;
     padding-top: 0.5rem !important;
 }
 
 .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
-.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+.bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+.bsi-portal-user-form-page .fi-form-actions .fi-ac {
     display: flex !important;
     align-items: center !important;
     gap: 0.875rem !important;
@@ -7778,7 +8429,9 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
-.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+.bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+.bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+.bsi-portal-user-form-page .fi-form-actions .fi-btn {
     min-height: 2.75rem !important;
     border-radius: 8px !important;
     font-size: 0.875rem !important;
@@ -7789,7 +8442,9 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* Primária Dourada */
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary,
+.dark .bsi-portal-user-form-page .fi-form-actions .fi-btn.fi-color-primary {
     background-color: #b7832f !important;
     color: #ffffff !important;
     border: 1px solid #b7832f !important;
@@ -7797,27 +8452,35 @@ html:not(.dark) .fi-activity-card:hover {
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:hover,
+.dark .bsi-portal-user-form-page .fi-form-actions .fi-btn.fi-color-primary:hover {
     background-color: #a37227 !important;
     border-color: #a37227 !important;
     box-shadow: 0 4px 12px rgba(183, 131, 47, 0.35) !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-btn.fi-color-primary:focus,
+.dark .bsi-portal-user-form-page .fi-form-actions .fi-btn.fi-color-primary:focus {
     box-shadow: 0 0 0 3px rgba(183, 131, 47, 0.35) !important;
 }
 
 /* Secundária e Neutra */
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary) {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary),
+.dark .bsi-portal-user-form-page .fi-form-actions .fi-btn:not(.fi-color-primary) {
     background-color: #0d252e !important;
     color: rgba(251, 250, 248, 0.85) !important;
     border: 1px solid rgba(148, 163, 184, 0.25) !important;
 }
 
 .dark .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
-.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover {
+.dark .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.dark .bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-btn:not(.fi-color-primary):hover,
+.dark .bsi-portal-user-form-page .fi-form-actions .fi-btn:not(.fi-color-primary):hover {
     color: #ffffff !important;
     background-color: #0f2d38 !important;
     border-color: rgba(148, 163, 184, 0.4) !important;
@@ -7826,6 +8489,7 @@ html:not(.dark) .fi-activity-card:hover {
 /* Validações */
 .dark .bsi-document-form-page .fi-fo-field-wrp-error-message,
 .dark .bsi-portal-document-form-page .fi-fo-field-wrp-error-message,
+.dark .bsi-portal-user-form-page .fi-fo-field-wrp-error-message,
 .dark .bsi-document-form-page .fi-fo-file-upload-error-message,
 .dark .bsi-portal-document-form-page .fi-fo-file-upload-error-message {
     color: #f87171 !important;
@@ -7837,7 +8501,9 @@ html:not(.dark) .fi-activity-card:hover {
 /* Mobile */
 @media (max-width: 640px) {
     .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
-    .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac {
+    .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+    .bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-ac,
+    .bsi-portal-user-form-page .fi-form-actions .fi-ac {
         width: 100% !important;
         flex-direction: column !important;
         align-items: stretch !important;
@@ -7845,7 +8511,9 @@ html:not(.dark) .fi-activity-card:hover {
     }
 
     .bsi-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
-    .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
+    .bsi-portal-document-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-portal-user-form-page form.fi-sc-form .fi-sc-actions .fi-btn,
+    .bsi-portal-user-form-page .fi-form-actions .fi-btn {
         width: 100% !important;
         justify-content: center !important;
     }

@@ -4,14 +4,19 @@ namespace App\Filament\Resources\Measurements\Tables;
 
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\Measurement;
+use App\Models\User;
+use App\Services\MeasurementOperationalReadModel;
+use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -62,7 +67,8 @@ class MeasurementsTable
                     ->wrap()
                     ->lineClamp(2)
                     ->tooltip(fn (Measurement $record): ?string => $record->operation?->title)
-                    ->searchable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => static::readModel()
+                        ->applySearch($query, $search))
                     ->sortable(),
 
                 TextColumn::make('developments')
@@ -87,10 +93,6 @@ class MeasurementsTable
                     })
                     ->wrap()
                     ->lineClamp(2)
-                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereHas(
-                        'assets.planSet.construction',
-                        fn (Builder $constructionQuery): Builder => $constructionQuery->where('development_name', 'like', "%{$search}%"),
-                    ))
                     ->toggleable(),
 
                 TextColumn::make('reference_month')
@@ -123,32 +125,99 @@ class MeasurementsTable
                         default => 'gray',
                     }),
 
+                TextColumn::make('sla')
+                    ->label('SLA')
+                    ->badge()
+                    ->state(fn (Measurement $record): string => static::readModel()->slaLabel($record))
+                    ->description(fn (Measurement $record): ?string => static::readModel()->slaDescription($record))
+                    ->color(fn (Measurement $record): string => static::readModel()->slaColor($record))
+                    ->toggleable(),
+
                 TextColumn::make('uploaded_at')
                     ->label('Enviada em')
                     ->dateTime('d/m/Y · H:i')
                     ->placeholder('Ainda não enviada')
                     ->sortable(),
             ])
-            ->filtersFormWidth(Width::Small)
-            ->filtersFormMaxHeight('420px')
+            ->filtersFormWidth(Width::ExtraLarge)
+            ->filtersFormMaxHeight('680px')
             ->filters(
                 static::visibleMeasurementsExist()
                     ? [
+                        Filter::make('competence_period')
+                            ->label('Competência')
+                            ->schema([
+                                DatePicker::make('from')->label('Competência inicial')->native(false),
+                                DatePicker::make('to')->label('Competência final')->native(false),
+                            ])
+                            ->columns(2)
+                            ->query(fn (Builder $query, array $data): Builder => $query
+                                ->when(filled($data['from'] ?? null), fn (Builder $measurements): Builder => $measurements
+                                    ->whereDate('reference_month', '>=', $data['from']))
+                                ->when(filled($data['to'] ?? null), fn (Builder $measurements): Builder => $measurements
+                                    ->whereDate('reference_month', '<=', $data['to']))),
+
                         SelectFilter::make('status')
                             ->label('Situação')
                             ->options(Measurement::STATUS_OPTIONS),
 
                         SelectFilter::make('operation_id')
                             ->label('Operação')
-                            ->relationship(
-                                'operation',
-                                'title',
-                                modifyQueryUsing: fn (Builder $query): Builder => auth()->user() === null
-                                    ? $query->whereRaw('1 = 0')
-                                    : $query->visibleTo(auth()->user()),
-                            )
+                            ->options(fn (): array => static::viewerOptions('operationOptions'))
                             ->searchable()
-                            ->preload(),
+                            ->query(fn (Builder $query, array $data): Builder => $query
+                                ->when(filled($data['value'] ?? null), fn (Builder $measurements): Builder => $measurements
+                                    ->where('operation_id', (int) $data['value']))),
+
+                        SelectFilter::make('emission_id')
+                            ->label('Emissão')
+                            ->options(fn (): array => static::viewerOptions('emissionOptions'))
+                            ->searchable()
+                            ->query(fn (Builder $query, array $data): Builder => $query
+                                ->when(filled($data['value'] ?? null), fn (Builder $measurements): Builder => $measurements
+                                    ->whereHas('operation', fn (Builder $operations): Builder => $operations
+                                        ->where('emission_id', (int) $data['value'])))),
+
+                        SelectFilter::make('responsible_user_id')
+                            ->label('Responsável')
+                            ->options(fn (): array => static::viewerOptions('responsibleOptions'))
+                            ->searchable()
+                            ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
+                                ? static::readModel()->applyResponsibleFilter($query, (int) $data['value'])
+                                : $query),
+
+                        SelectFilter::make('stage')
+                            ->label('Etapa')
+                            ->options(MeasurementWorkflow::STAGE_LABELS)
+                            ->query(fn (Builder $query, array $data): Builder => $query
+                                ->when(filled($data['value'] ?? null), fn (Builder $measurements): Builder => $measurements
+                                    ->where('current_stage', (int) $data['value']))),
+
+                        SelectFilter::make('sla_status')
+                            ->label('SLA')
+                            ->options([
+                                MeasurementSlaService::STATUS_ON_TIME => 'No prazo',
+                                MeasurementSlaService::STATUS_APPROACHING => 'Em atenção',
+                                MeasurementSlaService::STATUS_OVERDUE => 'Vencido',
+                                MeasurementSlaService::STATUS_PAUSED => 'Pausado',
+                                MeasurementSlaService::STATUS_CALENDAR_UNAVAILABLE => 'Calendário indisponível',
+                            ])
+                            ->query(fn (Builder $query, array $data): Builder => static::readModel()
+                                ->applySlaFilter($query, $data['value'] ?? null)),
+
+                        SelectFilter::make('assignment')
+                            ->label('Atuação no escopo')
+                            ->options([
+                                'direct' => 'Participação direta',
+                                'delegated' => 'Visível por delegação',
+                            ])
+                            ->query(function (Builder $query, array $data): Builder {
+                                $viewer = auth()->user();
+
+                                return $viewer instanceof User
+                                    ? static::readModel()->applyAssignmentFilter($query, $viewer, $data['value'] ?? null)
+                                    : $query->whereRaw('1 = 0');
+                            }),
                     ]
                     : []
             )
@@ -205,5 +274,20 @@ class MeasurementsTable
         $user = auth()->user();
 
         return $user !== null && Measurement::query()->visibleTo($user)->exists();
+    }
+
+    /** @return array<int, string> */
+    protected static function viewerOptions(string $method): array
+    {
+        $viewer = auth()->user();
+
+        return $viewer instanceof User
+            ? static::readModel()->{$method}($viewer)
+            : [];
+    }
+
+    protected static function readModel(): MeasurementOperationalReadModel
+    {
+        return once(fn (): MeasurementOperationalReadModel => app(MeasurementOperationalReadModel::class));
     }
 }

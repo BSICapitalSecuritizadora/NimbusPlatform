@@ -55,7 +55,11 @@ class MeasurementPendingService
                 'pauses:id,measurement_id,stage,paused_at,resumed_at',
             ])
             ->orderBy('measurements.id')
-            ->lazyById(100, column: 'measurements.id')
+            // O alias precisa ser explícito: sem ele o Laravel usa a própria
+            // coluna qualificada como nome do atributo e procura `measurements.id`
+            // no model, que só tem `id`. A falha só aparece quando um chunk vem
+            // cheio -- ou seja, a partir de 100 medições visíveis.
+            ->lazyById(100, column: 'measurements.id', alias: 'id')
             ->each(function (Measurement $measurement) use (
                 $user,
                 $previewLimit,
@@ -141,6 +145,11 @@ class MeasurementPendingService
         array $evaluation,
         ?ResponsibilityDelegation $delegation,
     ): array {
+        // Só as linhas que entram na prévia precisam do nome do delegante, e são
+        // no máximo `$previewLimit`. Carregá-lo na resolução da delegação
+        // custaria uma consulta por medição pendente.
+        $delegation?->loadMissing('delegator:id,name');
+
         $priority = match ($evaluation['status']) {
             MeasurementSlaService::STATUS_OVERDUE => 'high',
             MeasurementSlaService::STATUS_APPROACHING => 'medium',

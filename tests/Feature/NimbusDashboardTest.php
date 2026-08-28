@@ -5,11 +5,13 @@ use App\Filament\NimbusWidgets\NimbusRecentActivities;
 use App\Filament\Pages\Nimbus\NimbusDashboard;
 use App\Filament\Pages\Nimbus\NotificationSettings;
 use App\Filament\Resources\Nimbus\AccessTokens\AccessTokenResource;
+use App\Filament\Resources\Nimbus\AccessTokens\Pages\ListAccessTokens;
 use App\Filament\Resources\Nimbus\Announcements\AnnouncementResource;
 use App\Filament\Resources\Nimbus\DocumentCategories\DocumentCategoryResource;
 use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
 use App\Filament\Resources\Nimbus\NotificationOutboxes\NotificationOutboxResource;
 use App\Filament\Resources\Nimbus\PortalDocuments\PortalDocumentResource;
+use App\Filament\Resources\Nimbus\PortalUsers\Pages\ListPortalUsers;
 use App\Filament\Resources\Nimbus\PortalUsers\PortalUserResource;
 use App\Filament\Resources\Nimbus\Submissions\Pages\ViewSubmission;
 use App\Filament\Resources\Nimbus\Submissions\RelationManagers\FilesRelationManager;
@@ -783,12 +785,15 @@ it('renders the portal users list under Administração', function () {
         ->assertSuccessful()
         ->assertSee('Usuários do Portal')
         ->assertSee('Novo usuário')
-        ->assertSee('Nome Completo')
+        ->assertSee('Usuário')
         ->assertSee('E-mail')
-        ->assertSee('Gerar Chave de Acesso')
         ->assertSee('Cliente Portal')
         ->assertSee('123.456.789-01')
         ->assertSee('(11) 99999-9999');
+
+    Livewire::actingAs($user)
+        ->test(ListPortalUsers::class)
+        ->assertTableActionExists('generate_token');
 });
 
 it('renders the portal user create form with the same core fields as the Gestão Documental Externa reference', function () {
@@ -848,8 +853,11 @@ it('renders the access keys list under Administração', function () {
         ->assertSuccessful()
         ->assertSee('Chaves de Acesso')
         ->assertSee('Usuário do Portal')
-        ->assertSee('Válida')
-        ->assertSee('Revogar');
+        ->assertSee('Válida');
+
+    Livewire::actingAs($user)
+        ->test(ListAccessTokens::class)
+        ->assertTableActionExists('revoke');
 });
 
 it('renders the announcements list under Comunicação', function () {

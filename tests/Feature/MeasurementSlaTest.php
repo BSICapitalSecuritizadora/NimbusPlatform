@@ -480,8 +480,11 @@ it('fails closed when a pause extends the final deadline into an uncovered year'
         'paused_by' => $responsible->getKey(),
         'pause_reason' => 'Aguardando documento',
         'paused_operation_status' => 'in_review',
+        // A pausa precisa empurrar o prazo para além de 31/12 no fuso de negócio: em
+        // BRT o ciclo começa às 07:00 de 29/12 e ganha 3h a mais de dia útil do que
+        // a antiga grade UTC dava.
         'paused_at' => '2026-12-30 00:00:00',
-        'resumed_at' => '2026-12-30 15:00:00',
+        'resumed_at' => '2026-12-30 18:00:00',
     ]);
 
     $result = app(MeasurementSlaService::class)->evaluate($measurement->fresh(), $now);

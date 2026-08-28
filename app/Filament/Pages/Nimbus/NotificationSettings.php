@@ -29,6 +29,20 @@ class NotificationSettings extends Page
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    public function getMaxContentWidth(): Width|string|null
+    {
+        return Width::Full;
+    }
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-notification-settings-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Defina quando os usuários são notificados e acompanhe a disponibilidade dos canais de envio.';
+    }
+
     protected const DEFAULT_SETTINGS = [
         'portal.notify.new_submission' => true,
         'portal.notify.status_change' => true,
@@ -161,7 +175,7 @@ class NotificationSettings extends Page
                 'status_classes' => 'border border-emerald-400/30 bg-emerald-500/15 text-emerald-200',
                 'description' => 'As credenciais corporativas do Microsoft 365 já estão configuradas e prontas para envio transacional.',
                 'action_label' => 'Revisar conexão corporativa',
-                'action_classes' => 'bg-emerald-500 text-gray-950 hover:bg-emerald-400 focus-visible:ring-emerald-300/60',
+                'action_classes' => 'bg-emerald-500 text-[#06151c] font-semibold hover:bg-emerald-400 focus-visible:ring-emerald-300/60',
                 'action_icon' => Heroicon::OutlinedShieldCheck,
                 'notification_title' => 'Conta Microsoft corporativa já configurada.',
                 'notification_body' => 'As credenciais do Outlook corporativo já estão preenchidas no ambiente atual.',
@@ -178,7 +192,7 @@ class NotificationSettings extends Page
                 'status_classes' => 'border border-amber-400/30 bg-amber-500/15 text-amber-100',
                 'description' => 'A conta corporativa já tem parte das credenciais informadas, mas ainda faltam dados para concluir a conexão.',
                 'action_label' => 'Concluir conexão corporativa',
-                'action_classes' => 'bg-amber-500 text-gray-950 hover:bg-amber-400 focus-visible:ring-amber-300/60',
+                'action_classes' => 'bg-amber-500 text-[#06151c] font-semibold hover:bg-amber-400 focus-visible:ring-amber-300/60',
                 'action_icon' => Heroicon::OutlinedKey,
                 'notification_title' => 'Faltam credenciais para concluir a conexão.',
                 'notification_body' => 'Preencha os campos pendentes no ambiente: '.implode(', ', $missingLabels).'.',

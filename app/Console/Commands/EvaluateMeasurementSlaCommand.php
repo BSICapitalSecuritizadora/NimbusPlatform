@@ -11,6 +11,7 @@ use App\Notifications\MeasurementSlaNotification;
 use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use App\Services\ResponsibilityDelegationService;
+use App\Support\BusinessTime;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -99,7 +100,7 @@ class EvaluateMeasurementSlaCommand extends Command
                         'alert_type' => $alertType,
                         'recipient_user_id' => $recipient['user']->getKey(),
                         'stage_started_at' => $evaluation['started_at'],
-                        'business_day' => now()->toDateString(),
+                        'business_day' => BusinessTime::dateString(),
                         'notified_at' => now(),
                         'created_at' => now(),
                         'updated_at' => now(),

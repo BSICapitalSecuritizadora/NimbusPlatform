@@ -13,9 +13,9 @@ use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\MeasurementReview;
 use App\Models\Operation;
-use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
+use App\Support\Delegations\ResponsibilityAuthorization;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -1370,11 +1370,12 @@ class MeasurementWorkflow
      */
     private function audit(Measurement $measurement, User $actor, string $event, array $properties): void
     {
-        $delegationContext = $this->resolveDelegationContext(
+        $authorization = $this->resolveAuthorizationSource(
             $measurement,
             $actor,
             $properties['responsibility'] ?? $properties['stage'] ?? null,
         );
+        $delegationContext = $authorization->delegation;
 
         activity('measurement_workflow')
             ->performedOn($measurement)
@@ -1382,7 +1383,7 @@ class MeasurementWorkflow
             ->withProperties(array_merge([
                 'operation_id' => $measurement->operation_id,
                 'measurement_id' => $measurement->getKey(),
-                'delegated' => $delegationContext !== null,
+                'delegated' => $authorization->isDelegated(),
                 'delegation_id' => $delegationContext?->getKey(),
                 'delegator_user_id' => $delegationContext?->delegator_user_id,
                 'delegation_scope' => $delegationContext ? [
@@ -1391,37 +1392,33 @@ class MeasurementWorkflow
                     'stage' => $delegationContext->scope_stage,
                     'responsibility' => $delegationContext->scope_responsibility,
                 ] : null,
+                'admin_override' => $authorization->isAdminOverride(),
                 'actual_actor_user_id' => $actor->getKey(),
                 'workflow_revision' => (int) $measurement->workflow_revision,
             ], $properties))
             ->log($event);
     }
 
-    private function resolveDelegationContext(Measurement $measurement, User $actor, mixed $responsibility): ?ResponsibilityDelegation
-    {
+    /**
+     * A mesma resolução que autorizou a ação, reaproveitada para descrevê-la:
+     * `delegated` e `admin_override` saem de uma origem só, nunca de heurística
+     * separada. Eventos sem responsabilidade associada (snapshots de
+     * engenharia) não têm origem a atribuir e permanecem com ambas falsas.
+     */
+    private function resolveAuthorizationSource(
+        Measurement $measurement,
+        User $actor,
+        mixed $responsibility,
+    ): ResponsibilityAuthorization {
         $resolved = is_int($responsibility)
             ? MeasurementResponsibility::primaryForStage($responsibility)
             : MeasurementResponsibility::fromOperationColumn((string) $responsibility);
 
         if (! $resolved instanceof MeasurementResponsibility) {
-            return null;
+            return ResponsibilityAuthorization::none();
         }
 
-        // If actor is directly responsible, no delegation
-        $operation = $measurement->operation;
-        if (! $operation instanceof Operation) {
-            return null;
-        }
-
-        if ($operation->hasDirectResponsibility($actor, $resolved)) {
-            return null;
-        }
-
-        if (app(MeasurementAuthorizationService::class)->isWorkflowAdministrator($actor)) {
-            return null;
-        }
-
-        return app(MeasurementAuthorizationService::class)->activeDelegationFor($actor, $measurement, $resolved);
+        return $this->authorization->resolveAuthorization($actor, $measurement, $resolved);
     }
 
     /**

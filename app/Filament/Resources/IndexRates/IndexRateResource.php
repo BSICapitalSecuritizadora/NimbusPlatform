@@ -4,6 +4,7 @@ namespace App\Filament\Resources\IndexRates;
 
 use App\Filament\Resources\IndexRates\Pages\ListIndexRates;
 use App\Filament\Resources\IndexRates\Tables\IndexRatesTable;
+use App\Filament\Widgets\IndexRates\IndexSyncOverview;
 use App\Models\IndexRate;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -59,6 +60,13 @@ class IndexRateResource extends Resource
     public static function canDelete(Model $record): bool
     {
         return false;
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            IndexSyncOverview::class,
+        ];
     }
 
     public static function getPages(): array

@@ -9,9 +9,11 @@ use App\Domain\PuCalculator\Services\IndexRateImportService;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Filament\Resources\IndexRates\IndexRateResource;
+use App\Filament\Widgets\IndexRates\IndexSyncOverview;
 use App\Models\IndexRate;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -19,39 +21,68 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Facades\Cache;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Support\Enums\Width;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 
 class ListIndexRates extends ListRecords
 {
     protected static string $resource = IndexRateResource::class;
 
+    protected static ?string $title = 'Índices (CDI/IPCA)';
+
+    protected static ?string $breadcrumb = 'Listar';
+
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    public function getMaxContentWidth(): Width|string|null
+    {
+        return Width::Full;
+    }
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-index-rates-list-page',
+    ];
+
     public function getSubheading(): ?string
     {
-        $parts = [];
+        return 'Valores publicados e projetados utilizados nos cálculos e curvas da plataforma.';
+    }
 
-        foreach (['cdi' => 'CDI', 'ipca' => 'IPCA'] as $key => $label) {
-            $status = Cache::get(sprintf('pu_index_sync_%s_status', $key));
-            $lastFetched = IndexRate::query()
-                ->where('source', 'bcb_sgs')
-                ->where('indexer', strtoupper($key))
-                ->max('fetched_at');
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            IndexSyncOverview::class,
+        ];
+    }
 
-            $syncedAt = is_array($status) && ($status['status'] ?? null) === 'completed'
-                ? ($status['synced_at'] ?? null)
-                : null;
-            $lastSyncedAt = $syncedAt ?? $lastFetched;
+    public function getTabs(): array
+    {
+        return [
+            'todos' => Tab::make('Todos')
+                ->badge(IndexRate::query()->count()),
 
-            if (is_array($status) && ($status['status'] ?? null) === 'failed') {
-                $parts[] = sprintf('%s: última sincronização FALHOU (%s)', $label, $status['error'] ?? 'erro');
-            } elseif ($lastSyncedAt !== null) {
-                $parts[] = sprintf('%s: sincronizado em %s', $label, CarbonImmutable::parse($lastSyncedAt)->format('d/m/Y H:i'));
-            } else {
-                $parts[] = sprintf('%s: nunca sincronizado pelo Banco Central', $label);
-            }
-        }
+            'cdi' => Tab::make('CDI')
+                ->badge(IndexRate::query()->where('indexer', 'CDI')->count())
+                ->badgeColor('info')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('indexer', 'CDI')),
 
-        return implode(' • ', $parts);
+            'ipca' => Tab::make('IPCA')
+                ->badge(IndexRate::query()->where('indexer', 'IPCA')->count())
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('indexer', 'IPCA')),
+
+            'publicados' => Tab::make('Publicados')
+                ->badge(IndexRate::query()->where('is_projected', false)->count())
+                ->badgeColor('success')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('is_projected', false)),
+
+            'projetados' => Tab::make('Projetados')
+                ->badge(IndexRate::query()->where('is_projected', true)->count())
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('is_projected', true)),
+        ];
     }
 
     protected function getHeaderActions(): array
@@ -59,112 +90,124 @@ class ListIndexRates extends ListRecords
         return [
             $this->buildSyncAction('syncCdi', 'Sincronizar CDI (BCB)', PuIndexer::Cdi),
             $this->buildSyncAction('syncIpca', 'Sincronizar IPCA (BCB)', PuIndexer::Ipca),
-            $this->buildSeedCalendarAction(),
-            Action::make('importPublished')
-                ->label('Importar índices publicados')
+            ActionGroup::make([
+                Action::make('importPublished')
+                    ->label('Importar índices publicados')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('primary')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.index.import') ?? false)
+                    ->modalHeading('Importar índices publicados (CSV)')
+                    ->modalDescription('CSV com cabeçalho rate_date,rate_value[,notes]. Datas em YYYY-MM-DD (CDI) ou YYYY-MM (IPCA mensal). Linhas são importadas como PUBLICADAS.')
+                    ->form([
+                        Select::make('indexer')
+                            ->label('Indexador')
+                            ->options([
+                                PuIndexer::Cdi->value => 'CDI',
+                                PuIndexer::Ipca->value => 'IPCA',
+                            ])
+                            ->default(PuIndexer::Ipca->value)
+                            ->required(),
+                        TextInput::make('source')
+                            ->label('Fonte')
+                            ->placeholder('Ex.: ANBIMA, B3, manual')
+                            ->default('manual_import'),
+                        FileUpload::make('csv_file')
+                            ->label('Arquivo CSV')
+                            ->disk('local')
+                            ->directory('imports/index-rates')
+                            ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $path = Storage::disk('local')->path((string) $data['csv_file']);
+
+                        try {
+                            $result = app(IndexRateImportService::class)->importPublished(
+                                PuIndexer::from((string) $data['indexer']),
+                                $path,
+                                filled($data['source'] ?? null) ? (string) $data['source'] : null,
+                                auth()->id(),
+                            );
+                        } catch (\Throwable $exception) {
+                            Notification::make()->title('Falha na importação.')->body($exception->getMessage())->danger()->persistent()->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Índices importados.')
+                            ->body(sprintf('%d linha(s) importada(s).%s', $result['imported'], $result['errors'] === [] ? '' : ' '.count($result['errors']).' linha(s) ignorada(s).'))
+                            ->success()
+                            ->send();
+                    }),
+                Action::make('importProjectedSeries')
+                    ->label('Importar série projetada IPCA')
+                    ->icon('heroicon-o-presentation-chart-line')
+                    ->color('warning')
+                    ->visible(fn (): bool => auth()->user()?->can('pu.index.import') ?? false)
+                    ->modalHeading('Importar série projetada IPCA (CSV)')
+                    ->modalDescription('Cria uma SÉRIE PROJETADA em estado "importada". A curva só poderá usá-la após aprovação maker/checker em "Séries Projetadas IPCA".')
+                    ->form([
+                        TextInput::make('name')
+                            ->label('Nome da série')
+                            ->default('IPCA projetado')
+                            ->required(),
+                        TextInput::make('projection_source')
+                            ->label('Fonte da projeção')
+                            ->default('ANBIMA')
+                            ->required(),
+                        TextInput::make('version')
+                            ->label('Versão')
+                            ->default('v1'),
+                        TextInput::make('reference_date')
+                            ->label('Data de referência da projeção (YYYY-MM-DD)'),
+                        FileUpload::make('csv_file')
+                            ->label('Arquivo CSV (rate_date,rate_value)')
+                            ->disk('local')
+                            ->directory('imports/index-rates')
+                            ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $path = Storage::disk('local')->path((string) $data['csv_file']);
+
+                        try {
+                            $result = app(IndexRateImportService::class)->importProjectedSeries(
+                                PuIndexer::Ipca,
+                                $path,
+                                [
+                                    'name' => $data['name'] ?? 'IPCA projetado',
+                                    'projection_source' => $data['projection_source'] ?? null,
+                                    'projection_policy' => 'market',
+                                    'version' => $data['version'] ?? 'v1',
+                                    'reference_date' => filled($data['reference_date'] ?? null) ? (string) $data['reference_date'] : null,
+                                ],
+                                auth()->id(),
+                            );
+                        } catch (\Throwable $exception) {
+                            Notification::make()->title('Falha na importação.')->body($exception->getMessage())->danger()->persistent()->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Série projetada importada.')
+                            ->body(sprintf('Série #%d criada com %d linha(s). Aguardando aprovação maker/checker.', $result['series']->id, $result['imported']))
+                            ->success()
+                            ->send();
+                    }),
+            ])
+                ->label('Importar')
                 ->icon('heroicon-o-arrow-up-tray')
-                ->color('primary')
-                ->visible(fn (): bool => auth()->user()?->can('pu.index.import') ?? false)
-                ->modalHeading('Importar índices publicados (CSV)')
-                ->modaldescription('CSV com cabeçalho rate_date,rate_value[,notes]. Datas em YYYY-MM-DD (CDI) ou YYYY-MM (IPCA mensal). Linhas são importadas como PUBLICADAS.')
-                ->form([
-                    Select::make('indexer')
-                        ->label('Indexador')
-                        ->options([
-                            PuIndexer::Cdi->value => 'CDI',
-                            PuIndexer::Ipca->value => 'IPCA',
-                        ])
-                        ->default(PuIndexer::Ipca->value)
-                        ->required(),
-                    TextInput::make('source')
-                        ->label('Fonte')
-                        ->placeholder('Ex.: ANBIMA, B3, manual')
-                        ->default('manual_import'),
-                    FileUpload::make('csv_file')
-                        ->label('Arquivo CSV')
-                        ->disk('local')
-                        ->directory('imports/index-rates')
-                        ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])
-                        ->required(),
-                ])
-                ->action(function (array $data): void {
-                    $path = Storage::disk('local')->path((string) $data['csv_file']);
-
-                    try {
-                        $result = app(IndexRateImportService::class)->importPublished(
-                            PuIndexer::from((string) $data['indexer']),
-                            $path,
-                            filled($data['source'] ?? null) ? (string) $data['source'] : null,
-                            auth()->id(),
-                        );
-                    } catch (\Throwable $exception) {
-                        Notification::make()->title('Falha na importação.')->body($exception->getMessage())->danger()->persistent()->send();
-
-                        return;
-                    }
-
-                    Notification::make()
-                        ->title('Índices importados.')
-                        ->body(sprintf('%d linha(s) importada(s).%s', $result['imported'], $result['errors'] === [] ? '' : ' '.count($result['errors']).' linha(s) ignorada(s).'))
-                        ->success()
-                        ->send();
-                }),
-            Action::make('importProjectedSeries')
-                ->label('Importar série projetada')
-                ->icon('heroicon-o-presentation-chart-line')
-                ->color('warning')
-                ->visible(fn (): bool => auth()->user()?->can('pu.index.import') ?? false)
-                ->modalHeading('Importar série projetada IPCA (CSV)')
-                ->modalDescription('Cria uma SÉRIE PROJETADA em estado "importada". A curva só poderá usá-la após aprovação maker/checker em "Séries Projetadas IPCA".')
-                ->form([
-                    TextInput::make('name')
-                        ->label('Nome da série')
-                        ->default('IPCA projetado')
-                        ->required(),
-                    TextInput::make('projection_source')
-                        ->label('Fonte da projeção')
-                        ->default('ANBIMA')
-                        ->required(),
-                    TextInput::make('version')
-                        ->label('Versão')
-                        ->default('v1'),
-                    TextInput::make('reference_date')
-                        ->label('Data de referência da projeção (YYYY-MM-DD)'),
-                    FileUpload::make('csv_file')
-                        ->label('Arquivo CSV (rate_date,rate_value)')
-                        ->disk('local')
-                        ->directory('imports/index-rates')
-                        ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])
-                        ->required(),
-                ])
-                ->action(function (array $data): void {
-                    $path = Storage::disk('local')->path((string) $data['csv_file']);
-
-                    try {
-                        $result = app(IndexRateImportService::class)->importProjectedSeries(
-                            PuIndexer::Ipca,
-                            $path,
-                            [
-                                'name' => $data['name'] ?? 'IPCA projetado',
-                                'projection_source' => $data['projection_source'] ?? null,
-                                'projection_policy' => 'market',
-                                'version' => $data['version'] ?? 'v1',
-                                'reference_date' => filled($data['reference_date'] ?? null) ? (string) $data['reference_date'] : null,
-                            ],
-                            auth()->id(),
-                        );
-                    } catch (\Throwable $exception) {
-                        Notification::make()->title('Falha na importação.')->body($exception->getMessage())->danger()->persistent()->send();
-
-                        return;
-                    }
-
-                    Notification::make()
-                        ->title('Série projetada importada.')
-                        ->body(sprintf('Série #%d criada com %d linha(s). Aguardando aprovação maker/checker.', $result['series']->id, $result['imported']))
-                        ->success()
-                        ->send();
-                }),
+                ->color('gray')
+                ->button(),
+            ActionGroup::make([
+                $this->buildSeedCalendarAction(),
+            ])
+                ->label('Mais')
+                ->icon('heroicon-o-ellipsis-horizontal')
+                ->color('gray')
+                ->button(),
         ];
     }
 

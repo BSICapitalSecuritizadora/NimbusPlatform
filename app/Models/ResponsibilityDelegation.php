@@ -195,7 +195,11 @@ class ResponsibilityDelegation extends Model
             }
         }
 
-        if (filled($this->scope_responsibility)) {
+        // `null` significa "não especificada" e recai na responsabilidade primária da
+        // etapa. Qualquer outro valor é comparado literalmente — inclusive string vazia,
+        // que não é estado canônico e não cobre nada. Tratá-la como não especificada
+        // autorizaria em PHP o que o SQL de visibilidade esconde.
+        if ($this->scope_responsibility !== null) {
             return $this->scope_responsibility === $responsibility->value;
         }
 

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\ResponsibilityDelegation;
 use App\Notifications\DelegationExpiringNotification;
+use App\Support\BusinessTime;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -28,7 +29,7 @@ class WarnDelegationExpirationsCommand extends Command
                 $warningHours = $days * 24;
             }
         }
-        $today = now()->toDateString();
+        $today = BusinessTime::dateString();
         $threshold = now()->addHours($warningHours);
 
         $query = ResponsibilityDelegation::query()

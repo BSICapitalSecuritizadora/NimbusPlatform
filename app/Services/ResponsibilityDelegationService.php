@@ -8,6 +8,8 @@ use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use App\Notifications\DelegationCreatedNotification;
 use App\Notifications\DelegationRevokedNotification;
+use App\Support\Delegations\DelegationAuthorityContext;
+use App\Support\Delegations\DelegationWindow;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,6 +19,12 @@ use Illuminate\Validation\ValidationException;
 
 class ResponsibilityDelegationService
 {
+    /**
+     * Teto de estados (usuário + contexto + janela) percorridos pela detecção de
+     * ciclo antes de recusar por não conseguir validar o grafo com segurança.
+     */
+    private const MAX_CYCLE_PATH_STATES = 1000;
+
     /**
      * @param  array{delegator_user_id: int, delegate_user_id: int, scope_type: string, scope_operation_id?: ?int, scope_stage?: ?int, scope_responsibility?: ?string, starts_at: string|\DateTimeInterface, ends_at: string|\DateTimeInterface, reason: string}  $data
      */
@@ -149,13 +157,13 @@ class ResponsibilityDelegationService
             return null;
         }
 
+        // Nenhuma relação é pré-carregada aqui. Quem chama já tem o delegado em
+        // mãos; as roles/permissions dos dois são condição do próprio SQL de
+        // efetividade (ver effectiveDelegationsForResponsibilityQuery) e nenhum
+        // consumidor as lê; e o delegante só interessa a quem monta payload, que
+        // o carrega sob demanda para as poucas linhas exibidas. Pré-carregar
+        // custava seis consultas por chamada, em toda chamada.
         return $this->effectiveDelegationsForResponsibilityQuery($responsibility)
-            ->with([
-                'delegate.roles.permissions',
-                'delegate.permissions',
-                'delegator.roles.permissions',
-                'delegator.permissions',
-            ])
             ->where('delegate_user_id', $delegate->getKey())
             ->where('delegator_user_id', $responsibleUserId)
             ->latest('id')
@@ -174,8 +182,10 @@ class ResponsibilityDelegationService
             return new Collection;
         }
 
+        // O delegado é notificado, o delegante aparece na mensagem. As
+        // roles/permissions de ambos já foram exigidas pelo SQL de efetividade.
         return $this->effectiveDelegationsForResponsibilityQuery($responsibility)
-            ->with(['delegate.roles.permissions', 'delegate.permissions', 'delegator.roles.permissions', 'delegator.permissions'])
+            ->with(['delegate', 'delegator'])
             ->where('delegator_user_id', $responsibleUserId)
             ->orderBy('id')
             ->get()
@@ -437,77 +447,140 @@ class ResponsibilityDelegationService
         }
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * Redundância bloqueada (P2.3, decisão 2): duas delegações do mesmo
+     * delegante cujos escopos podem conferir a mesma autoridade não coexistem,
+     * ainda que para delegados diferentes. Para trocar de escopo, revogue a
+     * anterior e crie a nova -- sem precedence entre linhas, sem revogação
+     * ambígua. Escopos realmente disjuntos continuam convivendo.
+     *
+     * @param  array<string, mixed>  $data
+     */
     private function scopesConflict(ResponsibilityDelegation $existing, array $data): bool
     {
-        if ($existing->scope_type === ResponsibilityDelegation::SCOPE_GLOBAL
-            || $data['scope_type'] === ResponsibilityDelegation::SCOPE_GLOBAL) {
-            return true;
-        }
-
-        if ($existing->scope_type === ResponsibilityDelegation::SCOPE_OPERATION
-            && $data['scope_type'] === ResponsibilityDelegation::SCOPE_OPERATION) {
-            return (int) $existing->scope_operation_id === (int) $data['scope_operation_id'];
-        }
-
-        if ($existing->scope_type === ResponsibilityDelegation::SCOPE_STAGE
-            && $data['scope_type'] === ResponsibilityDelegation::SCOPE_STAGE) {
-            $sameResponsibility = filled($existing->scope_responsibility)
-                ? $existing->scope_responsibility === $data['scope_responsibility']
-                : (int) $existing->scope_stage === (int) $data['scope_stage'];
-            $sameOperationCoverage = $existing->scope_operation_id === null
-                || $data['scope_operation_id'] === null
-                || (int) $existing->scope_operation_id === (int) $data['scope_operation_id'];
-
-            return $sameResponsibility && $sameOperationCoverage;
-        }
-
-        $operationScope = $existing->scope_type === ResponsibilityDelegation::SCOPE_OPERATION
-            ? (int) $existing->scope_operation_id
-            : (int) $data['scope_operation_id'];
-        $stageOperationScope = $existing->scope_type === ResponsibilityDelegation::SCOPE_STAGE
-            ? $existing->scope_operation_id
-            : $data['scope_operation_id'];
-
-        return $stageOperationScope === null || (int) $stageOperationScope === $operationScope;
+        return DelegationAuthorityContext::fromDelegation($existing)
+            ->intersects(DelegationAuthorityContext::fromNormalizedData($data));
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * Existe ciclo bloqueante somente quando a autoridade pode voltar ao
+     * delegante original por um caminho cujos contextos funcionais se
+     * intersectam e cujas vigências podem coexistir -- ou seja, quando há
+     * possibilidade real de reciprocidade no mesmo contexto.
+     *
+     * Cada caminho carrega o contexto acumulado (interseção dos escopos) e a
+     * janela acumulada (interseção dos períodos). Se qualquer uma esvazia, o
+     * caminho não representa ciclo efetivo e é abandonado ali. A → B / Operação
+     * X com B → A / Operação Y não é reciprocidade: são autoridades diferentes.
+     *
+     * Isto é regra de integridade de cadastro e nada mais: nenhuma cadeia
+     * percorrida aqui torna autoridade delegada transitiva -- a autorização
+     * continua decidida por delegação efetiva individual.
+     *
+     * @param  array<string, mixed>  $data
+     */
     private function assertNoCycle(array $data): void
     {
         $delegatorId = (int) $data['delegator_user_id'];
         $delegateId = (int) $data['delegate_user_id'];
-        $visited = [$delegateId => true];
-        $frontier = [$delegateId];
+
+        $seedContext = DelegationAuthorityContext::fromNormalizedData($data);
+        // A janela acumulada nunca é maior que a da nova delegação, e o que já
+        // passou não pode gerar reciprocidade daqui para a frente.
+        $seedWindow = DelegationWindow::between($data['starts_at'], $data['ends_at'])
+            ?->notBefore(CarbonImmutable::now());
+
+        if (! $seedWindow instanceof DelegationWindow) {
+            return;
+        }
+
+        /** @var list<array{user: int, context: DelegationAuthorityContext, window: DelegationWindow}> $frontier */
+        $frontier = [['user' => $delegateId, 'context' => $seedContext, 'window' => $seedWindow]];
+        $visited = [$this->pathStateKey($delegateId, $seedContext, $seedWindow) => true];
 
         while ($frontier !== []) {
-            $next = ResponsibilityDelegation::query()
-                ->whereNull('revoked_at')
-                ->where('ends_at', '>=', now())
-                ->whereIn('delegator_user_id', $frontier)
-                ->pluck('delegate_user_id')
-                ->map(fn (mixed $value): int => (int) $value)
-                ->unique()
-                ->values()
-                ->all();
+            $edges = $this->outgoingEdges(array_column($frontier, 'user'), $seedWindow);
+            $next = [];
 
-            $frontier = [];
+            foreach ($frontier as $state) {
+                foreach ($edges[$state['user']] ?? [] as $edge) {
+                    $context = $state['context']->intersect(DelegationAuthorityContext::fromDelegation($edge));
+                    $edgeWindow = DelegationWindow::fromDelegation($edge);
+                    $window = $edgeWindow instanceof DelegationWindow
+                        ? $state['window']->intersect($edgeWindow)
+                        : null;
 
-            foreach ($next as $candidate) {
-                if ($candidate === $delegatorId) {
-                    throw ValidationException::withMessages(['delegate_user_id' => 'Ciclo transitivo de delegação detectado.']);
-                }
+                    if (! $context instanceof DelegationAuthorityContext || ! $window instanceof DelegationWindow) {
+                        continue;
+                    }
 
-                if (! isset($visited[$candidate])) {
-                    $visited[$candidate] = true;
-                    $frontier[] = $candidate;
+                    $candidate = (int) $edge->delegate_user_id;
+
+                    if ($candidate === $delegatorId) {
+                        throw ValidationException::withMessages([
+                            'delegate_user_id' => 'Ciclo de delegação detectado: a autoridade retornaria ao delegante no mesmo contexto e período.',
+                        ]);
+                    }
+
+                    $key = $this->pathStateKey($candidate, $context, $window);
+
+                    if (isset($visited[$key])) {
+                        continue;
+                    }
+
+                    $visited[$key] = true;
+                    $next[] = ['user' => $candidate, 'context' => $context, 'window' => $window];
                 }
             }
 
-            if (count($visited) > 1000) {
+            if (count($visited) > self::MAX_CYCLE_PATH_STATES) {
                 throw ValidationException::withMessages(['delegate_user_id' => 'Não foi possível validar o grafo de delegações com segurança.']);
             }
+
+            $frontier = $next;
         }
+    }
+
+    /**
+     * Uma consulta por nível da busca: nenhuma aresta fora da janela da nova
+     * delegação pode compor um caminho efetivo, porque toda janela acumulada é
+     * subconjunto dela.
+     *
+     * @param  list<int>  $delegatorIds
+     * @return array<int, list<ResponsibilityDelegation>>
+     */
+    private function outgoingEdges(array $delegatorIds, DelegationWindow $horizon): array
+    {
+        $edges = ResponsibilityDelegation::query()
+            ->whereNull('revoked_at')
+            ->whereIn('delegator_user_id', array_values(array_unique($delegatorIds)))
+            ->where('starts_at', '<=', $horizon->endsAt)
+            ->where('ends_at', '>=', $horizon->startsAt)
+            ->get([
+                'id',
+                'delegator_user_id',
+                'delegate_user_id',
+                'scope_type',
+                'scope_operation_id',
+                'scope_stage',
+                'scope_responsibility',
+                'starts_at',
+                'ends_at',
+                'revoked_at',
+            ]);
+
+        $grouped = [];
+
+        foreach ($edges as $edge) {
+            $grouped[(int) $edge->delegator_user_id][] = $edge;
+        }
+
+        return $grouped;
+    }
+
+    private function pathStateKey(int $userId, DelegationAuthorityContext $context, DelegationWindow $window): string
+    {
+        return $userId.'|'.$context->signature().'|'.$window->signature();
     }
 
     /** @param array<string, mixed> $data */
@@ -679,7 +752,8 @@ class ResponsibilityDelegationService
             return false;
         }
 
-        if (filled($delegation->scope_responsibility)) {
+        // Mesma canonicalização de ResponsibilityDelegation::matchesResponsibility().
+        if ($delegation->scope_responsibility !== null) {
             return $delegation->scope_responsibility === $responsibility->value;
         }
 

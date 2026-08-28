@@ -16,20 +16,80 @@ class IndexProjectionSeriesTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->searchPlaceholder('Buscar séries projetadas...')
+            ->searchDebounce('400ms')
+            ->defaultSort('id', 'desc')
+            ->defaultPaginationPageOption(25)
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->emptyStateHeading(fn ($livewire): string => static::hasActiveFiltersOrSearch($livewire)
+                ? 'Nenhuma série projetada encontrada'
+                : 'Nenhuma série projetada cadastrada')
+            ->emptyStateDescription(fn ($livewire): string => static::hasActiveFiltersOrSearch($livewire)
+                ? 'Tente ajustar o termo pesquisado ou os filtros.'
+                : 'As séries projetadas aparecerão aqui quando forem importadas para o sistema.')
+            ->emptyStateIcon('heroicon-o-presentation-chart-line')
+            ->emptyStateActions([
+                Action::make('clear_table_filters')
+                    ->label('Limpar filtros')
+                    ->color('gray')
+                    ->visible(fn ($livewire): bool => static::hasActiveFiltersOrSearch($livewire))
+                    ->action(function ($livewire): void {
+                        $livewire->resetTableSearch();
+                        $livewire->resetTableFiltersForm();
+                    }),
+            ])
             ->columns([
-                TextColumn::make('indexer')->label('Indexador')->badge()->sortable(),
-                TextColumn::make('name')->label('Série')->searchable(),
+                TextColumn::make('indexer')
+                    ->label('Indexador')
+                    ->badge()
+                    ->color('info')
+                    ->sortable(),
+
+                TextColumn::make('name')
+                    ->label('Série')
+                    ->weight('semibold')
+                    ->searchable()
+                    ->sortable(),
+
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (IndexProjectionSeriesStatus $state): string => $state->label())
                     ->color(fn (IndexProjectionSeriesStatus $state): string => $state->color()),
-                TextColumn::make('projection_source')->label('Fonte')->toggleable(),
-                TextColumn::make('version')->label('Versão')->toggleable(),
-                TextColumn::make('reference_date')->label('Ref.')->date('d/m/Y')->toggleable(),
-                TextColumn::make('rates_count')->label('Linhas')->counts('rates')->badge(),
-                TextColumn::make('importedBy.name')->label('Importada por')->toggleable()->placeholder('—'),
-                TextColumn::make('approvedBy.name')->label('Aprovada por')->toggleable()->placeholder('—'),
+
+                TextColumn::make('projection_source')
+                    ->label('Fonte')
+                    ->toggleable(),
+
+                TextColumn::make('version')
+                    ->label('Versão')
+                    ->badge()
+                    ->color('gray')
+                    ->toggleable(),
+
+                TextColumn::make('reference_date')
+                    ->label('Referência')
+                    ->date('d/m/Y')
+                    ->toggleable(),
+
+                TextColumn::make('rates_count')
+                    ->label('Linhas')
+                    ->counts('rates')
+                    ->badge()
+                    ->color('gray')
+                    ->alignEnd(),
+
+                TextColumn::make('importedBy.name')
+                    ->label('Importada por')
+                    ->color('gray')
+                    ->toggleable()
+                    ->placeholder('—'),
+
+                TextColumn::make('approvedBy.name')
+                    ->label('Aprovada por')
+                    ->color('gray')
+                    ->toggleable()
+                    ->placeholder('—'),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -93,5 +153,26 @@ class IndexProjectionSeriesTable
                         Notification::make()->title('Série marcada como obsoleta.')->success()->send();
                     }),
             ]);
+    }
+
+    /**
+     * Verifica se há busca ou filtros aplicados na tabela, para diferenciar o
+     * empty state "nenhuma série cadastrada" do "nenhuma série encontrada".
+     */
+    protected static function hasActiveFiltersOrSearch(mixed $livewire): bool
+    {
+        if (filled($livewire->tableSearch ?? null)) {
+            return true;
+        }
+
+        $hasValue = function (mixed $value) use (&$hasValue): bool {
+            if (is_array($value)) {
+                return collect($value)->contains(fn (mixed $item): bool => $hasValue($item));
+            }
+
+            return filled($value);
+        };
+
+        return collect($livewire->tableFilters ?? [])->contains(fn (mixed $state): bool => $hasValue($state));
     }
 }

@@ -54,6 +54,15 @@ enum LegalInstrumentType: string
     }
 
     /**
+     * Este instrumento define diretamente a remuneração e o fluxo do valor
+     * mobiliário emitido, em vez de descrever o crédito usado como lastro.
+     */
+    public function governsPuBaseline(): bool
+    {
+        return $this === self::SecuritizationTerm;
+    }
+
+    /**
      * Campos que a extração procura neste tipo de instrumento.
      *
      * Todos os tipos partilham o bloco de identificação e o de garantias; o que
@@ -81,13 +90,28 @@ enum LegalInstrumentType: string
                 LegalInstrumentFieldKey::OriginalAmount,
                 LegalInstrumentFieldKey::PrincipalAmount,
                 LegalInstrumentFieldKey::Indexer,
+                LegalInstrumentFieldKey::IndexPercentage,
                 LegalInstrumentFieldKey::Remuneration,
                 LegalInstrumentFieldKey::InterestRate,
                 LegalInstrumentFieldKey::Spread,
+                LegalInstrumentFieldKey::BusinessDayBasis,
+                LegalInstrumentFieldKey::DayCountRule,
+                LegalInstrumentFieldKey::BusinessDayDefinition,
+                LegalInstrumentFieldKey::CalendarCode,
+                LegalInstrumentFieldKey::IndexRateLookupMode,
+                LegalInstrumentFieldKey::IndexRateLagBusinessDays,
+                LegalInstrumentFieldKey::InitialUnitValue,
                 LegalInstrumentFieldKey::DefaultInterest,
                 LegalInstrumentFieldKey::Penalty,
                 LegalInstrumentFieldKey::PaymentSchedule,
+                LegalInstrumentFieldKey::FirstInterestPaymentDate,
+                LegalInstrumentFieldKey::InterestPaymentFrequency,
                 LegalInstrumentFieldKey::Amortization,
+                LegalInstrumentFieldKey::PaymentConvention,
+                LegalInstrumentFieldKey::FirstCouponPreIntegralizationPremiumEnabled,
+                LegalInstrumentFieldKey::FirstCouponPreIntegralizationBusinessDays,
+                LegalInstrumentFieldKey::FirstCouponPreIntegralizationApplyIndexFactor,
+                LegalInstrumentFieldKey::FirstCouponPreIntegralizationApplySpreadFactor,
                 LegalInstrumentFieldKey::GracePeriod,
                 LegalInstrumentFieldKey::MaturityDate,
                 LegalInstrumentFieldKey::AffirmativeCovenants,
@@ -95,6 +119,32 @@ enum LegalInstrumentType: string
                 LegalInstrumentFieldKey::AccelerationEvents,
                 LegalInstrumentFieldKey::InformationObligations,
                 LegalInstrumentFieldKey::Avalists,
+            ]),
+
+            self::SecuritizationTerm => array_merge($common, [
+                LegalInstrumentFieldKey::OriginalAmount,
+                LegalInstrumentFieldKey::Indexer,
+                LegalInstrumentFieldKey::IndexPercentage,
+                LegalInstrumentFieldKey::Remuneration,
+                LegalInstrumentFieldKey::InterestRate,
+                LegalInstrumentFieldKey::Spread,
+                LegalInstrumentFieldKey::BusinessDayBasis,
+                LegalInstrumentFieldKey::DayCountRule,
+                LegalInstrumentFieldKey::BusinessDayDefinition,
+                LegalInstrumentFieldKey::CalendarCode,
+                LegalInstrumentFieldKey::IndexRateLookupMode,
+                LegalInstrumentFieldKey::IndexRateLagBusinessDays,
+                LegalInstrumentFieldKey::InitialUnitValue,
+                LegalInstrumentFieldKey::PaymentSchedule,
+                LegalInstrumentFieldKey::FirstInterestPaymentDate,
+                LegalInstrumentFieldKey::InterestPaymentFrequency,
+                LegalInstrumentFieldKey::Amortization,
+                LegalInstrumentFieldKey::PaymentConvention,
+                LegalInstrumentFieldKey::FirstCouponPreIntegralizationPremiumEnabled,
+                LegalInstrumentFieldKey::FirstCouponPreIntegralizationBusinessDays,
+                LegalInstrumentFieldKey::FirstCouponPreIntegralizationApplyIndexFactor,
+                LegalInstrumentFieldKey::FirstCouponPreIntegralizationApplySpreadFactor,
+                LegalInstrumentFieldKey::MaturityDate,
             ]),
 
             self::RealEstateFiduciaryAlienation => array_merge($common, [

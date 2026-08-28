@@ -18,6 +18,7 @@ use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\AccessPermission;
 use App\Enums\LegalInstrumentFieldKey;
 use App\Enums\LegalInstrumentFieldStatus;
+use App\Enums\LegalInstrumentType;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Widgets\PuCalculator\PuBaselineReadinessWidget;
 use App\Models\BusinessCalendar;
@@ -128,7 +129,9 @@ it('blocks when two current instruments of the same emission disagree about the 
     $emission = cdiEmission();
     proveContractualBaseline($emission);
     prepareCandidateGovernance($emission);
-    $divergent = LegalInstrument::factory()->create(['emission_id' => $emission->id, 'number' => '002/2026']);
+    $divergent = LegalInstrument::factory()
+        ->ofType(LegalInstrumentType::SecuritizationTerm, '002/2026')
+        ->create(['emission_id' => $emission->id]);
     LegalInstrumentField::factory()->for($divergent, 'instrument')->create([
         'field_key' => LegalInstrumentFieldKey::BusinessDayBasis,
         'value_type' => LegalInstrumentFieldKey::BusinessDayBasis->valueType(),
@@ -766,10 +769,13 @@ function proveContractualFields(Emission $emission, array $fields, string $effec
 {
     $document = Document::factory()->create(['title' => 'Instrumento contratual da emissão '.$emission->id]);
     $emission->documents()->attach($document);
-    $instrument = LegalInstrument::factory()->create([
-        'emission_id' => $emission->id,
-        'number' => sprintf('%03d/CONTRATO', $emission->id),
-    ]);
+    $instrumentNumber = sprintf('%03d/CONTRATO', $emission->id);
+    $instrumentType = $emission->type === 'CRI'
+        ? LegalInstrumentType::SecuritizationTerm
+        : LegalInstrumentType::Other;
+    $instrument = LegalInstrument::factory()
+        ->ofType($instrumentType, $instrumentNumber)
+        ->create(['emission_id' => $emission->id]);
 
     foreach ($fields as $fieldKey => [$value, $numeric, $date]) {
         $key = LegalInstrumentFieldKey::from($fieldKey);

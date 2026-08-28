@@ -19,6 +19,7 @@ use App\Enums\LegalInstrumentFieldValueType;
 use App\Models\Emission;
 use App\Models\EmissionPuBaselineEvidence;
 use App\Models\LegalInstrument;
+use App\Models\LegalInstrumentDocument;
 use App\Models\LegalInstrumentField;
 use App\Services\LegalInstruments\InstrumentPositionResolver;
 use Carbon\CarbonImmutable;
@@ -195,9 +196,14 @@ final class PuBaselineCandidateFactory
      * aditamento. Assim aditamentos sucessivos NÃO viram conflito, e um
      * aditamento com vigência futura não vaza para a posição de hoje.
      *
-     * O que sobra agrupado com mais de uma linha é divergência entre
-     * instrumentos diferentes da mesma emissão — conflito documental
-     * simultâneo, tratado em `resolveField()`.
+     * Quando existe Termo de Securitização, apenas ele governa o PU do valor
+     * mobiliário. CCB, CCI e demais instrumentos continuam com suas posições
+     * próprias, mas são lastro/acessórios e não entram nesta consolidação. Um
+     * cadastro legado que tenha criado o aditamento como instrumento separado
+     * também não disputa com o Termo que possui o documento original. Na
+     * ausência de documento base, mantém-se o fallback genérico anterior;
+     * divergências entre os instrumentos desse fallback continuam sendo
+     * tratadas como conflito em `resolveField()`.
      *
      * @return Collection<string, Collection<int, LegalInstrumentField>>
      */
@@ -208,8 +214,20 @@ final class PuBaselineCandidateFactory
             self::PU_FIELD_KEYS,
         );
 
-        return $emission->legalInstruments()
-            ->get()
+        $instruments = $emission->legalInstruments()->with('documents')->get();
+        $governingInstruments = $instruments
+            ->filter(fn (LegalInstrument $instrument): bool => $instrument->type->governsPuBaseline());
+
+        if ($governingInstruments->isNotEmpty()) {
+            $instrumentsWithBaseDocument = $governingInstruments
+                ->filter(fn (LegalInstrument $instrument): bool => $instrument->documents
+                    ->contains(fn (LegalInstrumentDocument $document): bool => $document->role->isBase()));
+            $instruments = $instrumentsWithBaseDocument->isNotEmpty()
+                ? $instrumentsWithBaseDocument
+                : $governingInstruments;
+        }
+
+        return $instruments
             // `values()` é obrigatório: `fieldsAsOf()` devolve a coleção indexada
             // por `field_key`, e um `flatMap` que preserve essas chaves faria o
             // último instrumento sobrescrever os anteriores — o conflito

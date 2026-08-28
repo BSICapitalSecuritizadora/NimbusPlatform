@@ -7,6 +7,7 @@ use App\Models\Measurement;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
 use App\Models\User;
+use App\Support\Delegations\ResponsibilityAuthorization;
 
 class MeasurementAuthorizationService
 {
@@ -98,27 +99,56 @@ class MeasurementAuthorizationService
         return $this->delegations->activeDelegationFor($user, $measurement->operation, $resolved);
     }
 
-    private function hasResponsibility(
+    /**
+     * A única resolução de "quem autorizou esta ação": responsabilidade direta,
+     * delegação efetiva ou bypass administrativo -- nessa ordem, porque o
+     * administrador que também é o responsável direto age como responsável, e o
+     * que possui delegação efetiva age como delegado. O bypass só é a origem
+     * quando é a única coisa que autoriza.
+     *
+     * A decisão de autorização e a propriedade registrada no Activitylog saem
+     * daqui, para que não possam divergir.
+     */
+    public function resolveAuthorization(
         User $user,
         Measurement $measurement,
-        MeasurementResponsibility $responsibility,
-    ): bool {
-        if (! $user->can($responsibility->permission())) {
-            return false;
-        }
+        MeasurementResponsibility|int|string $responsibility,
+    ): ResponsibilityAuthorization {
+        $resolved = $this->resolveResponsibility($responsibility);
 
-        if ($this->isWorkflowAdministrator($user)) {
-            return true;
+        if (! $resolved instanceof MeasurementResponsibility || ! $user->can($resolved->permission())) {
+            return ResponsibilityAuthorization::none();
         }
 
         $operation = $measurement->operation;
 
         if (! $operation instanceof Operation) {
-            return false;
+            return $this->isWorkflowAdministrator($user)
+                ? ResponsibilityAuthorization::adminOverride()
+                : ResponsibilityAuthorization::none();
         }
 
-        return $operation->hasDirectResponsibility($user, $responsibility)
-            || $this->delegations->activeDelegationFor($user, $operation, $responsibility) instanceof ResponsibilityDelegation;
+        if ($operation->hasDirectResponsibility($user, $resolved)) {
+            return ResponsibilityAuthorization::direct();
+        }
+
+        $delegation = $this->delegations->activeDelegationFor($user, $operation, $resolved);
+
+        if ($delegation instanceof ResponsibilityDelegation) {
+            return ResponsibilityAuthorization::delegated($delegation);
+        }
+
+        return $this->isWorkflowAdministrator($user)
+            ? ResponsibilityAuthorization::adminOverride()
+            : ResponsibilityAuthorization::none();
+    }
+
+    private function hasResponsibility(
+        User $user,
+        Measurement $measurement,
+        MeasurementResponsibility $responsibility,
+    ): bool {
+        return $this->resolveAuthorization($user, $measurement, $responsibility)->authorizes();
     }
 
     private function resolveResponsibility(

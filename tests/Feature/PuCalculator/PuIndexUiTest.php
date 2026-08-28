@@ -45,3 +45,30 @@ it('approves a projected series through the Filament table action enforcing make
     expect($series->fresh()->status)->toBe(IndexProjectionSeriesStatus::Approved)
         ->and($series->fresh()->approved_by)->toBe($checker->id);
 });
+
+it('renders projected series list page with refined empty state and table configuration', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+    $this->actingAs($admin);
+
+    Livewire::test(ListIndexProjectionSeries::class)
+        ->assertOk()
+        ->assertSee('Nenhuma série projetada cadastrada')
+        ->assertSee('As séries projetadas aparecerão aqui quando forem importadas para o sistema.');
+});
+
+it('renders projected series list page with records when data exists', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+    $this->actingAs($admin);
+
+    $series = IndexProjectionSeries::factory()->create([
+        'name' => 'IPCA Projeção 2026-08',
+        'status' => IndexProjectionSeriesStatus::Approved->value,
+    ]);
+
+    Livewire::test(ListIndexProjectionSeries::class)
+        ->assertOk()
+        ->assertSee('IPCA Projeção 2026-08')
+        ->assertSee('Aprovada');
+});

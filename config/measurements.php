@@ -3,6 +3,11 @@
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 
 return [
+    // Fuso do negócio. A aplicação persiste e compara em UTC (`app.timezone`); este
+    // fuso decide apenas a que dia civil um instante pertence — feriado, fim de
+    // semana, business date de alerta e janela de aviso de delegação.
+    'business_timezone' => env('BUSINESS_TIMEZONE', 'America/Sao_Paulo'),
+
     'sla' => [
         // Calendário corporativo nacional já governado pelo NimbusPlatform.
         // A avaliação falha com estado explícito se o ano ainda não estiver materializado.

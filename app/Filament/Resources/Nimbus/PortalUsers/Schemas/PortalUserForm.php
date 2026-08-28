@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Nimbus\PortalUsers\Schemas;
 use App\Models\Nimbus\PortalUser;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -19,100 +18,98 @@ class PortalUserForm
     {
         return $schema
             ->components([
-                Grid::make([
-                    'default' => 1,
-                ])
+                Section::make('Dados Cadastrais')
+                    ->description('Identificação e dados de contato do usuário externo.')
+                    ->icon(Heroicon::OutlinedIdentification)
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                        'lg' => 2,
+                    ])
                     ->schema([
-                        Section::make('Dados Cadastrais')
-                            ->description('Cadastro de novo usuário externo.')
-                            ->icon(Heroicon::OutlinedIdentification)
-                            ->columnSpanFull()
-                            ->columns([
-                                'default' => 1,
-                                '2xl' => 2,
+                        TextInput::make('full_name')
+                            ->label('Nome Completo')
+                            ->placeholder('Ex: João da Silva')
+                            ->prefixIcon(Heroicon::OutlinedUser)
+                            ->required()
+                            ->maxLength(200),
+                        TextInput::make('email')
+                            ->label('E-mail')
+                            ->email()
+                            ->placeholder('Ex: joao@email.com')
+                            ->prefixIcon(Heroicon::OutlinedEnvelope)
+                            ->maxLength(200),
+                        TextInput::make('document_number')
+                            ->label('CPF')
+                            ->placeholder('000.000.000-00')
+                            ->prefixIcon(Heroicon::OutlinedIdentification)
+                            ->mask('999.999.999-99')
+                            ->formatStateUsing(fn (?string $state): ?string => self::formatCpfForDisplay($state))
+                            ->dehydrateStateUsing(fn (?string $state): ?string => self::normalizeDigits($state))
+                            ->rule('regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/')
+                            ->validationMessages([
+                                'regex' => 'O CPF deve seguir o formato 000.000.000-00.',
                             ])
-                            ->schema([
-                                TextInput::make('full_name')
-                                    ->label('Nome Completo')
-                                    ->placeholder('Ex: João da Silva')
-                                    ->prefixIcon(Heroicon::OutlinedUser)
-                                    ->required()
-                                    ->maxLength(200)
-                                    ->columnSpanFull(),
-                                TextInput::make('email')
-                                    ->label('E-mail')
-                                    ->email()
-                                    ->placeholder('Ex: joao@email.com')
-                                    ->prefixIcon(Heroicon::OutlinedEnvelope)
-                                    ->maxLength(200)
-                                    ->columnSpanFull(),
-                                TextInput::make('document_number')
-                                    ->label('CPF')
-                                    ->placeholder('000.000.000-00')
-                                    ->prefixIcon(Heroicon::OutlinedIdentification)
-                                    ->mask('999.999.999-99')
-                                    ->formatStateUsing(fn (?string $state): ?string => self::formatCpfForDisplay($state))
-                                    ->dehydrateStateUsing(fn (?string $state): ?string => self::normalizeDigits($state))
-                                    ->rule('regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/')
-                                    ->validationMessages([
-                                        'regex' => 'O CPF deve seguir o formato 000.000.000-00.',
-                                    ])
-                                    ->maxLength(20)
-                                    ->rules([
-                                        fn (Get $get, ?Model $record): \Closure => function (string $attribute, $value, \Closure $fail) use ($record): void {
-                                            $digits = preg_replace('/\D+/', '', (string) $value);
+                            ->maxLength(20)
+                            ->rules([
+                                fn (Get $get, ?Model $record): \Closure => function (string $attribute, $value, \Closure $fail) use ($record): void {
+                                    $digits = preg_replace('/\D+/', '', (string) $value);
 
-                                            if ($digits === '' || $digits === null) {
-                                                return;
-                                            }
+                                    if ($digits === '' || $digits === null) {
+                                        return;
+                                    }
 
-                                            $hash = PortalUser::documentNumberHash($digits);
-                                            $exists = PortalUser::query()
-                                                ->where('document_number_hash', $hash)
-                                                ->when($record?->exists, fn ($q) => $q->where('id', '!=', $record->getKey()))
-                                                ->exists();
+                                    $hash = PortalUser::documentNumberHash($digits);
+                                    $exists = PortalUser::query()
+                                        ->where('document_number_hash', $hash)
+                                        ->when($record?->exists, fn ($q) => $q->where('id', '!=', $record->getKey()))
+                                        ->exists();
 
-                                            if ($exists) {
-                                                $fail('Este CPF já está cadastrado.');
-                                            }
-                                        },
-                                    ]),
-                                TextInput::make('phone_number')
-                                    ->label('Telefone/Celular')
-                                    ->placeholder('(00) 00000-0000')
-                                    ->prefixIcon(Heroicon::OutlinedPhone)
-                                    ->tel()
-                                    ->mask('(99) 99999-9999')
-                                    ->formatStateUsing(fn (?string $state): ?string => self::formatPhoneForDisplay($state))
-                                    ->dehydrateStateUsing(fn (?string $state): ?string => self::normalizeDigits($state))
-                                    ->rule('regex:/^\(\d{2}\)\s\d{4,5}-\d{4}$/')
-                                    ->validationMessages([
-                                        'regex' => 'O telefone deve seguir o formato (00) 0000-0000 ou (00) 90000-0000.',
-                                    ])
-                                    ->maxLength(20),
+                                    if ($exists) {
+                                        $fail('Este CPF já está cadastrado.');
+                                    }
+                                },
                             ]),
-                        Section::make('Status da Conta')
-                            ->icon(Heroicon::OutlinedShieldCheck)
-                            ->compact()
-                            ->columnSpanFull()
-                            ->schema([
-                                Select::make('status')
-                                    ->label('Situação')
-                                    ->options([
-                                        'ACTIVE' => 'Ativo',
-                                        'INACTIVE' => 'Inativo',
-                                        'BLOCKED' => 'Suspenso',
-                                    ])
-                                    ->default('ACTIVE')
-                                    ->afterStateHydrated(function (?string $state, Set $set): void {
-                                        if ($state === 'INVITED') {
-                                            $set('status', 'INACTIVE');
-                                        }
-                                    })
-                                    ->required()
-                                    ->native(false)
-                                    ->helperText('Define se o usuário possui acesso ativo ao portal.'),
-                            ]),
+                        TextInput::make('phone_number')
+                            ->label('Telefone/Celular')
+                            ->placeholder('(00) 00000-0000')
+                            ->prefixIcon(Heroicon::OutlinedPhone)
+                            ->tel()
+                            ->mask('(99) 99999-9999')
+                            ->formatStateUsing(fn (?string $state): ?string => self::formatPhoneForDisplay($state))
+                            ->dehydrateStateUsing(fn (?string $state): ?string => self::normalizeDigits($state))
+                            ->rule('regex:/^\(\d{2}\)\s\d{4,5}-\d{4}$/')
+                            ->validationMessages([
+                                'regex' => 'O telefone deve seguir o formato (00) 0000-0000 ou (00) 90000-0000.',
+                            ])
+                            ->maxLength(20),
+                    ]),
+                Section::make('Status da Conta')
+                    ->description('Defina se o usuário possui autorização ativa para acessar os recursos do portal.')
+                    ->icon(Heroicon::OutlinedShieldCheck)
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                        'lg' => 2,
+                    ])
+                    ->schema([
+                        Select::make('status')
+                            ->label('Situação')
+                            ->prefixIcon(Heroicon::OutlinedCheckCircle)
+                            ->options([
+                                'ACTIVE' => 'Ativo',
+                                'INACTIVE' => 'Inativo',
+                                'BLOCKED' => 'Suspenso',
+                            ])
+                            ->default('ACTIVE')
+                            ->afterStateHydrated(function (?string $state, Set $set): void {
+                                if ($state === 'INVITED') {
+                                    $set('status', 'INACTIVE');
+                                }
+                            })
+                            ->required()
+                            ->native(false)
+                            ->helperText('Define se o usuário possui acesso ativo ao portal.'),
                     ]),
             ]);
     }

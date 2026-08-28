@@ -15,6 +15,8 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class ResponsibilityDelegationResource extends Resource
@@ -89,5 +91,30 @@ class ResponsibilityDelegationResource extends Resource
             $q->where('delegator_user_id', $user->getKey())
                 ->orWhere('delegate_user_id', $user->getKey());
         });
+    }
+
+    public static function canViewAny(): bool
+    {
+        return Gate::allows('viewAny', ResponsibilityDelegation::class);
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return Gate::allows('view', $record);
+    }
+
+    public static function canCreate(): bool
+    {
+        return Gate::allows('create', ResponsibilityDelegation::class);
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
     }
 }

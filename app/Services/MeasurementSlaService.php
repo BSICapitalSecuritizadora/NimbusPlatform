@@ -9,6 +9,7 @@ use App\Models\Measurement;
 use App\Models\MeasurementPause;
 use App\Models\MeasurementReview;
 use App\Models\SlaConfiguration;
+use App\Support\BusinessTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
@@ -324,6 +325,12 @@ class MeasurementSlaService
             return 0;
         }
 
+        // A grade de dias é a do negócio: em UTC−3 as horas 21:00–23:59 locais cairiam
+        // no dia UTC seguinte e seriam classificadas pelo calendário do dia errado.
+        // A conversão não move o instante, então a duração em segundos é preservada.
+        $start = BusinessTime::at($start);
+        $end = BusinessTime::at($end);
+
         $seconds = 0;
         $cursor = $start->startOfDay();
 
@@ -350,7 +357,7 @@ class MeasurementSlaService
         int $seconds,
         ?string $calendarCode,
     ): array {
-        $cursor = $start;
+        $cursor = BusinessTime::at($start);
         $remaining = $seconds;
 
         while ($remaining > 0) {
@@ -392,7 +399,7 @@ class MeasurementSlaService
                 }
 
                 return [
-                    'deadline_at' => $deadlineAt,
+                    'deadline_at' => BusinessTime::toApplication($deadlineAt),
                     'unavailable_reason' => null,
                 ];
             }
@@ -402,16 +409,18 @@ class MeasurementSlaService
         }
 
         return [
-            'deadline_at' => $cursor,
+            'deadline_at' => BusinessTime::toApplication($cursor),
             'unavailable_reason' => null,
         ];
     }
 
     private function isBusinessDay(CarbonImmutable $date, ?string $calendarCode): bool
     {
+        $businessDate = BusinessTime::at($date);
+
         return $calendarCode === null
-            ? ! $date->isWeekend()
-            : $this->calendar->isBusinessDay($date, $calendarCode);
+            ? ! $businessDate->isWeekend()
+            : $this->calendar->isBusinessDay($businessDate, $calendarCode);
     }
 
     private function calendarUnavailableReason(
@@ -423,6 +432,10 @@ class MeasurementSlaService
             return null;
         }
 
+        // Só a resposta positiva é memorizada. A negativa é reconsultada de
+        // propósito: um ano materializado no meio da execução precisa passar a
+        // valer na avaliação seguinte, com a mesma instância do serviço. É o que
+        // custa uma consulta por medição no caminho degradado -- ver P2.4.
         if (! isset($this->verifiedCalendars[$calendarCode])) {
             if (! BusinessCalendar::query()->where('code', $calendarCode)->exists()) {
                 return "Calendário {$calendarCode} não cadastrado.";
@@ -431,7 +444,7 @@ class MeasurementSlaService
             $this->verifiedCalendars[$calendarCode] = true;
         }
 
-        foreach (range($start->year, $end->year) as $year) {
+        foreach (range(BusinessTime::at($start)->year, BusinessTime::at($end)->year) as $year) {
             if (! isset($this->verifiedCalendarYears[$calendarCode][$year])) {
                 if (! BusinessCalendarYear::query()
                     ->where('calendar_code', $calendarCode)

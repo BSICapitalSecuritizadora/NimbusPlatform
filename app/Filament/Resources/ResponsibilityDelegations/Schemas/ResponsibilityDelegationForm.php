@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ResponsibilityDelegations\Schemas;
 use App\Enums\MeasurementResponsibility;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
+use App\Support\BusinessTime;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -81,8 +82,10 @@ class ResponsibilityDelegationForm
                     ->required(fn ($get): bool => $get('scope_type') === ResponsibilityDelegation::SCOPE_STAGE)
                     ->disabled(fn (?ResponsibilityDelegation $record) => $record !== null),
 
+                // A vigência é operada no fuso do negócio; a persistência segue em UTC.
                 DateTimePicker::make('starts_at')
                     ->label('Início')
+                    ->timezone(BusinessTime::timezone())
                     ->required()
                     ->seconds(false)
                     ->default(now())
@@ -90,6 +93,7 @@ class ResponsibilityDelegationForm
 
                 DateTimePicker::make('ends_at')
                     ->label('Término')
+                    ->timezone(BusinessTime::timezone())
                     ->required()
                     ->seconds(false)
                     ->after('starts_at')

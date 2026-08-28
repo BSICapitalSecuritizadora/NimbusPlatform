@@ -20,6 +20,7 @@ class AnnouncementForm
                 Grid::make([
                     'default' => 1,
                 ])
+                    ->columnSpanFull()
                     ->schema([
                         Section::make('Conteúdo do Aviso')
                             ->description('Comunicados exibidos aos usuários no portal.')
@@ -29,15 +30,23 @@ class AnnouncementForm
                                 TextInput::make('title')
                                     ->label('Título')
                                     ->required()
-                                    ->maxLength(255),
+                                    ->maxLength(255)
+                                    ->placeholder('Ex: Manutenção Programada do Sistema'),
                                 Textarea::make('body')
                                     ->label('Mensagem')
                                     ->required()
                                     ->rows(6)
+                                    ->placeholder('Descreva o comunicado que será exibido no portal...')
                                     ->columnSpanFull(),
                             ]),
                         Section::make('Publicação')
+                            ->description('Defina a criticidade, vigência e disponibilidade do aviso.')
+                            ->icon('heroicon-o-calendar')
                             ->columnSpanFull()
+                            ->columns([
+                                'default' => 1,
+                                'md' => 3,
+                            ])
                             ->schema([
                                 Select::make('level')
                                     ->label('Nível')
@@ -48,19 +57,33 @@ class AnnouncementForm
                                         'danger' => 'Crítico',
                                     ])
                                     ->default('info')
-                                    ->required(),
+                                    ->required()
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                    ]),
                                 DateTimePicker::make('starts_at')
                                     ->label('Início da Exibição')
                                     ->seconds(false)
-                                    ->native(false),
+                                    ->native(false)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                    ]),
                                 DateTimePicker::make('ends_at')
                                     ->label('Fim da Exibição')
                                     ->seconds(false)
-                                    ->native(false),
+                                    ->native(false)
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 1,
+                                    ]),
                                 Toggle::make('is_active')
                                     ->label('Publicado no Portal')
+                                    ->helperText('Quando desativado, o aviso não será exibido aos usuários.')
                                     ->default(true)
-                                    ->required(),
+                                    ->required()
+                                    ->columnSpanFull(),
                             ]),
                     ]),
             ]);

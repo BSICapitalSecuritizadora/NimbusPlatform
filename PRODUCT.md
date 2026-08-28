@@ -28,7 +28,7 @@ O produto não é um SaaS genérico: é o sistema operacional interno de uma sec
 
 ## Operating Context
 
-- Produção em servidor dedicado (`/var/www/bsicapital`): cron `schedule:run`, fila Redis via Supervisor (`infra/production/`).
+- Produção em Azure App Service (`bsicapital`, slot Production): `startup.sh` sobe nginx, roda `migrate --isolated` e mantém `queue:work` e `schedule:work` em laços de supervisão; cache e fila em Redis. Persistência e comparação em UTC; o fuso de negócio (`BUSINESS_TIMEZONE`, America/Sao_Paulo) decide apenas a data civil de feriado, fim de semana e cortes diários.
 - Scheduler denso (`routes/console.php`): sync diário Conta Azul, índices CDI/IPCA (BCB/SGS), geração de curva de PU realizada, obrigações diárias, snapshots mensais de fundos, purgas LGPD mensais.
 - Workflows críticos com homologação maker/checker: curvas de PU, medições de obra, dados aprovados com lock.
 - Site institucional público em pt_BR com verticais `/imobiliario/cri-real-estate`, `/agronegocio/cra`, `/infra-empresas/cr-futuro`, páginas de emissões por código IF, compliance, canal de ética, governança, RI.

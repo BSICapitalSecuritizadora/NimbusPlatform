@@ -7,6 +7,7 @@ namespace App\Domain\PuCalculator\Services;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceDocumentType;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceStatus;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceType;
+use App\Domain\PuCalculator\Exceptions\PuMakerCheckerException;
 use App\Enums\AccessPermission;
 use App\Models\Document;
 use App\Models\Emission;
@@ -19,6 +20,8 @@ use Illuminate\Validation\ValidationException;
 
 final class PuBaselineEvidenceReviewService
 {
+    public const LOG_NAME = 'pu-baseline-evidence';
+
     /**
      * @param array{
      *   document_id:int,
@@ -54,7 +57,7 @@ final class PuBaselineEvidenceReviewService
             ]);
         }
 
-        return EmissionPuBaselineEvidence::query()->create([
+        $evidence = EmissionPuBaselineEvidence::query()->create([
             'emission_id' => $emission->id,
             'document_id' => $document->id,
             'evidence_type' => $evidenceType,
@@ -66,6 +69,21 @@ final class PuBaselineEvidenceReviewService
             'notes' => $this->nullableTrim($data['notes'] ?? null),
             'created_by' => $actor->id,
         ]);
+
+        activity(self::LOG_NAME)
+            ->event('created_pending_review')
+            ->performedOn($evidence)
+            ->causedBy($actor)
+            ->withProperties([
+                'emission_id' => $emission->id,
+                'document_id' => $document->id,
+                'evidence_type' => $evidenceType->value,
+                'evidenced_value' => $value,
+                'status' => PuBaselineEvidenceStatus::PendingReview->value,
+            ])
+            ->log('Evidência de baseline criada para revisão.');
+
+        return $evidence;
     }
 
     public function approve(
@@ -81,6 +99,14 @@ final class PuBaselineEvidenceReviewService
             ]);
         }
 
+        if ($evidence->status !== PuBaselineEvidenceStatus::PendingReview) {
+            throw ValidationException::withMessages([
+                'evidence' => 'Apenas evidências pendentes de revisão podem ser aprovadas.',
+            ]);
+        }
+
+        $this->assertMakerChecker($evidence, $reviewer);
+
         return DB::transaction(function () use ($evidence, $reviewer, $reviewNotes): EmissionPuBaselineEvidence {
             $evidence->update([
                 'status' => PuBaselineEvidenceStatus::Approved,
@@ -89,7 +115,21 @@ final class PuBaselineEvidenceReviewService
                 'review_notes' => $this->nullableTrim($reviewNotes),
             ]);
 
-            return $evidence->fresh(['document', 'reviewedBy']);
+            activity(self::LOG_NAME)
+                ->event('approved')
+                ->performedOn($evidence)
+                ->causedBy($reviewer)
+                ->withProperties([
+                    'emission_id' => $evidence->emission_id,
+                    'document_id' => $evidence->document_id,
+                    'evidence_type' => $evidence->evidence_type->value,
+                    'evidenced_value' => $evidence->evidenced_value,
+                    'previous_status' => PuBaselineEvidenceStatus::PendingReview->value,
+                    'status' => PuBaselineEvidenceStatus::Approved->value,
+                ])
+                ->log('Evidência de baseline aprovada por reviewer autorizado.');
+
+            return $evidence->fresh(['document', 'createdBy', 'reviewedBy']);
         });
     }
 
@@ -100,6 +140,14 @@ final class PuBaselineEvidenceReviewService
     ): EmissionPuBaselineEvidence {
         $this->authorize($reviewer, AccessPermission::PuCalendarHomologationReview);
         $normalizedNotes = trim($reviewNotes);
+
+        if ($evidence->status !== PuBaselineEvidenceStatus::PendingReview) {
+            throw ValidationException::withMessages([
+                'evidence' => 'Apenas evidências pendentes de revisão podem ser rejeitadas.',
+            ]);
+        }
+
+        $this->assertMakerChecker($evidence, $reviewer);
 
         if ($normalizedNotes === '') {
             throw ValidationException::withMessages([
@@ -114,7 +162,20 @@ final class PuBaselineEvidenceReviewService
             'review_notes' => $normalizedNotes,
         ]);
 
-        return $evidence->fresh(['document', 'reviewedBy']);
+        activity(self::LOG_NAME)
+            ->event('rejected')
+            ->performedOn($evidence)
+            ->causedBy($reviewer)
+            ->withProperties([
+                'emission_id' => $evidence->emission_id,
+                'document_id' => $evidence->document_id,
+                'evidence_type' => $evidence->evidence_type->value,
+                'previous_status' => PuBaselineEvidenceStatus::PendingReview->value,
+                'status' => PuBaselineEvidenceStatus::Rejected->value,
+            ])
+            ->log('Evidência de baseline rejeitada por reviewer autorizado.');
+
+        return $evidence->fresh(['document', 'createdBy', 'reviewedBy']);
     }
 
     private function validateValue(PuBaselineEvidenceType $evidenceType, string $value): void
@@ -164,8 +225,17 @@ final class PuBaselineEvidenceReviewService
 
     private function authorize(User $actor, AccessPermission $permission): void
     {
-        if (! $actor->can($permission->value)) {
+        if (! $actor->isActive() || ! $actor->isApproved() || ! $actor->can($permission->value)) {
             throw new AuthorizationException('Você não possui permissão para esta etapa da evidência do baseline.');
+        }
+    }
+
+    private function assertMakerChecker(EmissionPuBaselineEvidence $evidence, User $reviewer): void
+    {
+        if ($evidence->created_by !== null && (int) $evidence->created_by === (int) $reviewer->getKey()) {
+            throw new PuMakerCheckerException(
+                'A aprovação da evidência exige segregação maker/checker: o criador da proposta não pode ser o reviewer.',
+            );
         }
     }
 

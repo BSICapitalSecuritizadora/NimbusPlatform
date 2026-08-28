@@ -16,6 +16,20 @@ class ViewNotificationOutbox extends ViewRecord
 
     protected Width|string|null $maxContentWidth = Width::Full;
 
+    public function getMaxContentWidth(): Width|string|null
+    {
+        return Width::Full;
+    }
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-notification-outbox-view-page',
+    ];
+
+    public function getSubheading(): ?string
+    {
+        return 'Histórico técnico e rastreabilidade detalhada do envio de notificação.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [

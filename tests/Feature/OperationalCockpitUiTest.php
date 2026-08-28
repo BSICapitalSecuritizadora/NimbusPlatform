@@ -6,6 +6,7 @@ use App\Filament\Resources\Activities\ActivityResource;
 use App\Filament\Resources\Proposals\ProposalResource;
 use App\Filament\Widgets\Dashboard\DeadlinesWidget;
 use App\Filament\Widgets\Dashboard\ExecutiveIndicatorsWidget;
+use App\Filament\Widgets\Dashboard\MeasurementCockpit;
 use App\Filament\Widgets\Dashboard\MyPendingsWidget;
 use App\Filament\Widgets\Dashboard\OperationalAlertsWidget;
 use App\Filament\Widgets\Dashboard\RecentActivitiesWidget;
@@ -45,6 +46,7 @@ it('configures the cockpit as a responsive operational surface', function () {
         ->and($dashboard->getWidgets())
         ->toBe([
             ShortcutsWidget::class,
+            MeasurementCockpit::class,
             ExecutiveIndicatorsWidget::class,
             OperationalAlertsWidget::class,
             MyPendingsWidget::class,

@@ -140,7 +140,11 @@ class PuBaselineEvidencesRelationManager extends RelationManager
                     ->label('Aprovar evidência')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (EmissionPuBaselineEvidence $record): bool => $record->status !== PuBaselineEvidenceStatus::Approved
+                    // Só há decisão a tomar sobre proposta pendente, e o maker da
+                    // proposta não é checker dela: o serviço recusa a auto-aprovação,
+                    // então a ação nem se oferece.
+                    ->visible(fn (EmissionPuBaselineEvidence $record): bool => $record->status === PuBaselineEvidenceStatus::PendingReview
+                        && $record->created_by !== auth()->id()
                         && (auth()->user()?->can(AccessPermission::PuCalendarHomologationReview->value) ?? false))
                     ->requiresConfirmation()
                     ->modalHeading('Aprovar evidência do baseline')
@@ -165,7 +169,8 @@ class PuBaselineEvidencesRelationManager extends RelationManager
                     ->label('Rejeitar evidência')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (EmissionPuBaselineEvidence $record): bool => $record->status !== PuBaselineEvidenceStatus::Rejected
+                    ->visible(fn (EmissionPuBaselineEvidence $record): bool => $record->status === PuBaselineEvidenceStatus::PendingReview
+                        && $record->created_by !== auth()->id()
                         && (auth()->user()?->can(AccessPermission::PuCalendarHomologationReview->value) ?? false))
                     ->schema([
                         Textarea::make('review_notes')
