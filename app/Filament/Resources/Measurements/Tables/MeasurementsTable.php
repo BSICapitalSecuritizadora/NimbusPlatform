@@ -20,10 +20,35 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class MeasurementsTable
 {
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, array<string, mixed>>
+     */
+    public static function cockpitFiltersToTableState(array $filters): array
+    {
+        $tableFilters = [];
+
+        if (filled($filters['competence_from'] ?? null) || filled($filters['competence_to'] ?? null)) {
+            $tableFilters['competence_period'] = [
+                'from' => $filters['competence_from'] ?? null,
+                'to' => $filters['competence_to'] ?? null,
+            ];
+        }
+
+        foreach (['operation_id', 'emission_id', 'responsible_user_id', 'stage', 'status', 'sla_status', 'assignment'] as $filter) {
+            if (filled($filters[$filter] ?? null)) {
+                $tableFilters[$filter] = ['value' => $filters[$filter]];
+            }
+        }
+
+        return $tableFilters;
+    }
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -153,9 +178,9 @@ class MeasurementsTable
                             ->columns(2)
                             ->query(fn (Builder $query, array $data): Builder => $query
                                 ->when(filled($data['from'] ?? null), fn (Builder $measurements): Builder => $measurements
-                                    ->whereDate('reference_month', '>=', $data['from']))
+                                    ->whereDate('reference_month', '>=', static::filterDate($data['from'])))
                                 ->when(filled($data['to'] ?? null), fn (Builder $measurements): Builder => $measurements
-                                    ->whereDate('reference_month', '<=', $data['to']))),
+                                    ->whereDate('reference_month', '<=', static::filterDate($data['to'])))),
 
                         SelectFilter::make('status')
                             ->label('Situação')
@@ -289,5 +314,10 @@ class MeasurementsTable
     protected static function readModel(): MeasurementOperationalReadModel
     {
         return once(fn (): MeasurementOperationalReadModel => app(MeasurementOperationalReadModel::class));
+    }
+
+    private static function filterDate(mixed $value): string
+    {
+        return Carbon::parse($value)->toDateString();
     }
 }

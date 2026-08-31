@@ -58,6 +58,23 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
+            /*
+             * A integridade do cadastro de delegações depende deste nível, e não
+             * de o servidor por acaso estar configurado nele.
+             *
+             * A detecção de ciclo trava as arestas que percorre com FOR UPDATE,
+             * inclusive os intervalos vazios: é o gap lock que impede a transação
+             * concorrente de inserir justamente onde a busca não encontrou nada.
+             * Gap lock é comportamento de REPEATABLE READ -- em READ COMMITTED o
+             * InnoDB não o toma, e a proteção some sem nenhum sintoma visível,
+             * até duas delegações simultâneas fecharem um ciclo.
+             *
+             * Declarar aqui faz a conexão emitir `SET SESSION TRANSACTION
+             * ISOLATION LEVEL` ao conectar, uma vez, em vez de herdar o default do
+             * servidor. Continua sobrescrevível por ambiente, mas quem baixar o
+             * nível quebra o gate de concorrência, não a produção.
+             */
+            'isolation_level' => env('DB_ISOLATION_LEVEL', 'REPEATABLE READ'),
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),

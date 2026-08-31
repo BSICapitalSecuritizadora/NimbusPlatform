@@ -250,6 +250,32 @@ it('mede a curva de My Pendings por volume', function (int $volume) {
     expect($probe->result['count'])->toBe($volume);
 })->with([10, 100, 500]);
 
+it('mede a curva de My Pendings delegado por volume', function (int $volume) {
+    $scenario = benchPendingScenario($volume, 'delegated', calendar: 'none');
+    $user = $scenario['user'];
+
+    $probe = PerformanceProbe::measure(function () use ($user): array {
+        app()->forgetInstance(MeasurementPendingService::class);
+
+        return app(MeasurementPendingService::class)->summaryFor($user);
+    }, runs: 3);
+
+    fwrite(STDERR, PHP_EOL.$probe->summary("pendings/delegated/{$volume}").PHP_EOL);
+    fwrite(STDERR, sprintf(
+        '   count=%d delegated=%d | dup=%d | queries por medição=%.2f',
+        $probe->result['count'],
+        $probe->result['delegated_count'],
+        $probe->duplicateQueryCount,
+        $probe->queryCount / $volume,
+    ).PHP_EOL);
+
+    foreach ($probe->queryShapes(4) as $shape) {
+        fwrite(STDERR, sprintf('   %4dx %s', $shape['times'], substr($shape['query'], 0, 120)).PHP_EOL);
+    }
+
+    expect($probe->result['delegated_count'])->toBe($volume);
+})->with([10, 100, 500]);
+
 it('mede My Pendings por origem de autoridade', function (string $mode, int $expectedCount) {
     $volume = 100;
     $scenario = benchPendingScenario($volume, $mode, operations: $mode === 'mixed' ? 4 : 1, calendar: 'none');
@@ -295,8 +321,8 @@ it('mede a curva de recipients de SLA por volume', function (int $volume) {
     fwrite(STDERR, PHP_EOL.$probe->summary("sla-recipients/{$volume}").PHP_EOL);
     fwrite(STDERR, sprintf('   queries por medição=%.2f dup=%d', $probe->queryCount / $volume, $probe->duplicateQueryCount).PHP_EOL);
 
-    foreach ($probe->queryShapes(4) as $shape) {
-        fwrite(STDERR, sprintf('   %4dx %s', $shape['times'], substr($shape['query'], 0, 120)).PHP_EOL);
+    foreach ($probe->queryShapes(10) as $shape) {
+        fwrite(STDERR, sprintf('   %4dx %s', $shape['times'], substr($shape['query'], 0, 150)).PHP_EOL);
     }
 
     expect($probe->queryCount)->toBeGreaterThan(0);

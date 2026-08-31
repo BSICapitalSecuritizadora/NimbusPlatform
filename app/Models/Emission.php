@@ -102,6 +102,15 @@ class Emission extends Model
         'Cartular' => 'Cartular',
     ];
 
+    public const NEGOTIATIONS_SOURCE_LEGACY = 'legacy';
+
+    public const NEGOTIATIONS_SOURCE_CONTRACTS = 'contracts';
+
+    public const NEGOTIATIONS_SOURCE_OPTIONS = [
+        self::NEGOTIATIONS_SOURCE_LEGACY => 'Manual (legado)',
+        self::NEGOTIATIONS_SOURCE_CONTRACTS => 'Contratos (automático)',
+    ];
+
     protected $fillable = [
         'name',
         'logo_path',
@@ -167,6 +176,7 @@ class Emission extends Model
         'guarantees_description',
         'covenants',
         'is_public',
+        'negotiations_source',
         'description',
         'current_pu',
         'integralization_status',
@@ -317,6 +327,21 @@ class Emission extends Model
     public function isInDraft(): bool
     {
         return $this->status === self::STATUS_DRAFT;
+    }
+
+    public function usesContractNegotiations(): bool
+    {
+        return $this->negotiations_source === self::NEGOTIATIONS_SOURCE_CONTRACTS;
+    }
+
+    public function usesLegacyNegotiations(): bool
+    {
+        return ! $this->usesContractNegotiations();
+    }
+
+    public function getNegotiationsSourceLabelAttribute(): string
+    {
+        return self::NEGOTIATIONS_SOURCE_OPTIONS[$this->negotiations_source] ?? $this->negotiations_source ?? self::NEGOTIATIONS_SOURCE_OPTIONS[self::NEGOTIATIONS_SOURCE_LEGACY];
     }
 
     public function constructions(): HasMany

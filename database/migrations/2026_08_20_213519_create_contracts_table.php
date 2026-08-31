@@ -29,7 +29,7 @@ return new class extends Migration
             $table->foreignId('construction_unit_id')->constrained()->restrictOnDelete();
             $table->foreignId('construction_id')->constrained()->restrictOnDelete();
             $table->string('code', 100);
-            $table->date('sale_date');
+            $table->date('sale_date')->nullable();
             $table->decimal('sale_value', 15, 2);
             $table->string('status', 20)->default(ContractStatus::Active->value);
             $table->date('cancellation_date')->nullable();

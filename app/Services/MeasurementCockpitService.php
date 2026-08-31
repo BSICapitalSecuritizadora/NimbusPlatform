@@ -50,7 +50,7 @@ class MeasurementCockpitService
             ->whereNotIn('status', ['finalized', 'rejected'])
             ->with(['reviews', 'pauses'])
             ->reorder('measurements.id')
-            ->lazyById(100, column: 'measurements.id')
+            ->lazyById(100, column: 'measurements.id', alias: 'id')
             ->each(function (Measurement $measurement) use (&$slaCounts): void {
                 $status = $this->readModel->slaEvaluation($measurement)['status'];
 

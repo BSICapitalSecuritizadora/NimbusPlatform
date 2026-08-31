@@ -16,6 +16,7 @@ use App\Models\Operation;
 use App\Models\User;
 use App\Notifications\MeasurementWorkflowNotification;
 use App\Support\Delegations\ResponsibilityAuthorization;
+use App\Support\Delegations\ResponsibilityAuthorizationCapture;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -76,12 +77,15 @@ class MeasurementWorkflow
         };
     }
 
-    public function canApprove(Measurement $measurement, User $actor): bool
-    {
+    public function canApprove(
+        Measurement $measurement,
+        User $actor,
+        ?ResponsibilityAuthorizationCapture $capture = null,
+    ): bool {
         $stage = $this->unifiedStage($measurement);
 
         return $this->hasPendingDecisionState($measurement, $stage)
-            && $this->authorization->canDecideStage($actor, $measurement, $stage);
+            && $this->authorizes($actor, $measurement, $stage, $capture);
     }
 
     public function canReject(Measurement $measurement, User $actor): bool
@@ -100,18 +104,24 @@ class MeasurementWorkflow
             && $this->authorization->canPauseStage($actor, $measurement, $stage);
     }
 
-    public function canResume(Measurement $measurement, User $actor): bool
-    {
+    public function canResume(
+        Measurement $measurement,
+        User $actor,
+        ?ResponsibilityAuthorizationCapture $capture = null,
+    ): bool {
         $stage = $this->unifiedStage($measurement);
 
         return $measurement->status === 'paused'
             && $stage >= self::STAGE_ENGINEERING
             && $stage <= self::STAGE_PAYMENT
-            && $this->authorization->canPauseStage($actor, $measurement, $stage);
+            && $this->authorizes($actor, $measurement, $stage, $capture);
     }
 
-    public function canRegisterPayment(Measurement $measurement, User $actor): bool
-    {
+    public function canRegisterPayment(
+        Measurement $measurement,
+        User $actor,
+        ?ResponsibilityAuthorizationCapture $capture = null,
+    ): bool {
         $hasPendingReview = $measurement->relationLoaded('reviews')
             ? $measurement->reviews->contains(fn (MeasurementReview $review): bool => (int) $review->stage === self::STAGE_PAYMENT && $review->status === 'pending')
             : $measurement->reviews()->where('stage', self::STAGE_PAYMENT)->where('status', 'pending')->exists();
@@ -119,21 +129,27 @@ class MeasurementWorkflow
         return $measurement->status === 'awaiting_payment'
             && (int) $measurement->current_stage === self::STAGE_PAYMENT
             && $hasPendingReview
-            && $this->authorization->canRegisterPayment($actor, $measurement);
+            && $this->authorizes($actor, $measurement, MeasurementResponsibility::PaymentManager, $capture);
     }
 
-    public function canManageReceipts(Measurement $measurement, User $actor): bool
-    {
+    public function canManageReceipts(
+        Measurement $measurement,
+        User $actor,
+        ?ResponsibilityAuthorizationCapture $capture = null,
+    ): bool {
         return in_array($measurement->status, ['awaiting_receipt', 'approved'], true)
             && (int) $measurement->current_stage === self::STAGE_FINALIZATION
-            && $this->authorization->canManageReceipts($actor, $measurement);
+            && $this->authorizes($actor, $measurement, MeasurementResponsibility::ReceiptUploader, $capture);
     }
 
-    public function canFinalize(Measurement $measurement, User $actor): bool
-    {
+    public function canFinalize(
+        Measurement $measurement,
+        User $actor,
+        ?ResponsibilityAuthorizationCapture $capture = null,
+    ): bool {
         return $measurement->status === 'approved'
             && (int) $measurement->current_stage === self::STAGE_FINALIZATION
-            && $this->authorization->canFinalize($actor, $measurement);
+            && $this->authorizes($actor, $measurement, MeasurementResponsibility::Finalizer, $capture);
     }
 
     public function canReturnFromFinalization(Measurement $measurement, User $actor): bool
@@ -1020,6 +1036,29 @@ class MeasurementWorkflow
         }
 
         return $review;
+    }
+
+    /**
+     * Resolve a autorização da ação UMA vez e, quando pedido, deposita a mesma
+     * resolução no slot de quem chamou.
+     *
+     * Chamar `resolveAuthorization()` aqui em vez dos atalhos `can*()` de
+     * {@see MeasurementAuthorizationService} não muda a regra -- aqueles atalhos
+     * são invólucros de uma linha sobre esta mesma resolução --, mas devolve o
+     * objeto resolvido, e não só o booleano, para que o consumidor não precise
+     * resolver de novo para saber por qual autoridade a ação foi permitida.
+     */
+    private function authorizes(
+        User $actor,
+        Measurement $measurement,
+        MeasurementResponsibility|int $responsibility,
+        ?ResponsibilityAuthorizationCapture $capture,
+    ): bool {
+        $authorization = $this->authorization->resolveAuthorization($actor, $measurement, $responsibility);
+
+        $capture?->capture($authorization);
+
+        return $authorization->authorizes();
     }
 
     private function hasPendingDecisionState(Measurement $measurement, int $stage): bool

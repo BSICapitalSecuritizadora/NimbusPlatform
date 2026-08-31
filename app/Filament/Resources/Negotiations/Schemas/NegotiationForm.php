@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\Negotiations\Schemas;
 
 use App\Models\Construction;
+use App\Models\Emission;
 use App\Models\Negotiation;
 use Closure;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -18,6 +20,15 @@ class NegotiationForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
+            Section::make('Fonte de dados')
+                ->description('Negociações são geradas automaticamente a partir dos contratos quando a operação está migrada.')
+                ->visible(fn (Get $get): bool => filled($get('emission_id')) && Emission::query()->find($get('emission_id'))?->usesContractNegotiations())
+                ->schema([
+                    Placeholder::make('contract_source_info')
+                        ->label('')
+                        ->content('Esta operação está configurada como **Contratos (automático)**. As negociações do relatório mensal são derivadas de `sale_date`/`cancellation_date` dos contratos. Lançamentos manuais são desabilitados para evitar divergência entre o que é exibido no relatório e o que foi digitado manualmente.'),
+                ])
+                ->columnSpanFull(),
             Section::make('Dados da Negociação')
                 ->description('Identifique a operação, o empreendimento e a competência deste lançamento.')
                 ->columnSpanFull()
@@ -34,6 +45,20 @@ class NegotiationForm
                             if ($state !== $old) {
                                 $set('construction_id', null);
                             }
+                        })
+                        ->helperText(fn (Get $get): ?string => filled($get('emission_id')) && Emission::query()->find($get('emission_id'))?->usesContractNegotiations()
+                            ? 'Operação em modo automático (contratos). Lançamentos manuais não afetam o relatório.'
+                            : null)
+                        ->rule(static function (Get $get): Closure {
+                            return static function (string $attribute, mixed $value, Closure $fail): void {
+                                if (blank($value)) {
+                                    return;
+                                }
+                                $emission = Emission::query()->find($value);
+                                if ($emission && $emission->usesContractNegotiations()) {
+                                    $fail('Esta operação utiliza negociações geradas automaticamente a partir dos contratos. Não é permitido lançar negociações manuais.');
+                                }
+                            };
                         })
                         ->columnSpan(['lg' => 2])
                         ->validationMessages([
@@ -84,6 +109,7 @@ class NegotiationForm
                         ->placeholder('MM/AAAA')
                         ->mask('99/9999')
                         ->required()
+                        ->disabled(fn (Get $get): bool => filled($get('emission_id')) && Emission::query()->find($get('emission_id'))?->usesContractNegotiations())
                         ->formatStateUsing(fn (mixed $state): string => Negotiation::formatReferenceMonthForDisplay($state))
                         ->dehydrateStateUsing(fn (mixed $state): ?string => Negotiation::normalizeReferenceMonth($state))
                         ->mutateStateForValidationUsing(fn (mixed $state): ?string => Negotiation::normalizeReferenceMonth($state))
@@ -135,6 +161,7 @@ class NegotiationForm
             ->numeric()
             ->integer()
             ->minValue(0)
+            ->disabled(fn (Get $get): bool => filled($get('emission_id')) && Emission::query()->find($get('emission_id'))?->usesContractNegotiations())
             ->validationMessages([
                 'required' => "Informe o valor de {$label}.",
                 'integer' => "Informe um número inteiro válido para {$label}.",

@@ -11,6 +11,8 @@ class ResponsibilityDelegationInfolist
 {
     public static function configure(Schema $schema): Schema
     {
+        $delegations = app(ResponsibilityDelegationService::class);
+
         return $schema
             ->components([
                 TextEntry::make('delegator.name')
@@ -48,23 +50,19 @@ class ResponsibilityDelegationInfolist
                 TextEntry::make('status')
                     ->label('Status')
                     ->badge()
-                    ->state(fn (ResponsibilityDelegation $record): string => app(ResponsibilityDelegationService::class)->effectiveStatus($record))
-                    ->color(fn (string $state): string => match ($state) {
-                        'active' => 'success',
-                        'scheduled' => 'info',
-                        'expired' => 'warning',
-                        'revoked' => 'danger',
-                        'ineffective' => 'danger',
-                        default => 'gray',
-                    })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'active' => 'Ativa',
-                        'scheduled' => 'Agendada',
-                        'expired' => 'Expirada',
-                        'revoked' => 'Revogada',
-                        'ineffective' => 'Ineficaz',
-                        default => $state,
-                    }),
+                    ->state(fn (ResponsibilityDelegation $record): string => $delegations->effectiveness($record)->status)
+                    ->color(fn (ResponsibilityDelegation $record): string => $delegations->effectiveness($record)->statusColor())
+                    ->formatStateUsing(fn (ResponsibilityDelegation $record): string => $delegations->effectiveness($record)->statusLabel()),
+
+                // Só aparece quando há o que explicar: uma delegação ativa não
+                // ganha uma linha vazia por causa disto.
+                TextEntry::make('ineffectiveness_reason')
+                    ->label('Por que está ineficaz')
+                    ->state(fn (ResponsibilityDelegation $record): ?string => $delegations->effectiveness($record)->reasonLabel())
+                    ->visible(fn (ResponsibilityDelegation $record): bool => $delegations->effectiveness($record)->reason !== null)
+                    ->icon('heroicon-m-exclamation-triangle')
+                    ->color('danger')
+                    ->columnSpanFull(),
 
                 TextEntry::make('reason')
                     ->label('Motivo')

@@ -275,7 +275,9 @@ class MeasurementOperationalReadModel
         $evaluation = $this->slaEvaluation($measurement);
 
         if ($evaluation['calendar_unavailable']) {
-            return 'Prazo indisponível por calendário';
+            // O motivo nomeia o calendário e o ano que falta, que é o que o
+            // operador precisa para resolver. Sem ele, sobra o genérico.
+            return $evaluation['calendar_unavailable_reason'] ?? 'Prazo indisponível por calendário';
         }
 
         if ($evaluation['paused']) {

@@ -25,6 +25,13 @@ class MeasurementSlaService
     /** @var array<string, array<int, true>> */
     private array $verifiedCalendarYears = [];
 
+    /**
+     * Avisos de calendário já emitidos por esta instância.
+     *
+     * @var array<string, true>
+     */
+    private array $warnedCalendarProblems = [];
+
     public const STATUS_ON_TIME = 'on_time';
 
     public const STATUS_APPROACHING = 'approaching';
@@ -98,7 +105,7 @@ class MeasurementSlaService
         );
 
         if ($calendarUnavailableReason !== null) {
-            Log::warning('SLA calendar unavailable', [
+            $this->warnCalendarUnavailableOnce('SLA calendar unavailable', [
                 'stage' => $stage,
                 'calendar_code' => $config['calendar_code'],
                 'reason' => $calendarUnavailableReason,
@@ -110,6 +117,7 @@ class MeasurementSlaService
                 status: self::STATUS_CALENDAR_UNAVAILABLE,
                 calendarUnavailable: true,
                 config: $config,
+                calendarUnavailableReason: $calendarUnavailableReason,
             );
         }
 
@@ -126,7 +134,7 @@ class MeasurementSlaService
         );
 
         if ($deadlineEvaluation['unavailable_reason'] !== null) {
-            Log::warning('SLA calendar unavailable for projected deadline', [
+            $this->warnCalendarUnavailableOnce('SLA calendar unavailable for projected deadline', [
                 'stage' => $stage,
                 'calendar_code' => $config['calendar_code'],
                 'reason' => $deadlineEvaluation['unavailable_reason'],
@@ -139,6 +147,7 @@ class MeasurementSlaService
                 durationSeconds: $durationSeconds,
                 status: self::STATUS_CALENDAR_UNAVAILABLE,
                 calendarUnavailable: true,
+                calendarUnavailableReason: $deadlineEvaluation['unavailable_reason'],
                 config: $config,
             );
         }
@@ -423,6 +432,31 @@ class MeasurementSlaService
             : $this->calendar->isBusinessDay($businessDate, $calendarCode);
     }
 
+    /**
+     * Um aviso por problema, não um por medição.
+     *
+     * O agendador avalia todas as medições acionáveis de hora em hora. Um ano de
+     * calendário não materializado é um problema só, e sem isto ele virava uma
+     * linha de WARNING por medição por execução -- centenas de linhas idênticas
+     * por dia, que escondem o resto do log em vez de informar. O escopo do memo é
+     * a instância, que na execução do comando é a execução inteira; a próxima
+     * volta a avisar, porque o problema continua de pé.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function warnCalendarUnavailableOnce(string $message, array $context): void
+    {
+        $key = $message.'|'.($context['calendar_code'] ?? '').'|'.($context['reason'] ?? '');
+
+        if (isset($this->warnedCalendarProblems[$key])) {
+            return;
+        }
+
+        $this->warnedCalendarProblems[$key] = true;
+
+        Log::warning($message, $context);
+    }
+
     private function calendarUnavailableReason(
         CarbonImmutable $start,
         CarbonImmutable $end,
@@ -474,6 +508,7 @@ class MeasurementSlaService
         bool $invalid = false,
         bool $calendarUnavailable = false,
         ?array $config = null,
+        ?string $calendarUnavailableReason = null,
     ): array {
         return [
             'stage' => $stage,
@@ -495,6 +530,10 @@ class MeasurementSlaService
             'not_configured' => $notConfigured,
             'invalid_config' => $invalid,
             'calendar_unavailable' => $calendarUnavailable,
+            // O motivo já era conhecido -- nomeia o calendário e o ano que falta
+            // -- e era descartado aqui, o que deixava a interface com um genérico
+            // "prazo indisponível" e o operador sem saber o que materializar.
+            'calendar_unavailable_reason' => $calendarUnavailableReason,
             'config' => $config,
         ];
     }

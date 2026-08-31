@@ -30,14 +30,25 @@
 
                     <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                         @foreach($stages as $stage)
-                            <a
-                                wire:key="measurement-stage-{{ $loop->iteration }}"
-                                href="{{ $stage['url'] }}"
-                                class="group rounded-lg border border-gray-200 bg-white px-3 py-2.5 transition-colors hover:border-primary-300 hover:bg-primary-50/50 focus-visible:outline-2 focus-visible:outline-primary-600 dark:border-white/10 dark:bg-white/5 dark:hover:border-primary-500/40 dark:hover:bg-primary-500/10"
-                            >
-                                <span class="block text-2xl font-semibold tabular-nums tracking-tight text-gray-950 dark:text-white">{{ number_format($stage['count'], 0, ',', '.') }}</span>
-                                <span class="mt-1 block text-xs font-medium text-gray-600 group-hover:text-primary-700 dark:text-gray-300 dark:group-hover:text-primary-300">{{ $stage['label'] }}</span>
-                            </a>
+                            @if($stage['url'] !== null)
+                                <a
+                                    wire:key="measurement-stage-{{ $loop->iteration }}"
+                                    href="{{ $stage['url'] }}"
+                                    class="group rounded-lg border border-gray-200 bg-white px-3 py-2.5 transition-colors hover:border-primary-300 hover:bg-primary-50/50 focus-visible:outline-2 focus-visible:outline-primary-600 dark:border-white/10 dark:bg-white/5 dark:hover:border-primary-500/40 dark:hover:bg-primary-500/10"
+                                >
+                                    <span class="block text-2xl font-semibold tabular-nums tracking-tight text-gray-950 dark:text-white">{{ number_format($stage['count'], 0, ',', '.') }}</span>
+                                    <span class="mt-1 block text-xs font-medium text-gray-600 group-hover:text-primary-700 dark:text-gray-300 dark:group-hover:text-primary-300">{{ $stage['label'] }}</span>
+                                </a>
+                            @else
+                                <div
+                                    wire:key="measurement-stage-{{ $loop->iteration }}"
+                                    aria-disabled="true"
+                                    class="cursor-default rounded-lg border border-gray-200 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-white/5"
+                                >
+                                    <span class="block text-2xl font-semibold tabular-nums tracking-tight text-gray-950 dark:text-white">{{ number_format($stage['count'], 0, ',', '.') }}</span>
+                                    <span class="mt-1 block text-xs font-medium text-gray-600 dark:text-gray-300">{{ $stage['label'] }}</span>
+                                </div>
+                            @endif
                         @endforeach
                     </div>
                 </section>
@@ -66,17 +77,31 @@
                 <h3 id="measurement-signals-heading" class="text-sm font-semibold text-gray-950 dark:text-white">Sinais operacionais</h3>
                 <div class="mt-3 grid gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10 dark:bg-white/10">
                     @foreach($signals as $signal)
-                        <a
-                            wire:key="measurement-signal-{{ $loop->iteration }}"
-                            href="{{ $signal['url'] }}"
-                            class="group flex min-h-20 items-center justify-between gap-3 bg-white px-3 py-3 transition-colors hover:bg-gray-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-primary-600 dark:bg-gray-900 dark:hover:bg-white/5"
-                        >
-                            <span class="min-w-0">
-                                <span class="block text-sm font-medium text-gray-950 dark:text-white">{{ $signal['label'] }}</span>
-                                <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ $signal['description'] }}</span>
-                            </span>
-                            <x-filament::badge :color="$signal['tone']" size="sm">{{ number_format($signal['count'], 0, ',', '.') }}</x-filament::badge>
-                        </a>
+                        @if($signal['url'] !== null)
+                            <a
+                                wire:key="measurement-signal-{{ $loop->iteration }}"
+                                href="{{ $signal['url'] }}"
+                                class="group flex min-h-20 items-center justify-between gap-3 bg-white px-3 py-3 transition-colors hover:bg-gray-50 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-primary-600 dark:bg-gray-900 dark:hover:bg-white/5"
+                            >
+                                <span class="min-w-0">
+                                    <span class="block text-sm font-medium text-gray-950 dark:text-white">{{ $signal['label'] }}</span>
+                                    <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ $signal['description'] }}</span>
+                                </span>
+                                <x-filament::badge :color="$signal['tone']" size="sm">{{ number_format($signal['count'], 0, ',', '.') }}</x-filament::badge>
+                            </a>
+                        @else
+                            <div
+                                wire:key="measurement-signal-{{ $loop->iteration }}"
+                                aria-disabled="true"
+                                class="flex min-h-20 cursor-default items-center justify-between gap-3 bg-white px-3 py-3 dark:bg-gray-900"
+                            >
+                                <span class="min-w-0">
+                                    <span class="block text-sm font-medium text-gray-950 dark:text-white">{{ $signal['label'] }}</span>
+                                    <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ $signal['description'] }}</span>
+                                </span>
+                                <x-filament::badge :color="$signal['tone']" size="sm">{{ number_format($signal['count'], 0, ',', '.') }}</x-filament::badge>
+                            </div>
+                        @endif
                     @endforeach
                 </div>
             </section>

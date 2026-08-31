@@ -2,8 +2,10 @@
 
 namespace App\Filament\Resources\Activities;
 
+use App\Enums\WorkflowAuthorizationSource;
 use App\Filament\Exports\ActivityExporter;
 use App\Filament\Resources\Activities\Pages\ManageActivities;
+use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\ExportAction;
@@ -23,6 +25,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
 
@@ -107,6 +110,13 @@ class ActivityResource extends Resource
                     ->label('Data e Hora')
                     ->dateTime('d/m/Y · H:i:s')
                     ->fontFamily(FontFamily::Mono),
+                TextEntry::make('authorization_source')
+                    ->label('Origem da Autorização')
+                    ->badge()
+                    ->state(fn (Activity $record): ?string => self::authorizationSource($record)?->auditLabel())
+                    ->color(fn (Activity $record): string => self::authorizationSource($record)?->auditColor() ?? 'gray')
+                    ->helperText(fn (Activity $record): ?string => self::authorizationDetail($record))
+                    ->visible(fn (Activity $record): bool => self::authorizationSource($record) instanceof WorkflowAuthorizationSource),
                 TextEntry::make('properties')
                     ->label('Dados da Alteração (JSON)')
                     ->formatStateUsing(fn ($state) => json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))
@@ -152,6 +162,14 @@ class ActivityResource extends Resource
                     ->placeholder('Sistema')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('authorization_source')
+                    ->label('Autorização')
+                    ->badge()
+                    ->state(fn (Activity $record): ?string => self::authorizationSource($record)?->auditLabel())
+                    ->color(fn (Activity $record): string => self::authorizationSource($record)?->auditColor() ?? 'gray')
+                    ->tooltip(fn (Activity $record): ?string => self::authorizationDetail($record))
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Data e Hora')
                     ->dateTime('d/m/Y · H:i:s')
@@ -180,6 +198,26 @@ class ActivityResource extends Resource
                         ->all()
                     )
                     ->searchable(),
+                SelectFilter::make('authorization_source')
+                    ->label('Origem da Autorização')
+                    ->options([
+                        WorkflowAuthorizationSource::AdminOverride->value => WorkflowAuthorizationSource::AdminOverride->auditLabel(),
+                        WorkflowAuthorizationSource::Delegated->value => WorkflowAuthorizationSource::Delegated->auditLabel(),
+                        WorkflowAuthorizationSource::Direct->value => WorkflowAuthorizationSource::Direct->auditLabel(),
+                    ])
+                    // Sem coluna para indexar: a origem mora no JSON gravado pela
+                    // P2.3, e reescrever o histórico para filtrar seria caro demais
+                    // para o uso -- procurar override é revisão pontual, não rotina.
+                    ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                        WorkflowAuthorizationSource::AdminOverride->value => $query->where('properties->admin_override', true),
+                        WorkflowAuthorizationSource::Delegated->value => $query
+                            ->where('properties->admin_override', false)
+                            ->where('properties->delegated', true),
+                        WorkflowAuthorizationSource::Direct->value => $query
+                            ->where('properties->admin_override', false)
+                            ->where('properties->delegated', false),
+                        default => $query,
+                    }),
                 SelectFilter::make('causer_id')
                     ->label('Usuário')
                     ->options(fn (): array => User::query()->orderBy('name')->pluck('name', 'id')->all())
@@ -226,6 +264,45 @@ class ActivityResource extends Resource
         return [
             'index' => ManageActivities::route('/'),
         ];
+    }
+
+    /**
+     * A origem da autorização gravada na Activity, quando ela é de workflow.
+     *
+     * A leitura mora no enum, não aqui: esta classe só a apresenta.
+     */
+    public static function authorizationSource(Activity $record): ?WorkflowAuthorizationSource
+    {
+        $properties = $record->properties;
+
+        return WorkflowAuthorizationSource::fromActivityProperties(
+            $properties instanceof Collection ? $properties->all() : $properties,
+        );
+    }
+
+    /**
+     * O complemento da origem: por qual delegação, e em que escopo.
+     *
+     * Nomeia o delegante, não o id dele -- a superfície é de auditoria de
+     * negócio, e um número não diz a ninguém de quem era a responsabilidade.
+     */
+    public static function authorizationDetail(Activity $record): ?string
+    {
+        if (self::authorizationSource($record) !== WorkflowAuthorizationSource::Delegated) {
+            return null;
+        }
+
+        $properties = $record->properties;
+        $properties = $properties instanceof Collection ? $properties->all() : (array) $properties;
+        $delegator = filled($properties['delegator_user_id'] ?? null)
+            ? User::query()->whereKey($properties['delegator_user_id'])->value('name')
+            : null;
+        $scopeType = $properties['delegation_scope']['type'] ?? null;
+
+        return collect([
+            $delegator !== null ? "Responsabilidade de {$delegator}" : null,
+            is_string($scopeType) ? 'Escopo: '.(ResponsibilityDelegation::SCOPE_OPTIONS[$scopeType] ?? $scopeType) : null,
+        ])->filter()->implode(' · ') ?: null;
     }
 
     public static function friendlyLogName(?string $logName): string

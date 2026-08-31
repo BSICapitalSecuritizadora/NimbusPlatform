@@ -176,14 +176,23 @@ it('shows the saved values on the read-only view page', function () {
         'cancellations' => 3,
     ]);
 
+    expect(NegotiationResource::getRecordTitle($negotiation))->toBe('CRI Negociações · 04/2026');
+
     Livewire::test(ViewNegotiation::class, [
         'record' => $negotiation->getRouteKey(),
     ])
-        ->assertFormSet([
-            'reference_month' => '04/2026',
-            'sales' => 18,
-            'cancellations' => 3,
-        ]);
+        ->assertSuccessful()
+        ->assertSee('Negociação — 04/2026')
+        ->assertSee('Resumo das movimentações comerciais registradas para a competência.')
+        ->assertSee($emission->name)
+        ->assertSee($construction->development_name)
+        ->assertSee('04/2026')
+        ->assertSee('18')
+        ->assertSee('18 novas vendas na competência')
+        ->assertSee('3')
+        ->assertSee('3 distratos na competência')
+        ->assertActionExists('edit')
+        ->assertActionHasLabel('edit', 'Editar');
 });
 
 it('updates an existing negotiation', function () {

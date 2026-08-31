@@ -10,6 +10,7 @@ use App\Models\Emission;
 use App\Models\ExpenseServiceProvider;
 use App\Models\ExpenseServiceProviderType;
 use App\Models\SalesBoard;
+use App\Services\Reports\NegotiationMigrationReadinessService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -22,6 +23,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Actions as SchemaActions;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Wizard;
@@ -70,6 +72,55 @@ class EmissionForm
     {
         return $schema
             ->components([
+                Section::make('Fonte das Negociações')
+                    ->description('Define a origem dos dados exibidos na seção “Negociações” do relatório mensal.')
+                    ->schema([
+                        Select::make('negotiations_source')
+                            ->label('Fonte das negociações')
+                            ->options(Emission::NEGOTIATIONS_SOURCE_OPTIONS)
+                            ->required()
+                            ->default(Emission::NEGOTIATIONS_SOURCE_LEGACY)
+                            ->helperText('“Contratos (automático)” deriva Vendas/Distratos de sale_date/cancellation_date dos contratos. “Manual (legado)” usa a tabela negotiations. A troca é explícita para evitar modo parcial.')
+                            ->columnSpanFull(),
+
+                        Placeholder::make('negotiations_source_switch_warning')
+                            ->label('')
+                            ->content(new HtmlString(
+                                '<div class="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 flex gap-2.5">'
+                                .'<span class="text-amber-400 mt-0.5 shrink-0"><svg class="size-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg></span>'
+                                .'<p class="text-xs leading-relaxed text-amber-200/90">Ao utilizar contratos como fonte das negociações, os relatórios deixarão de considerar os lançamentos manuais de Negociações desta emissão. Os registros históricos serão preservados para auditoria.</p>'
+                                .'</div>'
+                            ))
+                            ->visible(fn (Get $get): bool => $get('negotiations_source') === Emission::NEGOTIATIONS_SOURCE_CONTRACTS)
+                            ->columnSpanFull(),
+
+                        Placeholder::make('negotiation_readiness_panel')
+                            ->label('Diagnóstico de prontidão para migração')
+                            ->content(function (?Emission $record): HtmlString {
+                                if (! $record || ! $record->exists) {
+                                    return new HtmlString('<p class="text-xs text-white/50">Salve a emissão para visualizar o diagnóstico de migração.</p>');
+                                }
+
+                                // Use per-request memoization to avoid repeated expensive queries on reactive re-renders
+                                static $cache = [];
+
+                                $key = (int) $record->getKey();
+
+                                if (! isset($cache[$key])) {
+                                    $cache[$key] = app(NegotiationMigrationReadinessService::class)->analyze($record);
+                                }
+
+                                $analysis = $cache[$key];
+
+                                return new HtmlString(view('filament.emissions.negotiation-readiness', ['analysis' => $analysis])->render());
+                            })
+                            ->visibleOn('edit')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull()
+                    ->collapsible()
+                    ->persistCollapsed(),
+
                 Wizard::make([
                     Step::make('Dados básicos')
                         ->columns([

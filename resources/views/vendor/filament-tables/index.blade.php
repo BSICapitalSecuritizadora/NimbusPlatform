@@ -548,6 +548,25 @@
                             {{ FilamentView::renderHook(TablesRenderHook::TOOLBAR_SEARCH_AFTER, scopes: static::class) }}
 
                             @if ($hasFiltersTrigger || $hasColumnManager)
+                                {{-- BSI: Mutual exclusivity wrapper — only one toolbar panel (Filters or Columns) can be open at a time --}}
+                                <div
+                                    x-data="{
+                                        closeSiblingPanel(openingPanel) {
+                                            const sibling = openingPanel === 'filters'
+                                                ? this.$refs.columnsDropdownContainer
+                                                : this.$refs.filtersDropdownContainer
+                                            if (! sibling) return
+                                            const dropdownEl = sibling.querySelector('.fi-dropdown')
+                                            if (dropdownEl) {
+                                                const component = Alpine.$data(dropdownEl)
+                                                if (component && typeof component.close === 'function') {
+                                                    component.close()
+                                                }
+                                            }
+                                        }
+                                    }"
+                                >
+                                <span x-ref="filtersDropdownContainer" x-on:mousedown="closeSiblingPanel('filters')">
                                 @if ($hasFiltersDialog)
                                     @if (($filtersLayout === FiltersLayout::Modal) || $filtersTriggerAction->isModalSlideOver())
                                         @php
@@ -639,9 +658,11 @@
                                         {{ $filtersTriggerAction->badge($activeFiltersCount > 0 ? $activeFiltersCount : null) }}
                                     </span>
                                 @endif
+                                </span>
 
                                 {{ FilamentView::renderHook(TablesRenderHook::TOOLBAR_COLUMN_MANAGER_TRIGGER_BEFORE, scopes: static::class) }}
 
+                                <span x-ref="columnsDropdownContainer" x-on:mousedown="closeSiblingPanel('columns')">
                                 @if ($hasColumnManager)
                                     @php
                                         $columnManagerMaxHeight = $getColumnManagerMaxHeight();
@@ -746,8 +767,10 @@
                                         </x-filament::dropdown>
                                     @endif
                                 @endif
+                                </span>
 
                                 {{ FilamentView::renderHook(TablesRenderHook::TOOLBAR_COLUMN_MANAGER_TRIGGER_AFTER, scopes: static::class) }}
+                                </div> {{-- /BSI mutual exclusivity wrapper --}}
                             @endif
                         </div>
                     @endif

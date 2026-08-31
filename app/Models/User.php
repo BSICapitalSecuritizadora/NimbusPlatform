@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\AccessPermission;
+use App\Exceptions\DelegationHistoryException;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
@@ -72,6 +73,31 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $user): void {
+            if ($user->hasResponsibilityDelegationHistory()) {
+                throw DelegationHistoryException::forUser();
+            }
+        });
+    }
+
+    /**
+     * Aparece em alguma delegação de responsabilidade, como delegante ou como
+     * delegado?
+     *
+     * Vale para qualquer estado da delegação -- vigente, futura, expirada ou
+     * revogada. Revogar encerra a autoridade; não apaga o registro de que ela
+     * existiu, e é justamente o registro que impede o hard delete.
+     */
+    public function hasResponsibilityDelegationHistory(): bool
+    {
+        return ResponsibilityDelegation::query()
+            ->where('delegator_user_id', $this->getKey())
+            ->orWhere('delegate_user_id', $this->getKey())
+            ->exists();
     }
 
     public function isActive(): bool

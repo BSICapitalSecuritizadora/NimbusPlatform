@@ -12,8 +12,10 @@ use App\Services\MeasurementSlaService;
 use App\Services\MeasurementWorkflow;
 use App\Services\ResponsibilityDelegationService;
 use App\Support\BusinessTime;
+use App\Support\Users\UserIdentityMap;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class EvaluateMeasurementSlaCommand extends Command
 {
@@ -27,9 +29,30 @@ class EvaluateMeasurementSlaCommand extends Command
         ResponsibilityDelegationService $delegations,
     ): int {
         $dryRun = (bool) $this->option('dry-run');
-        $warnings = 0;
-        $overdues = 0;
-        $skippedPaused = 0;
+
+        // O agendador roda de hora em hora e o `$this->info()` do fim não ia a
+        // lugar nenhum: saída de comando agendado não é capturada. Estes contadores
+        // viram uma linha de log por execução -- agregada de propósito, porque
+        // registrar cada medição saudável encheria o log e esconderia o resto.
+        $counters = [
+            'evaluated' => 0,
+            'skipped_paused' => 0,
+            'approaching' => 0,
+            'overdue' => 0,
+            'alerts_created' => 0,
+            'alerts_deduplicated' => 0,
+            'recipients_unavailable' => 0,
+            'calendar_unavailable' => 0,
+            'not_configured' => 0,
+            'invalid_config' => 0,
+            'notification_failures' => 0,
+        ];
+
+        // Uma execução avalia muitas medições das mesmas poucas operações, e
+        // portanto dos mesmos poucos responsáveis. O mapa resolve cada um deles
+        // uma vez -- com as relações que `can()` consulta --, nasce aqui e morre
+        // no fim deste `handle()`. A próxima execução recomeça do banco.
+        $users = new UserIdentityMap(['roles', 'permissions']);
 
         MeasurementReview::query()
             ->where('status', 'pending')
@@ -51,10 +74,9 @@ class EvaluateMeasurementSlaCommand extends Command
                 $sla,
                 $workflow,
                 $delegations,
+                $users,
                 $dryRun,
-                &$warnings,
-                &$overdues,
-                &$skippedPaused,
+                &$counters,
             ): void {
                 $measurement = $review->measurement;
 
@@ -63,7 +85,7 @@ class EvaluateMeasurementSlaCommand extends Command
                 }
 
                 if ($measurement->status === 'paused') {
-                    $skippedPaused++;
+                    $counters['skipped_paused']++;
 
                     return;
                 }
@@ -75,6 +97,15 @@ class EvaluateMeasurementSlaCommand extends Command
                 }
 
                 $evaluation = $sla->evaluate($measurement);
+                $counters['evaluated']++;
+
+                match ($evaluation['status']) {
+                    MeasurementSlaService::STATUS_CALENDAR_UNAVAILABLE => $counters['calendar_unavailable']++,
+                    MeasurementSlaService::STATUS_NOT_CONFIGURED => $counters['not_configured']++,
+                    MeasurementSlaService::STATUS_INVALID_CONFIG => $counters['invalid_config']++,
+                    default => null,
+                };
+
                 $alertType = match ($evaluation['status']) {
                     MeasurementSlaService::STATUS_OVERDUE => 'overdue',
                     MeasurementSlaService::STATUS_APPROACHING => 'warning',
@@ -85,13 +116,23 @@ class EvaluateMeasurementSlaCommand extends Command
                     return;
                 }
 
+                $alertType === 'warning' ? $counters['approaching']++ : $counters['overdue']++;
+
                 $responsibility = $this->responsibilityFor($measurement, $stage);
 
                 if (! $responsibility instanceof MeasurementResponsibility || ! $measurement->operation) {
                     return;
                 }
 
-                $recipients = $this->recipients($measurement, $responsibility, $delegations);
+                $recipients = $this->recipients($measurement, $responsibility, $delegations, $users);
+
+                if ($recipients === []) {
+                    // Prazo estourando e ninguém a avisar: nem responsável direto
+                    // efetivo, nem delegado efetivo. É o caso que passava calado.
+                    $counters['recipients_unavailable']++;
+
+                    return;
+                }
 
                 foreach ($recipients as $recipient) {
                     $inserted = $dryRun || DB::table('measurement_sla_alerts')->insertOrIgnore([
@@ -107,6 +148,8 @@ class EvaluateMeasurementSlaCommand extends Command
                     ]) === 1;
 
                     if (! $inserted) {
+                        $counters['alerts_deduplicated']++;
+
                         continue;
                     }
 
@@ -127,16 +170,54 @@ class EvaluateMeasurementSlaCommand extends Command
                                 ->where('stage_started_at', $evaluation['started_at'])
                                 ->delete();
                             report($exception);
+                            $counters['notification_failures']++;
+
+                            continue;
                         }
                     }
 
-                    $alertType === 'warning' ? $warnings++ : $overdues++;
+                    $counters['alerts_created']++;
                 }
             });
 
-        $this->info("SLA evaluation complete: warnings={$warnings}, overdue={$overdues}, skipped_paused={$skippedPaused}, dry_run=".($dryRun ? 'yes' : 'no'));
+        $this->reportRun($counters, $dryRun);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Uma linha por execução, com o que a execução encontrou.
+     *
+     * INFO para o resumo: uma avaliação que não achou nada de errado é
+     * comportamento normal e não merece WARNING. O WARNING sai só quando a
+     * execução terminou com algo que alguém precisa resolver -- e sai uma vez,
+     * com os números, não uma vez por medição. Os problemas de calendário já
+     * saem do próprio serviço, um por problema, e por isso não são repetidos
+     * aqui como alarme.
+     *
+     * O contexto leva só identificadores de contagem: nenhum nome, e-mail ou
+     * documento entra no log.
+     *
+     * @param  array<string, int>  $counters
+     */
+    private function reportRun(array $counters, bool $dryRun): void
+    {
+        $context = $counters + ['dry_run' => $dryRun];
+
+        Log::info('SLA evaluation complete', $context);
+
+        $actionable = $counters['calendar_unavailable']
+            + $counters['invalid_config']
+            + $counters['recipients_unavailable']
+            + $counters['notification_failures'];
+
+        if ($actionable > 0) {
+            Log::warning('SLA evaluation finished with unresolved conditions', $context);
+        }
+
+        $this->info('SLA evaluation complete: '.collect($context)
+            ->map(fn (int|bool $value, string $key): string => $key.'='.(is_bool($value) ? ($value ? 'yes' : 'no') : $value))
+            ->implode(', '));
     }
 
     private function responsibilityFor(Measurement $measurement, int $stage): ?MeasurementResponsibility
@@ -151,26 +232,31 @@ class EvaluateMeasurementSlaCommand extends Command
     }
 
     /**
+     * Quem deve ser alertado sobre esta responsabilidade: o responsável direto,
+     * se ainda for efetivo, e os delegados efetivos -- deduplicados por usuário,
+     * com a participação direta prevalecendo sobre a indicação delegada.
+     *
+     * A efetividade continua sendo decidida linha a linha; o mapa só evita
+     * reconsultar o mesmo usuário. Cada medição ainda pergunta ao banco quais
+     * delegações cobrem a sua operação.
+     *
      * @return list<array{user: User, delegation: ?ResponsibilityDelegation}>
      */
     private function recipients(
         Measurement $measurement,
         MeasurementResponsibility $responsibility,
         ResponsibilityDelegationService $delegations,
+        UserIdentityMap $users,
     ): array {
         $operation = $measurement->operation;
         $recipients = [];
-        $directUserId = $operation->responsibleUserIdFor($responsibility);
+        $direct = $users->get($operation->responsibleUserIdFor($responsibility));
 
-        if ($directUserId !== null) {
-            $direct = User::query()->whereKey($directUserId)->first();
-
-            if ($direct?->isActive() && $direct->isApproved() && $direct->can($responsibility->permission())) {
-                $recipients[$direct->getKey()] = ['user' => $direct, 'delegation' => null];
-            }
+        if ($direct?->isActive() && $direct->isApproved() && $direct->can($responsibility->permission())) {
+            $recipients[$direct->getKey()] = ['user' => $direct, 'delegation' => null];
         }
 
-        foreach ($delegations->activeDelegatesForResponsibility($operation, $responsibility) as $delegation) {
+        foreach ($delegations->activeDelegatesForResponsibility($operation, $responsibility, $users) as $delegation) {
             $recipients[$delegation->delegate_user_id] = [
                 'user' => $delegation->delegate,
                 'delegation' => $delegation,

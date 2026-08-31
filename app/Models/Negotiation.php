@@ -4,15 +4,17 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Database\Factories\NegotiationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class Negotiation extends Model
 {
-    /** @use HasFactory<\Database\Factories\NegotiationFactory> */
+    /** @use HasFactory<NegotiationFactory> */
     use HasFactory, LogsActivity;
 
     protected $fillable = [
@@ -27,6 +29,17 @@ class Negotiation extends Model
     {
         static::saving(function (self $negotiation): void {
             $negotiation->reference_month = self::normalizeReferenceMonth($negotiation->reference_month);
+
+            // Prevent misleading manual entry for contract-driven emissions
+            $emissionId = $negotiation->emission_id;
+            if (filled($emissionId)) {
+                $emission = Emission::query()->find($emissionId);
+                if ($emission && $emission->usesContractNegotiations()) {
+                    throw ValidationException::withMessages([
+                        'emission_id' => 'Esta operação utiliza negociações geradas automaticamente a partir dos contratos. Não é permitido lançar negociações manuais.',
+                    ]);
+                }
+            }
         });
     }
 

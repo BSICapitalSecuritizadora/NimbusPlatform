@@ -7,7 +7,9 @@ use App\Filament\Resources\Negotiations\Pages\EditNegotiation;
 use App\Filament\Resources\Negotiations\Pages\ListNegotiations;
 use App\Filament\Resources\Negotiations\Pages\ViewNegotiation;
 use App\Filament\Resources\Negotiations\Schemas\NegotiationForm;
+use App\Filament\Resources\Negotiations\Schemas\NegotiationInfolist;
 use App\Filament\Resources\Negotiations\Tables\NegotiationsTable;
+use App\Models\Emission;
 use App\Models\Negotiation;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -21,6 +23,13 @@ use UnitEnum;
 class NegotiationResource extends Resource
 {
     protected static ?string $model = Negotiation::class;
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = Negotiation::query()->whereHas('emission', fn ($q) => $q->where('negotiations_source', Emission::NEGOTIATIONS_SOURCE_LEGACY))->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowsRightLeft;
 
@@ -38,9 +47,30 @@ class NegotiationResource extends Resource
 
     protected static ?int $navigationSort = 12;
 
+    public static function getRecordTitle(?Model $record): ?string
+    {
+        if (! $record instanceof Negotiation) {
+            return null;
+        }
+
+        $formattedMonth = $record->formatted_reference_month ?: Negotiation::formatReferenceMonthForDisplay($record->reference_month);
+        $emissionName = $record->emission?->name;
+
+        if (filled($emissionName) && filled($formattedMonth)) {
+            return "{$emissionName} · {$formattedMonth}";
+        }
+
+        return $formattedMonth ?: null;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return NegotiationForm::configure($schema);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return NegotiationInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -68,7 +98,18 @@ class NegotiationResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->can('negotiations.update') ?? false;
+        if (! (auth()->user()?->can('negotiations.update') ?? false)) {
+            return false;
+        }
+
+        if ($record instanceof Negotiation) {
+            $emission = $record->emission ?? Emission::find($record->emission_id);
+            if ($emission && $emission->usesContractNegotiations()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static function canView(Model $record): bool

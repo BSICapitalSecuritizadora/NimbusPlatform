@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Recruitment\Tables;
 use App\Enums\MalwareScanStatus;
 use App\Filament\Exports\JobApplicationExporter;
 use App\Filament\Resources\Recruitment\JobApplicationResource;
+use App\Filament\Resources\Recruitment\VacancyResource;
 use App\Jobs\SendJobApplicationStatusMail;
 use App\Models\JobApplication;
 use App\Services\Recruitment\JobApplicationStatusService;
@@ -17,6 +18,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -32,29 +34,58 @@ class JobApplicationsTable
     {
         return $table
             ->recordUrl(fn (JobApplication $record): string => JobApplicationResource::getUrl('view', ['record' => $record]))
+            ->searchPlaceholder('Buscar por candidato, vaga ou e-mail...')
+            ->searchDebounce('400ms')
+            ->defaultSort('created_at', 'desc')
+            ->defaultPaginationPageOption(25)
+            ->paginationPageOptions([10, 25, 50, 100])
             ->columns([
                 TextColumn::make('name')
                     ->label('Candidato')
                     ->searchable()
                     ->sortable()
-                    ->weight('medium'),
+                    ->weight('bold')
+                    ->description(fn (JobApplication $record): ?string => $record->email ?: null),
+
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => JobApplication::statusLabelFor($state))
                     ->color(fn (?string $state): string => JobApplication::statusColorFor($state))
                     ->sortable(),
+
                 TextColumn::make('vacancy.title')
                     ->label('Vaga')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('medium')
+                    ->placeholder('—'),
+
+                TextColumn::make('reviewed_at')
+                    ->label('Última Movimentação')
+                    ->dateTime('d/m/Y · H:i')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->extraAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap'])
+                    ->description(fn (JobApplication $record): ?string => $record->reviewedBy?->name ? 'Por: '.$record->reviewedBy->name : null),
+
+                TextColumn::make('created_at')
+                    ->label('Recebida em')
+                    ->dateTime('d/m/Y · H:i')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->extraAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap text-slate-400'])
+                    ->toggleable(),
+
                 TextColumn::make('email')
                     ->label('E-mail')
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('phone')
                     ->label('Telefone')
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('scan_status')
                     ->label('Antivírus')
                     ->badge()
@@ -71,41 +102,45 @@ class JobApplicationsTable
                         default => 'gray',
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('reviewedBy.name')
                     ->label('Movimentada por')
                     ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('reviewed_at')
-                    ->label('Última Movimentação')
-                    ->dateTime('d/m/Y H:i')
-                    ->placeholder('—')
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->label('Recebida em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options(JobApplication::statusOptions())
-                    ->multiple(),
+                    ->placeholder('Todos')
+                    ->native(true),
                 SelectFilter::make('vacancy_id')
                     ->label('Vaga')
                     ->relationship('vacancy', 'title')
-                    ->searchable()
-                    ->preload(),
+                    ->placeholder('Todas')
+                    ->native(true),
                 SelectFilter::make('scan_status')
                     ->label('Antivírus')
                     ->options([
                         MalwareScanStatus::Pending->value => 'Pendente',
                         MalwareScanStatus::Clean->value => 'Limpo',
                         MalwareScanStatus::Infected->value => 'Infectado',
-                    ]),
+                    ])
+                    ->placeholder('Todos')
+                    ->native(true),
                 Filter::make('created_at')
+                    ->columns(2)
                     ->form([
-                        DatePicker::make('created_from')->label('Recebida de'),
-                        DatePicker::make('created_until')->label('Recebida até'),
+                        DatePicker::make('created_from')
+                            ->label('Recebida de')
+                            ->placeholder('dd/mm/aaaa')
+                            ->displayFormat('d/m/Y')
+                            ->native(false),
+                        DatePicker::make('created_until')
+                            ->label('Recebida até')
+                            ->placeholder('dd/mm/aaaa')
+                            ->displayFormat('d/m/Y')
+                            ->native(false),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -119,6 +154,8 @@ class JobApplicationsTable
                             );
                     }),
             ])
+            ->filtersFormColumns(1)
+            ->filtersFormWidth(Width::Large)
             ->actions([
                 Action::make('change_status')
                     ->label('Mover')
@@ -162,9 +199,9 @@ class JobApplicationsTable
             ])
             ->bulkActions([
                 BulkAction::make('bulk_change_status')
-                    ->label('Alterar Status em Lote')
+                    ->label('Alterar status em lote')
                     ->icon('heroicon-o-arrows-right-left')
-                    ->color('primary')
+                    ->color('gray')
                     ->form([
                         Select::make('status')
                             ->label('Novo Status')
@@ -201,6 +238,7 @@ class JobApplicationsTable
                 BulkAction::make('export')
                     ->label('Exportar CSV')
                     ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
                     ->action(function (Collection $records): StreamedResponse {
                         $filename = 'candidaturas-'.now()->format('Y-m-d-His').'.csv';
 
@@ -229,12 +267,21 @@ class JobApplicationsTable
             ->headerActions([
                 ExportAction::make()
                     ->label('Exportar Filtradas')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
                     ->exporter(JobApplicationExporter::class)
                     ->authorize(fn (): bool => Gate::allows('viewAny', JobApplication::class)),
             ])
             ->emptyStateHeading('Nenhuma candidatura encontrada')
-            ->emptyStateDescription('Não há candidaturas que correspondam aos filtros atuais. Ajuste os filtros ou aguarde novas inscrições.')
+            ->emptyStateDescription('Não há inscrições correspondentes aos critérios ou à etapa selecionada. Ajuste os filtros aplicados ou confira as oportunidades cadastradas.')
             ->emptyStateIcon('heroicon-o-user-group')
+            ->emptyStateActions([
+                Action::make('view_vacancies')
+                    ->label('Gerenciar Vagas')
+                    ->icon('heroicon-o-briefcase')
+                    ->color('primary')
+                    ->url(fn (): string => VacancyResource::getUrl('index')),
+            ])
             ->defaultSort('created_at', 'desc');
     }
 }

@@ -76,6 +76,10 @@ jobs:
   # columns, identifier length limits, soft deletes against uniqueness, imports
   # resolving textual keys -- so they run a second time on MySQL and have to give
   # the same answer. Tag a test into it with `pest()->group('parity');`.
+  #
+  # The job also runs the `mysql` group: concurrency tests that need two real
+  # connections, locks and deadlocks, and that skip themselves on SQLite. This is
+  # the only place they execute.
   parity:
     runs-on: ubuntu-latest
     environment: Testing

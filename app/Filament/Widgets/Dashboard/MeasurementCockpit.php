@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets\Dashboard;
 
 use App\Filament\Resources\Measurements\MeasurementResource;
+use App\Filament\Resources\Measurements\Tables\MeasurementsTable;
 use App\Filament\Resources\PaymentWorkspaces\PaymentWorkspaceResource;
 use App\Models\User;
 use App\Services\MeasurementCockpitService;
@@ -108,34 +109,60 @@ class MeasurementCockpit extends Widget
 
     /**
      * @param  array<string, mixed>  $pageFilters
-     * @param  array<string, mixed>  $overrides
+     * @param  array<string, mixed>  $cardRefinement
      */
-    private function measurementUrl(array $pageFilters, array $overrides = []): string
+    private function measurementUrl(array $pageFilters, array $cardRefinement = []): ?string
     {
+        $filters = $this->resolveDrillDownFilters($pageFilters, $cardRefinement);
+
+        if ($filters === null) {
+            return null;
+        }
+
         return MeasurementResource::getUrl('index', [
-            'tableFilters' => $this->tableFilters($pageFilters, $overrides),
+            'filters' => MeasurementsTable::cockpitFiltersToTableState($filters),
         ]);
     }
 
     /**
      * @param  array<string, mixed>  $pageFilters
-     * @param  array<string, mixed>  $overrides
+     * @param  array<string, mixed>  $cardRefinement
      */
-    private function paymentUrl(array $pageFilters, array $overrides = []): string
+    private function paymentUrl(array $pageFilters, array $cardRefinement = []): ?string
     {
+        $filters = $this->resolveDrillDownFilters($pageFilters, $cardRefinement);
+
+        if ($filters === null) {
+            return null;
+        }
+
         return PaymentWorkspaceResource::getUrl('index', [
-            'tableFilters' => $this->tableFilters($pageFilters, $overrides),
+            'tableFilters' => $this->tableFilters($filters),
         ]);
     }
 
     /**
-     * @param  array<string, mixed>  $pageFilters
-     * @param  array<string, mixed>  $overrides
+     * @param  array<string, mixed>  $baseFilters
+     * @param  array<string, mixed>  $cardRefinement
+     * @return array<string, mixed>|null
+     */
+    private function resolveDrillDownFilters(array $baseFilters, array $cardRefinement): ?array
+    {
+        foreach ($cardRefinement as $dimension => $value) {
+            if (array_key_exists($dimension, $baseFilters) && $baseFilters[$dimension] !== $value) {
+                return null;
+            }
+        }
+
+        return $baseFilters + $cardRefinement;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
      * @return array<string, array<string, mixed>>
      */
-    private function tableFilters(array $pageFilters, array $overrides = []): array
+    private function tableFilters(array $filters): array
     {
-        $filters = array_replace($pageFilters, $overrides);
         $tableFilters = [];
 
         if (filled($filters['competence_from'] ?? null) || filled($filters['competence_to'] ?? null)) {

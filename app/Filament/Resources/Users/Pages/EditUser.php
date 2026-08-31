@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Models\User;
+use App\Support\Delegations\DelegationHistoryDeleteGuard;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
@@ -28,6 +30,7 @@ class EditUser extends EditRecord
     {
         return [
             DeleteAction::make()
+                ->before(fn (User $record, DeleteAction $action) => DelegationHistoryDeleteGuard::haltForUsers([$record], $action))
                 ->visible(fn (): bool => $this->record->getKey() !== auth()->id()),
         ];
     }

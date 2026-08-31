@@ -86,6 +86,7 @@ class EmissionFactory extends Factory
             'guarantees_description' => fake()->paragraph(),
             'covenants' => fake()->paragraph(),
             'is_public' => false,
+            'negotiations_source' => Emission::NEGOTIATIONS_SOURCE_LEGACY,
             'description' => fake()->paragraph(),
         ];
     }
@@ -108,6 +109,20 @@ class EmissionFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'closed',
+        ]);
+    }
+
+    public function withContractNegotiations(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'negotiations_source' => Emission::NEGOTIATIONS_SOURCE_CONTRACTS,
+        ]);
+    }
+
+    public function withLegacyNegotiations(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'negotiations_source' => Emission::NEGOTIATIONS_SOURCE_LEGACY,
         ]);
     }
 }

@@ -14,6 +14,7 @@ use App\Filament\Resources\BusinessHolidays\BusinessHolidayResource;
 use App\Filament\Widgets\BusinessCalendars\BusinessCalendarOverview;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -22,15 +23,36 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\Storage;
 
 class ListBusinessHolidays extends ListRecords
 {
     protected static string $resource = BusinessHolidayResource::class;
 
+    protected static ?string $title = 'Feriados e Calendários';
+
+    protected static ?string $breadcrumb = 'Listar';
+
+    protected Width|string|null $maxContentWidth = Width::Full;
+
+    public function getMaxContentWidth(): Width|string|null
+    {
+        return Width::Full;
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return 1;
+    }
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-business-holidays-list-page',
+    ];
+
     public function getSubheading(): ?string
     {
-        return 'ANBIMA (bancário) e B3 (sessões de negociação) são calendários distintos. O código B3 abaixo é um alias legado sem redirecionamento automático.';
+        return 'Gerencie calendários de negócio, fontes oficiais e feriados utilizados pelas operações da plataforma.';
     }
 
     protected function getHeaderWidgets(): array
@@ -41,17 +63,23 @@ class ListBusinessHolidays extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            $this->buildImportFromUrlAction(),
             Action::make('compareCalendars')
                 ->label('Comparar calendários')
                 ->icon('heroicon-o-arrows-right-left')
                 ->color('gray')
                 ->visible(fn (): bool => auth()->user()?->can('pu.dashboard.view') ?? false)
                 ->url(BusinessHolidayResource::getUrl('compare')),
-            $this->buildImportFromUrlAction(),
             $this->buildImportFromFileAction(),
-            $this->buildManualOverrideAction(),
-            $this->buildConfirmYearAction(),
-            $this->buildSeedCalendarAction(),
+            ActionGroup::make([
+                $this->buildManualOverrideAction(),
+                $this->buildConfirmYearAction(),
+                $this->buildSeedCalendarAction(),
+            ])
+                ->label('Mais ações')
+                ->icon('heroicon-m-ellipsis-vertical')
+                ->color('gray')
+                ->button(),
         ];
     }
 

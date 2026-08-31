@@ -9,6 +9,7 @@ use App\DTOs\Guarantees\GuaranteePositionData;
 use App\Enums\GuaranteeType;
 use App\Enums\LegalInstrumentFieldKey;
 use App\Models\Construction;
+use App\Models\Contract;
 use App\Models\Emission;
 use App\Models\EmissionMonthlyReportNote;
 use App\Models\EmissionPuEvent;
@@ -56,6 +57,7 @@ class EmissionMonthlyReportService
     public function __construct(
         private readonly ConstructionProgressProvider $constructionProgressProvider,
         private readonly EmissionGuaranteeCoverageEngine $guaranteeCoverageEngine,
+        private readonly ContractNegotiationEvents $contractNegotiationEvents,
     ) {}
 
     /**
@@ -233,7 +235,7 @@ class EmissionMonthlyReportService
 
         $receivable = $this->latestReceivable($emission, $monthStart, $monthEnd);
         $salesBoard = $this->latestSalesBoard($emission, $monthStart, $monthEnd);
-        $negotiation = $this->latestNegotiation($emission, $monthStart, $monthEnd);
+        $negotiationsData = $this->buildNegotiations($emission, $monthStart, $monthEnd);
         $payment = $this->lastPaymentUntil($emission, $monthEnd);
         $upcomingEvents = $this->upcomingEventsFrom($emission, $monthStart);
         $constructions = $emission->constructions()->orderBy('development_name')->get();
@@ -258,7 +260,7 @@ class EmissionMonthlyReportService
             'receivables' => $this->buildReceivablesSummary($receivable),
             'units' => $this->buildUnits($salesBoard),
             'units_history' => $this->buildUnitsHistory($emission, $monthEnd),
-            'negotiations' => $this->buildNegotiations($negotiation),
+            'negotiations' => $negotiationsData,
             'negotiations_history' => $this->buildNegotiationsHistory($emission, $monthEnd),
             'analise_mes' => $this->buildAnaliseMes($receivable),
             'receivables_history' => $this->buildReceivablesHistory($emission, $monthEnd),
@@ -669,9 +671,74 @@ class EmissionMonthlyReportService
     }
 
     /**
+     * Negociações do mês derivadas automaticamente dos contratos.
+     *
+     * Fonte única: contracts.sale_date e contracts.cancellation_date.
+     * Venda = sale_date dentro do mês; Distrato = cancellation_date dentro do mês.
+     * Escopo estrito à emissão via construction -> emission.
+     * A fonte (contratos vs legado) é explícita via Emission::usesContractNegotiations().
+     *
      * @return array<string, mixed>
      */
-    private function buildNegotiations(?Negotiation $negotiation): array
+    private function buildNegotiations(Emission $emission, CarbonImmutable $monthStart, CarbonImmutable $monthEnd): array
+    {
+        // Explicit source-of-truth: no partial-data inference via exists()
+        if ($emission->usesContractNegotiations()) {
+            $events = $this->contractNegotiationEvents->forMonth($emission, $monthStart, $monthEnd);
+
+            $sales = $events['sales'];
+            $cancellations = $events['cancellations'];
+
+            $hasData = $sales->isNotEmpty() || $cancellations->isNotEmpty();
+
+            if (! $hasData) {
+                return [
+                    'has_data' => false,
+                    'empty_message' => 'Não houve negociações no período.',
+                    'rows' => [],
+                    'sales_count' => 0,
+                    'cancellations_count' => 0,
+                    'sales' => [],
+                    'cancellations' => [],
+                    'transactions' => [],
+                    'vendas' => [],
+                    'distratos' => [],
+                    'source' => 'contracts',
+                ];
+            }
+
+            return [
+                'has_data' => true,
+                'empty_message' => '',
+                'rows' => [
+                    ['label' => 'Vendas (mês)', 'value' => $this->integer($sales->count())],
+                    ['label' => 'Distratos (mês)', 'value' => $this->integer($cancellations->count())],
+                    ['label' => 'Saldo líquido de unidades', 'value' => $this->integer($sales->count() - $cancellations->count())],
+                ],
+                'sales_count' => $sales->count(),
+                'cancellations_count' => $cancellations->count(),
+                'sales' => $sales->all(),
+                'cancellations' => $cancellations->all(),
+                'vendas' => $sales->all(),
+                'distratos' => $cancellations->all(),
+                'transactions' => collect($sales->all())->merge(collect($cancellations->all()))->sortBy('date')->values()->all(),
+                'source' => 'contracts',
+            ];
+        }
+
+        // Legacy path: single source = manual Negotiation snapshots
+        $negotiation = $this->latestNegotiation($emission, $monthStart, $monthEnd);
+
+        return array_merge($this->buildNegotiationsFromManual($negotiation), ['source' => 'legacy']);
+    }
+
+    /**
+     * Legacy manual path — kept for backward compatibility if needed elsewhere.
+     * The report itself now uses the contract-derived buildNegotiations above.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildNegotiationsFromManual(?Negotiation $negotiation): array
     {
         if ($negotiation === null) {
             return ['has_data' => false, 'empty_message' => self::NO_DATA];
@@ -969,15 +1036,69 @@ class EmissionMonthlyReportService
     }
 
     /**
-     * Histórico de negociações (últimas competências) a partir dos snapshots de
-     * Negotiation, agregando por competência. Apenas contagens (vendas/distratos): a
-     * tabela não possui valor monetário negociado, então nada é inferido nesse sentido.
-     * Exibido apenas quando há ao menos duas competências.
+     * Histórico de negociações (últimas competências) derivado dos contratos.
+     * Fonte única: contracts.sale_date / cancellation_date.
+     * Exibido apenas quando há ao menos duas competências com movimento.
      *
      * @return array<string, mixed>
      */
     private function buildNegotiationsHistory(Emission $emission, CarbonImmutable $monthEnd, int $limit = 6): array
     {
+        // Explicit source-of-truth: contracts only when emission is migrated
+        $usesContracts = $emission->usesContractNegotiations();
+
+        if ($usesContracts) {
+            $start = $monthEnd->copy()->subMonthsNoOverflow($limit - 1)->startOfMonth();
+            $end = $monthEnd->copy()->endOfMonth();
+
+            $contracts = Contract::query()
+                ->forEmission($emission->id)
+                ->where(function ($query) use ($start, $end): void {
+                    $query->where(function ($q) use ($start, $end): void {
+                        $q->whereDate('sale_date', '>=', $start->toDateString())
+                            ->whereDate('sale_date', '<=', $end->toDateString());
+                    })->orWhere(function ($q) use ($start, $end): void {
+                        $q->whereDate('cancellation_date', '>=', $start->toDateString())
+                            ->whereDate('cancellation_date', '<=', $end->toDateString());
+                    });
+                })
+                ->get(['sale_date', 'cancellation_date']);
+
+            $months = collect();
+            $cursor = $start->copy();
+            while ($cursor->lte($monthEnd)) {
+                $months->push($cursor->format('Y-m'));
+                $cursor = $cursor->addMonthNoOverflow();
+            }
+
+            $allRows = $months->map(function (string $ym) use ($contracts): array {
+                $sales = $contracts->filter(fn (Contract $c): bool => $c->sale_date?->format('Y-m') === $ym)->count();
+                $cancellations = $contracts->filter(fn (Contract $c): bool => $c->cancellation_date?->format('Y-m') === $ym)->count();
+
+                return [
+                    'competencia' => CarbonImmutable::parse($ym.'-01')->format('m/Y'),
+                    'sales' => $this->integer($sales),
+                    'cancellations' => $this->integer($cancellations),
+                    'net' => $this->integer($sales - $cancellations),
+                    '_has' => $sales > 0 || $cancellations > 0,
+                ];
+            })->all();
+
+            $hasMovementMonths = collect($allRows)->filter(fn (array $row): bool => $row['_has'])->count();
+            $rows = array_map(fn (array $row): array => [
+                'competencia' => $row['competencia'],
+                'sales' => $row['sales'],
+                'cancellations' => $row['cancellations'],
+                'net' => $row['net'],
+            ], $allRows);
+
+            return [
+                'has_data' => $hasMovementMonths >= 2,
+                'rows' => $rows,
+            ];
+        }
+
+        // Fallback: legacy manual Negotiation snapshots
         $negotiations = Negotiation::query()
             ->where('emission_id', $emission->id)
             ->where('reference_month', '<=', $monthEnd->toDateString())

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Runs the `parity` test group against MySQL.
+# Runs the `parity` and `mysql` test groups against MySQL.
 #
 # The suite normally runs on SQLite, which is fast but does not behave like
 # production everywhere it matters: collation decides what a UNIQUE index
@@ -12,6 +12,12 @@
 # So the tests that depend on the database *being* a particular database are
 # tagged `parity` and run here a second time, on the real thing. Tag a new test
 # by putting `pest()->group('parity');` at the top of its file.
+#
+# The `mysql` group runs here too, and is a different thing: those tests do not
+# have a SQLite counterpart at all. They open real concurrent connections to
+# observe locks, gap locks and deadlocks, which SQLite cannot show because it
+# serializes writers. They skip themselves on any other driver, so this script
+# is the only place they ever execute -- without it they were dead weight.
 #
 # The database is created fresh and dropped afterwards, so nothing is left behind
 # and nothing pre-existing is touched: the name is namespaced and the script
@@ -76,11 +82,11 @@ mysql_admin "DROP DATABASE IF EXISTS \`$DB_DATABASE\`;
              GRANT ALL PRIVILEGES ON \`$DB_DATABASE\`.* TO '$DB_USERNAME'@'%';
              FLUSH PRIVILEGES;"
 
-echo "==> Rodando o grupo 'parity' no MySQL."
+echo "==> Rodando os grupos 'parity' e 'mysql' no MySQL."
 DB_CONNECTION=mysql \
 DB_HOST="$DB_HOST" \
 DB_PORT="$DB_PORT" \
 DB_DATABASE="$DB_DATABASE" \
 DB_USERNAME="$DB_USERNAME" \
 DB_PASSWORD="$DB_PASSWORD" \
-    php artisan test --group=parity "$@"
+    php artisan test --group=parity --group=mysql "$@"

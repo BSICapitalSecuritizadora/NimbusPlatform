@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DelegationIneffectivenessReason;
 use App\Enums\MeasurementResponsibility;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
@@ -9,7 +10,9 @@ use App\Models\User;
 use App\Notifications\DelegationCreatedNotification;
 use App\Notifications\DelegationRevokedNotification;
 use App\Support\Delegations\DelegationAuthorityContext;
+use App\Support\Delegations\DelegationEffectiveness;
 use App\Support\Delegations\DelegationWindow;
+use App\Support\Users\UserIdentityMap;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -24,6 +27,13 @@ class ResponsibilityDelegationService
      * ciclo antes de recusar por não conseguir validar o grafo com segurança.
      */
     private const MAX_CYCLE_PATH_STATES = 1000;
+
+    /**
+     * Efetividade já resolvida nesta instância, por delegação.
+     *
+     * @var array<int, DelegationEffectiveness>
+     */
+    private array $resolvedEffectiveness = [];
 
     /**
      * @param  array{delegator_user_id: int, delegate_user_id: int, scope_type: string, scope_operation_id?: ?int, scope_stage?: ?int, scope_responsibility?: ?string, starts_at: string|\DateTimeInterface, ends_at: string|\DateTimeInterface, reason: string}  $data
@@ -171,10 +181,25 @@ class ResponsibilityDelegationService
             ->first(fn (ResponsibilityDelegation $delegation): bool => $delegation->covers($operation, $responsibility));
     }
 
-    /** @return Collection<int, ResponsibilityDelegation> */
+    /**
+     * As delegações efetivas desta responsabilidade nesta operação, com
+     * `delegate` e `delegator` sempre carregados.
+     *
+     * O delegado é notificado, o delegante aparece na mensagem. As
+     * roles/permissions de ambos já foram exigidas pelo SQL de efetividade.
+     *
+     * Quem chama em laço pode passar um {@see UserIdentityMap} da própria
+     * execução: os dois principais saem dele em vez de um eager-load por
+     * chamada, que reconsultava os mesmos usuários a cada operação visitada. A
+     * consulta de delegações em si continua sendo feita sempre -- ela depende da
+     * operação e da responsabilidade, não só de quem é o usuário.
+     *
+     * @return Collection<int, ResponsibilityDelegation>
+     */
     public function activeDelegatesForResponsibility(
         Operation $operation,
         MeasurementResponsibility $responsibility,
+        ?UserIdentityMap $users = null,
     ): Collection {
         $responsibleUserId = $operation->responsibleUserIdFor($responsibility);
 
@@ -182,15 +207,40 @@ class ResponsibilityDelegationService
             return new Collection;
         }
 
-        // O delegado é notificado, o delegante aparece na mensagem. As
-        // roles/permissions de ambos já foram exigidas pelo SQL de efetividade.
-        return $this->effectiveDelegationsForResponsibilityQuery($responsibility)
-            ->with(['delegate', 'delegator'])
+        $query = $this->effectiveDelegationsForResponsibilityQuery($responsibility)
             ->where('delegator_user_id', $responsibleUserId)
-            ->orderBy('id')
+            ->orderBy('id');
+
+        if (! $users instanceof UserIdentityMap) {
+            $query->with(['delegate', 'delegator']);
+        }
+
+        $delegations = $query
             ->get()
             ->filter(fn (ResponsibilityDelegation $delegation): bool => $delegation->covers($operation, $responsibility))
             ->values();
+
+        if ($users instanceof UserIdentityMap) {
+            $this->attachPrincipalsFrom($delegations, $users);
+        }
+
+        return $delegations;
+    }
+
+    /**
+     * @param  Collection<int, ResponsibilityDelegation>  $delegations
+     */
+    private function attachPrincipalsFrom(Collection $delegations, UserIdentityMap $users): void
+    {
+        $users->load($delegations
+            ->pluck('delegate_user_id')
+            ->merge($delegations->pluck('delegator_user_id'))
+            ->all());
+
+        foreach ($delegations as $delegation) {
+            $delegation->setRelation('delegate', $users->get((int) $delegation->delegate_user_id));
+            $delegation->setRelation('delegator', $users->get((int) $delegation->delegator_user_id));
+        }
     }
 
     public function hasAnyActiveDelegatedResponsibility(User $delegate, Operation $operation): bool
@@ -235,14 +285,49 @@ class ResponsibilityDelegationService
 
     public function effectiveStatus(ResponsibilityDelegation $delegation): string
     {
-        if ($delegation->status !== 'active') {
-            return $delegation->status;
+        return $this->effectiveness($delegation)->status;
+    }
+
+    /**
+     * O status efetivo e, quando ele é `ineffective`, a condição que falhou.
+     *
+     * A varredura é a mesma de sempre -- para cada responsabilidade que o escopo
+     * pode cobrir, a delegação é efetiva se os dois principais passam pelo SQL de
+     * efetividade e o delegante ainda detém a responsabilidade em alguma operação
+     * do escopo. A diferença é que agora, quando nenhuma responsabilidade passa, a
+     * primeira que o escopo cobria é reexaminada condição a condição, com os
+     * mesmos predicados que o SQL usou, para dizer qual delas reprovou.
+     *
+     * O diagnóstico só roda no caminho já perdido, e só depois de a varredura
+     * inteira falhar: delegação efetiva não paga nada por ele. O resultado é
+     * memorizado por instância porque tabela e tooltip perguntam a mesma coisa
+     * duas vezes na mesma renderização.
+     */
+    public function effectiveness(ResponsibilityDelegation $delegation): DelegationEffectiveness
+    {
+        $key = (int) $delegation->getKey();
+
+        if (isset($this->resolvedEffectiveness[$key])) {
+            return $this->resolvedEffectiveness[$key];
         }
+
+        return $this->resolvedEffectiveness[$key] = $this->resolveEffectiveness($delegation);
+    }
+
+    private function resolveEffectiveness(ResponsibilityDelegation $delegation): DelegationEffectiveness
+    {
+        if ($delegation->status !== 'active') {
+            return DelegationEffectiveness::of($delegation->status);
+        }
+
+        $covered = [];
 
         foreach (MeasurementResponsibility::cases() as $responsibility) {
             if (! $this->delegationCanCoverResponsibility($delegation, $responsibility)) {
                 continue;
             }
+
+            $covered[] = $responsibility;
 
             $isEffectiveForPrincipals = $this->effectiveDelegationsForResponsibilityQuery($responsibility)
                 ->whereKey($delegation->getKey())
@@ -252,19 +337,60 @@ class ResponsibilityDelegationService
                 continue;
             }
 
-            $operations = Operation::query()
-                ->where($responsibility->operationColumn(), $delegation->delegator_user_id);
-
-            if ($delegation->scope_operation_id !== null) {
-                $operations->whereKey($delegation->scope_operation_id);
-            }
-
-            if ($operations->exists()) {
-                return 'active';
+            if ($this->delegatorHoldsResponsibility($delegation, $responsibility)) {
+                return DelegationEffectiveness::of('active');
             }
         }
 
-        return 'ineffective';
+        return DelegationEffectiveness::ineffective($this->ineffectivenessReason($delegation, $covered));
+    }
+
+    private function delegatorHoldsResponsibility(
+        ResponsibilityDelegation $delegation,
+        MeasurementResponsibility $responsibility,
+    ): bool {
+        $operations = Operation::query()
+            ->where($responsibility->operationColumn(), $delegation->delegator_user_id);
+
+        if ($delegation->scope_operation_id !== null) {
+            $operations->whereKey($delegation->scope_operation_id);
+        }
+
+        return $operations->exists();
+    }
+
+    /**
+     * Qual condição reprovou.
+     *
+     * A ordem é a da leitura do operador, não a do SQL: primeiro o estado dos
+     * principais (que ele resolve no cadastro de usuários), depois a permissão
+     * (que resolve na role), por último o assignment (que resolve na operação).
+     * Delegante antes de delegado porque é a autoridade dele que está sendo
+     * emprestada -- se ele não a tem, o resto não importa.
+     *
+     * @param  list<MeasurementResponsibility>  $covered
+     */
+    private function ineffectivenessReason(
+        ResponsibilityDelegation $delegation,
+        array $covered,
+    ): ?DelegationIneffectivenessReason {
+        if ($covered === []) {
+            return DelegationIneffectivenessReason::ScopeMismatch;
+        }
+
+        $responsibility = $covered[0];
+        $delegator = User::query()->whereKey($delegation->delegator_user_id);
+        $delegate = User::query()->whereKey($delegation->delegate_user_id);
+
+        return match (true) {
+            ! $this->scopePrincipalIsActive(clone $delegator)->exists() => DelegationIneffectivenessReason::DelegatorInactive,
+            ! $this->scopePrincipalIsApproved(clone $delegator)->exists() => DelegationIneffectivenessReason::DelegatorUnapproved,
+            ! (clone $delegator)->permission($responsibility->permission())->exists() => DelegationIneffectivenessReason::DelegatorMissingPermission,
+            ! $this->scopePrincipalIsActive(clone $delegate)->exists() => DelegationIneffectivenessReason::DelegateInactive,
+            ! $this->scopePrincipalIsApproved(clone $delegate)->exists() => DelegationIneffectivenessReason::DelegateUnapproved,
+            ! (clone $delegate)->permission($responsibility->permission())->exists() => DelegationIneffectivenessReason::DelegateMissingPermission,
+            default => DelegationIneffectivenessReason::DelegatorMissingAssignment,
+        };
     }
 
     /** @param Builder<Operation> $query */
@@ -546,6 +672,28 @@ class ResponsibilityDelegationService
      * delegação pode compor um caminho efetivo, porque toda janela acumulada é
      * subconjunto dela.
      *
+     * A busca trava o que lê, inclusive as ausências. Sem isto, duas transações
+     * podem percorrer o grafo ao mesmo tempo, cada uma sem ver a aresta que a
+     * outra ainda não gravou, e gravar em conjunto um ciclo que nenhuma das duas
+     * conseguiria criar sozinha. O lock dos dois usuários no início de
+     * `createDelegation()` já serializa os pares que compartilham delegante ou
+     * delegado -- reciprocidade direta A/B, e qualquer cadeia em que as duas
+     * arestas novas se tocam --, mas não alcança arestas disjuntas: com
+     * B → C e D → A já gravadas, A → B e C → D fecham A → B → C → D → A sem ter
+     * um único usuário em comum.
+     *
+     * Em InnoDB o `FOR UPDATE` aqui resolve isto sem lock global. A consulta usa
+     * `rd_delegator_idx (delegator_user_id, revoked_at)` por igualdade nas duas
+     * colunas, então cada delegante visitado recebe next-key lock na sua faixa
+     * -- e o intervalo vazio recebe gap lock, que é o caso que importa: é
+     * exatamente ali que a transação concorrente quer inserir. Como o caminho
+     * entre a aresta nova de uma e o ponto de inserção da outra é formado só por
+     * arestas já gravadas, cada busca sempre visita o delegante onde a outra vai
+     * gravar. As duas se bloqueiam mutuamente: ou uma espera e depois enxerga a
+     * aresta da outra (e recusa por ciclo), ou o par forma deadlock e o
+     * `DB::transaction(..., 3)` de `createDelegation()` refaz a verificação do
+     * zero -- sem Activity parcial, porque o log está dentro da transação.
+     *
      * @param  list<int>  $delegatorIds
      * @return array<int, list<ResponsibilityDelegation>>
      */
@@ -556,6 +704,7 @@ class ResponsibilityDelegationService
             ->whereIn('delegator_user_id', array_values(array_unique($delegatorIds)))
             ->where('starts_at', '<=', $horizon->endsAt)
             ->where('ends_at', '>=', $horizon->startsAt)
+            ->lockForUpdate()
             ->get([
                 'id',
                 'delegator_user_id',
@@ -660,16 +809,40 @@ class ResponsibilityDelegationService
             );
     }
 
-    /** @param Builder<User> $query */
+    /**
+     * As três condições que fazem de um usuário um principal efetivo.
+     *
+     * Ficam decompostas, e não inline, porque {@see self::ineffectivenessReason()}
+     * as aplica uma a uma para dizer qual falhou. Compostas aqui, avaliadas lá:
+     * uma fonte só, sem uma segunda leitura da mesma regra.
+     *
+     * @param  Builder<User>  $query
+     */
     private function scopeEffectivePrincipal(Builder $query, string $permission): Builder
     {
-        return $query
-            ->where(function (Builder $active): void {
-                $active->where('is_active', true)
-                    ->orWhereNull('is_active');
-            })
-            ->whereNotNull('approved_at')
+        return $this->scopePrincipalIsApproved($this->scopePrincipalIsActive($query))
             ->permission($permission);
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    private function scopePrincipalIsActive(Builder $query): Builder
+    {
+        return $query->where(function (Builder $active): void {
+            $active->where('is_active', true)
+                ->orWhereNull('is_active');
+        });
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    private function scopePrincipalIsApproved(Builder $query): Builder
+    {
+        return $query->whereNotNull('approved_at');
     }
 
     /**

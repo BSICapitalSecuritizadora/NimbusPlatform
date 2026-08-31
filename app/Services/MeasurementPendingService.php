@@ -7,6 +7,8 @@ use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\Measurement;
 use App\Models\ResponsibilityDelegation;
 use App\Models\User;
+use App\Support\Delegations\ResponsibilityAuthorization;
+use App\Support\Delegations\ResponsibilityAuthorizationCapture;
 
 class MeasurementPendingService
 {
@@ -29,6 +31,11 @@ class MeasurementPendingService
         $count = 0;
         $overdueCount = 0;
         $delegatedCount = 0;
+
+        // O papel do ator não muda no meio da varredura, e `hasAnyRole()` só
+        // consultaria o banco na primeira chamada de qualquer forma; resolver
+        // aqui deixa explícito que a pergunta é sobre o ator, não sobre a linha.
+        $isAdministrator = $this->authorization->isWorkflowAdministrator($user);
 
         Measurement::query()
             ->select([
@@ -62,6 +69,7 @@ class MeasurementPendingService
             ->lazyById(100, column: 'measurements.id', alias: 'id')
             ->each(function (Measurement $measurement) use (
                 $user,
+                $isAdministrator,
                 $previewLimit,
                 &$items,
                 &$count,
@@ -75,11 +83,7 @@ class MeasurementPendingService
                 }
 
                 $evaluation = $this->sla->evaluate($measurement);
-                $delegation = $this->authorization->activeDelegationFor(
-                    $user,
-                    $measurement,
-                    $action['responsibility'],
-                );
+                $delegation = $this->delegationContextFor($action['authorization'], $isAdministrator);
 
                 $count++;
                 $overdueCount += $evaluation['status'] === MeasurementSlaService::STATUS_OVERDUE ? 1 : 0;
@@ -100,16 +104,28 @@ class MeasurementPendingService
         ];
     }
 
-    /** @return array{label: string, responsibility: MeasurementResponsibility}|null */
+    /**
+     * A ação pendente do ator sobre esta medição -- e, junto, a autorização que
+     * a permitiu.
+     *
+     * A autorização sai do mesmo `capture` que a decisão preencheu, e não de uma
+     * segunda resolução: era ela a origem das duas consultas de delegação por
+     * pendência delegada, e de uma divergência possível entre o que autorizou a
+     * ação e o que o payload descreve.
+     *
+     * @return array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization}|null
+     */
     private function actionFor(Measurement $measurement, User $user): ?array
     {
+        $capture = new ResponsibilityAuthorizationCapture;
+
         if ($measurement->status === 'paused') {
             $stage = $this->workflow->unifiedStage($measurement);
             $responsibility = MeasurementResponsibility::primaryForStage($stage);
 
             return $responsibility instanceof MeasurementResponsibility
-                && $this->workflow->canResume($measurement, $user)
-                    ? ['label' => 'Retomar etapa', 'responsibility' => $responsibility]
+                && $this->workflow->canResume($measurement, $user, $capture)
+                    ? $this->action('Retomar etapa', $responsibility, $capture)
                     : null;
         }
 
@@ -118,24 +134,72 @@ class MeasurementPendingService
             $responsibility = MeasurementResponsibility::primaryForStage($stage);
 
             return $responsibility instanceof MeasurementResponsibility
-                && $this->workflow->canApprove($measurement, $user)
-                    ? ['label' => $responsibility->label(), 'responsibility' => $responsibility]
+                && $this->workflow->canApprove($measurement, $user, $capture)
+                    ? $this->action($responsibility->label(), $responsibility, $capture)
                     : null;
         }
 
-        if ($measurement->status === 'awaiting_payment' && $this->workflow->canRegisterPayment($measurement, $user)) {
-            return ['label' => 'Registrar e aprovar pagamento', 'responsibility' => MeasurementResponsibility::PaymentManager];
+        if ($measurement->status === 'awaiting_payment'
+            && $this->workflow->canRegisterPayment($measurement, $user, $capture)) {
+            return $this->action(
+                'Registrar e aprovar pagamento',
+                MeasurementResponsibility::PaymentManager,
+                $capture,
+            );
         }
 
-        if ($measurement->status === 'awaiting_receipt' && $this->workflow->canManageReceipts($measurement, $user)) {
-            return ['label' => 'Enviar comprovante', 'responsibility' => MeasurementResponsibility::ReceiptUploader];
+        if ($measurement->status === 'awaiting_receipt'
+            && $this->workflow->canManageReceipts($measurement, $user, $capture)) {
+            return $this->action(
+                'Enviar comprovante',
+                MeasurementResponsibility::ReceiptUploader,
+                $capture,
+            );
         }
 
-        if ($measurement->status === 'approved' && $this->workflow->canFinalize($measurement, $user)) {
-            return ['label' => 'Finalizar medição', 'responsibility' => MeasurementResponsibility::Finalizer];
+        if ($measurement->status === 'approved'
+            && $this->workflow->canFinalize($measurement, $user, $capture)) {
+            return $this->action(
+                'Finalizar medição',
+                MeasurementResponsibility::Finalizer,
+                $capture,
+            );
         }
 
         return null;
+    }
+
+    /**
+     * @return array{label: string, responsibility: MeasurementResponsibility, authorization: ResponsibilityAuthorization}
+     */
+    private function action(
+        string $label,
+        MeasurementResponsibility $responsibility,
+        ResponsibilityAuthorizationCapture $capture,
+    ): array {
+        // A decisão só é positiva depois de passar pela autorização, então o
+        // slot está preenchido aqui; o fallback existe para o tipo, não para um
+        // caminho alcançável.
+        return [
+            'label' => $label,
+            'responsibility' => $responsibility,
+            'authorization' => $capture->captured() ?? ResponsibilityAuthorization::none(),
+        ];
+    }
+
+    /**
+     * O contexto de delegação exibido na pendência.
+     *
+     * A resolução da P2.3 classifica como DELEGATED o administrador que também
+     * é delegado efetivo, mas My Pendings nunca atribuiu contexto de delegação a
+     * administrador -- para ele o bypass é o que revela a pendência. Esta rodada
+     * é de desempenho: a distinção fica preservada como está.
+     */
+    private function delegationContextFor(
+        ResponsibilityAuthorization $authorization,
+        bool $isAdministrator,
+    ): ?ResponsibilityDelegation {
+        return $isAdministrator ? null : $authorization->delegation;
     }
 
     /** @return array<string, mixed> */

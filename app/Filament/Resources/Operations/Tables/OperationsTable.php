@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Operations\Tables;
 
 use App\Filament\Resources\Operations\OperationResource;
 use App\Models\Operation;
+use App\Support\Delegations\DelegationHistoryDeleteGuard;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -17,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class OperationsTable
 {
@@ -183,12 +185,17 @@ class OperationsTable
 
                 ActionGroup::make([
                     EditAction::make(),
-                    DeleteAction::make(),
+                    DeleteAction::make()
+                        ->before(fn (Operation $record, DeleteAction $action) => DelegationHistoryDeleteGuard::haltForOperations([$record], $action)),
                 ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // O lote é recusado inteiro quando qualquer selecionada tem
+                    // histórico de delegação, pelo mesmo motivo do lote de
+                    // usuários: nada de exclusão parcial silenciosa.
+                    DeleteBulkAction::make()
+                        ->before(fn (Collection $records, DeleteBulkAction $action) => DelegationHistoryDeleteGuard::haltForOperations($records, $action)),
                 ]),
             ]);
     }

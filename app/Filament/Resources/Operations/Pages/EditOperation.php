@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\OperationContextMutationService;
 use App\Services\OperationContextVisibilityService;
 use App\Services\OperationResponsibilityService;
+use App\Support\Delegations\DelegationHistoryDeleteGuard;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
@@ -42,7 +43,8 @@ class EditOperation extends EditRecord
                 ->icon('heroicon-m-eye')
                 ->color('gray'),
             DeleteAction::make()
-                ->label('Excluir operação'),
+                ->label('Excluir operação')
+                ->before(fn (Operation $record, DeleteAction $action) => DelegationHistoryDeleteGuard::haltForOperations([$record], $action)),
         ];
     }
 

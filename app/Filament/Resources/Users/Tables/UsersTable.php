@@ -6,6 +6,7 @@ use App\Enums\AccessPermission;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
+use App\Support\Delegations\DelegationHistoryDeleteGuard;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -15,6 +16,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 
 class UsersTable
 {
@@ -115,7 +117,11 @@ class UsersTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // O lote é recusado inteiro quando qualquer selecionado tem
+                    // histórico de delegação: exclusão parcial deixaria a pessoa
+                    // sem saber o que foi apagado e o que sobrou.
+                    DeleteBulkAction::make()
+                        ->before(fn (Collection $records, DeleteBulkAction $action) => DelegationHistoryDeleteGuard::haltForUsers($records, $action)),
                 ]),
             ])
             ->emptyStateIcon(Heroicon::OutlinedUsers)

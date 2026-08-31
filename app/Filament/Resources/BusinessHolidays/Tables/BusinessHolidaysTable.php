@@ -17,20 +17,42 @@ class BusinessHolidaysTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->heading('Feriados cadastrados')
+            ->description('Consulte os feriados e sua aplicação nos diferentes calendários de negócio.')
+            ->searchPlaceholder('Buscar por feriado, calendário ou data...')
+            ->searchDebounce('400ms')
+            ->defaultSort('holiday_date', 'desc')
+            ->defaultPaginationPageOption(25)
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->emptyStateHeading('Nenhum feriado encontrado')
+            ->emptyStateDescription('Os feriados cadastrados ou importados aparecerão aqui.')
+            ->emptyStateIcon('heroicon-o-calendar-days')
             ->columns([
                 TextColumn::make('holiday_date')
                     ->label('Data')
                     ->date('d/m/Y')
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('semibold')
+                    ->extraAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap']),
+
                 TextColumn::make('name')
                     ->label('Feriado')
                     ->placeholder('—')
+                    ->weight('semibold')
                     ->searchable(),
+
                 TextColumn::make('calendar_code')
                     ->label('Calendário')
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => BusinessCalendarRegistry::label($state))
+                    ->color(fn (string $state): string => match ($state) {
+                        BusinessCalendarRegistry::BR_BANKING_ANBIMA => 'info',
+                        BusinessCalendarRegistry::B3_LISTED_TRADING => 'primary',
+                        BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS => 'success',
+                        default => 'gray',
+                    })
                     ->sortable(),
+
                 TextColumn::make('source')
                     ->label('Fonte')
                     ->badge()
@@ -39,6 +61,7 @@ class BusinessHolidaysTable
                         default => (string) ($state ?? '—'),
                     })
                     ->color(fn (?string $state): string => $state === 'anbima' ? 'info' : 'gray'),
+
                 TextColumn::make('data_origin')
                     ->label('Origem')
                     ->badge()
@@ -54,6 +77,7 @@ class BusinessHolidaysTable
                         'manual_override' => 'warning',
                         default => 'gray',
                     }),
+
                 TextColumn::make('source_is_official')
                     ->label('Oficial')
                     ->badge()
@@ -63,30 +87,36 @@ class BusinessHolidaysTable
                         null => 'Não classificado',
                     })
                     ->color(fn (?bool $state): string => $state === true ? 'success' : 'gray'),
+
                 TextColumn::make('source_file')
                     ->label('Arquivo')
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('source_document')
                     ->label('Documento')
                     ->placeholder('—')
                     ->wrap()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('source_revision')
                     ->label('Revisão da fonte')
                     ->placeholder('—')
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('removed_detected_at')
                     ->label('Remoção detectada')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('Não')
                     ->color('danger')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('imported_at')
                     ->label('Importado em')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->toggleable(),
+
                 TextColumn::make('importedBy.name')
                     ->label('Importado por')
                     ->placeholder('—')

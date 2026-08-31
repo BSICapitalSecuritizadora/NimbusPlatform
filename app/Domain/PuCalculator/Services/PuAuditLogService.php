@@ -11,6 +11,7 @@ use App\Domain\PuCalculator\DTOs\PuValidationFieldDifference;
 use App\Domain\PuCalculator\DTOs\PuValidationReport;
 use App\Domain\PuCalculator\DTOs\PuValidationRowResult;
 use App\Models\Emission;
+use App\Models\EmissionPuParameter;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Spatie\Activitylog\Models\Activity;
@@ -129,6 +130,40 @@ class PuAuditLogService
         }
 
         $logger->event('parameters_updated')->log('pu_parameters_updated');
+    }
+
+    /**
+     * @param  array<string, mixed>  $persistedFields
+     * @param  list<array<string, mixed>>  $nonPersistedProvenFields
+     * @param  array<string, mixed>  $provenance
+     */
+    public function logCandidateConfigurationCreated(
+        Emission $emission,
+        EmissionPuParameter $parameter,
+        User $actor,
+        string $readinessStatus,
+        array $persistedFields,
+        array $nonPersistedProvenFields,
+        string $candidateFingerprint,
+        array $provenance,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->causedBy($actor)
+            ->withProperties([
+                'emission_id' => $emission->id,
+                'parameter_id' => $parameter->id,
+                'actor_id' => $actor->id,
+                'candidate_source' => $provenance['candidate_source'] ?? null,
+                'readiness_status' => $readinessStatus,
+                'persisted_fields' => $persistedFields,
+                'non_persisted_proven_fields' => $nonPersistedProvenFields,
+                'candidate_fingerprint' => $candidateFingerprint,
+                'provenance' => $provenance,
+                'persisted_at' => now()->toIso8601String(),
+            ])
+            ->event('candidate_configuration_created')
+            ->log('pu_candidate_configuration_created');
     }
 
     public function logEventChange(Emission $emission, string $action, ?int $requestedByUserId): void
@@ -255,6 +290,7 @@ class PuAuditLogService
             'pu_homologation_report_downloaded' => 'PDF de homologacao baixado',
             'pu_index_synced' => 'Indices sincronizados (Banco Central)',
             'pu_parameters_updated' => 'Parametros atualizados',
+            'pu_candidate_configuration_created' => 'Configuração candidata criada',
             'pu_event_changed' => 'Evento de PU alterado',
             default => $description,
         };

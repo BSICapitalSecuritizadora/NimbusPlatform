@@ -21,6 +21,10 @@ class ResponsibilityDelegationsTable
 {
     public static function configure(Table $table): Table
     {
+        // Uma instância para a página inteira: a efetividade é memorizada por
+        // instância, e a coluna e o tooltip perguntam a mesma coisa por linha.
+        $delegations = app(ResponsibilityDelegationService::class);
+
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
@@ -79,23 +83,15 @@ class ResponsibilityDelegationsTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->state(fn (ResponsibilityDelegation $record): string => app(ResponsibilityDelegationService::class)->effectiveStatus($record))
-                    ->color(fn (string $state): string => match ($state) {
-                        'active' => 'success',
-                        'scheduled' => 'info',
-                        'expired' => 'warning',
-                        'revoked' => 'danger',
-                        'ineffective' => 'danger',
-                        default => 'gray',
-                    })
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'active' => 'Ativa',
-                        'scheduled' => 'Agendada',
-                        'expired' => 'Expirada',
-                        'revoked' => 'Revogada',
-                        'ineffective' => 'Ineficaz',
-                        default => $state,
-                    }),
+                    ->state(fn (ResponsibilityDelegation $record): string => $delegations->effectiveness($record)->status)
+                    ->color(fn (ResponsibilityDelegation $record): string => $delegations->effectiveness($record)->statusColor())
+                    ->formatStateUsing(fn (ResponsibilityDelegation $record): string => $delegations->effectiveness($record)->statusLabel())
+                    // "Ineficaz" sozinho manda o operador para o banco. A causa
+                    // vem de quem decidiu a efetividade, não de uma segunda regra.
+                    ->tooltip(fn (ResponsibilityDelegation $record): ?string => $delegations->effectiveness($record)->reasonLabel())
+                    ->icon(fn (ResponsibilityDelegation $record): ?string => $delegations->effectiveness($record)->reason !== null
+                        ? 'heroicon-m-question-mark-circle'
+                        : null),
 
                 TextColumn::make('reason')
                     ->label('Motivo')

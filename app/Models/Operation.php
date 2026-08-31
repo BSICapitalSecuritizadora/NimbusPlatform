@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MeasurementResponsibility;
+use App\Exceptions\DelegationHistoryException;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Services\OperationContextMutationService;
 use App\Services\OperationContextVisibilityService;
@@ -100,6 +101,10 @@ class Operation extends Model
                     ->where('status', 'approved'))
                 ->exists()) {
                 throw new MeasurementWorkflowException('Uma operação com medição aprovada pela Engenharia não pode ser excluída.');
+            }
+
+            if ($operation->hasResponsibilityDelegationHistory()) {
+                throw DelegationHistoryException::forOperation();
             }
         });
 
@@ -308,6 +313,20 @@ class Operation extends Model
         $userId = $this->getAttribute($responsibility->operationColumn());
 
         return filled($userId) ? (int) $userId : null;
+    }
+
+    /**
+     * Alguma delegação de responsabilidade foi escopada nesta operação?
+     *
+     * Vale para qualquer estado, revogada inclusive: o vínculo é histórico, e
+     * `scope_operation_id` é RESTRICT justamente para que ele não desapareça
+     * junto com a operação.
+     */
+    public function hasResponsibilityDelegationHistory(): bool
+    {
+        return ResponsibilityDelegation::query()
+            ->where('scope_operation_id', $this->getKey())
+            ->exists();
     }
 
     public function hasDirectResponsibility(User $user, MeasurementResponsibility $responsibility): bool

@@ -290,7 +290,7 @@
     <p class="comp-legend">Composição: dourado = quitadas &middot; azul = financiadas/vendidas &middot; cinza = permutadas &middot; claro = estoque. Variação refere-se ao total de unidades ante o mês anterior.</p>
 @endif
 
-{{-- ===== Negociações ===== --}}
+{{-- ===== Negociações — derivado automaticamente dos contratos (sale_date / cancellation_date) ===== --}}
 <div class="section-title">Negociações do Mês</div>
 @if ($negotiations['has_data'])
     <table class="kv">
@@ -298,6 +298,47 @@
             <tr><td class="label">{{ $row['label'] }}</td><td class="value">{{ $row['value'] }}</td></tr>
         @endforeach
     </table>
+
+    @if (! empty($negotiations['vendas']))
+        <div style="page-break-inside: avoid;">
+        <p class="note"><strong>Vendas no período</strong></p>
+        <table class="data">
+            <thead><tr><th>Tipo</th><th>Contrato</th><th>Empreendimento</th><th>Unidade</th><th>Data</th></tr></thead>
+            <tbody>
+                @foreach ($negotiations['vendas'] as $tx)
+                    <tr>
+                        <td style="word-break: break-word;">{{ $tx['type'] }}</td>
+                        <td style="word-break: break-word;">{{ $tx['code'] }}</td>
+                        <td style="word-break: break-word;">{{ $tx['development'] }}</td>
+                        <td style="word-break: break-word;">{{ $tx['display'] }}</td>
+                        <td>{{ $tx['date_formatted'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        </div>
+    @endif
+
+    @if (! empty($negotiations['distratos']))
+        <div style="page-break-inside: avoid;">
+        <p class="note"><strong>Distratos no período</strong></p>
+        <table class="data">
+            <thead><tr><th>Tipo</th><th>Contrato</th><th>Empreendimento</th><th>Unidade</th><th>Data</th></tr></thead>
+            <tbody>
+                @foreach ($negotiations['distratos'] as $tx)
+                    <tr>
+                        <td style="word-break: break-word;">{{ $tx['type'] }}</td>
+                        <td style="word-break: break-word;">{{ $tx['code'] }}</td>
+                        <td style="word-break: break-word;">{{ $tx['development'] }}</td>
+                        <td style="word-break: break-word;">{{ $tx['display'] }}</td>
+                        <td>{{ $tx['date_formatted'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        </div>
+    @endif
+    <p class="note">Fonte: contratos da emissão — Data da Venda e Data do Distrato dentro da competência.</p>
 @else
     <p class="no-data">{{ $negotiations['empty_message'] }}</p>
 @endif
@@ -307,7 +348,7 @@
     <div class="section-title">Histórico de Negociações</div>
     <table class="data">
         <thead>
-            <tr><th>Competência</th><th class="num">Vendas</th><th class="num">Distratos</th><th class="num">Líquido</th></tr>
+            <tr><th>Competência</th><th class="num">Vendas</th><th class="num">Distratos</th><th class="num">Saldo líquido</th></tr>
         </thead>
         <tbody>
             @foreach ($negotiations_history['rows'] as $row)
