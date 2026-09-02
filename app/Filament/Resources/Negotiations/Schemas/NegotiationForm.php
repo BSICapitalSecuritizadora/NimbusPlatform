@@ -30,12 +30,14 @@ class NegotiationForm
                 ])
                 ->columnSpanFull(),
             Section::make('Dados da Negociação')
-                ->description('Identifique a operação, o empreendimento e a competência deste lançamento.')
+                ->description('Operação, empreendimento e competência vinculados ao lançamento.')
+                ->icon('heroicon-o-building-office')
                 ->columnSpanFull()
                 ->schema([
                     Select::make('emission_id')
                         ->label('Operação')
                         ->placeholder('Selecione uma operação')
+                        ->prefixIcon('heroicon-m-briefcase')
                         ->relationship('emission', 'name')
                         ->searchable()
                         ->preload()
@@ -60,7 +62,7 @@ class NegotiationForm
                                 }
                             };
                         })
-                        ->columnSpan(['lg' => 2])
+                        ->columnSpan(['default' => 1, 'md' => 1, 'lg' => 2])
                         ->validationMessages([
                             'required' => 'Selecione a operação.',
                         ]),
@@ -68,6 +70,7 @@ class NegotiationForm
                     Select::make('construction_id')
                         ->label('Empreendimento')
                         ->placeholder('Selecione um empreendimento')
+                        ->prefixIcon('heroicon-m-building-office-2')
                         ->relationship(
                             name: 'construction',
                             titleAttribute: 'development_name',
@@ -99,7 +102,7 @@ class NegotiationForm
                                 }
                             };
                         })
-                        ->columnSpan(['lg' => 2])
+                        ->columnSpan(['default' => 1, 'md' => 1, 'lg' => 2])
                         ->validationMessages([
                             'required' => 'Selecione o empreendimento.',
                         ]),
@@ -107,6 +110,7 @@ class NegotiationForm
                     TextInput::make('reference_month')
                         ->label('Competência')
                         ->placeholder('MM/AAAA')
+                        ->prefixIcon('heroicon-m-calendar')
                         ->mask('99/9999')
                         ->required()
                         ->disabled(fn (Get $get): bool => filled($get('emission_id')) && Emission::query()->find($get('emission_id'))?->usesContractNegotiations())
@@ -133,7 +137,7 @@ class NegotiationForm
                                 }
                             };
                         })
-                        ->columnSpan(['lg' => 1])
+                        ->columnSpan(['default' => 1, 'md' => 2, 'lg' => 1])
                         ->validationMessages([
                             'required' => 'Informe a competência no formato MM/AAAA.',
                         ]),
@@ -141,26 +145,29 @@ class NegotiationForm
                 ->columns(['default' => 1, 'md' => 2, 'lg' => 5]),
 
             Section::make('Negociações do Mês')
-                ->description('Informe a quantidade de unidades vendidas e distratadas nesta competência.')
+                ->description('Atualize as movimentações comerciais registradas nesta competência.')
+                ->icon('heroicon-o-chart-bar')
                 ->columnSpanFull()
                 ->schema([
-                    static::quantityField('sales', 'Vendas', 'Quantidade de novas vendas no mês.'),
-                    static::quantityField('cancellations', 'Distratos', 'Quantidade de distratos no mês.'),
+                    static::quantityField('sales', 'Vendas', 'Quantidade de novas vendas no mês.', 'heroicon-m-arrow-trending-up'),
+                    static::quantityField('cancellations', 'Distratos', 'Quantidade de distratos no mês.', 'heroicon-m-arrow-trending-down'),
                 ])
-                ->columns(['default' => 1, 'md' => 2, 'lg' => 4]),
+                ->columns(['default' => 1, 'md' => 2]),
         ]);
     }
 
-    protected static function quantityField(string $name, string $label, string $helperText): TextInput
+    protected static function quantityField(string $name, string $label, string $helperText, string $icon): TextInput
     {
         return TextInput::make($name)
             ->label($label)
             ->helperText($helperText)
+            ->prefixIcon($icon)
             ->required()
             ->default(0)
             ->numeric()
             ->integer()
             ->minValue(0)
+            ->columnSpan(['default' => 1, 'md' => 1])
             ->disabled(fn (Get $get): bool => filled($get('emission_id')) && Emission::query()->find($get('emission_id'))?->usesContractNegotiations())
             ->validationMessages([
                 'required' => "Informe o valor de {$label}.",

@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\MeasurementWorkflowException;
+use App\Exceptions\OperationLifecycleException;
 use App\Filament\Resources\Operations\RelationManagers\PlanSetsRelationManager;
 use App\Filament\Resources\Operations\Schemas\OperationForm;
 use App\Models\Construction;
@@ -231,8 +232,11 @@ it('blocks material model mutations after Engineering while allowing them before
         ->toThrow(MeasurementWorkflowException::class)
         ->and(fn () => $scenario['measurement']->fresh()->delete())
         ->toThrow(MeasurementWorkflowException::class)
+        // A exclusão da operação agora é recusada por ter medição registrada,
+        // não por ter Engenharia aprovada: o guarda passou a cobrir também a
+        // medição recém-enviada, que antes era apagada em cascata sem aviso.
         ->and(fn () => $scenario['operation']->fresh()->delete())
-        ->toThrow(MeasurementWorkflowException::class);
+        ->toThrow(OperationLifecycleException::class);
 });
 
 it('uses the transactional Operation path and snapshots the emission that won the lock', function () {

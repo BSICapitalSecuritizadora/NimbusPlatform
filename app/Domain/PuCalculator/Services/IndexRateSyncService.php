@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\DTOs\BcbSgsFetchResult;
 use App\Domain\PuCalculator\DTOs\BcbSgsRateData;
 use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
 use App\Domain\PuCalculator\Enums\PuIndexer;
@@ -40,6 +41,27 @@ class IndexRateSyncService
         private readonly IndexRateLookupService $lookupService,
         private readonly PuAuditLogService $auditLogService,
     ) {}
+
+    /**
+     * Read-only fetch boundary for controlled workflows that must validate the
+     * complete SGS payload before deciding whether any exact snapshot may be
+     * persisted.
+     */
+    public function fetchPublishedRates(
+        PuIndexer $indexer,
+        CarbonImmutable $from,
+        CarbonImmutable $to,
+    ): BcbSgsFetchResult {
+        $config = $this->seriesConfig($indexer);
+
+        return $this->client->fetchSeries((int) $config['code'], $from, $to);
+    }
+
+    /** @return array{code:int,value_type:string,source:string} */
+    public function publishedSource(PuIndexer $indexer): array
+    {
+        return $this->seriesConfig($indexer);
+    }
 
     public function sync(
         PuIndexer $indexer,

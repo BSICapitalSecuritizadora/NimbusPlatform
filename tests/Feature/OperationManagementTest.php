@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\OperationStatus;
 use App\Filament\Resources\Operations\Pages\CreateOperation;
 use App\Filament\Resources\Operations\Pages\ListOperations;
 use App\Models\Construction;
@@ -143,7 +144,8 @@ it('renders the create operation page with custom subheading and sections', func
         ->assertSee('Responsáveis pelo Fluxo de Medição')
         ->assertSee('Sequência da Esteira:')
         ->assertFormFieldExists('emission_id')
-        ->assertFormFieldExists('status')
+        // A situação saiu do formulário: virou ciclo de vida com ações próprias.
+        ->assertFormFieldDoesNotExist('status')
         ->assertFormFieldExists('due_date')
         ->assertFormFieldExists('responsible_user_id')
         ->assertFormFieldExists('stage2_reviewer_user_id')
@@ -168,7 +170,6 @@ it('creates an operation with developments from the selected emission', function
     Livewire::test(CreateOperation::class)
         ->fillForm([
             'emission_id' => $emission->id,
-            'status' => 'draft',
             'responsible_user_id' => $engineer->id,
             'developments' => [
                 [
@@ -182,6 +183,7 @@ it('creates an operation with developments from the selected emission', function
 
     $operation = Operation::query()->where('emission_id', $emission->id)->first();
     expect($operation)->not->toBeNull()
+        ->and($operation->status)->toBe(OperationStatus::Draft)
         ->and($operation->responsible_user_id)->toBe($engineer->id)
         ->and($operation->planSets()->count())->toBe(1)
         ->and($operation->planSets()->first()->construction_id)->toBe($construction->id);

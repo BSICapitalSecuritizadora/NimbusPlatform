@@ -10,15 +10,29 @@ return [
     // Protected retention requires business/legal sign-off.
     'retention_workflow_days' => (int) env('AUDIT_RETENTION_WORKFLOW_DAYS', 2555),
 
-    // Log names considerados protegidos (não deletados antes de retention_workflow_days)
-    // Only real, authoritative log names found in codebase are protected — no blind additions.
-    // Search: grep -R "activity(" app --include="*.php" | grep "activity('"
+    // Log names considerados protegidos (não deletados antes de retention_workflow_days).
+    //
+    // Esta lista é a ÚNICA fonte da política: `audit:clean-filtered` a lê daqui.
+    // Antes existiam duas listas -- esta e uma hardcoded no comando --, elas
+    // divergiam, e só a do comando surtia efeito; foi assim que a trilha de
+    // acesso a arquivo ficou declarada como protegida e mesmo assim era
+    // descartada em um ano.
+    //
+    // Cada entrada abaixo diz quem escreve nela. Antes de acrescentar uma,
+    // confirme que existe produtor:
+    //   grep -rn "useLogName(" app/Models
+    //   grep -rn "activity('" app | grep -o "activity('[a-z_-]*')" | sort -u
     'protected_logs' => [
-        'measurement_workflow',      // workflow stage approve/reject/pause/resume/payment/receipt/finalize
-        'measurement_file_access',   // asset/receipt download, integrity download (measurement_file_access)
-        'nimbus',                    // portal documents, submission files, access tokens
-        'delegations',               // delegation_created/revoked (explicit log name)
-        // Note: 'measurements','operations','measurement_payments' etc. are not used as log_name in codebase
-        // but kept for backwards compat if ever used; the authoritative source is measurement_workflow + tables.
+        'measurement_workflow',      // MeasurementWorkflow::audit() — aprovação, recusa, pausa, retomada, pagamento, comprovante, finalização
+        'measurement_file_access',   // controllers de download — asset, arquivo da medição e comprovante, com sha256
+        'measurements',              // Measurement (LogsActivity) — situação, etapa e demais colunas
+        'measurement_payments',      // MeasurementPayment (LogsActivity) — valor, data, comprovante
+        'operations',                // Operation (LogsActivity) + OperationLifecycleService — transições de ciclo de vida
+        'delegations',               // ResponsibilityDelegation (LogsActivity) + criação/revogação explícitas
+        'nimbus',                    // portal: documentos, arquivos de submissão, tokens de acesso
+        // Sem produtor hoje, mantidos porque já constavam da lista efetiva do
+        // comando: removê-los seria estreitar a política sem decisão.
+        'measurement_receipts',
+        'delegation',
     ],
 ];

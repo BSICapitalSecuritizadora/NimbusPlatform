@@ -9,6 +9,7 @@ use App\Models\MeasurementReview;
 use App\Models\Operation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -95,9 +96,14 @@ it('cascades deletes from an operation to its measurements and plan', function (
         'plan_set_id' => $planSet->id,
         'operation_id' => $operation->id,
     ]);
-    $measurement = Measurement::factory()->create(['operation_id' => $operation->id]);
+    Measurement::factory()->create(['operation_id' => $operation->id]);
 
-    $operation->delete();
+    // A exclusão vai pelo query builder de propósito: o que se mede aqui é a
+    // cascata das chaves estrangeiras, e o modelo passou a recusar apagar uma
+    // operação que tenha qualquer medição -- justamente porque esta cascata é
+    // ampla demais para ser disparada por um botão. A recusa do modelo é medida
+    // em OperationLifecycleTest; o que este teste guarda é o schema.
+    DB::table('operations')->where('id', $operation->id)->delete();
 
     expect(MeasurementPlanSet::query()->count())->toBe(0)
         ->and(MeasurementPlanLine::query()->count())->toBe(0)

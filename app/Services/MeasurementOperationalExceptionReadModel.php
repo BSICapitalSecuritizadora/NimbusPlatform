@@ -13,11 +13,15 @@ use App\Models\Operation;
 use App\Models\User;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Throwable;
 
 class MeasurementOperationalExceptionReadModel
 {
     private const CHUNK_SIZE = 100;
+
+    /** @var array<string, bool> */
+    private array $permanentResponsibleValidity = [];
 
     public function __construct(
         private MeasurementWorkflow $workflow,
@@ -34,6 +38,7 @@ class MeasurementOperationalExceptionReadModel
         int $page = 1,
         int $perPage = 25,
     ): MeasurementOperationalExceptionResult {
+        $this->permanentResponsibleValidity = [];
         $page = max(1, $page);
         $perPage = min(100, max(10, $perPage));
         $counts = $this->emptyCounts();
@@ -59,20 +64,26 @@ class MeasurementOperationalExceptionReadModel
                 self::CHUNK_SIZE,
                 column: 'measurements.id',
                 alias: 'id',
-            ) as $measurement) {
-            foreach ($this->classify($measurement) as $exception) {
-                if ($exceptionFilter instanceof MeasurementOperationalExceptionType
-                    && $exception->type !== $exceptionFilter) {
-                    continue;
+            )
+            ->chunk(self::CHUNK_SIZE) as $chunk) {
+            $measurements = collect($chunk);
+            $this->warmPermanentResponsibleValidityCache($measurements);
+
+            foreach ($measurements as $measurement) {
+                foreach ($this->classify($measurement) as $exception) {
+                    if ($exceptionFilter instanceof MeasurementOperationalExceptionType
+                        && $exception->type !== $exceptionFilter) {
+                        continue;
+                    }
+
+                    $counts[$exception->type->value]++;
+
+                    if ($total >= $offset && count($items) < $perPage) {
+                        $items[] = $exception;
+                    }
+
+                    $total++;
                 }
-
-                $counts[$exception->type->value]++;
-
-                if ($total >= $offset && count($items) < $perPage) {
-                    $items[] = $exception;
-                }
-
-                $total++;
             }
         }
 
@@ -154,12 +165,12 @@ class MeasurementOperationalExceptionReadModel
             ->with([
                 'operation:id,emission_id,code,title,assigned_user_id,responsible_user_id,stage2_reviewer_user_id,stage3_reviewer_user_id,payment_manager_user_id,payment_receipt_uploader_user_id,payment_finalizer_user_id',
                 'operation.emission:id,name',
-                'operation.responsibleUser:id,name,is_active',
-                'operation.stage2Reviewer:id,name,is_active',
-                'operation.stage3Reviewer:id,name,is_active',
-                'operation.paymentManager:id,name,is_active',
-                'operation.paymentReceiptUploader:id,name,is_active',
-                'operation.paymentFinalizer:id,name,is_active',
+                'operation.responsibleUser:id,name,is_active,approved_at',
+                'operation.stage2Reviewer:id,name,is_active,approved_at',
+                'operation.stage3Reviewer:id,name,is_active,approved_at',
+                'operation.paymentManager:id,name,is_active,approved_at',
+                'operation.paymentReceiptUploader:id,name,is_active,approved_at',
+                'operation.paymentFinalizer:id,name,is_active,approved_at',
                 'reviews:id,measurement_id,stage,status,created_at,reviewed_at',
                 'pauses:id,measurement_id,stage,paused_at,resumed_at',
             ]);
@@ -234,7 +245,7 @@ class MeasurementOperationalExceptionReadModel
         $exceptions = [];
 
         if ($responsibility instanceof MeasurementResponsibility
-            && ! $this->hasActivePermanentResponsible($operation, $responsibility)) {
+            && ! $this->hasOperationalPermanentResponsible($operation, $responsibility)) {
             $type = MeasurementOperationalExceptionType::forResponsibility($responsibility);
             $exceptions[] = $this->makeException(
                 $measurement,
@@ -272,15 +283,85 @@ class MeasurementOperationalExceptionReadModel
         };
     }
 
-    private function hasActivePermanentResponsible(
+    /**
+     * @param  Collection<int, Measurement>  $measurements
+     */
+    private function warmPermanentResponsibleValidityCache(Collection $measurements): void
+    {
+        /** @var array<string, array{user_id: int, responsibility: MeasurementResponsibility}> $candidates */
+        $candidates = [];
+
+        foreach ($measurements as $measurement) {
+            if (! $measurement->operation instanceof Operation) {
+                continue;
+            }
+
+            $operation = $measurement->operation;
+            $responsibility = $this->requiredResponsibility(
+                $measurement,
+                $this->workflow->unifiedStage($measurement),
+            );
+
+            if (! $responsibility instanceof MeasurementResponsibility) {
+                continue;
+            }
+
+            $userId = $operation->responsibleUserIdFor($responsibility);
+
+            if ($userId === null || ! $this->responsibleUser($operation, $responsibility) instanceof User) {
+                continue;
+            }
+
+            $key = $this->permanentResponsibleValidityKey($userId, $responsibility);
+
+            if (! array_key_exists($key, $this->permanentResponsibleValidity)) {
+                $candidates[$key] = [
+                    'user_id' => $userId,
+                    'responsibility' => $responsibility,
+                ];
+            }
+        }
+
+        if ($candidates === []) {
+            return;
+        }
+
+        $responsibleUsers = User::query()
+            ->whereKey(array_values(array_unique(array_column($candidates, 'user_id'))))
+            ->with(['permissions', 'roles.permissions'])
+            ->get()
+            ->keyBy(fn (User $user): int => (int) $user->getKey());
+
+        foreach ($candidates as $key => $candidate) {
+            $responsibleUser = $responsibleUsers->get($candidate['user_id']);
+
+            $this->permanentResponsibleValidity[$key] = $responsibleUser instanceof User
+                && $responsibleUser->isOperational()
+                && $responsibleUser->can($candidate['responsibility']->permission());
+        }
+    }
+
+    private function hasOperationalPermanentResponsible(
         Operation $operation,
         MeasurementResponsibility $responsibility,
     ): bool {
-        if ($operation->responsibleUserIdFor($responsibility) === null) {
+        $userId = $operation->responsibleUserIdFor($responsibility);
+        $responsibleUser = $this->responsibleUser($operation, $responsibility);
+
+        if ($userId === null || ! $responsibleUser instanceof User) {
             return false;
         }
 
-        return $this->responsibleUser($operation, $responsibility)?->isActive() ?? false;
+        return $this->permanentResponsibleValidity[
+            $this->permanentResponsibleValidityKey($userId, $responsibility)
+        ] ?? false;
+    }
+
+    private function permanentResponsibleValidityKey(
+        int $userId,
+        MeasurementResponsibility $responsibility,
+    ): string {
+        return $userId.':'.$responsibility->value;
     }
 
     private function responsibleUser(
@@ -364,7 +445,17 @@ class MeasurementOperationalExceptionReadModel
             return null;
         }
 
-        return $user->isActive() ? $user->name : $user->name.' (inativo)';
+        if (! $user->isActive()) {
+            return $user->name.' (inativo)';
+        }
+
+        if (! $user->isApproved()) {
+            return $user->name.' (não aprovado)';
+        }
+
+        return $this->hasOperationalPermanentResponsible($operation, $responsibility)
+            ? $user->name
+            : $user->name.' (sem permissão operacional)';
     }
 
     /** @return array<string, int> */

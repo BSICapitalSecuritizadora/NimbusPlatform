@@ -16,6 +16,15 @@ class OperationContextMutationService
     public function update(Operation $operation, array $attributes): Operation
     {
         return DB::transaction(function () use ($operation, $attributes): Operation {
+            // A operação é travada antes de qualquer verificação do `updating`:
+            // a situação decide se os responsáveis podem mudar, e ler essa
+            // situação fora do lock deixaria a mesma janela que o encerramento
+            // fecha do outro lado.
+            Operation::query()
+                ->whereKey($operation->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $operation->fill($attributes);
             $operation->save();
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\OperationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
 use App\Models\MeasurementPlanLine;
@@ -180,7 +181,7 @@ it('executes the formal five-stage workflow without treating payment registratio
     expect($measurement->fresh()->status)->toBe('finalized')
         ->and($measurement->fresh()->reviewForStage(5)?->status)->toBe('approved')
         ->and($measurement->fresh()->analyzed_by)->toBe($scenario['finalizer']->id)
-        ->and($scenario['operation']->fresh()->status)->toBe('active')
+        ->and($scenario['operation']->fresh()->status)->toBe(OperationStatus::Active)
         ->and(Activity::query()->where('description', 'measurement_finalized')->exists())->toBeTrue();
 });
 

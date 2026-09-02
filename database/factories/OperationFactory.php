@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\OperationStatus;
 use App\Models\Emission;
 use App\Models\Operation;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,7 +23,10 @@ class OperationFactory extends Factory
             'emission_id' => Emission::factory(),
             'construction_id' => null,
             'title' => fake()->company().' - Obra',
-            'status' => 'active',
+            // A operação de teste nasce operacional porque é esse o estado em que
+            // quase todo cenário do módulo de medições começa; quem precisa de
+            // rascunho ou de um terminal declara o estado explicitamente.
+            'status' => OperationStatus::Active,
             'issuer' => fake()->company(),
             'amount' => fake()->randomFloat(2, 100000, 50000000),
             'construction_fund_amount' => fake()->randomFloat(2, 50000, 10000000),

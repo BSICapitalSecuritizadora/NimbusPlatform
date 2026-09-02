@@ -35,6 +35,37 @@ class Measurement extends Model
         'finalized' => 'Finalizada',
     ];
 
+    /**
+     * Medição que ainda pede trabalho de alguém.
+     *
+     * A distinção já existia espalhada -- My Pendings varria estes seis status,
+     * o cockpit varria o complemento, o comando de SLA repetia a mesma lista --,
+     * e agora o lifecycle da operação depende dela para decidir se pode
+     * encerrar. Uma lista só, aqui, para que as quatro respostas não possam
+     * divergir.
+     *
+     * @var list<string>
+     */
+    public const OPEN_STATUSES = [
+        'pending',
+        'in_review',
+        'paused',
+        'approved',
+        'awaiting_payment',
+        'awaiting_receipt',
+    ];
+
+    /**
+     * O complemento exato de {@see self::OPEN_STATUSES}: recusada e finalizada
+     * são os dois fins de linha do fluxo de medição.
+     *
+     * @var list<string>
+     */
+    public const CLOSED_STATUSES = [
+        'rejected',
+        'finalized',
+    ];
+
     protected $fillable = [
         'operation_id',
         'plan_set_id',
@@ -107,9 +138,21 @@ class Measurement extends Model
         ];
     }
 
+    /**
+     * A trilha de atributos da medição é evidência regulada, e a política de
+     * retenção separa os baldes por `log_name`: `measurements` já era categoria
+     * protegida por sete anos no `audit:clean-filtered`, mas ninguém escrevia
+     * nela -- as mudanças de situação e de etapa caíam em `default` e seriam
+     * descartadas em um ano.
+     *
+     * Isto não substitui o `measurement_workflow`: aquele registra a decisão
+     * (quem aprovou qual etapa, por qual autoridade), este registra a mudança de
+     * coluna. As duas trilhas são complementares e agora têm a mesma retenção.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('measurements')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
@@ -181,6 +224,20 @@ class Measurement extends Model
     public function getResolvedStorageDiskAttribute(): string
     {
         return $this->storage_disk ?: 'public';
+    }
+
+    public function isOpen(): bool
+    {
+        return in_array($this->status, self::OPEN_STATUSES, true);
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeOpen(Builder $query): Builder
+    {
+        return $query->whereIn($query->qualifyColumn('status'), self::OPEN_STATUSES);
     }
 
     /**

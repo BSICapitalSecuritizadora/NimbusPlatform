@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Operations\Schemas;
 
-use App\Models\Operation;
+use App\Enums\OperationStatus;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -22,7 +22,8 @@ class OperationInfolist
                     TextEntry::make('status')
                         ->label('Situação')
                         ->badge()
-                        ->formatStateUsing(fn (string $state): string => Operation::STATUS_OPTIONS[$state] ?? $state),
+                        ->formatStateUsing(fn (OperationStatus $state): string => $state->label())
+                        ->color(fn (OperationStatus $state): string => $state->color()),
                     TextEntry::make('due_date')->label('Vencimento')->date('d/m/Y')->placeholder('—'),
                     TextEntry::make('next_measurement_at')->label('Próxima Medição')->date('d/m/Y')->placeholder('—'),
                 ])

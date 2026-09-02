@@ -3,9 +3,6 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
-use App\Models\User;
-use App\Support\Delegations\DelegationHistoryDeleteGuard;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditUser extends EditRecord
@@ -26,12 +23,15 @@ class EditUser extends EditRecord
     /** @var list<string> */
     protected array $rolesBeforeSave = [];
 
+    /**
+     * Exclusão física saiu daqui: o ciclo de vida é Desativar/Reativar, e as duas
+     * ações vivem na listagem, ao lado do registro.
+     */
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make()
-                ->before(fn (User $record, DeleteAction $action) => DelegationHistoryDeleteGuard::haltForUsers([$record], $action))
-                ->visible(fn (): bool => $this->record->getKey() !== auth()->id()),
+            UserResource::getDeactivateUserAction()->record($this->record),
+            UserResource::getReactivateUserAction()->record($this->record),
         ];
     }
 

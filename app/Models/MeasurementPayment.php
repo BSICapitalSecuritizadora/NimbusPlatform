@@ -62,9 +62,16 @@ class MeasurementPayment extends Model
         ];
     }
 
+    /**
+     * `measurement_payments` já era categoria protegida por sete anos e não
+     * tinha nenhum produtor: o registro do pagamento e do comprovante -- valor,
+     * data, checksum -- caía em `default` e seria descartado em um ano, apesar
+     * de ser a evidência financeira do ciclo de medição.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('measurement_payments')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\DelegationIneffectivenessReason;
 use App\Enums\MeasurementResponsibility;
+use App\Exceptions\OperationLifecycleException;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
 use App\Models\User;
@@ -44,6 +45,12 @@ class ResponsibilityDelegationService
         $this->assertCanCreate($actor, (int) $data['delegator_user_id']);
 
         $delegation = DB::transaction(function () use ($data, $actor): ResponsibilityDelegation {
+            // A operação do escopo é travada antes dos usuários, na mesma ordem
+            // que o lifecycle e o fluxo de medições usam: Operation primeiro.
+            // Sem isso, uma delegação nasceria escopada numa operação que está
+            // sendo encerrada na transação ao lado.
+            $this->assertScopeOperationAcceptsDelegations($data);
+
             $users = User::query()
                 ->whereKey([$data['delegator_user_id'], $data['delegate_user_id']])
                 ->orderBy('id')
@@ -314,8 +321,33 @@ class ResponsibilityDelegationService
         return $this->resolvedEffectiveness[$key] = $this->resolveEffectiveness($delegation);
     }
 
-    private function resolveEffectiveness(ResponsibilityDelegation $delegation): DelegationEffectiveness
-    {
+    /**
+     * A efetividade que esta delegação teria se um usuário -- e só ele -- passasse
+     * a estar ativo agora.
+     *
+     * É a pergunta do preflight de reativação: "se eu ligar este usuário, o que
+     * volta a valer?". A resposta não pode vir de gravar `is_active = true`,
+     * olhar e desfazer -- isso persistiria um estado que ninguém pediu, ainda que
+     * por um instante, e dispararia o Activitylog. Em vez disso, a mesma
+     * avaliação de sempre roda com um único predicado relaxado: o usuário
+     * informado conta como ativo, todo o resto continua sendo lido do banco. Se a
+     * delegação estiver revogada, expirada ou ainda não iniciada, ou se o outro
+     * principal também estiver inelegível, ela continua não valendo -- e é isso
+     * que o preflight precisa saber.
+     *
+     * O resultado não entra no memo: é uma hipótese, não o estado atual.
+     */
+    public function effectivenessAssumingActive(
+        ResponsibilityDelegation $delegation,
+        int $assumeActiveUserId,
+    ): DelegationEffectiveness {
+        return $this->resolveEffectiveness($delegation, $assumeActiveUserId);
+    }
+
+    private function resolveEffectiveness(
+        ResponsibilityDelegation $delegation,
+        ?int $assumeActiveUserId = null,
+    ): DelegationEffectiveness {
         if ($delegation->status !== 'active') {
             return DelegationEffectiveness::of($delegation->status);
         }
@@ -329,7 +361,7 @@ class ResponsibilityDelegationService
 
             $covered[] = $responsibility;
 
-            $isEffectiveForPrincipals = $this->effectiveDelegationsForResponsibilityQuery($responsibility)
+            $isEffectiveForPrincipals = $this->effectiveDelegationsForResponsibilityQuery($responsibility, $assumeActiveUserId)
                 ->whereKey($delegation->getKey())
                 ->exists();
 
@@ -342,7 +374,9 @@ class ResponsibilityDelegationService
             }
         }
 
-        return DelegationEffectiveness::ineffective($this->ineffectivenessReason($delegation, $covered));
+        return DelegationEffectiveness::ineffective(
+            $this->ineffectivenessReason($delegation, $covered, $assumeActiveUserId),
+        );
     }
 
     private function delegatorHoldsResponsibility(
@@ -373,6 +407,7 @@ class ResponsibilityDelegationService
     private function ineffectivenessReason(
         ResponsibilityDelegation $delegation,
         array $covered,
+        ?int $assumeActiveUserId = null,
     ): ?DelegationIneffectivenessReason {
         if ($covered === []) {
             return DelegationIneffectivenessReason::ScopeMismatch;
@@ -383,10 +418,10 @@ class ResponsibilityDelegationService
         $delegate = User::query()->whereKey($delegation->delegate_user_id);
 
         return match (true) {
-            ! $this->scopePrincipalIsActive(clone $delegator)->exists() => DelegationIneffectivenessReason::DelegatorInactive,
+            ! $this->scopePrincipalIsActive(clone $delegator, $assumeActiveUserId)->exists() => DelegationIneffectivenessReason::DelegatorInactive,
             ! $this->scopePrincipalIsApproved(clone $delegator)->exists() => DelegationIneffectivenessReason::DelegatorUnapproved,
             ! (clone $delegator)->permission($responsibility->permission())->exists() => DelegationIneffectivenessReason::DelegatorMissingPermission,
-            ! $this->scopePrincipalIsActive(clone $delegate)->exists() => DelegationIneffectivenessReason::DelegateInactive,
+            ! $this->scopePrincipalIsActive(clone $delegate, $assumeActiveUserId)->exists() => DelegationIneffectivenessReason::DelegateInactive,
             ! $this->scopePrincipalIsApproved(clone $delegate)->exists() => DelegationIneffectivenessReason::DelegateUnapproved,
             ! (clone $delegate)->permission($responsibility->permission())->exists() => DelegationIneffectivenessReason::DelegateMissingPermission,
             default => DelegationIneffectivenessReason::DelegatorMissingAssignment,
@@ -536,10 +571,8 @@ class ResponsibilityDelegationService
             throw ValidationException::withMessages(['scope_operation_id' => 'Operação é obrigatória para este escopo.']);
         }
 
-        if ($data['scope_operation_id'] !== null
-            && ! Operation::query()->whereKey($data['scope_operation_id'])->exists()) {
-            throw ValidationException::withMessages(['scope_operation_id' => 'Operação informada não existe.']);
-        }
+        // A existência e a situação da operação do escopo já foram conferidas
+        // sob lock em {@see self::assertScopeOperationAcceptsDelegations()}.
 
         if ($data['scope_type'] !== ResponsibilityDelegation::SCOPE_STAGE) {
             return;
@@ -732,6 +765,38 @@ class ResponsibilityDelegationService
         return $userId.'|'.$context->signature().'|'.$window->signature();
     }
 
+    /**
+     * Delegação escopada empresta autoridade sobre trabalho em curso, e só a
+     * operação plenamente operacional tem trabalho em curso.
+     *
+     * Escopo global ou por etapa sem operação não passa por aqui: não é escopado
+     * em nenhuma operação, e inventar restrição para ele seria bloquear o que a
+     * decisão de lifecycle não bloqueou.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function assertScopeOperationAcceptsDelegations(array $data): void
+    {
+        if ($data['scope_operation_id'] === null) {
+            return;
+        }
+
+        $operation = Operation::query()
+            ->whereKey($data['scope_operation_id'])
+            ->lockForUpdate()
+            ->first();
+
+        if (! $operation instanceof Operation) {
+            throw ValidationException::withMessages(['scope_operation_id' => 'Operação informada não existe.']);
+        }
+
+        if (! $operation->status->allowsNewDelegations()) {
+            throw ValidationException::withMessages([
+                'scope_operation_id' => OperationLifecycleException::newDelegationsNotAllowed($operation->status)->getMessage(),
+            ]);
+        }
+    }
+
     /** @param array<string, mixed> $data */
     private function assertDelegatorHasAuthority(User $delegator, array $data): void
     {
@@ -790,6 +855,7 @@ class ResponsibilityDelegationService
     /** @return Builder<ResponsibilityDelegation> */
     private function effectiveDelegationsForResponsibilityQuery(
         MeasurementResponsibility $responsibility,
+        ?int $assumeActiveUserId = null,
     ): Builder {
         return ResponsibilityDelegation::query()
             ->active()
@@ -798,6 +864,7 @@ class ResponsibilityDelegationService
                 fn (Builder $delegator): Builder => $this->scopeEffectivePrincipal(
                     $delegator,
                     $responsibility->permission(),
+                    $assumeActiveUserId,
                 ),
             )
             ->whereHas(
@@ -805,6 +872,7 @@ class ResponsibilityDelegationService
                 fn (Builder $delegate): Builder => $this->scopeEffectivePrincipal(
                     $delegate,
                     $responsibility->permission(),
+                    $assumeActiveUserId,
                 ),
             );
     }
@@ -818,22 +886,34 @@ class ResponsibilityDelegationService
      *
      * @param  Builder<User>  $query
      */
-    private function scopeEffectivePrincipal(Builder $query, string $permission): Builder
-    {
-        return $this->scopePrincipalIsApproved($this->scopePrincipalIsActive($query))
+    private function scopeEffectivePrincipal(
+        Builder $query,
+        string $permission,
+        ?int $assumeActiveUserId = null,
+    ): Builder {
+        return $this->scopePrincipalIsApproved($this->scopePrincipalIsActive($query, $assumeActiveUserId))
             ->permission($permission);
     }
 
     /**
+     * As duas condições vêm do próprio {@see User}, que passou a ser a fonte
+     * única de elegibilidade operacional. Antes viviam aqui, e a mesma regra foi
+     * precisando existir também nos selects e nas notificações -- três cópias da
+     * mesma frase é uma a mais do que o número de vezes que ela pode mudar sem
+     * alguém esquecer uma. O SQL gerado é idêntico ao anterior.
+     *
      * @param  Builder<User>  $query
      * @return Builder<User>
      */
-    private function scopePrincipalIsActive(Builder $query): Builder
+    private function scopePrincipalIsActive(Builder $query, ?int $assumeActiveUserId = null): Builder
     {
-        return $query->where(function (Builder $active): void {
-            $active->where('is_active', true)
-                ->orWhereNull('is_active');
-        });
+        if ($assumeActiveUserId === null) {
+            return $query->active();
+        }
+
+        return $query->where(fn (Builder $principal): Builder => $principal
+            ->active()
+            ->orWhere($principal->getModel()->getQualifiedKeyName(), $assumeActiveUserId));
     }
 
     /**
@@ -842,7 +922,7 @@ class ResponsibilityDelegationService
      */
     private function scopePrincipalIsApproved(Builder $query): Builder
     {
-        return $query->whereNotNull('approved_at');
+        return $query->approved();
     }
 
     /**

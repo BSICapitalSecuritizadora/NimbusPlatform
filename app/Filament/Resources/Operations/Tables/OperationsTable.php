@@ -2,15 +2,12 @@
 
 namespace App\Filament\Resources\Operations\Tables;
 
+use App\Enums\OperationStatus;
 use App\Filament\Resources\Operations\OperationResource;
 use App\Models\Operation;
-use App\Support\Delegations\DelegationHistoryDeleteGuard;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Width;
@@ -18,7 +15,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 
 class OperationsTable
 {
@@ -126,14 +122,8 @@ class OperationsTable
                 TextColumn::make('status')
                     ->label('Situação')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => Operation::STATUS_OPTIONS[$state] ?? (string) $state)
-                    ->color(fn (?string $state): string => match ($state) {
-                        'active', 'completed' => 'success',
-                        'settled' => 'info',
-                        'pending' => 'warning',
-                        'rejected', 'canceled' => 'danger',
-                        default => 'gray',
-                    })
+                    ->formatStateUsing(fn (OperationStatus $state): string => $state->label())
+                    ->color(fn (OperationStatus $state): string => $state->color())
                     ->sortable(),
 
                 TextColumn::make('amount')
@@ -158,7 +148,7 @@ class OperationsTable
                     ? [
                         SelectFilter::make('status')
                             ->label('Situação')
-                            ->options(Operation::STATUS_OPTIONS),
+                            ->options(OperationStatus::options()),
 
                         SelectFilter::make('emission_id')
                             ->label('Emissão')
@@ -177,6 +167,11 @@ class OperationsTable
                     ]
                     : []
             )
+            // Exclusão física saiu da interface: uma operação apagada levava
+            // consigo, em cascata, medições, arquivos, pausas, alertas de SLA e
+            // pagamentos. Operação criada por engano se cancela com motivo, e o
+            // registro permanece auditável. As proteções de banco e de modelo
+            // continuam onde estavam -- o botão saiu, a defesa não.
             ->recordActions([
                 ViewAction::make()
                     ->label('Visualizar')
@@ -185,17 +180,10 @@ class OperationsTable
 
                 ActionGroup::make([
                     EditAction::make(),
-                    DeleteAction::make()
-                        ->before(fn (Operation $record, DeleteAction $action) => DelegationHistoryDeleteGuard::haltForOperations([$record], $action)),
-                ]),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    // O lote é recusado inteiro quando qualquer selecionada tem
-                    // histórico de delegação, pelo mesmo motivo do lote de
-                    // usuários: nada de exclusão parcial silenciosa.
-                    DeleteBulkAction::make()
-                        ->before(fn (Collection $records, DeleteBulkAction $action) => DelegationHistoryDeleteGuard::haltForOperations($records, $action)),
+                    OperationResource::getActivateOperationAction(),
+                    OperationResource::getCompleteOperationAction(),
+                    OperationResource::getCancelOperationAction(),
+                    OperationResource::getReopenOperationAction(),
                 ]),
             ]);
     }

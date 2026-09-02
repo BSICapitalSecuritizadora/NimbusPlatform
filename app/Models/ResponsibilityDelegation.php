@@ -62,9 +62,16 @@ class ResponsibilityDelegation extends Model
         ];
     }
 
+    /**
+     * A mesma categoria que o `ResponsibilityDelegationService` já usa para
+     * `delegation_created` e `delegation_revoked`: o histórico de delegação é
+     * indivisível, e metade dele não pode expirar em um ano enquanto a outra
+     * metade é retida por sete.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('delegations')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();

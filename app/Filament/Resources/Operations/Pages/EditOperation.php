@@ -8,8 +8,6 @@ use App\Models\User;
 use App\Services\OperationContextMutationService;
 use App\Services\OperationContextVisibilityService;
 use App\Services\OperationResponsibilityService;
-use App\Support\Delegations\DelegationHistoryDeleteGuard;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -35,6 +33,10 @@ class EditOperation extends EditRecord
      */
     protected array $developments = [];
 
+    /**
+     * Exclusão física saiu daqui: o ciclo de vida é Ativar / Concluir / Cancelar
+     * / Reabrir, e cada uma dessas ações preserva o histórico em vez de apagá-lo.
+     */
     protected function getHeaderActions(): array
     {
         return [
@@ -42,9 +44,10 @@ class EditOperation extends EditRecord
                 ->label('Visualizar')
                 ->icon('heroicon-m-eye')
                 ->color('gray'),
-            DeleteAction::make()
-                ->label('Excluir operação')
-                ->before(fn (Operation $record, DeleteAction $action) => DelegationHistoryDeleteGuard::haltForOperations([$record], $action)),
+            OperationResource::getActivateOperationAction()->record($this->record),
+            OperationResource::getCompleteOperationAction()->record($this->record),
+            OperationResource::getCancelOperationAction()->record($this->record),
+            OperationResource::getReopenOperationAction()->record($this->record),
         ];
     }
 

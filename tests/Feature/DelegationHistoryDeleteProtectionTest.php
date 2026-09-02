@@ -2,16 +2,18 @@
 
 use App\Enums\MeasurementResponsibility;
 use App\Exceptions\DelegationHistoryException;
+use App\Filament\Resources\Operations\OperationResource;
+use App\Filament\Resources\Operations\Pages\EditOperation;
 use App\Filament\Resources\Operations\Pages\ListOperations;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
 use App\Models\User;
 use App\Services\ResponsibilityDelegationService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
-use Filament\Actions\Testing\TestAction;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -235,73 +237,47 @@ function actAsOperationEraser(Operation $operation): User
     return $eraser;
 }
 
-it('explains the refusal instead of erasing a user from the edit page', function () {
-    $scenario = delegationHistoryScenario();
-    actAsUserEraser();
-
-    Livewire::test(EditUser::class, ['record' => $scenario['delegator']->getKey()])
-        ->callAction(TestAction::make('delete'))
-        ->assertNotified('Usuário não excluído.');
-
-    expect(User::query()->whereKey($scenario['delegator']->getKey())->exists())->toBeTrue()
-        ->and(ResponsibilityDelegation::query()->count())->toBe(1);
-});
-
-it('refuses the whole user batch when one of them has delegation history', function () {
-    $scenario = delegationHistoryScenario();
-    actAsUserEraser();
-    $erasable = User::factory()->create();
-
-    Livewire::test(ListUsers::class)
-        ->selectTableRecords([$erasable->getKey(), $scenario['delegate']->getKey()])
-        ->callAction(TestAction::make('delete')->table()->bulk())
-        ->assertNotified('Nenhum usuário excluído.');
-
-    // Recusa atômica: o excluível também sobrevive, para que ninguém precise
-    // adivinhar o que o lote apagou antes de parar.
-    expect(User::query()->whereKey($erasable->getKey())->exists())->toBeTrue()
-        ->and(User::query()->whereKey($scenario['delegate']->getKey())->exists())->toBeTrue()
-        ->and(ResponsibilityDelegation::query()->count())->toBe(1);
-});
-
-it('erases a user batch that has no delegation history', function () {
+it('offers no user deletion in the interface at all', function () {
     delegationHistoryScenario();
     actAsUserEraser();
-    $first = User::factory()->create();
-    $second = User::factory()->create();
+    $anyUser = User::factory()->create();
+
+    // O ciclo de vida de usuário virou Desativar/Reativar: exclusão física saiu
+    // da interface, inclusive para quem não tem histórico nenhum. As camadas de
+    // proteção da P2.5 continuam medidas nos testes acima, pelo banco e pelo
+    // modelo.
+    expect(UserResource::canDelete($anyUser))->toBeFalse()
+        ->and(UserResource::canDeleteAny())->toBeFalse();
+
+    Livewire::test(EditUser::class, ['record' => $anyUser->getKey()])
+        ->assertActionDoesNotExist('delete');
 
     Livewire::test(ListUsers::class)
-        ->selectTableRecords([$first->getKey(), $second->getKey()])
-        ->callAction(TestAction::make('delete')->table()->bulk())
-        ->assertHasNoActionErrors();
-
-    expect(User::query()->whereKey([$first->getKey(), $second->getKey()])->count())->toBe(0)
-        ->and(ResponsibilityDelegation::query()->count())->toBe(1);
+        ->assertTableBulkActionDoesNotExist('delete')
+        ->assertTableActionDoesNotExist('delete');
 });
 
-it('explains the refusal instead of erasing an operation from the listing', function () {
-    $scenario = delegationHistoryScenario();
-    actAsOperationEraser($scenario['operation']);
-
-    Livewire::test(ListOperations::class)
-        ->callAction(TestAction::make('delete')->table($scenario['operation']))
-        ->assertNotified('Operação não excluída.');
-
-    expect(Operation::query()->whereKey($scenario['operation']->getKey())->exists())->toBeTrue()
-        ->and(ResponsibilityDelegation::query()->count())->toBe(1);
-});
-
-it('refuses the whole operation batch when one of them has delegation history', function () {
+it('offers no operation deletion in the interface at all', function () {
     $scenario = delegationHistoryScenario();
     $eraser = actAsOperationEraser($scenario['operation']);
     $erasable = Operation::factory()->create(['assigned_user_id' => $eraser->getKey()]);
 
-    Livewire::test(ListOperations::class)
-        ->selectTableRecords([$erasable->getKey(), $scenario['operation']->getKey()])
-        ->callAction(TestAction::make('delete')->table()->bulk())
-        ->assertNotified('Nenhuma operação excluída.');
+    // Mesmo para quem tem `operations.delete` e participa da operação: o ciclo
+    // de vida da operação virou Ativar/Concluir/Cancelar/Reabrir, e nem a que
+    // não tem histórico nenhum é apagável pela interface. As camadas de
+    // proteção da P2.5 continuam medidas nos testes acima, pelo banco e pelo
+    // modelo.
+    expect($eraser->can('operations.delete'))->toBeTrue()
+        ->and(OperationResource::canDelete($erasable))->toBeFalse()
+        ->and(OperationResource::canDeleteAny())->toBeFalse();
 
-    expect(Operation::query()->whereKey($erasable->getKey())->exists())->toBeTrue()
-        ->and(Operation::query()->whereKey($scenario['operation']->getKey())->exists())->toBeTrue()
+    Livewire::test(ListOperations::class)
+        ->assertTableBulkActionDoesNotExist('delete')
+        ->assertTableActionDoesNotExist('delete');
+
+    Livewire::test(EditOperation::class, ['record' => $erasable->getKey()])
+        ->assertActionDoesNotExist('delete');
+
+    expect(Operation::query()->whereKey($scenario['operation']->getKey())->exists())->toBeTrue()
         ->and(ResponsibilityDelegation::query()->count())->toBe(1);
 });

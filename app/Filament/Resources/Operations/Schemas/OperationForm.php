@@ -19,6 +19,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 
@@ -28,7 +29,7 @@ class OperationForm
     {
         return $schema->components([
             Section::make('Dados da Operação')
-                ->description('Defina a emissão, situação e parâmetros principais da operação.')
+                ->description('Defina a emissão e os parâmetros principais da operação. A situação é alterada pelas ações de ciclo de vida.')
                 ->columnSpanFull()
                 ->columns(['default' => 1, 'md' => 12])
                 ->schema([
@@ -42,7 +43,7 @@ class OperationForm
                         ->preload()
                         ->required()
                         ->live()
-                        ->columnSpan(['default' => 12, 'md' => 5])
+                        ->columnSpan(['default' => 12, 'md' => 7])
                         ->afterStateUpdated(function (Set $set, mixed $state, mixed $old): void {
                             if ($state === $old) {
                                 return;
@@ -55,22 +56,16 @@ class OperationForm
                             'required' => 'Selecione a emissão.',
                         ]),
 
-                    Select::make('status')
-                        ->label('Situação')
-                        ->options(Operation::STATUS_OPTIONS)
-                        ->default('draft')
-                        ->required()
-                        ->columnSpan(['default' => 12, 'md' => 3])
-                        ->validationMessages([
-                            'required' => 'Selecione a situação.',
-                        ]),
-
+                    // A situação saiu do formulário: ela deixou de ser um atributo
+                    // qualquer e passou a ser ciclo de vida, com transições
+                    // válidas, pré-condições e motivo. Quem a altera são as ações
+                    // Ativar / Concluir / Cancelar / Reabrir.
                     DatePicker::make('due_date')
                         ->label('Vencimento')
                         ->placeholder('Automático via emissão')
                         ->disabled()
                         ->dehydrated()
-                        ->columnSpan(['default' => 12, 'md' => 4])
+                        ->columnSpan(['default' => 12, 'md' => 5])
                         ->helperText('Preenchido automaticamente a partir da data de vencimento da emissão.'),
                 ]),
 
@@ -151,7 +146,18 @@ class OperationForm
 
                             Select::make('rejectionNotifyUsers')
                                 ->label('Notificar em Caso de Recusa')
-                                ->relationship('rejectionNotifyUsers', 'name')
+                                // Mesma regra dos responsáveis: quem já está na
+                                // lista continua listado, quem entra agora
+                                // precisa estar ativo e provisionado.
+                                ->relationship(
+                                    'rejectionNotifyUsers',
+                                    'name',
+                                    fn (Builder $query, ?Operation $record): Builder => $query->where(
+                                        fn (Builder $available): Builder => $available
+                                            ->operational()
+                                            ->orWhereIn('users.id', $record?->rejectionNotifyUsers()->select('users.id') ?? []),
+                                    ),
+                                )
                                 ->multiple()
                                 ->searchable()
                                 ->preload()
@@ -264,12 +270,32 @@ class OperationForm
             : null;
     }
 
+    /**
+     * Select de responsável que oferece apenas quem pode assumir a
+     * responsabilidade agora -- ativo e provisionado --, sem apagar quem já a
+     * detém.
+     *
+     * As duas coisas precisam conviver: um responsável que foi desligado depois
+     * de atribuído continua sendo o responsável registrado, e o campo tem de
+     * mostrá-lo, senão abrir a operação para editar outro campo pareceria ter
+     * perdido a responsabilidade. Por isso o filtro é "elegível OU o valor já
+     * gravado neste campo": o histórico continua renderizável, e a lista de
+     * escolha nova não o oferece a mais ninguém.
+     */
     protected static function userField(string $name, string $label, string $relationship, ?string $helperText = null): Select
     {
         $select = Select::make($name)
             ->label($label)
             ->placeholder('Selecione o responsável...')
-            ->relationship($relationship, 'name')
+            ->relationship(
+                $relationship,
+                'name',
+                fn (Builder $query, ?Operation $record): Builder => $query->where(
+                    fn (Builder $available): Builder => $available
+                        ->operational()
+                        ->orWhere('users.id', $record?->getAttribute($name)),
+                ),
+            )
             ->searchable()
             ->preload()
             ->disabled(fn (?Operation $record): bool => ! Gate::allows('manageResponsibilities', $record ?? Operation::class))

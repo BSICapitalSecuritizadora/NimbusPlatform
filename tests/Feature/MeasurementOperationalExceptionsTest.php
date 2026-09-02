@@ -42,12 +42,15 @@ afterEach(function (): void {
 /** @param list<string> $extraPermissions */
 function p3ExceptionUser(array $extraPermissions = []): User
 {
-    $user = User::factory()->create();
+    $user = User::factory()->withTwoFactor()->create();
     $user->givePermissionTo(array_values(array_unique([
         AccessPermission::OperationsView->value,
         AccessPermission::MeasurementsView->value,
         AccessPermission::MeasurementsExceptionsView->value,
         AccessPermission::MeasurementsReview->value,
+        AccessPermission::MeasurementsPay->value,
+        AccessPermission::MeasurementsReceipts->value,
+        AccessPermission::MeasurementsFinalize->value,
         ...$extraPermissions,
     ])));
 
@@ -200,6 +203,7 @@ it('does not report future or historical responsibilities outside the current ac
 it('treats an inactive permanent responsible as structurally unavailable', function (): void {
     $actor = p3ExceptionUser();
     $inactive = User::factory()->create(['is_active' => false]);
+    $inactive->givePermissionTo(MeasurementResponsibility::ManagementReviewer->permission());
     $operation = p3ExceptionOperation($actor, ['stage2_reviewer_user_id' => $inactive->getKey()]);
     p3ExceptionMeasurement($operation, ['current_stage' => 2]);
 
@@ -208,6 +212,76 @@ it('treats an inactive permanent responsible as structurally unavailable', funct
     expect($result->total)->toBe(1)
         ->and($result->items[0]->type)->toBe(MeasurementOperationalExceptionType::MissingCurrentStageResponsible)
         ->and($result->items[0]->configuredResponsibleName)->toBe($inactive->name.' (inativo)');
+});
+
+it('requires operational approval and the canonical permission for every permanent responsibility', function (
+    string $status,
+    int $stage,
+    string $operationColumn,
+    MeasurementResponsibility $responsibility,
+    MeasurementOperationalExceptionType $type,
+): void {
+    $actor = p3ExceptionUser();
+    $responsible = User::factory()->create();
+    $responsible->givePermissionTo($responsibility->permission());
+    $operation = p3ExceptionOperation($actor, [$operationColumn => $responsible->getKey()]);
+    p3ExceptionMeasurement($operation, [
+        'status' => $status,
+        'current_stage' => $stage,
+    ], ! in_array($status, ['awaiting_receipt', 'approved'], true));
+    $readModel = app(MeasurementOperationalExceptionReadModel::class);
+
+    expect($readModel->scanFor($actor)->total)->toBe(0);
+
+    $responsible->revokePermissionTo($responsibility->permission());
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    $withoutPermission = $readModel->scanFor($actor);
+
+    expect($withoutPermission->total)->toBe(1)
+        ->and($withoutPermission->items[0]->type)->toBe($type)
+        ->and($withoutPermission->items[0]->configuredResponsibleName)
+        ->toBe($responsible->name.' (sem permissão operacional)');
+
+    $responsible->givePermissionTo($responsibility->permission());
+    $responsible->forceFill(['approved_at' => null])->saveQuietly();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    $unapproved = $readModel->scanFor($actor);
+
+    expect($unapproved->total)->toBe(1)
+        ->and($unapproved->items[0]->type)->toBe($type)
+        ->and($unapproved->items[0]->configuredResponsibleName)
+        ->toBe($responsible->name.' (não aprovado)');
+
+    $responsible->forceFill(['approved_at' => now()])->saveQuietly();
+
+    expect($readModel->scanFor($actor)->total)->toBe(0);
+})->with([
+    'engineering' => ['in_review', 1, 'responsible_user_id', MeasurementResponsibility::EngineeringReviewer, MeasurementOperationalExceptionType::MissingCurrentStageResponsible],
+    'management' => ['in_review', 2, 'stage2_reviewer_user_id', MeasurementResponsibility::ManagementReviewer, MeasurementOperationalExceptionType::MissingCurrentStageResponsible],
+    'compliance' => ['in_review', 3, 'stage3_reviewer_user_id', MeasurementResponsibility::ComplianceReviewer, MeasurementOperationalExceptionType::MissingCurrentStageResponsible],
+    'payment' => ['awaiting_payment', 4, 'payment_manager_user_id', MeasurementResponsibility::PaymentManager, MeasurementOperationalExceptionType::MissingPaymentManager],
+    'receipt' => ['awaiting_receipt', 5, 'payment_receipt_uploader_user_id', MeasurementResponsibility::ReceiptUploader, MeasurementOperationalExceptionType::MissingReceiptUploader],
+    'finalization' => ['approved', 5, 'payment_finalizer_user_id', MeasurementResponsibility::Finalizer, MeasurementOperationalExceptionType::MissingFinalizer],
+]);
+
+it('does not accept an unrelated measurement permission for the payment manager', function (): void {
+    $actor = p3ExceptionUser();
+    $paymentManager = User::factory()->create();
+    $paymentManager->givePermissionTo(AccessPermission::MeasurementsReview->value);
+    $operation = p3ExceptionOperation($actor, ['payment_manager_user_id' => $paymentManager->getKey()]);
+    p3ExceptionMeasurement($operation, [
+        'status' => 'awaiting_payment',
+        'current_stage' => 4,
+    ]);
+
+    $result = app(MeasurementOperationalExceptionReadModel::class)->scanFor($actor);
+
+    expect($result->total)->toBe(1)
+        ->and($result->items[0]->type)->toBe(MeasurementOperationalExceptionType::MissingPaymentManager)
+        ->and($result->items[0]->configuredResponsibleName)
+        ->toBe($paymentManager->name.' (sem permissão operacional)');
 });
 
 it('projects SLA not configured only from the canonical SLA service result', function (): void {
@@ -279,6 +353,7 @@ it('represents multiple exceptions as separate rows for the same measurement', f
 it('removes a derived exception after the canonical configuration is corrected', function (): void {
     $actor = p3ExceptionUser();
     $replacement = User::factory()->create();
+    $replacement->givePermissionTo(MeasurementResponsibility::EngineeringReviewer->permission());
     $operation = p3ExceptionOperation($actor, ['responsible_user_id' => null]);
     p3ExceptionMeasurement($operation);
 
@@ -624,9 +699,9 @@ it('processes 205 visible measurements across more than two chunks without skip 
         );
 });
 
-it('keeps query growth bounded while evaluating more than two chunks', function (): void {
+it('keeps permission query growth bounded while evaluating more than two chunks', function (): void {
     $actor = p3ExceptionUser();
-    $operation = p3ExceptionOperation($actor, ['responsible_user_id' => null]);
+    $operation = p3ExceptionOperation($actor);
     Measurement::factory()->count(205)->create([
         'operation_id' => $operation->getKey(),
         'status' => 'in_review',

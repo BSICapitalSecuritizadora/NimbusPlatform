@@ -27,12 +27,12 @@ enum MeasurementOperationalExceptionType: string
     {
         return match ($this) {
             self::MissingCurrentStageResponsible => sprintf(
-                'A operação não possui responsável ativo configurado para %s.',
+                'A operação não possui responsável operacionalmente válido configurado para %s.',
                 $responsibility?->label() ?? 'a etapa atual',
             ),
-            self::MissingPaymentManager => 'A operação não possui gestor de pagamento ativo configurado.',
-            self::MissingReceiptUploader => 'A operação não possui uploader de comprovante ativo configurado.',
-            self::MissingFinalizer => 'A operação não possui finalizador ativo configurado.',
+            self::MissingPaymentManager => 'A operação não possui gestor de pagamento operacionalmente válido configurado.',
+            self::MissingReceiptUploader => 'A operação não possui uploader de comprovante operacionalmente válido configurado.',
+            self::MissingFinalizer => 'A operação não possui finalizador operacionalmente válido configurado.',
             self::SlaNotConfigured => 'A etapa atual não possui um prazo de SLA configurado.',
             self::SlaInvalidConfig => 'A configuração de SLA da etapa atual precisa de revisão administrativa.',
         };

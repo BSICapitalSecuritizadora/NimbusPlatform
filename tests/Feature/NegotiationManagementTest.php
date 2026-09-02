@@ -73,7 +73,7 @@ it('renders each negotiation form section on its own row', function () {
     ]);
 
     expect($sections['Dados da Negociação']->getColumns())->toBe(['default' => 1, 'md' => 2, 'lg' => 5])
-        ->and($sections['Negociações do Mês']->getColumns())->toBe(['default' => 1, 'md' => 2, 'lg' => 4]);
+        ->and($sections['Negociações do Mês']->getColumns())->toBe(['default' => 1, 'md' => 2]);
 
     $identificationFields = collect($sections['Dados da Negociação']->getChildComponents())
         ->keyBy(fn (mixed $field): string => $field->getName());
@@ -82,6 +82,12 @@ it('renders each negotiation form section on its own row', function () {
         ->and($identificationFields['construction_id']->getColumnSpan())->toMatchArray(['lg' => 2])
         ->and($identificationFields['reference_month']->getColumnSpan())->toMatchArray(['lg' => 1])
         ->and($identificationFields['reference_month']->getLabel())->toBe('Competência');
+
+    $monthlyFields = collect($sections['Negociações do Mês']->getChildComponents())
+        ->keyBy(fn (mixed $field): string => $field->getName());
+
+    expect($monthlyFields['sales']->getColumnSpan())->toMatchArray(['default' => 1, 'md' => 1])
+        ->and($monthlyFields['cancellations']->getColumnSpan())->toMatchArray(['default' => 1, 'md' => 1]);
 });
 
 it('creates a monthly negotiation linked to emission and construction', function () {
@@ -208,6 +214,12 @@ it('updates an existing negotiation', function () {
     Livewire::test(EditNegotiation::class, [
         'record' => $negotiation->getRouteKey(),
     ])
+        ->assertSuccessful()
+        ->assertSee('Atualize os dados e as movimentações comerciais desta competência.')
+        ->assertActionExists('view')
+        ->assertActionHasLabel('view', 'Visualizar')
+        ->assertActionExists('delete')
+        ->assertActionHasLabel('delete', 'Excluir')
         ->fillForm([
             'sales' => 14,
             'cancellations' => 4,

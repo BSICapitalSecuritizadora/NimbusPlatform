@@ -244,6 +244,83 @@ class PuAuditLogService
         $logger->event('index_synced')->log('pu_index_synced');
     }
 
+    /**
+     * @param  array{from:?string,to:?string}  $requestedWindow
+     * @param  list<string>  $requiredDates
+     * @param  list<string>  $insertedDates
+     * @param  list<string>  $alreadyExistingDates
+     * @param  list<array<string, mixed>>  $conflicts
+     * @param  list<string>  $payloadChecksums
+     */
+    public function logNumericSnapshotPreparation(
+        Emission $emission,
+        EmissionPuParameter $parameter,
+        User $actor,
+        string $source,
+        string $series,
+        array $requestedWindow,
+        array $requiredDates,
+        array $insertedDates,
+        array $alreadyExistingDates,
+        array $conflicts,
+        array $payloadChecksums,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->causedBy($actor)
+            ->withProperties([
+                'emission_id' => $emission->id,
+                'parameter_id' => $parameter->id,
+                'actor_id' => $actor->id,
+                'source' => $source,
+                'series' => $series,
+                'requested_window' => $requestedWindow,
+                'required_dates' => $requiredDates,
+                'inserted_dates' => $insertedDates,
+                'already_existing_dates' => $alreadyExistingDates,
+                'conflicts' => $conflicts,
+                'payload_checksums' => $payloadChecksums,
+                'prepared_at' => now()->toIso8601String(),
+            ])
+            ->event('numeric_snapshots_prepared')
+            ->log('pu_numeric_snapshots_prepared');
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $requiredEvents
+     * @param  list<int>  $insertedEventIds
+     * @param  list<int>  $alreadyExistingEventIds
+     * @param  list<array<string, mixed>>  $conflicts
+     * @param  array<string, mixed>  $baselineSources
+     */
+    public function logNumericEventPreparation(
+        Emission $emission,
+        EmissionPuParameter $parameter,
+        User $actor,
+        array $requiredEvents,
+        array $insertedEventIds,
+        array $alreadyExistingEventIds,
+        array $conflicts,
+        array $baselineSources,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->causedBy($actor)
+            ->withProperties([
+                'emission_id' => $emission->id,
+                'parameter_id' => $parameter->id,
+                'actor_id' => $actor->id,
+                'required_events' => $requiredEvents,
+                'inserted_event_ids' => $insertedEventIds,
+                'already_existing_event_ids' => $alreadyExistingEventIds,
+                'conflicts' => $conflicts,
+                'baseline_sources' => $baselineSources,
+                'prepared_at' => now()->toIso8601String(),
+            ])
+            ->event('numeric_events_prepared')
+            ->log('pu_numeric_events_prepared');
+    }
+
     public function logHomologationReportDownloaded(Emission $emission, ?string $calculationVersion, ?int $requestedByUserId): void
     {
         $logger = activity(self::LOG_NAME)
@@ -289,6 +366,8 @@ class PuAuditLogService
             'pu_curve_invalidated' => 'Curva invalidada',
             'pu_homologation_report_downloaded' => 'PDF de homologacao baixado',
             'pu_index_synced' => 'Indices sincronizados (Banco Central)',
+            'pu_numeric_snapshots_prepared' => 'Snapshots numéricos preparados',
+            'pu_numeric_events_prepared' => 'Eventos numéricos preparados',
             'pu_parameters_updated' => 'Parametros atualizados',
             'pu_candidate_configuration_created' => 'Configuração candidata criada',
             'pu_event_changed' => 'Evento de PU alterado',

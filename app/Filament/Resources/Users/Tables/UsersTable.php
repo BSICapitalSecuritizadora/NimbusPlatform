@@ -6,17 +6,13 @@ use App\Enums\AccessPermission;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
-use App\Support\Delegations\DelegationHistoryDeleteGuard;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Collection;
 
 class UsersTable
 {
@@ -110,20 +106,17 @@ class UsersTable
             ->recordUrl(fn (User $record): ?string => UserResource::canEdit($record) ? UserResource::getUrl('edit', ['record' => $record]) : null)
             ->recordActions([
                 UserResource::getApproveUserAction(),
+                UserResource::getDeactivateUserAction(),
+                UserResource::getReactivateUserAction(),
                 EditAction::make()
                     ->icon('heroicon-m-pencil-square')
                     ->color('gray')
                     ->tooltip('Editar usuário'),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    // O lote é recusado inteiro quando qualquer selecionado tem
-                    // histórico de delegação: exclusão parcial deixaria a pessoa
-                    // sem saber o que foi apagado e o que sobrou.
-                    DeleteBulkAction::make()
-                        ->before(fn (Collection $records, DeleteBulkAction $action) => DelegationHistoryDeleteGuard::haltForUsers($records, $action)),
-                ]),
-            ])
+            // Sem ações em lote: o ciclo de vida de um usuário é individual e
+            // revisado -- desligar alguém não é operação de varredura --, e a
+            // exclusão física deixou de ser ação operacional.
+            ->toolbarActions([])
             ->emptyStateIcon(Heroicon::OutlinedUsers)
             ->emptyStateHeading(fn (ListUsers $livewire): string => self::hasActiveSearch($livewire)
                 ? 'Nenhum usuário encontrado'

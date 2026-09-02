@@ -87,18 +87,21 @@ it('partial contract migration yields atencao due to divergence', function () {
         ->and($analysis['readiness']['status'])->toBe('atencao');
 });
 
-it('contract without sale date makes readiness incompleto', function () {
+it('sale_date is a NOT NULL invariant — coverage remains zero and does not drive readiness failure', function () {
+    // sale_date is NOT NULL per 2026_08_20_213519 and required by ContractForm.
+    // A valid production DB cannot contain NULL sale_date; the diagnostic
+    // tracks the count informationally but it must not make readiness incompleto
+    // and must not require weakening the schema to test.
     $emission = Emission::factory()->withLegacyNegotiations()->create();
     $construction = Construction::factory()->for($emission)->create();
     $unit = ConstructionUnit::factory()->forConstruction($construction)->create();
 
-    $contract = Contract::factory()->forUnit($unit)->create(['sale_date' => '2026-02-05']);
-    DB::table('contracts')->where('id', $contract->id)->update(['sale_date' => null]);
+    Contract::factory()->forUnit($unit)->create(['sale_date' => '2026-02-05']);
 
     $analysis = app(NegotiationMigrationReadinessService::class)->analyze($emission);
 
-    expect($analysis['contract_coverage']['without_sale_date'])->toBe(1)
-        ->and($analysis['readiness']['status'])->toBe('incompleto');
+    expect($analysis['contract_coverage']['without_sale_date'])->toBe(0)
+        ->and($analysis['readiness']['status'])->not->toBe('incompleto');
 });
 
 it('cancelled contract without cancellation date makes incompleto', function () {
@@ -119,21 +122,24 @@ it('cancelled contract without cancellation date makes incompleto', function () 
         ->and($analysis['readiness']['status'])->toBe('incompleto');
 });
 
-it('unresolved unit relationship is flagged as incompleto', function () {
+it('contract construction mismatch vs unit construction is flagged as incompleto (real drift without FK violation)', function () {
+    // construction_unit_id has FK restrictOnDelete — referencing a non-existent unit
+    // is impossible in a valid production DB (would require disabling FK checks).
+    // The real integrity scenario is denormalized construction_id drifting from
+    // the unit's construction_id, or pointing to another emission. That CAN occur
+    // via raw DB updates bypassing Contract::saving and must make readiness incompleto.
     $emission = Emission::factory()->withLegacyNegotiations()->create();
-    $construction = Construction::factory()->for($emission)->create();
-    $unit = ConstructionUnit::factory()->forConstruction($construction)->create();
+    $constructionA = Construction::factory()->for($emission)->create();
+    $constructionB = Construction::factory()->for($emission)->create();
+    $unit = ConstructionUnit::factory()->forConstruction($constructionA)->create();
 
     $contract = Contract::factory()->forUnit($unit)->create(['sale_date' => '2026-02-05']);
-    // Break the unit link by orphaning the contract — bypass FK via PDO
-    $pdo = DB::connection()->getPdo();
-    $pdo->exec('PRAGMA foreign_keys=OFF');
-    DB::table('contracts')->where('id', $contract->id)->update(['construction_unit_id' => 999999]);
-    $pdo->exec('PRAGMA foreign_keys=ON');
+    // Drift: contract construction_id no longer matches unit's construction_id
+    DB::table('contracts')->where('id', $contract->id)->update(['construction_id' => $constructionB->id]);
 
     $analysis = app(NegotiationMigrationReadinessService::class)->analyze($emission);
 
-    expect($analysis['contract_coverage']['unresolved_unit'])->toBe(1)
+    expect($analysis['contract_coverage']['inconsistent'])->toBeGreaterThan(0)
         ->and($analysis['readiness']['status'])->toBe('incompleto');
 });
 
@@ -295,7 +301,7 @@ it('handles units without contracts as informational not failure', function () {
         ->and($analysis['readiness']['status'])->toBe('pronto');
 });
 
-it('inconsistent construction relationship is detected without throwing', function () {
+it('inconsistent construction relationship is detected and makes readiness incompleto', function () {
     $emission = Emission::factory()->withLegacyNegotiations()->create();
     $construction = Construction::factory()->for($emission)->create();
     $otherEmission = Emission::factory()->withLegacyNegotiations()->create();
@@ -303,12 +309,11 @@ it('inconsistent construction relationship is detected without throwing', functi
     $unit = ConstructionUnit::factory()->forConstruction($construction)->create();
 
     $contract = Contract::factory()->forUnit($unit)->create(['sale_date' => '2026-02-05']);
-    // Force mismatch: construction_id points to other emission's construction
+    // Force mismatch: construction_id points to other emission's construction (emission drift)
     DB::table('contracts')->where('id', $contract->id)->update(['construction_id' => $otherConstruction->id]);
 
     $analysis = app(NegotiationMigrationReadinessService::class)->analyze($emission);
 
-    // Should be counted as inconsistent (denormalized drift)
-    expect($analysis['contract_coverage']['inconsistent'])->toBeGreaterThanOrEqual(0); // soft check, at least not crash
-    expect($analysis)->toHaveKey('readiness');
+    expect($analysis['contract_coverage']['inconsistent'])->toBeGreaterThan(0)
+        ->and($analysis['readiness']['status'])->toBe('incompleto');
 });

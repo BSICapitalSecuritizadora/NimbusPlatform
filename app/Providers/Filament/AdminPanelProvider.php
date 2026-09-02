@@ -89,15 +89,19 @@ class AdminPanelProvider extends PanelProvider
                     EditReceivable::class,
                 ],
             )
+            ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('16rem')
+            ->collapsedSidebarWidth('4.75rem')
+            ->collapsibleNavigationGroups()
             ->navigationGroups([
-                NavigationGroup::make('Comercial'),
-                NavigationGroup::make('Operações'),
-                NavigationGroup::make('Financeiro'),
-                NavigationGroup::make('Governança & Risco'),
-                NavigationGroup::make('Gestão Documental Externa'),
-                NavigationGroup::make('Dados de Mercado'),
-                NavigationGroup::make('Site Institucional'),
-                NavigationGroup::make('Administração'),
+                NavigationGroup::make('Comercial')->collapsed(),
+                NavigationGroup::make('Operações')->collapsed(),
+                NavigationGroup::make('Financeiro')->collapsed(),
+                NavigationGroup::make('Governança & Risco')->collapsed(),
+                NavigationGroup::make('Gestão Documental Externa')->collapsed(),
+                NavigationGroup::make('Dados de Mercado')->collapsed(),
+                NavigationGroup::make('Site Institucional')->collapsed(),
+                NavigationGroup::make('Administração')->collapsed(),
             ])
             ->navigationItems([
                 NavigationItem::make('Gestão Documental')

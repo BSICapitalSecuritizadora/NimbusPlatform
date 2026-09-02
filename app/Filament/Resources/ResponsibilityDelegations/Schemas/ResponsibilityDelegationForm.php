@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ResponsibilityDelegations\Schemas;
 
 use App\Enums\MeasurementResponsibility;
+use App\Enums\OperationStatus;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
 use App\Support\BusinessTime;
@@ -10,6 +11,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class ResponsibilityDelegationForm
 {
@@ -17,9 +19,16 @@ class ResponsibilityDelegationForm
     {
         return $schema
             ->components([
+                // A delegação é sempre um vínculo novo -- o formulário desabilita
+                // os dois campos ao editar --, então aqui não há valor histórico
+                // a preservar: só candidatos elegíveis. O
+                // `validateBusinessRules()` do serviço continua recusando
+                // inativo e não provisionado, e é ele quem garante a integridade
+                // contra payload manipulado; o filtro aqui é só para não
+                // oferecer quem seria recusado.
                 Select::make('delegator_user_id')
                     ->label('Delegante')
-                    ->relationship('delegator', 'name')
+                    ->relationship('delegator', 'name', fn (Builder $query): Builder => $query->operational())
                     ->searchable()
                     ->preload()
                     ->required()
@@ -30,7 +39,7 @@ class ResponsibilityDelegationForm
 
                 Select::make('delegate_user_id')
                     ->label('Delegado')
-                    ->relationship('delegate', 'name')
+                    ->relationship('delegate', 'name', fn (Builder $query): Builder => $query->operational())
                     ->searchable()
                     ->preload()
                     ->required()
@@ -45,7 +54,10 @@ class ResponsibilityDelegationForm
 
                 Select::make('scope_operation_id')
                     ->label('Operação')
-                    ->options(function (): array {
+                    // Escopo novo só em operação em andamento; a operação de uma
+                    // delegação já registrada continua listada para que o campo
+                    // -- desabilitado na edição -- ainda saiba se renderizar.
+                    ->options(function (?ResponsibilityDelegation $record): array {
                         $user = auth()->user();
 
                         if ($user === null) {
@@ -54,6 +66,13 @@ class ResponsibilityDelegationForm
 
                         return Operation::query()
                             ->visibleTo($user)
+                            ->where(fn (Builder $eligible): Builder => $eligible
+                                ->where('operations.status', OperationStatus::Active->value)
+                                ->when(
+                                    filled($record?->scope_operation_id),
+                                    fn (Builder $existing): Builder => $existing
+                                        ->orWhere('operations.id', $record->scope_operation_id),
+                                ))
                             ->orderBy('code')
                             ->get(['id', 'code', 'title'])
                             ->mapWithKeys(fn (Operation $operation): array => [

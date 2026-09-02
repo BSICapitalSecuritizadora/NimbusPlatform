@@ -93,7 +93,41 @@ class NegotiationResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('negotiations.create') ?? false;
+        if (! (auth()->user()?->can('negotiations.create') ?? false)) {
+            return false;
+        }
+
+        // Guard contracts mode: if the current request targets a contracts-mode emission, deny creation.
+        // Checks both table filter context (list page) and form payload (create page).
+        $candidateEmissionId = request()->input('data.emission_id')
+            ?? request()->input('emission_id')
+            ?? request()->input('tableFilters.emission_id.value')
+            ?? request()->input('tableFilters.emission_id');
+
+        if (is_array($candidateEmissionId) && array_key_exists('value', $candidateEmissionId)) {
+            $candidateEmissionId = $candidateEmissionId['value'];
+        }
+
+        if (filled($candidateEmissionId)) {
+            $emission = Emission::query()->find($candidateEmissionId);
+            if ($emission && $emission->usesContractNegotiations()) {
+                return false;
+            }
+        }
+
+        // If every emission is contracts-mode, no manual negotiations can be created at all.
+        $hasContractsMode = Emission::query()->where('negotiations_source', Emission::NEGOTIATIONS_SOURCE_CONTRACTS)->exists();
+        $hasLegacy = Emission::query()
+            ->where(function (Builder $q): void {
+                $q->where('negotiations_source', Emission::NEGOTIATIONS_SOURCE_LEGACY)
+                    ->orWhereNull('negotiations_source');
+            })->exists();
+
+        if ($hasContractsMode && ! $hasLegacy) {
+            return false;
+        }
+
+        return true;
     }
 
     public static function canEdit(Model $record): bool

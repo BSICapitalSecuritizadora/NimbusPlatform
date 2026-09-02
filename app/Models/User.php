@@ -9,6 +9,7 @@ use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -108,6 +109,59 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function isApproved(): bool
     {
         return $this->approved_at !== null;
+    }
+
+    /**
+     * Quem pode receber autoridade nova: ativo na plataforma e já provisionado.
+     *
+     * As duas condições são independentes e significam coisas diferentes.
+     * `is_active` é a chave operacional -- reversível, administrativa, e o que
+     * bloqueia o login em {@see self::canAccessPanel()} e no middleware.
+     * `approved_at` é provisionamento: quem entrou por SSO e ainda não foi
+     * liberado não é "desligado", é "ainda não começou". Nenhum dos dois estados
+     * recebe responsabilidade nova, por motivos opostos.
+     *
+     * Este é o predicado único de elegibilidade operacional. Não existe global
+     * scope: usuário inativo continua aparecendo em auditoria, em delegação
+     * histórica e em toda relação já gravada. O filtro vale só para *escolha
+     * nova* -- select de responsável, select de delegação, destinatário de
+     * notificação operacional.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeOperational(Builder $query): Builder
+    {
+        return $this->scopeApproved($this->scopeActive($query));
+    }
+
+    /**
+     * Tolerante a `NULL` de propósito: a coluna é NOT NULL DEFAULT 1 no MySQL,
+     * mas {@see self::isActive()} lê `?? true`, e o SQL precisa concordar com o
+     * PHP -- foi assim que a efetividade de delegação sempre decidiu.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where(function (Builder $active): void {
+            $active->where('is_active', true)->orWhereNull('is_active');
+        });
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeApproved(Builder $query): Builder
+    {
+        return $query->whereNotNull('approved_at');
+    }
+
+    public function isOperational(): bool
+    {
+        return $this->isActive() && $this->isApproved();
     }
 
     /**

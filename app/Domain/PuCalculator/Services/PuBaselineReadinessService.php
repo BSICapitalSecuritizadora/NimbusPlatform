@@ -121,9 +121,12 @@ final class PuBaselineReadinessService
     }
 
     /** @param array<string, mixed> $submitted */
-    public function assertCandidateCanBePersisted(Emission $emission, array $submitted): void
-    {
-        $report = $this->evaluate($emission);
+    public function assertCandidateCanBePersisted(
+        Emission $emission,
+        array $submitted,
+        ?CarbonImmutable $asOf = null,
+    ): void {
+        $report = $this->evaluate($emission, $asOf);
 
         if ($report->status === PuBaselineReadinessStatus::Blocked) {
             throw ValidationException::withMessages([

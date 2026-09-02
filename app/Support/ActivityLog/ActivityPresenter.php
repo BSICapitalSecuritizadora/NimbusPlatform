@@ -4,6 +4,7 @@ namespace App\Support\ActivityLog;
 
 use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
+use App\Enums\OperationStatus;
 use App\Enums\ProposalStatus;
 use App\Models\Client;
 use App\Models\Contract;
@@ -575,6 +576,17 @@ final class ActivityPresenter
             if ($subject === 'Contract' && is_string($value)) {
                 return ContractStatus::tryFrom($value)?->label() ?? Str::headline($value);
             }
+
+            if ($subject === 'Operation' && is_string($value)) {
+                return OperationStatus::tryFrom($value)?->label() ?? Str::headline($value);
+            }
+        }
+
+        // As transições de ciclo de vida da operação gravam origem e destino em
+        // propriedades próprias; sem isto, a auditoria mostraria "draft" e
+        // "canceled" onde a tela inteira fala em Rascunho e Cancelada.
+        if (in_array($key, ['from', 'to'], true) && $subject === 'Operation' && is_string($value)) {
+            return OperationStatus::tryFrom($value)?->label() ?? Str::headline($value);
         }
 
         if ($key === 'priority' && is_string($value)) {

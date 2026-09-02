@@ -56,14 +56,7 @@ class EvaluateMeasurementSlaCommand extends Command
 
         MeasurementReview::query()
             ->where('status', 'pending')
-            ->whereHas('measurement', fn ($query) => $query->whereIn('status', [
-                'pending',
-                'in_review',
-                'awaiting_payment',
-                'awaiting_receipt',
-                'approved',
-                'paused',
-            ]))
+            ->whereHas('measurement', fn ($query) => $query->open())
             ->with([
                 'measurement.operation',
                 'measurement.reviews',

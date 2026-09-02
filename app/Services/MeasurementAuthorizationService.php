@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\MeasurementResponsibility;
+use App\Enums\OperationStatus;
 use App\Models\Measurement;
 use App\Models\Operation;
 use App\Models\ResponsibilityDelegation;
@@ -30,10 +31,15 @@ class MeasurementAuthorizationService
                 || $this->delegations->hasAnyActiveDelegatedResponsibility($user, $measurement->operation));
     }
 
+    /**
+     * A regra é positiva, não uma lista de exceções: só a operação plenamente
+     * operacional recebe medição. `draft` ainda está em configuração e os
+     * terminais já encerraram -- quem decide é o próprio {@see OperationStatus}.
+     */
     public function canCreateMeasurement(User $user, Operation $operation): bool
     {
         return $user->can('measurements.create')
-            && ! in_array($operation->status, ['canceled', 'completed'], true)
+            && $operation->status->allowsNewMeasurements()
             && $this->hasDirectOperationalParticipation($user, $operation);
     }
 

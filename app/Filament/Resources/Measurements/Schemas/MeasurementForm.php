@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Measurements\Schemas;
 
+use App\Enums\OperationStatus;
 use App\Models\Measurement;
 use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
@@ -36,12 +37,26 @@ class MeasurementForm
                         Select::make('operation_id')
                             ->label('Operação')
                             ->placeholder('Selecione a operação...')
+                            // Só operação em andamento recebe medição nova, mas a
+                            // que já está gravada continua listada: sem isso,
+                            // abrir uma medição antiga de operação encerrada
+                            // mostraria o campo vazio, como se ela tivesse
+                            // perdido a operação. O backend recusa o payload
+                            // manipulado de qualquer forma.
                             ->relationship(
                                 'operation',
                                 'title',
-                                modifyQueryUsing: fn (Builder $query): Builder => auth()->user() === null
+                                modifyQueryUsing: fn (Builder $query, ?Measurement $record): Builder => auth()->user() === null
                                     ? $query->whereRaw('1 = 0')
-                                    : $query->visibleTo(auth()->user()),
+                                    : $query->visibleTo(auth()->user())->where(
+                                        fn (Builder $eligible): Builder => $eligible
+                                            ->where('operations.status', OperationStatus::Active->value)
+                                            ->when(
+                                                filled($record?->operation_id),
+                                                fn (Builder $existing): Builder => $existing
+                                                    ->orWhere('operations.id', $record->operation_id),
+                                            ),
+                                    ),
                             )
                             ->getOptionLabelFromRecordUsing(fn (Operation $record): string => trim(($record->code ? $record->code.' — ' : '').$record->title))
                             ->searchable(['title', 'code'])

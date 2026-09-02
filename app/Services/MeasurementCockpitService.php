@@ -47,7 +47,7 @@ class MeasurementCockpitService
         ];
 
         (clone $query)
-            ->whereNotIn('status', ['finalized', 'rejected'])
+            ->open()
             ->with(['reviews', 'pauses'])
             ->reorder('measurements.id')
             ->lazyById(100, column: 'measurements.id', alias: 'id')

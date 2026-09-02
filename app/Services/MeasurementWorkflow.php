@@ -162,7 +162,7 @@ class MeasurementWorkflow
     public function startReview(Measurement $measurement, User $actor): void
     {
         $locked = DB::transaction(function () use ($measurement, $actor): Measurement {
-            $locked = $this->lockMeasurement($measurement);
+            $locked = $this->lockMeasurementWithOperation($measurement);
 
             if (! $this->authorization->canCreateMeasurement($actor, $locked->operation)) {
                 throw new AuthorizationException('Você não pode iniciar uma medição nesta operação.');
@@ -219,7 +219,7 @@ class MeasurementWorkflow
 
         $result = DB::transaction(function () use ($measurement, $actor, $expectedStage, $expectedRevision, $notes, $engineeringProgress): array {
             $locked = $expectedStage === self::STAGE_ENGINEERING
-                ? $this->lockEngineeringMeasurement($measurement)
+                ? $this->lockMeasurementWithOperation($measurement)
                 : $this->lockMeasurement($measurement);
             $stage = $this->unifiedStage($locked);
 
@@ -981,10 +981,16 @@ class MeasurementWorkflow
     }
 
     /**
-     * Engineering approval shares this deterministic lock order with material
-     * Operation mutation: Operation, Measurement, review, then snapshot rows.
+     * Engineering approval and the start of a review share this deterministic
+     * lock order with material Operation mutation and with the operation
+     * lifecycle: Operation, Measurement, review, then snapshot rows.
+     *
+     * O envio da medição depende da situação da operação, e a situação da
+     * operação depende de não haver medição aberta. As duas leituras precisam
+     * acontecer sob o mesmo lock da operação, senão uma passa entre a
+     * verificação e a gravação da outra.
      */
-    private function lockEngineeringMeasurement(Measurement $measurement): Measurement
+    private function lockMeasurementWithOperation(Measurement $measurement): Measurement
     {
         $operationId = Measurement::query()
             ->whereKey($measurement->getKey())
@@ -1471,7 +1477,11 @@ class MeasurementWorkflow
             return;
         }
 
-        $recipients = User::query()->whereKey($ids)->get();
+        // Os ids vêm de chaves estrangeiras antigas -- quem enviou a medição, quem
+        // coordena a operação -- e uma chave estrangeira não sabe se a pessoa ainda
+        // trabalha aqui. Notificação nova só para quem está elegível agora; o que já
+        // foi enviado continua enviado, e nenhuma Activity antiga é tocada.
+        $recipients = User::query()->operational()->whereKey($ids)->get();
 
         if ($recipients->isEmpty()) {
             return;

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\AccessPermission;
+use App\Models\User;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -48,7 +49,13 @@ class UserForm
                             ->maxLength(255),
                         Toggle::make('is_active')
                             ->label('Usuário ativo na plataforma')
-                            ->helperText('Usuários inativos têm o acesso bloqueado imediatamente em todas as rotas do painel, mesmo com sessão Microsoft válida.')
+                            ->helperText(fn (?User $record): string => $record?->getKey() === auth()->id()
+                                ? 'Você não pode desativar o seu próprio usuário. Peça a outro administrador.'
+                                : 'Usuários inativos têm o acesso bloqueado imediatamente em todas as rotas do painel, mesmo com sessão Microsoft válida. Prefira as ações Desativar/Reativar, que avisam o que volta a valer.')
+                            // Desativar-se a si mesmo tranca a porta por dentro:
+                            // o painel de usuários exige super-admin, e
+                            // super-admin inativo não autentica para desfazer.
+                            ->disabled(fn (?User $record): bool => $record?->getKey() === auth()->id())
                             ->default(true)
                             ->columnSpanFull(),
                     ])

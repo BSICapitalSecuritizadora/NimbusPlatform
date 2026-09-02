@@ -48,14 +48,7 @@ class MeasurementPendingService
                 'created_at',
             ])
             ->visibleTo($user)
-            ->whereIn('status', [
-                'pending',
-                'in_review',
-                'awaiting_payment',
-                'awaiting_receipt',
-                'approved',
-                'paused',
-            ])
+            ->open()
             ->with([
                 'operation:id,code,title,assigned_user_id,responsible_user_id,stage2_reviewer_user_id,stage3_reviewer_user_id,payment_manager_user_id,payment_receipt_uploader_user_id,payment_finalizer_user_id',
                 'reviews:id,measurement_id,stage,status,paused_at,created_at',

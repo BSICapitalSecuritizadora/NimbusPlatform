@@ -22,37 +22,30 @@ class CleanFilteredActivityLogCommand extends Command
         $disposableCutoff = now()->subDays($disposableDays);
         $workflowCutoff = now()->subDays($workflowDays);
 
-        // Log names considerados regulados / evidência — nunca deletados antes de workflowDays.
-        $protectedLogs = [
-            'measurement_workflow',
-            'measurements',
-            'operations',
-            'measurement_payments',
-            'measurement_receipts',
-            'delegation',
-            'delegations',
-            'nimbus',
-        ];
+        // Log names considerados regulados / evidência — nunca deletados antes
+        // de workflowDays. A lista vem do config e só de lá: enquanto ela vivia
+        // aqui, a cópia declarada em `config/audit.php` não surtia efeito nenhum
+        // e as duas divergiam sem que nada acusasse.
+        $protectedLogs = (array) config('audit.protected_logs', []);
+
+        // Ler a política de fora tem um risco que a lista hardcoded não tinha:
+        // um config vazio ou mal publicado transformaria toda a evidência
+        // regulada em descartável, e a limpeza apagaria em 365 dias o que
+        // deveria durar sete anos. Sem lista, o comando não roda.
+        if ($protectedLogs === []) {
+            $this->error('audit.protected_logs está vazio: a limpeza foi abortada para não descartar evidência regulada.');
+
+            return self::FAILURE;
+        }
 
         // Protected logs: delete only older than workflowDays
-        $protectedQuery = DB::table('activity_log')
+        $protectedCount = DB::table('activity_log')
             ->whereIn('log_name', $protectedLogs)
-            ->where('created_at', '<', $workflowCutoff);
+            ->where('created_at', '<', $workflowCutoff)
+            ->count();
 
-        $protectedCount = $protectedQuery->count();
-
-        // Disposable logs: delete older than disposableDays, but not protected
-        $disposableQuery = DB::table('activity_log')
-            ->whereNotIn('log_name', $protectedLogs)
-            ->where('created_at', '<', $disposableCutoff);
-
-        // Also include null/default log_name as disposable
-        $disposableQuery->orWhere(function ($q) use ($disposableCutoff) {
-            $q->whereNull('log_name')
-                ->where('created_at', '<', $disposableCutoff);
-        });
-
-        // Need to handle distinct queries; use two separate counts for reporting.
+        // Disposable logs: delete older than disposableDays, but not protected.
+        // O ramo do NULL é explícito porque `NOT IN` não casa com NULL em SQL.
         $disposableCount = DB::table('activity_log')
             ->where(function ($q) use ($protectedLogs, $disposableCutoff) {
                 $q->whereNotIn('log_name', $protectedLogs)

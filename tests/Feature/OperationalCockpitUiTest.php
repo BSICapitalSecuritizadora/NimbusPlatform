@@ -437,6 +437,33 @@ it('balances both active pending categories in the personal work panel', functio
         ->assertDontSee('Tudo em dia');
 });
 
+it('renders measurement filters in a full-width horizontal panel with active badge and reset action', function () {
+    $user = makeAdminUser();
+    $user->assignRole('super-admin');
+    $user->givePermissionTo('measurements.view');
+
+    $this->actingAs($user);
+
+    // Initial state: No active filters
+    $test = Livewire::test(Dashboard::class)
+        ->assertSee('Recorte de medições')
+        ->assertSee('Os filtros abaixo afetam apenas o cockpit de medições e pagamentos.')
+        ->assertSee('Minhas Pendências mantém seu contexto pessoal.')
+        ->assertSee('bsi-measurement-filters-section', false)
+        ->assertDontSee('bsi-cockpit-active-badge', false)
+        ->assertDontSee('Limpar filtros');
+
+    // Filter applied: Active filter badge and ghost reset action appear
+    $test->set('filters.status', 'em_andamento')
+        ->assertSee('1 filtro ativo')
+        ->assertSee('bsi-cockpit-active-badge', false)
+        ->assertSee('Limpar filtros')
+        ->call('resetMeasurementFilters')
+        ->assertSet('filters', [])
+        ->assertDontSee('filtro ativo')
+        ->assertDontSee('Limpar filtros');
+});
+
 function createCockpitProposal(
     ProposalRepresentative $representative,
     string $status,

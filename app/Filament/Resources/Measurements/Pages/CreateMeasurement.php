@@ -2,13 +2,18 @@
 
 namespace App\Filament\Resources\Measurements\Pages;
 
+use App\Exceptions\OperationLifecycleException;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\Measurement;
 use App\Models\Operation;
 use App\Services\MeasurementWorkflow;
+use App\Services\OperationLifecycleService;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class CreateMeasurement extends CreateRecord
 {
@@ -47,6 +52,44 @@ class CreateMeasurement extends CreateRecord
         $data['current_stage'] = 1;
 
         return $data;
+    }
+
+    /**
+     * A medição nasce sob o lock da própria operação.
+     *
+     * A autorização acima é feita fora de qualquer transação e, sozinha, deixaria
+     * uma janela: entre ela e a inserção, outra requisição poderia concluir ou
+     * cancelar a operação, e nasceria exatamente o estado que o lifecycle existe
+     * para tornar inalcançável -- operação encerrada com medição aberta. Com o
+     * lock, as duas transações competem pela mesma linha e apenas uma vence: ou a
+     * medição existe antes e o encerramento é recusado por haver medição aberta,
+     * ou o encerramento acontece antes e a criação é recusada aqui.
+     *
+     * A ordem é a de sempre no módulo: Operation primeiro.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function handleRecordCreation(array $data): Model
+    {
+        $actor = auth()->user();
+        abort_unless($actor !== null, 403);
+
+        return DB::transaction(function () use ($data, $actor): Model {
+            try {
+                app(OperationLifecycleService::class)->lockForNewMeasurement(
+                    (int) ($data['operation_id'] ?? 0),
+                    $actor,
+                );
+            } catch (OperationLifecycleException $exception) {
+                // A recusa é do domínio, mas quem a lê está num formulário: ela
+                // volta apontando para o campo que a causou.
+                throw ValidationException::withMessages([
+                    'data.operation_id' => $exception->getMessage(),
+                ]);
+            }
+
+            return parent::handleRecordCreation($data);
+        }, 3);
     }
 
     protected function afterCreate(): void

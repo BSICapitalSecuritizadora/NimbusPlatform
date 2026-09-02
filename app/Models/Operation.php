@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\MeasurementResponsibility;
+use App\Enums\OperationStatus;
 use App\Exceptions\DelegationHistoryException;
 use App\Exceptions\MeasurementWorkflowException;
+use App\Exceptions\OperationLifecycleException;
 use App\Services\OperationContextMutationService;
 use App\Services\OperationContextVisibilityService;
 use App\Services\OperationResponsibilityService;
@@ -23,16 +25,6 @@ class Operation extends Model
 {
     /** @use HasFactory<OperationFactory> */
     use HasFactory, LogsActivity;
-
-    public const STATUS_OPTIONS = [
-        'draft' => 'Rascunho',
-        'pending' => 'Pendente',
-        'active' => 'Em Andamento',
-        'rejected' => 'Recusada',
-        'settled' => 'Liquidada',
-        'completed' => 'Concluída',
-        'canceled' => 'Cancelada',
-    ];
 
     /**
      * @var list<string>
@@ -94,13 +86,14 @@ class Operation extends Model
             }
         });
 
+        // Qualquer medição basta para bloquear, não só a aprovada pela
+        // Engenharia. O critério antigo deixava passar exatamente o pior caso:
+        // uma medição recém-enviada, ainda em revisão, era apagada em cascata
+        // junto com seus arquivos, pausas, alertas de SLA e pagamentos, sem
+        // nenhum aviso. Operação criada por engano se cancela, não se apaga.
         static::deleting(function (self $operation): void {
-            if ($operation->measurements()
-                ->whereHas('reviews', fn (Builder $reviews): Builder => $reviews
-                    ->where('stage', 1)
-                    ->where('status', 'approved'))
-                ->exists()) {
-                throw new MeasurementWorkflowException('Uma operação com medição aprovada pela Engenharia não pode ser excluída.');
+            if ($operation->measurements()->exists()) {
+                throw OperationLifecycleException::measurementHistory();
             }
 
             if ($operation->hasResponsibilityDelegationHistory()) {
@@ -122,6 +115,7 @@ class Operation extends Model
     protected function casts(): array
     {
         return [
+            'status' => OperationStatus::class,
             'amount' => 'decimal:2',
             'construction_fund_amount' => 'decimal:2',
             'due_date' => 'date',
@@ -129,17 +123,19 @@ class Operation extends Model
         ];
     }
 
+    /**
+     * O histórico da operação é evidência regulada, e a política de retenção
+     * separa os baldes por `log_name`: `operations` é retido por sete anos,
+     * `default` é descartado em um ano. Sem esta linha, toda a trilha de
+     * lifecycle e de troca de responsáveis cairia no balde errado.
+     */
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
+            ->useLogName('operations')
             ->logFillable()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
-    }
-
-    public function getStatusLabelAttribute(): string
-    {
-        return self::STATUS_OPTIONS[$this->status] ?? $this->status;
     }
 
     public function emission(): BelongsTo

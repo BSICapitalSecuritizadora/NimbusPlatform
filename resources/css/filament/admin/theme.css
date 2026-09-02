@@ -65,14 +65,31 @@
 
 .fi-topbar-start {
     display: flex;
+    align-items: center;
     min-width: 0;
     margin-inline-end: 1.5rem;
+    gap: 0.75rem;
+}
+
+@media (min-width: 64rem) {
+    .fi-topbar-start:empty,
+    .fi-topbar-start:not(:has(.fi-logo)):not(:has(.fi-btn)) {
+        display: none !important;
+        margin-inline-end: 0 !important;
+    }
 }
 
 .fi-topbar-start .fi-logo {
+    order: 1;
     height: 2.25rem !important;
     max-width: 11rem;
     margin-inline-start: 0;
+}
+
+.fi-topbar-start .fi-topbar-collapse-sidebar-btn-ctn {
+    order: 2;
+    display: flex;
+    align-items: center;
 }
 
 .fi-topbar-start .fi-logo img {
@@ -721,6 +738,266 @@
     max-width: 65ch;
     color: rgb(251 250 248 / 0.72);
     line-height: 1.6;
+}
+
+/* ── Cockpit Operacional: Recorte de Medições (Full-Width Horizontal Panel) ── */
+.bsi-cockpit-page [wire\:partial="table-filters-form"],
+.bsi-cockpit-page form[wire\:submit],
+.bsi-cockpit-page .fi-sc-form,
+.bsi-cockpit-page .fi-sc-embedded,
+.bsi-cockpit-page .bsi-measurement-filters-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section > .fi-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #fbfaf8;
+    border: 1px solid #dbd5d3;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgb(9 27 35 / 0.04);
+    overflow: visible !important;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section > .fi-section {
+    background: #0d252e;
+    border-color: rgba(183, 131, 47, 0.22);
+    box-shadow: 0 4px 20px rgb(4 14 19 / 0.25);
+}
+
+/* Header: Alinhamento horizontal em linha única e gap confortável */
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1rem !important;
+    padding: 1.125rem 1.25rem !important;
+    background: #f8f7f4;
+    border-bottom: 1px solid #dbd5d3;
+    border-top-left-radius: 13px;
+    border-top-right-radius: 13px;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header {
+    background: #0a2028;
+    border-bottom-color: rgba(183, 131, 47, 0.18);
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section.fi-collapsed .fi-section-header {
+    border-bottom: none !important;
+    border-radius: 13px !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-text-ctn {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.125rem !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-heading {
+    font-size: 0.9375rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+    color: #1e293b !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.625rem !important;
+    flex-wrap: wrap !important;
+    line-height: 1.4 !important;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-heading {
+    color: #fbfaf8 !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-description {
+    font-size: 0.8125rem !important;
+    line-height: 1.45 !important;
+    margin-top: 0.125rem !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filter-desc-primary {
+    color: #64748b;
+    font-weight: 400;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filter-desc-primary {
+    color: rgba(251, 250, 248, 0.72);
+}
+
+.bsi-cockpit-page .bsi-measurement-filter-desc-secondary {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filter-desc-secondary {
+    color: rgba(251, 250, 248, 0.45);
+}
+
+/* Ocultar descrição quando o accordion estiver recolhido */
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section.fi-collapsed .fi-section-header-description {
+    display: none !important;
+}
+
+/* Badge de Filtros Ativos */
+.bsi-cockpit-page .bsi-cockpit-active-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-radius: 9999px;
+    background: rgba(183, 131, 47, 0.12);
+    color: #b7832f;
+    border: 1px solid rgba(183, 131, 47, 0.28);
+    white-space: nowrap;
+}
+
+.dark .bsi-cockpit-page .bsi-cockpit-active-badge {
+    background: rgba(183, 131, 47, 0.18);
+    color: #f5d089;
+    border-color: rgba(183, 131, 47, 0.35);
+}
+
+/* Container de ações à direita (Limpar filtros) */
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-after-ctn {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+/* Botão Limpar Filtros: secundário / ghost */
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-after-ctn .fi-btn {
+    min-height: 2rem !important;
+    padding: 0.25rem 0.625rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+    gap: 0.375rem !important;
+    background: transparent !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    color: #64748b !important;
+    box-shadow: none !important;
+    transition: all 150ms ease-out !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-after-ctn .fi-btn:hover {
+    background: rgba(183, 131, 47, 0.08) !important;
+    border-color: rgba(183, 131, 47, 0.35) !important;
+    color: #b7832f !important;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-after-ctn .fi-btn {
+    background: rgba(251, 250, 248, 0.04) !important;
+    border: 1px solid rgba(251, 250, 248, 0.12) !important;
+    color: rgba(251, 250, 248, 0.7) !important;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-after-ctn .fi-btn:hover {
+    background: rgba(183, 131, 47, 0.15) !important;
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    color: #fbfaf8 !important;
+}
+
+/* Botão de colapso / chevron */
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-collapse-btn {
+    flex-shrink: 0 !important;
+    color: #64748b !important;
+    transition: color 150ms ease-out !important;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-collapse-btn {
+    color: rgba(251, 250, 248, 0.6) !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-collapse-btn:hover {
+    color: #b7832f !important;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-collapse-btn:hover {
+    color: #f5d089 !important;
+}
+
+/* Conteúdo interno dos filtros */
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-section-content {
+    padding: 1.125rem 1.25rem 1.25rem !important;
+    overflow: visible !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-fo-field-wrp {
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-fo-field-wrp-label {
+    margin-bottom: 0.35rem !important;
+}
+
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-fo-field-wrp-label span {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    color: #475569 !important;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-fo-field-wrp-label span {
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+/* Inputs e Selects */
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-input-wrp,
+.bsi-cockpit-page .bsi-measurement-filters-section .fi-select-input {
+    min-height: 2.5rem !important;
+    border-radius: 8px !important;
+    font-size: 0.8125rem !important;
+    width: 100% !important;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-input-wrp {
+    background-color: #091b23 !important;
+    border-color: rgba(183, 131, 47, 0.22) !important;
+}
+
+.dark .bsi-cockpit-page .bsi-measurement-filters-section .fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 1px #b7832f !important;
+}
+
+/* Responsividade mobile */
+@media (max-width: 640px) {
+    .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header {
+        flex-wrap: wrap !important;
+        padding: 1rem !important;
+        gap: 0.75rem !important;
+    }
+
+    .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-text-ctn {
+        flex: 1 1 100% !important;
+        order: 1;
+    }
+
+    .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-header-after-ctn {
+        order: 2;
+    }
+
+    .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-collapse-btn {
+        order: 3;
+        margin-left: auto;
+    }
+
+    .bsi-cockpit-page .bsi-measurement-filters-section .fi-section-content {
+        padding: 1rem !important;
+    }
 }
 
 .bsi-cockpit-page .bsi-cockpit-widget > .fi-section {
@@ -12187,6 +12464,666 @@ body.bsi-negotiation-view-page,
     .fi-ta-filters .grid:has(input[placeholder*="dd/mm"]) {
         grid-template-columns: 1fr !important;
         gap: 0.75rem !important;
+    }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   ── BSI CAPITAL INSTITUTIONAL SIDEBAR (MODERN, COMPACT & REFINED) ──
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Main Sidebar Surface ── */
+.fi-sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    background: linear-gradient(180deg, #091b23 0%, #06151c 100%) !important;
+    border-right: 1px solid rgba(148, 163, 184, 0.12) !important;
+    box-shadow: 4px 0 24px rgba(4, 14, 19, 0.35) !important;
+    transition: width 200ms cubic-bezier(0.16, 1, 0.3, 1), transform 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+    overflow: hidden !important;
+}
+
+/* ── Sticky Sidebar Header ── */
+.fi-sidebar-header-ctn {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    background: #091b23 !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
+    flex-shrink: 0 !important;
+}
+
+.fi-sidebar-header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    min-height: 3.75rem !important;
+    height: 3.75rem !important;
+    padding: 0 1rem !important;
+    gap: 0.5rem !important;
+}
+
+.fi-sidebar-header-logo-ctn {
+    display: flex !important;
+    align-items: center !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+.fi-sidebar-logo-link {
+    display: flex !important;
+    align-items: center !important;
+    max-height: 2.25rem !important;
+    max-width: 10.5rem !important;
+}
+
+.fi-sidebar-logo-link img,
+.fi-sidebar-header-logo-ctn img {
+    height: 2.25rem !important;
+    width: auto !important;
+    max-width: 100% !important;
+    object-fit: contain !important;
+}
+
+.fi-sidebar-header-compact-logo-ctn {
+    display: none !important;
+}
+
+.fi-sidebar-header-toggle-ctn {
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+}
+
+.fi-sidebar-collapse-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 1.875rem !important; /* 30px */
+    height: 1.875rem !important;
+    min-width: 1.875rem !important;
+    min-height: 1.875rem !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.fi-sidebar-collapse-btn:hover {
+    color: #fbfaf8 !important;
+    background: rgba(14, 45, 56, 0.7) !important;
+    border-color: rgba(148, 163, 184, 0.15) !important;
+}
+
+.fi-sidebar-collapse-btn:focus-visible {
+    outline: 2px solid #b7832f !important;
+    outline-offset: 1px !important;
+    border-color: #b7832f !important;
+}
+
+.fi-sidebar-toggle-svg,
+.fi-sidebar-collapse-btn .fi-icon,
+.fi-sidebar-collapse-btn svg {
+    width: 1.125rem !important; /* 18px */
+    height: 1.125rem !important;
+    color: currentColor !important;
+    transition: color 150ms ease !important;
+}
+
+/* ── Explicit Header Element Visibility (Expanded) ── */
+.fi-sidebar.fi-sidebar-open .fi-sidebar-header-logo-ctn {
+    display: flex !important;
+}
+
+.fi-sidebar.fi-sidebar-open .fi-sidebar-header-compact-logo-ctn {
+    display: none !important;
+}
+
+.fi-sidebar.fi-sidebar-open .fi-sidebar-close-collapse-sidebar-btn {
+    display: flex !important;
+}
+
+.fi-sidebar.fi-sidebar-open .fi-sidebar-open-collapse-sidebar-btn {
+    display: none !important;
+}
+
+/* ── Sidebar Navigation Scroll Container ── */
+.fi-sidebar-nav {
+    flex: 1 1 0% !important;
+    padding: 0.625rem 0.625rem 1.5rem !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+
+.fi-sidebar-nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+.fi-sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.fi-sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.25);
+    border-radius: 9999px;
+    transition: background 150ms ease;
+}
+
+.fi-sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(183, 131, 47, 0.5);
+}
+
+/* ── Navigation Groups Spacing ── */
+.fi-sidebar-nav-groups {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.625rem !important;
+    margin: 0 !important;
+}
+
+.fi-sidebar-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.1875rem !important;
+}
+
+/* ── Group Header / Accordion Button ── */
+.fi-sidebar-group-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0.375rem 0.5rem 0.25rem !important;
+    margin-top: 0.25rem !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    transition: background-color 150ms ease, color 150ms ease !important;
+}
+
+.fi-sidebar-group-btn:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+.fi-sidebar-group-label {
+    flex: 1 1 auto !important;
+    font-size: 0.6875rem !important; /* 11px */
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    color: #7e97a6 !important; /* Cinza-azulado institucional */
+    line-height: 1.25rem !important;
+    transition: color 150ms ease !important;
+}
+
+.fi-sidebar-group-btn:hover .fi-sidebar-group-label {
+    color: #b0c2cc !important;
+}
+
+.fi-sidebar-group-collapse-btn {
+    color: #64748b !important;
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    padding: 0 !important;
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), color 150ms ease !important;
+}
+
+.fi-sidebar-group-btn:hover .fi-sidebar-group-collapse-btn {
+    color: #cbd5e1 !important;
+}
+
+/* Accordion Collapse Rotation */
+.fi-sidebar-group.fi-collapsed .fi-sidebar-group-collapse-btn {
+    transform: rotate(-90deg) !important;
+}
+
+.fi-sidebar-group:not(.fi-collapsed) .fi-sidebar-group-collapse-btn {
+    transform: rotate(0deg) !important;
+}
+
+/* ── Group Items Container ── */
+.fi-sidebar-group-items {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.1875rem !important; /* 3px */
+}
+
+/* ── Navigation Item Base ── */
+.fi-sidebar-item {
+    position: relative !important;
+    list-style: none !important;
+}
+
+.fi-sidebar-item-btn {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 2.375rem !important; /* 38px */
+    height: 2.375rem !important;
+    padding: 0 0.625rem !important; /* 10px */
+    gap: 0.625rem !important; /* 10px */
+    border-radius: 8px !important;
+    border: 1px solid transparent !important;
+    text-decoration: none !important;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease !important;
+    outline: none !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Item Inativo Hover */
+.fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-btn:hover {
+    background-color: rgba(14, 45, 56, 0.6) !important;
+    border-color: rgba(148, 163, 184, 0.1) !important;
+}
+
+.fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-btn:hover .fi-sidebar-item-icon {
+    color: #fbfaf8 !important;
+}
+
+.fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-btn:hover .fi-sidebar-item-label {
+    color: #ffffff !important;
+}
+
+/* Item Foco Acessibilidade */
+.fi-sidebar-item-btn:focus-visible {
+    outline: 2px solid #b7832f !important;
+    outline-offset: 1px !important;
+}
+
+/* ── Item Ativo (Expanded) ── */
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    background-color: #0e2d38 !important; /* Azul petróleo destacado */
+    border-color: rgba(183, 131, 47, 0.3) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 10px rgba(4, 14, 19, 0.3) !important;
+    position: relative !important;
+}
+
+/* Barra vertical dourada fina à esquerda no item ativo */
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 15% !important;
+    bottom: 15% !important;
+    width: 3px !important;
+    background: linear-gradient(180deg, #d4af37 0%, #b7832f 100%) !important;
+    border-radius: 0 3px 3px 0 !important;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.5) !important;
+}
+
+/* Ícone Dourado no Item Ativo */
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-icon {
+    color: #d4af37 !important;
+}
+
+/* Label Off-White Semibold no Item Ativo */
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-label {
+    color: #fbfaf8 !important;
+    font-weight: 600 !important;
+}
+
+/* ── Icon Standardization (20px) ── */
+.fi-sidebar-item-icon-ctn {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 1.25rem !important; /* 20px */
+    height: 1.25rem !important;
+    min-width: 1.25rem !important;
+    min-height: 1.25rem !important;
+    flex-shrink: 0 !important;
+}
+
+.fi-sidebar-item-icon,
+.fi-sidebar-item-btn > .fi-icon {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    color: #8da0ad !important; /* Cinza-azulado */
+    transition: color 150ms ease !important;
+}
+
+/* ── Label Alignment & Typography ── */
+.fi-sidebar-item-label {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    font-size: 0.8125rem !important; /* 13px */
+    line-height: 1.25rem !important;
+    font-weight: 500 !important;
+    color: #cbd5e1 !important; /* Slate 300 / off-white */
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    transition: color 150ms ease !important;
+    text-align: start !important;
+}
+
+/* ── Hierarquia de Subitens (Árvore) ── */
+.fi-sidebar-sub-group-items {
+    margin-inline-start: 1rem !important;
+    padding-inline-start: 0.5rem !important;
+    border-inline-start: 1px solid rgba(148, 163, 184, 0.15) !important;
+    margin-top: 0.1875rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.1875rem !important;
+}
+
+.fi-sidebar-sub-group-items .fi-sidebar-item-btn {
+    min-height: 2.125rem !important; /* 34px */
+    height: 2.125rem !important;
+    padding: 0 0.5rem !important;
+}
+
+.fi-sidebar-sub-group-items .fi-sidebar-item-label {
+    font-size: 0.75rem !important; /* 12px */
+}
+
+/* ── Badges Polish & Semantic Differentiation ── */
+.fi-sidebar-item-badge-ctn {
+    margin-inline-start: auto !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.fi-sidebar-item-badge-ctn .fi-badge {
+    font-size: 0.6875rem !important; /* 11px */
+    font-weight: 600 !important;
+    padding: 0.125rem 0.4375rem !important;
+    border-radius: 9999px !important;
+    line-height: 1 !important;
+    letter-spacing: 0.025em !important;
+    border: 1px solid transparent !important;
+}
+
+/* Badge padrão positivo / dourado sutil */
+.fi-sidebar-item-badge-ctn .fi-badge {
+    background-color: rgba(183, 131, 47, 0.16) !important;
+    color: #e5c178 !important;
+    border-color: rgba(183, 131, 47, 0.3) !important;
+}
+
+/* Badge zero / neutro discreto */
+.fi-sidebar-item-badge-ctn--zero .fi-badge,
+.fi-sidebar-item-badge-ctn .fi-badge-color-gray,
+.fi-sidebar-item-badge-ctn .fi-badge[data-color="gray"] {
+    background-color: rgba(148, 163, 184, 0.08) !important;
+    color: #64748b !important;
+    border-color: rgba(148, 163, 184, 0.14) !important;
+    opacity: 0.75 !important;
+}
+
+/* Badge alerta / perigo */
+.fi-sidebar-item-badge-ctn .fi-badge-color-danger,
+.fi-sidebar-item-badge-ctn .fi-badge[data-color="danger"] {
+    background-color: rgba(239, 68, 68, 0.18) !important;
+    color: #fca5a5 !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+/* Badge aviso */
+.fi-sidebar-item-badge-ctn .fi-badge-color-warning,
+.fi-sidebar-item-badge-ctn .fi-badge[data-color="warning"] {
+    background-color: rgba(245, 158, 11, 0.18) !important;
+    color: #fde68a !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+/* Compact badge on collapsed item */
+.fi-sidebar-item-collapsed-badge {
+    position: absolute !important;
+    top: -0.3rem !important;
+    right: -0.45rem !important;
+    min-width: 0.875rem !important;
+    height: 0.875rem !important;
+    padding: 0 0.2rem !important;
+    font-size: 0.5625rem !important;
+    font-weight: 700 !important;
+    line-height: 0.875rem !important;
+    text-align: center !important;
+    color: #06151c !important;
+    background: linear-gradient(135deg, #d4af37, #b7832f) !important;
+    border-radius: 9999px !important;
+    box-shadow: 0 0 6px rgba(183, 131, 47, 0.6) !important;
+    pointer-events: none !important;
+}
+
+.fi-sidebar-item-collapsed-badge--zero {
+    background: rgba(148, 163, 184, 0.3) !important;
+    color: #cbd5e1 !important;
+    box-shadow: none !important;
+    opacity: 0.7 !important;
+}
+
+/* ── Topbar Toggle Buttons ── */
+.fi-topbar-open-collapse-sidebar-btn,
+.fi-topbar-close-collapse-sidebar-btn {
+    width: 2.125rem !important;
+    height: 2.125rem !important;
+    min-width: 2.125rem !important;
+    min-height: 2.125rem !important;
+    border-radius: 8px !important;
+    color: #8da0ad !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(148, 163, 184, 0.16) !important;
+    transition: all 150ms ease-out !important;
+}
+
+.fi-topbar-open-collapse-sidebar-btn:hover,
+.fi-topbar-close-collapse-sidebar-btn:hover {
+    color: #fbfaf8 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(183, 131, 47, 0.4) !important;
+    box-shadow: 0 2px 8px rgba(4, 14, 19, 0.3) !important;
+}
+
+/* ── Desktop Collapsed Sidebar State (ChatGPT-inspired, BSI Capital institutional) ── */
+@media (min-width: 64rem) {
+    /* When collapsed on desktop */
+    .fi-body-has-sidebar-collapsible-on-desktop:not(:has(.fi-sidebar-open)) .fi-sidebar,
+    .fi-sidebar:not(.fi-sidebar-open) {
+        width: 4.75rem !important; /* 76px */
+    }
+
+    /* Collapsed Header Layout: Single Horizontal Row [ BSI ] [ Toggle ] */
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-header-ctn {
+        border-bottom: 1px solid rgba(148, 163, 184, 0.08) !important;
+        background: #091b23 !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-header {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        min-height: 3.375rem !important; /* 54px */
+        height: 3.375rem !important;
+        padding: 0 0.5rem !important; /* 8px padding left/right */
+        gap: 0.25rem !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-header-logo-ctn {
+        display: none !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-header-compact-logo-ctn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        width: auto !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-compact-logo-link {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        max-width: 1.75rem !important; /* 28px */
+        max-height: 1.75rem !important; /* 28px */
+        text-decoration: none !important;
+        border-radius: 4px !important;
+        transition: opacity 150ms ease !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-compact-logo-link:hover {
+        opacity: 0.85 !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-compact-logo-img {
+        max-width: 1.75rem !important; /* 28px */
+        max-height: 1.625rem !important; /* 26px */
+        width: auto !important;
+        height: auto !important;
+        object-fit: contain !important;
+        display: block !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-header-toggle-ctn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+        width: auto !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-close-collapse-sidebar-btn {
+        display: none !important;
+    }
+
+    /* ChatGPT-inspired expand toggle: discrete 30px icon button, transparent normal state */
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-open-collapse-sidebar-btn {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 1.875rem !important; /* 30px */
+        height: 1.875rem !important;
+        min-width: 1.875rem !important;
+        min-height: 1.875rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        color: #94a3b8 !important;
+        box-shadow: none !important;
+        cursor: pointer !important;
+        transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-open-collapse-sidebar-btn:hover {
+        background: rgba(14, 45, 56, 0.7) !important;
+        border-color: rgba(148, 163, 184, 0.15) !important;
+        color: #fbfaf8 !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-open-collapse-sidebar-btn:focus-visible {
+        outline: 2px solid #b7832f !important;
+        outline-offset: 1px !important;
+        border-color: #b7832f !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-open-collapse-sidebar-btn .fi-sidebar-toggle-svg,
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-open-collapse-sidebar-btn .fi-icon,
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-open-collapse-sidebar-btn svg {
+        width: 1.125rem !important; /* 18px */
+        height: 1.125rem !important;
+        transition: color 150ms ease !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-nav {
+        padding-inline: 0.5rem !important;
+        padding-top: 0.5rem !important; /* Starts immediately below header */
+        padding-bottom: 1.5rem !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-group-btn {
+        display: none !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-group {
+        gap: 0.375rem !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-sub-group-items {
+        margin-inline-start: 0 !important;
+        padding-inline-start: 0 !important;
+        border-inline-start: none !important;
+    }
+
+    /* 40x40px clickable area centered (ChatGPT style) */
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item-btn {
+        justify-content: center !important;
+        padding: 0 !important;
+        width: 2.5rem !important; /* 40px */
+        height: 2.5rem !important;
+        min-height: 2.5rem !important;
+        margin-inline: auto !important;
+        border-radius: 8px !important;
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+        position: relative !important;
+        transition: all 150ms ease-out !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-btn:hover {
+        background-color: rgba(14, 45, 56, 0.75) !important;
+        border-color: rgba(148, 163, 184, 0.15) !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item:not(.fi-active) > .fi-sidebar-item-btn:hover .fi-sidebar-item-icon {
+        color: #fbfaf8 !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+        background-color: #0e2d38 !important;
+        border-color: rgba(183, 131, 47, 0.35) !important;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(4, 14, 19, 0.3) !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before {
+        content: '' !important;
+        position: absolute !important;
+        left: -3px !important;
+        top: 22% !important;
+        bottom: 22% !important;
+        width: 3px !important;
+        background: linear-gradient(180deg, #d4af37 0%, #b7832f 100%) !important;
+        border-radius: 0 3px 3px 0 !important;
+        box-shadow: 0 0 8px rgba(212, 175, 55, 0.5) !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item.fi-active > .fi-sidebar-item-btn .fi-sidebar-item-icon {
+        color: #d4af37 !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item-icon-ctn {
+        width: 1.25rem !important;
+        height: 1.25rem !important;
+    }
+
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item-label,
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item-badge-ctn,
+    .fi-sidebar:not(.fi-sidebar-open) .fi-sidebar-item-grouped-border {
+        display: none !important;
+    }
+}
+
+/* ── Mobile Offcanvas Drawer & Backdrop ── */
+@media (max-width: 63.999rem) {
+    .fi-sidebar {
+        width: 16.25rem !important;
+        max-width: 85vw !important;
+        z-index: 50 !important;
+    }
+
+    .fi-sidebar-close-overlay {
+        background-color: rgba(4, 14, 19, 0.75) !important;
+        backdrop-filter: blur(4px) !important;
+        z-index: 45 !important;
     }
 }
 

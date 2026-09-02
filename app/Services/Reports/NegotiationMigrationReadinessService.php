@@ -36,6 +36,9 @@ class NegotiationMigrationReadinessService
         $emissionId = $emission->getKey();
 
         // Contract coverage - aggregated counts, single emission scope
+        // sale_date is NOT NULL by migration (2026_08_20_213519) and required by Contract domain/form;
+        // construction_unit_id is NOT NULL FK restrictOnDelete — both are schema invariants, never readiness failures.
+        // They remain counted for informational display but must not produce readiness issues.
         $totalContracts = Contract::query()->forEmission($emissionId)->count();
         $withSaleDate = Contract::query()->forEmission($emissionId)->whereNotNull('sale_date')->count();
         $withoutSaleDate = Contract::query()->forEmission($emissionId)->whereNull('sale_date')->count();
@@ -289,6 +292,10 @@ class NegotiationMigrationReadinessService
 
     /**
      * Evaluate readiness evidence-based. Inventory / unsold units are not failures.
+     * without_sale_date / without_unit_id / unresolved_unit are schema invariants
+     * (NOT NULL + FK restrictOnDelete) and are not readiness failures — a valid
+     * production DB cannot contain them. Only real drift such as inconsistent
+     * construction linkage and cancelled_without_cancellation_date are failures.
      *
      * @param  Collection<int, array<string, mixed>>  $reconciliation
      * @return array<string, mixed>
@@ -310,20 +317,11 @@ class NegotiationMigrationReadinessService
             $issues[] = 'Nenhum contrato encontrado para esta emissão, mas existem lançamentos manuais legados.';
         }
 
-        if ($withoutSaleDate > 0) {
-            $issues[] = sprintf('%d contrato(s) sem data de venda (sale_date).', $withoutSaleDate);
-        }
+        // withoutSaleDate / withoutUnitId / unresolvedUnit are invariants (NOT NULL / FK)
+        // — counted for display but never a readiness failure. See analyze() comment.
 
         if ($cancelledWithoutCancellationDate > 0) {
             $issues[] = sprintf('%d contrato(s) com status distratado sem data de distrato (cancellation_date).', $cancelledWithoutCancellationDate);
-        }
-
-        if ($withoutUnitId > 0) {
-            $issues[] = sprintf('%d contrato(s) sem unidade vinculada (construction_unit_id).', $withoutUnitId);
-        }
-
-        if ($unresolvedUnit > 0) {
-            $issues[] = sprintf('%d contrato(s) com unidade não encontrada.', $unresolvedUnit);
         }
 
         if ($inconsistent > 0) {

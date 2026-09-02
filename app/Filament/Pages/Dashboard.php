@@ -19,11 +19,14 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\HtmlString;
 
 class Dashboard extends BaseDashboard
 {
@@ -43,6 +46,22 @@ class Dashboard extends BaseDashboard
             'default' => 1,
             'xl' => 12,
         ];
+    }
+
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->columns(1)
+            ->components([
+                $this->getFiltersFormContentComponent(),
+                $this->getWidgetsContentComponent(),
+            ]);
+    }
+
+    public function getFiltersFormContentComponent(): Component
+    {
+        return EmbeddedSchema::make('filtersForm')
+            ->columnSpanFull();
     }
 
     public function getWidgets(): array
@@ -67,32 +86,53 @@ class Dashboard extends BaseDashboard
     {
         $viewer = auth()->user();
         $readModel = app(MeasurementOperationalReadModel::class);
-        $hasActiveFilters = filled(array_filter($this->filters ?? []));
 
         return $schema
             ->columns(1)
             ->schema([
-                Section::make('Recorte de medições')
-                    ->description('Os filtros abaixo afetam apenas o cockpit de medições e pagamentos; Minhas Pendências mantém sua fonte pessoal própria.')
+                Section::make(function (): HtmlString {
+                    $activeFiltersCount = count(array_filter(
+                        $this->filters ?? [],
+                        fn ($value): bool => filled($value)
+                    ));
+
+                    $headingHtml = '<span>Recorte de medições</span>';
+                    if ($activeFiltersCount > 0) {
+                        $filterCountLabel = $activeFiltersCount === 1 ? '1 filtro ativo' : "{$activeFiltersCount} filtros ativos";
+                        $headingHtml .= '<span class="bsi-cockpit-active-badge">'.$filterCountLabel.'</span>';
+                    }
+
+                    return new HtmlString($headingHtml);
+                })
+                    ->description(new HtmlString(
+                        '<span class="bsi-measurement-filter-desc-primary">Os filtros abaixo afetam apenas o cockpit de medições e pagamentos.</span> <span class="bsi-measurement-filter-desc-secondary">Minhas Pendências mantém seu contexto pessoal.</span>'
+                    ))
                     ->visible(fn (): bool => $viewer instanceof User && $viewer->can('measurements.view'))
                     ->icon(Heroicon::OutlinedFunnel)
+                    ->columnSpanFull()
+                    ->extraAttributes([
+                        'class' => 'bsi-measurement-filters-section',
+                    ])
                     ->compact()
-                    ->collapsed(! $hasActiveFilters)
+                    ->collapsed(fn (): bool => empty(array_filter($this->filters ?? [])))
                     ->collapsible()
                     ->headerActions([
                         Action::make('clearMeasurementFilters')
                             ->label('Limpar filtros')
-                            ->icon(Heroicon::OutlinedXMark)
-                            ->color($hasActiveFilters ? 'warning' : 'gray')
+                            ->icon(Heroicon::OutlinedArrowPath)
+                            ->color('gray')
                             ->size(Size::Small)
+                            ->visible(fn (): bool => filled(array_filter($this->filters ?? [])))
                             ->action(fn () => $this->resetMeasurementFilters()),
                     ])
                     ->schema([
                         Grid::make([
                             'default' => 1,
                             'sm' => 2,
+                            'md' => 2,
                             'lg' => 3,
-                            '2xl' => 4,
+                            'xl' => 3,
+                            '2xl' => 3,
                         ])->schema([
                             DatePicker::make('competence_from')
                                 ->label('Competência desde')

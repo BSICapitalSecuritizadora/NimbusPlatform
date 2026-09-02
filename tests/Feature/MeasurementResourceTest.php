@@ -56,7 +56,7 @@ it('creates an operation and derives its title from the development', function (
     ]);
 
     Livewire::test(CreateOperation::class)
-        ->fillForm(['emission_id' => $emission->id, 'status' => 'active'])
+        ->fillForm(['emission_id' => $emission->id])
         ->fillForm([
             'developments' => [
                 ['construction_id' => $construction->id, 'construction_fund_amount' => '1.000.000,00'],
@@ -131,7 +131,7 @@ it('creates a plan set per selected development when the emission has many', fun
     $conviva2 = Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Conviva II']);
 
     Livewire::test(CreateOperation::class)
-        ->fillForm(['emission_id' => $emission->id, 'status' => 'active'])
+        ->fillForm(['emission_id' => $emission->id])
         ->fillForm([
             'developments' => [
                 ['construction_id' => $conviva1->id, 'construction_fund_amount' => '500.000,00'],
