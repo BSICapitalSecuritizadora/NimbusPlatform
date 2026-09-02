@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\EmissionPuHomologationReportController;
 use App\Http\Controllers\Admin\IntegralizationHistoryTemplateDownloadController;
 use App\Http\Controllers\Admin\JobApplicationResumeController;
 use App\Http\Controllers\Admin\MeasurementAssetDownloadController;
+use App\Http\Controllers\Admin\MeasurementCycleReportExportController;
 use App\Http\Controllers\Admin\MeasurementFileDownloadController;
 use App\Http\Controllers\Admin\MeasurementReceiptDownloadController;
 use App\Http\Controllers\Admin\ObligationEvidenceDownloadController;
@@ -232,6 +233,9 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(fu
     Route::get('/admin/measurements/payments/{payment}/receipt/download', MeasurementReceiptDownloadController::class)
         ->name('admin.measurements.receipts.download')
         ->middleware('throttle:60,1');
+    Route::get('/admin/measurements/cycle-report/export', MeasurementCycleReportExportController::class)
+        ->name('admin.measurements.cycle-report.export')
+        ->middleware('throttle:10,1');
     Route::get('/admin/payments/template/download', PaymentTemplateDownloadController::class)
         ->name('admin.payments.template.download')
         ->middleware('throttle:60,1');

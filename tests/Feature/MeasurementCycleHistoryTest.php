@@ -228,6 +228,67 @@ it('closes a terminal stage one rejection without opening another visit', functi
         ->and($result->visits[0]->exitedAt?->toDateTimeString())->toBe('2026-08-28 10:00:00');
 });
 
+it('keeps an insufficient transition out of the stage visit state machine', function () {
+    $invalidApproval = p3bVisitEvent(
+        MeasurementCycleEventType::StageApproved,
+        '2026-08-28 10:00:00',
+        1,
+        2,
+        2,
+    )->withMissingReason(
+        'invalid_transition_shape',
+        MeasurementHistoryCompleteness::Insufficient,
+    );
+    $result = app(MeasurementStageVisitBuilder::class)->build(collect([
+        p3bVisitEvent(MeasurementCycleEventType::Submitted, '2026-08-28 09:00:00', null, 1, 1),
+        $invalidApproval,
+    ]), collect());
+
+    expect($result->visits)->toHaveCount(1)
+        ->and($result->visits[0]->stage)->toBe(1)
+        ->and($result->visits[0]->exitReason)->toBe(MeasurementStageExitReason::Open)
+        ->and($result->visits[0]->exitedAt)->toBeNull()
+        ->and($result->completeness)->toBe(MeasurementHistoryCompleteness::Insufficient)
+        ->and($result->warnings)->toContain(
+            'insufficient_transition_ignored:'.$invalidApproval->sourceActivityId,
+        );
+});
+
+it('keeps an invalid finalized activity in the timeline without using it as a cycle boundary', function () {
+    $scenario = p3bCycleScenario();
+    p3bCycleWorkflowActivity(
+        $scenario['measurement'],
+        $scenario['actor'],
+        'measurement_submitted',
+        '2026-08-28 09:00:00',
+        ['stage' => 1, 'from_status' => 'pending', 'to_status' => 'in_review', 'responsibility' => 'responsible_user_id'],
+        1,
+    );
+    p3bCycleWorkflowActivity(
+        $scenario['measurement'],
+        $scenario['actor'],
+        'measurement_finalized',
+        '2026-08-28 10:00:00',
+        ['stage' => 5, 'from_status' => 'awaiting_receipt', 'to_status' => 'finalized', 'responsibility' => 'payment_finalizer_user_id', 'expected_responsible_user_id' => $scenario['actor']->getKey()],
+        2,
+    );
+
+    $history = app(MeasurementCycleHistoryReadModel::class)->for(
+        $scenario['actor'],
+        $scenario['measurement'],
+    );
+    $invalidFinalization = collect($history->events)->first(
+        fn (MeasurementCycleEvent $event): bool => $event->eventType === MeasurementCycleEventType::Finalized,
+    );
+
+    expect($invalidFinalization?->completeness)->toBe(MeasurementHistoryCompleteness::Insufficient)
+        ->and($invalidFinalization?->missingReasons)->toContain('invalid_transition_shape')
+        ->and($history->cycleEnd)->toBeNull()
+        ->and($history->stageVisits)->toHaveCount(1)
+        ->and($history->stageVisits[0]->stage)->toBe(1)
+        ->and($history->stageVisits[0]->exitReason)->toBe(MeasurementStageExitReason::Open);
+});
+
 it('creates new stage sequences for rejection and finalization return reentry without using revision', function () {
     $events = collect([
         p3bVisitEvent(MeasurementCycleEventType::Submitted, '2026-08-28 09:00:00', null, 1, 80),

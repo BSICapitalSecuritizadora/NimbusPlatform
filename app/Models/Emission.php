@@ -495,9 +495,33 @@ class Emission extends Model
         return $this->hasMany(EmissionPuDailyCurve::class);
     }
 
+    /**
+     * Linhas efetivamente operacionais: exclui candidate e preserva as legadas
+     * sem `curve_version_id`. É esta a relação que alimenta leitura operacional.
+     */
+    public function operationalPuDailyCurves(): HasMany
+    {
+        return $this->hasMany(EmissionPuDailyCurve::class)->operational();
+    }
+
+    /**
+     * Histórico administrativo completo: lista todos os papéis, inclusive
+     * candidate. Não aplique filtro de role aqui -- há consumidores que precisam
+     * do inventário inteiro.
+     */
     public function puCurveVersions(): HasMany
     {
         return $this->hasMany(EmissionPuCurveVersion::class);
+    }
+
+    public function operationalPuCurveVersions(): HasMany
+    {
+        return $this->hasMany(EmissionPuCurveVersion::class)->operational();
+    }
+
+    public function candidatePuCurveVersions(): HasMany
+    {
+        return $this->hasMany(EmissionPuCurveVersion::class)->candidate();
     }
 
     public function puCalendarHomologations(): HasMany
@@ -515,9 +539,24 @@ class Emission extends Model
         return $this->puCurveVersions()->current()->first();
     }
 
+    /**
+     * Última versão OPERACIONAL. Uma candidate com id/calculation_version maior
+     * jamais pode vencer aqui: os consumidores desta relação leem "curva atual".
+     */
     public function latestPuCurveVersion(): HasOne
     {
-        return $this->hasOne(EmissionPuCurveVersion::class)->latestOfMany();
+        return $this->hasOne(EmissionPuCurveVersion::class)->ofMany(
+            ['id' => 'max'],
+            fn ($query) => $query->operational(),
+        );
+    }
+
+    public function latestCandidatePuCurveVersion(): HasOne
+    {
+        return $this->hasOne(EmissionPuCurveVersion::class)->ofMany(
+            ['id' => 'max'],
+            fn ($query) => $query->candidate(),
+        );
     }
 
     public function integralizationHistories(): HasMany

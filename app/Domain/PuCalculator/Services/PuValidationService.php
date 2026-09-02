@@ -40,6 +40,7 @@ class PuValidationService
 
         $curveQuery = EmissionPuDailyCurve::query()
             ->where('emission_id', $emission->id)
+            ->operational()
             ->whereIn('curve_date', array_map(fn (SpreadsheetReferenceRowData $row) => $row->date->toDateString(), $referenceRows));
 
         if ($calculationVersion !== null) {

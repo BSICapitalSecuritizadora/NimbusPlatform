@@ -68,6 +68,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'measurements.review', 'measurements.pay', 'measurements.receipts', 'measurements.finalize', 'measurements.export',
             'measurements.exceptions.view',
             'measurements.cycle-reports.view',
+            'measurements.cycle-reports.export',
             'delegations.view', 'delegations.create', 'delegations.revoke',
             'pu.curve.view', 'pu.parameters.configure', 'pu.curve.generate',
             'pu.curve.validate', 'pu.curve.export', 'pu.curve.reprocess',

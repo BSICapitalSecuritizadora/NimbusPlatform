@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\PuCalculator\DTOs\PuBaselineRequirement;
 use App\Domain\PuCalculator\DTOs\PuCandidateCurve;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuNumericHomologationPlan;
@@ -7,6 +8,7 @@ use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceStatus;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceType;
 use App\Domain\PuCalculator\Enums\PuBaselineReadinessStatus;
+use App\Domain\PuCalculator\Enums\PuBaselineRequirementStatus;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
@@ -21,6 +23,7 @@ use App\Domain\PuCalculator\Services\PuNumericHomologationFingerprintService;
 use App\Domain\PuCalculator\Services\PuNumericHomologationPlanService;
 use App\Domain\PuCalculator\Services\PuNumericHomologationService;
 use App\Domain\PuCalculator\Services\PuNumericHomologationValidationService;
+use App\Domain\PuCalculator\Services\PuNumericPreparationPlanService;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\AccessPermission;
 use App\Enums\LegalInstrumentFieldKey;
@@ -281,13 +284,16 @@ function puNumericHomologationActor(array $permissions = []): User
     return $actor;
 }
 
-function puNumericHomologationPersistParameter(Emission $emission): EmissionPuParameter
-{
+function puNumericHomologationPersistParameter(
+    Emission $emission,
+    ?CarbonImmutable $asOf = null,
+): EmissionPuParameter {
+    $asOf = ($asOf ?? CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF))->startOfDay();
     $actor = puNumericHomologationActor([AccessPermission::PuParametersConfigure->value]);
     app(PuBaselineCandidatePersistenceService::class)->write(
         $emission,
         $actor->email,
-        CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF),
+        $asOf,
     );
 
     return EmissionPuParameter::query()->whereBelongsTo($emission)->firstOrFail();
@@ -309,21 +315,29 @@ function puNumericHomologationLoadRates(array $dates, string $value = '14.900000
     }
 }
 
+function puNumericHomologationRateForDate(string $date): IndexRate
+{
+    return IndexRate::query()
+        ->forIndexer(PuIndexer::Cdi)
+        ->whereDate('rate_date', $date)
+        ->sole();
+}
+
 /**
  * Emissão sintética com parâmetro, todos os snapshots exatos e todos os eventos
  * contratuais presentes: `ready_for_numeric_homologation`.
  */
-function puNumericHomologationReadyEmission(): Emission
+function puNumericHomologationReadyEmission(?CarbonImmutable $asOf = null): Emission
 {
+    $asOf = ($asOf ?? CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF))->startOfDay();
     $emission = puNumericHomologationEmission();
     puNumericHomologationProveBaseline($emission);
     puNumericHomologationCalendar();
     puNumericHomologationApproveDossier();
     puNumericHomologationProveIntegralization($emission);
     $emission = $emission->fresh();
-    puNumericHomologationPersistParameter($emission);
-    $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
-    $plan = app(PuNumericHomologationPlanService::class)->plan($emission, $asOf);
+    puNumericHomologationPersistParameter($emission, $asOf);
+    $plan = app(PuNumericPreparationPlanService::class)->plan($emission, $asOf);
     puNumericHomologationLoadRates($plan->requiredRateDates);
     $actor = puNumericHomologationActor([AccessPermission::PuParametersConfigure->value]);
     app(PuEventMaterializationService::class)->write($emission, $actor->email, $asOf);
@@ -536,13 +550,14 @@ it('blocks before the engine when the parameter exists but exact snapshots are m
     puNumericHomologationApproveDossier();
     puNumericHomologationProveIntegralization($emission);
     $emission = $emission->fresh();
-    $parameter = puNumericHomologationPersistParameter($emission);
+    $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
+    $parameter = puNumericHomologationPersistParameter($emission, $asOf);
     $spy = puNumericHomologationSpy();
     $before = puNumericHomologationCounts();
 
     $result = app(PuNumericHomologationService::class)->evaluate(
         $emission,
-        CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF),
+        $asOf,
     );
 
     expect($result->action)->toBe(PuNumericHomologationService::ACTION_NOT_READY)
@@ -565,16 +580,22 @@ it('blocks before the engine when the snapshots are present but the events are m
     puNumericHomologationApproveDossier();
     puNumericHomologationProveIntegralization($emission);
     $emission = $emission->fresh();
-    puNumericHomologationPersistParameter($emission);
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
-    $plan = app(PuNumericHomologationPlanService::class)->plan($emission, $asOf);
+    puNumericHomologationPersistParameter($emission, $asOf);
+    $plan = app(PuNumericPreparationPlanService::class)->plan($emission, $asOf);
+    expect($plan->requiredRateDates)->not->toBe([]);
     puNumericHomologationLoadRates($plan->requiredRateDates);
+    $readiness = app(PuBaselineReadinessService::class)->evaluate($emission->fresh(), $asOf);
     $spy = puNumericHomologationSpy();
     $before = puNumericHomologationCounts();
 
     $result = app(PuNumericHomologationService::class)->evaluate($emission, $asOf);
 
-    expect(EmissionPuEvent::query()->count())->toBe(0)
+    expect($readiness->requirement('index_snapshots_loaded')->status)
+        ->toBe(PuBaselineRequirementStatus::Satisfied)
+        ->and($readiness->requirement('pu_events_loaded')->status)
+        ->toBe(PuBaselineRequirementStatus::Blocking)
+        ->and(EmissionPuEvent::query()->count())->toBe(0)
         ->and($result->action)->toBe(PuNumericHomologationService::ACTION_NOT_READY)
         ->and($result->plan->canEvaluate)->toBeFalse()
         ->and($result->candidate)->toBeNull()
@@ -583,6 +604,78 @@ it('blocks before the engine when the snapshots are present but the events are m
         ->and(puNumericHomologationCounts())->toBe($before);
 
     Http::assertNothingSent();
+});
+
+it('builds a synthetic state that is truly ready for numeric homologation', function () {
+    $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
+    $emission = puNumericHomologationReadyEmission($asOf);
+    $preparation = app(PuNumericPreparationPlanService::class)->plan($emission, $asOf);
+    $readiness = app(PuBaselineReadinessService::class)->evaluate($emission->fresh(), $asOf);
+    $candidateConfigurationBlockers = collect($readiness->requirements)
+        ->filter(fn (PuBaselineRequirement $requirement): bool => in_array(
+            'candidate_configuration',
+            $requirement->blocks,
+            true,
+        ) && ! $requirement->isSatisfied());
+
+    expect($readiness->status)->toBe(PuBaselineReadinessStatus::ReadyForNumericHomologation)
+        ->and($candidateConfigurationBlockers)->toBeEmpty()
+        ->and($readiness->pendingFields)->toBe([])
+        ->and($readiness->requirement('first_integralization_date')->status)
+        ->toBe(PuBaselineRequirementStatus::Satisfied)
+        ->and($readiness->requirement('calendar_technical_coverage')->status)
+        ->toBe(PuBaselineRequirementStatus::Satisfied)
+        ->and($readiness->requirement('calendar_administrative_confirmation')->status)
+        ->toBe(PuBaselineRequirementStatus::Satisfied)
+        ->and($readiness->requirement('index_source_technical_homologation')->status)
+        ->toBe(PuBaselineRequirementStatus::Satisfied)
+        ->and($readiness->requirement('index_source_operational_approval')->status)
+        ->toBe(PuBaselineRequirementStatus::Satisfied)
+        ->and($preparation->state)->toBe(PuNumericPreparationPlanService::STATE_READY)
+        ->and($preparation->requiredRateDates)->toHaveCount(76)
+        ->and($preparation->requiredRateDates[0])->toBe('2026-05-06')
+        ->and($preparation->requiredRateDates[array_key_last($preparation->requiredRateDates)])
+        ->toBe('2026-08-19')
+        ->and($preparation->eventRequirements)->toHaveCount(3)
+        ->and($preparation->presentEvents)->toHaveCount(3)
+        ->and($readiness->rateWindow['required_rate_count'])->toBe(76)
+        ->and($readiness->rateWindow['loaded_rate_count'])->toBe(76)
+        ->and($readiness->eventDiagnostics['required_event_count'])->toBe(3)
+        ->and($readiness->eventDiagnostics['loaded_required_event_count'])->toBe(3)
+        ->and($readiness->requirement('index_snapshots_loaded')->status)
+        ->toBe(PuBaselineRequirementStatus::Satisfied)
+        ->and($readiness->requirement('index_snapshots_loaded')->blocks)
+        ->toBe(['numeric_homologation'])
+        ->and($readiness->requirement('pu_events_loaded')->status)
+        ->toBe(PuBaselineRequirementStatus::Satisfied)
+        ->and($readiness->requirement('pu_events_loaded')->blocks)
+        ->toBe(['numeric_homologation'])
+        ->and($readiness->requirement('integralized_quantity')->status)
+        ->toBe(PuBaselineRequirementStatus::Blocking)
+        ->and($readiness->requirement('integralized_quantity')->blocks)
+        ->toBe(['aggregate_outputs'])
+        ->and($readiness->requirement('external_independent_validation')->status)
+        ->toBe(PuBaselineRequirementStatus::Recommended)
+        ->and($readiness->requirement('external_independent_validation')->blocks)
+        ->toBe(['external_validation'])
+        ->and($readiness->calendarDiagnostics['years'])->toHaveCount(6)
+        ->and(collect($readiness->calendarDiagnostics['years'])->pluck('year')->all())
+        ->toBe(range(2026, 2031))
+        ->and($readiness->calendarDiagnostics['required_from'])->toBe('2026-05-06')
+        ->and($readiness->calendarDiagnostics['required_to'])->toBe('2031-05-08')
+        ->and($readiness->indexSourceDiagnostics['source_code'])->toBe('bcb_sgs_4389')
+        ->and($readiness->indexSourceDiagnostics['rate_source_value'])->toBe('bcb_sgs')
+        ->and($readiness->indexSourceDiagnostics['approved'])->toBeTrue()
+        ->and(IndexRate::query()->count())->toBe(76)
+        ->and(EmissionPuEvent::query()->whereBelongsTo($emission)->count())->toBe(3)
+        ->and(EmissionPuBaselineEvidence::query()
+            ->whereBelongsTo($emission)
+            ->where('evidence_type', PuBaselineEvidenceType::IntegralizedQuantity->value)
+            ->exists())->toBeFalse()
+        ->and(EmissionPuBaselineEvidence::query()
+            ->whereBelongsTo($emission)
+            ->where('evidence_type', PuBaselineEvidenceType::ExternalPuReference->value)
+            ->exists())->toBeFalse();
 });
 
 it('evaluates a deterministic in-memory candidate when the synthetic state is ready', function () {
@@ -644,7 +737,9 @@ it('reproduces the same input fingerprint and curve checksum for identical input
     $first = $homologation->evaluate($emission, $asOf);
     $second = $homologation->evaluate($emission, $asOf);
 
-    expect($first->plan->inputFingerprint)->toBe($second->plan->inputFingerprint)
+    expect($first->candidate)->not->toBeNull()
+        ->and($second->candidate)->not->toBeNull()
+        ->and($first->plan->inputFingerprint)->toBe($second->plan->inputFingerprint)
         ->and($first->candidate->checksum)->toBe($second->candidate->checksum)
         ->and($first->candidate->rowCount)->toBe($second->candidate->rowCount)
         ->and($first->candidate->checkpoints)->toBe($second->candidate->checkpoints)
@@ -672,6 +767,10 @@ it('keeps the input fingerprint stable when identical rates are stored with diff
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
     $plans = app(PuNumericHomologationPlanService::class);
     $before = $plans->plan($emission, $asOf);
+
+    expect($before->canEvaluate)->toBeTrue()
+        ->and($before->requiredRateDates)->not->toBe([]);
+
     $stored = IndexRate::query()
         ->orderBy('rate_date')
         ->get()
@@ -704,15 +803,58 @@ it('changes the input fingerprint when a required rate value changes', function 
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
     $plans = app(PuNumericHomologationPlanService::class);
     $before = $plans->plan($emission, $asOf);
+    $requiredRateDate = $before->requiredRateDates[0] ?? null;
 
-    IndexRate::query()
-        ->where('rate_date', $before->requiredRateDates[0])
-        ->update(['rate_value' => '13.75000000']);
+    expect($before->canEvaluate)->toBeTrue()
+        ->and($requiredRateDate)->toBeString();
+
+    $rate = puNumericHomologationRateForDate($requiredRateDate);
+    $newRateValue = '13.75000000';
+    $rateIdentity = [
+        'id' => $rate->id,
+        'indexer' => $rate->indexer,
+        'rate_date' => $rate->rate_date->toDateString(),
+        'source' => $rate->source,
+        'source_reference' => $rate->source_reference,
+        'external_series_code' => $rate->external_series_code,
+        'is_projected' => $rate->is_projected,
+    ];
+    $beforePayloadRate = collect($before->inputPayload['rates'])
+        ->firstWhere('date', $requiredRateDate);
+
+    expect($rate->rate_date->toDateString())->toBe($requiredRateDate)
+        ->and($rate->rate_value)->toBe('14.90000000')
+        ->and($rate->rate_value)->not->toBe($newRateValue)
+        ->and($beforePayloadRate)->toBeArray();
+
+    expect($beforePayloadRate['value'])->toBe('14.90000000');
+
+    $updatedRows = IndexRate::query()
+        ->whereKey($rate->getKey())
+        ->update(['rate_value' => $newRateValue]);
+    $updatedRate = puNumericHomologationRateForDate($requiredRateDate);
+
+    expect($updatedRows)->toBe(1)
+        ->and([
+            'id' => $updatedRate->id,
+            'indexer' => $updatedRate->indexer,
+            'rate_date' => $updatedRate->rate_date->toDateString(),
+            'source' => $updatedRate->source,
+            'source_reference' => $updatedRate->source_reference,
+            'external_series_code' => $updatedRate->external_series_code,
+            'is_projected' => $updatedRate->is_projected,
+        ])->toBe($rateIdentity)
+        ->and($updatedRate->rate_value)->toBe($newRateValue);
 
     $after = $plans->plan($emission, $asOf);
+    $afterPayloadRate = collect($after->inputPayload['rates'])
+        ->firstWhere('date', $requiredRateDate);
 
     expect($before->inputFingerprint)->toBeString()
         ->and($after->canEvaluate)->toBeTrue()
+        ->and($afterPayloadRate)->toBeArray();
+
+    expect($afterPayloadRate['value'])->toBe($newRateValue)
         ->and($after->inputFingerprint)->not->toBe($before->inputFingerprint);
 });
 
@@ -722,7 +864,10 @@ it('changes the input fingerprint or blocks readiness when a required event disa
     $plans = app(PuNumericHomologationPlanService::class);
     $before = $plans->plan($emission, $asOf);
 
-    EmissionPuEvent::query()->whereBelongsTo($emission)->orderBy('effective_date')->first()?->delete();
+    expect($before->canEvaluate)->toBeTrue()
+        ->and($before->events)->not->toBe([]);
+
+    EmissionPuEvent::query()->whereBelongsTo($emission)->orderBy('effective_date')->firstOrFail()->delete();
 
     $after = $plans->plan($emission, $asOf);
 
@@ -738,6 +883,10 @@ it('carries the calendar provenance into the input fingerprint', function () {
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
     $plans = app(PuNumericHomologationPlanService::class);
     $before = $plans->plan($emission, $asOf);
+
+    expect($before->canEvaluate)->toBeTrue()
+        ->and($before->inputFingerprint)->toBeString();
+
     $calendarYears = collect($before->inputPayload['calendar']['years'] ?? []);
 
     BusinessCalendarYear::query()
@@ -758,21 +907,52 @@ it('aborts without writes when a required rate disappears during candidate gener
     $emission = puNumericHomologationReadyEmission();
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
     $plan = app(PuNumericHomologationPlanService::class)->plan($emission, $asOf);
+
+    expect($plan->canEvaluate)->toBeTrue()
+        ->and($plan->requiredRateDates)->not->toBe([]);
+
     $vanishingDate = $plan->requiredRateDates[array_key_last($plan->requiredRateDates)];
+    $vanishingRate = puNumericHomologationRateForDate($vanishingDate);
+    $vanishingRateId = $vanishingRate->id;
+    $deletedRateId = null;
+    $deletedRows = 0;
+    $rateExistsAfterDelete = true;
+
+    expect($vanishingRate->rate_date->toDateString())->toBe($vanishingDate)
+        ->and($vanishingRateId)->toBeInt();
+
     $spy = puNumericHomologationSpy();
-    $spy->beforeGenerate = function () use ($vanishingDate): void {
-        IndexRate::query()->where('rate_date', $vanishingDate)->delete();
+    $spy->beforeGenerate = function () use (
+        $vanishingDate,
+        &$deletedRateId,
+        &$deletedRows,
+        &$rateExistsAfterDelete,
+    ): void {
+        $rate = puNumericHomologationRateForDate($vanishingDate);
+        $deletedRateId = $rate->id;
+        $deletedRows = IndexRate::query()->whereKey($rate->getKey())->delete();
+        $rateExistsAfterDelete = IndexRate::query()
+            ->forIndexer(PuIndexer::Cdi)
+            ->whereDate('rate_date', $vanishingDate)
+            ->exists();
     };
     $before = puNumericHomologationCounts();
 
     $result = app(PuNumericHomologationService::class)->evaluate($emission, $asOf);
+    $postDeletePreparation = app(PuNumericPreparationPlanService::class)->plan($emission, $asOf);
 
     expect($spy->calls)->toBe(1)
+        ->and($deletedRateId)->toBe($vanishingRateId)
+        ->and($deletedRows)->toBe(1)
+        ->and($rateExistsAfterDelete)->toBeFalse()
+        ->and($postDeletePreparation->state)->toBe(PuNumericPreparationPlanService::STATE_RATES_MISSING)
+        ->and($postDeletePreparation->missingRateDates)->toContain($vanishingDate)
         ->and($result->action)->toBe(PuNumericHomologationService::ACTION_STATE_CHANGED)
         ->and($result->candidate)->toBeNull()
         ->and($result->validation)->toBeNull()
         ->and($result->comparison)->toBeNull()
         ->and($result->plan->canEvaluate)->toBeFalse()
+        ->and($result->plan->inputFingerprint)->toBeNull()
         ->and($result->writes)->toBe(0)
         ->and(puNumericHomologationCounts())->toBe([
             ...$before,
@@ -786,9 +966,14 @@ it('aborts without writes when a required event disappears during candidate gene
     Http::preventStrayRequests();
     $emission = puNumericHomologationReadyEmission();
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
+    $plan = app(PuNumericHomologationPlanService::class)->plan($emission, $asOf);
+
+    expect($plan->canEvaluate)->toBeTrue()
+        ->and($plan->events)->not->toBe([]);
+
     $spy = puNumericHomologationSpy();
     $spy->beforeGenerate = function () use ($emission): void {
-        EmissionPuEvent::query()->whereBelongsTo($emission)->orderBy('effective_date')->first()?->delete();
+        EmissionPuEvent::query()->whereBelongsTo($emission)->orderBy('effective_date')->firstOrFail()->delete();
     };
     $before = puNumericHomologationCounts();
 
@@ -813,6 +998,10 @@ it('explains the premium and the regular exact CDI lookups in the dossier', func
         $emission,
         CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF),
     );
+
+    expect($result->candidate)->not->toBeNull()
+        ->and($result->validation)->not->toBeNull();
+
     $samples = collect($result->validation->rateSamples);
     $premium = $samples->firstWhere('origin', 'first_coupon_pre_integralization_premium');
     $regular = $samples->firstWhere('origin', 'regular_curve_accrual');
@@ -841,6 +1030,10 @@ it('starts the candidate at the persisted VNU with the engine unit factors', fun
         $emission,
         CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF),
     );
+
+    expect($result->candidate)->not->toBeNull()
+        ->and($result->validation)->not->toBeNull();
+
     $first = $result->candidate->rows[0];
     $firstCheckpoint = collect($result->candidate->checkpoints)->firstWhere('label', 'first_curve_line');
 
@@ -863,6 +1056,10 @@ it('applies the pre-integralization premium exactly once as first-coupon remuner
         $emission,
         CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF),
     );
+
+    expect($result->candidate)->not->toBeNull()
+        ->and($result->validation)->not->toBeNull();
+
     $premiumRows = collect($result->candidate->rows)->filter(
         fn (PuDailyCurveRowData $row): bool => (bool) ($row->calculationMemory['first_coupon_pre_integralization_premium_applied'] ?? false),
     )->values();
@@ -898,6 +1095,10 @@ it('applies every monthly coupon and the following business day convention insid
         $emission,
         CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF),
     );
+
+    expect($result->candidate)->not->toBeNull()
+        ->and($result->validation)->not->toBeNull();
+
     $coverage = collect($result->validation->information)->firstWhere('code', 'event_coverage');
     $planEvents = collect($result->plan->events);
     $interestEvents = $planEvents->where('event_type', PuEventType::InterestPayment->value);
@@ -928,7 +1129,10 @@ it('reports the external benchmark as unavailable without blocking the internal 
         CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF),
     );
 
-    expect($result->action)->toBe(PuNumericHomologationService::ACTION_READY_FOR_REVIEW)
+    expect($result->candidate)->not->toBeNull()
+        ->and($result->validation)->not->toBeNull()
+        ->and($result->comparison)->not->toBeNull()
+        ->and($result->action)->toBe(PuNumericHomologationService::ACTION_READY_FOR_REVIEW)
         ->and($result->plan->externalReference['availability'])->toBe('unavailable')
         ->and($result->plan->externalReference['machine_readable_curve_available'])->toBeFalse()
         ->and($result->comparison->status)->toBe('unavailable')
@@ -947,6 +1151,9 @@ it('reports absolute and relative differences without inventing a tolerance', fu
         CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF),
     );
     $candidate = $result->candidate;
+
+    expect($candidate)->not->toBeNull();
+
     $firstRow = $candidate->rows[0];
     $secondRow = $candidate->rows[1];
     $comparison = app(PuNumericHomologationFinancialDiffService::class)->compare($candidate, [
@@ -979,6 +1186,9 @@ it('rejects a candidate whose rows repeat, skip or corrupt a curve date', functi
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
     $parameter = EmissionPuParameter::query()->whereBelongsTo($emission)->sole();
     $plan = app(PuNumericHomologationPlanService::class)->plan($emission, $asOf);
+
+    expect($plan->canEvaluate)->toBeTrue();
+
     $rows = app(PuCandidateCurveService::class)->generate($emission, $plan)->rows;
     $validator = app(PuNumericHomologationValidationService::class);
 
@@ -1016,6 +1226,9 @@ it('blocks a residual bullet event that does not amortize the principal', functi
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
     $parameter = EmissionPuParameter::query()->whereBelongsTo($emission)->sole();
     $plan = app(PuNumericHomologationPlanService::class)->plan($emission, $asOf);
+
+    expect($plan->canEvaluate)->toBeTrue();
+
     $rows = app(PuCandidateCurveService::class)->generate($emission, $plan)->rows;
     $lastIndex = array_key_last($rows);
     $last = $rows[$lastIndex];
@@ -1057,6 +1270,9 @@ it('treats an event pushed beyond the cutoff as diagnostic instead of an anomaly
     $asOf = CarbonImmutable::parse(PU_NUMERIC_HOMOLOGATION_AS_OF);
     $parameter = EmissionPuParameter::query()->whereBelongsTo($emission)->sole();
     $plan = app(PuNumericHomologationPlanService::class)->plan($emission, $asOf);
+
+    expect($plan->canEvaluate)->toBeTrue();
+
     $candidate = app(PuCandidateCurveService::class)->generate($emission, $plan);
     $deferredPlan = puNumericHomologationPlanWith($plan, [
         'events' => [

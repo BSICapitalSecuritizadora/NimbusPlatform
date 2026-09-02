@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
+use App\Domain\PuCalculator\Enums\PuCurveRole;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Domain\PuCalculator\Support\PuVersionNumber;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class PuCurveVersionService
@@ -22,16 +25,28 @@ class PuCurveVersionService
         Emission $emission,
         ?int $requestedByUserId,
         array $parametersSnapshot = [],
+        ?string $calculationVersion = null,
     ): EmissionPuCurveVersion {
-        return EmissionPuCurveVersion::query()->create([
-            'emission_id' => $emission->id,
-            'calculation_version' => $this->nextCalculationVersion($emission),
-            'batch_id' => (string) Str::uuid(),
-            'status' => PuCurveStatus::Processing,
-            'engine_version' => PuAuditLogService::ENGINE_VERSION,
-            'parameters_snapshot' => $parametersSnapshot !== [] ? $parametersSnapshot : null,
-            'generated_by' => $requestedByUserId,
-        ]);
+        return DB::transaction(function () use (
+            $emission,
+            $requestedByUserId,
+            $parametersSnapshot,
+            $calculationVersion,
+        ): EmissionPuCurveVersion {
+            $lockedEmission = Emission::query()->whereKey($emission->id)->lockForUpdate()->firstOrFail();
+
+            return EmissionPuCurveVersion::query()->create([
+                'emission_id' => $lockedEmission->id,
+                'calculation_version' => $calculationVersion ?? $this->nextCalculationVersion($lockedEmission),
+                'curve_role' => PuCurveRole::Operational,
+                'review_status' => PuCurveReviewStatus::NotApplicable,
+                'batch_id' => (string) Str::uuid(),
+                'status' => PuCurveStatus::Processing,
+                'engine_version' => PuAuditLogService::ENGINE_VERSION,
+                'parameters_snapshot' => $parametersSnapshot !== [] ? $parametersSnapshot : null,
+                'generated_by' => $requestedByUserId,
+            ]);
+        });
     }
 
     public function markGenerated(
@@ -47,7 +62,9 @@ class PuCurveVersionService
             'error_message' => null,
         ])->save();
 
-        $this->markPreviousVersionsObsolete($version);
+        if ($version->isOperational()) {
+            $this->markPreviousVersionsObsolete($version);
+        }
 
         return $version;
     }
@@ -117,6 +134,7 @@ class PuCurveVersionService
 
         return EmissionPuCurveVersion::query()
             ->where('emission_id', $emission->id)
+            ->operational()
             ->where('calculation_version', $calculationVersion)
             ->orderByDesc('id')
             ->first();
@@ -126,6 +144,7 @@ class PuCurveVersionService
     {
         return EmissionPuCurveVersion::query()
             ->where('emission_id', $emission->id)
+            ->operational()
             ->homologated()
             ->exists();
     }
@@ -150,6 +169,7 @@ class PuCurveVersionService
     {
         EmissionPuCurveVersion::query()
             ->where('emission_id', $version->emission_id)
+            ->operational()
             ->where('id', '!=', $version->id)
             ->whereNotIn('status', [PuCurveStatus::Homologated->value, PuCurveStatus::Obsolete->value])
             ->update([

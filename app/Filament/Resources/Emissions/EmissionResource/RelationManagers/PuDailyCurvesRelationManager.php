@@ -12,9 +12,13 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Tabela operacional da curva: a linha de uma candidate nunca aparece aqui, para
+ * não se misturar com a curva vigente numa tela sem coluna de papel.
+ */
 class PuDailyCurvesRelationManager extends RelationManager
 {
-    protected static string $relationship = 'puDailyCurves';
+    protected static string $relationship = 'operationalPuDailyCurves';
 
     protected static ?string $title = 'Curva PU Diário';
 
@@ -98,6 +102,7 @@ class PuDailyCurvesRelationManager extends RelationManager
                     ->options(
                         fn () => EmissionPuDailyCurve::query()
                             ->where('emission_id', $this->ownerRecord->id)
+                            ->operational()
                             ->orderByDesc('id')
                             ->pluck('calculation_version', 'calculation_version')
                             ->unique()

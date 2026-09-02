@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domain\PuCalculator\Services\PuAuditLogService;
 use App\Domain\PuCalculator\Services\PuHomologationReportService;
+use App\Enums\AccessPermission;
 use App\Http\Controllers\Controller;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
@@ -20,6 +21,14 @@ class EmissionPuHomologationReportController extends Controller
     ): Response {
         abort_unless(auth()->user()?->can('pu.curve.export') ?? false, Response::HTTP_FORBIDDEN);
         abort_unless($version->emission_id === $emission->id, Response::HTTP_NOT_FOUND);
+
+        // O dossiê de uma candidate existe para o review maker-checker, não para o
+        // consumo operacional: quem só exporta a curva atual não a enxerga.
+        abort_unless(
+            $version->isOperational()
+                || (auth()->user()?->can(AccessPermission::PuCurveHomologate->value) ?? false),
+            Response::HTTP_NOT_FOUND,
+        );
 
         $data = $reportService->build($version);
 

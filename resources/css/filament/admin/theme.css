@@ -31,9 +31,9 @@
 
 .bsi-login-backdrop {
     background:
-        radial-gradient(circle at 16% 28%, rgb(20 60 70 / 0.72), transparent 34%),
-        radial-gradient(circle at 82% 78%, rgb(183 131 47 / 0.1), transparent 30%),
-        linear-gradient(135deg, #06151c 0%, #0a2028 52%, #06151c 100%);
+        radial-gradient(ellipse 70% 50% at 15% 20%, rgb(18 49 59 / 0.55), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 85% 80%, rgb(183 131 47 / 0.08), transparent 45%),
+        linear-gradient(150deg, #06151c 0%, #091e27 45%, #06151c 100%);
 }
 
 /* ── Institutional topbar ── */
@@ -6236,7 +6236,10 @@ html:not(.dark) .bsi-cockpit-page .fi-page-relations-ctn .fi-ta-row:hover {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(183, 131, 47, 0.15) !important;
 }
 
-.dark .fi-modal-header {
+.dark .fi-modal-header,
+.dark .fi-modal-has-sticky-header > .fi-modal-window-ctn > .fi-modal-window > .fi-modal-header,
+.dark .fi-modal-slide-over .fi-modal-header {
+    background-color: #0e2733 !important;
     border-bottom: 1px solid rgba(29, 69, 84, 0.45) !important;
 }
 
@@ -6258,8 +6261,10 @@ html:not(.dark) .bsi-cockpit-page .fi-page-relations-ctn .fi-ta-row:hover {
     background-color: rgba(29, 69, 84, 0.5) !important;
 }
 
-.dark .fi-modal-footer {
-    background-color: rgba(9, 27, 35, 0.95) !important;
+.dark .fi-modal-footer,
+.dark .fi-modal-has-sticky-footer > .fi-modal-window-ctn > .fi-modal-window > .fi-modal-footer,
+.dark .fi-modal-slide-over .fi-modal-footer {
+    background-color: #091b23 !important;
     border-top: 1px solid rgba(29, 69, 84, 0.45) !important;
 }
 

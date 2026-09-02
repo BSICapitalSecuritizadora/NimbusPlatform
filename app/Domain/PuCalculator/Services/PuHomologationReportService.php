@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Services;
 
+use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Models\EmissionPuCurveVersion;
 
 class PuHomologationReportService
@@ -11,6 +12,10 @@ class PuHomologationReportService
     /**
      * Monta os dados do relatorio de homologacao a partir de uma versao ja persistida.
      * Nao executa nenhum calculo financeiro: apenas le dados gravados.
+     *
+     * Recebe a versão explicitamente e por isso é neutra quanto ao papel: o dossiê
+     * de uma candidate é justamente o insumo do review maker-checker. Quem decide
+     * exposição é o chamador (rota/comando), não este serviço.
      *
      * @return array<string, mixed>
      */
@@ -89,12 +94,12 @@ class PuHomologationReportService
             return '—';
         }
 
-        return \App\Domain\PuCalculator\Enums\PuIndexer::tryFrom($indexer)?->label() ?? $indexer;
+        return PuIndexer::tryFrom($indexer)?->label() ?? $indexer;
     }
 
     private function isHomologatedIndexer(?string $indexer): bool
     {
-        return \App\Domain\PuCalculator\Enums\PuIndexer::tryFrom((string) $indexer)?->isHomologated() ?? false;
+        return PuIndexer::tryFrom((string) $indexer)?->isHomologated() ?? false;
     }
 
     private function emissionIdentifier(EmissionPuCurveVersion $version): string

@@ -973,6 +973,7 @@ class EditEmission extends EditRecord
     {
         return EmissionPuDailyCurve::query()
             ->where('emission_id', $this->getRecord()->id)
+            ->operational()
             ->orderByDesc('id')
             ->pluck('calculation_version', 'calculation_version')
             ->unique()

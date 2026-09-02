@@ -21,15 +21,24 @@ class MeasurementStageVisitBuilder
      */
     public function build(Collection $events, Collection $pauses): MeasurementStageVisitBuildResult
     {
-        $orderedEvents = $events
-            ->filter(fn (MeasurementCycleEvent $event): bool => $event->eventType->changesStageVisit())
+        $stageVisitEvents = $events
+            ->filter(fn (MeasurementCycleEvent $event): bool => $event->eventType->changesStageVisit());
+        $ignoredEvents = $stageVisitEvents
+            ->filter(fn (MeasurementCycleEvent $event): bool => $event->completeness === MeasurementHistoryCompleteness::Insufficient);
+        $orderedEvents = $stageVisitEvents
+            ->reject(fn (MeasurementCycleEvent $event): bool => $event->completeness === MeasurementHistoryCompleteness::Insufficient)
             ->sort(fn (MeasurementCycleEvent $left, MeasurementCycleEvent $right): int => $this->compareEvents($left, $right))
             ->values();
         $records = [];
         $open = null;
         $sequences = [];
-        $warnings = [];
-        $completeness = MeasurementHistoryCompleteness::Complete;
+        $warnings = $ignoredEvents
+            ->map(fn (MeasurementCycleEvent $event): string => 'insufficient_transition_ignored:'.($event->sourceActivityId ?? 'unknown'))
+            ->values()
+            ->all();
+        $completeness = $ignoredEvents->isEmpty()
+            ? MeasurementHistoryCompleteness::Complete
+            : MeasurementHistoryCompleteness::Insufficient;
 
         foreach ($orderedEvents as $event) {
             switch ($event->eventType) {

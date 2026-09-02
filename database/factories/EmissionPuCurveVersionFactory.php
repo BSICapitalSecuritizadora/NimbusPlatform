@@ -2,13 +2,18 @@
 
 namespace Database\Factories;
 
+use App\Domain\PuCalculator\Enums\PuCurveExternalValidationStatus;
+use App\Domain\PuCalculator\Enums\PuCurveInternalValidationStatus;
+use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
+use App\Domain\PuCalculator\Enums\PuCurveRole;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
 use App\Models\Emission;
+use App\Models\EmissionPuCurveVersion;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EmissionPuCurveVersion>
+ * @extends Factory<EmissionPuCurveVersion>
  */
 class EmissionPuCurveVersionFactory extends Factory
 {
@@ -20,6 +25,8 @@ class EmissionPuCurveVersionFactory extends Factory
         return [
             'emission_id' => Emission::factory(),
             'calculation_version' => 'v1',
+            'curve_role' => PuCurveRole::Operational->value,
+            'review_status' => PuCurveReviewStatus::NotApplicable->value,
             'batch_id' => (string) Str::uuid(),
             'status' => PuCurveStatus::Generated->value,
             'engine_version' => 'phase1-cdi-v1',
@@ -43,6 +50,21 @@ class EmissionPuCurveVersionFactory extends Factory
     {
         return $this->state(fn (): array => [
             'status' => PuCurveStatus::Obsolete->value,
+        ]);
+    }
+
+    public function candidate(): static
+    {
+        return $this->state(fn (): array => [
+            'curve_role' => PuCurveRole::Candidate->value,
+            'status' => PuCurveStatus::Validated->value,
+            'candidate_as_of' => now()->toDateString(),
+            'input_fingerprint' => hash('sha256', fake()->uuid()),
+            'curve_checksum' => hash('sha256', fake()->uuid()),
+            'internal_validation_status' => PuCurveInternalValidationStatus::Passed->value,
+            'external_validation_status' => PuCurveExternalValidationStatus::Pending->value,
+            'review_status' => PuCurveReviewStatus::PendingReview->value,
+            'validated_at' => now(),
         ]);
     }
 }

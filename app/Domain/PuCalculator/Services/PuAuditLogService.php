@@ -7,10 +7,14 @@ namespace App\Domain\PuCalculator\Services;
 use App\Domain\PuCalculator\DTOs\IndexRateSyncResult;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuCurvePrerequisiteCheckResult;
+use App\Domain\PuCalculator\DTOs\PuNumericHomologationComparisonResult;
+use App\Domain\PuCalculator\DTOs\PuNumericHomologationValidationResult;
 use App\Domain\PuCalculator\DTOs\PuValidationFieldDifference;
 use App\Domain\PuCalculator\DTOs\PuValidationReport;
 use App\Domain\PuCalculator\DTOs\PuValidationRowResult;
+use App\Domain\PuCalculator\Enums\PuCandidateReviewDecision;
 use App\Models\Emission;
+use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuParameter;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -164,6 +168,67 @@ class PuAuditLogService
             ])
             ->event('candidate_configuration_created')
             ->log('pu_candidate_configuration_created');
+    }
+
+    public function logCandidateCurvePersisted(
+        Emission $emission,
+        EmissionPuCurveVersion $version,
+        User $actor,
+        PuNumericHomologationValidationResult $validation,
+        ?PuNumericHomologationComparisonResult $externalComparison,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($emission)
+            ->causedBy($actor)
+            ->withProperties([
+                'emission_id' => $emission->id,
+                'candidate_version_id' => $version->id,
+                'calculation_version' => $version->calculation_version,
+                'curve_role' => $version->curve_role->value,
+                'as_of' => $version->candidate_as_of?->toDateString(),
+                'input_fingerprint' => $version->input_fingerprint,
+                'curve_checksum' => $version->curve_checksum,
+                'maker_id' => $actor->id,
+                'rows_count' => $version->rows_count,
+                'internal_validation' => $validation->toArray(),
+                'external_comparison' => $externalComparison?->toArray(),
+                'external_validation_status' => $version->external_validation_status?->value,
+                'persisted_at' => now()->toIso8601String(),
+            ])
+            ->event('candidate_curve_persisted')
+            ->log('pu_candidate_curve_persisted');
+    }
+
+    /**
+     * Registra a decisão final do maker-checker sobre uma candidate persistida.
+     */
+    public function logCandidateCurveReview(
+        EmissionPuCurveVersion $version,
+        User $reviewer,
+        PuCandidateReviewDecision $decision,
+        ?string $reason,
+    ): void {
+        $description = match ($decision) {
+            PuCandidateReviewDecision::Approve => 'pu_candidate_curve_approved',
+            PuCandidateReviewDecision::Reject => 'pu_candidate_curve_rejected',
+        };
+
+        activity(self::LOG_NAME)
+            ->performedOn($version->emission)
+            ->causedBy($reviewer)
+            ->withProperties([
+                'emission_id' => $version->emission_id,
+                'candidate_version_id' => $version->id,
+                'calculation_version' => $version->calculation_version,
+                'curve_role' => $version->curve_role->value,
+                'maker_id' => $version->generated_by,
+                'reviewer_id' => $reviewer->id,
+                'decision' => $decision->value,
+                'reason' => $reason,
+                'reviewed_at' => $version->reviewed_at?->toIso8601String(),
+            ])
+            ->event($description)
+            ->log($description);
     }
 
     public function logEventChange(Emission $emission, string $action, ?int $requestedByUserId): void
@@ -370,6 +435,9 @@ class PuAuditLogService
             'pu_numeric_events_prepared' => 'Eventos numéricos preparados',
             'pu_parameters_updated' => 'Parametros atualizados',
             'pu_candidate_configuration_created' => 'Configuração candidata criada',
+            'pu_candidate_curve_persisted' => 'Curva candidata persistida',
+            'pu_candidate_curve_approved' => 'Curva candidata aprovada internamente',
+            'pu_candidate_curve_rejected' => 'Curva candidata rejeitada',
             'pu_event_changed' => 'Evento de PU alterado',
             default => $description,
         };

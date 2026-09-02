@@ -92,6 +92,20 @@ class MeasurementCycleHistoryReadModel
             ]);
 
         $activities = $this->activitiesFor($authorizedMeasurement);
+
+        return $this->projectAuthorizedLoadedMeasurement($authorizedMeasurement, $activities);
+    }
+
+    /**
+     * Projects a Measurement that was already intersected with visibleTo() and
+     * loaded with reviews, pauses and payments by a trusted read layer.
+     *
+     * @param  Collection<int, Activity>  $activities
+     */
+    public function projectAuthorizedLoadedMeasurement(
+        Measurement $authorizedMeasurement,
+        Collection $activities,
+    ): MeasurementCycleHistory {
         $events = $this->normalizer->normalizeMany($activities, $authorizedMeasurement);
         [$events, $paymentWarnings] = $this->correlatePayments($events, $authorizedMeasurement->payments);
         $pauses = $authorizedMeasurement->pauses
@@ -385,6 +399,7 @@ class MeasurementCycleHistoryReadModel
         $completeness = MeasurementHistoryCompleteness::Complete;
         $submissions = $events
             ->filter(fn (MeasurementCycleEvent $event): bool => $event->eventType === MeasurementCycleEventType::Submitted)
+            ->reject(fn (MeasurementCycleEvent $event): bool => $event->completeness === MeasurementHistoryCompleteness::Insufficient)
             ->filter(fn (MeasurementCycleEvent $event): bool => $event->occurredAt instanceof CarbonImmutable)
             ->values();
         $cycleStart = $submissions->first()?->occurredAt;
@@ -402,6 +417,7 @@ class MeasurementCycleHistoryReadModel
                 || ($event->eventType === MeasurementCycleEventType::StageRejected
                     && $event->stageBefore === 1
                     && $event->statusAfter === 'rejected'))
+            ->reject(fn (MeasurementCycleEvent $event): bool => $event->completeness === MeasurementHistoryCompleteness::Insufficient)
             ->filter(fn (MeasurementCycleEvent $event): bool => $event->occurredAt instanceof CarbonImmutable)
             ->values();
         $terminalKinds = $terminalEvents

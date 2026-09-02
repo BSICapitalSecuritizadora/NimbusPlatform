@@ -37,6 +37,9 @@ class PuCurveHistory extends Page
     }
 
     /**
+     * Histórico e auditoria: lista deliberadamente TODOS os papéis, inclusive as
+     * candidates, porque é aqui que a governança inspeciona o inventário completo.
+     *
      * @return \Illuminate\Database\Eloquent\Collection<int, EmissionPuCurveVersion>
      */
     public function getVersions(): Collection

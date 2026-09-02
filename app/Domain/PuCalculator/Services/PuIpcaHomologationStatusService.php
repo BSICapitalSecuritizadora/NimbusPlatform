@@ -34,6 +34,7 @@ class PuIpcaHomologationStatusService
 
         $hasHomologatedVersion = EmissionPuCurveVersion::query()
             ->where('emission_id', $emission->id)
+            ->operational()
             ->homologated()
             ->exists();
 

@@ -41,6 +41,7 @@ class PuQueueHealthCommand extends Command
         }
 
         $staleVersions = EmissionPuCurveVersion::query()
+            ->operational()
             ->where('status', PuCurveStatus::Processing->value)
             ->where('updated_at', '<', now()->subMinutes($staleMinutes))
             ->get(['id', 'emission_id', 'calculation_version', 'updated_at']);

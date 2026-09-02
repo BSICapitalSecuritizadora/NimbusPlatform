@@ -33,13 +33,9 @@ class MeasurementCycleEventNormalizer
             ->filter(fn (?MeasurementCycleEvent $event): bool => $event instanceof MeasurementCycleEvent)
             ->values();
 
-        $workflowEvents = $normalized
-            ->filter(fn (MeasurementCycleEvent $event): bool => $event->sourceType === MeasurementHistorySourceType::WorkflowActivity)
-            ->values();
+        $normalized = $this->correlateReviewActors($normalized, $measurement);
 
-        return $normalized
-            ->reject(fn (MeasurementCycleEvent $event): bool => $event->sourceType === MeasurementHistorySourceType::ModelActivity
-                && $this->hasExplicitEquivalent($event, $workflowEvents))
+        return $this->deduplicateModelActivities($normalized)
             ->sort(fn (MeasurementCycleEvent $left, MeasurementCycleEvent $right): int => $this->compareEvents($left, $right))
             ->values();
     }
@@ -101,15 +97,17 @@ class MeasurementCycleEventNormalizer
         }
 
         $stage = $properties->nullableInt('stage');
+        $statusBefore = $properties->nullableString('from_status');
+        $statusAfter = $properties->nullableString('to_status');
         [$stageBefore, $stageAfter] = $this->workflowStages(
             $eventType,
             $stage,
+            $statusBefore,
+            $statusAfter,
             $properties,
             $missingReasons,
             $completeness,
         );
-        $statusBefore = $properties->nullableString('from_status');
-        $statusAfter = $properties->nullableString('to_status');
 
         if ($this->requiresStatusTransition($eventType)
             && ($statusBefore === null || $statusAfter === null)) {
@@ -197,7 +195,12 @@ class MeasurementCycleEventNormalizer
             MeasurementCycleEventType::ReceiptAttached,
             MeasurementCycleEventType::ReceiptDeleted,
         ], true) && $paymentIds === []) {
-            $this->degrade($missingReasons, $completeness, 'payment_reference_missing');
+            $this->degrade(
+                $missingReasons,
+                $completeness,
+                'payment_reference_missing',
+                MeasurementHistoryCompleteness::Insufficient,
+            );
         }
 
         $reason = $properties->nullableString('notes') ?? $properties->nullableString('reason');
@@ -260,24 +263,17 @@ class MeasurementCycleEventNormalizer
         if ($eventName === 'created') {
             $eventType = MeasurementCycleEventType::MeasurementCreated;
             $stageBefore = null;
-        } elseif ($statusAfter === 'finalized' && $statusBefore !== 'finalized' && $stageAfter === 5) {
-            $eventType = MeasurementCycleEventType::Finalized;
-            $stageBefore = 5;
-            $stageAfter = null;
-        } elseif ($statusAfter === 'rejected' && $statusBefore !== 'rejected' && $stageBefore === 1) {
-            $eventType = MeasurementCycleEventType::StageRejected;
-            $stageAfter = null;
-        } elseif ($statusAfter === 'in_review'
-            && $statusBefore === 'pending'
-            && $stageAfter === 1) {
-            $eventType = MeasurementCycleEventType::Submitted;
-            $stageBefore = null;
-        } elseif ($stageBefore !== null && $stageAfter !== null && $stageAfter === $stageBefore + 1) {
-            $eventType = MeasurementCycleEventType::StageApproved;
-        } elseif ($stageBefore !== null && $stageAfter !== null && $stageAfter < $stageBefore) {
-            $eventType = $stageBefore === 5
-                ? MeasurementCycleEventType::FinalizationReturned
-                : MeasurementCycleEventType::StageRejected;
+        } elseif ($eventName === 'updated') {
+            $transition = $this->legacyTransition(
+                $stageBefore,
+                $stageAfter,
+                $statusBefore,
+                $statusAfter,
+            );
+
+            if ($transition !== null) {
+                [$eventType, $stageBefore, $stageAfter] = $transition;
+            }
         }
 
         if (! $eventType instanceof MeasurementCycleEventType) {
@@ -382,145 +378,263 @@ class MeasurementCycleEventNormalizer
     private function workflowStages(
         MeasurementCycleEventType $eventType,
         ?int $stage,
+        ?string $statusBefore,
+        ?string $statusAfter,
         ActivityPropertyReader $properties,
         array &$missingReasons,
         MeasurementHistoryCompleteness &$completeness,
     ): array {
+        $target = $properties->nullableInt('target_stage');
+
         if ($eventType === MeasurementCycleEventType::Submitted) {
-            if ($stage !== 1 || $properties->nullableString('to_status') !== 'in_review') {
-                $this->degrade(
-                    $missingReasons,
-                    $completeness,
-                    'submitted_stage_invalid',
-                    MeasurementHistoryCompleteness::Insufficient,
-                );
-            }
+            $this->validateTransitionShape(
+                $stage === 1
+                    && $target === null
+                    && in_array($statusBefore, ['pending', 'in_review'], true)
+                    && $statusAfter === 'in_review',
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
 
             return [null, $stage];
         }
 
         if ($eventType === MeasurementCycleEventType::StageApproved) {
-            if ($stage === null || $stage < 1 || $stage > 4) {
-                $this->degrade(
-                    $missingReasons,
-                    $completeness,
-                    'approved_stage_invalid',
-                    MeasurementHistoryCompleteness::Insufficient,
-                );
-
-                return [$stage, null];
-            }
-
-            $derivedNextStage = $stage + 1;
-            $recordedTarget = $properties->nullableInt('target_stage');
-            $toStatus = $properties->nullableString('to_status');
-            $allowedStatuses = match ($stage) {
-                1, 2 => ['in_review'],
-                3 => ['awaiting_payment'],
-                4 => ['awaiting_receipt', 'approved'],
+            $derivedNextStage = $stage !== null ? $stage + 1 : null;
+            $valid = match ($stage) {
+                1, 2 => in_array($statusBefore, ['pending', 'in_review'], true)
+                    && $statusAfter === 'in_review',
+                3 => in_array($statusBefore, ['pending', 'in_review'], true)
+                    && $statusAfter === 'awaiting_payment',
+                4 => $statusBefore === 'awaiting_payment'
+                    && in_array($statusAfter, ['awaiting_receipt', 'approved'], true),
+                default => false,
             };
 
-            if (($recordedTarget !== null && $recordedTarget !== $derivedNextStage)
-                || ($toStatus !== null && ! in_array($toStatus, $allowedStatuses, true))) {
-                $this->degrade(
-                    $missingReasons,
-                    $completeness,
-                    'stage_approval_transition_contradiction',
-                    MeasurementHistoryCompleteness::Insufficient,
-                );
-
-                return [$stage, null];
-            }
+            $this->validateTransitionShape(
+                $valid && ($target === null || $target === $derivedNextStage),
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
 
             return [$stage, $derivedNextStage];
         }
 
         if ($eventType === MeasurementCycleEventType::StageRejected) {
-            $target = $properties->nullableInt('target_stage');
+            $valid = match ($stage) {
+                1 => $target === null
+                    && in_array($statusBefore, ['pending', 'in_review'], true)
+                    && $statusAfter === 'rejected',
+                2 => $target === 1
+                    && in_array($statusBefore, ['pending', 'in_review'], true)
+                    && $statusAfter === 'in_review',
+                3 => $target === 2
+                    && in_array($statusBefore, ['pending', 'in_review'], true)
+                    && $statusAfter === 'in_review',
+                4 => $target === 3
+                    && $statusBefore === 'awaiting_payment'
+                    && $statusAfter === 'in_review',
+                default => false,
+            };
 
-            if ($stage === 1) {
-                if ($target !== null || $properties->nullableString('to_status') !== 'rejected') {
-                    $this->degrade(
-                        $missingReasons,
-                        $completeness,
-                        'terminal_rejection_contradiction',
-                        MeasurementHistoryCompleteness::Insufficient,
-                    );
-                }
+            $this->validateTransitionShape(
+                $valid,
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
 
-                return [1, null];
-            }
-
-            if ($stage === null
-                || $stage < 2
-                || $stage > 4
-                || $target !== $stage - 1
-                || $properties->nullableString('to_status') !== 'in_review') {
-                $this->degrade(
-                    $missingReasons,
-                    $completeness,
-                    'rejection_target_invalid',
-                    MeasurementHistoryCompleteness::Insufficient,
-                );
-            }
-
-            return [$stage, $target];
+            return [$stage, $stage === 1 ? null : $target];
         }
 
         if ($eventType === MeasurementCycleEventType::FinalizationReturned) {
-            $target = $properties->nullableInt('target_stage');
-
             $expectedStatus = $target === 4 ? 'awaiting_payment' : 'in_review';
 
-            if ($stage !== 5
-                || $target === null
-                || $target < 1
-                || $target > 4
-                || $properties->nullableString('to_status') !== $expectedStatus) {
-                $this->degrade(
-                    $missingReasons,
-                    $completeness,
-                    'finalization_return_target_invalid',
-                    MeasurementHistoryCompleteness::Insufficient,
-                );
-            }
+            $this->validateTransitionShape(
+                $stage === 5
+                    && in_array($target, [1, 2, 3, 4], true)
+                    && in_array($statusBefore, ['awaiting_receipt', 'approved'], true)
+                    && $statusAfter === $expectedStatus,
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
 
             return [$stage, $target];
         }
 
         if ($eventType === MeasurementCycleEventType::Finalized) {
-            if ($stage !== 5 || $properties->nullableString('to_status') !== 'finalized') {
-                $this->degrade(
-                    $missingReasons,
-                    $completeness,
-                    'finalization_stage_invalid',
-                    MeasurementHistoryCompleteness::Insufficient,
-                );
-            }
+            $this->validateTransitionShape(
+                $stage === 5
+                    && $target === null
+                    && $statusBefore === 'approved'
+                    && $statusAfter === 'finalized',
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
 
             return [$stage, null];
         }
 
-        if (in_array($eventType, [
-            MeasurementCycleEventType::StagePaused,
-            MeasurementCycleEventType::StageResumed,
-            MeasurementCycleEventType::PaymentRegistered,
-            MeasurementCycleEventType::ReceiptAttached,
-            MeasurementCycleEventType::ReceiptDeleted,
-        ], true)) {
-            if ($stage === null || $stage < 1 || $stage > 5) {
-                $this->degrade(
-                    $missingReasons,
-                    $completeness,
-                    'event_stage_invalid',
-                    MeasurementHistoryCompleteness::Insufficient,
-                );
-            }
+        if ($eventType === MeasurementCycleEventType::PaymentRegistered) {
+            $this->validateTransitionShape(
+                $stage === 4
+                    && $target === null
+                    && $statusBefore === 'awaiting_payment'
+                    && $statusAfter === 'awaiting_payment',
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
+
+            return [$stage, $stage];
+        }
+
+        if ($eventType === MeasurementCycleEventType::ReceiptAttached) {
+            $this->validateTransitionShape(
+                $stage === 5
+                    && $target === null
+                    && in_array([$statusBefore, $statusAfter], [
+                        ['awaiting_receipt', 'awaiting_receipt'],
+                        ['awaiting_receipt', 'approved'],
+                        ['approved', 'approved'],
+                    ], true),
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
+
+            return [$stage, $stage];
+        }
+
+        if ($eventType === MeasurementCycleEventType::ReceiptDeleted) {
+            $this->validateTransitionShape(
+                $stage === 5
+                    && $target === null
+                    && in_array([$statusBefore, $statusAfter], [
+                        ['awaiting_receipt', 'awaiting_receipt'],
+                        ['approved', 'awaiting_receipt'],
+                    ], true),
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
+
+            return [$stage, $stage];
+        }
+
+        if ($eventType === MeasurementCycleEventType::StagePaused) {
+            $this->validateTransitionShape(
+                $target === null && match ($stage) {
+                    1, 2, 3 => in_array($statusBefore, ['pending', 'in_review'], true)
+                        && $statusAfter === 'paused',
+                    4 => $statusBefore === 'awaiting_payment' && $statusAfter === 'paused',
+                    default => false,
+                },
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
+
+            return [$stage, $stage];
+        }
+
+        if ($eventType === MeasurementCycleEventType::StageResumed) {
+            $this->validateTransitionShape(
+                $target === null && match ($stage) {
+                    1, 2, 3 => $statusBefore === 'paused' && $statusAfter === 'in_review',
+                    4 => $statusBefore === 'paused' && $statusAfter === 'awaiting_payment',
+                    default => false,
+                },
+                $properties,
+                $missingReasons,
+                $completeness,
+            );
 
             return [$stage, $stage];
         }
 
         return [null, null];
+    }
+
+    /** @param list<string> $missingReasons */
+    private function validateTransitionShape(
+        bool $valid,
+        ActivityPropertyReader $properties,
+        array &$missingReasons,
+        MeasurementHistoryCompleteness &$completeness,
+    ): void {
+        $criticalPropertyIssues = [
+            'invalid_property_shape:stage',
+            'invalid_property_shape:target_stage',
+            'invalid_property_shape:from_status',
+            'invalid_property_shape:to_status',
+        ];
+
+        if ($valid && array_intersect($properties->issues(), $criticalPropertyIssues) === []) {
+            return;
+        }
+
+        $this->degrade(
+            $missingReasons,
+            $completeness,
+            'invalid_transition_shape',
+            MeasurementHistoryCompleteness::Insufficient,
+        );
+    }
+
+    /**
+     * @return array{0: MeasurementCycleEventType, 1: ?int, 2: ?int}|null
+     */
+    private function legacyTransition(
+        ?int $stageBefore,
+        ?int $stageAfter,
+        ?string $statusBefore,
+        ?string $statusAfter,
+    ): ?array {
+        return match ([$stageBefore, $stageAfter, $statusBefore, $statusAfter]) {
+            [1, 1, 'pending', 'in_review'] => [MeasurementCycleEventType::Submitted, null, 1],
+            [1, 2, 'pending', 'in_review'],
+            [1, 2, 'in_review', 'in_review'],
+            [2, 3, 'pending', 'in_review'],
+            [2, 3, 'in_review', 'in_review'],
+            [3, 4, 'pending', 'awaiting_payment'],
+            [3, 4, 'in_review', 'awaiting_payment'],
+            [4, 5, 'awaiting_payment', 'awaiting_receipt'],
+            [4, 5, 'awaiting_payment', 'approved'] => [
+                MeasurementCycleEventType::StageApproved,
+                $stageBefore,
+                $stageAfter,
+            ],
+            [1, 1, 'pending', 'rejected'],
+            [1, 1, 'in_review', 'rejected'] => [MeasurementCycleEventType::StageRejected, 1, null],
+            [2, 1, 'pending', 'in_review'],
+            [2, 1, 'in_review', 'in_review'],
+            [3, 2, 'pending', 'in_review'],
+            [3, 2, 'in_review', 'in_review'],
+            [4, 3, 'awaiting_payment', 'in_review'] => [
+                MeasurementCycleEventType::StageRejected,
+                $stageBefore,
+                $stageAfter,
+            ],
+            [5, 1, 'awaiting_receipt', 'in_review'],
+            [5, 2, 'awaiting_receipt', 'in_review'],
+            [5, 3, 'awaiting_receipt', 'in_review'],
+            [5, 4, 'awaiting_receipt', 'awaiting_payment'],
+            [5, 1, 'approved', 'in_review'],
+            [5, 2, 'approved', 'in_review'],
+            [5, 3, 'approved', 'in_review'],
+            [5, 4, 'approved', 'awaiting_payment'] => [
+                MeasurementCycleEventType::FinalizationReturned,
+                5,
+                $stageAfter,
+            ],
+            [5, 5, 'approved', 'finalized'] => [MeasurementCycleEventType::Finalized, 5, null],
+            default => null,
+        };
     }
 
     /** @param list<string> $missingReasons */
@@ -628,29 +742,16 @@ class MeasurementCycleEventNormalizer
             return null;
         }
 
-        if (in_array($eventType, [
-            MeasurementCycleEventType::StageApproved,
-            MeasurementCycleEventType::StageRejected,
-        ], true) && $stage !== null && $measurement->relationLoaded('reviews')) {
-            $review = $measurement->reviews->first(
-                fn (MeasurementReview $candidate): bool => (int) $candidate->stage === $stage
-                    && $candidate->reviewer_user_id !== null
-                    && $candidate->reviewed_at !== null
-                    && $this->timestampsClose($candidate->reviewed_at, $activity->created_at),
-            );
-
-            if ($review instanceof MeasurementReview) {
-                return (int) $review->reviewer_user_id;
-            }
-        }
-
         if ($eventType === MeasurementCycleEventType::PaymentRegistered
+            && $stage === 4
+            && $properties->nullableString('from_status') === 'awaiting_payment'
+            && $properties->nullableString('to_status') === 'awaiting_payment'
             && $measurement->relationLoaded('payments')) {
             $paymentIds = $properties->intList('payment_ids');
             $actors = $measurement->payments
                 ->whereIn('id', $paymentIds)
                 ->filter(fn (MeasurementPayment $payment): bool => $payment->created_by !== null
-                    && $this->timestampsClose($payment->created_at, $activity->created_at))
+                    && $this->timestampsEqual($payment->created_at, $activity->created_at))
                 ->pluck('created_by')
                 ->unique()
                 ->values();
@@ -661,6 +762,15 @@ class MeasurementCycleEventNormalizer
         }
 
         if ($eventType === MeasurementCycleEventType::ReceiptAttached
+            && $stage === 5
+            && in_array([
+                $properties->nullableString('from_status'),
+                $properties->nullableString('to_status'),
+            ], [
+                ['awaiting_receipt', 'awaiting_receipt'],
+                ['awaiting_receipt', 'approved'],
+                ['approved', 'approved'],
+            ], true)
             && $measurement->relationLoaded('payments')) {
             $paymentId = $properties->nullableInt('payment_id');
             $payment = $paymentId !== null ? $measurement->payments->firstWhere('id', $paymentId) : null;
@@ -668,16 +778,25 @@ class MeasurementCycleEventNormalizer
             if ($payment instanceof MeasurementPayment
                 && $payment->receipt_uploaded_by !== null
                 && $payment->receipt_uploaded_at !== null
-                && $this->timestampsClose($payment->receipt_uploaded_at, $activity->created_at)) {
+                && $this->timestampsEqual($payment->receipt_uploaded_at, $activity->created_at)) {
                 return (int) $payment->receipt_uploaded_by;
             }
         }
 
-        if (($eventType === MeasurementCycleEventType::Finalized
-                || ($eventType === MeasurementCycleEventType::StageRejected && $stage === 1))
+        $isTerminalEvent = ($eventType === MeasurementCycleEventType::Finalized
+                && $stage === 5
+                && $properties->nullableString('from_status') === 'approved'
+                && $properties->nullableString('to_status') === 'finalized')
+            || ($eventType === MeasurementCycleEventType::StageRejected
+                && $stage === 1
+                && $properties->nullableInt('target_stage') === null
+                && in_array($properties->nullableString('from_status'), ['pending', 'in_review'], true)
+                && $properties->nullableString('to_status') === 'rejected');
+
+        if ($isTerminalEvent
             && $measurement->analyzed_by !== null
             && $measurement->analyzed_at !== null
-            && $this->timestampsClose($measurement->analyzed_at, $activity->created_at)) {
+            && $this->timestampsEqual($measurement->analyzed_at, $activity->created_at)) {
             return (int) $measurement->analyzed_by;
         }
 
@@ -694,6 +813,213 @@ class MeasurementCycleEventNormalizer
             && abs($firstAt->getTimestamp() - $secondAt->getTimestamp()) <= self::DEDUPLICATION_WINDOW_SECONDS;
     }
 
+    private function timestampsEqual(mixed $first, mixed $second): bool
+    {
+        $firstAt = $this->immutableDate($first);
+        $secondAt = $this->immutableDate($second);
+
+        return $firstAt instanceof CarbonImmutable
+            && $secondAt instanceof CarbonImmutable
+            && $firstAt->getTimestamp() === $secondAt->getTimestamp();
+    }
+
+    /**
+     * @param  Collection<int, MeasurementCycleEvent>  $events
+     * @return Collection<int, MeasurementCycleEvent>
+     */
+    private function correlateReviewActors(Collection $events, ?Measurement $measurement): Collection
+    {
+        if (! $measurement instanceof Measurement || ! $measurement->relationLoaded('reviews')) {
+            return $events;
+        }
+
+        return $events->map(function (MeasurementCycleEvent $event) use ($events, $measurement): MeasurementCycleEvent {
+            if (! $this->canUseReviewActorFallback($event)) {
+                return $event;
+            }
+
+            $review = $measurement->reviews->first(
+                fn (MeasurementReview $candidate): bool => (int) $candidate->stage === $event->stageBefore,
+            );
+
+            if (! $review instanceof MeasurementReview || ! $this->reviewMatchesEvent($review, $event)) {
+                return $event;
+            }
+
+            $matchingEvents = $events->filter(
+                fn (MeasurementCycleEvent $candidate): bool => $this->canUseReviewActorFallback($candidate)
+                    && $this->reviewMatchesEvent($review, $candidate),
+            );
+
+            if ($matchingEvents->count() !== 1
+                || $this->hasLaterStageEntryEvidence($event, $events)) {
+                return $event;
+            }
+
+            return $this->withReviewActor($event, (int) $review->reviewer_user_id);
+        })->values();
+    }
+
+    private function canUseReviewActorFallback(MeasurementCycleEvent $event): bool
+    {
+        return $event->sourceType === MeasurementHistorySourceType::WorkflowActivity
+            && $event->actorId === null
+            && $event->stageBefore !== null
+            && $event->completeness !== MeasurementHistoryCompleteness::Insufficient
+            && in_array($event->eventType, [
+                MeasurementCycleEventType::StageApproved,
+                MeasurementCycleEventType::StageRejected,
+            ], true);
+    }
+
+    private function reviewMatchesEvent(
+        MeasurementReview $review,
+        MeasurementCycleEvent $event,
+    ): bool {
+        $expectedReviewStatus = $event->eventType === MeasurementCycleEventType::StageApproved
+            ? 'approved'
+            : 'rejected';
+
+        return (int) $review->stage === $event->stageBefore
+            && $review->reviewer_user_id !== null
+            && $review->status === $expectedReviewStatus
+            && $review->reviewed_at !== null
+            && $event->occurredAt instanceof CarbonImmutable
+            && $this->timestampsEqual($review->reviewed_at, $event->occurredAt);
+    }
+
+    /** @param Collection<int, MeasurementCycleEvent> $events */
+    private function hasLaterStageEntryEvidence(
+        MeasurementCycleEvent $event,
+        Collection $events,
+    ): bool {
+        return $events->contains(
+            fn (MeasurementCycleEvent $candidate): bool => $candidate->eventType->changesStageVisit()
+                && $candidate->stageAfter === $event->stageBefore
+                && $this->compareEvents($candidate, $event) > 0,
+        );
+    }
+
+    private function withReviewActor(MeasurementCycleEvent $event, int $actorId): MeasurementCycleEvent
+    {
+        $missingReasons = array_values(array_filter(
+            $event->missingReasons,
+            fn (string $reason): bool => $reason !== 'actor_unknown',
+        ));
+
+        return new MeasurementCycleEvent(
+            sourceActivityId: $event->sourceActivityId,
+            sourceEvent: $event->sourceEvent,
+            sourceType: $event->sourceType,
+            measurementId: $event->measurementId,
+            operationId: $event->operationId,
+            occurredAt: $event->occurredAt,
+            eventType: $event->eventType,
+            stageBefore: $event->stageBefore,
+            stageAfter: $event->stageAfter,
+            statusBefore: $event->statusBefore,
+            statusAfter: $event->statusAfter,
+            actorId: $actorId,
+            responsibility: $event->responsibility,
+            expectedResponsibleId: $event->expectedResponsibleId,
+            delegated: $event->delegated,
+            delegationId: $event->delegationId,
+            delegatorId: $event->delegatorId,
+            delegationScope: $event->delegationScope,
+            adminOverride: $event->adminOverride,
+            workflowRevision: $event->workflowRevision,
+            reason: $event->reason,
+            paymentIds: $event->paymentIds,
+            paymentAmount: $event->paymentAmount,
+            completeness: $event->completeness->combine(MeasurementHistoryCompleteness::Partial),
+            missingReasons: array_values(array_unique([
+                ...$missingReasons,
+                'actor_from_durable_fallback',
+            ])),
+        );
+    }
+
+    /**
+     * @param  Collection<int, MeasurementCycleEvent>  $events
+     * @return Collection<int, MeasurementCycleEvent>
+     */
+    private function deduplicateModelActivities(Collection $events): Collection
+    {
+        $workflowEvents = $events
+            ->filter(fn (MeasurementCycleEvent $event): bool => $event->sourceType === MeasurementHistorySourceType::WorkflowActivity
+                && $event->completeness !== MeasurementHistoryCompleteness::Insufficient)
+            ->sort(fn (MeasurementCycleEvent $left, MeasurementCycleEvent $right): int => $this->compareEvents($left, $right));
+        $modelEvents = $events->filter(
+            fn (MeasurementCycleEvent $event): bool => $event->sourceType === MeasurementHistorySourceType::ModelActivity,
+        );
+        $consumedModelIndexes = [];
+        $ambiguousModelIndexes = [];
+
+        foreach ($workflowEvents as $explicit) {
+            $candidates = $modelEvents
+                ->reject(fn (MeasurementCycleEvent $fallback, int $index): bool => isset($consumedModelIndexes[$index]))
+                ->filter(fn (MeasurementCycleEvent $fallback): bool => $this->deduplicationCompatible($explicit, $fallback))
+                ->map(fn (MeasurementCycleEvent $fallback): int => abs(
+                    $explicit->occurredAt->getTimestamp() - $fallback->occurredAt->getTimestamp(),
+                ));
+
+            if ($candidates->isEmpty()) {
+                continue;
+            }
+
+            $nearestDistance = $candidates->min();
+            $nearestCandidates = $candidates->filter(
+                fn (int $distance): bool => $distance === $nearestDistance,
+            );
+
+            if ($nearestCandidates->count() !== 1) {
+                foreach ($nearestCandidates->keys() as $modelIndex) {
+                    $ambiguousModelIndexes[$modelIndex] = true;
+                }
+
+                continue;
+            }
+
+            $consumedModelIndexes[$nearestCandidates->keys()->first()] = true;
+        }
+
+        return $events
+            ->reject(fn (MeasurementCycleEvent $event, int $index): bool => $event->sourceType === MeasurementHistorySourceType::ModelActivity
+                && isset($consumedModelIndexes[$index]))
+            ->map(fn (MeasurementCycleEvent $event, int $index): MeasurementCycleEvent => $event->sourceType === MeasurementHistorySourceType::ModelActivity
+                && isset($ambiguousModelIndexes[$index])
+                    ? $event->withMissingReason('deduplication_ambiguous')
+                    : $event)
+            ->values();
+    }
+
+    private function deduplicationCompatible(
+        MeasurementCycleEvent $explicit,
+        MeasurementCycleEvent $fallback,
+    ): bool {
+        if (! $explicit->occurredAt instanceof CarbonImmutable
+            || ! $fallback->occurredAt instanceof CarbonImmutable
+            || ! $this->timestampsClose($explicit->occurredAt, $fallback->occurredAt)
+            || $explicit->measurementId !== $fallback->measurementId
+            || $explicit->eventType !== $fallback->eventType
+            || $explicit->stageBefore !== $fallback->stageBefore
+            || $explicit->stageAfter !== $fallback->stageAfter
+            || $explicit->statusBefore !== $fallback->statusBefore
+            || $explicit->statusAfter !== $fallback->statusAfter) {
+            return false;
+        }
+
+        if ($explicit->operationId !== null
+            && $fallback->operationId !== null
+            && $explicit->operationId !== $fallback->operationId) {
+            return false;
+        }
+
+        return $explicit->actorId === null
+            || $fallback->actorId === null
+            || $explicit->actorId === $fallback->actorId;
+    }
+
     private function compareEvents(MeasurementCycleEvent $left, MeasurementCycleEvent $right): int
     {
         $timeComparison = ($left->occurredAt?->getTimestamp() ?? PHP_INT_MAX)
@@ -702,29 +1028,6 @@ class MeasurementCycleEventNormalizer
         return $timeComparison !== 0
             ? $timeComparison
             : (($left->sourceActivityId ?? PHP_INT_MAX) <=> ($right->sourceActivityId ?? PHP_INT_MAX));
-    }
-
-    /** @param Collection<int, MeasurementCycleEvent> $workflowEvents */
-    private function hasExplicitEquivalent(
-        MeasurementCycleEvent $fallback,
-        Collection $workflowEvents,
-    ): bool {
-        if (! $fallback->occurredAt instanceof CarbonImmutable) {
-            return false;
-        }
-
-        return $workflowEvents->contains(function (MeasurementCycleEvent $explicit) use ($fallback): bool {
-            if (! $explicit->occurredAt instanceof CarbonImmutable
-                || $explicit->measurementId !== $fallback->measurementId
-                || $explicit->eventType !== $fallback->eventType
-                || $explicit->stageBefore !== $fallback->stageBefore
-                || $explicit->stageAfter !== $fallback->stageAfter) {
-                return false;
-            }
-
-            return abs($explicit->occurredAt->getTimestamp() - $fallback->occurredAt->getTimestamp())
-                <= self::DEDUPLICATION_WINDOW_SECONDS;
-        });
     }
 
     private function requiresStatusTransition(MeasurementCycleEventType $eventType): bool

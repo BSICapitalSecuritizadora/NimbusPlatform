@@ -9,6 +9,7 @@ use App\Models\Emission;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\LazyCollection;
 
 class GenerateRealizedPuCurvesCommand extends Command
 {
@@ -56,9 +57,9 @@ class GenerateRealizedPuCurvesCommand extends Command
     }
 
     /**
-     * @return \Illuminate\Support\LazyCollection<int, Emission>
+     * @return LazyCollection<int, Emission>
      */
-    private function eligibleEmissions(): \Illuminate\Support\LazyCollection
+    private function eligibleEmissions(): LazyCollection
     {
         return Emission::query()
             ->where('status', 'active')
@@ -81,7 +82,7 @@ class GenerateRealizedPuCurvesCommand extends Command
             return false;
         }
 
-        $lastCurveDate = $emission->puDailyCurves()->max('curve_date');
+        $lastCurveDate = $emission->operationalPuDailyCurves()->max('curve_date');
 
         if ($lastCurveDate === null) {
             return true;

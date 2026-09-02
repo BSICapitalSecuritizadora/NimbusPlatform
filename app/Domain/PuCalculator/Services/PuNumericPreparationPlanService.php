@@ -271,10 +271,11 @@ final class PuNumericPreparationPlanService
     /** @return array<string, int|bool> */
     private function financialEffects(Emission $emission): array
     {
-        $curveCount = $emission->puDailyCurves()->count();
-        $curveVersionCount = $emission->puCurveVersions()->count();
+        $curveCount = $emission->operationalPuDailyCurves()->count();
+        $curveVersionCount = $emission->operationalPuCurveVersions()->count();
         $validatedOrHomologatedCurveVersionCount = EmissionPuCurveVersion::query()
             ->whereBelongsTo($emission)
+            ->operational()
             ->whereIn('status', [
                 PuCurveStatus::Validated->value,
                 PuCurveStatus::Homologated->value,

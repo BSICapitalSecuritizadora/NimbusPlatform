@@ -3,18 +3,22 @@
 namespace App\Filament\Resources\Measurements\Pages;
 
 use App\Concerns\MoneyFormatter;
+use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
+use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPlanSet;
 use App\Models\User;
 use App\Services\DocumentStorageService;
+use App\Services\MeasurementFinancialReconciliationService;
 use App\Services\MeasurementWorkflow;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -23,9 +27,11 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\RawJs;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 
 class ViewMeasurement extends ViewRecord
 {
@@ -368,19 +374,124 @@ class ViewMeasurement extends ViewRecord
                 ->columns(2)
                 ->itemLabel(fn (array $state): ?string => $labels[$state['plan_set_id'] ?? null] ?? null)
                 ->schema([
+                    Placeholder::make('reconciliation_reference')
+                        ->label('Referência desta medição')
+                        ->columnSpanFull()
+                        ->content(fn (Get $get): HtmlString => $this->paymentReferenceContent($get('plan_set_id'))),
                     Select::make('plan_set_id')
                         ->label('Empreendimento')
                         ->options($labels)
                         ->disabled()
                         ->dehydrated(),
                     TextInput::make('amount')
-                        ->label('Valor')
+                        ->label('Valor deste pagamento')
                         ->prefix('R$')
+                        ->live(onBlur: true)
                         ->mask(RawJs::make('$money($input, \',\', \'.\')'))
                         ->dehydrateStateUsing(fn (mixed $state): ?float => blank($state) ? null : MoneyFormatter::normalizeDecimalValue($state)),
+                    Placeholder::make('reconciliation_divergence')
+                        ->label('Conciliação')
+                        ->columnSpanFull()
+                        ->content(fn (Get $get): HtmlString => $this->paymentDivergenceContent($get('plan_set_id'), $get('amount'))),
                     Textarea::make('notes')->label('Observações')->rows(2)->columnSpanFull(),
                 ]),
         ];
+    }
+
+    /**
+     * Contexto financeiro do empreendimento antes do campo de valor.
+     *
+     * A referência é apenas exibida: o valor continua sendo informado pela
+     * pessoa, sem preenchimento silencioso, para não induzir aceite cego.
+     */
+    private function paymentReferenceContent(mixed $planSetId): HtmlString
+    {
+        $line = $this->reconciliationLine($planSetId);
+
+        if (! $line instanceof MeasurementFinancialReconciliationLine) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Empreendimento fora do contexto aprovado pela Engenharia.</span>');
+        }
+
+        if (! $line->hasFinancialReference()) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Sem fundo de obra registrado no snapshot da Engenharia — não há valor esperado para comparar.</span>');
+        }
+
+        $cells = [
+            ['Fundo de obra', MeasurementFinancialReconciliationService::formatCurrency($line->fundAmount)],
+            ['Realizado no mês', MeasurementFinancialReconciliationService::formatPercent($line->realizedMonthlyPercent)],
+            ['Valor esperado', MeasurementFinancialReconciliationService::formatCurrency($line->expectedAmount)],
+            ['Já registrado', MeasurementFinancialReconciliationService::formatCurrency($line->registeredAmount)],
+            ['Saldo esperado', MeasurementFinancialReconciliationService::formatCurrency($line->expectedBalance)],
+        ];
+
+        $html = collect($cells)
+            ->map(fn (array $cell): string => sprintf(
+                '<div><dt class="text-xs text-gray-500 dark:text-gray-400">%s</dt><dd class="text-sm font-medium text-gray-950 dark:text-white">%s</dd></div>',
+                e($cell[0]),
+                e($cell[1]),
+            ))
+            ->implode('');
+
+        return new HtmlString('<dl class="grid grid-cols-2 gap-3 sm:grid-cols-5">'.$html.'</dl>');
+    }
+
+    /**
+     * Divergência entre o valor informado e o saldo esperado.
+     *
+     * Nesta V1 a divergência avisa e não bloqueia: o texto é neutro porque
+     * pagar a menos ou a mais pode ter motivo legítimo.
+     */
+    private function paymentDivergenceContent(mixed $planSetId, mixed $amount): HtmlString
+    {
+        $line = $this->reconciliationLine($planSetId, $amount);
+
+        if (! $line instanceof MeasurementFinancialReconciliationLine || ! $line->hasFinancialReference()) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">—</span>');
+        }
+
+        // Antes de a pessoa digitar, o valor informado é zero e a comparação
+        // acusaria o saldo inteiro como divergência: alarme sem informação.
+        if (blank($amount)) {
+            return new HtmlString('<span class="text-sm text-gray-500 dark:text-gray-400">Informe o valor para comparar com o saldo esperado.</span>');
+        }
+
+        $colors = [
+            'success' => 'text-green-600 dark:text-green-400',
+            'warning' => 'text-amber-600 dark:text-amber-400',
+            'gray' => 'text-gray-500 dark:text-gray-400',
+        ];
+
+        return new HtmlString(sprintf(
+            '<span class="text-sm font-medium %s">%s</span>',
+            $colors[$line->status->color()] ?? $colors['gray'],
+            e($this->describeDivergence($line)),
+        ));
+    }
+
+    private function reconciliationLine(mixed $planSetId, mixed $amount = null): ?MeasurementFinancialReconciliationLine
+    {
+        if (blank($planSetId)) {
+            return null;
+        }
+
+        $planSetId = (int) $planSetId;
+        $entered = blank($amount) ? [] : [$planSetId => $amount];
+
+        return app(MeasurementFinancialReconciliationService::class)
+            ->forMeasurement($this->record, $entered)
+            ->line($planSetId);
+    }
+
+    private function describeDivergence(MeasurementFinancialReconciliationLine $line): string
+    {
+        $divergence = MeasurementFinancialReconciliationService::formatCurrency(ltrim((string) $line->divergenceAmount, '-'));
+
+        return match ($line->status) {
+            MeasurementReconciliationStatus::Matched => 'Conciliado — o valor informado corresponde ao saldo esperado.',
+            MeasurementReconciliationStatus::Under => "Divergência para menos — {$divergence} abaixo do saldo esperado.",
+            MeasurementReconciliationStatus::Over => "Divergência para mais — {$divergence} acima do saldo esperado.",
+            MeasurementReconciliationStatus::ReferenceUnavailable => 'Sem referência financeira para comparar.',
+        };
     }
 
     private function attachReceiptAction(): Action

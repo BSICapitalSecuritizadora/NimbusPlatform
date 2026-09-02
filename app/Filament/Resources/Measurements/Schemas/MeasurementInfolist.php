@@ -66,6 +66,16 @@ class MeasurementInfolist
                         ]),
                 ]),
 
+            Section::make('Conciliação Financeira')
+                ->description('Referência financeira desta competência, ancorada no snapshot da Engenharia. A divergência avisa e não bloqueia.')
+                ->visible(fn (Measurement $record): bool => is_array($record->engineering_snapshot)
+                    && ($record->engineering_snapshot['plan_sets'] ?? []) !== [])
+                ->schema([
+                    ViewEntry::make('financial_reconciliation')
+                        ->label('')
+                        ->view('filament.infolists.measurement-financial-reconciliation'),
+                ]),
+
             Section::make('Pagamentos e Comprovantes')
                 ->schema([
                     RepeatableEntry::make('payments')

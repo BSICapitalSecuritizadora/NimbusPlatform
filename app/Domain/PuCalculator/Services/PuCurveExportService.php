@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Models\Emission;
+use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -25,6 +26,7 @@ class PuCurveExportService
 
         return EmissionPuDailyCurve::query()
             ->where('emission_id', $emission->id)
+            ->operational()
             ->where('calculation_version', $resolvedVersion)
             ->orderBy('curve_date')
             ->get();
@@ -83,8 +85,9 @@ class PuCurveExportService
             $firstRow->calculation_version,
         );
 
-        $snapshot = \App\Models\EmissionPuCurveVersion::query()
+        $snapshot = EmissionPuCurveVersion::query()
             ->where('emission_id', $emission->id)
+            ->operational()
             ->where('calculation_version', $firstRow->calculation_version)
             ->orderByDesc('id')
             ->first(['parameters_snapshot'])?->parameters_snapshot ?? [];

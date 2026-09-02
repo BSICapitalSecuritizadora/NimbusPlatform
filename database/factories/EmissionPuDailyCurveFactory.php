@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Emission;
+use App\Models\EmissionPuDailyCurve;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\EmissionPuDailyCurve>
+ * @extends Factory<EmissionPuDailyCurve>
  */
 class EmissionPuDailyCurveFactory extends Factory
 {
@@ -14,6 +15,7 @@ class EmissionPuDailyCurveFactory extends Factory
     {
         return [
             'emission_id' => Emission::factory(),
+            'curve_version_id' => null,
             'curve_date' => fake()->date(),
             'calculation_version' => 'v1',
             'is_business_day' => true,

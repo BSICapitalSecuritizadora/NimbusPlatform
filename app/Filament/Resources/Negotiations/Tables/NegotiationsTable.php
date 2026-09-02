@@ -242,7 +242,9 @@ class NegotiationsTable
 
                             return "{$emission} · {$dev}";
                         })
-                        ->modalWidth(Width::TwoExtraLarge)
+                        ->modalWidth(Width::FiveExtraLarge)
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Fechar')
                         ->modalContent(function (Negotiation $record): View {
                             $emissionId = (int) ($record->getAttribute('emission_id') ?? $record->emission_id);
                             $constructionId = (int) ($record->getAttribute('construction_id') ?? $record->construction_id);

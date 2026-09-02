@@ -232,7 +232,7 @@ class PuCurveOperationalTableWidget extends TableWidget
         }
 
         if ($state === 'sem_curva') {
-            return $query->whereDoesntHave('puCurveVersions');
+            return $query->whereDoesntHave('operationalPuCurveVersions');
         }
 
         if (PuCurveStatus::tryFrom($state) === null) {
@@ -250,6 +250,7 @@ class PuCurveOperationalTableWidget extends TableWidget
     protected function emissionIdsWithLatestStatus(string $status): Collection
     {
         $latestIds = EmissionPuCurveVersion::query()
+            ->operational()
             ->selectRaw('MAX(id) as id')
             ->groupBy('emission_id')
             ->pluck('id');

@@ -140,6 +140,7 @@ enum AccessPermission: string
     case MeasurementsExport = 'measurements.export';
     case MeasurementsExceptionsView = 'measurements.exceptions.view';
     case MeasurementsCycleReportsView = 'measurements.cycle-reports.view';
+    case MeasurementsCycleReportsExport = 'measurements.cycle-reports.export';
     case DelegationsView = 'delegations.view';
     case DelegationsCreate = 'delegations.create';
     case DelegationsRevoke = 'delegations.revoke';
@@ -388,6 +389,7 @@ enum AccessPermission: string
             self::MeasurementsExport => 'Medições: exportar pagamentos operacionais',
             self::MeasurementsExceptionsView => 'Medições: visualizar exceções operacionais',
             self::MeasurementsCycleReportsView => 'Medições: visualizar histórico de ciclo',
+            self::MeasurementsCycleReportsExport => 'Medições: exportar relatório de ciclo',
             self::DelegationsView => 'Delegações: visualizar',
             self::DelegationsCreate => 'Delegações: criar',
             self::DelegationsRevoke => 'Delegações: revogar',
@@ -600,6 +602,7 @@ enum AccessPermission: string
                 self::MeasurementsExport,
                 self::MeasurementsExceptionsView,
                 self::MeasurementsCycleReportsView,
+                self::MeasurementsCycleReportsExport,
             ], true) => 'Gestão',
             default => 'Outros',
         };

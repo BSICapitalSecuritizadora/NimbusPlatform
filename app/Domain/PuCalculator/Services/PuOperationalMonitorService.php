@@ -30,6 +30,7 @@ class PuOperationalMonitorService
 
         $latestIds = EmissionPuCurveVersion::query()
             ->whereIn('emission_id', $emissionIdsWithPu)
+            ->operational()
             ->selectRaw('MAX(id) as id')
             ->groupBy('emission_id')
             ->pluck('id');
@@ -101,6 +102,7 @@ class PuOperationalMonitorService
         }
 
         $stuck = (int) EmissionPuCurveVersion::query()
+            ->operational()
             ->where('status', PuCurveStatus::Processing->value)
             ->where('updated_at', '<', now()->subMinutes($staleMinutes))
             ->count();
@@ -119,6 +121,7 @@ class PuOperationalMonitorService
     public function recentValidations(int $limit = 5): Collection
     {
         return EmissionPuCurveVersion::query()
+            ->operational()
             ->whereNotNull('validated_at')
             ->with(['emission', 'validatedBy'])
             ->latest('validated_at')
@@ -132,6 +135,7 @@ class PuOperationalMonitorService
     public function recentHomologations(int $limit = 5): Collection
     {
         return EmissionPuCurveVersion::query()
+            ->operational()
             ->where('status', PuCurveStatus::Homologated->value)
             ->whereNotNull('homologated_at')
             ->with(['emission', 'homologatedBy'])

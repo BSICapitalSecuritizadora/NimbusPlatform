@@ -576,16 +576,18 @@ final class PuBaselineCandidatePersistenceService
         Emission $emission,
         ?EmissionPuParameter $parameter,
     ): array {
-        $curveCount = $emission->puDailyCurves()->count();
+        $curveCount = $emission->operationalPuDailyCurves()->count();
         $historyCount = $emission->puHistories()->count();
         $eventCount = $emission->puEvents()->count();
         $paymentCount = $emission->payments()->count();
         $validatedCurveVersionCount = EmissionPuCurveVersion::query()
             ->whereBelongsTo($emission)
+            ->operational()
             ->where('status', PuCurveStatus::Validated->value)
             ->count();
         $homologatedCurveVersionCount = EmissionPuCurveVersion::query()
             ->whereBelongsTo($emission)
+            ->operational()
             ->where('status', PuCurveStatus::Homologated->value)
             ->count();
 
