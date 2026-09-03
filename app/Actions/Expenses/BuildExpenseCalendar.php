@@ -2,8 +2,8 @@
 
 namespace App\Actions\Expenses;
 
-use App\Filament\Resources\Expenses\ExpenseResource;
 use App\Models\Expense;
+use App\Services\Expenses\ExpenseOccurrenceResolver;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,6 +11,10 @@ use Illuminate\Support\Collection;
 
 class BuildExpenseCalendar
 {
+    public function __construct(
+        protected ExpenseOccurrenceResolver $occurrenceResolver,
+    ) {}
+
     /**
      * @param  array{emission_id?: int|string|null, category?: string|null}  $filters
      * @return array{
@@ -22,19 +26,7 @@ class BuildExpenseCalendar
      *         day_number: string,
      *         is_current_month: bool,
      *         is_today: bool,
-     *         events: array<int, array{
-     *             id: string,
-     *             date: string,
-     *             amount: float,
-     *             operation: string,
-     *             category: string,
-     *             service_provider: string,
-     *             amount_label: string,
-     *             period_label: string,
-     *             url: ?string,
-     *             is_overdue: bool,
-     *             is_due_soon: bool
-     *         }>
+     *         events: array<int, array<string, mixed>>
      *     }>>
      * }
      */
@@ -97,8 +89,8 @@ class BuildExpenseCalendar
 
     protected function buildEvents(CarbonImmutable $monthStart, CarbonImmutable $monthEnd, array $filters = []): Collection
     {
-        return Expense::query()
-            ->with(['emission', 'serviceProvider'])
+        $expenses = Expense::query()
+            ->with(['emission', 'serviceProvider', 'histories'])
             ->when(
                 filled($filters['emission_id'] ?? null),
                 fn (Builder $query): Builder => $query->where('emission_id', $filters['emission_id']),
@@ -107,109 +99,25 @@ class BuildExpenseCalendar
                 filled($filters['category'] ?? null),
                 fn (Builder $query): Builder => $query->where('category', $filters['category']),
             )
-            ->whereDate('start_date', '<=', $monthEnd->toDateString())
-            ->where(function (Builder $query) use ($monthStart): void {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $monthStart->toDateString());
+            ->where(function (Builder $query) use ($monthStart, $monthEnd): void {
+                $query->where(function (Builder $sub) use ($monthStart, $monthEnd): void {
+                    $sub->whereDate('start_date', '<=', $monthEnd->toDateString())
+                        ->where(function (Builder $sub2) use ($monthStart): void {
+                            $sub2->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $monthStart->toDateString());
+                        });
+                })->orWhereHas('histories', function (Builder $sub) use ($monthStart, $monthEnd): void {
+                    $sub->whereBetween('due_date', [$monthStart->toDateString(), $monthEnd->toDateString()]);
+                });
             })
-            ->get()
-            ->flatMap(fn (Expense $expense): array => $this->buildExpenseEvents($expense, $monthStart, $monthEnd))
-            ->sortBy([
-                ['date', 'asc'],
-                ['operation', 'asc'],
-                ['category', 'asc'],
-            ])
-            ->values();
-    }
+            ->get();
 
-    /**
-     * @return array<int, array{
-     *     id: string,
-     *     date: string,
-     *     amount: float,
-     *     operation: string,
-     *     category: string,
-     *     service_provider: string,
-     *     amount_label: string,
-     *     period_label: string,
-     *     url: ?string,
-     *     is_overdue: bool,
-     *     is_due_soon: bool
-     * }>
-     */
-    protected function buildExpenseEvents(Expense $expense, CarbonImmutable $monthStart, CarbonImmutable $monthEnd): array
-    {
-        $occurrenceDate = $this->resolveOccurrenceDate($expense, $monthStart, $monthEnd);
-
-        if ($occurrenceDate === null) {
-            return [];
-        }
-
-        $today = now();
-
-        return [[
-            'id' => "expense-{$expense->getKey()}-{$occurrenceDate->format('Ymd')}",
-            'date' => $occurrenceDate->toDateString(),
-            'amount' => round((float) $expense->amount, 2),
-            'operation' => (string) ($expense->emission?->name ?? 'Operação sem nome'),
-            'category' => $expense->category,
-            'service_provider' => (string) ($expense->serviceProvider?->name ?? 'Prestador não informado'),
-            'amount_label' => $this->formatCurrency($expense->amount),
-            'period_label' => Expense::PERIOD_OPTIONS[$expense->period] ?? $expense->period,
-            'url' => ExpenseResource::canEdit($expense)
-                ? ExpenseResource::getUrl('edit', ['record' => $expense])
-                : null,
-            'is_overdue' => $occurrenceDate->lt($today->startOfDay()),
-            'is_due_soon' => $occurrenceDate->gte($today->startOfDay())
-                && $occurrenceDate->lte($today->addDays(7)->endOfDay()),
-        ]];
-    }
-
-    protected function resolveOccurrenceDate(Expense $expense, CarbonImmutable $monthStart, CarbonImmutable $monthEnd): ?CarbonImmutable
-    {
-        $startDate = CarbonImmutable::instance($expense->start_date);
-        $endDate = $expense->end_date !== null
-            ? CarbonImmutable::instance($expense->end_date)
-            : null;
-
-        if ($expense->period === Expense::PERIOD_SINGLE) {
-            return $this->isWithinMonth($startDate, $monthStart, $monthEnd)
-                ? $startDate
-                : null;
-        }
-
-        $intervalInMonths = Expense::periodIntervalInMonths($expense->period);
-
-        if ($intervalInMonths === null || $startDate->gt($monthEnd)) {
-            return null;
-        }
-
-        if ($endDate !== null && $endDate->lt($monthStart)) {
-            return null;
-        }
-
-        $monthDifference = (($monthStart->year - $startDate->year) * 12) + ($monthStart->month - $startDate->month);
-
-        if ($monthDifference < 0 || ($monthDifference % $intervalInMonths) !== 0) {
-            return null;
-        }
-
-        $occurrenceDate = $startDate->addMonthsNoOverflow($monthDifference);
-
-        if (! $this->isWithinMonth($occurrenceDate, $monthStart, $monthEnd)) {
-            return null;
-        }
-
-        if ($endDate !== null && $occurrenceDate->gt($endDate)) {
-            return null;
-        }
-
-        return $occurrenceDate;
-    }
-
-    protected function isWithinMonth(CarbonImmutable $date, CarbonImmutable $monthStart, CarbonImmutable $monthEnd): bool
-    {
-        return $date->gte($monthStart) && $date->lte($monthEnd);
+        return $this->occurrenceResolver->resolveForMonth(
+            $expenses,
+            $monthStart,
+            $monthEnd,
+            now()->toImmutable(),
+        );
     }
 
     protected function formatCurrency(float|string|null $amount): string

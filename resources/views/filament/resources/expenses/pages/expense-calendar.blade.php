@@ -5,17 +5,22 @@
         $emissionOptions = $this->getEmissionOptions();
         $categoryOptions = $this->getCategoryOptions();
         $hasActiveFilters = $this->hasActiveFilters();
+        $allEvents = collect($calendar['weeks'])->flatten(1)->flatMap(fn (array $day): array => $day['events']);
         $selectedDay = $this->selectedDate !== null
             ? collect($calendar['weeks'])->flatten(1)->firstWhere('date', $this->selectedDate)
+            : null;
+        $selectedEvent = $this->selectedEventId !== null
+            ? $allEvents->firstWhere('id', $this->selectedEventId)
             : null;
 
         $eventTooltip = fn (array $event): string => implode(' — ', array_filter([
             $event['category'].' · '.$event['amount_label'],
+            'Status: '.$event['status_label'],
             $event['operation'],
             'Prestador: '.$event['service_provider'],
-            'Vencimento: '.\Carbon\CarbonImmutable::parse($event['date'])->format('d/m/Y'),
+            'Vencimento: '.$event['due_date_label'],
+            $event['payment_date_label'] !== '—' ? 'Pago em: '.$event['payment_date_label'] : null,
             $event['period_label'],
-            $event['is_overdue'] ? 'Vencida' : null,
         ]));
     @endphp
 
@@ -201,39 +206,31 @@
                                     @if (count($day['events']) > 0)
                                         <div class="mt-2 space-y-1.5">
                                             @foreach (array_slice($day['events'], 0, 2) as $event)
-                                                @php $eventTag = $event['url'] !== null ? 'a' : 'article'; @endphp
-
-                                                <{{ $eventTag }}
+                                                <button
+                                                    type="button"
                                                     wire:key="expense-calendar-event-{{ $event['id'] }}"
-                                                    @if ($event['url'] !== null) href="{{ $event['url'] }}" @endif
+                                                    wire:click="openEvent('{{ $event['id'] }}')"
                                                     title="{{ $eventTooltip($event) }}"
                                                     @class([
-                                                        'block rounded-xl border border-slate-400/15 bg-bsi-navy-900/60 px-2.5 py-2 shadow-sm shadow-black/10 transition',
-                                                        'hover:border-bsi-gold-500/50 hover:bg-bsi-navy-800/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bsi-gold-500/60' => $event['url'] !== null,
+                                                        'block w-full text-left rounded-xl border border-slate-400/15 bg-bsi-navy-900/60 px-2.5 py-2 shadow-sm shadow-black/10 transition',
+                                                        'hover:border-bsi-gold-500/50 hover:bg-bsi-navy-800/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bsi-gold-500/60',
                                                         'opacity-55' => ! $day['is_current_month'],
                                                     ])
                                                 >
-                                                    <div class="flex items-center justify-between gap-2">
+                                                    <div class="flex items-center justify-between gap-1.5">
                                                         <span class="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                                                            <span
-                                                                @class([
-                                                                    'h-1.5 w-1.5 shrink-0 rounded-full',
-                                                                    'bg-red-400' => $event['is_overdue'],
-                                                                    'bg-amber-400' => ! $event['is_overdue'] && $event['is_due_soon'],
-                                                                    'bg-slate-500' => ! $event['is_overdue'] && ! $event['is_due_soon'],
-                                                                ])
-                                                            ></span>
+                                                            <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ $event['dot_classes'] }}"></span>
                                                             <span class="truncate">{{ $event['category'] }}</span>
                                                         </span>
 
-                                                        @if ($event['is_overdue'])
-                                                            <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-red-300">Vencida</span>
-                                                        @endif
+                                                        <span class="shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold {{ $event['badge_classes'] }}">
+                                                            {{ $event['status_label'] }}
+                                                        </span>
                                                     </div>
 
                                                     <p class="mt-1 text-sm font-semibold tabular-nums text-white">{{ $event['amount_label'] }}</p>
                                                     <p class="mt-0.5 truncate text-[11px] text-slate-400">{{ $event['operation'] }}</p>
-                                                </{{ $eventTag }}>
+                                                </button>
                                             @endforeach
 
                                             @if (count($day['events']) > 2)
@@ -266,35 +263,29 @@
 
                         <div class="space-y-2">
                             @foreach ($day['events'] as $event)
-                                @php $eventTag = $event['url'] !== null ? 'a' : 'article'; @endphp
-
-                                <{{ $eventTag }}
+                                <button
+                                    type="button"
                                     wire:key="expense-calendar-mobile-event-{{ $event['id'] }}"
-                                    @if ($event['url'] !== null) href="{{ $event['url'] }}" @endif
-                                    class="block rounded-xl border border-slate-400/15 bg-bsi-navy-900/60 p-3 transition hover:border-bsi-gold-500/50"
+                                    wire:click="openEvent('{{ $event['id'] }}')"
+                                    class="w-full text-left block rounded-xl border border-slate-400/15 bg-bsi-navy-900/60 p-3 transition hover:border-bsi-gold-500/50"
                                 >
                                     <div class="flex items-center justify-between gap-3">
                                         <span class="inline-flex min-w-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
-                                            <span
-                                                @class([
-                                                    'h-1.5 w-1.5 shrink-0 rounded-full',
-                                                    'bg-red-400' => $event['is_overdue'],
-                                                    'bg-amber-400' => ! $event['is_overdue'] && $event['is_due_soon'],
-                                                    'bg-slate-500' => ! $event['is_overdue'] && ! $event['is_due_soon'],
-                                                ])
-                                            ></span>
+                                            <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ $event['dot_classes'] }}"></span>
                                             <span class="truncate">{{ $event['category'] }}</span>
                                         </span>
 
-                                        <span class="shrink-0 text-sm font-semibold tabular-nums text-white">{{ $event['amount_label'] }}</span>
+                                        <span class="shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold {{ $event['badge_classes'] }}">
+                                            {{ $event['status_label'] }}
+                                        </span>
                                     </div>
 
-                                    <p class="mt-1.5 truncate text-xs text-slate-400">{{ $event['operation'] }} · {{ $event['service_provider'] }}</p>
-
-                                    @if ($event['is_overdue'])
-                                        <p class="mt-1 text-[10px] font-semibold uppercase tracking-wider text-red-300">Vencida</p>
-                                    @endif
-                                </{{ $eventTag }}>
+                                    <div class="mt-2 flex items-baseline justify-between gap-2">
+                                        <p class="text-sm font-semibold tabular-nums text-white">{{ $event['amount_label'] }}</p>
+                                        <p class="truncate text-xs text-slate-400">{{ $event['operation'] }}</p>
+                                    </div>
+                                    <p class="mt-1 truncate text-xs text-slate-400">{{ $event['service_provider'] }}</p>
+                                </button>
                             @endforeach
                         </div>
                     </div>
@@ -306,6 +297,121 @@
             </div>
         </section>
     </div>
+
+    @if ($selectedEvent !== null)
+        <div
+            x-data
+            x-on:keydown.escape.window="$wire.closeEvent()"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" wire:click="closeEvent"></div>
+
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Detalhes do pagamento"
+                class="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-400/20 bg-bsi-navy-900 shadow-2xl shadow-black/40"
+            >
+                <div class="flex items-start justify-between gap-4 border-b border-slate-400/15 px-6 py-5">
+                    <div>
+                        <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Detalhes da ocorrência</span>
+                        <h3 class="mt-1 text-xl font-semibold text-white">{{ $selectedEvent['category'] }}</h3>
+                    </div>
+
+                    <button
+                        type="button"
+                        wire:click="closeEvent"
+                        aria-label="Fechar"
+                        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-400/20 text-slate-400 transition hover:border-bsi-gold-500/50 hover:text-white"
+                    >
+                        <x-filament::icon icon="heroicon-o-x-mark" class="h-4 w-4" />
+                    </button>
+                </div>
+
+                <div class="space-y-4 overflow-y-auto px-6 py-5 text-sm">
+                    <div class="grid grid-cols-2 gap-4 rounded-xl border border-slate-400/15 bg-white/[0.02] p-4">
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Status</span>
+                            <div class="mt-1.5">
+                                <span class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold {{ $selectedEvent['badge_classes'] }}">
+                                    <span class="h-1.5 w-1.5 rounded-full {{ $selectedEvent['dot_classes'] }}"></span>
+                                    {{ $selectedEvent['status_label'] }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Vencimento</span>
+                            <p class="mt-1.5 font-medium text-white">{{ $selectedEvent['due_date_label'] }}</p>
+                        </div>
+
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Valor previsto</span>
+                            <p class="mt-1.5 font-semibold text-white tabular-nums">{{ $selectedEvent['expected_amount_label'] }}</p>
+                        </div>
+
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Valor pago</span>
+                            <p class="mt-1.5 font-semibold tabular-nums {{ $selectedEvent['paid_amount_label'] !== '—' ? 'text-emerald-400' : 'text-slate-400' }}">
+                                {{ $selectedEvent['paid_amount_label'] }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Data do pagamento</span>
+                            <p class="mt-1.5 font-medium {{ $selectedEvent['payment_date_label'] !== '—' ? 'text-emerald-400' : 'text-slate-400' }}">
+                                {{ $selectedEvent['payment_date_label'] }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Periodicidade</span>
+                            <p class="mt-1.5 font-medium text-slate-300">{{ $selectedEvent['period_label'] }}</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 rounded-xl border border-slate-400/15 bg-white/[0.02] p-4">
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Operação</span>
+                            <p class="mt-1 font-medium text-white">{{ $selectedEvent['operation'] }}</p>
+                        </div>
+
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Categoria</span>
+                            <p class="mt-1 font-medium text-white">{{ $selectedEvent['category'] }}</p>
+                        </div>
+
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Prestador</span>
+                            <p class="mt-1 font-medium text-slate-300">{{ $selectedEvent['service_provider'] }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between border-t border-slate-400/15 px-6 py-4 bg-white/[0.01]">
+                    @if ($selectedEvent['url'] !== null)
+                        <a
+                            href="{{ $selectedEvent['url'] }}"
+                            class="inline-flex items-center gap-2 rounded-xl border border-bsi-gold-500/40 bg-bsi-gold-500/10 px-4 py-2 text-sm font-semibold text-[#d5aa67] transition hover:border-bsi-gold-500/70 hover:bg-bsi-gold-500/20"
+                        >
+                            <x-filament::icon icon="heroicon-o-pencil-square" class="h-4 w-4" />
+                            <span>Editar despesa</span>
+                        </a>
+                    @else
+                        <div></div>
+                    @endif
+
+                    <button
+                        type="button"
+                        wire:click="closeEvent"
+                        class="inline-flex items-center justify-center rounded-xl border border-slate-400/20 bg-bsi-navy-900/60 px-4 py-2 text-sm font-medium text-slate-300 transition hover:text-white hover:border-slate-400/40"
+                    >
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @if ($selectedDay !== null)
         <div
@@ -342,43 +448,70 @@
                     </button>
                 </div>
 
-                <div class="space-y-2 overflow-y-auto px-6 py-5">
+                <div class="space-y-3 overflow-y-auto px-6 py-5">
                     @foreach ($selectedDay['events'] as $event)
-                        @php $eventTag = $event['url'] !== null ? 'a' : 'article'; @endphp
-
-                        <{{ $eventTag }}
+                        <div
                             wire:key="expense-calendar-modal-event-{{ $event['id'] }}"
-                            @if ($event['url'] !== null) href="{{ $event['url'] }}" @endif
-                            @class([
-                                'block rounded-xl border border-slate-400/15 bg-white/[0.03] p-4 transition',
-                                'hover:border-bsi-gold-500/50 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bsi-gold-500/60' => $event['url'] !== null,
-                            ])
+                            class="rounded-xl border border-slate-400/15 bg-white/[0.03] p-4 transition hover:border-slate-400/30"
                         >
                             <div class="flex items-center justify-between gap-3">
                                 <span class="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-300">
-                                    <span
-                                        @class([
-                                            'h-1.5 w-1.5 shrink-0 rounded-full',
-                                            'bg-red-400' => $event['is_overdue'],
-                                            'bg-amber-400' => ! $event['is_overdue'] && $event['is_due_soon'],
-                                            'bg-slate-500' => ! $event['is_overdue'] && ! $event['is_due_soon'],
-                                        ])
-                                    ></span>
+                                    <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ $event['dot_classes'] }}"></span>
                                     <span class="truncate">{{ $event['category'] }}</span>
                                 </span>
 
-                                <span class="shrink-0 text-base font-semibold tabular-nums text-white">{{ $event['amount_label'] }}</span>
+                                <span class="shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold {{ $event['badge_classes'] }}">
+                                    {{ $event['status_label'] }}
+                                </span>
                             </div>
 
-                            <p class="mt-1.5 text-sm text-slate-300">{{ $event['operation'] }}</p>
-                            <p class="mt-1 text-xs text-slate-400">
+                            <div class="mt-3 grid grid-cols-2 gap-2 text-xs border-y border-slate-400/10 py-2.5">
+                                <div>
+                                    <span class="text-slate-400">Previsto:</span>
+                                    <span class="font-semibold text-white tabular-nums">{{ $event['expected_amount_label'] }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400">Pago:</span>
+                                    <span class="font-semibold tabular-nums {{ $event['paid_amount_label'] !== '—' ? 'text-emerald-400' : 'text-slate-400' }}">
+                                        {{ $event['paid_amount_label'] }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400">Vencimento:</span>
+                                    <span class="text-slate-200">{{ $event['due_date_label'] }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400">Data pagamento:</span>
+                                    <span class="{{ $event['payment_date_label'] !== '—' ? 'text-emerald-400' : 'text-slate-400' }}">
+                                        {{ $event['payment_date_label'] }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p class="mt-2.5 text-sm text-slate-200 font-medium">{{ $event['operation'] }}</p>
+                            <p class="mt-0.5 text-xs text-slate-400">
                                 Prestador: {{ $event['service_provider'] }} · {{ $event['period_label'] }}
                             </p>
 
-                            @if ($event['is_overdue'])
-                                <p class="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-red-300">Vencida</p>
-                            @endif
-                        </{{ $eventTag }}>
+                            <div class="mt-3 flex items-center justify-end gap-2">
+                                <button
+                                    type="button"
+                                    wire:click="openEvent('{{ $event['id'] }}')"
+                                    class="inline-flex items-center gap-1 text-xs font-semibold text-[#d5aa67] hover:underline"
+                                >
+                                    Ver detalhes
+                                </button>
+                                @if ($event['url'] !== null)
+                                    <span class="text-slate-600">·</span>
+                                    <a
+                                        href="{{ $event['url'] }}"
+                                        class="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-white hover:underline"
+                                    >
+                                        Editar
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
                     @endforeach
                 </div>
             </div>

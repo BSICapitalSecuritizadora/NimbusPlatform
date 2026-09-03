@@ -34,8 +34,20 @@ class HistoriesRelationManager extends RelationManager
                     ->date('d/m/Y')
                     ->sortable(),
 
+                TextColumn::make('payment_date')
+                    ->label('Data do pagamento')
+                    ->date('d/m/Y')
+                    ->placeholder('—')
+                    ->sortable(),
+
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->color('success')
+                    ->state(fn (): string => 'Pago'),
+
                 TextColumn::make('amount')
-                    ->label('Valor')
+                    ->label('Valor pago')
                     ->money('BRL')
                     ->weight('semibold')
                     ->alignEnd()

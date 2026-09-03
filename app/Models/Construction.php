@@ -130,6 +130,17 @@ class Construction extends Model
         return $this->hasMany(ConstructionUnit::class);
     }
 
+    /**
+     * Append-only history of the maximum commercial discount authorised for the
+     * development, newest first.
+     */
+    public function salesDiscountPolicies(): HasMany
+    {
+        return $this->hasMany(SalesDiscountPolicy::class)
+            ->orderByDesc('effective_from')
+            ->orderByDesc('id');
+    }
+
     public function measurementPlanSets(): HasMany
     {
         return $this->hasMany(MeasurementPlanSet::class);

@@ -13,8 +13,11 @@ use App\Domain\PuCalculator\DTOs\PuValidationFieldDifference;
 use App\Domain\PuCalculator\DTOs\PuValidationReport;
 use App\Domain\PuCalculator\DTOs\PuValidationRowResult;
 use App\Domain\PuCalculator\Enums\PuCandidateReviewDecision;
+use App\Domain\PuCalculator\Enums\PuExternalValidationDecision;
 use App\Models\Emission;
 use App\Models\EmissionPuCurveVersion;
+use App\Models\EmissionPuExternalBenchmark;
+use App\Models\EmissionPuExternalValidation;
 use App\Models\EmissionPuParameter;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -226,6 +229,95 @@ class PuAuditLogService
                 'decision' => $decision->value,
                 'reason' => $reason,
                 'reviewed_at' => $version->reviewed_at?->toIso8601String(),
+            ])
+            ->event($description)
+            ->log($description);
+    }
+
+    public function logExternalBenchmarkImported(
+        EmissionPuCurveVersion $candidate,
+        EmissionPuExternalBenchmark $benchmark,
+        User $actor,
+    ): void {
+        activity(self::LOG_NAME)
+            ->performedOn($candidate->emission)
+            ->causedBy($actor)
+            ->withProperties([
+                'emission_id' => $candidate->emission_id,
+                'candidate_version_id' => $candidate->id,
+                'benchmark_id' => $benchmark->id,
+                'source_type' => $benchmark->source_type,
+                'source_name' => $benchmark->source_name,
+                'source_document_id' => $benchmark->source_document_id,
+                'source_evidence_id' => $benchmark->source_evidence_id,
+                'reference_as_of' => $benchmark->reference_as_of?->toDateString(),
+                'input_file_name' => $benchmark->input_file_name,
+                'file_sha256' => $benchmark->file_sha256,
+                'dataset_sha256' => $benchmark->dataset_sha256,
+                'row_count' => $benchmark->row_count,
+                'from_date' => $benchmark->from_date?->toDateString(),
+                'to_date' => $benchmark->to_date?->toDateString(),
+                'actor_id' => $actor->id,
+                'imported_at' => $benchmark->created_at?->toIso8601String(),
+            ])
+            ->event('external_benchmark_imported')
+            ->log('pu_external_benchmark_imported');
+    }
+
+    public function logExternalComparisonCreated(
+        EmissionPuExternalValidation $validation,
+        User $actor,
+    ): void {
+        $candidate = $validation->candidate()->with('emission')->firstOrFail();
+
+        activity(self::LOG_NAME)
+            ->performedOn($candidate->emission)
+            ->causedBy($actor)
+            ->withProperties([
+                'emission_id' => $candidate->emission_id,
+                'candidate_version_id' => $candidate->id,
+                'candidate_checksum' => $validation->candidate_checksum,
+                'benchmark_id' => $validation->benchmark_id,
+                'benchmark_dataset_sha256' => $validation->benchmark_dataset_sha256,
+                'external_validation_id' => $validation->id,
+                'comparison_algorithm_version' => $validation->comparison_algorithm_version,
+                'comparison_sha256' => $validation->comparison_sha256,
+                'coverage_status' => $validation->coverage_status->value,
+                'compared_rows' => $validation->compared_rows,
+                'candidate_dates_without_reference' => $validation->candidate_dates_without_reference,
+                'reference_dates_without_candidate' => $validation->reference_dates_without_candidate,
+                'actor_id' => $actor->id,
+                'generated_at' => $validation->created_at?->toIso8601String(),
+            ])
+            ->event('external_comparison_created')
+            ->log('pu_external_comparison_created');
+    }
+
+    public function logCandidateExternalValidationDecision(
+        EmissionPuExternalValidation $validation,
+        User $reviewer,
+        PuExternalValidationDecision $decision,
+    ): void {
+        $candidate = $validation->candidate()->with('emission')->firstOrFail();
+        $description = $decision === PuExternalValidationDecision::Validate
+            ? 'pu_candidate_external_validation_validated'
+            : 'pu_candidate_external_validation_rejected';
+
+        activity(self::LOG_NAME)
+            ->performedOn($candidate->emission)
+            ->causedBy($reviewer)
+            ->withProperties([
+                'emission_id' => $candidate->emission_id,
+                'candidate_version_id' => $candidate->id,
+                'benchmark_id' => $validation->benchmark_id,
+                'external_validation_id' => $validation->id,
+                'candidate_checksum' => $validation->candidate_checksum,
+                'benchmark_dataset_sha256' => $validation->benchmark_dataset_sha256,
+                'comparison_sha256' => $validation->comparison_sha256,
+                'reviewer_id' => $reviewer->id,
+                'decision' => $decision->value,
+                'reason' => $validation->review_reason,
+                'reviewed_at' => $validation->reviewed_at?->toIso8601String(),
             ])
             ->event($description)
             ->log($description);

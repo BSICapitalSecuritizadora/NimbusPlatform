@@ -75,6 +75,27 @@ class ConstructionUnitsTable
                         'class' => 'font-semibold tracking-tight text-white tabular-nums',
                     ]),
 
+                /**
+                 * Ocultas por padrão: a tabela é usada para localizar unidades,
+                 * e uma coluna de dinheiro sempre visível competiria com a
+                 * identificação sem ajudar a encontrar nada.
+                 */
+                TextColumn::make('base_value')
+                    ->label('Valor base')
+                    ->money('BRL')
+                    ->alignEnd()
+                    ->extraCellAttributes(['class' => 'font-mono tabular-nums whitespace-nowrap'])
+                    ->placeholder('Não informado')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('base_value_reference_date')
+                    ->label('Referência do valor base')
+                    ->date('d/m/Y')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('created_at')
                     ->label('Cadastrada em')
                     ->dateTime('d/m/Y H:i')

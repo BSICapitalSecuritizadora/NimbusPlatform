@@ -5,6 +5,8 @@ namespace App\Actions\ConstructionUnits;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
 use App\Models\Emission;
+use App\Support\Money\IntegerMoney;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
 
@@ -80,6 +82,8 @@ class AnalyzeConstructionUnitSpreadsheet
         $constructionName = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::CONSTRUCTION);
         $block = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::BLOCK);
         $unit = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::UNIT);
+        $baseValue = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::BASE_VALUE);
+        $baseValueReferenceDate = $this->cell($row, $resolvedHeaders, ConstructionUnitSpreadsheetColumns::BASE_VALUE_REFERENCE_DATE);
 
         $base = [
             'line' => $lineNumber,
@@ -88,9 +92,12 @@ class AnalyzeConstructionUnitSpreadsheet
             'block' => $block,
             'unit' => $unit,
             'construction_id' => null,
+            'base_value' => null,
+            'base_value_reference_date' => null,
         ];
 
-        if (blank($emissionName) && blank($constructionName) && blank($block) && blank($unit)) {
+        if (blank($emissionName) && blank($constructionName) && blank($block) && blank($unit)
+            && blank($baseValue) && blank($baseValueReferenceDate)) {
             return [...$base, 'status' => self::STATUS_EMPTY, 'message' => 'Linha vazia (ignorada).'];
         }
 
@@ -118,6 +125,15 @@ class AnalyzeConstructionUnitSpreadsheet
 
         $base['construction_id'] = $construction->id;
 
+        $baseValueResult = $this->resolveBaseValue($baseValue, $baseValueReferenceDate);
+
+        if (is_string($baseValueResult)) {
+            return [...$base, 'status' => self::STATUS_ERROR, 'message' => $baseValueResult];
+        }
+
+        $base['base_value'] = $baseValueResult['base_value'];
+        $base['base_value_reference_date'] = $baseValueResult['base_value_reference_date'];
+
         $key = $construction->id.'|'.Str::lower($block).'|'.Str::lower($unit);
 
         if (isset($seenUnits[$key])) {
@@ -142,6 +158,72 @@ class AnalyzeConstructionUnitSpreadsheet
     }
 
     /**
+     * Reads the optional base value pair.
+     *
+     * Both halves or neither: a value with no reference date cannot be placed
+     * in time, and a date with no value places nothing. Returning the message
+     * instead of the pair is how the caller turns it into a row error.
+     *
+     * @return array{base_value: int|null, base_value_reference_date: string|null}|string
+     */
+    private function resolveBaseValue(?string $baseValue, ?string $referenceDate): array|string
+    {
+        if (blank($baseValue) && blank($referenceDate)) {
+            return ['base_value' => null, 'base_value_reference_date' => null];
+        }
+
+        if (blank($baseValue)) {
+            return 'A data de referência foi informada sem o valor base. Informe os dois campos ou nenhum.';
+        }
+
+        if (blank($referenceDate)) {
+            return 'O valor base foi informado sem a data de referência. Informe os dois campos ou nenhum.';
+        }
+
+        $cents = IntegerMoney::cents($baseValue);
+
+        if ($cents === null) {
+            return 'Valor base inválido.';
+        }
+
+        if ($cents < 0) {
+            return 'O valor base não pode ser negativo.';
+        }
+
+        $date = $this->parseDate($referenceDate);
+
+        if ($date === null) {
+            return 'Data de referência do valor base inválida.';
+        }
+
+        return ['base_value' => $cents, 'base_value_reference_date' => $date];
+    }
+
+    /**
+     * Brazilian day-first dates are matched before anything else: `Carbon::parse`
+     * reads "03/09/2026" as the 9th of March, which would silently place a
+     * value nearly six months away from where the operator put it.
+     */
+    private function parseDate(string $value): ?string
+    {
+        $value = trim($value);
+
+        if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $value, $matches) === 1) {
+            [, $day, $month, $year] = $matches;
+
+            return checkdate((int) $month, (int) $day, (int) $year)
+                ? sprintf('%04d-%02d-%02d', $year, $month, $day)
+                : null;
+        }
+
+        try {
+            return CarbonImmutable::parse($value)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * @return list<string>
      */
     private function missingFields(?string $emission, ?string $construction, ?string $block, ?string $unit): array
@@ -160,7 +242,14 @@ class AnalyzeConstructionUnitSpreadsheet
      */
     private function cell(array $row, array $resolvedHeaders, string $column): ?string
     {
-        $value = $row[$resolvedHeaders[$column]] ?? null;
+        $header = $resolvedHeaders[$column] ?? null;
+
+        /** An optional column the file simply does not have. */
+        if ($header === null) {
+            return null;
+        }
+
+        $value = $row[$header] ?? null;
 
         if ($value === null) {
             return null;

@@ -6,6 +6,12 @@ use Illuminate\Support\Str;
 
 /**
  * Column contract shared by the template, the analysis and the import.
+ *
+ * The base value pair was added after the first spreadsheets were already in
+ * circulation, so it is optional: a file with only the four original columns
+ * keeps importing exactly as before. What is not optional is informing both
+ * halves of the pair -- a value with no reference date cannot be placed in time,
+ * and a date with no value places nothing.
  */
 class ConstructionUnitSpreadsheetColumns
 {
@@ -16,6 +22,10 @@ class ConstructionUnitSpreadsheetColumns
     public const BLOCK = 'Bloco';
 
     public const UNIT = 'Unidade';
+
+    public const BASE_VALUE = 'Valor Base';
+
+    public const BASE_VALUE_REFERENCE_DATE = 'Data de Referência do Valor Base';
 
     /**
      * Accepted header spellings, normalized (lowercase, no accents, no spaces).
@@ -35,12 +45,31 @@ class ConstructionUnitSpreadsheetColumns
         'unidade' => self::UNIT,
         'unit' => self::UNIT,
         'apartamento' => self::UNIT,
+        'valorbase' => self::BASE_VALUE,
+        'valordebase' => self::BASE_VALUE,
+        'basevalue' => self::BASE_VALUE,
+        'datadereferenciadovalorbase' => self::BASE_VALUE_REFERENCE_DATE,
+        'datadereferencia' => self::BASE_VALUE_REFERENCE_DATE,
+        'referenciadovalorbase' => self::BASE_VALUE_REFERENCE_DATE,
+        'basevaluereferencedate' => self::BASE_VALUE_REFERENCE_DATE,
     ];
 
     /**
+     * Columns the template writes: the required ones plus the optional pair.
+     *
      * @return list<string>
      */
     public static function headers(): array
+    {
+        return [...self::requiredHeaders(), self::BASE_VALUE, self::BASE_VALUE_REFERENCE_DATE];
+    }
+
+    /**
+     * Columns a file must carry to be read at all.
+     *
+     * @return list<string>
+     */
+    public static function requiredHeaders(): array
     {
         return [self::EMISSION, self::CONSTRUCTION, self::BLOCK, self::UNIT];
     }
@@ -72,7 +101,7 @@ class ConstructionUnitSpreadsheetColumns
      */
     public static function missingHeaders(array $resolvedHeaders): array
     {
-        return array_values(array_diff(self::headers(), array_keys($resolvedHeaders)));
+        return array_values(array_diff(self::requiredHeaders(), array_keys($resolvedHeaders)));
     }
 
     private static function normalize(string $header): string

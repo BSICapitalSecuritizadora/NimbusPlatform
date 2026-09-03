@@ -35,6 +35,12 @@ class EmissionPuCurveVersion extends Model
         'updated_at',
     ];
 
+    /** @var list<string> */
+    public const EXTERNAL_VALIDATION_MUTABLE_FIELDS = [
+        'external_validation_status',
+        'updated_at',
+    ];
+
     /**
      * Candidate persistida é artefato auditável: conteúdo financeiro, identidade
      * (role, asOf, fingerprint, checksum), provenance do maker e resultado da
@@ -46,6 +52,10 @@ class EmissionPuCurveVersion extends Model
     {
         static::updating(function (self $version): void {
             if ($version->getRawOriginal('curve_role') !== PuCurveRole::Candidate->value) {
+                return;
+            }
+
+            if (self::isExternalValidationTransition($version)) {
                 return;
             }
 
@@ -166,6 +176,11 @@ class EmissionPuCurveVersion extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    public function externalValidations(): HasMany
+    {
+        return $this->hasMany(EmissionPuExternalValidation::class, 'candidate_curve_version_id');
+    }
+
     /**
      * @param  Builder<EmissionPuCurveVersion>  $query
      * @return Builder<EmissionPuCurveVersion>
@@ -220,5 +235,21 @@ class EmissionPuCurveVersion extends Model
     public function isOperational(): bool
     {
         return $this->curve_role === PuCurveRole::Operational;
+    }
+
+    private static function isExternalValidationTransition(self $version): bool
+    {
+        $dirtyFields = array_keys($version->getDirty());
+        $newStatus = $version->external_validation_status;
+
+        return array_diff($dirtyFields, self::EXTERNAL_VALIDATION_MUTABLE_FIELDS) === []
+            && in_array('external_validation_status', $dirtyFields, true)
+            && PuCurveReviewStatus::tryFrom((string) $version->getRawOriginal('review_status')) === PuCurveReviewStatus::Approved
+            && PuCurveInternalValidationStatus::tryFrom((string) $version->getRawOriginal('internal_validation_status')) === PuCurveInternalValidationStatus::Passed
+            && PuCurveExternalValidationStatus::tryFrom((string) $version->getRawOriginal('external_validation_status')) === PuCurveExternalValidationStatus::Pending
+            && in_array($newStatus, [
+                PuCurveExternalValidationStatus::Validated,
+                PuCurveExternalValidationStatus::Rejected,
+            ], true);
     }
 }

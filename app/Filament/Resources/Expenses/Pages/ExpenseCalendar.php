@@ -36,6 +36,8 @@ class ExpenseCalendar extends Page
 
     public ?string $selectedDate = null;
 
+    public ?string $selectedEventId = null;
+
     public function mount(): void
     {
         $this->visibleMonth = now()->format('Y-m');
@@ -134,11 +136,29 @@ class ExpenseCalendar extends Page
     public function openDay(string $date): void
     {
         $this->selectedDate = $date;
+        $this->selectedEventId = null;
     }
 
     public function closeDay(): void
     {
         $this->selectedDate = null;
+    }
+
+    public function openEvent(string $eventId): void
+    {
+        $this->selectedEventId = $eventId;
+        $this->selectedDate = null;
+    }
+
+    public function closeEvent(): void
+    {
+        $this->selectedEventId = null;
+    }
+
+    public function closeModals(): void
+    {
+        $this->selectedDate = null;
+        $this->selectedEventId = null;
     }
 
     public function hasActiveFilters(): bool

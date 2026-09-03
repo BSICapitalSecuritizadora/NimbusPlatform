@@ -7,6 +7,7 @@ use App\Actions\ConstructionUnits\ImportConstructionUnitsFromSpreadsheet;
 use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Models\ConstructionUnitValue;
 use App\Models\Emission;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Filament\Actions\Testing\TestAction;
@@ -26,12 +27,18 @@ beforeEach(function () {
 });
 
 /**
+ * Builds a spreadsheet with the four original columns.
+ *
+ * The default is deliberately the legacy shape: the base value pair was added
+ * later and is optional, so every test that does not ask for it is proving that
+ * a file produced before it existed still imports.
+ *
  * @param  list<array<int, string|null>>  $rows
  */
 function unitSpreadsheet(array $rows, ?array $headers = null): string
 {
     $path = temporaryTestFilePath('units-import');
-    $headers ??= ConstructionUnitSpreadsheetColumns::headers();
+    $headers ??= ConstructionUnitSpreadsheetColumns::requiredHeaders();
 
     $writer = SimpleExcelWriter::create($path)->addHeader($headers);
 
@@ -49,6 +56,132 @@ function analyzeUnitSpreadsheet(array $rows, ?array $headers = null)
     return app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheet($rows, $headers));
 }
 
+/**
+ * Builds a spreadsheet carrying the optional base value pair as well.
+ *
+ * @param  list<array<int, string|null>>  $rows
+ */
+function unitSpreadsheetWithBaseValue(array $rows): string
+{
+    return unitSpreadsheet($rows, ConstructionUnitSpreadsheetColumns::headers());
+}
+
+it('imports a spreadsheet that carries the base value pair', function () {
+    $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+    $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', '900.000,00', '01/01/2026'],
+        ['CRI Alfa', 'Residencial Alfa', '01', '102', '1.000.000,00', '2026-01-01'],
+    ]));
+
+    expect($analysis->canImport())->toBeTrue();
+
+    app(ImportConstructionUnitsFromSpreadsheet::class)->handle($analysis);
+
+    $first = ConstructionUnit::query()->where('unit', '101')->sole();
+    $second = ConstructionUnit::query()->where('unit', '102')->sole();
+
+    expect($first->base_value)->toBe('900000.00')
+        ->and($first->base_value_reference_date->toDateString())->toBe('2026-01-01')
+        ->and($second->base_value)->toBe('1000000.00')
+        ->and($second->base_value_reference_date->toDateString())->toBe('2026-01-01');
+});
+
+it('reads a brazilian reference date as day first', function () {
+    $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+    $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', '900.000,00', '03/09/2026'],
+    ]));
+
+    app(ImportConstructionUnitsFromSpreadsheet::class)->handle($analysis);
+
+    expect(ConstructionUnit::sole()->base_value_reference_date->toDateString())->toBe('2026-09-03');
+});
+
+it('leaves the base value pair empty when the spreadsheet omits it', function () {
+    $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+    $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', '', ''],
+    ]));
+
+    expect($analysis->canImport())->toBeTrue();
+
+    app(ImportConstructionUnitsFromSpreadsheet::class)->handle($analysis);
+
+    $unit = ConstructionUnit::sole();
+
+    expect($unit->base_value)->toBeNull()
+        ->and($unit->base_value_reference_date)->toBeNull()
+        ->and($unit->hasBaseValue())->toBeFalse();
+});
+
+it('rejects a row that informs only one half of the base value pair', function (?string $baseValue, ?string $referenceDate, string $expectedMessage) {
+    $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+    $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', $baseValue, $referenceDate],
+    ]));
+
+    expect($analysis->canImport())->toBeFalse()
+        ->and($analysis->errorCount())->toBe(1)
+        ->and($analysis->collect()->first()['message'])->toContain($expectedMessage)
+        ->and(ConstructionUnit::count())->toBe(0);
+})->with([
+    'value without date' => ['900.000,00', '', 'sem a data de referência'],
+    'date without value' => ['', '01/01/2026', 'sem o valor base'],
+]);
+
+it('rejects an unreadable base value or reference date', function (string $baseValue, string $referenceDate, string $expectedMessage) {
+    $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+    $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', $baseValue, $referenceDate],
+    ]));
+
+    expect($analysis->canImport())->toBeFalse()
+        ->and($analysis->collect()->first()['message'])->toContain($expectedMessage);
+})->with([
+    'invalid value' => ['abc', '01/01/2026', 'Valor base inválido'],
+    'negative value' => ['-900.000,00', '01/01/2026', 'não pode ser negativo'],
+    'invalid date' => ['900.000,00', '31/02/2026', 'Data de referência do valor base inválida'],
+]);
+
+it('accepts a zero base value as an informed amount', function () {
+    $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+    $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', '0,00', '01/01/2026'],
+    ]));
+
+    app(ImportConstructionUnitsFromSpreadsheet::class)->handle($analysis);
+
+    $unit = ConstructionUnit::sole();
+
+    expect($unit->base_value)->toBe('0.00')
+        ->and($unit->hasBaseValue())->toBeTrue();
+});
+
+it('never writes value history when importing units', function () {
+    $emission = Emission::factory()->create(['name' => 'CRI Alfa']);
+    Construction::factory()->create(['emission_id' => $emission->id, 'development_name' => 'Residencial Alfa']);
+
+    $analysis = app(AnalyzeConstructionUnitSpreadsheet::class)->handle(unitSpreadsheetWithBaseValue([
+        ['CRI Alfa', 'Residencial Alfa', '01', '101', '900.000,00', '01/01/2026'],
+    ]));
+
+    app(ImportConstructionUnitsFromSpreadsheet::class)->handle($analysis);
+
+    expect(ConstructionUnitValue::count())->toBe(0);
+});
+
 it('builds a template whose data sheet carries only the headers', function () {
     $path = discardTemplateFileAfterTest(app(ConstructionUnitSpreadsheetTemplate::class)->build());
 
@@ -57,7 +190,7 @@ it('builds a template whose data sheet carries only the headers', function () {
 
     expect($dataRows)->toBe([])
         ->and($exampleRows)->toHaveCount(4)
-        ->and(array_keys($exampleRows[0]))->toBe(['Emissão', 'Empreendimento', 'Bloco', 'Unidade'])
+        ->and(array_keys($exampleRows[0]))->toBe(['Emissão', 'Empreendimento', 'Bloco', 'Unidade', 'Valor Base', 'Data de Referência do Valor Base'])
         ->and($exampleRows[0]['Emissão'])->toBe('CRI Conviva');
 
     // The example sheet is never read by the importer.
@@ -211,8 +344,11 @@ it('imports through the list page wizard and records the audit trail', function 
     Storage::disk('local')->put($storedPath, file_get_contents($path));
 
     Livewire::test(ListConstructionUnits::class)
+        // Os dois modelos ficam num menu rotulado "Baixar Modelo"; o rótulo de
+        // cada item distingue o de cadastro do de atualização de valores.
         ->assertActionExists('downloadTemplate')
-        ->assertActionHasLabel('downloadTemplate', 'Baixar Modelo')
+        ->assertActionHasLabel('downloadTemplate', 'Modelo de cadastro')
+        ->assertActionExists('downloadValueTemplate')
         ->assertActionExists('importUnits')
         ->assertActionHasLabel('importUnits', 'Importar Unidades')
         ->callAction(TestAction::make('importUnits'), ['file' => ['upload' => $storedPath]])

@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\ObligationEvidenceDownloadController;
 use App\Http\Controllers\Admin\PaymentTemplateDownloadController;
 use App\Http\Controllers\Admin\ProjectReportController;
 use App\Http\Controllers\Admin\PuHistoryTemplateDownloadController;
+use App\Http\Controllers\Admin\UnitValueTemplateDownloadController;
 use App\Http\Controllers\Auth\AzureController;
 use App\Http\Controllers\Nimbus\AdminDocumentController;
 use App\Http\Controllers\Nimbus\AdminSubmissionFileController;
@@ -247,6 +248,9 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(fu
         ->middleware('throttle:60,1');
     Route::get('/admin/construction-units/template/download', ConstructionUnitTemplateDownloadController::class)
         ->name('admin.construction-units.template.download')
+        ->middleware('throttle:60,1');
+    Route::get('/admin/construction-unit-values/template/download', UnitValueTemplateDownloadController::class)
+        ->name('admin.construction-unit-values.template.download')
         ->middleware('throttle:60,1');
     Route::get('/admin/clients/template/download', ClientTemplateDownloadController::class)
         ->name('admin.clients.template.download')

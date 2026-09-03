@@ -7,6 +7,8 @@ use App\Models\Fund;
 use App\Models\FundBalanceHistory;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
+use App\Services\SalesBoards\SalesBoardPositionReader;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
 /**
@@ -18,9 +20,6 @@ use Illuminate\Support\Collection;
  */
 class EmissionOperationalDataset
 {
-    /** @var Collection<int|string, Collection<int, SalesBoard>> */
-    private Collection $salesBoardsByConstruction;
-
     /** @var Collection<string, Receivable> */
     private Collection $receivablesByMonth;
 
@@ -30,9 +29,12 @@ class EmissionOperationalDataset
     /** @var array<string, Collection<int, SalesBoard>> */
     private array $salesBoardCache = [];
 
+    private readonly SalesBoardPositionReader $salesBoardPositionReader;
+
     public function __construct(private readonly Emission $emission)
     {
         $emission->loadMissing([
+            'constructions',
             'salesBoards',
             'receivables',
             'funds.balanceHistories',
@@ -40,10 +42,7 @@ class EmissionOperationalDataset
             'integralizationHistories',
         ]);
 
-        $this->salesBoardsByConstruction = $emission->salesBoards
-            ->filter(fn (SalesBoard $salesBoard): bool => $salesBoard->reference_month !== null)
-            ->sortByDesc(fn (SalesBoard $salesBoard): string => $salesBoard->reference_month->copy()->startOfMonth()->toDateString())
-            ->groupBy('construction_id');
+        $this->salesBoardPositionReader = app(SalesBoardPositionReader::class);
 
         $this->receivablesByMonth = $emission->receivables
             ->filter(fn (Receivable $receivable): bool => $receivable->reference_month !== null)
@@ -70,6 +69,12 @@ class EmissionOperationalDataset
      * último enviado — é a posição conhecida, e descartá-la zeraria o estoque
      * de quem apenas atrasou o envio.
      *
+     * A regra vive no {@see SalesBoardPositionReader}, que é a leitura única de
+     * posição de toda a aplicação; aqui ela é apenas aplicada sobre as relações
+     * já carregadas, sem consulta nova. O resultado numérico é o mesmo de antes
+     * da centralização — as garantias sempre leram a posição certa, e o que
+     * mudou foi só deixarem de ser as únicas a lê-la assim.
+     *
      * @return Collection<int, SalesBoard>
      */
     public function salesBoardsForMonth(string $referenceMonth, ?int $constructionId = null): Collection
@@ -80,18 +85,20 @@ class EmissionOperationalDataset
             return $this->salesBoardCache[$cacheKey];
         }
 
-        $groups = $constructionId === null
-            ? $this->salesBoardsByConstruction
-            : $this->salesBoardsByConstruction->filter(
-                fn (Collection $boards, int|string|null $key): bool => (int) $key === $constructionId,
-            );
+        $salesBoards = $this->salesBoardPositionReader->fromLoadedSalesBoards(
+            emissionId: (int) $this->emission->getKey(),
+            salesBoards: $this->emission->salesBoards,
+            constructions: $this->emission->constructions,
+            positionDate: CarbonImmutable::parse($referenceMonth),
+        )->salesBoards();
 
-        return $this->salesBoardCache[$cacheKey] = $groups
-            ->map(fn (Collection $salesBoards): ?SalesBoard => $salesBoards->first(
-                fn (SalesBoard $salesBoard): bool => $salesBoard->reference_month->copy()->startOfMonth()->toDateString() <= $referenceMonth,
-            ))
-            ->filter(fn (?SalesBoard $salesBoard): bool => $salesBoard instanceof SalesBoard)
-            ->values();
+        if ($constructionId !== null) {
+            $salesBoards = $salesBoards
+                ->filter(fn (SalesBoard $salesBoard): bool => (int) $salesBoard->construction_id === $constructionId)
+                ->values();
+        }
+
+        return $this->salesBoardCache[$cacheKey] = $salesBoards;
     }
 
     /**

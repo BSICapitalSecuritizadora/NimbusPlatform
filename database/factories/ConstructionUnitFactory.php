@@ -25,6 +25,21 @@ class ConstructionUnitFactory extends Factory
         ];
     }
 
+    /**
+     * Unidade com valor base informado.
+     *
+     * O padrão deixa o par nulo de propósito: a base tem unidades cadastradas
+     * antes de o valor existir, e é esse o estado que os fluxos precisam
+     * suportar.
+     */
+    public function withBaseValue(float|int|string $value, string $referenceDate): static
+    {
+        return $this->state(fn (): array => [
+            'base_value' => $value,
+            'base_value_reference_date' => $referenceDate,
+        ]);
+    }
+
     public function forConstruction(Construction $construction): static
     {
         return $this->state(fn (): array => [

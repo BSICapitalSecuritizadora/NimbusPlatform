@@ -9,6 +9,8 @@ use App\Models\GuaranteeSnapshot;
 use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Services\Guarantees\OutstandingBalanceResolver;
+use App\Services\SalesBoards\SalesBoardPositionReader;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -59,18 +61,13 @@ class GuaranteeCoverageCalculator
 
         $emission->load([
             'guaranteeSnapshots',
+            'constructions',
             'salesBoards',
             'receivables',
             'funds.balanceHistories',
             'puHistories',
             'integralizationHistories',
         ]);
-
-        /** @var Collection<int|string, Collection<int, SalesBoard>> $salesBoardsByConstruction */
-        $salesBoardsByConstruction = $emission->salesBoards
-            ->filter(fn (SalesBoard $salesBoard): bool => $salesBoard->reference_month !== null)
-            ->sortByDesc(fn (SalesBoard $salesBoard): string => $salesBoard->reference_month?->copy()->startOfMonth()->toDateString() ?? '')
-            ->groupBy('construction_id');
 
         /** @var Collection<string, Receivable> $receivablesByMonth */
         $receivablesByMonth = $emission->receivables
@@ -84,13 +81,11 @@ class GuaranteeCoverageCalculator
             ->map(fn (GuaranteeSnapshot $snapshot): array => $this->buildSnapshotSummary(
                 emission: $emission,
                 snapshot: $snapshot,
-                salesBoardsByConstruction: $salesBoardsByConstruction,
                 receivablesByMonth: $receivablesByMonth,
             ));
     }
 
     /**
-     * @param  Collection<int|string, Collection<int, SalesBoard>>  $salesBoardsByConstruction
      * @param  Collection<string, Receivable>  $receivablesByMonth
      * @return array{
      *     account_balance_value: float,
@@ -110,16 +105,12 @@ class GuaranteeCoverageCalculator
     private function buildSnapshotSummary(
         Emission $emission,
         GuaranteeSnapshot $snapshot,
-        Collection $salesBoardsByConstruction,
         Collection $receivablesByMonth,
     ): array {
         $referenceMonth = $snapshot->reference_month->copy()->startOfMonth()->toDateString();
 
         /** @var Collection<int, SalesBoard> $salesBoards */
-        $salesBoards = $this->resolveSalesBoardsForReferenceMonth(
-            salesBoardsByConstruction: $salesBoardsByConstruction,
-            referenceMonth: $referenceMonth,
-        );
+        $salesBoards = $this->resolveSalesBoardsForReferenceMonth($emission, $referenceMonth);
         $receivable = $receivablesByMonth->get($referenceMonth);
 
         $unitsValue = round((float) $salesBoards->sum(fn (SalesBoard $salesBoard): float => (float) $salesBoard->stock_value), 2);
@@ -187,24 +178,23 @@ class GuaranteeCoverageCalculator
     }
 
     /**
-     * @param  Collection<int|string, Collection<int, SalesBoard>>  $salesBoardsByConstruction
+     * Delega ao {@see SalesBoardPositionReader}, leitura única da posição do
+     * quadro de vendas: a última posição conhecida de cada empreendimento até a
+     * competência. A regra é a mesma de antes; o que deixou de existir foi a
+     * terceira cópia dela.
+     *
      * @return Collection<int, SalesBoard>
      */
-    private function resolveSalesBoardsForReferenceMonth(
-        Collection $salesBoardsByConstruction,
-        string $referenceMonth,
-    ): Collection {
-        return $salesBoardsByConstruction
-            ->map(function (Collection $salesBoards) use ($referenceMonth): ?SalesBoard {
-                /** @var SalesBoard|null $latestSalesBoard */
-                $latestSalesBoard = $salesBoards->first(
-                    fn (SalesBoard $salesBoard): bool => $salesBoard->reference_month?->copy()->startOfMonth()->toDateString() <= $referenceMonth,
-                );
-
-                return $latestSalesBoard;
-            })
-            ->filter(fn (?SalesBoard $salesBoard): bool => $salesBoard instanceof SalesBoard)
-            ->values();
+    private function resolveSalesBoardsForReferenceMonth(Emission $emission, string $referenceMonth): Collection
+    {
+        return app(SalesBoardPositionReader::class)
+            ->fromLoadedSalesBoards(
+                emissionId: (int) $emission->getKey(),
+                salesBoards: $emission->salesBoards,
+                constructions: $emission->constructions,
+                positionDate: CarbonImmutable::parse($referenceMonth),
+            )
+            ->salesBoards();
     }
 
     private function calculateReceivablesValue(Receivable $receivable): float

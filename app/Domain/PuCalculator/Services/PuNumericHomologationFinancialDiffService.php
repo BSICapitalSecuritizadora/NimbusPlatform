@@ -25,6 +25,32 @@ final class PuNumericHomologationFinancialDiffService
         PuCandidateCurve $candidate,
         ?array $reference,
     ): PuNumericHomologationComparisonResult {
+        $candidateRows = array_map(fn ($row): array => [
+            'curve_date' => $row->date->toDateString(),
+            'unit_value' => $row->updatedUnitValue,
+        ], $candidate->rows);
+
+        return $this->compareRows($candidateRows, $reference);
+    }
+
+    /**
+     * Exact-date financial comparison boundary shared by the in-memory numeric
+     * homologation and the persisted external-validation workflow.
+     *
+     * @param  list<array{curve_date:string,unit_value:string}>  $candidateRows
+     * @param  array{
+     *     source?:string,
+     *     reference_date?:string,
+     *     document_id?:int,
+     *     status?:string,
+     *     confidence?:string,
+     *     rows?:list<array{curve_date:string,unit_value:string}>
+     * }|null  $reference
+     */
+    public function compareRows(
+        array $candidateRows,
+        ?array $reference,
+    ): PuNumericHomologationComparisonResult {
         if ($reference === null || ($reference['rows'] ?? []) === []) {
             return new PuNumericHomologationComparisonResult(
                 status: 'unavailable',
@@ -35,9 +61,7 @@ final class PuNumericHomologationFinancialDiffService
             );
         }
 
-        $candidateRows = collect($candidate->rows)->keyBy(
-            fn ($row): string => $row->date->toDateString(),
-        );
+        $candidateRows = collect($candidateRows)->keyBy('curve_date');
         $referenceRows = collect($reference['rows'])->keyBy('curve_date');
         $dates = $candidateRows->keys()->merge($referenceRows->keys())->unique()->sort()->values();
         $differences = [];
@@ -47,7 +71,7 @@ final class PuNumericHomologationFinancialDiffService
         foreach ($dates as $date) {
             $candidateRow = $candidateRows->get($date);
             $referenceRow = $referenceRows->get($date);
-            $candidateValue = $candidateRow?->updatedUnitValue;
+            $candidateValue = is_array($candidateRow) ? ($candidateRow['unit_value'] ?? null) : null;
             $referenceValue = is_array($referenceRow) ? ($referenceRow['unit_value'] ?? null) : null;
 
             if (! is_string($candidateValue) || ! is_string($referenceValue)) {

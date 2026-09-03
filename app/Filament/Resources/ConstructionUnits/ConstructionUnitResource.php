@@ -2,14 +2,18 @@
 
 namespace App\Filament\Resources\ConstructionUnits;
 
+use App\DTOs\SalesBoards\ResolvedUnitValue;
 use App\Filament\Resources\ConstructionUnits\Pages\CreateConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\Pages\EditConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
+use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitValuesRelationManager;
 use App\Filament\Resources\ConstructionUnits\Schemas\ConstructionUnitForm;
 use App\Filament\Resources\ConstructionUnits\Tables\ConstructionUnitsTable;
 use App\Models\ConstructionUnit;
+use App\Services\SalesBoards\UnitValueResolver;
 use BackedEnum;
+use Carbon\CarbonImmutable;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
@@ -61,7 +65,67 @@ class ConstructionUnitResource extends Resource
                     TextEntry::make('block')->label('Bloco'),
                     TextEntry::make('unit')->label('Unidade')->weight('bold'),
                 ]),
+
+            Section::make('Valores')
+                ->description('Referência inicial da unidade e o valor que vale hoje.')
+                ->columnSpanFull()
+                ->columns(2)
+                ->schema([
+                    TextEntry::make('base_value')
+                        ->label('Valor base')
+                        ->money('BRL')
+                        ->placeholder('Não informado'),
+
+                    TextEntry::make('base_value_reference_date')
+                        ->label('Data de referência do valor base')
+                        ->date('d/m/Y')
+                        ->placeholder('Não informada'),
+
+                    TextEntry::make('current_value')
+                        ->label('Valor vigente')
+                        ->weight('bold')
+                        ->state(fn (ConstructionUnit $record): string => self::currentValue($record)->formattedValue() === null
+                            ? 'Sem valor conhecido'
+                            : 'R$ '.self::currentValue($record)->formattedValue()),
+
+                    TextEntry::make('current_value_effective_from')
+                        ->label('Vigente desde')
+                        ->state(function (ConstructionUnit $record): string {
+                            $resolved = self::currentValue($record);
+
+                            if ($resolved->isAbsent()) {
+                                return '—';
+                            }
+
+                            return sprintf(
+                                '%s (%s)',
+                                $resolved->effectiveFrom?->format('d/m/Y') ?? '—',
+                                $resolved->source->label(),
+                            );
+                        }),
+                ]),
         ]);
+    }
+
+    /**
+     * Valor da unidade hoje, resolvido pela mesma regra que a Fase B vai usar:
+     * o último histórico até hoje, ou o valor base se ele já estiver valendo.
+     *
+     * Deliberadamente sem memoização estática. Um cache em propriedade `static`
+     * sobrevive à requisição num processo de vida longa -- e à troca de registro
+     * entre dois testes -- e passaria a responder o valor de outra unidade. A
+     * consulta é uma só por chamada, com a unidade já carregada.
+     */
+    private static function currentValue(ConstructionUnit $record): ResolvedUnitValue
+    {
+        return app(UnitValueResolver::class)->forUnit($record, CarbonImmutable::now());
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            ConstructionUnitValuesRelationManager::class,
+        ];
     }
 
     public static function table(Table $table): Table
@@ -116,8 +180,22 @@ class ConstructionUnitResource extends Resource
      */
     public static function canDelete(Model $record): bool
     {
-        return (auth()->user()?->can('constructions.delete') ?? false)
-            && ! ($record instanceof ConstructionUnit && $record->contracts()->withTrashed()->exists());
+        if (! (auth()->user()?->can('constructions.delete') ?? false)) {
+            return false;
+        }
+
+        if (! ($record instanceof ConstructionUnit)) {
+            return true;
+        }
+
+        /**
+         * O histórico de valores é protegido pela FK exatamente como os
+         * contratos: apagar a unidade destruiria a resposta para quanto ela
+         * valia em cada data. A guarda existe para o usuário ver o motivo em vez
+         * de um erro de constraint.
+         */
+        return ! $record->contracts()->withTrashed()->exists()
+            && ! $record->valueHistories()->exists();
     }
 
     public static function getPages(): array

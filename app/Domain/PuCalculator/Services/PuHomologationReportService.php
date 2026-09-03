@@ -6,6 +6,9 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Models\EmissionPuCurveVersion;
+use App\Models\EmissionPuExternalValidation;
+use App\Models\EmissionPuExternalValidationGap;
+use App\Models\EmissionPuExternalValidationRow;
 
 class PuHomologationReportService
 {
@@ -21,10 +24,19 @@ class PuHomologationReportService
      */
     public function build(EmissionPuCurveVersion $version): array
     {
-        $version->loadMissing(['emission', 'generatedBy', 'validatedBy', 'homologatedBy']);
+        $version->loadMissing(['emission', 'generatedBy', 'validatedBy', 'homologatedBy', 'reviewedBy']);
         $emission = $version->emission;
         $snapshot = $version->parameters_snapshot ?? [];
         $validation = $version->validation_summary ?? [];
+        $externalValidation = $version->externalValidations()
+            ->with([
+                'benchmark.createdBy:id,name',
+                'benchmark.sourceDocument:id,title',
+                'generatedBy:id,name',
+                'reviewedBy:id,name',
+            ])
+            ->latest('id')
+            ->first();
 
         return [
             'emission' => [
@@ -48,6 +60,16 @@ class PuHomologationReportService
                 'validated_by' => $version->validatedBy?->name,
                 'homologated_at' => $version->homologated_at?->format('d/m/Y H:i'),
                 'homologated_by' => $version->homologatedBy?->name,
+                'curve_role' => $version->curve_role->value,
+                'candidate_as_of' => $version->candidate_as_of?->toDateString(),
+                'input_fingerprint' => $version->input_fingerprint,
+                'curve_checksum' => $version->curve_checksum,
+                'internal_validation_status' => $version->internal_validation_status?->value,
+                'review_status' => $version->review_status->value,
+                'reviewed_at' => $version->reviewed_at?->format('d/m/Y H:i'),
+                'reviewed_by' => $version->reviewedBy?->name,
+                'review_reason' => $version->review_reason,
+                'external_validation_status' => $version->external_validation_status?->value,
             ],
             'parameters' => [
                 'indexer' => $snapshot['indexer'] ?? null,
@@ -75,6 +97,7 @@ class PuHomologationReportService
                 'largest_total_value_difference' => $validation['largest_total_value_difference'] ?? null,
                 'largest_payment_difference' => $validation['largest_payment_difference'] ?? null,
             ],
+            'external_validation' => $this->externalValidation($externalValidation),
             'generated_at' => now()->format('d/m/Y H:i'),
         ];
     }
@@ -119,5 +142,84 @@ class PuHomologationReportService
         $suffix = $parts !== [] ? ' ('.implode(' / ', $parts).')' : '';
 
         return sprintf('#%d%s', $emission->id, $suffix);
+    }
+
+    /** @return array<string, mixed> */
+    private function externalValidation(?EmissionPuExternalValidation $validation): array
+    {
+        if (! $validation instanceof EmissionPuExternalValidation) {
+            return [
+                'has_comparison' => false,
+                'status' => null,
+                'tolerance_policy' => null,
+                'differences' => [],
+                'coverage_gaps' => [],
+            ];
+        }
+
+        $benchmark = $validation->benchmark;
+        $differences = $validation->rows()
+            ->orderBy('reference_date')
+            ->limit(25)
+            ->get()
+            ->map(fn (EmissionPuExternalValidationRow $row): array => [
+                'reference_date' => $row->reference_date?->toDateString(),
+                'candidate_unit_value' => $row->candidate_unit_value,
+                'external_unit_value' => $row->external_unit_value,
+                'absolute_difference' => $row->absolute_difference,
+                'relative_difference_percentage' => $row->relative_difference_percentage,
+                'classification' => $row->classification,
+            ])
+            ->all();
+        $coverageGaps = $validation->gaps()
+            ->orderBy('reference_date')
+            ->orderBy('gap_type')
+            ->limit(25)
+            ->get()
+            ->map(fn (EmissionPuExternalValidationGap $gap): array => [
+                'reference_date' => $gap->reference_date?->toDateString(),
+                'gap_type' => $gap->gap_type->value,
+            ])
+            ->all();
+
+        return [
+            'has_comparison' => true,
+            'validation_id' => $validation->id,
+            'status' => $validation->status->value,
+            'benchmark' => [
+                'id' => $benchmark?->id,
+                'source_type' => $benchmark?->source_type,
+                'source_name' => $benchmark?->source_name,
+                'source_document' => $benchmark?->sourceDocument?->title,
+                'source_document_id' => $benchmark?->source_document_id,
+                'source_evidence_id' => $benchmark?->source_evidence_id,
+                'reference_as_of' => $benchmark?->reference_as_of?->toDateString(),
+                'file_sha256' => $benchmark?->file_sha256,
+                'dataset_sha256' => $benchmark?->dataset_sha256,
+                'row_count' => $benchmark?->row_count,
+                'from_date' => $benchmark?->from_date?->toDateString(),
+                'to_date' => $benchmark?->to_date?->toDateString(),
+                'imported_by' => $benchmark?->createdBy?->name,
+                'imported_at' => $benchmark?->created_at?->format('d/m/Y H:i'),
+            ],
+            'candidate_checksum' => $validation->candidate_checksum,
+            'benchmark_dataset_sha256' => $validation->benchmark_dataset_sha256,
+            'comparison_algorithm_version' => $validation->comparison_algorithm_version,
+            'comparison_sha256' => $validation->comparison_sha256,
+            'coverage_status' => $validation->coverage_status->value,
+            'compared_rows' => $validation->compared_rows,
+            'candidate_dates_without_reference' => $validation->candidate_dates_without_reference,
+            'reference_dates_without_candidate' => $validation->reference_dates_without_candidate,
+            'generated_by' => $validation->generatedBy?->name,
+            'generated_at' => $validation->created_at?->format('d/m/Y H:i'),
+            'reviewed_by' => $validation->reviewedBy?->name,
+            'reviewed_at' => $validation->reviewed_at?->format('d/m/Y H:i'),
+            'review_reason' => $validation->review_reason,
+            'tolerance_policy' => null,
+            'differences' => $differences,
+            'difference_sample_limit' => 25,
+            'coverage_gaps' => $coverageGaps,
+            'coverage_gap_sample_limit' => 25,
+        ];
     }
 }

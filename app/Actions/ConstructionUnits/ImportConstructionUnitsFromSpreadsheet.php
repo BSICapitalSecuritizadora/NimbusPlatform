@@ -4,6 +4,7 @@ namespace App\Actions\ConstructionUnits;
 
 use App\Models\Construction;
 use App\Models\ConstructionUnit;
+use App\Support\Money\IntegerMoney;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -38,6 +39,17 @@ class ImportConstructionUnitsFromSpreadsheet
                     'construction_id' => $row['construction_id'],
                     'block' => ConstructionUnit::normalizeIdentifier($row['block']),
                     'unit' => ConstructionUnit::normalizeIdentifier($row['unit']),
+                    /**
+                     * Valor base é cadastro da unidade, não atualização: esta
+                     * importação só cria unidades, então não há histórico a
+                     * escrever. Reajustar o valor de uma unidade existente é o
+                     * fluxo de atualização em lote, que grava em
+                     * `construction_unit_values`.
+                     */
+                    'base_value' => $row['base_value'] === null
+                        ? null
+                        : IntegerMoney::decimalString((int) $row['base_value']),
+                    'base_value_reference_date' => $row['base_value_reference_date'],
                     'created_at' => $now,
                     'updated_at' => $now,
                 ])

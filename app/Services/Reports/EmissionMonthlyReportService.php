@@ -6,6 +6,7 @@ namespace App\Services\Reports;
 
 use App\DTOs\ConstructionProgressData;
 use App\DTOs\Guarantees\GuaranteePositionData;
+use App\DTOs\SalesBoards\EmissionSalesPosition;
 use App\Enums\GuaranteeType;
 use App\Enums\LegalInstrumentFieldKey;
 use App\Models\Construction;
@@ -22,10 +23,10 @@ use App\Models\Negotiation;
 use App\Models\Payment;
 use App\Models\PuHistory;
 use App\Models\Receivable;
-use App\Models\SalesBoard;
 use App\Services\ConstructionProgressProvider;
 use App\Services\Guarantees\EmissionGuaranteeCoverageEngine;
 use App\Services\LegalInstruments\InstrumentPositionResolver;
+use App\Services\SalesBoards\SalesBoardPositionReader;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -54,10 +55,16 @@ class EmissionMonthlyReportService
 
     private const NO_SCHEDULED_EVENT = 'Nenhum evento cadastrado';
 
+    /**
+     * Competências exibidas no histórico de unidades.
+     */
+    private const UNITS_HISTORY_LIMIT = 6;
+
     public function __construct(
         private readonly ConstructionProgressProvider $constructionProgressProvider,
         private readonly EmissionGuaranteeCoverageEngine $guaranteeCoverageEngine,
         private readonly ContractNegotiationEvents $contractNegotiationEvents,
+        private readonly SalesBoardPositionReader $salesBoardPositionReader,
     ) {}
 
     /**
@@ -234,7 +241,12 @@ class EmissionMonthlyReportService
         $emission->loadMissing(['funds.bank', 'funds.fundType', 'funds.fundName']);
 
         $receivable = $this->latestReceivable($emission, $monthStart, $monthEnd);
-        $salesBoard = $this->latestSalesBoard($emission, $monthStart, $monthEnd);
+        $salesCompetences = $this->salesBoardPositionReader->competencesUntil($emission, $monthEnd);
+        $unitsHistoryCompetences = array_slice($salesCompetences, -self::UNITS_HISTORY_LIMIT);
+        $salesPositions = $this->salesBoardPositionReader->forEmissionMonths(
+            $emission,
+            [...$unitsHistoryCompetences, $monthStart],
+        );
         $negotiationsData = $this->buildNegotiations($emission, $monthStart, $monthEnd);
         $payment = $this->lastPaymentUntil($emission, $monthEnd);
         $upcomingEvents = $this->upcomingEventsFrom($emission, $monthStart);
@@ -258,8 +270,8 @@ class EmissionMonthlyReportService
             'expenses_history' => $this->buildExpensesHistory($emission, $monthEnd),
             'delinquency' => $this->buildDelinquency($receivable),
             'receivables' => $this->buildReceivablesSummary($receivable),
-            'units' => $this->buildUnits($salesBoard),
-            'units_history' => $this->buildUnitsHistory($emission, $monthEnd),
+            'units' => $this->buildUnits($salesPositions->get($monthStart->format('Y-m'))),
+            'units_history' => $this->buildUnitsHistory($unitsHistoryCompetences, $salesPositions),
             'negotiations' => $negotiationsData,
             'negotiations_history' => $this->buildNegotiationsHistory($emission, $monthEnd),
             'analise_mes' => $this->buildAnaliseMes($receivable),
@@ -633,41 +645,62 @@ class EmissionMonthlyReportService
     }
 
     /**
+     * Painel de unidades da competência.
+     *
+     * Recebe a posição **consolidada da emissão** — a soma dos empreendimentos,
+     * cada um com a sua última posição conhecida. Antes recebia um único
+     * `SalesBoard` escolhido por `first()`, que numa emissão com mais de um
+     * empreendimento representava só um deles e omitia o resto (GF-01).
+     *
      * @return array<string, mixed>
      */
-    private function buildUnits(?SalesBoard $salesBoard): array
+    private function buildUnits(?EmissionSalesPosition $position): array
     {
-        if ($salesBoard === null) {
+        if ($position === null || ! $position->hasData()) {
             return ['has_data' => false, 'empty_message' => self::NO_DATA];
-        }
-
-        $stock = (int) $salesBoard->stock_units;
-        $financed = (int) $salesBoard->financed_units;
-        $paid = (int) $salesBoard->paid_units;
-        $exchanged = (int) $salesBoard->exchanged_units;
-        $base = $stock + $financed + $paid + $exchanged;
-
-        $composition = [];
-        if ($base > 0) {
-            $composition = [
-                ['label' => 'Quitadas', 'class' => 'seg-1', 'percent' => round($paid / $base * 100, 2)],
-                ['label' => 'Financiadas/Vendidas', 'class' => 'seg-2', 'percent' => round($financed / $base * 100, 2)],
-                ['label' => 'Permutadas', 'class' => 'seg-3', 'percent' => round($exchanged / $base * 100, 2)],
-                ['label' => 'Estoque', 'class' => 'seg-4', 'percent' => round($stock / $base * 100, 2)],
-            ];
         }
 
         return [
             'has_data' => true,
             'rows' => [
-                ['label' => 'Estoque', 'value' => $this->integer($salesBoard->stock_units)],
-                ['label' => 'Financiadas/Vendidas', 'value' => $this->integer($salesBoard->financed_units)],
-                ['label' => 'Quitadas', 'value' => $this->integer($salesBoard->paid_units)],
-                ['label' => 'Permutadas', 'value' => $this->integer($salesBoard->exchanged_units)],
-                ['label' => 'Total', 'value' => $this->integer($salesBoard->total_units)],
+                ['label' => 'Estoque', 'value' => $this->integer($position->stockUnits)],
+                ['label' => 'Financiadas/Vendidas', 'value' => $this->integer($position->financedUnits)],
+                ['label' => 'Quitadas', 'value' => $this->integer($position->paidUnits)],
+                ['label' => 'Permutadas', 'value' => $this->integer($position->exchangedUnits)],
+                ['label' => 'Total', 'value' => $this->integer($position->totalUnits)],
             ],
-            'composition' => $composition,
+            'composition' => $this->unitsComposition($position),
+            'coverage' => $position->coverage(),
         ];
+    }
+
+    /**
+     * @return list<array{label?: string, class: string, percent: float}>
+     */
+    private function unitsComposition(EmissionSalesPosition $position, bool $labelled = true): array
+    {
+        $base = $position->stockUnits
+            + $position->financedUnits
+            + $position->paidUnits
+            + $position->exchangedUnits;
+
+        if ($base <= 0) {
+            return [];
+        }
+
+        $segments = [
+            ['label' => 'Quitadas', 'class' => 'seg-1', 'units' => $position->paidUnits],
+            ['label' => 'Financiadas/Vendidas', 'class' => 'seg-2', 'units' => $position->financedUnits],
+            ['label' => 'Permutadas', 'class' => 'seg-3', 'units' => $position->exchangedUnits],
+            ['label' => 'Estoque', 'class' => 'seg-4', 'units' => $position->stockUnits],
+        ];
+
+        return array_map(
+            fn (array $segment): array => $labelled
+                ? ['label' => $segment['label'], 'class' => $segment['class'], 'percent' => round($segment['units'] / $base * 100, 2)]
+                : ['class' => $segment['class'], 'percent' => round($segment['units'] / $base * 100, 2)],
+            $segments,
+        );
     }
 
     /**
@@ -890,61 +923,43 @@ class EmissionMonthlyReportService
     }
 
     /**
-     * Histórico de unidades (últimas competências) a partir dos snapshots de SalesBoard,
-     * agregando por competência (soma dos empreendimentos). Sem inferências. Exibido
-     * apenas quando há ao menos duas competências.
+     * Histórico de unidades (últimas competências).
      *
+     * Cada linha é a posição **consolidada** da emissão naquela competência,
+     * lida pelo mesmo {@see SalesBoardPositionReader} do painel principal.
+     * Somar apenas os quadros da competência exata, como antes, apagava do mês
+     * o empreendimento que não atualizou o quadro (GF-02): a linha caía sem que
+     * nada tivesse sido vendido. Exibido apenas com ao menos duas competências.
+     *
+     * @param  list<CarbonImmutable>  $competences
+     * @param  Collection<string, EmissionSalesPosition>  $positions
      * @return array<string, mixed>
      */
-    private function buildUnitsHistory(Emission $emission, CarbonImmutable $monthEnd, int $limit = 6): array
+    private function buildUnitsHistory(array $competences, Collection $positions): array
     {
-        $boards = SalesBoard::query()
-            ->where('emission_id', $emission->id)
-            ->where('reference_month', '<=', $monthEnd->toDateString())
-            ->orderByDesc('reference_month')
-            ->get();
-
-        $months = $boards
-            ->map(fn (SalesBoard $board): ?string => $board->reference_month?->format('Y-m'))
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values()
-            ->slice(-$limit)
-            ->values();
-
         $rows = [];
         $previousTotal = null;
 
-        foreach ($months as $ym) {
-            $monthBoards = $boards->filter(fn (SalesBoard $board): bool => $board->reference_month?->format('Y-m') === $ym);
+        foreach ($competences as $competence) {
+            $position = $positions->get($competence->format('Y-m'));
 
-            $stock = (int) $monthBoards->sum('stock_units');
-            $financed = (int) $monthBoards->sum('financed_units');
-            $paid = (int) $monthBoards->sum('paid_units');
-            $exchanged = (int) $monthBoards->sum('exchanged_units');
-            $total = (int) $monthBoards->sum('total_units');
-            $base = $stock + $financed + $paid + $exchanged;
-
-            $composition = $base > 0 ? [
-                ['class' => 'seg-1', 'percent' => round($paid / $base * 100, 2)],
-                ['class' => 'seg-2', 'percent' => round($financed / $base * 100, 2)],
-                ['class' => 'seg-3', 'percent' => round($exchanged / $base * 100, 2)],
-                ['class' => 'seg-4', 'percent' => round($stock / $base * 100, 2)],
-            ] : [];
+            if (! $position instanceof EmissionSalesPosition) {
+                continue;
+            }
 
             $rows[] = [
-                'competencia' => CarbonImmutable::parse($ym.'-01')->format('m/Y'),
-                'stock' => $this->integer($stock),
-                'financed' => $this->integer($financed),
-                'paid' => $this->integer($paid),
-                'exchanged' => $this->integer($exchanged),
-                'total' => $this->integer($total),
-                'variation' => $this->countVariationLabel($previousTotal, $total),
-                'composition' => $composition,
+                'competencia' => $competence->format('m/Y'),
+                'stock' => $this->integer($position->stockUnits),
+                'financed' => $this->integer($position->financedUnits),
+                'paid' => $this->integer($position->paidUnits),
+                'exchanged' => $this->integer($position->exchangedUnits),
+                'total' => $this->integer($position->totalUnits),
+                'variation' => $this->countVariationLabel($previousTotal, $position->totalUnits),
+                'composition' => $this->unitsComposition($position, labelled: false),
+                'coverage' => $position->coverage(),
             ];
 
-            $previousTotal = $total;
+            $previousTotal = $position->totalUnits;
         }
 
         return [
@@ -1283,16 +1298,6 @@ class EmissionMonthlyReportService
     private function latestReceivable(Emission $emission, CarbonImmutable $start, CarbonImmutable $end): ?Receivable
     {
         return Receivable::query()
-            ->where('emission_id', $emission->id)
-            ->whereBetween('reference_month', [$start->toDateString(), $end->toDateString()])
-            ->orderByDesc('reference_month')
-            ->orderByDesc('id')
-            ->first();
-    }
-
-    private function latestSalesBoard(Emission $emission, CarbonImmutable $start, CarbonImmutable $end): ?SalesBoard
-    {
-        return SalesBoard::query()
             ->where('emission_id', $emission->id)
             ->whereBetween('reference_month', [$start->toDateString(), $end->toDateString()])
             ->orderByDesc('reference_month')

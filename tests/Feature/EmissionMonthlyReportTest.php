@@ -17,6 +17,7 @@ use App\Models\Receivable;
 use App\Models\SalesBoard;
 use App\Models\User;
 use App\Services\ConstructionProgressProvider;
+use App\Services\Guarantees\EmissionOperationalDataset;
 use App\Services\Reports\EmissionMonthlyReportService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -512,9 +513,10 @@ it('builds a construction history series from monthly measurements', function ()
 
 it('builds a units history series across competences', function () {
     $emission = Emission::factory()->create();
+    $construction = Construction::factory()->create(['emission_id' => $emission->id]);
 
     foreach ([['2026-03-01', 10, 5, 3, 1], ['2026-04-01', 8, 6, 4, 1], ['2026-05-01', 6, 7, 5, 1]] as [$month, $stock, $financed, $paid, $exchanged]) {
-        SalesBoard::factory()->for($emission)->create([
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
             'reference_month' => $month,
             'stock_units' => $stock,
             'financed_units' => $financed,
@@ -535,6 +537,157 @@ it('builds a units history series across competences', function () {
 
     expect($html)->toContain('Histórico de Unidades')
         ->and($html)->toContain('03/2026');
+});
+
+it('sums every construction of the emission in the units panel', function () {
+    // GF-01: the panel used to be built from a single SalesBoard picked by
+    // `first()`, so an emission with more than one development reported only
+    // one of them. 18 + 180 has to read 198 -- never 18, never 180.
+    $emission = Emission::factory()->create();
+    $smaller = Construction::factory()->create(['emission_id' => $emission->id]);
+    $larger = Construction::factory()->create(['emission_id' => $emission->id]);
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $smaller)->create([
+        'reference_month' => '2026-07-01',
+        'stock_units' => 10,
+        'financed_units' => 5,
+        'paid_units' => 2,
+        'exchanged_units' => 1,
+    ]);
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $larger)->create([
+        'reference_month' => '2026-07-01',
+        'stock_units' => 100,
+        'financed_units' => 50,
+        'paid_units' => 20,
+        'exchanged_units' => 10,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-07-01'));
+
+    $rows = collect($data['units']['rows']);
+
+    expect($data['units']['has_data'])->toBeTrue()
+        ->and($rows->firstWhere('label', 'Total')['value'])->toBe('198')
+        ->and($rows->firstWhere('label', 'Estoque')['value'])->toBe('110')
+        ->and($data['units']['coverage']['constructions_expected'])->toBe(2)
+        ->and($data['units']['coverage']['constructions_covered'])->toBe(2);
+});
+
+it('carries a stale construction forward into the units panel', function () {
+    // GF-02: the development that did not send a board in July still holds the
+    // position it sent in May. Dropping it would make the emission look like it
+    // had lost 100 units without a single sale.
+    $emission = Emission::factory()->create();
+    $updated = Construction::factory()->create(['emission_id' => $emission->id]);
+    $stale = Construction::factory()->create(['emission_id' => $emission->id]);
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $updated)->create([
+        'reference_month' => '2026-07-01',
+        'stock_units' => 20,
+        'financed_units' => 0,
+        'paid_units' => 0,
+        'exchanged_units' => 0,
+    ]);
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $stale)->create([
+        'reference_month' => '2026-05-01',
+        'stock_units' => 100,
+        'financed_units' => 0,
+        'paid_units' => 0,
+        'exchanged_units' => 0,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-07-01'));
+
+    $rows = collect($data['units']['rows']);
+    $historyRows = collect($data['units_history']['rows']);
+
+    expect($rows->firstWhere('label', 'Total')['value'])->toBe('120')
+        ->and($data['units']['coverage']['carried_forward'])->toBeTrue()
+        ->and($data['units']['coverage']['reference_month_by_construction'][$stale->id])->toBe('2026-05-01')
+        ->and($historyRows->firstWhere('competencia', '05/2026')['total'])->toBe('100')
+        ->and($historyRows->firstWhere('competencia', '07/2026')['total'])->toBe('120');
+});
+
+it('reads the same consolidated position in the panel, in the history and in the guarantees', function () {
+    $emission = Emission::factory()->create();
+    $updated = Construction::factory()->create(['emission_id' => $emission->id]);
+    $stale = Construction::factory()->create(['emission_id' => $emission->id]);
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $updated)->create([
+        'reference_month' => '2026-07-01',
+        'stock_units' => 20,
+        'financed_units' => 0,
+        'paid_units' => 0,
+        'exchanged_units' => 0,
+        'stock_value' => 2_000_000,
+    ]);
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $stale)->create([
+        'reference_month' => '2026-05-01',
+        'stock_units' => 100,
+        'financed_units' => 0,
+        'paid_units' => 0,
+        'exchanged_units' => 0,
+        'stock_value' => 10_000_000,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-07-01'));
+
+    $guaranteeBoards = (new EmissionOperationalDataset($emission))->salesBoardsForMonth('2026-07-01');
+
+    $panelTotal = collect($data['units']['rows'])->firstWhere('label', 'Total')['value'];
+    $historyTotal = collect($data['units_history']['rows'])->firstWhere('competencia', '07/2026')['total'];
+
+    expect($panelTotal)->toBe('120')
+        ->and($historyTotal)->toBe('120')
+        ->and((int) $guaranteeBoards->sum('total_units'))->toBe(120)
+        ->and((float) $guaranteeBoards->sum('stock_value'))->toBe(12_000_000.0);
+});
+
+it('does not count a construction that only got its first board after the competence', function () {
+    $emission = Emission::factory()->create();
+    $positioned = Construction::factory()->create(['emission_id' => $emission->id]);
+    $laterConstruction = Construction::factory()->create(['emission_id' => $emission->id]);
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $positioned)->create([
+        'reference_month' => '2026-05-01',
+        'stock_units' => 7,
+        'financed_units' => 0,
+        'paid_units' => 0,
+        'exchanged_units' => 0,
+    ]);
+
+    SalesBoard::factory()->forEmissionAndConstruction($emission, $laterConstruction)->create([
+        'reference_month' => '2026-09-01',
+        'stock_units' => 500,
+        'financed_units' => 0,
+        'paid_units' => 0,
+        'exchanged_units' => 0,
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-06-01'));
+
+    expect(collect($data['units']['rows'])->firstWhere('label', 'Total')['value'])->toBe('7')
+        ->and($data['units']['coverage']['constructions_expected'])->toBe(1)
+        ->and($data['units']['coverage']['constructions_covered'])->toBe(1)
+        ->and($data['units']['coverage']['missing_construction_ids'])->toBe([]);
+});
+
+it('reports the units panel as empty when no construction has a position yet', function () {
+    $emission = Emission::factory()->create();
+    Construction::factory()->create(['emission_id' => $emission->id]);
+
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-07-01'));
+
+    expect($data['units']['has_data'])->toBeFalse()
+        ->and($data['units'])->not->toHaveKey('rows');
 });
 
 it('omits the units history when there is a single competence', function () {
@@ -618,9 +771,10 @@ it('adds proportional bars to the delinquency bands', function () {
 
 it('adds composition and variation to the units history', function () {
     $emission = Emission::factory()->create();
+    $construction = Construction::factory()->create(['emission_id' => $emission->id]);
 
     foreach ([['2026-04-01', 10, 5, 3, 1], ['2026-05-01', 6, 7, 5, 1]] as [$month, $stock, $financed, $paid, $exchanged]) {
-        SalesBoard::factory()->for($emission)->create([
+        SalesBoard::factory()->forEmissionAndConstruction($emission, $construction)->create([
             'reference_month' => $month,
             'stock_units' => $stock,
             'financed_units' => $financed,

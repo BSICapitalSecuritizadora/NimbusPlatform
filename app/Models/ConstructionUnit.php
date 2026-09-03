@@ -30,7 +30,17 @@ class ConstructionUnit extends Model
         'construction_id',
         'block',
         'unit',
+        'base_value',
+        'base_value_reference_date',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'base_value' => 'decimal:2',
+            'base_value_reference_date' => 'date',
+        ];
+    }
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -61,6 +71,25 @@ class ConstructionUnit extends Model
     public function activeContract(): HasOne
     {
         return $this->hasOne(Contract::class)->whereIn('status', ContractStatus::occupyingValues());
+    }
+
+    /**
+     * Append-only history of the unit's commercial value, newest first.
+     *
+     * The base value is not repeated here: it is the unit's own starting
+     * reference, and turning it into a synthetic history row would make an
+     * informed price indistinguishable from a recorded update.
+     */
+    public function valueHistories(): HasMany
+    {
+        return $this->hasMany(ConstructionUnitValue::class)
+            ->orderByDesc('effective_from')
+            ->orderByDesc('id');
+    }
+
+    public function hasBaseValue(): bool
+    {
+        return ($this->base_value !== null) && ($this->base_value_reference_date !== null);
     }
 
     /**

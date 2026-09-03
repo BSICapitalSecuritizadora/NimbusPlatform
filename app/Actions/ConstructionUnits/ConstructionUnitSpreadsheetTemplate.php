@@ -11,6 +11,9 @@ use Spatie\SimpleExcel\SimpleExcelWriter;
  * The first sheet carries only the headers, so nothing can be imported by
  * accident. The demonstration rows live on a separate "Exemplo" sheet, which the
  * importer never reads.
+ *
+ * The example deliberately leaves one row without a base value: informing it is
+ * optional, and a template where every row is filled in suggests otherwise.
  */
 class ConstructionUnitSpreadsheetTemplate
 {
@@ -24,10 +27,10 @@ class ConstructionUnitSpreadsheetTemplate
      * @var list<array<int, string>>
      */
     private const EXAMPLE_ROWS = [
-        ['CRI Conviva', 'Conviva Camboinhas', '01', '101'],
-        ['CRI Conviva', 'Conviva Camboinhas', '01', '102'],
-        ['CRI Conviva', 'Conviva Camboinhas', '01', '103'],
-        ['CRI Conviva', 'Conviva Camboinhas', '02', '201'],
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '101', '900.000,00', '01/01/2026'],
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '102', '950.000,00', '01/01/2026'],
+        ['CRI Conviva', 'Conviva Camboinhas', '01', '103', '', ''],
+        ['CRI Conviva', 'Conviva Camboinhas', '02', '201', '1.200.000,00', '01/01/2026'],
     ];
 
     /**

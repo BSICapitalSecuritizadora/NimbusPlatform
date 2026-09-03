@@ -5,9 +5,11 @@ namespace App\Filament\Resources\Constructions;
 use App\Filament\Resources\Constructions\Pages\CreateConstruction;
 use App\Filament\Resources\Constructions\Pages\EditConstruction;
 use App\Filament\Resources\Constructions\Pages\ListConstructions;
+use App\Filament\Resources\Constructions\RelationManagers\SalesDiscountPoliciesRelationManager;
 use App\Filament\Resources\Constructions\Schemas\ConstructionForm;
 use App\Filament\Resources\Constructions\Tables\ConstructionsTable;
 use App\Models\Construction;
+use App\Models\ConstructionUnitValue;
 use App\Models\Contract;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -49,7 +51,7 @@ class ConstructionResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            SalesDiscountPoliciesRelationManager::class,
         ];
     }
 
@@ -83,8 +85,24 @@ class ConstructionResource extends Resource
      */
     public static function canDelete(Model $record): bool
     {
-        return (auth()->user()?->can('emissions.delete') ?? false)
-            && ! ($record instanceof Construction && Contract::withTrashed()->where('construction_id', $record->getKey())->exists());
+        if (! (auth()->user()?->can('emissions.delete') ?? false)) {
+            return false;
+        }
+
+        if (! ($record instanceof Construction)) {
+            return true;
+        }
+
+        /**
+         * A política comercial é histórico financeiro da obra e a FK a protege
+         * no banco. Sem esta guarda o usuário receberia um erro cru de
+         * constraint em vez de saber por que a exclusão não é possível.
+         */
+        return ! Contract::withTrashed()->where('construction_id', $record->getKey())->exists()
+            && ! $record->salesDiscountPolicies()->exists()
+            && ! ConstructionUnitValue::query()
+                ->whereIn('construction_unit_id', $record->units()->select('id'))
+                ->exists();
     }
 
     public static function getPages(): array

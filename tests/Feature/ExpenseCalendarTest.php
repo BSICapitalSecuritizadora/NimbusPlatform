@@ -1,8 +1,11 @@
 <?php
 
 use App\Actions\Expenses\BuildExpenseCalendar;
+use App\Enums\ExpensePaymentStatus;
+use App\Filament\Resources\Expenses\Pages\EditExpense;
 use App\Filament\Resources\Expenses\Pages\ExpenseCalendar;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
+use App\Filament\Resources\Expenses\RelationManagers\HistoriesRelationManager;
 use App\Models\Emission;
 use App\Models\Expense;
 use App\Models\ExpenseServiceProvider;
@@ -270,6 +273,197 @@ it('collapses busy days behind an overflow link and lists every event in the day
         ->assertSee('3 pagamentos previstos')
         ->call('closeDay')
         ->assertSet('selectedDate', null);
+});
+
+it('uses expense payment history as the source of truth for paid occurrences', function () {
+    $emission = Emission::factory()->create(['name' => 'CRI Conviva']);
+    $serviceProvider = ExpenseServiceProvider::factory()->create(['name' => 'BSI Capital']);
+
+    $expense = Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Custódia da CCI',
+        'amount' => 5900.55,
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-05-04',
+        'end_date' => '2026-09-04',
+    ]);
+
+    $expense->histories()->create([
+        'due_date' => '2026-05-04',
+        'payment_date' => '2026-05-05',
+        'amount' => 5900.55,
+    ]);
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-05');
+    $event = collect($calendar['weeks'])
+        ->flatten(1)
+        ->flatMap(fn (array $day): array => $day['events'])
+        ->firstWhere('date', '2026-05-04');
+
+    expect($event)->not->toBeNull()
+        ->and($event['has_payment'])->toBeTrue()
+        ->and($event['status_value'])->toBe(ExpensePaymentStatus::Paid->value)
+        ->and($event['status_label'])->toBe('Pago')
+        ->and($event['due_date_label'])->toBe('04/05/2026')
+        ->and($event['payment_date_label'])->toBe('05/05/2026')
+        ->and($event['paid_amount'])->toBe(5900.55)
+        ->and($event['paid_amount_label'])->toBe('R$ 5.900,55')
+        ->and($event['expected_amount_label'])->toBe('R$ 5.900,55');
+});
+
+it('correctly isolates occurrences across competencies in recurring expenses', function () {
+    $this->travelTo(Carbon::parse('2026-08-15'));
+
+    $emission = Emission::factory()->create(['name' => 'CRI Conviva']);
+    $serviceProvider = ExpenseServiceProvider::factory()->create(['name' => 'Custodiante Master']);
+
+    $expense = Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Custódia da CCI',
+        'amount' => 5900.55,
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-05-04',
+        'end_date' => '2026-09-04',
+    ]);
+
+    // May: paid on 05/05/2026
+    $expense->histories()->create([
+        'due_date' => '2026-05-04',
+        'payment_date' => '2026-05-05',
+        'amount' => 5900.55,
+    ]);
+
+    // June: paid on 04/06/2026
+    $expense->histories()->create([
+        'due_date' => '2026-06-04',
+        'payment_date' => '2026-06-04',
+        'amount' => 5900.55,
+    ]);
+
+    // July: paid on 07/07/2026
+    $expense->histories()->create([
+        'due_date' => '2026-07-04',
+        'payment_date' => '2026-07-07',
+        'amount' => 5900.55,
+    ]);
+
+    // August: no payment (vencimento 04/08/2026 < today 15/08/2026) -> VENCIDO
+    // September: no payment (vencimento 04/09/2026 >= today 15/08/2026) -> PENDENTE
+
+    $action = app(BuildExpenseCalendar::class);
+
+    $mayEvent = collect($action->handle('2026-05')['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-05-04');
+    $juneEvent = collect($action->handle('2026-06')['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-06-04');
+    $julyEvent = collect($action->handle('2026-07')['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-07-04');
+    $augustEvent = collect($action->handle('2026-08')['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-08-04');
+    $septemberEvent = collect($action->handle('2026-09')['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-09-04');
+
+    expect($mayEvent['status_label'])->toBe('Pago')
+        ->and($mayEvent['payment_date_label'])->toBe('05/05/2026')
+        ->and($juneEvent['status_label'])->toBe('Pago')
+        ->and($juneEvent['payment_date_label'])->toBe('04/06/2026')
+        ->and($julyEvent['status_label'])->toBe('Pago')
+        ->and($julyEvent['payment_date_label'])->toBe('07/07/2026')
+        ->and($augustEvent['status_label'])->toBe('Vencido')
+        ->and($augustEvent['payment_date_label'])->toBe('—')
+        ->and($augustEvent['paid_amount_label'])->toBe('—')
+        ->and($augustEvent['is_overdue'])->toBeTrue()
+        ->and($septemberEvent['status_label'])->toBe('Pendente')
+        ->and($septemberEvent['payment_date_label'])->toBe('—')
+        ->and($septemberEvent['paid_amount_label'])->toBe('—')
+        ->and($septemberEvent['is_overdue'])->toBeFalse();
+});
+
+it('keeps paid occurrences visible on the calendar and reflects them in KPI totals', function () {
+    $emission = Emission::factory()->create();
+    $serviceProvider = ExpenseServiceProvider::factory()->create();
+
+    $expense = Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Auditoria',
+        'amount' => 4500,
+        'period' => Expense::PERIOD_SINGLE,
+        'start_date' => '2026-05-15',
+    ]);
+
+    $expense->histories()->create([
+        'due_date' => '2026-05-15',
+        'amount' => 4500,
+    ]);
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-05');
+
+    expect($calendar['summary']['event_count'])->toBe(1)
+        ->and($calendar['summary']['total_amount'])->toBe('R$ 4.500,00')
+        ->and($calendar['summary']['operation_count'])->toBe(1);
+
+    $events = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events']);
+    expect($events)->toHaveCount(1)
+        ->and($events->first()['status_label'])->toBe('Pago');
+});
+
+it('opens event details modal with full information when an event is clicked', function () {
+    $this->actingAs(makeExpenseCalendarAdminUser());
+
+    $emission = Emission::factory()->create(['name' => 'CRI Conviva']);
+    $serviceProvider = ExpenseServiceProvider::factory()->create(['name' => 'BSI Capital']);
+
+    $expense = Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'expense_service_provider_id' => $serviceProvider->id,
+        'category' => 'Custódia da CCI',
+        'amount' => 5900.55,
+        'period' => Expense::PERIOD_SINGLE,
+        'start_date' => '2026-05-04',
+    ]);
+
+    $expense->histories()->create([
+        'due_date' => '2026-05-04',
+        'payment_date' => '2026-05-05',
+        'amount' => 5900.55,
+    ]);
+
+    $eventId = "expense-{$expense->id}-20260504";
+
+    Livewire::test(ExpenseCalendar::class)
+        ->set('visibleMonth', '2026-05')
+        ->assertSee('Custódia da CCI')
+        ->assertSee('R$ 5.900,55')
+        ->assertSee('Pago')
+        ->call('openEvent', $eventId)
+        ->assertSet('selectedEventId', $eventId)
+        ->assertSee('Detalhes da ocorrência')
+        ->assertSee('Valor previsto')
+        ->assertSee('Valor pago')
+        ->assertSee('04/05/2026')
+        ->assertSee('05/05/2026')
+        ->call('closeEvent')
+        ->assertSet('selectedEventId', null);
+});
+
+it('displays payment date and status on the expense histories relation manager', function () {
+    $this->actingAs(makeExpenseCalendarAdminUser());
+
+    $expense = Expense::factory()->create();
+    $expense->histories()->create([
+        'due_date' => '2026-05-04',
+        'payment_date' => '2026-05-05',
+        'amount' => 5900.55,
+        'conta_azul_bill_id' => 'bill-123',
+    ]);
+
+    Livewire::test(HistoriesRelationManager::class, [
+        'ownerRecord' => $expense,
+        'pageClass' => EditExpense::class,
+    ])
+        ->assertCanSeeTableRecords($expense->histories)
+        ->assertSee('04/05/2026')
+        ->assertSee('05/05/2026')
+        ->assertSee('Pago')
+        ->assertSee('5.900,55');
 });
 
 function makeExpenseCalendarAdminUser(): User
