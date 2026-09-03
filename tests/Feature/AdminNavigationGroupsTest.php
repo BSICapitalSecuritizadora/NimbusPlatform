@@ -123,6 +123,7 @@ it('groups the construction resources under Obras', function () {
 
     expect(ConstructionResource::getNavigationGroup())->toBe('Operações')
         ->and(navigationChildLabels('Operações', 'Obras'))->toBe([
+            'Relatório do Ciclo',
             'Operações de Obra',
             'Medições',
             'Unidades',

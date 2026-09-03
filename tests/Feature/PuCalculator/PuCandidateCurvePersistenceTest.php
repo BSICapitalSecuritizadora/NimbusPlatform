@@ -50,7 +50,9 @@ class PuCandidatePersistencePlanSpy extends PuNumericHomologationPlanService
     {
         // `PuNumericHomologationService::evaluate()` planeja duas vezes fora da
         // transação; só a revalidação da persistência roda dentro dela.
-        if ($this->mutateInsideTransaction !== null && DB::transactionLevel() > 0) {
+        // RefreshDatabase já mantém o teste dentro de uma transação (nível 1),
+        // então a revalidação aninhada do `write` roda no nível 2.
+        if ($this->mutateInsideTransaction !== null && DB::transactionLevel() > 1) {
             ($this->mutateInsideTransaction)();
             $this->mutateInsideTransaction = null;
         }

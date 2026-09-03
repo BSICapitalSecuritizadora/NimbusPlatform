@@ -14,6 +14,18 @@ use Carbon\CarbonImmutable;
 final class PuNumericHomologationFingerprintService
 {
     /**
+     * Outer curve decimals are canonicalized to 10 places for the checksum.
+     * SQLite stores decimal(24,16) as REAL and cannot round-trip 16 places
+     * (production MySQL preserves them exactly); 10 places still exceed the
+     * 6-place operational validation while remaining stable on both drivers.
+     */
+    private const CHECKSUM_DECIMAL_SCALE = 10;
+
+    public function __construct(
+        private readonly DecimalRounder $rounder,
+    ) {}
+
+    /**
      * @return array{fingerprint:string,payload:array<string,mixed>}
      */
     public function input(
@@ -109,19 +121,19 @@ final class PuNumericHomologationFingerprintService
         $canonicalRows = array_map(fn (PuDailyCurveRowData $row): array => [
             'curve_date' => $row->date->toDateString(),
             'is_business_day' => $row->isBusinessDay,
-            'unit_base_value' => $row->unitBaseValue,
-            'unit_corrected_value' => $row->unitCorrectedValue,
-            'factor_di' => $row->factorDi,
-            'factor_di_accumulated' => $row->factorDiAccumulated,
-            'factor_spread' => $row->factorSpread,
-            'factor_spread_di' => $row->factorSpreadDi,
-            'interest_real_unit_value' => $row->interestRealUnitValue,
-            'updated_unit_value' => $row->updatedUnitValue,
-            'amortization_ratio' => $row->amortizationRatio,
-            'amortization_unit_value' => $row->amortizationUnitValue,
-            'residual_unit_value' => $row->residualUnitValue,
-            'interest_payment_unit_value' => $row->interestPaymentUnitValue,
-            'payment_total_unit_value' => $row->paymentTotalUnitValue,
+            'unit_base_value' => $this->checksumDecimal($row->unitBaseValue),
+            'unit_corrected_value' => $this->checksumDecimal($row->unitCorrectedValue),
+            'factor_di' => $this->checksumDecimal($row->factorDi),
+            'factor_di_accumulated' => $this->checksumDecimal($row->factorDiAccumulated),
+            'factor_spread' => $this->checksumDecimal($row->factorSpread),
+            'factor_spread_di' => $this->checksumDecimal($row->factorSpreadDi),
+            'interest_real_unit_value' => $this->checksumDecimal($row->interestRealUnitValue),
+            'updated_unit_value' => $this->checksumDecimal($row->updatedUnitValue),
+            'amortization_ratio' => $this->checksumDecimal($row->amortizationRatio),
+            'amortization_unit_value' => $this->checksumDecimal($row->amortizationUnitValue),
+            'residual_unit_value' => $this->checksumDecimal($row->residualUnitValue),
+            'interest_payment_unit_value' => $this->checksumDecimal($row->interestPaymentUnitValue),
+            'payment_total_unit_value' => $this->checksumDecimal($row->paymentTotalUnitValue),
             'dup_correction' => $row->dupCorrection,
             'dut_correction' => $row->dutCorrection,
             'dup_interest' => $row->dupInterest,
@@ -234,6 +246,15 @@ final class PuNumericHomologationFingerprintService
             'first_coupon_pre_integralization_premium' => $premium,
             'event_types' => $eventTypes,
         ]);
+    }
+
+    private function checksumDecimal(string $value): string
+    {
+        if (! is_numeric($value)) {
+            return $value;
+        }
+
+        return $this->rounder->normalize($value, self::CHECKSUM_DECIMAL_SCALE);
     }
 
     private function canonicalize(mixed $value): mixed

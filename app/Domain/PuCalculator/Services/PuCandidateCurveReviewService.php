@@ -179,6 +179,18 @@ final class PuCandidateCurveReviewService
                 return $lockedInspection;
             }
 
+            $makerCheckerId = $this->resolveUserId($reviewerIdentifier);
+
+            if ($makerCheckerId !== null && (int) $lockedVersion->generated_by === $makerCheckerId) {
+                return $this->result(
+                    $lockedVersion,
+                    $decision,
+                    self::ACTION_MAKER_CHECKER_VIOLATION,
+                    'Maker e checker devem ser usuários distintos.',
+                    reviewerId: $makerCheckerId,
+                );
+            }
+
             [$reviewer, $reviewerAction, $reviewerReason] = $this->reviewerForWrite($reviewerIdentifier);
 
             if (! $reviewer instanceof User) {
@@ -187,16 +199,6 @@ final class PuCandidateCurveReviewService
                     $decision,
                     $reviewerAction,
                     $reviewerReason,
-                );
-            }
-
-            if ($lockedVersion->generated_by === $reviewer->id) {
-                return $this->result(
-                    $lockedVersion,
-                    $decision,
-                    self::ACTION_MAKER_CHECKER_VIOLATION,
-                    'Maker e checker devem ser usuários distintos.',
-                    reviewerId: $reviewer->id,
                 );
             }
 
@@ -230,6 +232,22 @@ final class PuCandidateCurveReviewService
                 writes: 1,
             );
         });
+    }
+
+    private function resolveUserId(string $identifier): ?int
+    {
+        $normalizedIdentifier = trim($identifier);
+
+        if ($normalizedIdentifier === '') {
+            return null;
+        }
+
+        $query = User::query();
+        $reviewer = ctype_digit($normalizedIdentifier)
+            ? $query->whereKey((int) $normalizedIdentifier)->first(['id'])
+            : $query->where('email', $normalizedIdentifier)->first(['id']);
+
+        return $reviewer?->getKey();
     }
 
     /** @return array{0:?User,1:string,2:string} */

@@ -53,6 +53,21 @@ class EmissionPuCurveVersion extends Model
                 throw new LogicException('A reviewed PU candidate is immutable.');
             }
 
+            if ($version->getRawOriginal('status') === PuCurveStatus::Processing->value) {
+                $generationFields = [
+                    'status',
+                    'rows_count',
+                    'calculation_version',
+                    'generated_at',
+                    'error_message',
+                    'updated_at',
+                ];
+
+                if (array_diff(array_keys($version->getDirty()), [...$generationFields, ...self::REVIEW_MUTABLE_FIELDS]) === []) {
+                    return;
+                }
+            }
+
             if (array_diff(array_keys($version->getDirty()), self::REVIEW_MUTABLE_FIELDS) !== []) {
                 throw new LogicException('Persisted PU candidate provenance and lifecycle fields are immutable.');
             }

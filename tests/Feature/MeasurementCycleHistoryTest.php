@@ -620,7 +620,16 @@ it('grants the cycle report view permission only to the intended default roles',
     $customRoleUser->assignRole(Role::create(['name' => 'p3b-custom-role']));
 
     expect($customRoleUser->can(AccessPermission::MeasurementsCycleReportsView->value))->toBeFalse()
-        ->and(AccessPermission::tryFrom('measurements.cycle-reports.export'))->toBeNull();
+        ->and(AccessPermission::tryFrom('measurements.cycle-reports.export'))->toBe(AccessPermission::MeasurementsCycleReportsExport);
+
+    foreach (['super-admin', 'admin', 'editor'] as $role) {
+        $exportUser = User::factory()->create();
+        $exportUser->assignRole($role);
+
+        expect($exportUser->can(AccessPermission::MeasurementsCycleReportsExport->value))->toBeTrue();
+    }
+
+    expect($customRoleUser->can(AccessPermission::MeasurementsCycleReportsExport->value))->toBeFalse();
 });
 
 it('keeps query growth constant for a rich timeline with 205 activity rows', function () {
