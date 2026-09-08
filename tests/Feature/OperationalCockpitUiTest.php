@@ -171,16 +171,18 @@ it('uses the full alert area for a single informational exception', function () 
 
     Livewire::test(OperationalAlertsWidget::class)
         ->assertSee('data-alert-count="1"', false)
+        ->assertSee('grid grid-cols-1 gap-2', false)
         ->assertSee('2')
         ->assertSee('Emissões em rascunho')
         ->assertSee('Informativo')
+        ->assertSee('border-info-200/60', false)
+        ->assertSee('min-w-9', false)
         ->assertSee('Aguardando preenchimento para ativação.')
         ->assertSee('Ver emissões')
-        ->assertSee('md:grid-cols-[auto_minmax(0,1fr)_auto]', false)
         ->assertSee('aria-label="Abrir alerta Informativo: 2 Emissões em rascunho"', false);
 });
 
-it('orders multiple operational exceptions by severity in a responsive grid', function () {
+it('orders multiple operational exceptions by severity in a vertical stack', function () {
     $user = makeAdminUser();
     $user->assignRole('super-admin');
     $emission = Emission::factory()->active()->create();
@@ -215,8 +217,11 @@ it('orders multiple operational exceptions by severity in a responsive grid', fu
 
     Livewire::test(OperationalAlertsWidget::class)
         ->assertSee('data-alert-count="4"', false)
-        ->assertSee('xl:grid-cols-4', false)
+        ->assertSee('grid grid-cols-1 gap-2', false)
         ->assertSeeInOrder(['Crítico', 'Importante', 'Atenção', 'Informativo'])
+        ->assertSee('border-danger-200/60', false)
+        ->assertSee('border-amber-200/60', false)
+        ->assertSee('border-info-200/60', false)
         ->assertSee('Revisar obrigações')
         ->assertSee('Revisar evidências')
         ->assertSee('Atribuir propostas')

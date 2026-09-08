@@ -15,7 +15,7 @@ class RecentActivitiesWidget extends Widget
 
     protected int|string|array $columnSpan = [
         'default' => 'full',
-        'xl' => 5,
+        'xl' => 6,
     ];
 
     protected static ?int $sort = 6;

@@ -73,7 +73,11 @@ class IpcaCurveCalculator implements PuIndexCalculatorInterface
         private readonly IpcaIndexResolver $indexResolver,
     ) {}
 
-    public function calculate(Emission $emission): PuCurveGenerationResult
+    /**
+     * `$indexRateCalendarCode` não se aplica a este indexador -- o IPCA é observado por competência mensal, e não por deslocamento de Dias Úteis --,
+     * então é aceito apenas para satisfazer o contrato e permanece sem efeito.
+     */
+    public function calculate(Emission $emission, ?string $indexRateCalendarCode = null): PuCurveGenerationResult
     {
         $emission->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
 

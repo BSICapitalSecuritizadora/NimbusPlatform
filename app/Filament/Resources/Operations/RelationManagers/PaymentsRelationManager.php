@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Operations\RelationManagers;
 
+use App\Filament\Resources\Measurements\MeasurementResource;
+use App\Models\MeasurementPayment;
 use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
@@ -27,9 +29,15 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Empreendimento')
                     ->placeholder('—')
                     ->wrap(),
-                TextColumn::make('measurement.filename')
+                TextColumn::make('measurement.reference_month')
                     ->label('Medição')
-                    ->placeholder('—')
+                    ->state(fn (MeasurementPayment $record): ?string => $record->measurement === null
+                        ? null
+                        : 'Medição #'.$record->measurement->getKey().' · '.($record->measurement->reference_month?->format('m/Y') ?? '—'))
+                    ->url(fn (MeasurementPayment $record): ?string => $record->measurement === null
+                        ? null
+                        : MeasurementResource::getUrl('view', ['record' => $record->measurement]))
+                    ->placeholder('Medição não vinculada')
                     ->wrap(),
                 TextColumn::make('amount')
                     ->label('Valor')
@@ -37,7 +45,7 @@ class PaymentsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('method')
                     ->label('Método')
-                    ->placeholder('—'),
+                    ->placeholder('Não informado'),
                 IconColumn::make('receipt_path')
                     ->label('Comprovante')
                     ->boolean()

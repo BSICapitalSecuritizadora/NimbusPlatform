@@ -119,9 +119,11 @@ it('offers no create, edit or delete route at all', function () {
         ->and(SalesBoardCycleResource::canEdit($scenario['cycle']))->toBeFalse()
         ->and(SalesBoardCycleResource::canDelete($scenario['cycle']))->toBeFalse()
         ->and(SalesBoardCycleResource::canDeleteAny())->toBeFalse()
-        // A validação da construtora é uma página própria e não torna o ciclo
-        // editável: continua sem criar, sem editar e sem excluir.
-        ->and(array_keys(SalesBoardCycleResource::getPages()))->toBe(['index', 'view', 'builder-review']);
+        // A validação da construtora e a análise da Gestão são páginas próprias e
+        // não tornam o ciclo editável: continua sem criar, sem editar e sem
+        // excluir. Nenhuma das duas escreve no snapshot.
+        ->and(array_keys(SalesBoardCycleResource::getPages()))
+        ->toBe(['index', 'view', 'builder-review', 'management-review']);
 });
 
 it('checks for source changes without recalculating', function () {

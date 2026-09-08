@@ -29,7 +29,12 @@ class PuCurveGenerationService
         private readonly DecimalRounder $rounder,
     ) {}
 
-    public function handle(Emission $emission): PuCurveGenerationResult
+    /**
+     * `$indexRateCalendarCode` é o calendário de OBSERVAÇÃO do índice, separado
+     * do calendário contratual da curva. Nulo -- todo o caminho de produção --
+     * mantém os dois idênticos e o resultado inalterado.
+     */
+    public function handle(Emission $emission, ?string $indexRateCalendarCode = null): PuCurveGenerationResult
     {
         $emission->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
 
@@ -42,7 +47,7 @@ class PuCurveGenerationService
         $endDate = CarbonImmutable::instance($parameter->curve_end_date);
         $eventGroups = $this->groupEventsByDate($emission->puEvents);
         $quantityTimeline = $this->buildQuantityTimeline($emission->integralizationHistories);
-        $openingPremium = $this->openingPremiumCalculator->calculate($parameter);
+        $openingPremium = $this->openingPremiumCalculator->calculate($parameter, $indexRateCalendarCode);
 
         $baseUnitValue = $this->rounder->normalize((string) $parameter->initial_unit_value, DecimalRounder::CALCULATION_SCALE);
         $lastResidualUnitValue = $baseUnitValue;
@@ -62,7 +67,11 @@ class PuCurveGenerationService
 
             $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $parameter->calendar_code);
             $quantity = $this->quantityForDate($quantityTimeline, $currentDate);
-            $rateRequirement = $this->indexRateRequirementResolver->resolve($parameter, $currentDate);
+            $rateRequirement = $this->indexRateRequirementResolver->resolve(
+                $parameter,
+                $currentDate,
+                $indexRateCalendarCode,
+            );
             $rateSnapshot = $rateRequirement->rate;
 
             if ($this->reachedRealizedTail($parameter, $currentDate, $startDate, $isBusinessDay, $rateSnapshot)) {

@@ -3,12 +3,16 @@
 namespace App\Models;
 
 use App\Enums\MalwareScanStatus;
+use App\Enums\SalesBoardSource;
 use App\Observers\EmissionObserver;
+use App\Services\SalesBoards\SalesBoardPositionReader;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\EmissionFactory;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -182,6 +186,21 @@ class Emission extends Model
         'integralization_status',
     ];
 
+    /**
+     * O modo do Quadro de Vendas nasce legado também em memória.
+     *
+     * O default da coluna cobre a linha gravada; este cobre a instância recém
+     * criada, antes de qualquer releitura. Sem ele o atributo é `null` até o
+     * primeiro `refresh()`, e código que perguntasse o modo nesse intervalo
+     * receberia "nenhum" em vez de "legado".
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'sales_board_source' => SalesBoardSource::Legacy->value,
+        'sales_board_auto_open_builder_review' => false,
+    ];
+
     protected function casts(): array
     {
         return [
@@ -192,6 +211,9 @@ class Emission extends Model
             'remuneration_rate' => 'decimal:2',
             'prepayment_possibility' => 'boolean',
             'is_public' => 'boolean',
+            'sales_board_source' => SalesBoardSource::class,
+            'sales_board_automation_start_reference_month' => 'immutable_date',
+            'sales_board_auto_open_builder_review' => 'boolean',
         ];
     }
 
@@ -367,6 +389,70 @@ class Emission extends Model
     public function salesBoards(): HasMany
     {
         return $this->hasMany(SalesBoard::class);
+    }
+
+    /**
+     * Qual workflow produz os próximos quadros mensais desta Emissão.
+     *
+     * Não confundir com "de onde a posição é lida": o
+     * {@see SalesBoardPositionReader} continua
+     * lendo `sales_boards` nos dois modos.
+     */
+    public function usesAutomatedSalesBoard(): bool
+    {
+        return $this->sales_board_source === SalesBoardSource::Automated;
+    }
+
+    /**
+     * A competência a partir da qual a automação pode produzir quadros.
+     *
+     * Nulo nunca significa "desde sempre": sem competência de ativação a
+     * Emissão não é elegível, e é isso que impede a automação de varrer o
+     * histórico inteiro no dia em que for ligada.
+     */
+    public function automationStartsAt(): ?CarbonImmutable
+    {
+        $month = $this->sales_board_automation_start_reference_month;
+
+        return $month === null
+            ? null
+            : CarbonImmutable::parse($month->toDateString())->startOfMonth();
+    }
+
+    /**
+     * A competência informada já está coberta pela automação desta Emissão?
+     */
+    public function automationCovers(CarbonInterface $referenceMonth): bool
+    {
+        $start = $this->automationStartsAt();
+
+        if (! $this->usesAutomatedSalesBoard() || $start === null) {
+            return false;
+        }
+
+        return CarbonImmutable::parse($referenceMonth->toDateString())
+            ->startOfMonth()
+            ->greaterThanOrEqualTo($start);
+    }
+
+    public function salesBoardRolloutHomologations(): HasMany
+    {
+        return $this->hasMany(SalesBoardRolloutHomologation::class)->orderByDesc('attempt');
+    }
+
+    public function activeSalesBoardHomologation(): BelongsTo
+    {
+        return $this->belongsTo(SalesBoardRolloutHomologation::class, 'sales_board_active_homologation_id');
+    }
+
+    public function salesBoardRolloutRecipients(): HasMany
+    {
+        return $this->hasMany(SalesBoardRolloutRecipient::class);
+    }
+
+    public function salesBoardRolloutEvents(): HasMany
+    {
+        return $this->hasMany(SalesBoardRolloutEvent::class)->orderByDesc('id');
     }
 
     public function guarantees(): HasMany

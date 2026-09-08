@@ -76,6 +76,7 @@ class MeasurementCockpitService
                 ->mapWithKeys(fn (int $stage): array => [$stage => (int) $stageCounts->get($stage, 0)])
                 ->all(),
             'paused' => (int) $statusCounts->get('paused', 0),
+            'finalized' => (int) $statusCounts->get('finalized', 0),
             'awaiting_receipt' => (int) $statusCounts->get('awaiting_receipt', 0),
             'ready_to_finalize' => (int) $statusCounts->get('approved', 0),
             'approaching' => $slaCounts[MeasurementSlaService::STATUS_APPROACHING],
@@ -95,6 +96,7 @@ class MeasurementCockpitService
             'total' => 0,
             'stages' => array_fill_keys(range(1, 5), 0),
             'paused' => 0,
+            'finalized' => 0,
             'awaiting_receipt' => 0,
             'ready_to_finalize' => 0,
             'approaching' => 0,

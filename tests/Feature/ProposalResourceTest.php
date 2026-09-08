@@ -7,6 +7,8 @@ use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Placeholder;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Support\Contracts\TranslatableContentDriver;
@@ -44,6 +46,75 @@ it('separates proposal editing fields from the read-only infolist', function () 
             'contact.email',
             'observations',
         );
+});
+
+it('separates the proposal summary into proponent content and a discreet internal layer', function () {
+    $livewire = makeSchemaTestLivewire();
+    $schema = ProposalResource::infolist(Schema::make($livewire));
+
+    $section = collect(flattenSchemaComponents($schema))
+        ->first(fn (Component $component): bool => $component instanceof Section
+            && $component->getHeading() === 'Resumo da Proposta');
+
+    expect($section)->not->toBeNull()
+        ->and($section->getExtraAttributes()['class'] ?? null)->toContain('bsi-proposal-summary');
+
+    $entries = collect($section->getChildSchemas(withHidden: true))
+        ->flatMap(fn (Schema $childSchema): array => $childSchema->getComponents())
+        ->filter(fn (mixed $component): bool => $component instanceof TextEntry)
+        ->mapWithKeys(fn (TextEntry $entry): array => [$entry->getName() => $entry]);
+
+    expect($entries->keys()->all())->toBe(['observations', 'internal_notes']);
+
+    $observations = $entries['observations'];
+
+    expect($observations->getLabel())->toBe('Informações Complementares do Proponente')
+        ->and($observations->getPlaceholder())->toBe('Nenhuma observação informada pelo proponente.')
+        ->and($observations->getExtraAttributes()['class'] ?? null)->toContain('bsi-prose-block');
+
+    $internal = $entries['internal_notes'];
+
+    expect($internal->getLabel())->toBe('Parecer Técnico / Comercial Interno')
+        ->and($internal->getPlaceholder())->toBe('Sem observações internas registradas.')
+        ->and($internal->getHint())->toBe('Uso interno')
+        ->and($internal->getHintIcon())->toBe('heroicon-m-lock-closed')
+        ->and($internal->getExtraAttributes()['class'] ?? null)->toContain('bsi-internal-note');
+});
+
+it('places the proponent on its own row above a proportional second row', function () {
+    $livewire = makeSchemaTestLivewire();
+    $schema = ProposalResource::infolist(Schema::make($livewire));
+
+    $execSection = collect(flattenSchemaComponents($schema))
+        ->first(fn (Component $component): bool => $component instanceof Section
+            && $component->getHeading() === 'Resumo Executivo da Proposta');
+
+    expect($execSection)->not->toBeNull();
+
+    $grid = collect($execSection->getChildSchemas(withHidden: true))
+        ->flatMap(fn (Schema $childSchema): array => $childSchema->getComponents())
+        ->first(fn (mixed $component): bool => $component instanceof Grid);
+
+    expect($grid)->not->toBeNull()
+        ->and($grid->getColumns('xl'))->toBe(12);
+
+    $entries = collect($grid->getChildSchemas(withHidden: true))
+        ->flatMap(fn (Schema $childSchema): array => $childSchema->getComponents())
+        ->filter(fn (mixed $component): bool => $component instanceof TextEntry);
+
+    expect($entries->first(fn (TextEntry $entry): bool => $entry->getName() === 'company.name')->getColumnSpan('default'))->toBe('full');
+
+    $spans = $entries
+        ->reject(fn (TextEntry $entry): bool => $entry->getName() === 'company.name')
+        ->mapWithKeys(fn (TextEntry $entry): array => [$entry->getName() => $entry->getColumnSpan('xl')]);
+
+    expect($spans->all())->toBe([
+        'total_requested_amount' => 2,
+        'status' => 2,
+        'representative.name' => 3,
+        'time_in_status' => 2,
+        'next_action' => 3,
+    ]);
 });
 
 /**

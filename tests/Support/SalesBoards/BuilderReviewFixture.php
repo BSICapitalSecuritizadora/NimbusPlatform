@@ -90,6 +90,57 @@ final class BuilderReviewFixture
         ];
     }
 
+    /**
+     * A mesma competência, com a venda do mês fechada abaixo do mínimo
+     * autorizado.
+     *
+     * A tabela da unidade é 500.000 e a política permite 10%, o que põe o piso
+     * em 450.000; a venda sai por 400.000. O veredito de não conformidade é
+     * apurado e congelado pela geração -- este fixture só produz o fato.
+     *
+     * @return array{cycle: SalesBoardCycle, construction: Construction, units: array<string, ConstructionUnit>, contracts: array<string, Contract>}
+     */
+    public static function generatedCycleWithNonConformSale(): array
+    {
+        [$construction, $units] = CycleFixture::readyConstruction(5);
+
+        $financed = DerivationFixture::contract($units[1], '2026-03-10', '900000.00');
+        DerivationFixture::installment($financed, '001', '2026-04-10', '450000.00', '2026-04-09', '450000.00');
+        DerivationFixture::installment($financed, '002', '2026-10-10', '450000.00');
+
+        $settled = DerivationFixture::contract($units[2], '2026-02-10', '850000.00');
+        DerivationFixture::installment($settled, '001', '2026-03-10', '425000.00', '2026-03-09', '425000.00');
+        DerivationFixture::installment($settled, '002', '2026-06-10', '425000.00', '2026-07-10', '425000.00');
+
+        ConstructionUnitExchange::factory()->create([
+            'construction_unit_id' => $units[3]->id,
+            'exchange_value' => '700000.00',
+            'effective_from' => '2026-01-01',
+        ]);
+
+        $soldInMonth = DerivationFixture::contract($units[4], '2026-07-15', '400000.00');
+        DerivationFixture::installment($soldInMonth, '001', '2026-08-15', '400000.00');
+
+        $cycle = CycleFixture::generate($construction)->cycle;
+
+        return [
+            'cycle' => $cycle,
+            'construction' => $construction,
+            'units' => [
+                'stock' => $units[0],
+                'financed' => $units[1],
+                'settled' => $units[2],
+                'exchanged' => $units[3],
+                'soldInMonth' => $units[4],
+            ],
+            'contracts' => [
+                'financed' => $financed,
+                'settled' => $settled,
+                'soldInMonth' => $soldInMonth,
+            ],
+        ];
+    }
+
     public static function open(SalesBoardCycle $cycle, ?User $actor = null): SalesBoardBuilderReview
     {
         return app(SalesBoardBuilderReviewOpeningService::class)->open($cycle->fresh(), $actor);

@@ -19,10 +19,10 @@ class ProposalVolumeChartWidget extends ChartWidget
 
     protected int|string|array $columnSpan = [
         'default' => 'full',
-        'xl' => 8,
+        'xl' => 7,
     ];
 
-    protected ?string $maxHeight = '300px';
+    protected ?string $maxHeight = '270px';
 
     protected function getFilters(): ?array
     {
@@ -72,20 +72,20 @@ class ProposalVolumeChartWidget extends ChartWidget
                     'data' => $series['received'],
                     'backgroundColor' => '#b7832f',
                     'hoverBackgroundColor' => '#96651f',
-                    'borderRadius' => 6,
+                    'borderRadius' => 4,
                     'borderSkipped' => false,
-                    'barPercentage' => 0.65,
-                    'categoryPercentage' => 0.7,
+                    'barPercentage' => 0.62,
+                    'categoryPercentage' => 0.72,
                 ],
                 [
                     'label' => 'Formalizações Concluídas',
                     'data' => $series['completed'],
                     'backgroundColor' => '#059669',
                     'hoverBackgroundColor' => '#047857',
-                    'borderRadius' => 6,
+                    'borderRadius' => 4,
                     'borderSkipped' => false,
-                    'barPercentage' => 0.65,
-                    'categoryPercentage' => 0.7,
+                    'barPercentage' => 0.62,
+                    'categoryPercentage' => 0.72,
                 ],
             ],
         ];
@@ -93,20 +93,37 @@ class ProposalVolumeChartWidget extends ChartWidget
 
     protected function getOptions(): array
     {
+        $months = (int) ($this->filter ?? 6);
+        $series = app(ProposalDashboardData::class)->monthlyVolume($months);
+        $tickColors = [];
+        foreach ($series['labels'] as $idx => $label) {
+            $hasActivity = (($series['received'][$idx] ?? 0) > 0) || (($series['completed'][$idx] ?? 0) > 0);
+            $tickColors[] = $hasActivity ? '#d4af37' : '#64748b';
+        }
+
         return [
+            'layout' => [
+                'padding' => [
+                    'top' => 4,
+                    'bottom' => 0,
+                    'left' => 0,
+                    'right' => 0,
+                ],
+            ],
             'plugins' => [
                 'legend' => [
                     'position' => 'top',
                     'align' => 'end',
                     'labels' => [
-                        'boxWidth' => 10,
-                        'boxHeight' => 10,
+                        'boxWidth' => 8,
+                        'boxHeight' => 8,
                         'usePointStyle' => true,
                         'pointStyle' => 'circle',
-                        'padding' => 14,
+                        'padding' => 12,
+                        'color' => '#9ca3af',
                         'font' => [
-                            'size' => 12,
-                            'weight' => '600',
+                            'size' => 11,
+                            'weight' => '500',
                         ],
                     ],
                 ],
@@ -121,22 +138,33 @@ class ProposalVolumeChartWidget extends ChartWidget
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,
+                    'border' => [
+                        'display' => false,
+                    ],
                     'grid' => [
-                        'color' => 'rgba(219, 213, 211, 0.35)',
+                        'color' => 'rgba(255, 255, 255, 0.05)',
+                        'drawTicks' => false,
                     ],
                     'ticks' => [
                         'precision' => 0,
                         'stepSize' => 1,
+                        'padding' => 8,
+                        'color' => '#64748b',
                         'font' => [
                             'size' => 11,
                         ],
                     ],
                 ],
                 'x' => [
+                    'border' => [
+                        'color' => 'rgba(255, 255, 255, 0.08)',
+                    ],
                     'grid' => [
                         'display' => false,
                     ],
                     'ticks' => [
+                        'color' => $tickColors,
+                        'padding' => 6,
                         'font' => [
                             'size' => 11,
                             'weight' => '500',

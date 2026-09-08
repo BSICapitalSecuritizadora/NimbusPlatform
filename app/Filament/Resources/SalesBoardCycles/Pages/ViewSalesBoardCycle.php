@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesBoardCycles\Pages;
 
 use App\Filament\Resources\SalesBoardCycles\Actions\CheckSalesBoardCycleStaleAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\OpenBuilderReviewAction;
+use App\Filament\Resources\SalesBoardCycles\Actions\OpenManagementReviewAction;
 use App\Filament\Resources\SalesBoardCycles\Actions\RecalculateSalesBoardCycleAction;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\SalesBoardCycle;
@@ -38,6 +39,7 @@ class ViewSalesBoardCycle extends ViewRecord
     {
         return [
             OpenBuilderReviewAction::make(),
+            OpenManagementReviewAction::make(),
             CheckSalesBoardCycleStaleAction::make(),
             RecalculateSalesBoardCycleAction::make(),
         ];

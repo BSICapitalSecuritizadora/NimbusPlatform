@@ -118,6 +118,10 @@ it('groups the emission monthly report resources under Emissões', function () {
             'Ciclos do Quadro',
             'Relatório Mensal',
             'Notas Explicativas',
+            // Automação e rollout fecham o grupo: são as superfícies que
+            // decidem *como* a posição é produzida, não a posição em si.
+            'Automação do Quadro',
+            'Rollout do Quadro',
         ]);
 });
 

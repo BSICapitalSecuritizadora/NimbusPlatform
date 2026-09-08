@@ -1,11 +1,14 @@
 <?php
 
+use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuSimulationInput;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Enums\PuSimulationState;
 use App\Domain\PuCalculator\Enums\PuSimulationValueOrigin;
 use App\Domain\PuCalculator\Services\BusinessCalendarService;
+use App\Domain\PuCalculator\Services\DecimalRounder;
+use App\Domain\PuCalculator\Services\PuBaselineCandidateFactory;
 use App\Domain\PuCalculator\Services\PuCurveGeneratorService;
 use App\Domain\PuCalculator\Services\PuSimulationService;
 use App\Models\Emission;
@@ -54,6 +57,68 @@ it('loads the confirmed contractual baseline without any persisted parameter', f
         ->and($origins['indexer'])->toBe(PuSimulationValueOrigin::Contractual->value)
         ->and($origins['calendar_code'])->toBe(PuSimulationValueOrigin::Contractual->value);
 });
+
+it('reuses the canonical contractual spread without changing the legal fraction', function () {
+    $emission = PuSimulationFixture::contractualEmission();
+    $spread = $emission->legalInstrumentFields()->where('field_key', 'spread')->firstOrFail();
+    $rawSpread = (string) $spread->getRawOriginal('value_numeric');
+    $candidate = app(PuBaselineCandidateFactory::class)->make($emission, null);
+
+    $resolution = simulations()->resolveParameters($emission, new PuSimulationInput(
+        firstIntegralizationDate: PuSimulationFixture::integralizationDate(),
+    ));
+
+    expect(bccomp($rawSpread, '0.06', DecimalRounder::RATE_SCALE))->toBe(0)
+        ->and($candidate->configuration['spread_rate'])->toBe('6.00000000')
+        ->and($candidate->configuration['index_percentage'])->toBe('100.00000000')
+        ->and($resolution['values']['spread_rate'])->toBe('6.00000000')
+        ->and($resolution['parameter']->spread_rate)->toBe('6.00000000')
+        ->and($resolution['origins']['spread_rate'])->toBe(PuSimulationValueOrigin::Contractual->value)
+        ->and(PuSimulationFixture::syntheticParameter()->spread_rate)->toBe('6.00000000')
+        ->and((string) $spread->fresh()->getRawOriginal('value_numeric'))->toBe($rawSpread);
+});
+
+it('preserves persisted spread percentage points without double conversion', function (string $spreadRate) {
+    $emission = PuSimulationFixture::contractualEmission();
+    $persisted = PuSimulationFixture::persistParameter($emission, ['spread_rate' => $spreadRate]);
+
+    $resolution = simulations()->resolveParameters($emission->fresh(), new PuSimulationInput);
+    $spreadConflict = collect($resolution['conflicts'])->firstWhere('field', 'spread_rate');
+
+    expect($resolution['values']['spread_rate'])->toBe($spreadRate)
+        ->and($resolution['parameter']->spread_rate)->toBe($spreadRate)
+        ->and($resolution['origins']['spread_rate'])->toBe(PuSimulationValueOrigin::Persisted->value)
+        ->and($persisted->fresh()->spread_rate)->toBe($spreadRate);
+
+    if ($spreadRate === '6.00000000') {
+        expect($spreadConflict)->toBeNull();
+    } else {
+        expect($spreadConflict['contractual'])->toBe('6.00000000')
+            ->and($spreadConflict['persisted'])->toBe($spreadRate);
+    }
+})->with([
+    'six percent annually' => ['6.00000000'],
+    'intentional fractional percentage point' => ['0.06000000'],
+]);
+
+it('interprets spread overrides as annual percentage points', function (string $override, string $expected) {
+    $emission = PuSimulationFixture::contractualEmission();
+    $persisted = PuSimulationFixture::persistParameter($emission);
+
+    $resolution = simulations()->resolveParameters($emission->fresh(), new PuSimulationInput(
+        overrides: ['spread_rate' => $override],
+    ));
+
+    expect($resolution['parameter']->spread_rate)->toBe($expected)
+        ->and(bccomp($resolution['values']['spread_rate'], $expected, DecimalRounder::RATE_SCALE))->toBe(0)
+        ->and($resolution['origins']['spread_rate'])->toBe(PuSimulationValueOrigin::SimulationOverride->value)
+        ->and($persisted->fresh()->spread_rate)->toBe('6.00000000');
+})->with([
+    'decimal point' => ['7.5', '7.50000000'],
+    'decimal comma' => ['7,5', '7.50000000'],
+    'localized six percent' => ['6,00', '6.00000000'],
+    'intentional fractional percentage point' => ['0.06', '0.06000000'],
+]);
 
 it('reports the first integralization date as undefined until the user informs it', function () {
     $emission = PuSimulationFixture::contractualEmission();
@@ -134,6 +199,97 @@ it('surfaces a conflict between the contractual reading and the persisted parame
 // ---------------------------------------------------------------------------
 // Equivalência com o motor oficial — requisito crítico da fase
 // ---------------------------------------------------------------------------
+
+it('passes the same contractual event set to both engine entrypoints before calculation', function () {
+    $scenario = PuSimulationFixture::calculableScenario();
+    $eventSets = [];
+    $parameterSets = [];
+    $timelineSets = [];
+    $this->mock(PuCurveGeneratorService::class)
+        ->shouldReceive('handle')
+        ->twice()
+        ->andReturnUsing(function (Emission $engineScenario) use (
+            &$eventSets,
+            &$parameterSets,
+            &$timelineSets,
+        ): PuCurveGenerationResult {
+            $eventSets[] = $engineScenario->puEvents
+                ->map(fn (EmissionPuEvent $event): array => PuSimulationFixture::eventSignature($event))
+                ->values()
+                ->all();
+            $parameterSets[] = PuSimulationFixture::engineParameterSignature($engineScenario->puParameter);
+            $timelineSets[] = $engineScenario->integralizationHistories->count();
+
+            return new PuCurveGenerationResult([]);
+        });
+
+    $simulation = simulations()->simulate($scenario['emission'], $scenario['input']);
+    PuSimulationFixture::officialEngineRows($scenario['emission'], $scenario);
+
+    expect($simulation->state)->toBe(PuSimulationState::Calculated)
+        ->and($eventSets)->toHaveCount(2)
+        ->and($parameterSets)->toHaveCount(2)
+        // Os TRÊS insumos da engine -- eventos, parâmetro e timeline -- são
+        // idênticos nos dois entrypoints. Qualquer divergência de linha
+        // financeira depois disto é da engine, nunca do adapter de simulação.
+        ->and($eventSets[0])->toBe($eventSets[1])
+        ->and($parameterSets[0])->toBe($parameterSets[1])
+        ->and($timelineSets)->toBe([0, 0])
+        // O recorte da janela é o parâmetro da engine; o vencimento contratual
+        // de 2031 nunca chega até aqui.
+        ->and($parameterSets[0]['curve_end_date'])->toBe('2026-06-30')
+        ->and($parameterSets[0]['curve_start_date'])->toBe('2026-05-15')
+        ->and($eventSets[0])->toBe([[
+            'event_type' => 'interest_payment',
+            'original_date' => '2026-06-08',
+            'effective_date' => '2026-06-08',
+            'amortization_type' => 'none',
+            'amortization_value' => null,
+            'sequence' => 1,
+        ]]);
+});
+
+it('does not turn the simulation cutoff into principal redemption', function () {
+    $scenario = PuSimulationFixture::calculableScenario();
+
+    $result = simulations()->simulate($scenario['emission'], $scenario['input']);
+    $last = $result->lastRow();
+
+    expect($result->state)->toBe(PuSimulationState::Calculated)
+        ->and($result->parameters['contractual_curve_end_date'])->toBe('2031-05-08')
+        ->and($result->parameters['curve_end_date'])->toBe('2026-06-30')
+        ->and($result->events)->toHaveCount(1)
+        ->and($result->events[0]['event_type'])->toBe('interest_payment')
+        ->and($last->date->toDateString())->toBe('2026-06-30')
+        ->and($last->eventOriginalDate)->toBeNull()
+        ->and($last->eventEffectiveDate)->toBeNull()
+        ->and($last->amortizationRatio)->toBe('0.0000000000000000')
+        ->and($last->amortizationUnitValue)->toBe('0.0000000000000000')
+        ->and($last->paymentTotalUnitValue)->toBe('0.0000000000000000')
+        ->and($last->residualUnitValue)->toBe($last->updatedUnitValue);
+});
+
+it('preserves the contractual bullet at maturity without generating a five year curve', function () {
+    $emission = PuSimulationFixture::contractualEmission();
+    $before = PuSimulationFixture::counts();
+
+    $events = PuSimulationFixture::officialEvents($emission, CarbonImmutable::parse('2031-05-08'));
+    $principal = $events->where('event_type', 'amortization')->values();
+    $lastCoupon = $events->where('event_type', 'interest_payment')->last();
+
+    expect($principal)->toHaveCount(1)
+        ->and(PuSimulationFixture::eventSignature($principal->first()))->toBe([
+            'event_type' => 'amortization',
+            'original_date' => '2031-05-08',
+            'effective_date' => '2031-05-08',
+            'amortization_type' => 'residual',
+            'amortization_value' => null,
+            'sequence' => 1,
+        ])
+        ->and($lastCoupon->original_date->toDateString())->toBe('2031-05-08')
+        ->and($lastCoupon->effective_date->toDateString())->toBe('2031-05-08')
+        ->and(PuSimulationFixture::counts())->toBe($before);
+});
 
 it('produces exactly the same rows as the official engine for the same input', function () {
     $scenario = PuSimulationFixture::calculableScenario();
@@ -353,6 +509,65 @@ it('keeps the unit PU independent from the simulated quantity', function () {
         ->and($withQuantity->selectedTotalValue())->not->toBeNull()
         ->and($withQuantity->selectedTotalValue())->not->toBe('0.0000000000000000')
         ->and(IntegralizationHistory::query()->count())->toBe(0);
+});
+
+it('keeps every unit curve row unchanged and derives the exact selected position', function (?string $quantity, ?string $expectedTotal) {
+    $scenario = PuSimulationFixture::calculableScenario();
+    $withoutQuantity = simulations()->simulate($scenario['emission'], $scenario['input']);
+    $before = PuSimulationFixture::counts();
+
+    $result = simulations()->simulate($scenario['emission'], new PuSimulationInput(
+        firstIntegralizationDate: $scenario['input']->firstIntegralizationDate,
+        simulationEndDate: $scenario['input']->simulationEndDate,
+        quantity: $quantity,
+    ));
+
+    expect($result->state)->toBe(PuSimulationState::Calculated)
+        ->and($result->selectedUnitValue())->toBe($withoutQuantity->selectedUnitValue())
+        ->and($result->selectedUnitValue())->toBe('1025.3523240000000000')
+        ->and($result->selectedTotalValue())->toBe($expectedTotal)
+        ->and($result->rowCount())->toBe($withoutQuantity->rowCount())
+        ->and($result->parameters)->toBe($withoutQuantity->parameters)
+        ->and($result->selectedRow->quantity)->toBe('0.0000')
+        ->and($result->selectedRow->totalValue)->toBe('0.0000000000000000')
+        ->and(PuSimulationFixture::counts())->toBe($before)
+        ->and(IntegralizationHistory::query()->count())->toBe(0);
+
+    foreach ($result->rows as $index => $row) {
+        expect(PuSimulationFixture::rowSignature($row))
+            ->toBe(PuSimulationFixture::rowSignature($withoutQuantity->rows[$index]));
+    }
+})->with([
+    'no quantity' => [null, null],
+    'one unit' => ['1', '1025.3523240000000000'],
+    '1500 units' => ['1500', '1538028.4860000000000000'],
+    '4000 units' => ['4000', '4101409.2960000000000000'],
+    'fractional quantity' => ['1.25', '1281.6904050000000000'],
+    'round only the total to financial scale' => ['1.000000000000001', '1025.3523240000010254'],
+    'zero quantity' => ['0', '0.0000000000000000'],
+    'blank quantity' => ['', null],
+]);
+
+it('uses the selected updated PU for the position on a coupon date', function () {
+    $scenario = PuSimulationFixture::calculableScenario();
+    $withoutQuantity = simulations()->simulate($scenario['emission'], $scenario['input']);
+    $coupon = collect($withoutQuantity->rows)->first(
+        fn (PuDailyCurveRowData $row): bool => bccomp($row->interestPaymentUnitValue, '0', DecimalRounder::UNIT_SCALE) === 1,
+    );
+
+    expect($coupon)->toBeInstanceOf(PuDailyCurveRowData::class);
+
+    $result = simulations()->simulate($scenario['emission'], new PuSimulationInput(
+        firstIntegralizationDate: $scenario['input']->firstIntegralizationDate,
+        simulationEndDate: $scenario['input']->simulationEndDate,
+        quantity: '1500',
+        focusDate: $coupon->date,
+    ));
+
+    expect($result->selectedUnitValue())->toBe($coupon->updatedUnitValue)
+        ->and($result->selectedUnitValue())->not->toBe($result->selectedResidualUnitValue())
+        ->and($result->selectedTotalValue())->toBe(bcmul($coupon->updatedUnitValue, '1500', DecimalRounder::TOTAL_SCALE))
+        ->and($result->selectedTotalValue())->not->toBe(bcmul($coupon->residualUnitValue, '1500', DecimalRounder::TOTAL_SCALE));
 });
 
 // ---------------------------------------------------------------------------

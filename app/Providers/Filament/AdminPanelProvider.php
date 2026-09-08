@@ -22,6 +22,7 @@ use App\Filament\Resources\ReminderLogs\ReminderLogResource;
 use App\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\SetSecurityHeaders;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -88,6 +89,14 @@ class AdminPanelProvider extends PanelProvider
                     CreateReceivable::class,
                     EditReceivable::class,
                 ],
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn (): string => view('filament.forms.select-reposition')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn (): string => view('filament.forms.date-time-picker-enhancer')->render(),
             )
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('16rem')
@@ -213,5 +222,12 @@ class AdminPanelProvider extends PanelProvider
         }
 
         return Arr::first($candidates)::getUrl(panel: 'admin');
+    }
+
+    public function boot(): void
+    {
+        DateTimePicker::configureUsing(function (DateTimePicker $component): void {
+            $component->native(false);
+        });
     }
 }

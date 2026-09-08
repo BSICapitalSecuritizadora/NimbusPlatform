@@ -12,6 +12,7 @@ use App\Domain\PuCalculator\Enums\PuSimulationState;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
 use App\Domain\PuCalculator\Services\PuSimulationParameterFactory;
 use App\Domain\PuCalculator\Services\PuSimulationService;
+use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
 use App\Enums\AccessPermission;
 use App\Filament\Resources\Emissions\EmissionResource;
 use App\Models\EmissionPuParameter;
@@ -61,6 +62,12 @@ class PuCalculatorSimulator extends Page
 
     public bool $paymentsOnly = false;
 
+    /**
+     * HIPÓTESE de calendário de observação do CDI. Vive só nesta sessão de
+     * Livewire: não é persistida, não vira evidência e some no refresh.
+     */
+    public ?string $indexRateCalendarCode = null;
+
     public bool $hasCalculated = false;
 
     private ?PuSimulationResult $result = null;
@@ -101,17 +108,19 @@ class PuCalculatorSimulator extends Page
             new PuSimulationInput,
         );
 
-        $contractualEnd = $resolution['values']['contractual_curve_end_date'] ?? null;
-
-        if (is_string($contractualEnd)) {
-            $this->simulationEndDate = $contractualEnd;
-        }
-
         $start = $resolution['values']['curve_start_date'] ?? null;
 
         if (is_string($start)) {
             $this->firstIntegralizationDate = $start;
         }
+
+        // A data final NÃO é pré-preenchida, e nenhuma outra data serve de
+        // palpite para ela. O vencimento contratual é o fim do INSTRUMENTO, não
+        // o fim de uma simulação: usá-lo como recorte fazia a janela nascer com
+        // cinco anos e o plano de taxas exigir mais de mil divulgações de CDI
+        // para responder a uma pergunta de poucas semanas. O recorte é decisão
+        // explícita de quem simula, e `calculate()` recusa calcular sem ele.
+        $this->simulationEndDate = null;
     }
 
     public function simulationInput(): PuSimulationInput
@@ -122,7 +131,55 @@ class PuCalculatorSimulator extends Page
             quantity: $this->normalizedQuantity(),
             overrides: $this->overrides,
             focusDate: $this->date($this->focusDate),
+            indexRateCalendarCode: $this->indexRateCalendarCode,
         );
+    }
+
+    /**
+     * Vencimento contratual resolvido, em formato brasileiro.
+     *
+     * Existe para a tela poder citar o vencimento SEM confundi-lo com o recorte
+     * da simulação -- são semânticas distintas e continuam separadas.
+     */
+    public function contractualMaturityLabel(): ?string
+    {
+        $maturity = $this->parameterResolution()['values']['contractual_curve_end_date'] ?? null;
+
+        return is_string($maturity) && $maturity !== ''
+            ? CarbonImmutable::parse($maturity)->format('d/m/Y')
+            : null;
+    }
+
+    /**
+     * Calendários oferecidos como hipótese de observação do índice.
+     *
+     * A opção vazia é o padrão e significa "o mesmo calendário contratual da
+     * curva" -- nenhuma mudança silenciosa de semântica.
+     *
+     * @return array<string, string>
+     */
+    public function indexRateCalendarOptions(): array
+    {
+        return ['' => 'Mesmo calendário da curva (contratual)'] + BusinessCalendarRegistry::options();
+    }
+
+    /**
+     * Calendário contratual efetivamente resolvido para a curva, para a tela
+     * poder contrastá-lo com a hipótese de observação.
+     */
+    public function curveCalendarCode(): ?string
+    {
+        $code = $this->parameterResolution()['values']['calendar_code'] ?? null;
+
+        return is_string($code) && $code !== '' ? $code : null;
+    }
+
+    /** Rótulo da hipótese de observação, ou null quando não há hipótese. */
+    public function indexRateCalendarOverride(): ?string
+    {
+        $code = $this->simulationInput()->indexRateCalendarCode();
+
+        return $code === null || $code === $this->curveCalendarCode() ? null : $code;
     }
 
     /**
@@ -142,6 +199,24 @@ class PuCalculatorSimulator extends Page
     public function calculate(): void
     {
         $this->result = null;
+
+        // Sem recorte informado não há simulação a fazer. A alternativa seria
+        // adivinhar uma janela, e a única data "óbvia" disponível -- o
+        // vencimento contratual -- é justamente a que não pode ocupar esse
+        // lugar: ela descreve o instrumento, não a pergunta.
+        if ($this->date($this->simulationEndDate) === null) {
+            Notification::make()
+                ->title('Informe a data final da simulação.')
+                ->body(sprintf(
+                    'A simulação não assume uma janela. Escolha até quando ela deve correr — o vencimento contratual (%s) é o fim do instrumento, e não o recorte desta simulação.',
+                    $this->contractualMaturityLabel() ?? 'não resolvido',
+                ))
+                ->warning()
+                ->persistent()
+                ->send();
+
+            return;
+        }
 
         try {
             $this->result = app(PuSimulationService::class)->simulate(
@@ -289,11 +364,19 @@ class PuCalculatorSimulator extends Page
                     return;
                 }
 
+                // A janela pedida ao Banco Central é a MENOR que cobre as datas
+                // efetivamente ausentes -- nunca a emissão inteira. A ordenação
+                // é defensiva: `from > to` produziria zero blocos no cliente
+                // SGS, isto é, uma "sincronização" que nunca sai da máquina.
+                sort($missing);
+                $from = CarbonImmutable::parse($missing[0])->startOfDay();
+                $to = CarbonImmutable::parse($missing[array_key_last($missing)])->startOfDay();
+
                 try {
                     $sync = app(IndexRateSyncService::class)->sync(
                         indexer: $parameter->indexer_enum,
-                        from: CarbonImmutable::parse($missing[0])->startOfDay(),
-                        to: CarbonImmutable::parse($missing[array_key_last($missing)])->startOfDay(),
+                        from: $from,
+                        to: $to,
                         dryRun: false,
                         userId: auth()->id(),
                         overwritePolicy: IndexRateSyncService::POLICY_SKIP,
@@ -309,8 +392,48 @@ class PuCalculatorSimulator extends Page
                     return;
                 }
 
+                // Recalcula ANTES de julgar o resultado: quem decide se a
+                // sincronização resolveu o problema é a própria simulação, não
+                // o contador de linhas gravadas.
                 $this->result = null;
                 $this->calculate();
+                $stillMissing = array_values(array_intersect($missing, $this->result()?->missingRateDates ?? []));
+
+                // Nenhum bloco consultado significa que a janela não chegou ao
+                // Banco Central. Isso é defeito do fluxo, e não sucesso com
+                // zero taxas: reportar "concluída" aqui esconde justamente o
+                // caso que precisa ser investigado.
+                if ($sync->blocksTotal === 0) {
+                    Notification::make()
+                        ->title('A sincronização não consultou o Banco Central.')
+                        ->body(sprintf(
+                            'Nenhuma janela de consulta foi montada para %s. Nenhuma taxa foi buscada e nada foi gravado.',
+                            $this->formatDateList($missing),
+                        ))
+                        ->danger()
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
+
+                if ($stillMissing !== []) {
+                    Notification::make()
+                        ->title('Não foi possível obter todas as taxas necessárias.')
+                        ->body(trim(sprintf(
+                            "A consulta ao Banco Central foi feita (%d taxa(s) retornada(s), %d criada(s), %d mantida(s)), mas continua(m) ausente(s): %s.\n%s",
+                            $sync->fetched,
+                            $sync->created,
+                            $sync->skipped,
+                            $this->formatDateList($stillMissing),
+                            implode(' ', $sync->errors),
+                        )))
+                        ->warning()
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
 
                 Notification::make()
                     ->title('Sincronização concluída.')
@@ -324,6 +447,19 @@ class PuCalculatorSimulator extends Page
                     ->persistent()
                     ->send();
             });
+    }
+
+    /**
+     * Lista de datas em formato brasileiro, para as mensagens da ação de sync.
+     *
+     * @param  list<string>  $dates
+     */
+    private function formatDateList(array $dates): string
+    {
+        return implode(', ', array_map(
+            fn (string $date): string => CarbonImmutable::parse($date)->format('d/m/Y'),
+            $dates,
+        ));
     }
 
     protected function getHeaderActions(): array

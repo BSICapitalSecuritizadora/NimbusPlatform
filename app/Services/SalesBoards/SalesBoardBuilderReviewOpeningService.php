@@ -127,6 +127,27 @@ class SalesBoardBuilderReviewOpeningService
     }
 
     /**
+     * Abre a tentativa seguinte sobre uma versão que quem chama já validou.
+     *
+     * Existe para a devolução da Gestão, que precisa exatamente disto -- uma
+     * rodada nova, limpa, sobre o mesmo quadro -- e nada do resto: o ciclo já
+     * está travado, a versão vigente já foi relida e a aplicabilidade já foi
+     * conferida. Reimplementar a criação lá garantiria que, no dia em que uma
+     * oitava seção existisse, a devolução produzisse uma validação incompleta.
+     *
+     * Não verifica nada. Quem chama é responsável por ter travado o ciclo e por
+     * ter conferido que a versão é a vigente e é elegível; o caminho normal de
+     * abertura continua sendo {@see self::open()}.
+     */
+    public function openNextAttempt(
+        SalesBoardCycle $cycle,
+        SalesBoardCycleBaseline $baseline,
+        ?User $actor = null,
+    ): SalesBoardBuilderReview {
+        return $this->createReview($cycle, $baseline, $actor);
+    }
+
+    /**
      * Cria a validação e as sete seções, todas pendentes.
      *
      * As seções nascem juntas, e não conforme a construtora abre cada aba: uma

@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\DTOs;
 
 use App\Domain\PuCalculator\Enums\PuSimulationState;
+use App\Domain\PuCalculator\Services\DecimalRounder;
 use Carbon\CarbonImmutable;
 
 /**
  * Resultado de uma simulação de PU.
  *
  * NÃO é candidate, não é curva operacional e não carrega review, validação
- * externa ou promoção: é um retorno de sandbox. Todos os valores financeiros
- * são strings decimais produzidas pela engine oficial.
+ * externa ou promoção: é um retorno de sandbox. Os valores unitários são
+ * strings decimais produzidas pela engine oficial; a posição total é derivada
+ * separadamente pela multiplicação do PU atualizado pela quantidade simulada.
  */
 final readonly class PuSimulationResult
 {
@@ -109,11 +111,16 @@ final readonly class PuSimulationResult
      */
     public function selectedTotalValue(): ?string
     {
-        if ($this->selectedRow === null || $this->input->quantity === null) {
+        $quantity = trim($this->input->quantity ?? '');
+
+        if ($this->selectedRow === null || $quantity === '') {
             return null;
         }
 
-        return $this->selectedRow->totalValue;
+        return (new DecimalRounder)->round(
+            bcmul($this->selectedRow->updatedUnitValue, $quantity, DecimalRounder::CALCULATION_SCALE + 4),
+            DecimalRounder::TOTAL_SCALE,
+        );
     }
 
     /** @return array<string, mixed> */

@@ -20,22 +20,43 @@ final class PuIndexRateRequirementResolver
         private readonly IndexRateProvider $indexRateProvider,
     ) {}
 
+    /**
+     * Requisito de taxa de um dia da curva.
+     *
+     * Dois calendários distintos convivem aqui, e a distinção é semântica:
+     *
+     *  - o calendário CONTRATUAL (`$parameter->calendar_code`) decide se o dia
+     *    da curva é dia útil, isto é, se ele acumula juros. É o Dia Útil do
+     *    instrumento e nunca muda por hipótese de simulação;
+     *  - o calendário de OBSERVAÇÃO do índice decide em que dia a taxa foi
+     *    divulgada, e portanto para onde o lag de `BusinessDayLagExact` aponta.
+     *
+     * Eles coincidem em toda a produção: `$indexRateCalendarCode` nulo mantém o
+     * comportamento atual, byte a byte. Separá-los só faz sentido quando o
+     * calendário do contrato e o do divulgador do índice divergem -- é o caso
+     * de um feriado bancário que não é feriado nacional legal, em que não há
+     * publicação de taxa num dia que o contrato conta como útil.
+     */
     public function resolve(
         EmissionPuParameter $parameter,
         CarbonImmutable $curveDate,
+        ?string $indexRateCalendarCode = null,
     ): PuIndexRateRequirement {
         $lookupMode = $parameter->index_rate_lookup_mode_enum;
         $calendarCode = (string) $parameter->calendar_code;
+        $rateCalendarCode = $this->rateCalendarCode($parameter, $indexRateCalendarCode);
         $businessDayLag = (int) $parameter->index_rate_lag_business_days;
+        // Acúmulo de juros é matéria do contrato: segue o calendário da curva.
         $isBusinessDay = $this->businessDayCalendar->isBusinessDay($curveDate, $calendarCode);
 
         $lookupDate = match ($lookupMode) {
             PuIndexRateLookupMode::PreviousAvailableBusinessDay => $isBusinessDay ? $curveDate : null,
             PuIndexRateLookupMode::PreviousCalendarDayExact => $curveDate->subDay(),
+            // Deslocamento até a data de DIVULGAÇÃO: calendário de observação.
             PuIndexRateLookupMode::BusinessDayLagExact => $this->businessDayCalendar->shiftBusinessDays(
                 $curveDate,
                 $businessDayLag,
-                $calendarCode,
+                $rateCalendarCode,
             ),
         };
 
@@ -97,26 +118,39 @@ final class PuIndexRateRequirementResolver
         return $dates;
     }
 
-    /** @return list<PuIndexRateRequirement> */
-    public function firstCouponPreIntegralizationRateRequirements(EmissionPuParameter $parameter): array
-    {
+    /**
+     * As datas de acúmulo do prêmio continuam no calendário CONTRATUAL -- são
+     * Dias Úteis do instrumento. Só a taxa observada em cada uma delas segue o
+     * calendário de observação.
+     *
+     * @return list<PuIndexRateRequirement>
+     */
+    public function firstCouponPreIntegralizationRateRequirements(
+        EmissionPuParameter $parameter,
+        ?string $indexRateCalendarCode = null,
+    ): array {
         if (! $parameter->hasFirstCouponPreIntegralizationPremium()
             || ! (bool) $parameter->first_coupon_pre_integralization_apply_index_factor) {
             return [];
         }
 
         return array_map(
-            fn (CarbonImmutable $accrualDate): PuIndexRateRequirement => $this->resolve($parameter, $accrualDate),
+            fn (CarbonImmutable $accrualDate): PuIndexRateRequirement => $this->resolve(
+                $parameter,
+                $accrualDate,
+                $indexRateCalendarCode,
+            ),
             $this->firstCouponPreIntegralizationAccrualDates($parameter),
         );
     }
 
     public function firstCouponPreIntegralizationFinancialCalendarStartDate(
         EmissionPuParameter $parameter,
+        ?string $indexRateCalendarCode = null,
     ): ?CarbonImmutable {
         $dates = $this->firstCouponPreIntegralizationAccrualDates($parameter);
 
-        foreach ($this->firstCouponPreIntegralizationRateRequirements($parameter) as $requirement) {
+        foreach ($this->firstCouponPreIntegralizationRateRequirements($parameter, $indexRateCalendarCode) as $requirement) {
             if ($requirement->lookupDate !== null) {
                 $dates[] = $requirement->lookupDate;
             }
@@ -132,6 +166,20 @@ final class PuIndexRateRequirementResolver
         );
 
         return $dates[0];
+    }
+
+    /**
+     * Calendário efetivo de observação do índice: o informado, quando houver, e
+     * o contratual em qualquer outro caso. Um código vazio é tratado como
+     * ausência de override -- nunca como calendário inválido.
+     */
+    private function rateCalendarCode(
+        EmissionPuParameter $parameter,
+        ?string $indexRateCalendarCode,
+    ): string {
+        $override = $indexRateCalendarCode !== null ? trim($indexRateCalendarCode) : '';
+
+        return $override !== '' ? $override : (string) $parameter->calendar_code;
     }
 
     public function isAwaitingPublication(

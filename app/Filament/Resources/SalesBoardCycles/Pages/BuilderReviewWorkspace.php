@@ -6,6 +6,7 @@ use App\DTOs\SalesBoards\BuilderReviewerIdentity;
 use App\DTOs\SalesBoards\SalesBoardBuilderDivergenceInput;
 use App\DTOs\SalesBoards\SalesBoardBuilderReviewWorkspace as WorkspaceData;
 use App\Enums\SalesBoardBuilderDivergenceType;
+use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardUnitClassification;
 use App\Exceptions\SalesBoardBuilderReviewException;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
@@ -13,6 +14,7 @@ use App\Models\SalesBoardBuilderDivergence;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardBuilderReviewSection;
 use App\Models\SalesBoardCycle;
+use App\Models\SalesBoardManagementReview;
 use App\Services\SalesBoards\SalesBoardBuilderReviewEditor;
 use App\Services\SalesBoards\SalesBoardBuilderReviewSubmissionService;
 use App\Services\SalesBoards\SalesBoardBuilderReviewWorkspaceBuilder;
@@ -133,6 +135,29 @@ class BuilderReviewWorkspace extends Page
             ->orderByDesc('attempt')
             ->get()
             ->all();
+    }
+
+    /**
+     * O motivo pelo qual a Gestão devolveu a rodada anterior.
+     *
+     * Só aparece enquanto a rodada exibida é a que nasceu da devolução: uma vez
+     * enviada, a construtora já respondeu ao pedido, e continuar mostrando-o
+     * faria a tela parecer que ainda há algo pendente. Nenhuma divergência
+     * antiga é copiada -- o que atravessa é a pergunta, não a resposta.
+     */
+    public function returnReason(): ?string
+    {
+        $review = $this->currentReview();
+
+        if (($review === null) || ! $review->isEditable() || ((int) $review->attempt <= 1)) {
+            return null;
+        }
+
+        return SalesBoardManagementReview::query()
+            ->where('sales_board_cycle_id', $review->sales_board_cycle_id)
+            ->where('status', SalesBoardManagementReviewStatus::Returned)
+            ->orderByDesc('attempt')
+            ->value('return_reason');
     }
 
     public function canEdit(): bool

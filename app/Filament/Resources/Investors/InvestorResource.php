@@ -148,10 +148,12 @@ class InvestorResource extends Resource
                             ->columnSpanFull(),
 
                         DateTimePicker::make('last_login_at')
-                            ->label('Último Acesso ao Sistema'),
+                            ->label('Último Acesso ao Sistema')
+                            ->native(false),
 
                         DateTimePicker::make('last_portal_seen_at')
-                            ->label('Última Interação no Portal'),
+                            ->label('Última Interação no Portal')
+                            ->native(false),
                     ])
                     ->columns(2)
                     ->columnSpanFull(),

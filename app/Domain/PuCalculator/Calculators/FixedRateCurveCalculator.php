@@ -34,7 +34,11 @@ class FixedRateCurveCalculator implements PuIndexCalculatorInterface
         private readonly PuCurveEventSupport $eventSupport,
     ) {}
 
-    public function calculate(Emission $emission): PuCurveGenerationResult
+    /**
+     * `$indexRateCalendarCode` não se aplica a este indexador -- uma curva prefixada não observa índice algum --,
+     * então é aceito apenas para satisfazer o contrato e permanece sem efeito.
+     */
+    public function calculate(Emission $emission, ?string $indexRateCalendarCode = null): PuCurveGenerationResult
     {
         $emission->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
 

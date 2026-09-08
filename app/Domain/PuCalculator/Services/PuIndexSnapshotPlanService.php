@@ -32,6 +32,7 @@ final class PuIndexSnapshotPlanService
         ?string $source,
         ?string $seriesCode,
         ?string $sourceReference,
+        ?string $indexRateCalendarCode = null,
     ): array {
         if (! $parameter->indexer_enum->requiresIndexRates()) {
             return [
@@ -45,10 +46,10 @@ final class PuIndexSnapshotPlanService
 
         $this->indexRateLookup->flushCache();
         $requirements = collect($this->rateRequirementResolver
-            ->firstCouponPreIntegralizationRateRequirements($parameter));
+            ->firstCouponPreIntegralizationRateRequirements($parameter, $indexRateCalendarCode));
 
         for ($curveDate = $curveStartDate; $curveDate->lte($homologationEndDate); $curveDate = $curveDate->addDay()) {
-            $requirement = $this->rateRequirementResolver->resolve($parameter, $curveDate);
+            $requirement = $this->rateRequirementResolver->resolve($parameter, $curveDate, $indexRateCalendarCode);
 
             if ($requirement->isRequiredForCalculation()) {
                 $requirements->push($requirement);
@@ -128,7 +129,7 @@ final class PuIndexSnapshotPlanService
             'missing_rate_dates' => $missingRateDates,
             'conflicting_rates' => $conflictingRates,
             'financial_requirement_start_date' => $this->rateRequirementResolver
-                ->firstCouponPreIntegralizationFinancialCalendarStartDate($parameter)?->toDateString()
+                ->firstCouponPreIntegralizationFinancialCalendarStartDate($parameter, $indexRateCalendarCode)?->toDateString()
                 ?? $curveStartDate->toDateString(),
         ];
     }

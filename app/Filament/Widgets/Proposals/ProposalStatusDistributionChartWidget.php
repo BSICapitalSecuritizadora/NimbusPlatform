@@ -18,10 +18,10 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
 
     protected int|string|array $columnSpan = [
         'default' => 'full',
-        'xl' => 4,
+        'xl' => 5,
     ];
 
-    protected ?string $maxHeight = '160px';
+    protected ?string $maxHeight = '140px';
 
     /**
      * @return array{
@@ -56,20 +56,22 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
                 'labels' => ['Sem propostas'],
                 'datasets' => [[
                     'data' => [1],
-                    'backgroundColor' => ['#e2e8f0'],
+                    'backgroundColor' => ['#334155'],
                     'borderWidth' => 0,
                 ]],
             ];
         }
+
+        $isSingleItem = count($details['active_items']) <= 1;
 
         return [
             'labels' => array_column($details['active_items'], 'label'),
             'datasets' => [[
                 'data' => array_column($details['active_items'], 'count'),
                 'backgroundColor' => array_column($details['active_items'], 'color_hex'),
-                'borderWidth' => 2,
-                'borderColor' => '#ffffff',
-                'hoverOffset' => 4,
+                'borderWidth' => $isSingleItem ? 0 : 2,
+                'borderColor' => '#091b23',
+                'hoverOffset' => 3,
             ]],
         ];
     }
@@ -77,14 +79,14 @@ class ProposalStatusDistributionChartWidget extends ChartWidget
     protected function getOptions(): array
     {
         return [
-            'cutout' => '72%',
+            'cutout' => '70%',
             'maintainAspectRatio' => false,
             'plugins' => [
                 'legend' => [
                     'display' => false,
                 ],
                 'tooltip' => [
-                    'padding' => 10,
+                    'padding' => 8,
                     'boxPadding' => 4,
                     'usePointStyle' => true,
                 ],

@@ -21,15 +21,24 @@ final class FirstCouponPreIntegralizationPremiumCalculator
         private readonly DecimalRounder $rounder,
     ) {}
 
-    public function calculate(EmissionPuParameter $parameter): ?FirstCouponPreIntegralizationPremiumData
-    {
+    /**
+     * `$indexRateCalendarCode` desloca apenas a data da taxa observada em cada
+     * Dia Útil de acúmulo; nenhuma conta do prêmio muda por causa dele.
+     */
+    public function calculate(
+        EmissionPuParameter $parameter,
+        ?string $indexRateCalendarCode = null,
+    ): ?FirstCouponPreIntegralizationPremiumData {
         if (! $parameter->hasFirstCouponPreIntegralizationPremium()) {
             return null;
         }
 
         $accrualDates = $this->requirementResolver->firstCouponPreIntegralizationAccrualDates($parameter);
         $requirements = collect(
-            $this->requirementResolver->firstCouponPreIntegralizationRateRequirements($parameter),
+            $this->requirementResolver->firstCouponPreIntegralizationRateRequirements(
+                $parameter,
+                $indexRateCalendarCode,
+            ),
         )->keyBy(fn (PuIndexRateRequirement $requirement): string => $requirement->curveDate->toDateString());
         $appliesIndex = (bool) $parameter->first_coupon_pre_integralization_apply_index_factor;
         $appliesSpread = (bool) $parameter->first_coupon_pre_integralization_apply_spread_factor;

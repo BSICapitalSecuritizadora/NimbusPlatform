@@ -27,6 +27,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -76,96 +77,112 @@ class ProposalResource extends Resource
                             'default' => 1,
                             'sm' => 2,
                             'lg' => 3,
-                            'xl' => 6,
-                        ])->schema([
-                            TextEntry::make('company.name')
-                                ->label('Proponente')
-                                ->weight('bold')
-                                ->size('lg')
-                                ->helperText(fn (?Proposal $record): ?string => $record?->company?->cnpj ? "CNPJ: {$record->company->cnpj}" : null)
-                                ->tooltip(fn (?Proposal $record): ?string => $record?->company?->name),
+                            'xl' => 12,
+                        ])
+                            ->extraAttributes(['class' => 'bsi-exec-summary'])
+                            ->schema([
+                                TextEntry::make('company.name')
+                                    ->label('Proponente')
+                                    ->weight('bold')
+                                    ->size('lg')
+                                    ->columnSpanFull()
+                                    ->helperText(fn (?Proposal $record): ?string => $record?->company?->cnpj ? "CNPJ: {$record->company->cnpj}" : null)
+                                    ->tooltip(fn (?Proposal $record): ?string => $record?->company?->name),
 
-                            TextEntry::make('total_requested_amount')
-                                ->label('Valor da Proposta')
-                                ->state(fn (?Proposal $record): string => $record?->formatted_total_requested_amount ?? '—')
-                                ->weight('bold')
-                                ->size('lg')
-                                ->color('primary')
-                                ->helperText(fn (?Proposal $record): ?string => $record && $record->projects->count() > 0
-                                    ? "{$record->projects->count()} empreendimento(s)"
-                                    : 'Captação inicial'),
+                                TextEntry::make('total_requested_amount')
+                                    ->label('Valor da Proposta')
+                                    ->state(fn (?Proposal $record): string => $record?->formatted_total_requested_amount ?? '—')
+                                    ->weight('bold')
+                                    ->size('lg')
+                                    ->color('primary')
+                                    ->columnSpan(['xl' => 2])
+                                    ->helperText(fn (?Proposal $record): ?string => $record && $record->projects->count() > 0
+                                        ? "{$record->projects->count()} empreendimento(s)"
+                                        : 'Captação inicial'),
 
-                            TextEntry::make('status')
-                                ->label('Estágio Atual')
-                                ->badge()
-                                ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
-                                ->color(fn (?string $state): string => ProposalStatus::colorFor($state))
-                                ->helperText(fn (?Proposal $record): ?string => $record?->latestStatusHistory?->changed_at
-                                    ? 'Desde '.$record->latestStatusHistory->changed_at->format('d/m/Y H:i')
-                                    : null),
+                                TextEntry::make('status')
+                                    ->label('Estágio Atual')
+                                    ->badge()
+                                    ->formatStateUsing(fn (?string $state): string => ProposalStatus::labelFor($state))
+                                    ->color(fn (?string $state): string => ProposalStatus::colorFor($state))
+                                    ->columnSpan(['xl' => 2])
+                                    ->helperText(fn (?Proposal $record): ?string => $record?->latestStatusHistory?->changed_at
+                                        ? 'Desde '.$record->latestStatusHistory->changed_at->format('d/m/Y H:i')
+                                        : null),
 
-                            TextEntry::make('representative.name')
-                                ->label('Responsável Comercial')
-                                ->placeholder('Não atribuído')
-                                ->icon('heroicon-m-user-circle')
-                                ->iconColor('gray')
-                                ->helperText(fn (?Proposal $record): ?string => $record?->distribution_sequence
-                                    ? "Fila #{$record->distribution_sequence}"
-                                    : 'Aguardando fila'),
+                                TextEntry::make('representative.name')
+                                    ->label('Responsável Comercial')
+                                    ->placeholder('Não atribuído')
+                                    ->icon('heroicon-m-user-circle')
+                                    ->iconColor('gray')
+                                    ->size('lg')
+                                    ->columnSpan(['xl' => 3])
+                                    ->helperText(fn (?Proposal $record): ?string => $record?->distribution_sequence
+                                        ? "Fila #{$record->distribution_sequence}"
+                                        : 'Aguardando fila'),
 
-                            TextEntry::make('time_in_status')
-                                ->label('Permanência no Estágio')
-                                ->state(fn (?Proposal $record): string => $record?->updated_at ? $record->updated_at->diffForHumans(null, true) : '—')
-                                ->icon('heroicon-m-clock')
-                                ->iconColor('gray')
-                                ->helperText(fn (?Proposal $record): ?string => $record?->created_at
-                                    ? 'Entrada em '.$record->created_at->format('d/m/Y')
-                                    : null),
+                                TextEntry::make('time_in_status')
+                                    ->label('Permanência no Estágio')
+                                    ->state(fn (?Proposal $record): string => $record?->updated_at ? $record->updated_at->diffForHumans(null, true) : '—')
+                                    ->icon('heroicon-m-clock')
+                                    ->iconColor('gray')
+                                    ->weight(FontWeight::SemiBold)
+                                    ->size('lg')
+                                    ->columnSpan(['xl' => 2])
+                                    ->helperText(fn (?Proposal $record): ?string => $record?->created_at
+                                        ? 'Entrada em '.$record->created_at->format('d/m/Y')
+                                        : null),
 
-                            TextEntry::make('next_action')
-                                ->label('Diagnóstico & SLA')
-                                ->state(fn (?Proposal $record): string => match ($record?->status) {
-                                    'aguardando_complementacao', 'aguardando_informacoes' => 'Atenção: Aguardar informações',
-                                    'em_analise' => 'Alta: Analisar documentação',
-                                    'aprovado' => 'Concluída: Prosseguir emissão',
-                                    'rejeitado' => 'Sem Ação: Proposta arquivada',
-                                    'concluida' => 'Concluída: Processo finalizado',
-                                    default => 'Atenção: Iniciar análise',
-                                })
-                                ->badge()
-                                ->color(fn (?Proposal $record): string => match ($record?->status) {
-                                    'aguardando_complementacao', 'aguardando_informacoes' => 'warning',
-                                    'em_analise' => 'primary',
-                                    'rejeitado' => 'gray',
-                                    'concluida', 'aprovado' => 'success',
-                                    default => 'warning',
-                                })
-                                ->icon(fn (?Proposal $record): string => match ($record?->status) {
-                                    'aguardando_complementacao', 'aguardando_informacoes' => 'heroicon-m-exclamation-triangle',
-                                    'em_analise' => 'heroicon-m-information-circle',
-                                    'rejeitado' => 'heroicon-m-archive-box',
-                                    'aprovado', 'concluida' => 'heroicon-m-check-circle',
-                                    default => 'heroicon-m-exclamation-circle',
-                                }),
-                        ]),
+                                TextEntry::make('next_action')
+                                    ->label('Diagnóstico & SLA')
+                                    ->columnSpan(['xl' => 3])
+                                    ->state(fn (?Proposal $record): string => match ($record?->status) {
+                                        'aguardando_complementacao', 'aguardando_informacoes' => 'Atenção: Aguardar informações',
+                                        'em_analise' => 'Alta: Analisar documentação',
+                                        'aprovado' => 'Concluída: Prosseguir emissão',
+                                        'rejeitado' => 'Sem Ação: Proposta arquivada',
+                                        'concluida' => 'Concluída: Processo finalizado',
+                                        default => 'Atenção: Iniciar análise',
+                                    })
+                                    ->badge()
+                                    ->color(fn (?Proposal $record): string => match ($record?->status) {
+                                        'aguardando_complementacao', 'aguardando_informacoes' => 'warning',
+                                        'em_analise' => 'primary',
+                                        'rejeitado' => 'gray',
+                                        'concluida', 'aprovado' => 'success',
+                                        default => 'warning',
+                                    })
+                                    ->icon(fn (?Proposal $record): string => match ($record?->status) {
+                                        'aguardando_complementacao', 'aguardando_informacoes' => 'heroicon-m-exclamation-triangle',
+                                        'em_analise' => 'heroicon-m-information-circle',
+                                        'rejeitado' => 'heroicon-m-archive-box',
+                                        'aprovado', 'concluida' => 'heroicon-m-check-circle',
+                                        default => 'heroicon-m-exclamation-circle',
+                                    }),
+                            ]),
                     ]),
 
                 // ── 2. Resumo da Proposta (Largura Completa com Leitura Confortável) ──
                 Section::make('Resumo da Proposta')
                     ->icon('heroicon-o-document-text')
                     ->columnSpanFull()
+                    ->extraAttributes(['class' => 'bsi-proposal-summary'])
                     ->schema([
                         TextEntry::make('observations')
                             ->label('Informações Complementares do Proponente')
                             ->placeholder('Nenhuma observação informada pelo proponente.')
                             ->columnSpanFull()
+                            ->extraAttributes(['class' => 'bsi-prose-block'])
                             ->prose(),
 
                         TextEntry::make('internal_notes')
                             ->label('Parecer Técnico / Comercial Interno')
                             ->placeholder('Sem observações internas registradas.')
-                            ->helperText('Visível apenas à equipe interna no painel administrativo.')
-                            ->columnSpanFull(),
+                            ->hint('Uso interno')
+                            ->hintIcon('heroicon-m-lock-closed')
+                            ->hintColor('gray')
+                            ->columnSpanFull()
+                            ->extraAttributes(['class' => 'bsi-internal-note']),
                     ]),
 
                 // ── 3. Contato do Proponente (Largura Completa com Grid Interno) ──

@@ -18,6 +18,7 @@ use App\Filament\Resources\Operations\Tables\OperationsTable;
 use App\Models\Operation;
 use App\Services\MeasurementAuthorizationService;
 use App\Services\OperationLifecycleService;
+use App\Services\OperationNextMeasurementResolver;
 use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
@@ -81,6 +82,7 @@ class OperationResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()->with(['emission', 'construction', 'planSets.construction']);
+        app(OperationNextMeasurementResolver::class)->addNextMeasurementDate($query);
         $user = auth()->user();
 
         return $user === null ? $query->whereRaw('1 = 0') : $query->visibleTo($user);

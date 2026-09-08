@@ -9,6 +9,7 @@ use App\Domain\PuCalculator\Enums\PuBaselineEvidenceStatus;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuSimulationValueOrigin;
+use App\Domain\PuCalculator\ValueObjects\Decimal;
 use App\Models\Emission;
 use App\Models\EmissionPuBaselineEvidence;
 use App\Models\EmissionPuParameter;
@@ -138,6 +139,9 @@ final class PuSimulationParameterFactory
     /**
      * Cronograma contratual (primeiro cupom, periodicidade, amortização,
      * convenção de pagamento) tal como a baseline o comprova.
+     * A configuração já converte frações jurídicas em pontos percentuais no
+     * `PuBaselineCandidateFactory`: spread `0.06` chega aqui como `6.00000000`.
+     * Persistidos e overrides usam essa mesma unidade, sem nova conversão.
      *
      * @return array{configuration:array<string, mixed>, schedule:array<string, mixed>}
      */
@@ -325,7 +329,11 @@ final class PuSimulationParameterFactory
 
     private function overrideFor(PuSimulationInput $input, string $field): ?string
     {
-        return $input->override($field);
+        $value = $input->override($field);
+
+        return $field === 'spread_rate' && $value !== null
+            ? Decimal::of($value)->value()
+            : $value;
     }
 
     private function isTruthy(mixed $value): bool

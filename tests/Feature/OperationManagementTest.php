@@ -5,6 +5,7 @@ use App\Filament\Resources\Operations\Pages\CreateOperation;
 use App\Filament\Resources\Operations\Pages\ListOperations;
 use App\Models\Construction;
 use App\Models\Emission;
+use App\Models\MeasurementPlanLine;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
 use App\Models\User;
@@ -87,11 +88,19 @@ it('renders operations with formatted values and developments counter', function
         'next_measurement_at' => '2026-09-15',
     ]);
 
-    MeasurementPlanSet::create([
+    $defaultPlan = MeasurementPlanSet::create([
         'operation_id' => $operation->id,
         'construction_id' => $construction1->id,
         'name' => 'Plano Bellevue',
         'is_default' => true,
+    ]);
+
+    MeasurementPlanLine::factory()->create([
+        'operation_id' => $operation->id,
+        'plan_set_id' => $defaultPlan->id,
+        'measurement_date' => '2026-05-01',
+        'realized_monthly_percent' => 0,
+        'realized_cumulative_percent' => 0,
     ]);
 
     MeasurementPlanSet::create([
@@ -109,7 +118,8 @@ it('renders operations with formatted values and developments counter', function
         ->assertSee('Residencial Alto Bellevue +1')
         ->assertSee('Em Andamento')
         ->assertSee('18.940.068,86')
-        ->assertSee('15/09/2026');
+        ->assertSee('05/2026')
+        ->assertDontSee('15/09/2026');
 });
 
 it('filters operations by status', function () {

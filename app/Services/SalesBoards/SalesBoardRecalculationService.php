@@ -6,6 +6,7 @@ namespace App\Services\SalesBoards;
 
 use App\DTOs\SalesBoards\SalesBoardComparableSnapshot;
 use App\DTOs\SalesBoards\SalesBoardRecalculationResult;
+use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardRecalculationOutcome;
 use App\Enums\SalesBoardStaleImpact;
 use App\Events\SalesBoards\SalesBoardCurrentBaselineChanged;
@@ -85,6 +86,25 @@ class SalesBoardRecalculationService
                 ->whereKey($cycle->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            /**
+             * Um ciclo encerrado não recebe versão nova.
+             *
+             * Depois de aprovado existe um Quadro de Vendas publicado a partir
+             * de uma versão específica, e criar a seguinte faria a posição
+             * publicada deixar de corresponder à versão vigente do ciclo -- sem
+             * que nada no banco denunciasse a diferença. Cancelado é o mesmo
+             * caso pelo motivo oposto: a competência foi encerrada sem posição,
+             * e uma versão nova ressuscitaria um ciclo que ninguém pretende
+             * seguir. A tela já esconde o botão; esta é a garantia que não
+             * depende disso.
+             */
+            if (in_array($locked->status, [SalesBoardCycleStatus::Approved, SalesBoardCycleStatus::Cancelled], true)) {
+                throw new RuntimeException(sprintf(
+                    'A competência está em "%s" e não admite nova versão.',
+                    $locked->status->label(),
+                ));
+            }
 
             $current = SalesBoardCycleBaseline::query()
                 ->with(['lines', 'movements', 'cycle'])

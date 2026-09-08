@@ -1,5 +1,6 @@
 <x-filament-widgets::widget class="bsi-cockpit-widget bsi-cockpit-pendings">
     <x-filament::section
+        class="h-full"
         heading="Minhas pendências"
         :description="$sectionDescription"
         icon="heroicon-o-clipboard-document-check"
@@ -8,6 +9,13 @@
         persist-collapsed
         collapse-id="cockpit-my-pendings"
     >
+        @if($totalPendingCount > 0)
+            <x-slot name="afterHeader">
+                <span class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums border bg-primary-500/10 text-primary-600 border-primary-500/20 dark:bg-primary-500/15 dark:text-[#d4af37] dark:border-primary-400/25" aria-label="{{ $totalPendingCount }} pendências ativas">
+                    {{ $totalPendingCount }}
+                </span>
+            </x-slot>
+        @endif
         @if($measurementCount > 0)
             <section class="mb-5 border-b border-gray-200/80 pb-5 dark:border-white/10" aria-labelledby="cockpit-measurements-heading">
                 <div class="flex flex-wrap items-center justify-between gap-3">

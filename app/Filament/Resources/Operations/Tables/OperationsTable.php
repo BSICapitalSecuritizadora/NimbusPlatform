@@ -134,9 +134,9 @@ class OperationsTable
                     ->placeholder('—')
                     ->sortable(),
 
-                TextColumn::make('next_measurement_at')
+                TextColumn::make('next_pending_measurement_at')
                     ->label('Próxima Medição')
-                    ->date('d/m/Y')
+                    ->date('m/Y')
                     ->placeholder('Sem medição prevista')
                     ->sortable()
                     ->toggleable(),

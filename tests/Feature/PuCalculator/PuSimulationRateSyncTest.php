@@ -10,6 +10,7 @@ use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\Pu\PuSimulationFixture;
@@ -199,4 +200,157 @@ it('does not overwrite a locally stored rate that diverges', function () {
 
     expect((string) IndexRate::query()->whereDate('rate_date', $target)->first()?->rate_value)
         ->toBe('9.99000000');
+});
+
+// ---------------------------------------------------------------------------
+// A data exigida pela simulação precisa chegar EXATAMENTE ao Banco Central
+// ---------------------------------------------------------------------------
+
+/**
+ * 04/06/2026 é Corpus Christi. O calendário `BR_NATIONAL_HOLIDAYS` materializa
+ * somente feriados FIXOS de lei federal, então esse dia é dia útil aqui e a
+ * simulação exige o CDI dele -- mas o Banco Central não divulga taxa em dia sem
+ * expediente bancário. É exatamente o caso observado na tela do Alto Bellevue.
+ */
+const CORPUS_CHRISTI_2026 = '2026-06-04';
+
+/**
+ * Cenário calculável com uma única taxa ausente: a de Corpus Christi.
+ *
+ * @return array{component:Testable, missing:list<string>}
+ */
+function scenarioMissingOnlyCorpusChristi(): array
+{
+    $scenario = PuSimulationFixture::calculableScenario();
+    Http::preventStrayRequests();
+
+    $component = Livewire::test(PuCalculatorSimulator::class, ['record' => $scenario['emission']->getRouteKey()])
+        ->set('firstIntegralizationDate', PuSimulationFixture::integralizationDate()->toDateString())
+        ->set('simulationEndDate', PuSimulationFixture::windowEndDate()->toDateString())
+        ->call('calculate');
+
+    // A premissa do cenário é explícita: se esta data deixar de ser exigida, o
+    // teste falha aqui, e não com um sintoma distante.
+    expect($component->instance()->result()->requiredRateDates)->toContain(CORPUS_CHRISTI_2026);
+
+    IndexRate::query()
+        ->where('indexer', PuIndexer::Cdi->value)
+        ->whereDate('rate_date', CORPUS_CHRISTI_2026)
+        ->delete();
+
+    $component->call('calculate');
+    $result = $component->instance()->result();
+
+    expect($result->state)->toBe(PuSimulationState::RatesMissing)
+        ->and($result->missingRateDates)->toBe([CORPUS_CHRISTI_2026]);
+
+    return ['component' => $component, 'missing' => $result->missingRateDates];
+}
+
+/** A janela consultada no SGS foi exatamente `$from`..`$to`, e nada além disso. */
+function assertSgsWindowRequested(string $from, string $to): void
+{
+    Http::assertSent(function ($request) use ($from, $to): bool {
+        $url = urldecode($request->url());
+
+        return str_contains($url, 'bcdata.sgs.4389/dados')
+            && str_contains($url, 'dataInicial='.CarbonImmutable::parse($from)->format('d/m/Y'))
+            && str_contains($url, 'dataFinal='.CarbonImmutable::parse($to)->format('d/m/Y'));
+    });
+}
+
+it('asks the central bank for exactly the missing date the simulation reported', function () {
+    $this->actingAs(makeAdminUser());
+    ['component' => $component] = scenarioMissingOnlyCorpusChristi();
+
+    fakeSgsSeries([CORPUS_CHRISTI_2026]);
+
+    $component->callAction('syncRequiredRates');
+
+    // Uma única consulta, e a janela é a data exigida -- nunca a emissão toda.
+    Http::assertSentCount(1);
+    assertSgsWindowRequested(CORPUS_CHRISTI_2026, CORPUS_CHRISTI_2026);
+});
+
+it('persists the synced rate with the homologated provenance and recalculates to calculated', function () {
+    $this->actingAs(makeAdminUser());
+    ['component' => $component] = scenarioMissingOnlyCorpusChristi();
+
+    fakeSgsSeries([CORPUS_CHRISTI_2026]);
+
+    $component->callAction('syncRequiredRates')
+        ->assertNotified('Sincronização concluída.');
+
+    $rate = IndexRate::query()
+        ->where('indexer', PuIndexer::Cdi->value)
+        ->whereDate('rate_date', CORPUS_CHRISTI_2026)
+        ->first();
+
+    expect($rate)->not->toBeNull()
+        ->and($rate->source)->toBe('bcb_sgs')
+        ->and($rate->source_reference)->toBe('bcb_sgs:4389')
+        ->and((string) $rate->external_series_code)->toBe('4389');
+
+    $recalculated = $component->instance()->result();
+
+    expect($recalculated->missingRateDates)->not->toContain(CORPUS_CHRISTI_2026)
+        ->and($recalculated->missingRateDates)->toBe([])
+        ->and($recalculated->state)->toBe(PuSimulationState::Calculated);
+});
+
+it('reports the still missing date instead of announcing a successful sync', function () {
+    $this->actingAs(makeAdminUser());
+    ['component' => $component] = scenarioMissingOnlyCorpusChristi();
+
+    // O Banco Central responde SEM dados, como num dia sem divulgação.
+    Http::preventStrayRequests();
+    Http::fake(['*api.bcb.gov.br*' => Http::response([], 200)]);
+
+    $component->callAction('syncRequiredRates')
+        ->assertNotified('Não foi possível obter todas as taxas necessárias.');
+
+    // A consulta ocorreu de fato: este caso é diferente de "nenhum request".
+    Http::assertSentCount(1);
+    assertSgsWindowRequested(CORPUS_CHRISTI_2026, CORPUS_CHRISTI_2026);
+
+    expect(IndexRate::query()
+        ->where('indexer', PuIndexer::Cdi->value)
+        ->whereDate('rate_date', CORPUS_CHRISTI_2026)
+        ->exists())->toBeFalse()
+        ->and($component->instance()->result()->missingRateDates)->toBe([CORPUS_CHRISTI_2026]);
+});
+
+it('never reports a successful sync while a requested date is still missing', function () {
+    $this->actingAs(makeAdminUser());
+    ['component' => $component] = scenarioMissingOnlyCorpusChristi();
+
+    Http::preventStrayRequests();
+    Http::fake(['*api.bcb.gov.br*' => Http::response([], 200)]);
+
+    // A regressão exata da tela: `0 consultada(s)` apresentado como sucesso,
+    // com a data continuando ausente logo abaixo.
+    $component->callAction('syncRequiredRates')
+        ->assertNotNotified('Sincronização concluída.');
+});
+
+it('stops offering the sync once the rate exists and does not consult again', function () {
+    $this->actingAs(makeAdminUser());
+    ['component' => $component] = scenarioMissingOnlyCorpusChristi();
+
+    fakeSgsSeries([CORPUS_CHRISTI_2026]);
+    $component->callAction('syncRequiredRates');
+
+    $created = IndexRate::query()
+        ->where('indexer', PuIndexer::Cdi->value)
+        ->whereDate('rate_date', CORPUS_CHRISTI_2026)
+        ->count();
+
+    // Nenhuma taxa pendente: a ação sai de cena e nenhuma consulta adicional
+    // é feita ao Banco Central.
+    $component->assertActionHidden('syncRequiredRates');
+
+    expect($created)->toBe(1)
+        ->and($component->instance()->result()->state)->toBe(PuSimulationState::Calculated);
+
+    Http::assertSentCount(1);
 });

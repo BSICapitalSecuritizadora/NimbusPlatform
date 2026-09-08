@@ -795,3 +795,110 @@ it('renders a clear empty state for an authorized empty scope', function () {
     Livewire::test(MeasurementCockpit::class)
         ->assertSee('Nenhuma medição corresponde ao recorte operacional no seu escopo.');
 });
+
+it('renders neutral signal badges when every indicator is zero', function () {
+    $viewer = p2CockpitUser();
+    p2CockpitMeasurement($viewer);
+    $this->actingAs($viewer);
+
+    $component = Livewire::test(MeasurementCockpit::class)->assertSuccessful();
+    $html = $component->html(true);
+
+    expect($component->viewData('signals'))->toHaveCount(8)
+        ->and(substr_count($html, 'fi-badge-label-ctn'))->toBe(8)
+        ->and(substr_count($html, 'bg-gray-300'))->toBe(8)
+        ->and($html)->not->toContain('fi-color-danger', 'fi-color-warning', 'fi-color-success', 'fi-color-info');
+});
+
+it('renders semantic signal badges only for active indicators', function () {
+    $viewer = p2CockpitUser();
+    $overdue = p2CockpitMeasurement($viewer);
+    $overdue->reviews()->update(['created_at' => '2026-08-17 12:00:00']);
+    $this->actingAs($viewer);
+
+    $component = Livewire::test(MeasurementCockpit::class)->assertSuccessful();
+    $html = $component->html(true);
+
+    expect(collect($component->viewData('signals'))->firstWhere('label', 'SLA vencido')['count'])->toBe(1)
+        ->and(substr_count($html, 'fi-color-danger'))->toBe(1)
+        ->and(substr_count($html, 'fi-badge-label-ctn'))->toBe(8)
+        ->and($html)->toContain('bg-danger-500');
+});
+
+it('keeps a finalized drill-down equal to its destination population', function () {
+    $viewer = p2CockpitUser();
+    $operation = p2CockpitOperation($viewer);
+    $finalizedMeasurements = collect(range(1, 2))
+        ->map(fn (): Measurement => p2CockpitMeasurementForOperation($operation, [
+            'status' => 'finalized',
+            'current_stage' => MeasurementWorkflow::STAGE_FINALIZATION,
+        ]));
+    $open = p2CockpitMeasurementForOperation($operation, [
+        'status' => 'approved',
+        'current_stage' => MeasurementWorkflow::STAGE_FINALIZATION,
+    ]);
+    $this->actingAs($viewer);
+
+    $component = Livewire::test(MeasurementCockpit::class);
+    $stages = $component->viewData('stages');
+    $finalizedStage = $stages->firstWhere('label', 'Finalizado');
+
+    expect($stages)->toHaveCount(6)
+        ->and($finalizedStage['count'])->toBe(2)
+        ->and($finalizedStage['url'])->toBeString();
+
+    p2CockpitAssertDestinationPopulation(
+        $finalizedStage['url'],
+        2,
+        $finalizedMeasurements->all(),
+        [$open],
+    );
+});
+
+it('removes the finalized drill-down when the base status is different', function () {
+    $viewer = p2CockpitUser();
+    p2CockpitMeasurement($viewer, [
+        'status' => 'approved',
+        'current_stage' => MeasurementWorkflow::STAGE_FINALIZATION,
+    ]);
+    p2CockpitMeasurement($viewer, ['status' => 'paused']);
+    $this->actingAs($viewer);
+
+    $component = Livewire::test(MeasurementCockpit::class, [
+        'pageFilters' => ['status' => 'approved'],
+    ])->assertSee('aria-disabled="true"', false);
+    $finalizedStage = $component->viewData('stages')->firstWhere('label', 'Finalizado');
+
+    expect($finalizedStage['count'])->toBe(0)
+        ->and($finalizedStage['url'])->toBeNull();
+});
+
+it('highlights populated stages and preserves every cockpit label and action', function () {
+    $viewer = p2CockpitUser();
+    p2CockpitMeasurement($viewer);
+    $this->actingAs($viewer);
+
+    $component = Livewire::test(MeasurementCockpit::class)->assertSuccessful();
+    $html = $component->html(true);
+
+    expect($html)->toContain('border-bsi-gold-500/50')
+        ->and($html)->toContain('Abrir workspace')
+        ->and($component->viewData('paymentWorkspaceUrl'))->toBeString();
+
+    $component
+        ->assertSee('Distribuição por etapa', false)
+        ->assertSee('Consolidação operacional', false)
+        ->assertSee('Sinais operacionais', false)
+        ->assertSee('Pagamentos registrados', false)
+        ->assertSee('Sem comprovante', false)
+        ->assertSee('Valor registrado', false)
+        ->assertSee('Soma dos registros operacionais; não representa saldo contábil ou valor liquidado.', false);
+
+    foreach (['SLA vencido', 'SLA em atenção', 'Pausadas', 'Delegadas no meu escopo', 'Comprovantes pendentes', 'Aguardando comprovante', 'Prontas para finalizar', 'Calendário indisponível', 'Finalizado'] as $label) {
+        $component->assertSee($label, false);
+    }
+
+    foreach (['Exige atuação imediata', 'Prazo se aproximando', 'SLA interrompido pelo workflow', 'Atuação temporária efetiva', 'Pagamentos sem comprovante', 'Medições na etapa formal', 'Finalização ainda necessária', 'SLA em fail-closed'] as $description) {
+        $component->assertSee($description, false);
+    }
+});

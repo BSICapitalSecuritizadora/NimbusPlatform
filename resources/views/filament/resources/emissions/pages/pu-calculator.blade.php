@@ -113,6 +113,50 @@
                 />
             </div>
 
+            {{-- Calendário de observação do índice: hipótese, nunca contrato --}}
+            <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/30">
+                <label class="block text-sm font-semibold text-amber-900 dark:text-amber-200" for="indexRateCalendarCode">
+                    Calendário de observação do CDI
+                </label>
+                <p class="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                    Hipótese de simulação
+                </p>
+                <p class="mt-1 text-xs text-amber-800 dark:text-amber-300">
+                    Este calendário é utilizado somente para resolver as datas de observação do CDI nesta
+                    simulação. Ele não altera a definição contratual de Dia Útil, não modifica a emissão e não
+                    constitui evidência para homologação.
+                </p>
+                <select
+                    id="indexRateCalendarCode"
+                    wire:model.blur="indexRateCalendarCode"
+                    class="mt-2 block w-full rounded-lg border-gray-300 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                >
+                    @foreach ($this->indexRateCalendarOptions() as $code => $label)
+                        <option value="{{ $code }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                <dl class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                    <div>
+                        <dt class="font-medium text-gray-600 dark:text-gray-400">Calendário da curva</dt>
+                        <dd class="text-gray-900 dark:text-gray-100">
+                            {{ $this->curveCalendarCode() ?? '—' }}
+                            <span class="text-gray-500 dark:text-gray-400">— Contratual</span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="font-medium text-gray-600 dark:text-gray-400">Calendário CDI</dt>
+                        <dd class="text-gray-900 dark:text-gray-100">
+                            @if ($this->indexRateCalendarOverride())
+                                {{ $this->indexRateCalendarOverride() }}
+                                <span class="text-amber-700 dark:text-amber-300">— Override de simulação</span>
+                            @else
+                                Mesmo calendário da curva
+                            @endif
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+
             <div class="mt-4 grid gap-4 md:grid-cols-3">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" for="simulationEndDate">
@@ -125,7 +169,8 @@
                         class="mt-1 block w-full rounded-lg border-gray-300 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                     />
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Nunca ultrapassa o vencimento contratual. Janela máxima:
+                        Obrigatória: define até quando esta simulação corre. Nunca ultrapassa o vencimento
+                        contratual. Janela máxima:
                         {{ \App\Domain\PuCalculator\Services\PuSimulationService::MAX_WINDOW_YEARS }} anos.
                     </p>
                 </div>

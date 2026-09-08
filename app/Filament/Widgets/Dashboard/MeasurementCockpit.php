@@ -42,6 +42,12 @@ class MeasurementCockpit extends Widget
                     'count' => $summary['stages'][$stage],
                     'url' => $this->measurementUrl($pageFilters, ['stage' => $stage]),
                 ])
+                ->values()
+                ->push([
+                    'label' => 'Finalizado',
+                    'count' => $summary['finalized'],
+                    'url' => $this->measurementUrl($pageFilters, ['status' => 'finalized']),
+                ])
                 ->values(),
             'signals' => [
                 [

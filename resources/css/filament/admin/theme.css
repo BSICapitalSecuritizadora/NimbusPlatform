@@ -846,6 +846,11 @@
     display: none !important;
 }
 
+/* ── Medições e pagamentos: medida confortável da descrição do cabeçalho (somente apresentação) ── */
+.bsi-measurement-cockpit .fi-section-header-description {
+    max-width: 44rem;
+}
+
 /* Badge de Filtros Ativos */
 .bsi-cockpit-page .bsi-cockpit-active-badge {
     display: inline-flex;
@@ -1015,6 +1020,148 @@
 
 .bsi-cockpit-page .bsi-cockpit-widget .fi-section-content-ctn {
     border-top: none !important;
+}
+
+/* ── Cockpit Widget Pair Harmonization: Minhas Pendências & Atividades Recentes ── */
+.bsi-cockpit-page .bsi-cockpit-pendings > .fi-section,
+.bsi-cockpit-page .bsi-cockpit-activities > .fi-section {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    border-radius: 14px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.bsi-cockpit-page .bsi-cockpit-pendings > .fi-section.fi-collapsed,
+.bsi-cockpit-page .bsi-cockpit-activities > .fi-section.fi-collapsed {
+    height: auto !important;
+    align-self: start !important;
+}
+
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-content-ctn,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-content-ctn {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-content,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-content {
+    flex: 1 1 auto !important;
+}
+
+/* Header Harmonization via CSS Grid */
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-header {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto auto !important;
+    grid-template-rows: auto auto !important;
+    align-items: center !important;
+    column-gap: 0.75rem !important;
+    row-gap: 0.25rem !important;
+    padding: 1.125rem 1.25rem !important;
+    border-top-left-radius: 14px !important;
+    border-top-right-radius: 14px !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease !important;
+    cursor: pointer !important;
+}
+
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header:hover,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-header:hover {
+    background-color: rgba(183, 131, 47, 0.04) !important;
+}
+
+.dark .bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header:hover,
+.dark .bsi-cockpit-page .bsi-cockpit-activities .fi-section-header:hover {
+    background-color: rgba(183, 131, 47, 0.08) !important;
+}
+
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header-text-ctn,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-header-text-ctn {
+    display: contents !important;
+}
+
+/* Header Icon */
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header > svg.fi-icon,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-header > svg.fi-icon,
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header-icon-ctn,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-header-icon-ctn {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    width: 1.375rem !important;
+    height: 1.375rem !important;
+    margin: 0 !important;
+    color: #b7832f !important;
+}
+
+/* Header Heading */
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header-heading,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-header-heading {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    margin: 0 !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    line-height: 1.375 !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* Header After Container (Badge / Action) */
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header-after-ctn,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-header-after-ctn {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: end !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Collapse Button */
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-collapse-btn,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-collapse-btn {
+    grid-column: 4 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: end !important;
+    margin: 0 !important;
+    padding: 0.25rem !important;
+    border-radius: 0.375rem !important;
+    transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-collapse-btn:hover,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-collapse-btn:hover {
+    background-color: rgba(183, 131, 47, 0.12) !important;
+    color: #b7832f !important;
+}
+
+/* Header Description */
+.bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header-description,
+.bsi-cockpit-page .bsi-cockpit-activities .fi-section-header-description {
+    grid-column: 2 / -1 !important;
+    grid-row: 2 !important;
+    margin: 0 !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.35 !important;
+    color: #766c68 !important;
+    white-space: normal !important;
+}
+
+.dark .bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header-description,
+.dark .bsi-cockpit-page .bsi-cockpit-activities .fi-section-header-description {
+    color: #9d918d !important;
+}
+
+@media (max-width: 639px) {
+    .bsi-cockpit-page .bsi-cockpit-pendings .fi-section-header,
+    .bsi-cockpit-page .bsi-cockpit-activities .fi-section-header {
+        column-gap: 0.5rem !important;
+        padding: 1rem !important;
+    }
 }
 
 .bsi-cockpit-page .bsi-cockpit-shortcuts .fi-section-content {
@@ -1663,7 +1810,7 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 /* ── Scrollbars dos Dropdowns ── */
 .fi-dropdown-panel.fi-scrollable,
 .fi-select-input .fi-dropdown-panel {
-    max-height: 28rem !important;
+    max-height: min(23.5rem, 44vh) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     scrollbar-width: thin !important;
@@ -2262,53 +2409,274 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     display: none !important;
 }
 
-/* Popup / Calendário do DatePicker */
+/* ── Calendário e Seletor de Data/Hora (BSI Capital Admin) ── */
 .fi-fo-date-time-picker-panel {
     background: #091b23 !important;
-    border: 1px solid rgba(183, 131, 47, 0.3) !important;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 5px 15px rgba(0, 0, 0, 0.4) !important;
-    border-radius: 10px !important;
+    border: 1px solid rgba(183, 131, 47, 0.28) !important;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 14px rgba(0, 0, 0, 0.55) !important;
+    border-radius: 12px !important;
     z-index: 10000 !important;
     color: #fbfaf8 !important;
-    padding: 0.75rem !important;
+    padding: 0.875rem !important;
     font-size: 0.8125rem !important;
+    min-width: 270px !important;
+    max-width: min(340px, calc(100vw - 2rem)) !important;
+    box-sizing: border-box !important;
+}
+
+/* Cabeçalho do Painel: Mês, Ano e Navegação */
+.fi-fo-date-time-picker-panel-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.75rem !important;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid rgba(183, 131, 47, 0.15) !important;
 }
 
 .fi-fo-date-time-picker-panel-header select,
 .fi-fo-date-time-picker-panel-header input {
     background: #06151c !important;
-    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
     color: #fbfaf8 !important;
     border-radius: 6px !important;
     font-size: 0.8125rem !important;
-    padding: 0.25rem 0.5rem !important;
+    font-weight: 500 !important;
+    padding: 0.35rem 0.5rem !important;
+    height: 32px !important;
+    box-sizing: border-box !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+
+.fi-fo-date-time-picker-panel-header select {
+    text-transform: capitalize !important;
+    cursor: pointer !important;
+    flex: 1 1 auto !important;
+    max-width: 140px !important;
+}
+
+.fi-fo-date-time-picker-panel-header input {
+    width: 68px !important;
+    text-align: center !important;
+    font-variant-numeric: tabular-nums !important;
+    -moz-appearance: textfield !important;
+}
+
+.fi-fo-date-time-picker-panel-header input::-webkit-inner-spin-button,
+.fi-fo-date-time-picker-panel-header input::-webkit-outer-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+.fi-fo-date-time-picker-panel-header select:focus,
+.fi-fo-date-time-picker-panel-header input:focus {
+    border-color: #b7832f !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+}
+
+/* Botões de Navegação de Mês (‹ e ›) */
+.fi-fo-date-time-picker-header-nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+}
+
+.fi-fo-date-time-picker-nav-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 6px !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(183, 131, 47, 0.2) !important;
+    color: rgba(251, 250, 248, 0.75) !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    transition: all 140ms ease !important;
+}
+
+.fi-fo-date-time-picker-nav-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+}
+
+.fi-fo-date-time-picker-nav-btn:hover {
+    background: rgba(183, 131, 47, 0.2) !important;
+    border-color: rgba(183, 131, 47, 0.55) !important;
+    color: #d8a94f !important;
+}
+
+.fi-fo-date-time-picker-nav-btn:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+}
+
+/* Cabeçalho dos Dias da Semana */
+.fi-fo-date-time-picker-calendar-header {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 2px !important;
+    margin-bottom: 0.375rem !important;
+    text-align: center !important;
 }
 
 .fi-fo-date-time-picker-calendar-header-day {
-    color: rgba(251, 250, 248, 0.55) !important;
+    color: rgba(251, 250, 248, 0.45) !important;
     font-weight: 600 !important;
-    font-size: 0.75rem !important;
+    font-size: 0.6875rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 0.25rem 0 !important;
+}
+
+/* Grade de Dias do Mês */
+.fi-fo-date-time-picker-calendar {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 3px !important;
+    margin-bottom: 0.5rem !important;
 }
 
 .fi-fo-date-time-picker-calendar-day {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 30px !important;
+    width: 30px !important;
+    margin: 0 auto !important;
     border-radius: 6px !important;
     color: #fbfaf8 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
+    background: transparent !important;
+    cursor: pointer !important;
+    user-select: none !important;
     transition: all 120ms ease !important;
 }
 
 .fi-fo-date-time-picker-calendar-day:hover {
-    background: rgba(183, 131, 47, 0.25) !important;
+    background: #0d252e !important;
     color: #ffffff !important;
+    border: 1px solid rgba(183, 131, 47, 0.35) !important;
 }
 
+/* Dia Atual */
+.fi-fo-date-time-picker-calendar-day-today {
+    border: 1px solid rgba(183, 131, 47, 0.65) !important;
+    color: #d8a94f !important;
+    font-weight: 600 !important;
+}
+
+/* Dia Selecionado */
 .fi-fo-date-time-picker-calendar-day.fi-selected {
     background: #b7832f !important;
     color: #06151c !important;
     font-weight: 700 !important;
+    border: 1px solid #d8a94f !important;
+    box-shadow: 0 2px 8px rgba(183, 131, 47, 0.4) !important;
 }
 
-.fi-fo-date-time-picker-calendar-day-today {
-    border: 1px solid #d8a94f !important;
+.fi-fo-date-time-picker-calendar-day.fi-disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+}
+
+/* Seção de Horário */
+.fi-fo-date-time-picker-time-inputs {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.375rem !important;
+    padding: 0.625rem 0 0.375rem !important;
+    margin-top: 0.375rem !important;
+    border-top: 1px solid rgba(183, 131, 47, 0.15) !important;
+}
+
+.fi-fo-date-time-picker-time-inputs input {
+    background: #06151c !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
+    color: #fbfaf8 !important;
+    border-radius: 6px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    width: 46px !important;
+    height: 32px !important;
+    box-sizing: border-box !important;
+    font-variant-numeric: tabular-nums !important;
+    padding: 0 0.25rem !important;
+    -moz-appearance: textfield !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+
+.fi-fo-date-time-picker-time-inputs input::-webkit-inner-spin-button,
+.fi-fo-date-time-picker-time-inputs input::-webkit-outer-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+.fi-fo-date-time-picker-time-inputs input:focus {
+    border-color: #b7832f !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+}
+
+.fi-fo-date-time-picker-time-input-separator {
+    color: rgba(183, 131, 47, 0.75) !important;
+    font-weight: 700 !important;
+    font-size: 0.875rem !important;
+    user-select: none !important;
+}
+
+/* Rodapé do Painel: Ações "Limpar" e "Hoje" */
+.fi-fo-date-time-picker-panel-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding-top: 0.625rem !important;
+    margin-top: 0.375rem !important;
+    border-top: 1px solid rgba(183, 131, 47, 0.15) !important;
+}
+
+.fi-fo-date-time-picker-footer-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.75rem !important;
+    cursor: pointer !important;
+    border-radius: 6px !important;
+    transition: all 130ms ease !important;
+}
+
+.fi-fo-date-time-picker-footer-btn-clear {
+    padding: 0.35rem 0.75rem !important;
+    font-weight: 500 !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+    background: transparent !important;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+}
+
+.fi-fo-date-time-picker-footer-btn-clear:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #fbfaf8 !important;
+    border-color: rgba(183, 131, 47, 0.35) !important;
+}
+
+.fi-fo-date-time-picker-footer-btn-today {
+    padding: 0.35rem 0.875rem !important;
+    font-weight: 600 !important;
+    color: #d8a94f !important;
+    background: rgba(183, 131, 47, 0.12) !important;
+    border: 1px solid rgba(183, 131, 47, 0.35) !important;
+}
+
+.fi-fo-date-time-picker-footer-btn-today:hover {
+    background: rgba(183, 131, 47, 0.25) !important;
+    border-color: #b7832f !important;
+    color: #f0c568 !important;
 }
 
 /* ── Rodapé dos Filtros (Aplicar Filtros - Compacto, 12px 20px, Alinhado à Direita) ── */
@@ -2588,20 +2956,48 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 
 /* ═════════════════════════════════════════════════════════════════════
    ITENS DE OPÇÃO DENTRO DOS DROPDOWNS DO SISTEMA
-═════════════════════════════════════════════════════════════════════ */
+/* Permitir que dropdowns dentro de seções de formulários flutuem livremente sem serem cortados por overflow: hidden */
+.fi-section:has(.fi-select-input),
+.fi-section:has(.fi-dropdown-panel) {
+    overflow: visible !important;
+}
+
 .fi-dropdown-panel:has(.fi-select-input-options-ctn),
 .fi-select-input .fi-dropdown-panel {
     z-index: 10050 !important;
     min-width: 100% !important;
-    max-width: min(32rem, calc(100vw - 2rem)) !important;
-    max-height: min(24rem, 60vh) !important;
+    max-width: none !important;
+    max-height: min(23.5rem, 44vh) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    background: #091b23 !important;
-    border: 1px solid rgba(183, 131, 47, 0.35) !important;
-    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 12px rgba(4, 14, 19, 0.6) !important;
-    border-radius: 10px !important;
+    background: #06151c !important;
+    border: 1px solid rgba(183, 131, 47, 0.28) !important;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 12px !important;
     box-sizing: border-box !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(183, 131, 47, 0.35) transparent !important;
+}
+
+/* ── Recorte de medições: painel do select acompanha a largura do trigger ──
+   O JS do Filament define inline `width = trigger.offsetWidth` + flip/shift via
+   Floating UI. O `min-width: 100%` acima anula esse width (min-width vence width)
+   e estica o painel até o bloco ancestral posicionado. Aqui a largura nativa do
+   trigger volta a valer, com teto responsivo. Escopo local para não afetar os
+   demais selects do sistema. */
+.bsi-measurement-filters-section .fi-dropdown-panel:has(.fi-select-input-options-ctn) {
+    min-width: 0 !important;
+    max-width: min(26.25rem, calc(100vw - 2rem)) !important;
+    max-height: min(20rem, calc(100vh - 2rem)) !important;
+}
+
+.bsi-measurement-filters-section .fi-dropdown-panel .fi-select-input-option {
+    padding: 0.5rem 0.75rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 .fi-dropdown-panel .fi-dropdown-list,
@@ -2873,6 +3269,147 @@ select.fi-select-input option[selected] {
 
 .fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
     padding-inline-start: 0.625rem !important;
+}
+
+/* ── Filament Table Grouping Selectors ("Agrupar por" & "Ascendente/Descendente") ── */
+.fi-ta-grouping-settings-fields .fi-input-wrp {
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+
+:not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp {
+    background-color: #ffffff !important;
+    border: 1px solid #dbd5d3 !important;
+    box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+:not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp:hover {
+    border-color: #c4bbb8 !important;
+}
+
+:not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.dark .fi-ta-grouping-settings-fields .fi-input-wrp {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.3) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.dark .fi-ta-grouping-settings-fields .fi-input-wrp:hover {
+    border-color: rgba(183, 131, 47, 0.38) !important;
+}
+
+.dark .fi-ta-grouping-settings-fields .fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+/* Prefixo "Agrupar por": remove borda divisória para criar superfície contínua */
+.fi-ta-grouping-settings-fields .fi-input-wrp-prefix {
+    border-inline-end: none !important;
+    border-right: none !important;
+    background: transparent !important;
+    padding-inline-start: 0.75rem !important;
+    padding-inline-end: 0.125rem !important;
+    padding-block: 0 !important;
+    margin: 0 !important;
+}
+
+.fi-ta-grouping-settings-fields .fi-input-wrp-label {
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    letter-spacing: normal !important;
+    line-height: 1.5 !important;
+}
+
+:not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp-label {
+    color: #5d5653 !important;
+}
+
+.dark .fi-ta-grouping-settings-fields .fi-input-wrp-label {
+    color: rgba(251, 250, 248, 0.65) !important;
+}
+
+.fi-ta-grouping-settings-fields .fi-input-wrp-content-ctn {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+}
+
+/* Elemento <select>: transparente, sem bordas internas, sem pontas vazando */
+.fi-ta-grouping-settings-fields select.fi-select-input {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    height: auto !important;
+    min-height: 2.25rem !important;
+    line-height: 1.5 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    padding-block: 0.375rem !important;
+    padding-inline-start: 0.75rem !important;
+    padding-inline-end: 2rem !important;
+    background-position: right 0.625rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.125rem 1.125rem !important;
+}
+
+.fi-ta-grouping-settings-fields .fi-input-wrp-prefix + .fi-input-wrp-content-ctn select.fi-select-input,
+.fi-ta-grouping-settings-fields .fi-input-wrp:has(.fi-input-wrp-prefix) select.fi-select-input {
+    padding-inline-start: 0.375rem !important;
+}
+
+:not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input {
+    color: #221f1e !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235d5653' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+.dark .fi-ta-grouping-settings-fields select.fi-select-input {
+    color: #fbfaf8 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+:not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input option,
+:not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input optgroup {
+    background-color: #ffffff !important;
+    color: #221f1e !important;
+}
+
+:not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input option:checked,
+:not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input option[selected] {
+    background-color: #efede9 !important;
+    color: #96651f !important;
+}
+
+.dark .fi-ta-grouping-settings-fields select.fi-select-input option,
+.dark .fi-ta-grouping-settings-fields select.fi-select-input optgroup {
+    background-color: #091b23 !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .fi-ta-grouping-settings-fields select.fi-select-input option:checked,
+.dark .fi-ta-grouping-settings-fields select.fi-select-input option[selected] {
+    background-color: #12313b !important;
+    color: #d4af37 !important;
 }
 
 /* ── BSI Semantic Badges (Subtle, Refined Banking Palette) ── */
@@ -6058,6 +6595,161 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
     padding: 1.25rem !important;
 }
 
+/* ── Seção: Evolução e Formalização de Propostas e Composição da Carteira (Harmonização e Contenção de Bordas) ── */
+.bsi-proposal-volume-widget > .fi-section,
+.bsi-proposal-status-widget > .fi-section {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+}
+
+.bsi-proposal-volume-widget > .fi-section > .fi-section-header,
+.bsi-proposal-status-widget > .fi-section > .fi-section-header {
+    border-top-left-radius: 13px !important;
+    border-top-right-radius: 13px !important;
+    overflow: hidden !important;
+}
+
+@media (min-width: 1280px) {
+    .bsi-proposal-dashboard .bsi-proposal-volume-widget,
+    .bsi-proposal-dashboard .bsi-proposal-status-widget {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .bsi-proposal-volume-widget > .fi-section,
+    .bsi-proposal-status-widget > .fi-section {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+    }
+
+    .bsi-proposal-volume-widget > .fi-section > .fi-section-content-ctn,
+    .bsi-proposal-status-widget > .fi-section > .fi-section-content-ctn {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        height: 100% !important;
+    }
+
+    .bsi-proposal-volume-widget .fi-section-content,
+    .bsi-proposal-status-widget .fi-section-content {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        height: 100% !important;
+    }
+}
+
+/* Seletor de Período ("Últimos 6 meses") */
+.bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp {
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+
+:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp {
+    background-color: #ffffff !important;
+    border: 1px solid #dbd5d3 !important;
+    box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:hover {
+    border-color: #c4bbb8 !important;
+}
+
+:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.dark .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.25) !important;
+    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.3) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.dark .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:hover {
+    border-color: rgba(183, 131, 47, 0.45) !important;
+}
+
+.dark .bsi-proposal-volume-widget .fi-wi-chart-filter.fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.bsi-proposal-volume-widget .fi-wi-chart-filter .fi-input-wrp-content-ctn {
+    overflow: hidden !important;
+    border-radius: inherit !important;
+    flex: 1 1 auto !important;
+}
+
+.bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    height: auto !important;
+    min-height: 2.125rem !important;
+    line-height: 1.5 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    padding-block: 0.375rem !important;
+    padding-inline-start: 0.75rem !important;
+    padding-inline-end: 2rem !important;
+    background-position: right 0.625rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.125rem 1.125rem !important;
+}
+
+:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input {
+    color: #221f1e !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235d5653' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+.dark .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input {
+    color: #fbfaf8 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+/* Opções nativas do seletor */
+:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option {
+    background-color: #ffffff !important;
+    color: #221f1e !important;
+}
+
+:not(.dark) .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option:checked {
+    background-color: #efede9 !important;
+    color: #96651f !important;
+}
+
+.dark .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option {
+    background-color: #091b23 !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .bsi-proposal-volume-widget .fi-wi-chart-filter select.fi-select-input option:checked {
+    background-color: #12313b !important;
+    color: #d4af37 !important;
+}
+
+
 
 /* ── Workspace de Análise Executiva (ViewProposal & ViewEmission) ── */
 .bsi-proposal-view-page .fi-infolist,
@@ -6145,6 +6837,129 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
     align-items: center !important;
     line-height: 1.3 !important;
     text-align: left !important;
+}
+
+/* ── Resumo Executivo: labels secundários em uppercase + valores com respiro ── */
+.bsi-proposal-view-page .bsi-exec-summary {
+    row-gap: 0.875rem !important;
+}
+
+.bsi-proposal-view-page .bsi-exec-summary .fi-in-entry-label,
+.bsi-proposal-view-page .bsi-proposal-summary .fi-in-entry-label {
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+}
+
+/* ── Resumo da Proposta: leitura editorial + camada interna distinta ── */
+.bsi-proposal-view-page .bsi-proposal-summary .bsi-prose-block .fi-in-text-item,
+.bsi-proposal-view-page .bsi-proposal-summary .bsi-internal-note .fi-in-text-item {
+    max-width: 62.5rem !important;
+    line-height: 1.75 !important;
+    overflow-wrap: break-word !important;
+}
+
+.bsi-proposal-view-page .bsi-proposal-summary .bsi-prose-block .fi-in-text-item > * + * {
+    margin-top: 0.75rem !important;
+}
+
+.bsi-proposal-view-page .bsi-proposal-summary .bsi-internal-note {
+    border: 1px solid rgba(9, 27, 35, 0.1) !important;
+    border-radius: 12px !important;
+    background: rgba(9, 27, 35, 0.03) !important;
+    padding: 0.875rem 1rem !important;
+}
+
+.dark .bsi-proposal-view-page .bsi-proposal-summary .bsi-internal-note {
+    border-color: rgba(183, 131, 47, 0.22) !important;
+    background: rgba(7, 24, 32, 0.55) !important;
+}
+
+.bsi-proposal-view-page .bsi-exec-summary .fi-in-text-item {
+    overflow-wrap: break-word !important;
+    line-height: 1.45 !important;
+}
+
+/* ── ViewProposal: hierarquia do cabeçalho (identificação, status, metadados, ações) ── */
+.bsi-proposal-view-page .fi-header-heading {
+    white-space: normal !important;
+    text-wrap: balance !important;
+    overflow-wrap: break-word !important;
+}
+
+.bsi-proposal-view-page .fi-header-subheading {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.375rem !important;
+    max-width: none !important;
+    font-size: 0.8125rem !important;
+    line-height: 1.5 !important;
+}
+
+.bsi-proposal-meta-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.25rem 0.5rem !important;
+    color: rgba(251, 250, 248, 0.72) !important;
+}
+
+.bsi-proposal-meta-row--primary {
+    gap: 0.375rem 0.625rem !important;
+}
+
+.bsi-proposal-meta-id {
+    color: #fbfaf8 !important;
+    font-weight: 700 !important;
+}
+
+.bsi-proposal-status {
+    display: inline-flex !important;
+    align-items: center !important;
+    border: 1px solid rgba(183, 131, 47, 0.45) !important;
+    border-radius: 9999px !important;
+    background: rgba(183, 131, 47, 0.14) !important;
+    padding: 0.125rem 0.625rem !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    color: #ecd9ae !important;
+    white-space: nowrap !important;
+}
+
+.bsi-proposal-meta-label {
+    color: rgba(251, 250, 248, 0.55) !important;
+}
+
+.bsi-proposal-meta-sep {
+    color: rgba(183, 131, 47, 0.6) !important;
+}
+
+.bsi-proposal-view-page .fi-header-actions-ctn {
+    align-items: flex-end !important;
+}
+
+.bsi-proposal-view-page .fi-header-actions .fi-dropdown-trigger > .fi-btn {
+    border-color: rgba(251, 250, 248, 0.16) !important;
+    background: rgba(251, 250, 248, 0.06) !important;
+    color: #fbfaf8 !important;
+}
+
+.bsi-proposal-view-page .fi-header-actions .fi-dropdown-trigger > .fi-btn:hover,
+.bsi-proposal-view-page .fi-header-actions .fi-dropdown-trigger > .fi-btn:focus-visible,
+.bsi-proposal-view-page .fi-header-actions .fi-dropdown-trigger > .fi-btn[aria-expanded="true"] {
+    border-color: rgba(183, 131, 47, 0.5) !important;
+}
+
+@media (max-width: 639px) {
+    .bsi-proposal-view-page .fi-header-actions-ctn > .fi-ac {
+        flex-wrap: wrap !important;
+    }
+
+    .bsi-proposal-view-page .fi-header-actions-ctn .fi-btn {
+        flex: 1 1 10rem !important;
+    }
 }
 
 /* ── Abas de Módulos Operacionais da Emissão (Tabs Navigation) ── */
@@ -6636,6 +7451,21 @@ html:not(.dark) .fi-modal-footer .fi-btn-color-gray {
 
 html:not(.dark) .fi-modal-footer .fi-btn-color-gray:hover {
     background-color: #cfe0e7 !important;
+}
+
+/* ── Acabamento do modal: header/footer respeitam o raio da janela; footer com respiro ── */
+.fi-modal:not(.fi-modal-slide-over):not(.fi-width-screen) > .fi-modal-window-ctn > .fi-modal-window > .fi-modal-header {
+    border-top-left-radius: 0.75rem !important;
+    border-top-right-radius: 0.75rem !important;
+}
+
+.fi-modal:not(.fi-modal-slide-over):not(.fi-width-screen) > .fi-modal-window-ctn > .fi-modal-window > .fi-modal-footer {
+    border-bottom-left-radius: 0.75rem !important;
+    border-bottom-right-radius: 0.75rem !important;
+}
+
+.fi-modal:not(.fi-modal-slide-over):not(.fi-width-screen):not(.fi-modal-has-sticky-footer) > .fi-modal-window-ctn > .fi-modal-window > .fi-modal-footer {
+    padding-top: 1rem !important;
 }
 
 /* ── Operation History (Audit Timeline) System ── */
@@ -8664,18 +9494,16 @@ html:not(.dark) .fi-activity-card:hover {
 
 /* 8. Painel do dropdown aberto: azul profundo, borda refinada, sombra elegante e sem clipping */
 .bsi-service-provider-form-page .fi-dropdown-panel,
-.bsi-service-provider-form-page .fi-fo-select-wrp .fi-dropdown-panel,
-.fi-select-input .fi-dropdown-panel {
+.bsi-service-provider-form-page .fi-fo-select-wrp .fi-dropdown-panel {
     background: #06151c !important;
     border: 1px solid rgba(183, 131, 47, 0.22) !important;
     border-radius: 12px !important;
     box-shadow: 0 16px 36px rgba(4, 14, 19, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4) !important;
-    max-height: 20rem !important; /* ~320px */
+    max-height: min(23.5rem, 44vh) !important;
     min-width: 100% !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     z-index: 9999 !important;
-    margin-top: 4px !important;
     padding: 0 !important;
     scrollbar-width: thin;
     scrollbar-color: rgba(183, 131, 47, 0.35) transparent;

@@ -35,100 +35,106 @@
                 <p class="mt-1 max-w-xs text-xs text-gray-500 dark:text-gray-400">As entradas recebidas serão distribuídas automaticamente pelos estágios operacionais.</p>
             </div>
         @else
-            @if($details['dominant_item'] && count($details['active_items']) > 1)
-                <div class="mb-3 flex items-center justify-between rounded-md bg-gray-50/80 px-2.5 py-1.5 text-xs dark:bg-gray-800/40">
-                    <span class="text-gray-500 dark:text-gray-400">Maior concentração:</span>
-                    <span class="font-semibold text-gray-900 dark:text-white">
-                        {{ $details['dominant_item']['label'] }} ({{ $details['dominant_item']['percentage'] }}%)
-                    </span>
-                </div>
-            @endif
-
-            {{-- Rosca Donut com Centro Executivo --}}
-            <div class="relative flex items-center justify-center py-1">
-                <div
-                    x-load
-                    x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
-                    wire:ignore
-                    data-chart-type="{{ $type }}"
-                    x-data="chart({
-                                cachedData: @js($this->getCachedData()),
-                                options: @js($this->getOptions()),
-                                type: @js($type),
-                            })"
-                    {{
-                        (new FilamentComponentAttributeBag)
-                            ->color(ChartWidgetComponent::class, $color)
-                            ->class([
-                                'fi-wi-chart-frame',
-                                'fi-wi-chart-canvas-ctn',
-                                'w-full flex justify-center',
-                                'fi-wi-chart-frame-no-aspect-ratio' => $hasMaxHeight,
-                            ])
-                    }}
-                >
-                    <canvas
-                        x-ref="canvas"
-                        @if (filled($chartAccessibleLabel))
-                            role="img"
-                            aria-label="{{ $chartAccessibleLabel }}"
-                        @endif
-                        @style([
-                            'max-width: 170px',
-                            'width: 100%',
-                            'height: 100%; max-height: 150px' => ! $hasMaxHeight,
-                            ('max-height: ' . e($maxHeight)) => $hasMaxHeight,
-                        ])
-                    ></canvas>
-
-                    <span x-ref="backgroundColorElement" class="fi-wi-chart-bg-color"></span>
-                    <span x-ref="borderColorElement" class="fi-wi-chart-border-color"></span>
-                    <span x-ref="gridColorElement" class="fi-wi-chart-grid-color"></span>
-                    <span x-ref="textColorElement" class="fi-wi-chart-text-color"></span>
-                </div>
-
-                {{-- Informação Central do Donut --}}
-                <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span class="text-2xl font-bold tabular-nums leading-tight text-gray-950 dark:text-white">
-                        {{ $details['total'] }}
-                    </span>
-                    <span class="text-[0.625rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                        {{ $details['total'] === 1 ? 'Em Carteira' : 'Em Carteira' }}
-                    </span>
-                </div>
-            </div>
-
-            {{-- Lista de Distribuição Executiva com Barras Proporcionais --}}
-            <div class="mt-3.5 space-y-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-                @foreach($details['active_items'] as $item)
-                    <a
-                        href="{{ $proposalsUrl }}"
-                        class="group flex flex-col gap-1 rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-gray-100/60 dark:hover:bg-gray-800/60"
-                        title="Ver propostas com status {{ $item['label'] }}"
-                    >
-                        <div class="flex items-center justify-between gap-2 text-xs">
-                            <span class="flex items-center gap-2 min-w-0 font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-950 dark:group-hover:text-white">
-                                <span class="size-2.5 shrink-0 rounded-full" style="background-color: {{ $item['color_hex'] }};"></span>
-                                <span class="truncate">{{ $item['label'] }}</span>
-                            </span>
-                            <span class="shrink-0 font-semibold tabular-nums text-gray-950 dark:text-white">
-                                {{ $item['count'] }} <span class="font-normal text-gray-500 dark:text-gray-400">({{ $item['percentage'] }}%)</span>
-                            </span>
-                        </div>
-                        <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                            <div
-                                class="h-full rounded-full transition-all duration-300"
-                                style="width: {{ $item['percentage'] }}%; background-color: {{ $item['color_hex'] }};"
-                            ></div>
-                        </div>
-                    </a>
-                @endforeach
-
-                @if($details['inactive_items_count'] > 0)
-                    <div class="pt-1 text-center text-[0.6875rem] text-gray-600 dark:text-gray-400">
-                        <span>{{ $details['inactive_items_count'] }} {{ $details['inactive_items_count'] === 1 ? 'outro estágio sem propostas ativas' : 'outros estágios sem propostas ativas' }}</span>
+            <div class="flex flex-col justify-between flex-1 h-full">
+                @if($details['dominant_item'] && count($details['active_items']) > 1)
+                    <div class="mb-2.5 flex items-center justify-between rounded-lg bg-gray-50/80 px-2.5 py-1.5 text-xs dark:bg-[#06161d]/75 border border-gray-200/50 dark:border-white/[0.05]">
+                        <span class="text-gray-500 dark:text-gray-400">Maior concentração:</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">
+                            {{ $details['dominant_item']['label'] }} ({{ $details['dominant_item']['percentage'] }}%)
+                        </span>
                     </div>
                 @endif
+
+                {{-- Rosca Donut com Centro Executivo --}}
+                <div class="relative flex items-center justify-center my-auto py-2">
+                    <div
+                        x-load
+                        x-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"
+                        wire:ignore
+                        data-chart-type="{{ $type }}"
+                        x-data="chart({
+                                    cachedData: @js($this->getCachedData()),
+                                    options: @js($this->getOptions()),
+                                    type: @js($type),
+                                })"
+                        {{
+                            (new FilamentComponentAttributeBag)
+                                ->color(ChartWidgetComponent::class, $color)
+                                ->class([
+                                    'fi-wi-chart-frame',
+                                    'fi-wi-chart-canvas-ctn',
+                                    'w-full flex justify-center',
+                                    'fi-wi-chart-frame-no-aspect-ratio' => $hasMaxHeight,
+                                ])
+                        }}
+                    >
+                        <canvas
+                            x-ref="canvas"
+                            @if (filled($chartAccessibleLabel))
+                                role="img"
+                                aria-label="{{ $chartAccessibleLabel }}"
+                            @endif
+                            @style([
+                                'max-width: 140px',
+                                'width: 100%',
+                                'height: 100%; max-height: 130px' => ! $hasMaxHeight,
+                                ('max-height: ' . e($maxHeight)) => $hasMaxHeight,
+                            ])
+                        ></canvas>
+
+                        <span x-ref="backgroundColorElement" class="fi-wi-chart-bg-color"></span>
+                        <span x-ref="borderColorElement" class="fi-wi-chart-border-color"></span>
+                        <span x-ref="gridColorElement" class="fi-wi-chart-grid-color"></span>
+                        <span x-ref="textColorElement" class="fi-wi-chart-text-color"></span>
+                    </div>
+
+                    {{-- Informação Central do Donut --}}
+                    <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span class="text-2xl font-bold tabular-nums leading-none tracking-tight text-gray-950 dark:text-white">
+                            {{ $details['total'] }}
+                        </span>
+                        <span class="mt-1 text-[0.625rem] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                            {{ $details['total'] === 1 ? 'Em Carteira' : 'Em Carteira' }}
+                        </span>
+                    </div>
+                </div>
+
+                {{-- Lista de Distribuição Executiva com Barras Proporcionais --}}
+                <div class="mt-auto space-y-1.5 border-t border-gray-200/50 pt-2.5 dark:border-white/[0.06]">
+                    @foreach($details['active_items'] as $item)
+                        <a
+                            href="{{ $proposalsUrl }}"
+                            class="group flex flex-col gap-1 rounded-lg px-2.5 py-1.5 transition-colors duration-150 hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+                            title="Ver propostas com status {{ $item['label'] }}"
+                        >
+                            <div class="flex items-center justify-between gap-2 text-xs">
+                                <span class="flex items-center gap-2 min-w-0 font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-950 dark:group-hover:text-white">
+                                    <span class="size-2 shrink-0 rounded-full" style="background-color: {{ $item['color_hex'] }};"></span>
+                                    <span class="truncate">{{ $item['label'] }}</span>
+                                </span>
+                                <span class="shrink-0 font-semibold tabular-nums text-gray-950 dark:text-white">
+                                    {{ $item['count'] }} <span class="font-normal text-gray-500 dark:text-gray-400">({{ $item['percentage'] }}%)</span>
+                                </span>
+                            </div>
+                            <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200/60 dark:bg-gray-800">
+                                <div
+                                    class="h-full rounded-full transition-all duration-300"
+                                    style="width: {{ $item['percentage'] }}%; background-color: {{ $item['color_hex'] }};"
+                                ></div>
+                            </div>
+                        </a>
+                    @endforeach
+
+                    @if($details['inactive_items_count'] > 0)
+                        <div class="flex items-center justify-between px-2.5 pt-1 text-[0.6875rem] text-gray-500 dark:text-gray-400">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <span class="size-1.5 shrink-0 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                <span class="truncate">{{ $details['inactive_items_count'] }} {{ $details['inactive_items_count'] === 1 ? 'outro estágio sem propostas ativas' : 'outros estágios sem propostas ativas' }}</span>
+                            </div>
+                            <span class="shrink-0 font-medium tabular-nums text-gray-400 dark:text-gray-500">0</span>
+                        </div>
+                    @endif
+                </div>
             </div>
         @endif
     </x-filament::section>

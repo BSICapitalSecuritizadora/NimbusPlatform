@@ -12,8 +12,13 @@ class PuCurveGeneratorService
         private readonly PuCalculatorFactory $calculatorFactory,
     ) {}
 
-    public function handle(Emission $emission): PuCurveGenerationResult
+    /**
+     * `$indexRateCalendarCode` é a hipótese de calendário de OBSERVAÇÃO do
+     * índice. Nulo em toda a produção: o calculator então resolve as datas de
+     * taxa pelo próprio calendário contratual da curva, como sempre.
+     */
+    public function handle(Emission $emission, ?string $indexRateCalendarCode = null): PuCurveGenerationResult
     {
-        return $this->calculatorFactory->for($emission)->calculate($emission);
+        return $this->calculatorFactory->for($emission)->calculate($emission, $indexRateCalendarCode);
     }
 }

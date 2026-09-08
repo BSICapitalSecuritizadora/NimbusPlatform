@@ -6,13 +6,13 @@ namespace Tests\Support\Pu;
 
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuSimulationInput;
-use App\Domain\PuCalculator\Enums\PuAmortizationType;
-use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\BusinessCalendarService;
 use App\Domain\PuCalculator\Services\BusinessDayCalendarService;
 use App\Domain\PuCalculator\Services\IndexRateLookupService;
+use App\Domain\PuCalculator\Services\PuBaselineCandidateFactory;
+use App\Domain\PuCalculator\Services\PuBaselineEventRequirementService;
 use App\Domain\PuCalculator\Services\PuCurveGeneratorService;
 use App\Domain\PuCalculator\Services\PuIndexRateRequirementResolver;
 use App\Domain\PuCalculator\Support\BusinessCalendarRegistry;
@@ -58,7 +58,8 @@ final class PuSimulationFixture
 
     private const CDI_RATE = '14.90000000';
 
-    private const FIRST_INTEREST_PAYMENT_DATE = '2026-06-08';
+    /** 6% a.a. em pontos percentuais, equivalente à fração jurídica 0.06. */
+    private const SPREAD_RATE = '6.00000000';
 
     private const MATURITY_DATE = '2031-05-08';
 
@@ -131,7 +132,7 @@ final class PuSimulationFixture
     {
         return [
             'indexer' => PuIndexer::Cdi->value,
-            'spread_rate' => '0.06000000',
+            'spread_rate' => self::SPREAD_RATE,
             'business_day_basis' => '252',
             'calendar_code' => self::CALENDAR_CODE,
             'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
@@ -260,7 +261,7 @@ final class PuSimulationFixture
         $parameter->exists = false;
         $parameter->forceFill([
             'indexer' => PuIndexer::Cdi->value,
-            'spread_rate' => '0.06000000',
+            'spread_rate' => self::SPREAD_RATE,
             'business_day_basis' => 252,
             'calendar_code' => self::CALENDAR_CODE,
             'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
@@ -288,7 +289,7 @@ final class PuSimulationFixture
         return EmissionPuParameter::query()->create([
             'emission_id' => $emission->id,
             'indexer' => PuIndexer::Cdi->value,
-            'spread_rate' => '0.06000000',
+            'spread_rate' => self::SPREAD_RATE,
             'business_day_basis' => 252,
             'calendar_code' => self::CALENDAR_CODE,
             'index_rate_lookup_mode' => PuIndexRateLookupMode::BusinessDayLagExact->value,
@@ -309,9 +310,9 @@ final class PuSimulationFixture
      * partir de constantes explícitas -- sem passar por
      * `PuSimulationService`/`PuSimulationParameterFactory`.
      *
-     * É este caminho que prova que a simulação é apenas um adapter: a data
-     * efetiva do evento é resolvida pelo calendário oficial, e não por uma
-     * segunda implementação da convenção de pagamento.
+     * Os eventos vêm da baseline confirmada e do resolver contratual oficial,
+     * independentemente do serviço de simulação. O fim da janela apenas filtra
+     * esse cronograma; o vencimento continua sendo o comprovado na baseline.
      *
      * @param  array{emission:Emission, input:PuSimulationInput}  $scenario
      * @return list<PuDailyCurveRowData>
@@ -326,73 +327,91 @@ final class PuSimulationFixture
 
         $scenarioEmission = clone $emission;
         $scenarioEmission->setRelation('puParameter', $parameter);
-        $scenarioEmission->setRelation('puEvents', self::officialEvents($windowEnd));
+        $scenarioEmission->setRelation('puEvents', self::officialEvents($emission, $windowEnd));
         $scenarioEmission->setRelation('integralizationHistories', new EloquentCollection);
 
         return app(PuCurveGeneratorService::class)->handle($scenarioEmission)->rows;
     }
 
     /**
-     * Cronograma contratual da janela montado a partir de constantes: cupons
-     * mensais desde o primeiro pagamento e amortização residual no vencimento,
-     * ambos limitados por `original_date <= fim da janela`.
+     * Insumos de eventos disponíveis para comparação antes da engine.
+     * A baseline conserva o vencimento contratual; `windowEnd` é somente o
+     * limite pedido ao resolver oficial, nunca o vencimento do candidato.
      *
      * @return EloquentCollection<int, EmissionPuEvent>
      */
-    private static function officialEvents(CarbonImmutable $windowEnd): EloquentCollection
+    public static function officialEvents(Emission $emission, CarbonImmutable $windowEnd): EloquentCollection
     {
-        $calendar = app(BusinessCalendarService::class);
-        $maturity = CarbonImmutable::parse(self::MATURITY_DATE)->startOfDay();
+        $candidate = app(PuBaselineCandidateFactory::class)->make($emission, null);
+        $isolated = clone $emission;
+        $isolated->setRelation('puEvents', new EloquentCollection);
+        $diagnostics = app(PuBaselineEventRequirementService::class)->evaluate(
+            $isolated,
+            $candidate,
+            $windowEnd,
+            true,
+        );
         $models = [];
         $index = 0;
 
-        $following = function (CarbonImmutable $date) use ($calendar): CarbonImmutable {
-            while (! $calendar->isBusinessDay($date, self::CALENDAR_CODE)) {
-                $date = $date->addDay();
-            }
-
-            return $date;
-        };
-
-        for (
-            $interestDate = CarbonImmutable::parse(self::FIRST_INTEREST_PAYMENT_DATE)->startOfDay();
-            $interestDate->lte($maturity);
-            $interestDate = $interestDate->addMonthNoOverflow()
-        ) {
-            if ($interestDate->gt($windowEnd)) {
-                break;
-            }
-
+        foreach ($diagnostics['required_events'] as $event) {
             $model = new EmissionPuEvent;
             $model->exists = false;
-            $model->forceFill([
-                'event_type' => PuEventType::InterestPayment->value,
-                'original_date' => $interestDate->toDateString(),
-                'effective_date' => $following($interestDate)->toDateString(),
-                'amortization_type' => PuAmortizationType::None->value,
-                'amortization_value' => null,
-                'sequence' => 1,
-            ]);
-            $model->setAttribute('id', ++$index);
-            $models[] = $model;
-        }
-
-        if ($maturity->lte($windowEnd)) {
-            $model = new EmissionPuEvent;
-            $model->exists = false;
-            $model->forceFill([
-                'event_type' => PuEventType::Amortization->value,
-                'original_date' => $maturity->toDateString(),
-                'effective_date' => $following($maturity)->toDateString(),
-                'amortization_type' => PuAmortizationType::Residual->value,
-                'amortization_value' => null,
-                'sequence' => 1,
-            ]);
+            $model->forceFill($event);
             $model->setAttribute('id', ++$index);
             $models[] = $model;
         }
 
         return new EloquentCollection($models);
+    }
+
+    /**
+     * Assinatura completa do parâmetro ENTREGUE À ENGINE.
+     *
+     * A equivalência entre a simulação e a engine oficial só é prova se os dois
+     * caminhos entregarem o MESMO input. Os eventos e a timeline já são
+     * comparados diretamente; esta assinatura fecha o terceiro insumo, que até
+     * aqui só era verificado no recorte (`curve_end_date`). Sem ela, uma
+     * divergência de linha financeira não distingue "evento errado" de
+     * "parâmetro errado".
+     *
+     * `curve_end_date` aqui é o RECORTE da janela simulada, nunca o vencimento
+     * contratual: o vencimento governa quais eventos existem e não entra no
+     * parâmetro da engine.
+     *
+     * @return array<string, mixed>
+     */
+    public static function engineParameterSignature(EmissionPuParameter $parameter): array
+    {
+        return [
+            'indexer' => $parameter->indexer,
+            'spread_rate' => $parameter->spread_rate,
+            'annual_rate' => $parameter->annual_rate,
+            'business_day_basis' => (int) $parameter->business_day_basis,
+            'calendar_code' => $parameter->calendar_code,
+            'index_rate_lookup_mode' => $parameter->index_rate_lookup_mode,
+            'index_rate_lag_business_days' => (int) $parameter->index_rate_lag_business_days,
+            'initial_unit_value' => $parameter->initial_unit_value,
+            'curve_start_date' => $parameter->curve_start_date?->toDateString(),
+            'curve_end_date' => $parameter->curve_end_date?->toDateString(),
+            'first_coupon_pre_integralization_premium_enabled' => (bool) $parameter->first_coupon_pre_integralization_premium_enabled,
+            'first_coupon_pre_integralization_business_days' => (int) $parameter->first_coupon_pre_integralization_business_days,
+            'first_coupon_pre_integralization_apply_index_factor' => (bool) $parameter->first_coupon_pre_integralization_apply_index_factor,
+            'first_coupon_pre_integralization_apply_spread_factor' => (bool) $parameter->first_coupon_pre_integralization_apply_spread_factor,
+        ];
+    }
+
+    /** @return array{event_type:string, original_date:?string, effective_date:?string, amortization_type:string, amortization_value:?string, sequence:int} */
+    public static function eventSignature(EmissionPuEvent $event): array
+    {
+        return [
+            'event_type' => $event->event_type,
+            'original_date' => $event->original_date?->toDateString(),
+            'effective_date' => $event->effective_date?->toDateString(),
+            'amortization_type' => $event->amortization_type,
+            'amortization_value' => $event->amortization_value,
+            'sequence' => (int) $event->sequence,
+        ];
     }
 
     /**

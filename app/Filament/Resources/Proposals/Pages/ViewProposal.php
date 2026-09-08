@@ -14,6 +14,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\HtmlString;
 
 class ViewProposal extends ViewRecord
 {
@@ -34,9 +35,25 @@ class ViewProposal extends ViewRecord
         $statusLabel = ProposalStatus::labelFor($this->record->status);
         $repName = $this->record->representative?->name ?? 'Não atribuído';
         $created = $this->record->created_at ? $this->record->created_at->format('d/m/Y') : '—';
-        $timeInStatus = $this->record->updated_at ? $this->record->updated_at->diffForHumans() : '—';
+        $updatedAt = $this->record->updated_at;
+        $timeInStatus = $updatedAt
+            ? ($updatedAt->diffInSeconds(now()) < 60 ? 'agora' : $updatedAt->diffForHumans())
+            : '—';
 
-        return "Proposta #{$id} · {$statusLabel} · Responsável: {$repName} · Entrada: {$created} · Atualizado {$timeInStatus}";
+        return new HtmlString(
+            '<span class="bsi-proposal-meta-row bsi-proposal-meta-row--primary">'
+            .'<strong class="bsi-proposal-meta-id">Proposta #'.e($id).'</strong>'
+            .'<span class="bsi-proposal-status">'.e($statusLabel).'</span>'
+            .'</span>'
+            .'<span class="bsi-proposal-meta-row">'
+            .'<span class="bsi-proposal-meta-label">Responsável:</span> '.e($repName)
+            .'</span>'
+            .'<span class="bsi-proposal-meta-row">'
+            .'<span class="bsi-proposal-meta-label">Entrada:</span> '.e($created)
+            .'<span class="bsi-proposal-meta-sep" aria-hidden="true">•</span>'
+            .'<span class="bsi-proposal-meta-label">Atualizado:</span> '.e($timeInStatus)
+            .'</span>'
+        );
     }
 
     protected function getHeaderActions(): array
@@ -57,7 +74,7 @@ class ViewProposal extends ViewRecord
             Action::make('approve')
                 ->label('Aprovar Proposta')
                 ->icon('heroicon-o-check-circle')
-                ->color('success')
+                ->color('warning')
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::Approved->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
                 ->requiresConfirmation()
                 ->modalHeading('Aprovar proposta')
@@ -80,7 +97,7 @@ class ViewProposal extends ViewRecord
             Action::make('request_info')
                 ->label('Solicitar Complemento')
                 ->icon('heroicon-o-document-plus')
-                ->color('warning')
+                ->color('gray')
                 ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::AwaitingInformation->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
                 ->modalHeading('Solicitar complemento')
                 ->modalDescription('O cliente será notificado para enviar informações adicionais. A proposta ficará com status "Aguardando informações".')
@@ -93,23 +110,6 @@ class ViewProposal extends ViewRecord
                         ->placeholder('Informe o que está faltando para o cliente complementar.'),
                 ])
                 ->action(fn (array $data) => $this->changeStatus(ProposalStatus::AwaitingInformation->value, $data['note'])),
-
-            Action::make('reject')
-                ->label('Recusar Proposta')
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::Rejected->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
-                ->modalHeading('Recusar proposta')
-                ->modalDescription('A proposta será rejeitada e arquivada. Esta ação não pode ser desfeita facilmente.')
-                ->modalSubmitActionLabel('Recusar proposta')
-                ->form([
-                    Textarea::make('note')
-                        ->label('Justificativa')
-                        ->required()
-                        ->rows(4)
-                        ->placeholder('Informe o motivo da recusa da proposta.'),
-                ])
-                ->action(fn (array $data) => $this->changeStatus(ProposalStatus::Rejected->value, $data['note'])),
 
             // ── Administrative & Tool Actions Group ──
             ActionGroup::make([
@@ -155,6 +155,23 @@ class ViewProposal extends ViewRecord
                             ->success()
                             ->send();
                     }),
+
+                Action::make('reject')
+                    ->label('Recusar Proposta')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (): bool => ProposalResource::canEdit($this->record) && array_key_exists(ProposalStatus::Rejected->value, app(UpdateProposalStatus::class)->availableStatusOptions($this->record->status)))
+                    ->modalHeading('Recusar proposta')
+                    ->modalDescription('A proposta será rejeitada e arquivada. Esta ação não pode ser desfeita facilmente.')
+                    ->modalSubmitActionLabel('Recusar proposta')
+                    ->form([
+                        Textarea::make('note')
+                            ->label('Justificativa')
+                            ->required()
+                            ->rows(4)
+                            ->placeholder('Informe o motivo da recusa da proposta.'),
+                    ])
+                    ->action(fn (array $data) => $this->changeStatus(ProposalStatus::Rejected->value, $data['note'])),
             ])
                 ->label('Mais ações')
                 ->icon('heroicon-m-ellipsis-vertical')

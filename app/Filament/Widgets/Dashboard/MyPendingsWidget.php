@@ -18,7 +18,7 @@ class MyPendingsWidget extends Widget
 
     protected int|string|array $columnSpan = [
         'default' => 'full',
-        'xl' => 7,
+        'xl' => 6,
     ];
 
     protected static ?int $sort = 2;

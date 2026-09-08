@@ -4,23 +4,21 @@
         heading="Atividades recentes"
         description="Últimas movimentações registradas no ambiente."
         icon="heroicon-o-bars-3-bottom-left"
-        icon-color="gray"
+        icon-color="primary"
         collapsible
         persist-collapsed
         collapse-id="cockpit-recent-activities"
     >
         @if($viewAllUrl)
             <x-slot name="afterHeader">
-                <span class="hidden sm:block">
-                    <x-filament::link
-                        :href="$viewAllUrl"
-                        icon="heroicon-m-arrow-top-right-on-square"
-                        size="sm"
-                        aria-label="Ver todas as atividades no log de auditoria"
-                    >
-                        Ver todas
-                    </x-filament::link>
-                </span>
+                <a
+                    href="{{ $viewAllUrl }}"
+                    class="group/action inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-gray-500 transition-colors duration-150 hover:bg-primary-500/10 hover:text-primary-600 focus-visible:outline-2 focus-visible:outline-primary-500 dark:text-gray-400 dark:hover:bg-primary-400/10 dark:hover:text-[#d4af37]"
+                    aria-label="Ver todas as atividades no log de auditoria"
+                >
+                    <span>Ver todas</span>
+                    <x-heroicon-m-arrow-top-right-on-square class="size-3.5 shrink-0 text-gray-400 transition-all duration-150 group-hover/action:-translate-y-0.5 group-hover/action:translate-x-0.5 group-hover/action:text-primary-600 dark:text-gray-400 dark:group-hover/action:text-[#d4af37]" aria-hidden="true" />
+                </a>
             </x-slot>
         @endif
 
@@ -35,18 +33,6 @@
                 <p>Nenhuma atividade recente encontrada.</p>
             </div>
         @else
-            @if($viewAllUrl)
-                <div class="mb-3 flex justify-end sm:hidden">
-                    <x-filament::link
-                        :href="$viewAllUrl"
-                        icon="heroicon-m-arrow-top-right-on-square"
-                        size="sm"
-                        aria-label="Ver todas as atividades no log de auditoria"
-                    >
-                        Ver todas
-                    </x-filament::link>
-                </div>
-            @endif
 
             <div class="space-y-4" aria-label="Atividades recentes agrupadas por período">
                 @foreach($activityGroups as $period => $activities)

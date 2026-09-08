@@ -55,6 +55,21 @@
             </div>
         </x-filament::section>
 
+        {{-- O que a Gestão pediu ao devolver, quando esta rodada nasceu de uma devolução. --}}
+        @if ($returnReason = $this->returnReason())
+            <x-filament::section>
+                <x-slot name="heading">Motivo da devolução da Gestão</x-slot>
+                <x-slot name="description">
+                    Esta rodada foi aberta a pedido da Gestão. As declarações da rodada anterior
+                    continuam registradas e não foram copiadas para cá.
+                </x-slot>
+
+                <p class="rounded-md bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
+                    {{ $returnReason }}
+                </p>
+            </x-filament::section>
+        @endif
+
         {{-- Os quatro baldes, como o fechamento os apresenta. --}}
         <x-filament::section>
             <x-slot name="heading">Posição no fechamento</x-slot>

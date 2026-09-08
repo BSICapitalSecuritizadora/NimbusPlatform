@@ -25,7 +25,7 @@ class OperationInfolist
                         ->formatStateUsing(fn (OperationStatus $state): string => $state->label())
                         ->color(fn (OperationStatus $state): string => $state->color()),
                     TextEntry::make('due_date')->label('Vencimento')->date('d/m/Y')->placeholder('—'),
-                    TextEntry::make('next_measurement_at')->label('Próxima Medição')->date('d/m/Y')->placeholder('—'),
+                    TextEntry::make('next_pending_measurement_at')->label('Próxima Medição')->date('m/Y')->placeholder('—'),
                 ])
                 ->columns(3),
 

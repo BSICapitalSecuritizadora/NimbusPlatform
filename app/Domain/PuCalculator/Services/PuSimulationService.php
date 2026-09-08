@@ -14,7 +14,6 @@ use App\Domain\PuCalculator\Enums\PuSimulationState;
 use App\Models\Emission;
 use App\Models\EmissionPuEvent;
 use App\Models\EmissionPuParameter;
-use App\Models\IntegralizationHistory;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Throwable;
@@ -128,10 +127,32 @@ final class PuSimulationService
             );
         }
 
-        [$events, $schedule] = $this->contractualEvents($emission, $resolution, $parameter, $endDate);
+        try {
+            [$events, $schedule] = $this->contractualEvents($emission, $resolution, $parameter, $endDate);
+        } catch (Throwable $exception) {
+            // O cronograma contratual é percorrido até o VENCIMENTO, que fica
+            // fora da janela cujo calendário foi provado acima. Um calendário
+            // que exige decisão explícita e não cobre os anos até o vencimento
+            // é reportado como falha de cálculo -- nunca como cronograma vazio,
+            // que silenciaria cupons devidos dentro da janela.
+            return $this->failure(
+                PuSimulationState::CalculationFailed,
+                $this->readableFailure($exception),
+                $input,
+                $resolution,
+                $startDate,
+                $endDate,
+                $calendar,
+            );
+        }
+
+        // Hipótese de calendário de OBSERVAÇÃO do índice. Nula por padrão: a
+        // simulação continua resolvendo as datas de taxa pelo calendário
+        // contratual, exatamente como a produção.
+        $indexRateCalendarCode = $input->indexRateCalendarCode();
 
         try {
-            $ratePlan = $this->ratePlan($parameter, $startDate, $endDate);
+            $ratePlan = $this->ratePlan($parameter, $startDate, $endDate, $indexRateCalendarCode);
         } catch (Throwable $exception) {
             // Só se alcança aqui por resolução de calendário fora da janela
             // provada acima ou por prêmio mal configurado. Em nenhum dos casos a
@@ -166,12 +187,12 @@ final class PuSimulationService
                 calendarDiagnostics: $calendar,
                 events: $events,
                 scheduleDiagnostics: $schedule,
-                premium: $this->premiumSummary($parameter),
+                premium: $this->premiumSummary($parameter, $indexRateCalendarCode),
             );
         }
 
         try {
-            $rows = $this->runOfficialEngine($emission, $parameter, $events, $input->quantity);
+            $rows = $this->runOfficialEngine($emission, $parameter, $events, $indexRateCalendarCode);
         } catch (Throwable $exception) {
             return new PuSimulationResult(
                 state: PuSimulationState::CalculationFailed,
@@ -186,7 +207,7 @@ final class PuSimulationService
                 calendarDiagnostics: $calendar,
                 events: $events,
                 scheduleDiagnostics: $schedule,
-                premium: $this->premiumSummary($parameter),
+                premium: $this->premiumSummary($parameter, $indexRateCalendarCode),
             );
         }
 
@@ -207,7 +228,7 @@ final class PuSimulationService
             scheduleDiagnostics: $schedule,
             rows: $rows,
             selectedRow: $selected,
-            premium: $this->premiumSummary($parameter),
+            premium: $this->premiumSummary($parameter, $indexRateCalendarCode),
         );
     }
 
@@ -221,6 +242,7 @@ final class PuSimulationService
         EmissionPuParameter $parameter,
         CarbonImmutable $startDate,
         CarbonImmutable $endDate,
+        ?string $indexRateCalendarCode = null,
     ): array {
         if (! $parameter->indexer_enum->requiresIndexRates()) {
             return ['required_rate_dates' => [], 'missing_rate_dates' => [], 'conflicting_rates' => []];
@@ -234,6 +256,7 @@ final class PuSimulationService
             source: (string) $source['source'],
             seriesCode: (string) $source['code'],
             sourceReference: sprintf('%s:%s', $source['source'], $source['code']),
+            indexRateCalendarCode: $indexRateCalendarCode,
         );
 
         return [
@@ -268,6 +291,9 @@ final class PuSimulationService
      * substituídas, e o parâmetro simulado nem existe no banco. A engine só lê
      * `puParameter`, `puEvents` e `integralizationHistories` -- as três relações
      * são definidas aqui, então `loadMissing()` interno não consulta nada.
+     * A timeline fica vazia como na homologação unitária: a primeira
+     * integralização vem de `curve_start_date`, e a quantidade de posição
+     * pertence exclusivamente ao resultado da simulação.
      *
      * @param  list<array<string, mixed>>  $events
      * @return list<PuDailyCurveRowData>
@@ -276,15 +302,15 @@ final class PuSimulationService
         Emission $emission,
         EmissionPuParameter $parameter,
         array $events,
-        ?string $quantity,
+        ?string $indexRateCalendarCode = null,
     ): array {
         $scenario = clone $emission;
         $scenario->setRelation('puParameter', $parameter);
         $scenario->setRelation('puEvents', $this->eventModels($events));
-        $scenario->setRelation('integralizationHistories', $this->integralizationModels($parameter, $quantity));
+        $scenario->setRelation('integralizationHistories', new EloquentCollection);
         $this->indexRateLookup->flushCache();
 
-        return $this->curveGenerator->handle($scenario)->rows;
+        return $this->curveGenerator->handle($scenario, $indexRateCalendarCode)->rows;
     }
 
     /**
@@ -359,7 +385,13 @@ final class PuSimulationService
 
     /**
      * Recria o `PuBaselineCandidate` mínimo que o resolver de eventos consome,
-     * já com o calendário e o vencimento efetivamente simulados.
+     * já com o calendário simulado e o VENCIMENTO CONTRATUAL do instrumento.
+     *
+     * O `curveEndDate` do candidato é vencimento, não recorte de tela: é dele
+     * que o resolver deriva o último cupom e a amortização residual. Entregar
+     * aqui o fim da janela simulada fazia o cronograma contratual terminar na
+     * data escolhida pelo usuário, e a curva resgatava o principal num dia em
+     * que o contrato não prevê resgate nenhum.
      *
      * @param  array<string, mixed>  $resolution
      */
@@ -381,8 +413,33 @@ final class PuSimulationService
             indexer: $parameter->indexer_enum,
             lookupMode: $parameter->index_rate_lookup_mode_enum,
             calendarFromDate: CarbonImmutable::instance($parameter->curve_start_date),
-            curveEndDate: CarbonImmutable::instance($parameter->curve_end_date),
+            curveEndDate: $this->contractualCurveEndDate($resolution, $parameter),
         );
+    }
+
+    /**
+     * Vencimento contratual resolvido pela simulação, ANTES do recorte de
+     * janela.
+     *
+     * `PuSimulationParameterFactory` preserva esse valor em
+     * `contractual_curve_end_date` justamente porque `curve_end_date` do
+     * parâmetro em memória já vem truncado em `simulationEndDate` -- é o limite
+     * da curva entregue à engine, e nunca o fim do instrumento. Sem valor
+     * contratual resolvido (emissão sem baseline e sem parâmetro persistido), o
+     * único vencimento conhecido é o próprio limite configurado, e é ele que
+     * segue valendo.
+     *
+     * @param  array<string, mixed>  $resolution
+     */
+    private function contractualCurveEndDate(
+        array $resolution,
+        EmissionPuParameter $parameter,
+    ): CarbonImmutable {
+        $contractual = $resolution['values']['contractual_curve_end_date'] ?? null;
+
+        return is_string($contractual) && $contractual !== ''
+            ? CarbonImmutable::parse($contractual)->startOfDay()
+            : CarbonImmutable::instance($parameter->curve_end_date)->startOfDay();
     }
 
     /**
@@ -412,32 +469,6 @@ final class PuSimulationService
         }
 
         return new EloquentCollection($models);
-    }
-
-    /**
-     * Quantidade é opcional e só existe para compor a POSIÇÃO FINANCEIRA
-     * (`PU × quantidade`). O PU unitário não depende dela: sem quantidade a
-     * engine recebe uma timeline vazia, exatamente como na homologação numérica.
-     *
-     * @return EloquentCollection<int, IntegralizationHistory>
-     */
-    private function integralizationModels(
-        EmissionPuParameter $parameter,
-        ?string $quantity,
-    ): EloquentCollection {
-        if ($quantity === null || trim($quantity) === '') {
-            return new EloquentCollection;
-        }
-
-        $model = new IntegralizationHistory;
-        $model->exists = false;
-        $model->forceFill([
-            'date' => CarbonImmutable::instance($parameter->curve_start_date)->toDateString(),
-            'quantity' => $quantity,
-        ]);
-        $model->setAttribute('id', 1);
-
-        return new EloquentCollection([$model]);
     }
 
     /**
@@ -532,16 +563,21 @@ final class PuSimulationService
      *
      * @return array<string, mixed>
      */
-    private function premiumSummary(EmissionPuParameter $parameter): array
-    {
+    private function premiumSummary(
+        EmissionPuParameter $parameter,
+        ?string $indexRateCalendarCode = null,
+    ): array {
         if (! $parameter->hasFirstCouponPreIntegralizationPremium()) {
             return ['enabled' => false];
         }
 
         try {
-            $premium = $this->premiumCalculator->calculate($parameter);
+            $premium = $this->premiumCalculator->calculate($parameter, $indexRateCalendarCode);
             $accrualDates = $this->rateRequirements->firstCouponPreIntegralizationAccrualDates($parameter);
-            $rateRequirements = $this->rateRequirements->firstCouponPreIntegralizationRateRequirements($parameter);
+            $rateRequirements = $this->rateRequirements->firstCouponPreIntegralizationRateRequirements(
+                $parameter,
+                $indexRateCalendarCode,
+            );
         } catch (Throwable $exception) {
             return [
                 'enabled' => true,

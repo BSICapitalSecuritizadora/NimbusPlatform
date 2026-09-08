@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesBoardCycles;
 
 use App\Filament\Resources\SalesBoardCycles\Pages\BuilderReviewWorkspace;
 use App\Filament\Resources\SalesBoardCycles\Pages\ListSalesBoardCycles;
+use App\Filament\Resources\SalesBoardCycles\Pages\ManagementReviewWorkspace;
 use App\Filament\Resources\SalesBoardCycles\Pages\ViewSalesBoardCycle;
 use App\Filament\Resources\SalesBoardCycles\RelationManagers\SalesBoardCycleBaselinesRelationManager;
 use App\Filament\Resources\SalesBoardCycles\RelationManagers\SalesBoardCycleBuilderReviewsRelationManager;
@@ -137,6 +138,7 @@ class SalesBoardCycleResource extends Resource
             'index' => ListSalesBoardCycles::route('/'),
             'view' => ViewSalesBoardCycle::route('/{record}'),
             'builder-review' => BuilderReviewWorkspace::route('/{record}/validacao'),
+            'management-review' => ManagementReviewWorkspace::route('/{record}/analise'),
         ];
     }
 }

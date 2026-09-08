@@ -113,6 +113,10 @@ it('reports the missing first integralization date instead of inventing one', fu
         ->assertOk()
         ->assertSee('Não definido')
         ->set('firstIntegralizationDate', null)
+        // A data final é input obrigatório e explícito do usuário: sem ela a
+        // calculadora nem chega a simular, e o que está sob prova aqui é o
+        // relato da integralização ausente.
+        ->set('simulationEndDate', PuSimulationFixture::windowEndDate()->toDateString())
         ->call('calculate')
         ->assertSee('Informe para simulação');
 });
