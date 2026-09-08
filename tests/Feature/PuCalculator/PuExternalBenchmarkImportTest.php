@@ -328,11 +328,10 @@ it('changes the dataset checksum when a PU or a date changes', function () {
         externalBenchmarkCandidateValues()
     ));
 
-    // O delta de PU precisa ser material: o leitor CSV entrega PUs ao parser
-    // como float64, de modo que um delta de 1e-16 em magnitude 1000 seria
-    // absorvido antes da normalização em UNIT_SCALE.
+    // CSV é texto: o literal decimal chega exato ao domínio, sem passar por
+    // float, de modo que um delta de 1e-16 dentro de UNIT_SCALE distingue.
     $changedUnitValue = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkCsv([
-        '2026-01-02' => '1001.0000000000000000',
+        '2026-01-02' => '1000.0000000000000001',
         '2026-01-05' => '1010.0000000000000000',
         '2026-01-06' => '1020.0000000000000000',
     ]));
@@ -342,13 +341,77 @@ it('changes the dataset checksum when a PU or a date changes', function () {
         '2026-01-07' => '1020.0000000000000000',
     ]));
 
-    expect($changedUnitValue->rows[0]->referenceDate->toDateString())->toBe('2026-01-02')
-        ->and($changedUnitValue->rows[0]->unitValue)->toBe('1001.0000000000000000')
-        ->and($baseline->rows[0]->unitValue)->toBe('1000.0000000000000000')
+    expect($baseline->rows[0]->unitValue)->toBe('1000.0000000000000000')
+        ->and($changedUnitValue->rows[0]->referenceDate->toDateString())->toBe('2026-01-02')
+        ->and($changedUnitValue->rows[0]->unitValue)->toBe('1000.0000000000000001')
         ->and($changedDate->rows[2]->referenceDate->toDateString())->toBe('2026-01-07')
         ->and($baseline->rows[2]->referenceDate->toDateString())->toBe('2026-01-06')
         ->and($changedUnitValue->datasetSha256)->not->toBe($baseline->datasetSha256)
         ->and($changedDate->datasetSha256)->not->toBe($baseline->datasetSha256);
+});
+
+it('canonicalizes equivalent decimal representations to the same dataset checksum', function () {
+    $parser = app(PuExternalBenchmarkFileParser::class);
+
+    $plain = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkCsv([
+        '2026-01-02' => '1000',
+        '2026-01-05' => '1010',
+    ]));
+    $fractional = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkCsv([
+        '2026-01-02' => '1000.0',
+        '2026-01-05' => '1010.0',
+    ]));
+    $scaled = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkCsv([
+        '2026-01-02' => '1000.0000000000000000',
+        '2026-01-05' => '1010.0000000000000000',
+    ]));
+
+    expect($plain->rows[0]->unitValue)->toBe('1000.0000000000000000')
+        ->and($fractional->rows[0]->unitValue)->toBe('1000.0000000000000000')
+        ->and($scaled->rows[0]->unitValue)->toBe('1000.0000000000000000')
+        ->and($fractional->datasetSha256)->toBe($plain->datasetSha256)
+        ->and($scaled->datasetSha256)->toBe($plain->datasetSha256);
+});
+
+it('preserves a high precision PU written with the brazilian decimal comma', function () {
+    $parser = app(PuExternalBenchmarkFileParser::class);
+
+    $baseline = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkCsv(
+        ['2026-01-02' => '1000.0000000000000000'],
+    ));
+    $changed = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkCsv(
+        ['2026-01-02' => '1000,0000000000000001'],
+        delimiter: ';',
+    ));
+
+    expect($changed->rows[0]->unitValue)->toBe('1000.0000000000000001')
+        ->and($changed->datasetSha256)->not->toBe($baseline->datasetSha256);
+});
+
+it('preserves a high precision PU stored as an XLSX text cell', function () {
+    $parser = app(PuExternalBenchmarkFileParser::class);
+
+    $baseline = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkXlsx([
+        '2026-01-02' => '1000.0000000000000000',
+    ]));
+    $changed = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkXlsx([
+        '2026-01-02' => '1000.0000000000000001',
+    ]));
+
+    expect($changed->rows[0]->unitValue)->toBe('1000.0000000000000001')
+        ->and($changed->datasetSha256)->not->toBe($baseline->datasetSha256);
+});
+
+it('normalizes an XLSX numeric PU from the actual double stored in the workbook', function () {
+    $parser = app(PuExternalBenchmarkFileParser::class);
+
+    $dataset = $parser->parse(PuCandidateGovernanceFixture::externalBenchmarkXlsx(
+        ['2026-01-02' => '1020.5'],
+        numericPu: true,
+    ));
+
+    expect($dataset->rows)->toHaveCount(1)
+        ->and($dataset->rows[0]->unitValue)->toBe('1020.5000000000000000');
 });
 
 it('keeps the dataset fingerprint free of identifiers, paths and timestamps', function () {

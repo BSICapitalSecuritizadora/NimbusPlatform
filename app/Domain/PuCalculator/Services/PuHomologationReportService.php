@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\Enums\PuIndexer;
+use App\Models\EmissionPuCurvePromotion;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuExternalValidation;
 use App\Models\EmissionPuExternalValidationGap;
@@ -28,6 +29,10 @@ class PuHomologationReportService
         $emission = $version->emission;
         $snapshot = $version->parameters_snapshot ?? [];
         $validation = $version->validation_summary ?? [];
+        $promotion = $version->promotions()
+            ->with(['requestedBy:id,name', 'reviewedBy:id,name', 'executedBy:id,name', 'previousOperationalVersion:id,calculation_version'])
+            ->latest('id')
+            ->first();
         $externalValidation = $version->externalValidations()
             ->with([
                 'benchmark.createdBy:id,name',
@@ -98,6 +103,7 @@ class PuHomologationReportService
                 'largest_payment_difference' => $validation['largest_payment_difference'] ?? null,
             ],
             'external_validation' => $this->externalValidation($externalValidation),
+            'promotion' => $this->promotion($promotion),
             'generated_at' => now()->format('d/m/Y H:i'),
         ];
     }
@@ -142,6 +148,40 @@ class PuHomologationReportService
         $suffix = $parts !== [] ? ' ('.implode(' / ', $parts).')' : '';
 
         return sprintf('#%d%s', $emission->id, $suffix);
+    }
+
+    /**
+     * Governança da promoção operacional. O dossiê é adicionado ao relatório sem
+     * redesenhar nada: o histórico de review interno e de validação externa
+     * continua exatamente como estava, e o bloco de promoção apenas registra que
+     * a versão atravessou a última fronteira -- quando atravessou.
+     *
+     * @return array<string, mixed>
+     */
+    private function promotion(?EmissionPuCurvePromotion $promotion): array
+    {
+        if (! $promotion instanceof EmissionPuCurvePromotion) {
+            return ['has_promotion' => false, 'status' => null];
+        }
+
+        return [
+            'has_promotion' => true,
+            'promotion_id' => $promotion->id,
+            'status' => $promotion->status?->value,
+            'status_label' => $promotion->status?->label(),
+            'requested_by' => $promotion->requestedBy?->name,
+            'requested_at' => $promotion->requested_at?->format('d/m/Y H:i'),
+            'reviewed_by' => $promotion->reviewedBy?->name,
+            'reviewed_at' => $promotion->reviewed_at?->format('d/m/Y H:i'),
+            'review_reason' => $promotion->review_reason,
+            'executed_by' => $promotion->executedBy?->name,
+            'promoted_at' => $promotion->promoted_at?->format('d/m/Y H:i'),
+            'previous_operational_version_id' => $promotion->previous_operational_curve_version_id,
+            'previous_operational_calculation_version' => $promotion->previousOperationalVersion?->calculation_version,
+            'candidate_checksum' => $promotion->candidate_checksum,
+            'external_validation_id' => $promotion->external_validation_id,
+            'comparison_sha256' => $promotion->comparison_sha256,
+        ];
     }
 
     /** @return array<string, mixed> */

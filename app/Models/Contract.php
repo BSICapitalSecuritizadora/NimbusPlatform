@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Concerns\MoneyFormatter;
 use App\Enums\ContractStatus;
+use App\Support\Contracts\ContractOccupancy;
 use App\Support\Contracts\ContractOccupancyPeriod;
 use App\Support\Contracts\ContractOccupancyTimeline;
 use App\Support\IdentifierNormalizer;
 use App\Support\Reconciliation\ValueComparator;
+use Carbon\CarbonInterface;
 use Database\Factories\ContractFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -396,6 +398,19 @@ class Contract extends Model
     /**
      * @param  Builder<Contract>  $query
      */
+    /**
+     * Contratos que seguravam a unidade na data.
+     *
+     * Regra única em {@see ContractOccupancy}: histórica, `[venda, distrato)`, e
+     * sem olhar o status atual.
+     *
+     * @param  Builder<Contract>  $query
+     */
+    public function scopeOccupyingOn(Builder $query, CarbonInterface $date): void
+    {
+        ContractOccupancy::scopeOccupyingOn($query, $date);
+    }
+
     public function scopeForEmission(Builder $query, mixed $emissionId): void
     {
         $query->whereHas(

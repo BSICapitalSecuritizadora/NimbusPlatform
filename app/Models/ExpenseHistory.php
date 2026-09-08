@@ -11,8 +11,10 @@ class ExpenseHistory extends Model
     protected $fillable = [
         'expense_id',
         'amount',
+        'paid_amount',
         'due_date',
         'payment_date',
+        'status',
         'conta_azul_bill_id',
     ];
 
@@ -20,6 +22,7 @@ class ExpenseHistory extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'paid_amount' => 'decimal:2',
             'due_date' => 'date',
             'payment_date' => 'date',
         ];
@@ -27,11 +30,40 @@ class ExpenseHistory extends Model
 
     public function effectivePaymentDate(): ?CarbonInterface
     {
-        if ($this->payment_date !== null) {
-            return $this->payment_date;
+        return $this->payment_date;
+    }
+
+    public function isFullyPaid(): bool
+    {
+        if ($this->status !== null) {
+            return in_array(strtolower($this->status), [
+                'paid',
+                'pago',
+                'quitado',
+                'recebido',
+            ], true);
         }
 
-        return $this->due_date;
+        // Sem status explícito, só é considerado pago se houver data de pagamento comprovada
+        return $this->payment_date !== null;
+    }
+
+    public function isPartiallyPaid(): bool
+    {
+        if ($this->status !== null) {
+            return in_array(strtolower($this->status), [
+                'partially_paid',
+                'parcialmente_pago',
+                'recebido_parcial',
+            ], true);
+        }
+
+        return false;
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->isFullyPaid();
     }
 
     public function expense(): BelongsTo

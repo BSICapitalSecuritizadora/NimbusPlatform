@@ -6,11 +6,20 @@ use App\Filament\Resources\Expenses\Pages\EditExpense;
 use App\Filament\Resources\Expenses\Pages\ExpenseCalendar;
 use App\Filament\Resources\Expenses\Pages\ListExpenses;
 use App\Filament\Resources\Expenses\RelationManagers\HistoriesRelationManager;
+use App\Filament\Resources\Expenses\RelationManagers\MonthlyConsolidatedRelationManager;
+use App\Jobs\SyncContaAzulExpensesJob;
+use App\Models\ContaAzulToken;
 use App\Models\Emission;
 use App\Models\Expense;
+use App\Models\ExpenseHistory;
 use App\Models\ExpenseServiceProvider;
+use App\Models\Fund;
 use App\Models\User;
+use App\Services\ContaAzulClient;
+use App\Services\Reports\EmissionMonthlyReportService;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
@@ -392,6 +401,8 @@ it('keeps paid occurrences visible on the calendar and reflects them in KPI tota
     $expense->histories()->create([
         'due_date' => '2026-05-15',
         'amount' => 4500,
+        'payment_date' => '2026-05-15',
+        'status' => 'paid',
     ]);
 
     $calendar = app(BuildExpenseCalendar::class)->handle('2026-05');
@@ -464,6 +475,662 @@ it('displays payment date and status on the expense histories relation manager',
         ->assertSee('05/05/2026')
         ->assertSee('Pago')
         ->assertSee('5.900,55');
+});
+
+it('allows creating a manual payment history with due_date, amount, and payment_date', function () {
+    $this->actingAs(makeExpenseCalendarAdminUser());
+
+    $expense = Expense::factory()->create();
+
+    Livewire::test(HistoriesRelationManager::class, [
+        'ownerRecord' => $expense,
+        'pageClass' => EditExpense::class,
+    ])
+        ->callAction(TestAction::make('create')->table(), [
+            'due_date' => '2026-07-10',
+            'amount' => '4200.50',
+            'payment_date' => '2026-07-12',
+        ])
+        ->assertHasNoActionErrors();
+
+    $history = $expense->histories()->first();
+    expect($history)->not->toBeNull()
+        ->and($history->due_date->toDateString())->toBe('2026-07-10')
+        ->and((float) $history->amount)->toEqual(4200.50)
+        ->and($history->payment_date?->toDateString())->toBe('2026-07-12')
+        ->and($history->status)->toBe('paid')
+        ->and($history->isPaid())->toBeTrue();
+});
+
+it('audits Test 1: payment with due_date and payment_date shows exact dates and paid status', function () {
+    Carbon::setTestNow('2026-08-15');
+
+    $expense = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-08-04',
+        'amount' => 5000,
+    ]);
+
+    $expense->histories()->create([
+        'due_date' => '2026-08-04',
+        'payment_date' => '2026-08-11',
+        'amount' => 5000,
+    ]);
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-08');
+    $event = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-08-04');
+
+    expect($event)->not->toBeNull()
+        ->and($event['due_date_label'])->toBe('04/08/2026')
+        ->and($event['payment_date_label'])->toBe('11/08/2026')
+        ->and($event['status_label'])->toBe('Pago')
+        ->and($event['paid_amount_label'])->toBe('R$ 5.000,00');
+});
+
+it('audits Test 2: legacy paid record without payment_date shows dash and never invents date using due_date', function () {
+    Carbon::setTestNow('2026-08-15');
+
+    $expense = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-08-04',
+        'amount' => 5000,
+    ]);
+
+    $expense->histories()->create([
+        'due_date' => '2026-08-04',
+        'payment_date' => null,
+        'status' => 'paid',
+        'amount' => 5000,
+    ]);
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-08');
+    $event = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-08-04');
+
+    expect($event)->not->toBeNull()
+        ->and($event['status_label'])->toBe('Pago')
+        ->and($event['payment_date_label'])->toBe('—')
+        ->and($event['paid_amount_label'])->toBe('R$ 5.000,00');
+});
+
+it('audits Test 3: unpaid bill shows pending or overdue and never paid just because an imported record exists', function () {
+    Carbon::setTestNow('2026-08-15');
+
+    $expense = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-08-20',
+        'amount' => 3000,
+    ]);
+
+    // Pending record in the future (due 20/08/2026 > today 15/08/2026)
+    $expense->histories()->create([
+        'due_date' => '2026-08-20',
+        'payment_date' => null,
+        'status' => 'pending',
+        'amount' => 3000,
+    ]);
+
+    // Overdue record in the past (due 10/08/2026 < today 15/08/2026)
+    $expensePast = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-08-10',
+        'amount' => 2000,
+    ]);
+    $expensePast->histories()->create([
+        'due_date' => '2026-08-10',
+        'payment_date' => null,
+        'status' => 'pending',
+        'amount' => 2000,
+    ]);
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-08');
+    $events = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events']);
+
+    $futureEvent = $events->firstWhere('date', '2026-08-20');
+    $pastEvent = $events->firstWhere('date', '2026-08-10');
+
+    expect($futureEvent['status_label'])->toBe('Pendente')
+        ->and($futureEvent['payment_date_label'])->toBe('—')
+        ->and($futureEvent['paid_amount_label'])->toBe('—')
+        ->and($pastEvent['status_label'])->toBe('Vencido')
+        ->and($pastEvent['payment_date_label'])->toBe('—')
+        ->and($pastEvent['paid_amount_label'])->toBe('—');
+});
+
+it('audits Test 4: payment of one month cannot settle occurrence of another month', function () {
+    Carbon::setTestNow('2026-06-15');
+
+    $expense = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-05-10',
+        'end_date' => '2026-07-10',
+        'amount' => 4000,
+    ]);
+
+    // Only May is paid
+    $expense->histories()->create([
+        'due_date' => '2026-05-10',
+        'payment_date' => '2026-05-10',
+        'status' => 'paid',
+        'amount' => 4000,
+    ]);
+
+    $action = app(BuildExpenseCalendar::class);
+    $juneEvents = collect($action->handle('2026-06')['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events']);
+    $juneEvent = $juneEvents->firstWhere('date', '2026-06-10');
+
+    expect($juneEvent)->not->toBeNull()
+        ->and($juneEvent['status_label'])->toBe('Vencido') // 10/06 < 15/06
+        ->and($juneEvent['payment_date_label'])->toBe('—')
+        ->and($juneEvent['paid_amount_label'])->toBe('—');
+});
+
+it('audits Test 5: two histories in same month do not silently pick wrong record', function () {
+    Carbon::setTestNow('2026-05-25');
+
+    $expense = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-05-04',
+        'amount' => 1000,
+    ]);
+
+    // Scheduled occurrence is on 04/05
+    $expense->histories()->create([
+        'due_date' => '2026-05-04',
+        'payment_date' => '2026-05-04',
+        'status' => 'paid',
+        'amount' => 1000,
+    ]);
+
+    // Additional history in the same month on day 20
+    $expense->histories()->create([
+        'due_date' => '2026-05-20',
+        'payment_date' => '2026-05-21',
+        'status' => 'paid',
+        'amount' => 500,
+    ]);
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-05');
+    $events = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events']);
+
+    $eventDay4 = $events->firstWhere('date', '2026-05-04');
+    $eventDay20 = $events->firstWhere('date', '2026-05-20');
+
+    expect($eventDay4)->not->toBeNull()
+        ->and($eventDay4['paid_amount_label'])->toBe('R$ 1.000,00')
+        ->and($eventDay4['payment_date_label'])->toBe('04/05/2026')
+        ->and($eventDay20)->not->toBeNull()
+        ->and($eventDay20['paid_amount_label'])->toBe('R$ 500,00')
+        ->and($eventDay20['payment_date_label'])->toBe('21/05/2026');
+});
+
+it('audits Test 6: month-end occurrence with due date shifted to next month associates correctly without contaminating february', function () {
+    Carbon::setTestNow('2026-02-15');
+
+    $expense = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-01-31',
+        'amount' => 7000,
+    ]);
+
+    // Bank due date shifted from Saturday 31/01/2026 to Monday 02/02/2026
+    $expense->histories()->create([
+        'due_date' => '2026-02-02',
+        'payment_date' => '2026-02-02',
+        'status' => 'paid',
+        'amount' => 7000,
+    ]);
+
+    $action = app(BuildExpenseCalendar::class);
+
+    // In January: the 31/01 occurrence matches the shifted payment
+    $janEvents = collect($action->handle('2026-01')['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events']);
+    $janEvent = $janEvents->firstWhere('date', '2026-01-31');
+
+    expect($janEvent)->not->toBeNull()
+        ->and($janEvent['status_label'])->toBe('Pago')
+        ->and($janEvent['payment_date_label'])->toBe('02/02/2026')
+        ->and($janEvent['paid_amount_label'])->toBe('R$ 7.000,00');
+
+    // In February: the 28/02 occurrence does NOT associate with 02/02
+    $febEvents = collect($action->handle('2026-02')['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events']);
+    $febEvent = $febEvents->firstWhere('date', '2026-02-28');
+
+    expect($febEvent)->not->toBeNull()
+        ->and($febEvent['status_label'])->toBe('Pendente') // 28/02 > 15/02
+        ->and($febEvent['payment_date_label'])->toBe('—')
+        ->and($febEvent['paid_amount_label'])->toBe('—');
+});
+
+it('audits Test 7: Conta Azul sync populates payment_date and status when available', function () {
+    config()->set('conta-azul.category_map', [
+        'Taxa de Gestão' => 'Gestão',
+    ]);
+
+    $emission = Emission::factory()->create();
+    $fund = Fund::factory()->create([
+        'emission_id' => $emission->id,
+        'conta_azul_account_id' => 'acc-123',
+    ]);
+
+    $job = new SyncContaAzulExpensesJob;
+
+    $bill = [
+        'id' => 'bill-ca-777',
+        'total' => 1250.00,
+        'pago' => 1250.00,
+        'nao_pago' => 0.00,
+        'status' => 'RECEBIDO',
+        'status_traduzido' => 'QUITADO',
+        'data_vencimento' => '2026-05-10',
+        'data_pagamento' => '2026-05-12',
+        'categorias' => [
+            ['nome' => 'Taxa de Gestão'],
+        ],
+    ];
+
+    $job->upsertExpense($fund, $bill);
+
+    $history = ExpenseHistory::where('conta_azul_bill_id', 'bill-ca-777')->first();
+
+    expect($history)->not->toBeNull()
+        ->and($history->amount)->toEqual('1250.00')
+        ->and($history->due_date->toDateString())->toBe('2026-05-10')
+        ->and($history->payment_date?->toDateString())->toBe('2026-05-12')
+        ->and($history->status)->toBe('paid')
+        ->and($history->isPaid())->toBeTrue();
+});
+
+it('audits Test 8: subsequent sync updates pending bill to paid without duplicate history', function () {
+    Carbon::setTestNow('2026-06-01');
+
+    config()->set('conta-azul.category_map', [
+        'Taxa de Gestão' => 'Gestão',
+    ]);
+
+    $emission = Emission::factory()->create();
+    $fund = Fund::factory()->create([
+        'emission_id' => $emission->id,
+        'conta_azul_account_id' => 'acc-123',
+    ]);
+
+    $job = new SyncContaAzulExpensesJob;
+
+    // 1st sync: pending
+    $pendingBill = [
+        'id' => 'bill-ca-888',
+        'total' => 3000.00,
+        'pago' => 0.00,
+        'nao_pago' => 3000.00,
+        'status' => 'OPEN',
+        'status_traduzido' => 'EM_ABERTO',
+        'data_vencimento' => '2026-06-20',
+        'categorias' => [
+            ['nome' => 'Taxa de Gestão'],
+        ],
+    ];
+
+    $job->upsertExpense($fund, $pendingBill);
+
+    expect(ExpenseHistory::where('conta_azul_bill_id', 'bill-ca-888')->count())->toBe(1);
+    $historyBefore = ExpenseHistory::where('conta_azul_bill_id', 'bill-ca-888')->first();
+    expect($historyBefore->status)->toBe('pending')
+        ->and($historyBefore->payment_date)->toBeNull()
+        ->and($historyBefore->isPaid())->toBeFalse();
+
+    // 2nd sync: paid
+    $paidBill = [
+        'id' => 'bill-ca-888',
+        'total' => 3000.00,
+        'pago' => 3000.00,
+        'nao_pago' => 0.00,
+        'status' => 'PAID',
+        'status_traduzido' => 'QUITADO',
+        'data_vencimento' => '2026-06-20',
+        'data_pagamento' => '2026-06-19',
+        'categorias' => [
+            ['nome' => 'Taxa de Gestão'],
+        ],
+    ];
+
+    $job->upsertExpense($fund, $paidBill);
+
+    // Must still have exactly 1 record (no duplication!)
+    expect(ExpenseHistory::where('conta_azul_bill_id', 'bill-ca-888')->count())->toBe(1);
+
+    $historyAfter = ExpenseHistory::where('conta_azul_bill_id', 'bill-ca-888')->first();
+    expect($historyAfter->status)->toBe('paid')
+        ->and($historyAfter->payment_date?->toDateString())->toBe('2026-06-19')
+        ->and($historyAfter->isPaid())->toBeTrue();
+});
+
+it('audits Test A: legacy Conta Azul record with null status and null payment_date with external bill open is NOT paid', function () {
+    Carbon::setTestNow('2026-08-15');
+
+    $expense = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-08-04',
+        'amount' => 5000,
+    ]);
+
+    // Legacy record imported by old sync, status = null, payment_date = null
+    $expense->histories()->create([
+        'due_date' => '2026-08-04',
+        'payment_date' => null,
+        'status' => null,
+        'amount' => 5000,
+        'conta_azul_bill_id' => 'legacy-open-bill-1',
+    ]);
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-08');
+    $event = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-08-04');
+
+    expect($event)->not->toBeNull()
+        ->and($event['status_label'])->not->toBe('Pago')
+        ->and($event['status_label'])->toBe('Vencido') // 04/08 < 15/08 e não quitada
+        ->and($event['payment_date_label'])->toBe('—')
+        ->and($event['paid_amount_label'])->toBe('—');
+});
+
+it('audits Test B: legacy Conta Azul record with null status is reconciled to paid when external bill is quitada', function () {
+    Carbon::setTestNow('2026-08-15');
+
+    config()->set('conta-azul.category_map', [
+        'Taxa de Gestão' => 'Gestão',
+    ]);
+
+    $emission = Emission::factory()->create();
+    $fund = Fund::factory()->create([
+        'emission_id' => $emission->id,
+        'conta_azul_account_id' => 'acc-123',
+    ]);
+
+    $expense = Expense::factory()->create([
+        'emission_id' => $emission->id,
+        'category' => 'Gestão',
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-08-04',
+        'amount' => 5000,
+    ]);
+
+    // Legacy record in database before reconciliation
+    $expense->histories()->create([
+        'due_date' => '2026-08-04',
+        'payment_date' => null,
+        'status' => null,
+        'amount' => 5000,
+        'conta_azul_bill_id' => 'legacy-bill-paid-in-ca',
+    ]);
+
+    // Before reconciliation: NOT paid
+    $calendarBefore = app(BuildExpenseCalendar::class)->handle('2026-08');
+    $eventBefore = collect($calendarBefore['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-08-04');
+    expect($eventBefore['status_label'])->toBe('Vencido');
+
+    // Run reconciliation via sync
+    $job = new SyncContaAzulExpensesJob;
+    $bill = [
+        'id' => 'legacy-bill-paid-in-ca',
+        'total' => 5000.00,
+        'pago' => 5000.00,
+        'nao_pago' => 0.00,
+        'status' => 'PAID',
+        'status_traduzido' => 'QUITADO',
+        'data_vencimento' => '2026-08-04',
+        'data_pagamento' => '2026-08-04',
+        'categorias' => [
+            ['nome' => 'Taxa de Gestão'],
+        ],
+    ];
+    $job->upsertExpense($fund, $bill);
+
+    // After reconciliation: Paid, no duplicate history
+    expect(ExpenseHistory::where('conta_azul_bill_id', 'legacy-bill-paid-in-ca')->count())->toBe(1);
+
+    $calendarAfter = app(BuildExpenseCalendar::class)->handle('2026-08');
+    $eventAfter = collect($calendarAfter['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-08-04');
+    expect($eventAfter['status_label'])->toBe('Pago')
+        ->and($eventAfter['payment_date_label'])->toBe('04/08/2026')
+        ->and($eventAfter['paid_amount_label'])->toBe('R$ 5.000,00');
+});
+
+it('audits Test C: partially paid bill (total 5000, pago 2000, nao_pago 3000) is not considered fully paid', function () {
+    Carbon::setTestNow('2026-08-15');
+
+    config()->set('conta-azul.category_map', [
+        'Taxa de Gestão' => 'Gestão',
+    ]);
+
+    $emission = Emission::factory()->create();
+    $fund = Fund::factory()->create([
+        'emission_id' => $emission->id,
+        'conta_azul_account_id' => 'acc-123',
+    ]);
+
+    $job = new SyncContaAzulExpensesJob;
+    $partialBill = [
+        'id' => 'bill-partial-123',
+        'total' => 5000.00,
+        'pago' => 2000.00,
+        'nao_pago' => 3000.00,
+        'status' => 'PARTIALLY_PAID',
+        'status_traduzido' => 'RECEBIDO_PARCIAL',
+        'data_vencimento' => '2026-08-20',
+        'data_pagamento' => '2026-08-12',
+        'categorias' => [
+            ['nome' => 'Taxa de Gestão'],
+        ],
+    ];
+
+    $job->upsertExpense($fund, $partialBill);
+
+    $history = ExpenseHistory::where('conta_azul_bill_id', 'bill-partial-123')->first();
+    expect($history)->not->toBeNull()
+        ->and((float) $history->amount)->toEqual(5000.00) // Nominal amount preserved
+        ->and((float) $history->paid_amount)->toEqual(2000.00) // Paid amount stored separately
+        ->and($history->status)->toBe('partially_paid')
+        ->and($history->isFullyPaid())->toBeFalse()
+        ->and($history->isPartiallyPaid())->toBeTrue();
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-08');
+    $event = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-08-20');
+
+    expect($event)->not->toBeNull()
+        ->and($event['status_label'])->toBe('Parcialmente pago')
+        ->and($event['status_label'])->not->toBe('Pago')
+        ->and($event['expected_amount_label'])->toBe('R$ 5.000,00')
+        ->and($event['paid_amount_label'])->toBe('R$ 2.000,00')
+        ->and($event['paid_amount_label'])->not->toBe('R$ 5.000,00')
+        ->and($event['remaining_amount_label'])->toBe('R$ 3.000,00')
+        ->and($event['payment_date_label'])->toBe('12/08/2026');
+});
+
+it('audits Test D: old pending bill does not become Paid just because an ExpenseHistory exists', function () {
+    Carbon::setTestNow('2026-08-15');
+
+    $expense = Expense::factory()->create([
+        'period' => Expense::PERIOD_MONTHLY,
+        'start_date' => '2026-08-10',
+        'amount' => 4500,
+    ]);
+
+    // Old pending record
+    $expense->histories()->create([
+        'due_date' => '2026-08-10',
+        'payment_date' => null,
+        'status' => 'pending',
+        'amount' => 4500,
+    ]);
+
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-08');
+    $event = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-08-10');
+
+    expect($event)->not->toBeNull()
+        ->and($event['status_label'])->toBe('Vencido') // 10/08 < 15/08
+        ->and($event['status_label'])->not->toBe('Pago')
+        ->and($event['payment_date_label'])->toBe('—')
+        ->and($event['paid_amount_label'])->toBe('—');
+});
+
+it('audits Test E: amount continues representing nominal amount and preserves totals in MonthlyConsolidatedRelationManager and EmissionMonthlyReportService', function () {
+    $emission = Emission::factory()->create();
+    $expense = Expense::factory()->for($emission)->create(['amount' => 5000]);
+
+    // History with partial payment: nominal amount = 5000, paid_amount = 2000
+    $expense->histories()->create([
+        'due_date' => '2026-05-15',
+        'amount' => 5000,
+        'paid_amount' => 2000,
+        'status' => 'partially_paid',
+        'payment_date' => '2026-05-10',
+    ]);
+
+    // History with full payment: nominal amount = 6000, paid_amount = 6000
+    $expense->histories()->create([
+        'due_date' => '2026-05-20',
+        'amount' => 6000,
+        'paid_amount' => 6000,
+        'status' => 'paid',
+        'payment_date' => '2026-05-20',
+    ]);
+
+    // History in previous competence
+    $expense->histories()->create([
+        'due_date' => '2026-04-15',
+        'amount' => 4000,
+        'paid_amount' => 4000,
+        'status' => 'paid',
+        'payment_date' => '2026-04-15',
+    ]);
+
+    // 1. EmissionMonthlyReportService: sums nominal amount (5000 + 6000 = 11000 for 05/2026)
+    $data = app(EmissionMonthlyReportService::class)
+        ->build($emission, CarbonImmutable::parse('2026-05-01'));
+
+    expect($data['expenses_history']['has_data'])->toBeTrue();
+    $mayRow = collect($data['expenses_history']['rows'])->firstWhere('competencia', '05/2026');
+    expect($mayRow['total'])->toBe('R$ 11.000,00'); // Preserves exact nominal sum 5.000 + 6.000!
+
+    // 2. MonthlyConsolidatedRelationManager: sums nominal amount (11000 for 05/2026)
+    $admin = makeExpenseCalendarAdminUser();
+    Livewire::actingAs($admin)
+        ->test(MonthlyConsolidatedRelationManager::class, [
+            'ownerRecord' => $expense,
+            'pageClass' => EditExpense::class,
+        ])
+        ->assertSee('11.000,00');
+});
+
+it('audits Test F: DeleteAction is removed and CreateAction requires proper authorization', function () {
+    $admin = makeExpenseCalendarAdminUser();
+    $expense = Expense::factory()->create();
+    $expense->histories()->create([
+        'due_date' => '2026-05-15',
+        'amount' => 5000,
+        'payment_date' => '2026-05-15',
+        'status' => 'paid',
+    ]);
+
+    // Verify DeleteAction does not exist on table
+    Livewire::actingAs($admin)
+        ->test(HistoriesRelationManager::class, [
+            'ownerRecord' => $expense,
+            'pageClass' => EditExpense::class,
+        ])
+        ->assertActionDoesNotExist('delete');
+
+    // Verify user without expenses.create permission cannot create
+    $viewerUser = User::factory()->withTwoFactor()->create();
+    $viewerUser->givePermissionTo('expenses.view');
+
+    Livewire::actingAs($viewerUser)
+        ->test(HistoriesRelationManager::class, [
+            'ownerRecord' => $expense,
+            'pageClass' => EditExpense::class,
+        ])
+        ->assertActionHidden(TestAction::make('create')->table());
+});
+
+it('audits Test Realistic: persists real payment date from Conta Azul parcelas baixas when payment_date != due_date', function () {
+    Carbon::setTestNow('2026-06-20');
+
+    ContaAzulToken::create([
+        'access_token' => 'fake-access-token',
+        'refresh_token' => 'fake-refresh-token',
+        'expires_at' => now()->addHours(2),
+    ]);
+
+    config()->set('conta-azul.category_map', [
+        'Taxa de Gestão' => 'Gestão',
+    ]);
+
+    $emission = Emission::factory()->create();
+    $fund = Fund::factory()->create([
+        'emission_id' => $emission->id,
+        'conta_azul_account_id' => 'acc-ca-real-test',
+    ]);
+
+    $billId = 'ca-bill-uuid-8103';
+
+    // Mock HTTP response for Conta Azul parcelas endpoint
+    Http::fake([
+        'https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/'.$billId => Http::response([
+            'id' => $billId,
+            'status' => 'QUITADO',
+            'data_vencimento' => '2026-06-10',
+            'data_pagamento_previsto' => '2026-06-10',
+            'baixas' => [
+                [
+                    'id' => 'baixa-uuid-1',
+                    'data_pagamento' => '2026-06-15', // Paid on 15/06/2026 (due_date was 10/06/2026)
+                    'valor_composicao' => [
+                        'valor_liquido' => 8103.55,
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $client = app(ContaAzulClient::class);
+    $job = new SyncContaAzulExpensesJob;
+
+    // Payload exactly matching what /v1/financeiro/eventos-financeiros/contas-a-pagar/buscar returns
+    $billFromSearch = [
+        'id' => $billId,
+        'status' => 'ACQUITTED',
+        'status_traduzido' => 'RECEBIDO',
+        'total' => 8103.55,
+        'pago' => 8103.55,
+        'nao_pago' => 0.0,
+        'data_vencimento' => '2026-06-10',
+        'data_competencia' => '2026-06-10',
+        'categorias' => [
+            ['nome' => 'Taxa de Gestão'],
+        ],
+    ];
+
+    $job->upsertExpense($fund, $billFromSearch, $client);
+
+    $history = ExpenseHistory::where('conta_azul_bill_id', $billId)->first();
+
+    expect($history)->not->toBeNull()
+        ->and((float) $history->amount)->toEqual(8103.55)
+        ->and((float) $history->paid_amount)->toEqual(8103.55)
+        ->and($history->status)->toBe('paid')
+        ->and($history->due_date->toDateString())->toBe('2026-06-10')
+        ->and($history->payment_date->toDateString())->toBe('2026-06-15')
+        ->and($history->due_date->toDateString())->not->toBe($history->payment_date->toDateString())
+        ->and($history->isPaid())->toBeTrue();
+
+    // Verify calendar presentation
+    $calendar = app(BuildExpenseCalendar::class)->handle('2026-06');
+    $event = collect($calendar['weeks'])->flatten(1)->flatMap(fn ($d) => $d['events'])->firstWhere('date', '2026-06-10');
+
+    expect($event)->not->toBeNull()
+        ->and($event['due_date_label'])->toBe('10/06/2026')
+        ->and($event['payment_date_label'])->toBe('15/06/2026')
+        ->and($event['status_label'])->toBe('Pago')
+        ->and($event['expected_amount_label'])->toBe('R$ 8.103,55')
+        ->and($event['paid_amount_label'])->toBe('R$ 8.103,55');
 });
 
 function makeExpenseCalendarAdminUser(): User

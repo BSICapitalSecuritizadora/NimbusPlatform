@@ -5,6 +5,7 @@ namespace App\Enums;
 enum ExpensePaymentStatus: string
 {
     case Paid = 'paid';
+    case PartiallyPaid = 'partially_paid';
     case Pending = 'pending';
     case Overdue = 'overdue';
 
@@ -12,6 +13,7 @@ enum ExpensePaymentStatus: string
     {
         return match ($this) {
             self::Paid => 'Pago',
+            self::PartiallyPaid => 'Parcialmente pago',
             self::Pending => 'Pendente',
             self::Overdue => 'Vencido',
         };
@@ -21,6 +23,7 @@ enum ExpensePaymentStatus: string
     {
         return match ($this) {
             self::Paid => 'success',
+            self::PartiallyPaid => 'info',
             self::Pending => 'warning',
             self::Overdue => 'danger',
         };
@@ -30,6 +33,7 @@ enum ExpensePaymentStatus: string
     {
         return match ($this) {
             self::Paid => 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
+            self::PartiallyPaid => 'border border-sky-500/30 bg-sky-500/15 text-sky-300',
             self::Pending => 'border border-amber-500/30 bg-amber-500/15 text-amber-300',
             self::Overdue => 'border border-rose-500/30 bg-rose-500/15 text-rose-300',
         };
@@ -39,6 +43,7 @@ enum ExpensePaymentStatus: string
     {
         return match ($this) {
             self::Paid => 'bg-emerald-400',
+            self::PartiallyPaid => 'bg-sky-400',
             self::Pending => 'bg-amber-400',
             self::Overdue => 'bg-rose-400',
         };

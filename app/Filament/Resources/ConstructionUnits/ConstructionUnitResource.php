@@ -7,6 +7,7 @@ use App\Filament\Resources\ConstructionUnits\Pages\CreateConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\Pages\EditConstructionUnit;
 use App\Filament\Resources\ConstructionUnits\Pages\ListConstructionUnits;
 use App\Filament\Resources\ConstructionUnits\Pages\ViewConstructionUnit;
+use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitExchangesRelationManager;
 use App\Filament\Resources\ConstructionUnits\RelationManagers\ConstructionUnitValuesRelationManager;
 use App\Filament\Resources\ConstructionUnits\Schemas\ConstructionUnitForm;
 use App\Filament\Resources\ConstructionUnits\Tables\ConstructionUnitsTable;
@@ -125,6 +126,7 @@ class ConstructionUnitResource extends Resource
     {
         return [
             ConstructionUnitValuesRelationManager::class,
+            ConstructionUnitExchangesRelationManager::class,
         ];
     }
 
@@ -195,7 +197,8 @@ class ConstructionUnitResource extends Resource
          * de um erro de constraint.
          */
         return ! $record->contracts()->withTrashed()->exists()
-            && ! $record->valueHistories()->exists();
+            && ! $record->valueHistories()->exists()
+            && ! $record->exchanges()->exists();
     }
 
     public static function getPages(): array

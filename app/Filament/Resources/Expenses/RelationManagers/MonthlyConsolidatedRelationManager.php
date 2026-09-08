@@ -29,16 +29,20 @@ class MonthlyConsolidatedRelationManager extends RelationManager
             ->recordTitleAttribute('due_date')
             ->heading('Consolidado mensal')
             ->description('Soma mensal dos pagamentos registrados para esta despesa.')
-            ->modifyQueryUsing(
-                fn (Builder $query): Builder => $query
-                    ->selectRaw("DATE_FORMAT(due_date, '%Y-%m-01') as due_date")
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                $monthExpr = $query->getConnection()->getDriverName() === 'sqlite'
+                    ? "strftime('%Y-%m-01', due_date)"
+                    : "DATE_FORMAT(due_date, '%Y-%m-01')";
+
+                return $query
+                    ->selectRaw("{$monthExpr} as due_date")
                     ->selectRaw('SUM(amount) as amount')
                     ->selectRaw('COUNT(*) as total_payments')
                     ->selectRaw('MIN(id) as id')
-                    ->groupByRaw("DATE_FORMAT(due_date, '%Y-%m-01')")
+                    ->groupByRaw($monthExpr)
                     ->where('due_date', '>=', '2025-01-01')
-                    ->reorder()
-            )
+                    ->reorder();
+            })
             ->columns([
                 TextColumn::make('due_date')
                     ->label('Mês')

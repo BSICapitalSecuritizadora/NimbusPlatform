@@ -524,6 +524,15 @@ class Emission extends Model
         return $this->hasMany(EmissionPuCurveVersion::class)->candidate();
     }
 
+    /**
+     * Dossiês de promoção operacional da curva. Governança, não leitura
+     * operacional: quem quer a curva vigente usa `latestPuCurveVersion()`.
+     */
+    public function puCurvePromotions(): HasMany
+    {
+        return $this->hasMany(EmissionPuCurvePromotion::class);
+    }
+
     public function puCalendarHomologations(): HasMany
     {
         return $this->hasMany(PuCalendarHomologation::class);

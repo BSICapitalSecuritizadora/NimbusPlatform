@@ -105,16 +105,52 @@ class ExpenseOccurrenceResolver
             return $exactMatches->values();
         }
 
-        // Prioridade 2: correspondência por competência (mesmo ano e mês)
-        $competenceMatches = $histories->filter(
-            fn (ExpenseHistory $history): bool => $history->due_date?->format('Y-m') === $occurrenceDate->format('Y-m')
-        );
+        // Prioridade 2: vencimento bancário ajustado para fim de mês (ex.: ocorrência 31/01 no fim de semana deslocada para 02/02)
+        if ($occurrenceDate->day >= 28) {
+            $shiftedMatches = $histories->filter(function (ExpenseHistory $history) use ($occurrenceDate): bool {
+                if ($history->due_date === null) {
+                    return false;
+                }
 
-        if ($competenceMatches->isNotEmpty()) {
-            return $competenceMatches->values();
+                $diffDays = $occurrenceDate->diffInDays($history->due_date, false);
+
+                // Deslocamento para frente entre 1 e 4 dias caindo no início do mês seguinte
+                return $diffDays >= 1
+                    && $diffDays <= 4
+                    && $history->due_date->month !== $occurrenceDate->month
+                    && $history->due_date->day <= 5;
+            });
+
+            if ($shiftedMatches->isNotEmpty()) {
+                return $shiftedMatches->values();
+            }
         }
 
-        // Prioridade 3: para despesa de período único, se houver histórico registrado para a mesma competência da data de início
+        // Prioridade 3: correspondência por competência (mesmo ano e mês),
+        // ignorando registros do início do mês (dias 1-5) caso a ocorrência seja no final do mês (dia >= 28)
+        // para não capturar pagamentos deslocados do mês anterior.
+        $competenceMatches = $histories->filter(function (ExpenseHistory $history) use ($occurrenceDate): bool {
+            if ($history->due_date?->format('Y-m') !== $occurrenceDate->format('Y-m')) {
+                return false;
+            }
+
+            if ($occurrenceDate->day >= 28 && $history->due_date->day <= 5) {
+                return false;
+            }
+
+            return true;
+        });
+
+        if ($competenceMatches->isNotEmpty()) {
+            // Se houver múltiplos registros no mesmo mês, seleciona o mais próximo da data da ocorrência
+            $closest = $competenceMatches->sortBy(
+                fn (ExpenseHistory $h): int => abs($occurrenceDate->diffInDays($h->due_date))
+            );
+
+            return collect([$closest->first()]);
+        }
+
+        // Prioridade 4: para despesa de período único, se houver histórico registrado para a mesma competência da data de início
         if ($expense->period === Expense::PERIOD_SINGLE) {
             $singleMatches = $histories->filter(
                 fn (ExpenseHistory $history): bool => $history->due_date?->format('Y-m') === $expense->start_date?->format('Y-m')
@@ -138,28 +174,51 @@ class ExpenseOccurrenceResolver
         Collection $matchingHistories,
         CarbonImmutable $referenceDate,
     ): array {
-        $hasPayment = $matchingHistories->isNotEmpty();
+        $fullyPaidHistories = $matchingHistories->filter(fn (ExpenseHistory $history): bool => $history->isFullyPaid());
+        $partiallyPaidHistories = $matchingHistories->filter(fn (ExpenseHistory $history): bool => $history->isPartiallyPaid());
         $today = $referenceDate->startOfDay();
 
-        if ($hasPayment) {
+        if ($fullyPaidHistories->isNotEmpty()) {
             $status = ExpensePaymentStatus::Paid;
-            $paidAmount = (float) $matchingHistories->sum('amount');
-            /** @var ?ExpenseHistory $latestPaidHistory */
-            $latestPaidHistory = $matchingHistories->sortByDesc(
-                fn (ExpenseHistory $history): string => $history->effectivePaymentDate()?->format('Y-m-d') ?? ''
+            $paidAmount = (float) $fullyPaidHistories->sum(
+                fn (ExpenseHistory $h): float => (float) ($h->paid_amount ?? $h->amount)
+            );
+            /** @var ?ExpenseHistory $latestPaidWithDate */
+            $latestPaidWithDate = $fullyPaidHistories->whereNotNull('payment_date')->sortByDesc(
+                fn (ExpenseHistory $history): string => $history->payment_date->toDateString()
             )->first();
-            $paymentDate = $latestPaidHistory?->effectivePaymentDate() !== null
-                ? CarbonImmutable::instance($latestPaidHistory->effectivePaymentDate())
+            $paymentDate = $latestPaidWithDate?->payment_date !== null
+                ? CarbonImmutable::instance($latestPaidWithDate->payment_date)
                 : null;
+            $hasPayment = true;
+        } elseif ($partiallyPaidHistories->isNotEmpty()) {
+            $status = ExpensePaymentStatus::PartiallyPaid;
+            $paidAmount = (float) $partiallyPaidHistories->sum(
+                fn (ExpenseHistory $h): float => (float) ($h->paid_amount ?? 0.0)
+            );
+            /** @var ?ExpenseHistory $latestPaidWithDate */
+            $latestPaidWithDate = $partiallyPaidHistories->whereNotNull('payment_date')->sortByDesc(
+                fn (ExpenseHistory $history): string => $history->payment_date->toDateString()
+            )->first();
+            $paymentDate = $latestPaidWithDate?->payment_date !== null
+                ? CarbonImmutable::instance($latestPaidWithDate->payment_date)
+                : null;
+            $hasPayment = false;
         } else {
             $paidAmount = null;
             $paymentDate = null;
+            $hasPayment = false;
             $status = $occurrenceDate->lt($today)
                 ? ExpensePaymentStatus::Overdue
                 : ExpensePaymentStatus::Pending;
         }
 
-        $expectedAmount = (float) ($expense->amount ?? $paidAmount ?? 0.0);
+        $expectedAmount = (float) ($expense->amount ?? $matchingHistories->first()?->amount ?? $paidAmount ?? 0.0);
+        $remainingAmount = match ($status) {
+            ExpensePaymentStatus::Paid => 0.0,
+            ExpensePaymentStatus::PartiallyPaid => max(0.0, round($expectedAmount - ($paidAmount ?? 0.0), 2)),
+            default => $expectedAmount,
+        };
 
         return [
             'id' => "expense-{$expense->getKey()}-{$occurrenceDate->format('Ymd')}",
@@ -182,6 +241,9 @@ class ExpenseOccurrenceResolver
             'payment_date_label' => $paymentDate !== null ? $paymentDate->format('d/m/Y') : '—',
             'paid_amount' => $paidAmount !== null ? round($paidAmount, 2) : null,
             'paid_amount_label' => $paidAmount !== null ? $this->formatCurrency($paidAmount) : '—',
+            'remaining_amount' => round($remainingAmount, 2),
+            'remaining_amount_label' => $this->formatCurrency($remainingAmount),
+            'is_partially_paid' => $status === ExpensePaymentStatus::PartiallyPaid,
             'operation' => (string) ($expense->emission?->name ?? 'Operação sem nome'),
             'category' => $expense->category,
             'service_provider' => (string) ($expense->serviceProvider?->name ?? 'Prestador não informado'),

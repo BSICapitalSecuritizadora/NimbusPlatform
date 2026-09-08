@@ -89,6 +89,16 @@ class EditEmission extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('puCalculator')
+                ->label('Calculadora de PU')
+                ->icon('heroicon-o-calculator')
+                ->color('primary')
+                ->outlined()
+                ->visible(fn (): bool => auth()->user()?->can('pu.curve.view') ?? false)
+                ->url(fn (): string => EmissionResource::getUrl('pu-calculator', [
+                    'record' => $this->getRecord(),
+                ])),
+
             Action::make('puCurvePanel')
                 ->label('Painel da Curva PU')
                 ->icon('heroicon-o-presentation-chart-line')

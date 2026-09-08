@@ -86,6 +86,91 @@ class SalesDiscountPolicyResolver
         return $resolved;
     }
 
+    /**
+     * Política de cada par (empreendimento, data) pedido, com um único
+     * carregamento.
+     *
+     * A derivação valida vendas que aconteceram em dias diferentes da mesma
+     * competência, e a política pode ter mudado entre elas. Resolver venda a
+     * venda dispararia uma consulta por venda.
+     *
+     * @param  list<array{construction_id: int, date: CarbonInterface}>  $requests
+     * @return array<string, ResolvedSalesDiscountPolicy> indexado por `{construction_id}@{Y-m-d}`
+     */
+    public function forConstructionDates(array $requests): array
+    {
+        if ($requests === []) {
+            return [];
+        }
+
+        $normalized = array_map(
+            fn (array $request): array => [
+                'construction_id' => (int) $request['construction_id'],
+                'date' => $this->normalizeDate($request['date']),
+            ],
+            $requests,
+        );
+
+        $constructionIds = array_values(array_unique(array_column($normalized, 'construction_id')));
+        $latestDate = collect($normalized)
+            ->map(fn (array $request): CarbonImmutable => $request['date'])
+            ->sortDesc()
+            ->first();
+
+        $policiesByConstruction = [];
+
+        SalesDiscountPolicy::query()
+            ->whereIn('construction_id', $constructionIds)
+            ->where('effective_from', '<=', InclusiveDateBound::upperBound($latestDate))
+            ->orderBy('effective_from')
+            ->orderBy('id')
+            ->get()
+            ->each(function (SalesDiscountPolicy $policy) use (&$policiesByConstruction): void {
+                $policiesByConstruction[(int) $policy->construction_id][] = $policy;
+            });
+
+        $resolved = [];
+
+        foreach ($normalized as $request) {
+            $constructionId = $request['construction_id'];
+            $date = $request['date'];
+            $key = $constructionId.'@'.$date->toDateString();
+
+            if (isset($resolved[$key])) {
+                continue;
+            }
+
+            $resolved[$key] = $this->toResolved(
+                $constructionId,
+                $date,
+                $this->latestUpTo($policiesByConstruction[$constructionId] ?? [], $date),
+            );
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Última política com vigência até a data, na lista já ordenada de forma
+     * crescente. O desempate por `id` é herdado da ordenação.
+     *
+     * @param  list<SalesDiscountPolicy>  $policies
+     */
+    private function latestUpTo(array $policies, CarbonImmutable $date): ?SalesDiscountPolicy
+    {
+        $latest = null;
+
+        foreach ($policies as $policy) {
+            if ($this->normalizeDate($policy->effective_from)->greaterThan($date)) {
+                break;
+            }
+
+            $latest = $policy;
+        }
+
+        return $latest;
+    }
+
     private function toResolved(int $constructionId, CarbonImmutable $date, ?SalesDiscountPolicy $policy): ResolvedSalesDiscountPolicy
     {
         if (! $policy instanceof SalesDiscountPolicy) {

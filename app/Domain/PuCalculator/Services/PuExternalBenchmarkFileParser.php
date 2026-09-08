@@ -6,6 +6,7 @@ namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\PuExternalBenchmarkDataset;
 use App\Domain\PuCalculator\DTOs\PuExternalBenchmarkRowData;
+use App\Domain\PuCalculator\Support\PuExternalBenchmarkCsvValueBinder;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -14,11 +15,21 @@ use InvalidArgumentException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Throwable;
 
+/**
+ * Contrato de precisão por formato:
+ *
+ * - CSV é texto e chega ao domínio sem passar por float, preservando o
+ *   literal decimal exato até a canonicalização em UNIT_SCALE.
+ * - XLSX com PU em célula de texto preserva o literal exato; PU em célula
+ *   numérica é normalizado a partir do double realmente armazenado no
+ *   workbook (limitação IEEE-754 da fonte, nunca precisão inventada).
+ */
 final class PuExternalBenchmarkFileParser
 {
     public const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -60,6 +71,11 @@ final class PuExternalBenchmarkFileParser
             $reader = IOFactory::createReader($identifiedReader);
             $reader->setReadDataOnly(false);
             $reader->setReadEmptyCells(false);
+
+            if ($reader instanceof Csv) {
+                $reader->setValueBinder(new PuExternalBenchmarkCsvValueBinder);
+            }
+
             $spreadsheet = $reader->load($path);
             $rows = $this->rows($spreadsheet->getSheet(0));
         } catch (InvalidArgumentException $exception) {
@@ -214,9 +230,12 @@ final class PuExternalBenchmarkFileParser
             return CarbonImmutable::instance($value)->startOfDay();
         }
 
-        if (is_int($value) || is_float($value)) {
+        // Seriais Excel chegavam como int/float pelo binder padrão; com o
+        // transporte textual do CSV, o literal numérico recebe o mesmo
+        // tratamento. Seriais são resolução de dia, sem risco financeiro.
+        if (is_int($value) || is_float($value) || (is_string($value) && is_numeric(trim($value)))) {
             return CarbonImmutable::instance(
-                ExcelDate::excelToDateTimeObject($value, new DateTimeZone('UTC')),
+                ExcelDate::excelToDateTimeObject((float) trim((string) $value), new DateTimeZone('UTC')),
             )->startOfDay();
         }
 
@@ -244,7 +263,12 @@ final class PuExternalBenchmarkFileParser
             throw new InvalidArgumentException("Benchmark row {$rowNumber} contains an invalid PU.");
         }
 
-        $normalized = Str::of((string) $value)
+        // CSV chega como texto exato. Células numéricas XLSX chegam como o
+        // double armazenado no workbook; aqui ele é apenas materializado em
+        // string para a validação sintática e a canonicalização seguintes.
+        $value = (string) $value;
+
+        $normalized = Str::of($value)
             ->trim()
             ->replace(["\u{00A0}", ' '], '')
             ->replace(',', '.')

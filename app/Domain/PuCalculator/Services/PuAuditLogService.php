@@ -13,8 +13,10 @@ use App\Domain\PuCalculator\DTOs\PuValidationFieldDifference;
 use App\Domain\PuCalculator\DTOs\PuValidationReport;
 use App\Domain\PuCalculator\DTOs\PuValidationRowResult;
 use App\Domain\PuCalculator\Enums\PuCandidateReviewDecision;
+use App\Domain\PuCalculator\Enums\PuCurvePromotionDecision;
 use App\Domain\PuCalculator\Enums\PuExternalValidationDecision;
 use App\Models\Emission;
+use App\Models\EmissionPuCurvePromotion;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuExternalBenchmark;
 use App\Models\EmissionPuExternalValidation;
@@ -323,6 +325,92 @@ class PuAuditLogService
             ->log($description);
     }
 
+    /**
+     * Auditoria complementar do pedido de promoção. A decisão de domínio vive no
+     * dossiê `EmissionPuCurvePromotion`; aqui fica a trilha para a emissão.
+     *
+     * Nada de curva bruta, linha de benchmark, caminho de arquivo ou segredo
+     * entra nas propriedades: só identidades e checksums.
+     */
+    public function logCurvePromotionRequested(EmissionPuCurvePromotion $promotion, User $requester): void
+    {
+        activity(self::LOG_NAME)
+            ->performedOn($promotion->emission()->firstOrFail())
+            ->causedBy($requester)
+            ->withProperties([
+                'emission_id' => $promotion->emission_id,
+                'promotion_id' => $promotion->id,
+                'candidate_version_id' => $promotion->candidate_curve_version_id,
+                'calculation_version' => $promotion->calculation_version,
+                'candidate_checksum' => $promotion->candidate_checksum,
+                'input_fingerprint' => $promotion->input_fingerprint,
+                'rows_count' => $promotion->rows_count,
+                'previous_operational_version_id' => $promotion->previous_operational_curve_version_id,
+                'external_validation_id' => $promotion->external_validation_id,
+                'benchmark_dataset_sha256' => $promotion->benchmark_dataset_sha256,
+                'comparison_sha256' => $promotion->comparison_sha256,
+                'requester_id' => $requester->id,
+                'requested_at' => $promotion->requested_at?->toIso8601String(),
+            ])
+            ->event('pu_curve_promotion_requested')
+            ->log('pu_curve_promotion_requested');
+    }
+
+    public function logCurvePromotionReviewed(
+        EmissionPuCurvePromotion $promotion,
+        User $reviewer,
+        PuCurvePromotionDecision $decision,
+    ): void {
+        $description = $decision === PuCurvePromotionDecision::Approve
+            ? 'pu_curve_promotion_approved'
+            : 'pu_curve_promotion_rejected';
+
+        activity(self::LOG_NAME)
+            ->performedOn($promotion->emission()->firstOrFail())
+            ->causedBy($reviewer)
+            ->withProperties([
+                'emission_id' => $promotion->emission_id,
+                'promotion_id' => $promotion->id,
+                'candidate_version_id' => $promotion->candidate_curve_version_id,
+                'calculation_version' => $promotion->calculation_version,
+                'candidate_checksum' => $promotion->candidate_checksum,
+                'external_validation_id' => $promotion->external_validation_id,
+                'requester_id' => $promotion->requested_by,
+                'reviewer_id' => $reviewer->id,
+                'decision' => $decision->value,
+                'reason' => $promotion->review_reason,
+                'reviewed_at' => $promotion->reviewed_at?->toIso8601String(),
+            ])
+            ->event($description)
+            ->log($description);
+    }
+
+    public function logCurvePromotionExecuted(EmissionPuCurvePromotion $promotion, User $executor): void
+    {
+        activity(self::LOG_NAME)
+            ->performedOn($promotion->emission()->firstOrFail())
+            ->causedBy($executor)
+            ->withProperties([
+                'emission_id' => $promotion->emission_id,
+                'promotion_id' => $promotion->id,
+                'previous_operational_version_id' => $promotion->previous_operational_curve_version_id,
+                'new_operational_version_id' => $promotion->candidate_curve_version_id,
+                'calculation_version' => $promotion->calculation_version,
+                'candidate_checksum' => $promotion->candidate_checksum,
+                'input_fingerprint' => $promotion->input_fingerprint,
+                'rows_count' => $promotion->rows_count,
+                'external_validation_id' => $promotion->external_validation_id,
+                'benchmark_dataset_sha256' => $promotion->benchmark_dataset_sha256,
+                'comparison_sha256' => $promotion->comparison_sha256,
+                'requester_id' => $promotion->requested_by,
+                'reviewer_id' => $promotion->reviewed_by,
+                'executor_id' => $executor->id,
+                'promoted_at' => $promotion->promoted_at?->toIso8601String(),
+            ])
+            ->event('pu_curve_promoted_operational')
+            ->log('pu_curve_promoted_operational');
+    }
+
     public function logEventChange(Emission $emission, string $action, ?int $requestedByUserId): void
     {
         $logger = activity(self::LOG_NAME)
@@ -530,6 +618,10 @@ class PuAuditLogService
             'pu_candidate_curve_persisted' => 'Curva candidata persistida',
             'pu_candidate_curve_approved' => 'Curva candidata aprovada internamente',
             'pu_candidate_curve_rejected' => 'Curva candidata rejeitada',
+            'pu_curve_promotion_requested' => 'Promoção operacional solicitada',
+            'pu_curve_promotion_approved' => 'Promoção operacional aprovada',
+            'pu_curve_promotion_rejected' => 'Promoção operacional rejeitada',
+            'pu_curve_promoted_operational' => 'Curva promovida a operacional',
             'pu_event_changed' => 'Evento de PU alterado',
             default => $description,
         };

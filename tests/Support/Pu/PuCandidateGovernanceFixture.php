@@ -9,15 +9,18 @@ use App\Domain\PuCalculator\Enums\PuBaselineEvidenceStatus;
 use App\Domain\PuCalculator\Enums\PuBaselineEvidenceType;
 use App\Domain\PuCalculator\Enums\PuCurveExternalValidationStatus;
 use App\Domain\PuCalculator\Enums\PuCurveInternalValidationStatus;
+use App\Domain\PuCalculator\Enums\PuCurvePromotionStatus;
 use App\Domain\PuCalculator\Enums\PuCurveReviewStatus;
 use App\Domain\PuCalculator\Enums\PuCurveRole;
 use App\Domain\PuCalculator\Enums\PuCurveStatus;
+use App\Domain\PuCalculator\Enums\PuExternalValidationDecision;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
 use App\Domain\PuCalculator\Services\BusinessCalendarYearService;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\NationalLegalHolidayMaterializationService;
 use App\Domain\PuCalculator\Services\PuBaselineCandidatePersistenceService;
+use App\Domain\PuCalculator\Services\PuCandidateExternalValidationService;
 use App\Domain\PuCalculator\Services\PuEventMaterializationService;
 use App\Domain\PuCalculator\Services\PuExternalBenchmarkComparisonService;
 use App\Domain\PuCalculator\Services\PuExternalBenchmarkFingerprintService;
@@ -32,6 +35,7 @@ use App\Models\BusinessCalendarYear;
 use App\Models\Document;
 use App\Models\Emission;
 use App\Models\EmissionPuBaselineEvidence;
+use App\Models\EmissionPuCurvePromotion;
 use App\Models\EmissionPuCurveVersion;
 use App\Models\EmissionPuDailyCurve;
 use App\Models\EmissionPuEvent;
@@ -165,6 +169,14 @@ final class PuCandidateGovernanceFixture
      * Candidate sintética já aprovada internamente, com linhas e checksum
      * coerentes. A extensão é aditiva e não altera o cenário numérico histórico.
      *
+     * `calculation_version` identifica uma geração financeira dentro da emissão e
+     * `emission_pu_daily_curves` tem unique em
+     * `(emission_id, curve_date, calculation_version)`. Duas versões distintas na
+     * mesma emissão portanto NÃO podem compartilhar o default: quem cria uma
+     * segunda candidate para a mesma emissão precisa informar
+     * `$calculationVersion` explicitamente. O default é preservado para o caso
+     * de uso único, que é o de todas as suítes anteriores.
+     *
      * @param  array<string, string>  $unitValuesByDate
      */
     public static function approvedCandidate(
@@ -176,12 +188,13 @@ final class PuCandidateGovernanceFixture
             '2026-01-05' => '1010.0000000000000000',
             '2026-01-06' => '1020.0000000000000000',
         ],
+        ?string $calculationVersion = null,
     ): EmissionPuCurveVersion {
         $maker ??= self::maker();
         $checker ??= self::checker();
         $version = EmissionPuCurveVersion::factory()->candidate()->create([
             'emission_id' => $emission->id,
-            'calculation_version' => 'external-validation-candidate',
+            'calculation_version' => $calculationVersion ?? 'external-validation-candidate',
             'candidate_as_of' => max(array_keys($unitValuesByDate)),
             'generated_by' => $maker->id,
             'review_status' => PuCurveReviewStatus::Approved,
@@ -211,11 +224,20 @@ final class PuCandidateGovernanceFixture
         return $version->fresh();
     }
 
-    public static function operationalCurve(Emission $emission): EmissionPuCurveVersion
-    {
+    /**
+     * Curva operacional sintética vigente. Mesma regra de identidade da
+     * candidate: uma segunda operacional na mesma emissão -- o cenário de
+     * baseline trocado da 2B.5.18, por exemplo -- precisa informar
+     * `$calculationVersion` explicitamente, porque duas gerações financeiras
+     * distintas não compartilham versão de cálculo.
+     */
+    public static function operationalCurve(
+        Emission $emission,
+        ?string $calculationVersion = null,
+    ): EmissionPuCurveVersion {
         $version = EmissionPuCurveVersion::factory()->create([
             'emission_id' => $emission->id,
-            'calculation_version' => 'operational-v1',
+            'calculation_version' => $calculationVersion ?? 'operational-v1',
             'rows_count' => 1,
         ]);
 
@@ -311,6 +333,7 @@ final class PuCandidateGovernanceFixture
         array $unitValuesByDate,
         bool $formulaCell = false,
         bool $excelSerialDates = false,
+        bool $numericPu = false,
     ): string {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getSheet(0);
@@ -330,6 +353,8 @@ final class PuCandidateGovernanceFixture
 
             if ($formulaCell && $rowNumber === 2) {
                 $sheet->setCellValue('B'.$rowNumber, '=1000+0');
+            } elseif ($numericPu) {
+                $sheet->setCellValue('B'.$rowNumber, (float) $unitValue);
             } else {
                 $sheet->setCellValueExplicit('B'.$rowNumber, $unitValue, DataType::TYPE_STRING);
             }
@@ -625,6 +650,202 @@ final class PuCandidateGovernanceFixture
     {
         $actor = self::actor([AccessPermission::PuParametersConfigure->value]);
         app(PuEventMaterializationService::class)->write($emission, $actor->email, self::asOf($asOf));
+    }
+
+    /**
+     * Solicitante da promoção operacional. A autoridade exigida é
+     * `pu.curve.promote` -- promover troca a curva vigente e não é herdada de
+     * quem homologa/revisa candidate.
+     */
+    public static function promotionRequester(): User
+    {
+        return self::actor([AccessPermission::PuCurvePromote->value]);
+    }
+
+    /**
+     * Revisor independente da promoção: o quarto olhar da cadeia, distinto do
+     * maker, do revisor interno, do revisor externo e do solicitante.
+     */
+    public static function promotionReviewer(): User
+    {
+        return self::actor([AccessPermission::PuCurvePromote->value]);
+    }
+
+    public static function promotionExecutor(): User
+    {
+        return self::actor([AccessPermission::PuCurvePromote->value]);
+    }
+
+    /**
+     * Concede `pu.curve.promote` a um usuário existente. Uso restrito aos
+     * cenários de independência, em que um ator de outro papel precisa primeiro
+     * passar na autorização para então ser recusado por segregação de função.
+     */
+    public static function authorizePromotionActor(User $user): User
+    {
+        Permission::findOrCreate(AccessPermission::PuCurvePromote->value);
+        $user->givePermissionTo(AccessPermission::PuCurvePromote->value);
+
+        return $user->fresh();
+    }
+
+    /**
+     * Candidate sintética já validada externamente por um revisor independente:
+     * o ponto de partida obrigatório de toda promoção.
+     *
+     * Reutiliza integralmente os helpers já provados -- candidate aprovada,
+     * benchmark persistido, comparação persistida pelo serviço real e decisão
+     * externa gravada pelo serviço real. Nada é forçado à mão.
+     *
+     * `$calculationVersion` atravessa para {@see self::approvedCandidate()}: uma
+     * segunda candidate governada na mesma emissão precisa de identidade própria.
+     * Repare que dois cenários completos na mesma emissão também colidiriam na
+     * identidade do benchmark (`import_identity_sha256`); nesse caso passe também
+     * `$unitValuesByDate` distinto.
+     *
+     * @param  array<string, string>  $unitValuesByDate
+     * @return array{
+     *     candidate:EmissionPuCurveVersion,
+     *     benchmark:EmissionPuExternalBenchmark,
+     *     validation:EmissionPuExternalValidation,
+     *     maker:User,
+     *     internalReviewer:User,
+     *     externalReviewer:User,
+     * }
+     */
+    public static function externallyValidatedCandidate(
+        Emission $emission,
+        array $unitValuesByDate = [
+            '2026-01-02' => '1000.0000000000000000',
+            '2026-01-05' => '1010.0000000000000000',
+            '2026-01-06' => '1020.0000000000000000',
+        ],
+        ?string $calculationVersion = null,
+    ): array {
+        $maker = self::maker();
+        $internalReviewer = self::checker();
+        $externalReviewer = self::externalReviewer();
+        $candidate = self::approvedCandidate(
+            $emission,
+            $maker,
+            $internalReviewer,
+            $unitValuesByDate,
+            $calculationVersion,
+        );
+        $benchmark = self::persistedExternalBenchmark($emission, $unitValuesByDate);
+        $validation = self::persistedExternalComparison($candidate, $benchmark, $internalReviewer);
+        $decision = app(PuCandidateExternalValidationService::class)->write(
+            $validation,
+            PuExternalValidationDecision::Validate,
+            (string) $externalReviewer->id,
+        );
+
+        if ($decision->action !== PuCandidateExternalValidationService::ACTION_VALIDATED) {
+            throw new RuntimeException(sprintf(
+                'Expected an externally validated candidate; got %s (%s).',
+                $decision->action,
+                $decision->reason,
+            ));
+        }
+
+        return [
+            'candidate' => $candidate->fresh(),
+            'benchmark' => $benchmark->fresh(),
+            'validation' => $validation->fresh(),
+            'maker' => $maker,
+            'internalReviewer' => $internalReviewer,
+            'externalReviewer' => $externalReviewer,
+        ];
+    }
+
+    /**
+     * Snapshot financeiro de uma versão de curva: identidade e valores das
+     * linhas. Serve para provar que a promoção não altera nada disso.
+     *
+     * @return array<string, mixed>
+     */
+    public static function curveIdentitySnapshot(EmissionPuCurveVersion $version): array
+    {
+        $fresh = $version->fresh() ?? $version;
+
+        return [
+            'calculation_version' => $fresh->calculation_version,
+            'curve_checksum' => $fresh->curve_checksum,
+            'input_fingerprint' => $fresh->input_fingerprint,
+            'rows_count' => $fresh->rows_count,
+            'candidate_as_of' => $fresh->candidate_as_of?->toDateString(),
+            'internal_validation_status' => $fresh->internal_validation_status?->value,
+            'review_status' => $fresh->review_status?->value,
+            'reviewed_by' => $fresh->reviewed_by,
+            'external_validation_status' => $fresh->external_validation_status?->value,
+            'generated_by' => $fresh->generated_by,
+            'rows' => self::dailyRowSnapshot($fresh),
+        ];
+    }
+
+    /**
+     * Valores exatos, em string, de todas as colunas financeiras das linhas
+     * diárias de uma versão.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function dailyRowSnapshot(EmissionPuCurveVersion $version): array
+    {
+        return $version->dailyCurves()
+            ->orderBy('curve_date')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (EmissionPuDailyCurve $row): array => [
+                'id' => $row->id,
+                'curve_date' => $row->curve_date?->toDateString(),
+                'calculation_version' => $row->calculation_version,
+                'updated_at' => $row->updated_at?->toIso8601String(),
+                ...collect($row->getAttributes())
+                    ->only([
+                        'unit_base_value',
+                        'unit_corrected_value',
+                        'factor_di',
+                        'factor_di_accumulated',
+                        'factor_spread',
+                        'factor_spread_di',
+                        'interest_real_unit_value',
+                        'updated_unit_value',
+                        'amortization_ratio',
+                        'amortization_unit_value',
+                        'amortization_value',
+                        'residual_unit_value',
+                        'quantity',
+                        'total_value',
+                        'interest_payment_unit_value',
+                        'interest_payment_value',
+                        'payment_total_unit_value',
+                        'payment_total_value',
+                    ])
+                    ->map(fn ($value): ?string => $value === null ? null : (string) $value)
+                    ->all(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Contadores dos artefatos de governança externa e de promoção que a
+     * promoção operacional nunca pode alterar.
+     *
+     * @return array<string, int>
+     */
+    public static function promotionCounts(): array
+    {
+        return [
+            ...self::counts(),
+            'promotions' => EmissionPuCurvePromotion::query()->count(),
+            'pending_promotions' => EmissionPuCurvePromotion::query()
+                ->where('status', PuCurvePromotionStatus::PendingReview->value)
+                ->count(),
+            'executed_promotions' => EmissionPuCurvePromotion::query()->executed()->count(),
+            'obsolete_versions' => EmissionPuCurveVersion::query()
+                ->where('status', PuCurveStatus::Obsolete->value)
+                ->count(),
+        ];
     }
 
     /**

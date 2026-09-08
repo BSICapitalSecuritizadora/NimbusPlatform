@@ -609,7 +609,7 @@
                                             :sticky-header="$filtersTriggerActionIsModalHeaderSticky"
                                             :width="$filtersFormWidth"
                                             :wire:key="$this->getId() . '.table.filters'"
-                                            class="fi-ta-filters-modal"
+                                            class="fi-ta-filters-modal fi-fixed-positioning-context"
                                         >
                                             <x-slot name="trigger">
                                                 {{ $filtersTriggerAction->badge($activeFiltersCount > 0 ? $activeFiltersCount : null) }}
@@ -632,7 +632,7 @@
                                             teleport
                                             :width="$filtersFormWidth ?? Width::ExtraSmall"
                                             :wire:key="$this->getId() . '.table.filters'"
-                                            class="fi-ta-filters-dropdown"
+                                            class="fi-ta-filters-dropdown fi-fixed-positioning-context"
                                         >
                                             <x-slot name="trigger">
                                                 {{ $filtersTriggerAction->badge($activeFiltersCount > 0 ? $activeFiltersCount : null) }}

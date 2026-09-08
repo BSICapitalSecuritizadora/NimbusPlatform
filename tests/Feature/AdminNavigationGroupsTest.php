@@ -113,6 +113,9 @@ it('groups the emission monthly report resources under Emissões', function () {
         ->and($children)->toBe([
             'Quadro de Vendas',
             'Negociações',
+            // O ciclo fica entre a posição publicada e o relatório que a lê: é a
+            // apuração congelada que dá origem a uma e alimenta a outra.
+            'Ciclos do Quadro',
             'Relatório Mensal',
             'Notas Explicativas',
         ]);

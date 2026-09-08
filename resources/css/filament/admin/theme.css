@@ -1961,6 +1961,171 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     padding: 0.625rem 0.875rem !important;
 }
 
+/* ── Selects Múltiplos e Customizados nos Filtros (Expansão Flexível & Badges) ── */
+.fi-ta-filters .fi-input-wrp:has(.fi-select-input),
+.fi-ta-filters .fi-input-wrp:has(.fi-select-input-ctn),
+.fi-ta-filters .fi-input-wrp:has([x-ref="select"]),
+.fi-ta-filters .fi-fo-select-wrp .fi-input-wrp,
+.fi-ta-filters .fi-input-wrp.fi-fo-select {
+    height: auto !important;
+    min-height: 2.5rem !important;
+    max-height: none !important;
+    overflow: visible !important;
+    align-items: stretch !important;
+}
+
+.fi-ta-filters .fi-input-wrp:has(.fi-select-input) .fi-input-wrp-content-ctn,
+.fi-ta-filters .fi-select-input,
+.fi-ta-filters .fi-select-input > div,
+.fi-ta-filters .fi-select-input-ctn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 100% !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+}
+
+.fi-ta-filters .fi-select-input-btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 2.375rem !important;
+    height: auto !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    border-radius: 7px !important;
+    color: #fbfaf8 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
+    padding-block: 0.3125rem !important;
+    padding-inline-start: 0.875rem !important;
+    padding-inline-end: 2.25rem !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    text-align: left !important;
+    box-sizing: border-box !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-position: right 0.75rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.25rem 1.25rem !important;
+}
+
+.fi-ta-filters .fi-select-input-value-ctn {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    word-break: normal !important;
+}
+
+.fi-ta-filters .fi-select-input-value-badges-ctn {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.375rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 0.125rem 0 !important;
+    box-sizing: border-box !important;
+    max-height: 8rem !important;
+    overflow-y: auto !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(183, 131, 47, 0.35) transparent !important;
+}
+
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.3125rem !important;
+    background: #12313b !important;
+    border: 1px solid rgba(183, 131, 47, 0.4) !important;
+    color: #fbfaf8 !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    border-radius: 6px !important;
+    padding: 0.1875rem 0.5rem !important;
+    line-height: 1.25 !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    transition: border-color 120ms ease, background-color 120ms ease !important;
+}
+
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge:hover {
+    border-color: #b7832f !important;
+    background: #163c48 !important;
+}
+
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-label-ctn,
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-label {
+    display: inline-block !important;
+    max-width: 14rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: #fbfaf8 !important;
+    font-size: 0.75rem !important;
+}
+
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-delete-btn,
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    color: rgba(251, 250, 248, 0.6) !important;
+    cursor: pointer !important;
+    transition: color 120ms ease !important;
+}
+
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-delete-btn:hover,
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge button:hover {
+    color: #ef4444 !important;
+}
+
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge .fi-badge-delete-btn svg,
+.fi-ta-filters .fi-select-input-value-badges-ctn .fi-badge button svg {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
+}
+
+.fi-ta-filters .fi-select-input-placeholder {
+    color: rgba(251, 250, 248, 0.45) !important;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.fi-ta-filters .fi-select-input-value-label {
+    color: #fbfaf8 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.fi-ta-filters .fi-select-input-value-remove-btn {
+    color: #94a3b8 !important;
+    cursor: pointer !important;
+    transition: color 120ms ease !important;
+}
+
+.fi-ta-filters .fi-select-input-value-remove-btn:hover {
+    color: #ef4444 !important;
+}
+
 /* ── Separador e Título de Seção: Período de Recebimento ── */
 .fi-ta-filters .fi-sc-grid:has(.fi-fo-date-time-picker)::before,
 .fi-ta-filters .fi-sc-grid:has([x-data*="dateTimePickerFormComponent"])::before,
@@ -2424,6 +2589,21 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
 /* ═════════════════════════════════════════════════════════════════════
    ITENS DE OPÇÃO DENTRO DOS DROPDOWNS DO SISTEMA
 ═════════════════════════════════════════════════════════════════════ */
+.fi-dropdown-panel:has(.fi-select-input-options-ctn),
+.fi-select-input .fi-dropdown-panel {
+    z-index: 10050 !important;
+    min-width: 100% !important;
+    max-width: min(32rem, calc(100vw - 2rem)) !important;
+    max-height: min(24rem, 60vh) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.35) !important;
+    box-shadow: 0 16px 36px rgba(4, 14, 19, 0.85), 0 4px 12px rgba(4, 14, 19, 0.6) !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+}
+
 .fi-dropdown-panel .fi-dropdown-list,
 .fi-dropdown-panel .fi-select-input-options-ctn {
     padding: 0.375rem !important;
@@ -2541,22 +2721,158 @@ select.fi-select-input option[selected] {
 }
 
 /* ── Cockpit Table Pagination & Footer ── */
-.bsi-cockpit-page .fi-ta-pagination {
+.bsi-cockpit-page .fi-ta-pagination,
+.bsi-cockpit-page .fi-pagination {
     background: #f8f7f4 !important;
     border-top: 1px solid #dbd5d3 !important;
     padding: 0.75rem 1.25rem !important;
 }
 
-.dark .bsi-cockpit-page .fi-ta-pagination {
+.dark .bsi-cockpit-page .fi-ta-pagination,
+.dark .bsi-cockpit-page .fi-pagination {
     background: #0a2028 !important;
     border-top: 1px solid rgba(183, 131, 47, 0.18) !important;
     color: rgba(251, 250, 248, 0.65) !important;
     padding: 0.75rem 1.25rem !important;
 }
 
-.dark .bsi-cockpit-page .fi-ta-pagination-records-per-page-select-ctn .fi-select-input {
-    background: #091b23 !important;
-    border: 1px solid rgba(183, 131, 47, 0.2) !important;
+/* ── Filament Pagination "Por Página" Selector Refinement ── */
+.fi-pagination-records-per-page-select .fi-input-wrp,
+.fi-pagination-records-per-page-select.fi-compact .fi-input-wrp {
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-select .fi-input-wrp,
+:not(.dark) .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp {
+    background-color: #ffffff !important;
+    border: 1px solid #dbd5d3 !important;
+    box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-select .fi-input-wrp:hover,
+:not(.dark) .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp:hover {
+    border-color: #c4bbb8 !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-select .fi-input-wrp:focus-within,
+:not(.dark) .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.dark .fi-pagination-records-per-page-select .fi-input-wrp,
+.dark .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp {
+    background-color: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.3) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+.dark .fi-pagination-records-per-page-select .fi-input-wrp:hover,
+.dark .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp:hover {
+    border-color: rgba(183, 131, 47, 0.38) !important;
+}
+
+.dark .fi-pagination-records-per-page-select .fi-input-wrp:focus-within,
+.dark .fi-pagination-records-per-page-select.fi-compact .fi-input-wrp:focus-within {
+    border-color: #b7832f !important;
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+}
+
+/* Prefixo "por página": remove borda divisória para criar superfície contínua */
+.fi-pagination-records-per-page-select .fi-input-wrp-prefix {
+    border-inline-end: none !important;
+    border-right: none !important;
+    background: transparent !important;
+    padding-inline-start: 0.625rem !important;
+    padding-inline-end: 0.125rem !important;
+    padding-block: 0 !important;
+    margin: 0 !important;
+}
+
+.fi-pagination-records-per-page-select .fi-input-wrp-label {
+    font-size: 0.8125rem !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    letter-spacing: normal !important;
+    line-height: 1.5 !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-select .fi-input-wrp-label {
+    color: #5d5653 !important;
+}
+
+.dark .fi-pagination-records-per-page-select .fi-input-wrp-label {
+    color: rgba(251, 250, 248, 0.65) !important;
+}
+
+.fi-pagination-records-per-page-select .fi-input-wrp-content-ctn,
+.fi-pagination-records-per-page-select.fi-compact .fi-input-wrp-content-ctn {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+/* Elemento <select>: transparente, sem bordas internas, sem pontas vazando */
+.fi-pagination-records-per-page-select select.fi-select-input,
+.fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    box-sizing: border-box !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    height: auto !important;
+    min-height: 2rem !important;
+    line-height: 1.5 !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    font-variant-numeric: tabular-nums !important;
+    cursor: pointer !important;
+    padding-block: 0.25rem !important;
+    padding-inline-start: 0.25rem !important;
+    padding-inline-end: 1.875rem !important;
+    background-position: right 0.5rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.125rem 1.125rem !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input,
+:not(.dark) .fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
+    color: #221f1e !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235d5653' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+.dark .fi-pagination-records-per-page-select select.fi-select-input,
+.dark .fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
+    color: #fbfaf8 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input option,
+:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input optgroup {
+    background-color: #ffffff !important;
+    color: #221f1e !important;
+}
+
+:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input option:checked,
+:not(.dark) .fi-pagination-records-per-page-select select.fi-select-input option[selected] {
+    background-color: #efede9 !important;
+    color: #96651f !important;
+}
+
+.fi-pagination-records-per-page-select.fi-compact select.fi-select-input {
+    padding-inline-start: 0.625rem !important;
 }
 
 /* ── BSI Semantic Badges (Subtle, Refined Banking Palette) ── */

@@ -72,6 +72,21 @@
         <p class="note">Esta versão permanece candidate. Aprovação interna ou validação externa não a torna operacional.</p>
     @endif
 
+    <div class="section-title">Promoção Operacional</div>
+    @if ($promotion['has_promotion'] ?? false)
+        <table class="kv">
+            <tr><td class="label">Situação</td><td class="value">{{ $promotion['status_label'] ?? ($promotion['status'] ?? '-') }}</td></tr>
+            <tr><td class="label">Solicitada por</td><td class="value">{{ $promotion['requested_by'] ?? '-' }} {{ $promotion['requested_at'] ? '— '.$promotion['requested_at'] : '' }}</td></tr>
+            <tr><td class="label">Revisor da promoção</td><td class="value">{{ $promotion['reviewed_by'] ?? '-' }} {{ $promotion['reviewed_at'] ? '— '.$promotion['reviewed_at'] : '' }}</td></tr>
+            <tr><td class="label">Motivo/notas</td><td class="value">{{ $promotion['review_reason'] ?? '-' }}</td></tr>
+            <tr><td class="label">Executada por</td><td class="value">{{ $promotion['executed_by'] ?? '-' }} {{ $promotion['promoted_at'] ? '— '.$promotion['promoted_at'] : '' }}</td></tr>
+            <tr><td class="label">Operacional anterior</td><td class="value">{{ $promotion['previous_operational_calculation_version'] ?? 'nenhuma' }}</td></tr>
+        </table>
+        <p class="note">O revisor da promoção é independente do maker da curva, do revisor interno e do revisor externo. Aprovar não trocou a curva: a execução foi um evento separado, que revalidou toda a integridade imediatamente antes do switch.</p>
+    @else
+        <p class="note">Esta versão não possui dossiê de promoção operacional.</p>
+    @endif
+
     <div class="section-title">Governança da Candidate</div>
     <table class="kv">
         <tr><td class="label">Validação interna</td><td class="value">{{ $version['internal_validation_status'] ?? '-' }}</td></tr>
@@ -120,6 +135,9 @@
     @endif
 
     <div class="section-title">Validação Externa Independente</div>
+    @if (($external_validation['has_comparison'] ?? false) && ($version['curve_role'] ?? null) === 'operational')
+        <p class="note">O dossiê abaixo descreve a validação externa desta versão enquanto ela era candidate. Ele continua íntegro e válido depois da promoção.</p>
+    @endif
     @if ($external_validation['has_comparison'] ?? false)
         <table class="kv">
             <tr><td class="label">Decisão</td><td class="value">{{ $external_validation['status'] ?? '-' }}</td></tr>

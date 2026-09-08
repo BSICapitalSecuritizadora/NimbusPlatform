@@ -12,7 +12,9 @@ use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\IndexRateLookupService;
 use App\Domain\PuCalculator\Services\IndexRateService;
 use App\Domain\PuCalculator\Services\RoundingService;
+use App\Events\SalesBoards\SalesBoardCurrentBaselineChanged;
 use App\Listeners\LogNotificationListener;
+use App\Listeners\SalesBoards\SupersedeBuilderReviewOnBaselineChange;
 use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\ContractInstallment;
 use App\Models\Document;
@@ -135,6 +137,17 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(
             NotificationFailed::class,
             [LogNotificationListener::class, 'handleFailed']
+        );
+
+        /**
+         * Uma nova versão material do Quadro de Vendas invalida a validação que
+         * a construtora já tinha feito sobre a versão anterior. O recálculo
+         * apenas anuncia a troca; quem decide o que isso significa para a
+         * revisão é a própria frente da revisão.
+         */
+        Event::listen(
+            SalesBoardCurrentBaselineChanged::class,
+            SupersedeBuilderReviewOnBaselineChange::class,
         );
     }
 

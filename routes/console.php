@@ -68,6 +68,12 @@ Schedule::command('audit:clean-filtered')
     ->dailyAt('04:00')
     ->name('audit-log-cleanup-filtered');
 
+Artisan::command('expenses:sync-conta-azul', function () {
+    $this->info('Iniciando sincronização e reconciliação de despesas com o Conta Azul...');
+    dispatch_sync(new SyncContaAzulExpensesJob);
+    $this->info('Sincronização e reconciliação concluídas com sucesso.');
+})->purpose('Sincroniza e reconcilia despesas e históricos com a API Conta Azul');
+
 Schedule::job(SyncContaAzulExpensesJob::class)
     ->dailyAt('06:00')
     ->name('conta-azul-expenses-sync')

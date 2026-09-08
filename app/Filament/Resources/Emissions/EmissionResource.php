@@ -22,6 +22,7 @@ use App\Filament\Resources\Emissions\Pages\CreateEmission;
 use App\Filament\Resources\Emissions\Pages\EditEmission;
 use App\Filament\Resources\Emissions\Pages\ListEmissions;
 use App\Filament\Resources\Emissions\Pages\ObligationComments;
+use App\Filament\Resources\Emissions\Pages\PuCalculatorSimulator;
 use App\Filament\Resources\Emissions\Pages\PuCurveHistory;
 use App\Filament\Resources\Emissions\Pages\ViewEmission;
 use App\Filament\Resources\Emissions\Schemas\EmissionForm;
@@ -307,6 +308,7 @@ class EmissionResource extends Resource
             'edit' => EditEmission::route('/{record}/edit'),
             'obligation-comments' => ObligationComments::route('/{record}/obligations/{obligation}/comments'),
             'pu-history' => PuCurveHistory::route('/{record}/pu-history'),
+            'pu-calculator' => PuCalculatorSimulator::route('/{record}/pu-calculator'),
         ];
     }
 }

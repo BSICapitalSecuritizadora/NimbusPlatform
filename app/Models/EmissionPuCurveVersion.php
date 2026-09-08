@@ -42,6 +42,19 @@ class EmissionPuCurveVersion extends Model
     ];
 
     /**
+     * Único campo que a promoção operacional altera na candidate: o papel. Toda a
+     * metadata da promoção (requester, reviewer, motivo, executor, `promoted_at`)
+     * vive no dossiê `EmissionPuCurvePromotion` e nunca sobrescreve a metadata de
+     * review interno ou de validação externa.
+     *
+     * @var list<string>
+     */
+    public const PROMOTION_MUTABLE_FIELDS = [
+        'curve_role',
+        'updated_at',
+    ];
+
+    /**
      * Candidate persistida é artefato auditável: conteúdo financeiro, identidade
      * (role, asOf, fingerprint, checksum), provenance do maker e resultado da
      * validação interna são imutáveis; só a decisão de review pode ser gravada, e
@@ -55,7 +68,8 @@ class EmissionPuCurveVersion extends Model
                 return;
             }
 
-            if (self::isExternalValidationTransition($version)) {
+            if (self::isExternalValidationTransition($version)
+                || self::isOperationalPromotionTransition($version)) {
                 return;
             }
 
@@ -182,6 +196,24 @@ class EmissionPuCurveVersion extends Model
     }
 
     /**
+     * Dossiês de promoção em que esta versão é a candidate promovida. A FK não é
+     * renomeada depois da troca de papel: o dossiê descreve a decisão histórica
+     * sobre o artefato que era candidate no momento do pedido.
+     */
+    public function promotions(): HasMany
+    {
+        return $this->hasMany(EmissionPuCurvePromotion::class, 'candidate_curve_version_id');
+    }
+
+    /**
+     * Dossiês em que esta versão era a operacional vigente substituída.
+     */
+    public function supersedingPromotions(): HasMany
+    {
+        return $this->hasMany(EmissionPuCurvePromotion::class, 'previous_operational_curve_version_id');
+    }
+
+    /**
      * @param  Builder<EmissionPuCurveVersion>  $query
      * @return Builder<EmissionPuCurveVersion>
      */
@@ -235,6 +267,30 @@ class EmissionPuCurveVersion extends Model
     public function isOperational(): bool
     {
         return $this->curve_role === PuCurveRole::Operational;
+    }
+
+    /**
+     * Promoção operacional é a única transição autorizada a atravessar a fronteira
+     * candidate -> operational, e só a partir de um artefato integralmente
+     * governado: validação interna aprovada, review interno aprovado e validação
+     * externa independente concluída como `validated`.
+     *
+     * O guard aqui é estrutural e complementar, não substituto: a elegibilidade
+     * completa (integridade das linhas, dossiê externo, promoção aprovada e
+     * baseline operacional inalterado) é responsabilidade de
+     * `PuCurveOperationalPromotionService`, a única classe autorizada a executar
+     * a troca.
+     */
+    private static function isOperationalPromotionTransition(self $version): bool
+    {
+        $dirtyFields = array_keys($version->getDirty());
+
+        return array_diff($dirtyFields, self::PROMOTION_MUTABLE_FIELDS) === []
+            && in_array('curve_role', $dirtyFields, true)
+            && $version->curve_role === PuCurveRole::Operational
+            && PuCurveReviewStatus::tryFrom((string) $version->getRawOriginal('review_status')) === PuCurveReviewStatus::Approved
+            && PuCurveInternalValidationStatus::tryFrom((string) $version->getRawOriginal('internal_validation_status')) === PuCurveInternalValidationStatus::Passed
+            && PuCurveExternalValidationStatus::tryFrom((string) $version->getRawOriginal('external_validation_status')) === PuCurveExternalValidationStatus::Validated;
     }
 
     private static function isExternalValidationTransition(self $version): bool

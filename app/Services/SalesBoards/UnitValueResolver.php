@@ -67,6 +67,75 @@ class UnitValueResolver
     }
 
     /**
+     * Valor de cada par (unidade, data) pedido, com um único carregamento.
+     *
+     * Existe porque a derivação precisa do valor da unidade em datas
+     * diferentes: o estoque na data da posição, e cada venda na sua própria
+     * `sale_date`. Resolver par a par dispararia uma consulta por venda.
+     *
+     * A regra é a mesma da resolução simples -- nada de semântica nova aqui, só
+     * um carregamento que atende todas as datas de uma vez.
+     *
+     * @param  Collection<int, ConstructionUnit>  $units
+     * @param  list<array{unit_id: int, date: CarbonInterface}>  $requests
+     * @return array<string, ResolvedUnitValue> indexado por `{unit_id}@{Y-m-d}`
+     */
+    public function forUnitDates(Collection $units, array $requests): array
+    {
+        if ($requests === []) {
+            return [];
+        }
+
+        $unitsById = $units->keyBy(fn (ConstructionUnit $unit): int => (int) $unit->getKey());
+
+        $normalized = array_map(
+            fn (array $request): array => [
+                'unit_id' => (int) $request['unit_id'],
+                'date' => $this->normalizeDate($request['date']),
+            ],
+            $requests,
+        );
+
+        $latestDate = collect($normalized)
+            ->map(fn (array $request): CarbonImmutable => $request['date'])
+            ->sortDesc()
+            ->first();
+
+        $historyByUnit = $this->historyByUnit(
+            array_values(array_unique(array_column($normalized, 'unit_id'))),
+            $latestDate,
+        );
+
+        $resolved = [];
+
+        foreach ($normalized as $request) {
+            $unitId = $request['unit_id'];
+            $date = $request['date'];
+            $key = $unitId.'@'.$date->toDateString();
+
+            if (isset($resolved[$key])) {
+                continue;
+            }
+
+            $unit = $unitsById->get($unitId);
+
+            if (! $unit instanceof ConstructionUnit) {
+                $resolved[$key] = ResolvedUnitValue::absent($unitId, $date);
+
+                continue;
+            }
+
+            $resolved[$key] = $this->resolve(
+                $unit,
+                $this->latestUpTo($historyByUnit[$unitId] ?? [], $date),
+                $date,
+            );
+        }
+
+        return $resolved;
+    }
+
+    /**
      * Resolve um conjunto qualquer de unidades já carregadas.
      *
      * Uma única consulta ao histórico para todas elas.
@@ -174,6 +243,57 @@ class UnitValueResolver
             ->each(function (ConstructionUnitValue $value) use (&$latest): void {
                 $latest[(int) $value->construction_unit_id] = $value;
             });
+
+        return $latest;
+    }
+
+    /**
+     * Todo o histórico relevante das unidades até a maior data pedida, numa
+     * consulta, ordenado para que a última linha aplicável seja escolhida em
+     * memória.
+     *
+     * @param  list<int>  $unitIds
+     * @return array<int, list<ConstructionUnitValue>>
+     */
+    private function historyByUnit(array $unitIds, CarbonImmutable $latestDate): array
+    {
+        if ($unitIds === []) {
+            return [];
+        }
+
+        $history = [];
+
+        ConstructionUnitValue::query()
+            ->whereIn('construction_unit_id', $unitIds)
+            ->where('effective_from', '<=', InclusiveDateBound::upperBound($latestDate))
+            ->orderBy('effective_from')
+            ->orderBy('id')
+            ->get()
+            ->each(function (ConstructionUnitValue $value) use (&$history): void {
+                $history[(int) $value->construction_unit_id][] = $value;
+            });
+
+        return $history;
+    }
+
+    /**
+     * Última linha com vigência até a data, na lista já ordenada de forma
+     * crescente. O desempate por `id` é herdado da ordenação: a linha escrita
+     * depois para a mesma vigência é a que sobrevive.
+     *
+     * @param  list<ConstructionUnitValue>  $history
+     */
+    private function latestUpTo(array $history, CarbonImmutable $date): ?ConstructionUnitValue
+    {
+        $latest = null;
+
+        foreach ($history as $value) {
+            if ($this->normalizeDate($value->effective_from)->greaterThan($date)) {
+                break;
+            }
+
+            $latest = $value;
+        }
 
         return $latest;
     }

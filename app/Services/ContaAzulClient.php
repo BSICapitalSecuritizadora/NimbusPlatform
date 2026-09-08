@@ -114,6 +114,22 @@ class ContaAzulClient
         return $bills;
     }
 
+    /** @return ?array<string, mixed> */
+    public function getInstallment(string $installmentId): ?array
+    {
+        $token = $this->getAccessToken();
+
+        $response = Http::withToken($token)
+            ->retry(3, 200, throw: false)
+            ->get($this->baseUrl().'/v1/financeiro/eventos-financeiros/parcelas/'.$installmentId);
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        return $response->json();
+    }
+
     public function getAuthorizationUrl(): string
     {
         return config('conta-azul.auth_url').'?'.http_build_query([

@@ -87,6 +87,16 @@ class ConstructionUnit extends Model
             ->orderByDesc('id');
     }
 
+    /**
+     * Permutas da unidade, mais recentes primeiro.
+     */
+    public function exchanges(): HasMany
+    {
+        return $this->hasMany(ConstructionUnitExchange::class)
+            ->orderByDesc('effective_from')
+            ->orderByDesc('id');
+    }
+
     public function hasBaseValue(): bool
     {
         return ($this->base_value !== null) && ($this->base_value_reference_date !== null);

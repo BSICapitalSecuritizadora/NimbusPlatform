@@ -364,6 +364,15 @@
                             </p>
                         </div>
 
+                        @if (! empty($selectedEvent['is_partially_paid']))
+                            <div>
+                                <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Saldo em aberto</span>
+                                <p class="mt-1.5 font-semibold tabular-nums text-amber-400">
+                                    {{ $selectedEvent['remaining_amount_label'] }}
+                                </p>
+                            </div>
+                        @endif
+
                         <div>
                             <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Periodicidade</span>
                             <p class="mt-1.5 font-medium text-slate-300">{{ $selectedEvent['period_label'] }}</p>

@@ -190,6 +190,7 @@ enum AccessPermission: string
     case PuCurveReprocess = 'pu.curve.reprocess';
     case PuCurveHomologate = 'pu.curve.homologate';
     case PuCurveInvalidate = 'pu.curve.invalidate';
+    case PuCurvePromote = 'pu.curve.promote';
     case PuDashboardView = 'pu.dashboard.view';
     case PuIndexImport = 'pu.index.import';
     case PuIndexSync = 'pu.index.sync';
@@ -439,6 +440,7 @@ enum AccessPermission: string
             self::PuCurveReprocess => 'Curva de PU: reprocessar',
             self::PuCurveHomologate => 'Curva de PU: homologar',
             self::PuCurveInvalidate => 'Curva de PU: invalidar',
+            self::PuCurvePromote => 'Curva de PU: promover candidate a operacional',
             self::PuDashboardView => 'Curva de PU: painel operacional',
             self::PuIndexImport => 'Curva de PU: importar índices',
             self::PuIndexSync => 'Curva de PU: sincronizar índices (Banco Central)',
