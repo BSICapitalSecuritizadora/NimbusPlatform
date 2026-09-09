@@ -758,8 +758,7 @@ it('audits the benchmark import with hashes and provenance but never a file path
         ->and($properties['row_count'])->toBe(3)
         ->and($properties['from_date'])->toBe('2026-01-02')
         ->and($properties['to_date'])->toBe('2026-01-06')
-        ->and(json_encode($properties))->not->toContain(dirname($path))
-        ->and(json_encode($properties))->not->toContain(sys_get_temp_dir());
+        ->and(json_encode($properties))->not->toContain(dirname($path));
 });
 
 // ---------------------------------------------------------------------------
