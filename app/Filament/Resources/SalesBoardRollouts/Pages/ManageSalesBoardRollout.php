@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesBoardRollouts\Pages;
 
+use App\Enums\SalesBoardRolloutHomologationStatus;
 use App\Enums\SalesBoardRolloutRecipientRole;
 use App\Exceptions\SalesBoardRolloutException;
 use App\Filament\Resources\SalesBoardRollouts\SalesBoardRolloutResource;
@@ -15,6 +16,7 @@ use App\Services\SalesBoards\SalesBoardRolloutActivationService;
 use App\Services\SalesBoards\SalesBoardRolloutHomologationService;
 use App\Services\SalesBoards\SalesBoardRolloutRecipientDirectory;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -25,7 +27,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
 use Filament\Support\Enums\Width;
-use Illuminate\Support\Facades\Config;
+use Livewire\Attributes\Locked;
 
 /**
  * A tela em que uma Emissão é homologada e ativada.
@@ -54,6 +56,18 @@ class ManageSalesBoardRollout extends Page
     protected array $extraBodyAttributes = [
         'class' => 'bsi-fund-form-page bsi-sales-board-rollout-manage-page',
     ];
+
+    /**
+     * A homologação aprovada cuja ativação acabou de ser recusada por não
+     * descrever mais a fonte ou o escopo.
+     *
+     * Só feedback de tela, e só enquanto a página está aberta: a homologação
+     * continua "aprovada" no banco -- ela não é reescrita --, e quem decide de
+     * novo, a cada tentativa, é o serviço de ativação. Travada contra alteração
+     * pelo navegador porque desabilita um botão.
+     */
+    #[Locked]
+    public ?int $outdatedHomologationId = null;
 
     public function mount(int|string $record): void
     {
@@ -111,7 +125,141 @@ class ManageSalesBoardRollout extends Page
 
     public function globalAutomationEnabled(): bool
     {
-        return (bool) Config::get('sales_board.automation.enabled', false);
+        return SalesBoardAutomationConfig::enabled();
+    }
+
+    /**
+     * "O que faço agora?" para o rollout desta Emissão.
+     *
+     * Recebe o que a tela já carregou -- homologação, portão e escopo -- em vez
+     * de reler. Não decide nada: aprovar continua sendo do portão, e ativar
+     * continua sendo do serviço de ativação, que reconfere tudo sob lock.
+     *
+     * @param  array{ready: bool, checks: list<array{label: string, passed: bool, detail: string|null}>}|null  $gate
+     * @return array{headline: string, detail: string|null, color: string, icon: string, items?: list<string>}
+     */
+    public function nextAction(?SalesBoardRolloutHomologation $homologation, ?array $gate, bool $scopeDrift): array
+    {
+        $emission = $this->emission();
+
+        if ($emission->usesAutomatedSalesBoard()) {
+            return match (true) {
+                $scopeDrift => [
+                    'headline' => 'O escopo da Emissão mudou. É necessária nova homologação.',
+                    'detail' => 'Os empreendimentos da Emissão não são mais os homologados, e a automação está suspensa para a Emissão inteira. '
+                        .'Para retomá-la, retorne ao modo legado e abra uma nova homologação que cubra os empreendimentos atuais.',
+                    'color' => 'danger',
+                    'icon' => 'heroicon-o-pause-circle',
+                ],
+                ! $this->globalAutomationEnabled() => [
+                    'headline' => 'A Emissão está configurada para automação, mas o interruptor global está desligado.',
+                    'detail' => 'Nenhuma competência será processada até que a automação global seja ligada.',
+                    'color' => 'warning',
+                    'icon' => 'heroicon-o-power',
+                ],
+                default => [
+                    'headline' => 'Automação ativa.',
+                    'detail' => sprintf(
+                        'As competências a partir de %s são apuradas pelo agendador. Acompanhe em “Automação do Quadro” e conduza cada competência em “Ciclos do Quadro”.',
+                        $emission->sales_board_automation_start_reference_month?->format('m/Y') ?? '—',
+                    ),
+                    'color' => 'success',
+                    'icon' => 'heroicon-o-check-circle',
+                ],
+            };
+        }
+
+        $openNew = [
+            'headline' => 'Abra uma homologação para preparar a automação.',
+            'color' => 'info',
+            'icon' => 'heroicon-o-clipboard-document-check',
+        ];
+
+        if ($homologation === null) {
+            return [...$openNew, 'detail' => 'Nenhuma homologação foi aberta para esta Emissão.'];
+        }
+
+        if ($homologation->isEditable()) {
+            return ($gate['ready'] ?? false)
+                ? [
+                    'headline' => 'Aprove ou rejeite a homologação.',
+                    'detail' => 'Todos os itens do portão estão atendidos. Aprovar não ativa a automação: a ativação é um passo à parte.',
+                    'color' => 'info',
+                    'icon' => 'heroicon-o-check-badge',
+                ]
+                : [
+                    'headline' => 'Conclua os itens pendentes da homologação.',
+                    'detail' => 'O que ainda impede a aprovação:',
+                    'color' => 'warning',
+                    'icon' => 'heroicon-o-clipboard-document-check',
+                    'items' => $this->failedGateChecks($gate),
+                ];
+        }
+
+        if ($homologation->isApproved() && ! $homologation->wasActivated()) {
+            return ($this->outdatedHomologationId === (int) $homologation->getKey())
+                ? [
+                    'headline' => 'Esta homologação não representa mais o estado atual das fontes.',
+                    'detail' => 'A ativação foi recusada. Abra uma nova homologação antes de ativar.',
+                    'color' => 'danger',
+                    'icon' => 'heroicon-o-exclamation-triangle',
+                ]
+                : [
+                    'headline' => 'A homologação está aprovada. Ative a automação quando for o momento.',
+                    'detail' => 'A validade será reavaliada ao ativar: se a fonte, o escopo ou os responsáveis tiverem mudado, a ativação é recusada.',
+                    'color' => 'info',
+                    'icon' => 'heroicon-o-rocket-launch',
+                ];
+        }
+
+        return [...$openNew, 'detail' => match (true) {
+            $homologation->wasActivated() => 'A última homologação já foi usada numa ativação. Reativar exige uma nova homologação.',
+            $homologation->status === SalesBoardRolloutHomologationStatus::Rejected => 'A última homologação foi rejeitada.',
+            default => 'A última homologação foi substituída porque a fonte mudou.',
+        }];
+    }
+
+    /**
+     * Os itens do portão que não passaram, como o serviço os descreve.
+     *
+     * @param  array{ready: bool, checks: list<array{label: string, passed: bool, detail: string|null}>}|null  $gate
+     * @return list<string>
+     */
+    public function failedGateChecks(?array $gate): array
+    {
+        return collect($gate['checks'] ?? [])
+            ->reject(fn (array $check): bool => $check['passed'])
+            ->map(fn (array $check): string => $check['detail'] === null
+                ? $check['label']
+                : $check['label'].' — '.$check['detail'])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Situação da última homologação, sem carregar empreendimentos: é o que os
+     * botões precisam para decidir se aparecem.
+     */
+    protected function latestHomologationState(): ?SalesBoardRolloutHomologation
+    {
+        return $this->emission()
+            ->salesBoardRolloutHomologations()
+            ->first(['id', 'emission_id', 'attempt', 'status', 'activated_at']);
+    }
+
+    /**
+     * Por que "Ativar automação" está à vista mas indisponível.
+     */
+    protected function activationBlockedReason(): ?string
+    {
+        $homologation = $this->latestHomologationState();
+
+        return match (true) {
+            $homologation === null => null,
+            $homologation->isEditable() => 'A homologação precisa estar aprovada. A validade dela é reavaliada no momento da ativação.',
+            $this->outdatedHomologationId === (int) $homologation->getKey() => 'Esta homologação não representa mais o estado atual das fontes. Abra uma nova homologação antes de ativar.',
+            default => null,
+        };
     }
 
     /**
@@ -141,7 +289,7 @@ class ManageSalesBoardRollout extends Page
     public function openHomologationAction(): Action
     {
         return Action::make('openHomologation')
-            ->label('Abrir homologação')
+            ->label(fn (): string => $this->latestHomologationState() === null ? 'Abrir homologação' : 'Abrir nova homologação')
             ->icon('heroicon-o-clipboard-document-check')
             ->color('primary')
             ->modalWidth(Width::TwoExtraLarge)
@@ -398,10 +546,19 @@ class ManageSalesBoardRollout extends Page
             ->modalHeading('Ativar o modo automatizado')
             ->modalDescription(fn (): string => $this->activationPreview())
             ->modalSubmitActionLabel('Ativar')
+            /**
+             * À vista desde o rascunho, desabilitada e dizendo o que falta: é o
+             * passo que o fluxo espera, e escondê-lo faria a tela parecer não ter
+             * caminho. Desabilitada, a ação nem monta -- e o serviço reconfere
+             * tudo de qualquer forma.
+             */
             ->visible(fn (): bool => $this->canManage()
                 && ! $this->emission()->usesAutomatedSalesBoard()
-                && ($this->currentHomologation()?->isApproved() ?? false)
-                && ! ($this->currentHomologation()?->wasActivated() ?? false))
+                && (($homologation = $this->latestHomologationState()) !== null)
+                && ($homologation->isEditable() || $homologation->isApproved())
+                && ! $homologation->wasActivated())
+            ->disabled(fn (): bool => $this->activationBlockedReason() !== null)
+            ->tooltip(fn (): ?string => $this->activationBlockedReason())
             ->schema([
                 Textarea::make('reason')
                     ->label('Registro da ativação')
@@ -411,20 +568,32 @@ class ManageSalesBoardRollout extends Page
                     ->rows(3),
             ])
             ->action(function (array $data): void {
-                $this->run(function () use ($data): void {
+                $homologation = $this->currentHomologation();
+
+                try {
                     app(SalesBoardRolloutActivationService::class)->activate(
                         $this->emission(),
-                        $this->currentHomologation(),
+                        $homologation,
                         auth()->user(),
                         (string) $data['reason'],
                     );
+                } catch (SalesBoardRolloutException $exception) {
+                    if ($this->requiresNewHomologation($exception)) {
+                        $this->outdatedHomologationId = $homologation?->getKey();
+                    }
 
-                    Notification::make()
-                        ->title('Automação ativada')
-                        ->body('Nenhuma competência foi gerada agora: a próxima execução do agendador cuida disso.')
-                        ->success()
-                        ->send();
-                });
+                    $this->refusalNotification($exception, activating: true)->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('Automação ativada')
+                    ->body($this->globalAutomationEnabled()
+                        ? 'Nenhuma competência foi gerada agora: a próxima execução do agendador cuida disso.'
+                        : 'Nenhuma competência foi gerada agora, e nenhuma será enquanto a automação global estiver desligada.')
+                    ->success()
+                    ->send();
             });
     }
 
@@ -495,12 +664,46 @@ class ManageSalesBoardRollout extends Page
         try {
             $callback();
         } catch (SalesBoardRolloutException $exception) {
-            Notification::make()
-                ->title('Não foi possível concluir')
-                ->body($exception->getMessage())
-                ->danger()
-                ->send();
+            $this->refusalNotification($exception)->send();
         }
+    }
+
+    /**
+     * Na ativação, as duas recusas que só se resolvem com uma homologação nova
+     * recebem título próprio e dizem o próximo passo antes do detalhe do
+     * domínio. Fora dela a mesma recusa de escopo tem outro remédio -- um
+     * rascunho se reavalia --, e a mensagem do domínio já diz qual.
+     *
+     * A recusa não carrega código, e a mensagem é produzida sempre pela mesma
+     * fábrica estática -- comparar com ela é comparar com a própria recusa, sem
+     * reescrever a regra que a produziu.
+     */
+    protected function refusalNotification(SalesBoardRolloutException $exception, bool $activating = false): Notification
+    {
+        [$title, $guidance] = match (true) {
+            $activating && ($exception->getMessage() === SalesBoardRolloutException::homologationStale()->getMessage()) => [
+                'Homologação desatualizada',
+                'Esta homologação não representa mais o estado atual das fontes. Abra uma nova homologação antes de ativar.',
+            ],
+            $activating && ($exception->getMessage() === SalesBoardRolloutException::scopeChanged()->getMessage()) => [
+                'Escopo da Emissão alterado',
+                'O escopo da Emissão mudou desde a homologação aprovada. É necessária nova homologação.',
+            ],
+            default => ['Não foi possível concluir', null],
+        };
+
+        return Notification::make()
+            ->title($title)
+            ->body($guidance === null ? $exception->getMessage() : $guidance.' '.$exception->getMessage())
+            ->danger();
+    }
+
+    protected function requiresNewHomologation(SalesBoardRolloutException $exception): bool
+    {
+        return in_array($exception->getMessage(), [
+            SalesBoardRolloutException::homologationStale()->getMessage(),
+            SalesBoardRolloutException::scopeChanged()->getMessage(),
+        ], true);
     }
 
     public function money(?int $cents): string

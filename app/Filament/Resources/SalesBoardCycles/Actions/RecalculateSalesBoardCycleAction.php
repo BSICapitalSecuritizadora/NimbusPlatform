@@ -2,15 +2,18 @@
 
 namespace App\Filament\Resources\SalesBoardCycles\Actions;
 
+use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardRecalculationOutcome;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\SalesBoardCycle;
 use App\Services\SalesBoards\SalesBoardRecalculationService;
 use App\Services\SalesBoards\SalesBoardStaleDetectionService;
+use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\HtmlString;
 
 /**
  * "Recalcular posição": cria a próxima versão a partir da fonte atual.
@@ -36,6 +39,14 @@ class RecalculateSalesBoardCycleAction
             ->modalSubmitActionLabel('Criar nova versão')
             ->visible(fn (SalesBoardCycle $record): bool => SalesBoardCycleResource::canRecalculate()
                 && ($record->current_baseline_id !== null))
+            /**
+             * Aprovado e cancelado são finais: o serviço recusa o recálculo. O
+             * botão continua à vista, desabilitado e dizendo por quê, em vez de
+             * abrir o modal, apurar a prévia e só então recusar. A recusa do
+             * serviço continua sendo a autoridade.
+             */
+            ->disabled(fn (SalesBoardCycle $record): bool => self::finalStatusReason($record) !== null)
+            ->tooltip(fn (SalesBoardCycle $record): ?string => self::finalStatusReason($record))
             ->schema([
                 Textarea::make('reason')
                     ->label('Motivo do recálculo')
@@ -53,9 +64,20 @@ class RecalculateSalesBoardCycleAction
                     expectedBaselineId: (int) $record->current_baseline_id,
                 );
 
+                /**
+                 * A recusa por versão alterada no meio do caminho também traz a
+                 * prontidão; só a recusa sobre a versão que o operador viu lista
+                 * os bloqueios, para não esconder a mensagem de concorrência.
+                 */
+                $sameVersion = (int) $result->previousBaseline->getKey() === (int) $record->current_baseline_id;
+                $blockers = ($result->isBlocked() && $sameVersion) ? $result->readiness->blockingIssueCounts() : [];
+
                 $notification = Notification::make()
                     ->title($result->outcome->label())
-                    ->body($result->message());
+                    ->body($blockers === []
+                        ? $result->message()
+                        : new HtmlString('A fonte atual está incompleta e não permite uma versão nova.<br>'
+                            .SalesBoardIssuePresenter::toHtml($blockers)->toHtml()));
 
                 match ($result->outcome) {
                     SalesBoardRecalculationOutcome::Recalculated => $notification->success(),
@@ -65,6 +87,15 @@ class RecalculateSalesBoardCycleAction
 
                 $notification->send();
             });
+    }
+
+    private static function finalStatusReason(SalesBoardCycle $record): ?string
+    {
+        return match ($record->status) {
+            SalesBoardCycleStatus::Approved => 'Competência aprovada e publicada: a posição publicada é imutável e não é recalculada.',
+            SalesBoardCycleStatus::Cancelled => 'Ciclo cancelado: não há recálculo.',
+            default => null,
+        };
     }
 
     /**

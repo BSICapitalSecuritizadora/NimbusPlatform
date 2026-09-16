@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
 
@@ -421,8 +422,8 @@ it('registers a payment then attaches a receipt and finalizes', function () {
         ->and($payment->created_by)->toBe($actor->id);
 
     $workflow->approve($measurement->fresh(), $actor);
-    Storage::disk('local')->put('receipts/test.pdf', '%PDF-1.7 receipt');
-    $workflow->attachReceipt($payment, $actor, 'receipts/test.pdf', 'local');
+    $workflow->attachReceipt($payment, $actor, MeasurementReceiptEvidenceScenario::file());
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $actor);
     expect($payment->fresh()->hasReceipt())->toBeTrue();
 
     $workflow->finalize($measurement->fresh(), $actor);

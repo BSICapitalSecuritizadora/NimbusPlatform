@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
 
@@ -155,19 +156,18 @@ it('persists receipt hash, size, mime and uploader from the stored file', functi
         'pay_date' => now(),
         'amount' => 200,
     ]);
-    Storage::disk('local')->put('nimbus_docs/measurements/receipts/hash.pdf', '%PDF-1.7 receipt-bytes');
 
     app(MeasurementWorkflow::class)->attachReceipt(
         $payment,
         $uploader,
-        'nimbus_docs/measurements/receipts/hash.pdf',
-        'local',
+        MeasurementReceiptEvidenceScenario::file('hash.pdf', '%PDF-1.7 receipt-bytes'),
     );
 
-    expect($payment->fresh()->receipt_sha256)->toBe(hash('sha256', '%PDF-1.7 receipt-bytes'))
-        ->and($payment->fresh()->receipt_size)->toBe(strlen('%PDF-1.7 receipt-bytes'))
-        ->and($payment->fresh()->receipt_uploaded_by)->toBe($uploader->id)
-        ->and($payment->fresh()->receipt_disk)->toBe('local');
+    $evidence = $payment->fresh()->currentReceiptEvidence;
+    expect($evidence->sha256)->toBe(hash('sha256', '%PDF-1.7 receipt-bytes'))
+        ->and($evidence->size)->toBe(strlen('%PDF-1.7 receipt-bytes'))
+        ->and($evidence->uploaded_by)->toBe($uploader->id)
+        ->and($evidence->storage_disk)->toBe('local');
 });
 
 it('backfills only missing hashes and is dry-run by default', function () {

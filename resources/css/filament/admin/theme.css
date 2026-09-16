@@ -1516,6 +1516,106 @@
     background-color: rgba(148, 163, 184, 0.55);
 }
 
+/* ── Seção: Relatório Mensal por Emissão (Acabamento e Recorte Limpo das Bordas Superiores) ── */
+.bsi-reports-section {
+    position: relative !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+.bsi-reports-section > .fi-section-header {
+    border-top-left-radius: 13px !important;
+    border-top-right-radius: 13px !important;
+    border-bottom: 1px solid #dbd5d3 !important;
+    box-sizing: border-box !important;
+}
+
+.dark .bsi-reports-section > .fi-section-header {
+    border-top-left-radius: 13px !important;
+    border-top-right-radius: 13px !important;
+    border-bottom: 1px solid rgba(183, 131, 47, 0.18) !important;
+}
+
+.bsi-reports-section > .fi-section-content-ctn {
+    border-top: none !important;
+    border-bottom-left-radius: 13px !important;
+    border-bottom-right-radius: 13px !important;
+}
+
+/* ── Campo Select: Emissão (Relatório Mensal) - Superfície Contínua e Acabamento Limpo ── */
+.bsi-reports-section .bsi-emission-select-wrp,
+.bsi-reports-section .fi-input-wrp:has(#emissionId) {
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    border-radius: 8px !important;
+    position: relative !important;
+}
+
+.bsi-reports-section .bsi-emission-select-wrp .fi-input-wrp-content-ctn,
+.bsi-reports-section .fi-input-wrp:has(#emissionId) .fi-input-wrp-content-ctn {
+    overflow: hidden !important;
+    border-radius: inherit !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    width: 100% !important;
+}
+
+.bsi-reports-section select#emissionId,
+.bsi-reports-section .bsi-emission-select {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    box-sizing: border-box !important;
+    border-radius: inherit !important;
+    margin: 0 !important;
+    transform: none !important;
+    cursor: pointer !important;
+    padding-inline-end: 2.25rem !important;
+    background-position: right 0.75rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.125rem 1.125rem !important;
+}
+
+:not(.dark) .bsi-reports-section select#emissionId,
+:not(.dark) .bsi-reports-section .bsi-emission-select {
+    color: #221f1e !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235d5653' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+.dark .bsi-reports-section select#emissionId,
+.dark .bsi-reports-section .bsi-emission-select {
+    color: #fbfaf8 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+:not(.dark) .bsi-reports-section select#emissionId option,
+:not(.dark) .bsi-reports-section select#emissionId optgroup {
+    background-color: #ffffff !important;
+    color: #221f1e !important;
+}
+
+:not(.dark) .bsi-reports-section select#emissionId option:checked,
+:not(.dark) .bsi-reports-section select#emissionId option[selected] {
+    background-color: #efede9 !important;
+    color: #96651f !important;
+}
+
+.dark .bsi-reports-section select#emissionId option,
+.dark .bsi-reports-section select#emissionId optgroup {
+    background-color: #091b23 !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .bsi-reports-section select#emissionId option:checked,
+.dark .bsi-reports-section select#emissionId option[selected] {
+    background-color: #12313b !important;
+    color: #d4af37 !important;
+}
+
 /* Listagens refinadas: scrollbar horizontal neutra (cinza-azulada), sem dourado */
 .dark .bsi-proposal-list-page .fi-ta-content-ctn,
 .dark .bsi-investors-list-page .fi-ta-content-ctn,
@@ -2998,6 +3098,119 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+}
+
+/* ── Localização da obra: dropdown do Estado com altura confortável ──
+   Mesmo padrão do recorte de medições acima: teto de 20rem para a lista
+   rolar internamente sem dominar a viewport. Escopo local. */
+.bsi-construction-location-section .fi-select-input .fi-dropdown-panel {
+    max-height: min(20rem, calc(100vh - 2rem)) !important;
+}
+
+/* ── Dropdown do campo Responsável: largura proporcional ao trigger e altura compacta ──
+   O select de Responsável abria em 100vw quando posicionado em contexto fixo porque
+   .fi-dropdown-panel impunha min-width: 100% !important (100% no fixed = viewport).
+   Aqui anulamos o min-width com min-width: 0 !important para que o width inline
+   calculado pelo Filament JS (baseado no offsetWidth do botão trigger) prevaleça,
+   limitando a largura ao teto de 26.25rem (420px) e altura a 20rem (320px).
+   O scroll é isolado exclusivamente no container da lista (.fi-dropdown-list),
+   mantendo a busca fixa no topo (sticky), com itens compactos e truncamento por reticências.
+   Escopo restrito para não impactar outros selects, modais ou painéis. */
+.bsi-responsible-filter .fi-dropdown-panel,
+.bsi-responsible-filter .fi-select-input .fi-dropdown-panel,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel {
+    min-width: 0 !important;
+    max-width: min(26.25rem, calc(100vw - 2rem)) !important;
+    height: auto !important;
+    max-height: min(20rem, calc(100vh - 2rem)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+.bsi-responsible-filter .fi-dropdown-panel .fi-select-input-search-ctn,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-select-input-search-ctn,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-select-input-search-ctn {
+    flex-shrink: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0.375rem 0.5rem !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    border-bottom: 1px solid rgba(183, 131, 47, 0.15) !important;
+    background: #06151c !important;
+}
+
+.bsi-responsible-filter .fi-dropdown-panel .fi-select-input-search-ctn .fi-input,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-select-input-search-ctn .fi-input,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-select-input-search-ctn .fi-input {
+    height: 2.125rem !important;
+    min-height: 2.125rem !important;
+    font-size: 0.8125rem !important;
+    padding: 0.3125rem 0.625rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 6px !important;
+}
+
+.bsi-responsible-filter .fi-dropdown-panel .fi-dropdown-list,
+.bsi-responsible-filter .fi-dropdown-panel .fi-select-input-options-ctn,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-dropdown-list,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-select-input-options-ctn,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-dropdown-list,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-select-input-options-ctn {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    max-height: calc(20rem - 3.25rem) !important;
+    padding: 0.25rem 0.375rem !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(183, 131, 47, 0.35) transparent !important;
+}
+
+.bsi-responsible-filter .fi-dropdown-panel .fi-select-input-option,
+.bsi-responsible-filter .fi-dropdown-panel .fi-dropdown-list-item,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-select-input-option,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-dropdown-list-item,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-select-input-option,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-dropdown-list-item {
+    min-height: 2.375rem !important;
+    max-height: 2.625rem !important;
+    padding: 0.4375rem 0.75rem !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 0.8125rem !important;
+    font-weight: 450 !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    border-radius: 6px !important;
+    box-sizing: border-box !important;
+    margin: 1px 0 !important;
+    cursor: pointer !important;
+    transition: background-color 120ms ease, color 120ms ease !important;
+}
+
+.bsi-responsible-filter .fi-dropdown-panel .fi-select-input-option > span,
+.bsi-responsible-filter .fi-dropdown-panel .fi-dropdown-list-item > span,
+.bsi-responsible-filter .fi-dropdown-panel .fi-dropdown-list-item-label,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-select-input-option > span,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-dropdown-list-item > span,
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel .fi-dropdown-list-item-label,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-select-input-option > span,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-dropdown-list-item > span,
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel .fi-dropdown-list-item-label {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block !important;
+    width: 100% !important;
 }
 
 .fi-dropdown-panel .fi-dropdown-list,
@@ -8079,6 +8292,216 @@ html:not(.dark) .fi-activity-card:hover {
     .bsi-fund-form-page form.fi-sc-form .fi-sc-actions .fi-btn {
         transition: none !important;
     }
+}
+
+/* ── Seções de Obras (Localização e Medição): Acabamento Contínuo e Recorte Limpo dos Campos ── */
+
+/* 1. Wrappers principais dos campos: recorte limpo sem pontas sobressalentes */
+.bsi-construction-location-section .fi-input-wrp,
+.bsi-construction-measurement-section .fi-input-wrp,
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp,
+.fi-input-wrp:has(.bsi-field-state),
+.fi-input-wrp:has(.bsi-field-city),
+.fi-input-wrp:has(.bsi-field-measurement-company),
+.fi-input-wrp:has(.bsi-field-measurement-company-cnpj),
+.fi-input-wrp.bsi-field-state,
+.fi-input-wrp.bsi-field-city,
+.fi-input-wrp.bsi-field-measurement-company,
+.fi-input-wrp.bsi-field-measurement-company-cnpj {
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    border-radius: 10px !important;
+    position: relative !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+/* 2. Container interno de conteúdo */
+.bsi-construction-location-section .fi-input-wrp-content-ctn,
+.bsi-construction-measurement-section .fi-input-wrp-content-ctn,
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-content-ctn,
+.fi-input-wrp:has(.bsi-field-state) .fi-input-wrp-content-ctn,
+.fi-input-wrp:has(.bsi-field-city) .fi-input-wrp-content-ctn,
+.fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-content-ctn,
+.fi-input-wrp:has(.bsi-field-measurement-company-cnpj) .fi-input-wrp-content-ctn,
+.fi-input-wrp.bsi-field-state .fi-input-wrp-content-ctn,
+.fi-input-wrp.bsi-field-city .fi-input-wrp-content-ctn,
+.fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-content-ctn,
+.fi-input-wrp.bsi-field-measurement-company-cnpj .fi-input-wrp-content-ctn {
+    overflow: hidden !important;
+    border-radius: inherit !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    background-color: transparent !important;
+}
+
+/* 3. Botão trigger do Select Searchable (Estado e Empresa de medição) */
+.bsi-construction-location-section .fi-select-input-btn,
+.bsi-construction-measurement-section .fi-select-input-btn,
+.bsi-construction-form-page form.fi-sc-form .fi-select-input-btn,
+.fi-input-wrp:has(.bsi-field-state) .fi-select-input-btn,
+.fi-input-wrp:has(.bsi-field-measurement-company) .fi-select-input-btn,
+.fi-input-wrp.bsi-field-state .fi-select-input-btn,
+.fi-input-wrp.bsi-field-measurement-company .fi-select-input-btn {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    box-sizing: border-box !important;
+    border-radius: inherit !important;
+    margin: 0 !important;
+    transform: none !important;
+    cursor: pointer !important;
+    min-height: 2.5rem !important;
+    height: 100% !important;
+}
+
+/* 4. Calibração da seta/chevron no campo Estado (sem ação lateral) */
+.bsi-construction-location-section .fi-select-input-btn,
+.fi-input-wrp:has(.bsi-field-state) .fi-select-input-btn,
+.fi-input-wrp.bsi-field-state .fi-select-input-btn {
+    padding-inline: 0.75rem 2.25rem !important;
+    background-position: right 0.75rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.125rem 1.125rem !important;
+}
+
+/* 5. Calibração da seta/chevron no campo Empresa de Medição (com ação lateral) */
+.bsi-construction-measurement-section .fi-select-input-btn,
+.fi-input-wrp:has(.bsi-field-measurement-company) .fi-select-input-btn,
+.fi-input-wrp.bsi-field-measurement-company .fi-select-input-btn {
+    padding-inline: 0.75rem 2rem !important;
+    background-position: right 0.625rem center !important;
+    background-repeat: no-repeat !important;
+    background-size: 1.125rem 1.125rem !important;
+}
+
+/* Ícones de chevron para modo claro e escuro */
+:not(.dark) .bsi-construction-location-section .fi-select-input-btn,
+:not(.dark) .bsi-construction-measurement-section .fi-select-input-btn,
+:not(.dark) .bsi-construction-form-page form.fi-sc-form .fi-select-input-btn,
+:not(.dark) .fi-input-wrp:has(.bsi-field-state) .fi-select-input-btn,
+:not(.dark) .fi-input-wrp:has(.bsi-field-measurement-company) .fi-select-input-btn,
+:not(.dark) .fi-input-wrp.bsi-field-state .fi-select-input-btn,
+:not(.dark) .fi-input-wrp.bsi-field-measurement-company .fi-select-input-btn {
+    color: #221f1e !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235d5653' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+.dark .bsi-construction-location-section .fi-select-input-btn,
+.dark .bsi-construction-measurement-section .fi-select-input-btn,
+.dark .bsi-construction-form-page form.fi-sc-form .fi-select-input-btn,
+.dark .fi-input-wrp:has(.bsi-field-state) .fi-select-input-btn,
+.dark .fi-input-wrp:has(.bsi-field-measurement-company) .fi-select-input-btn,
+.dark .fi-input-wrp.bsi-field-state .fi-select-input-btn,
+.dark .fi-input-wrp.bsi-field-measurement-company .fi-select-input-btn {
+    color: #fbfaf8 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+/* 6. Ação Lateral '+' e Divisória Interna (|) perfeitamente integradas */
+.bsi-construction-measurement-section .fi-input-wrp-suffix,
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix,
+.fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-suffix,
+.fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-suffix {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding-inline: 0.5rem !important;
+    padding-block: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+    border-radius: 0 9px 9px 0 !important;
+    border-inline-start: 1px solid #dbd5d3 !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-right: none !important;
+}
+
+.dark .bsi-construction-measurement-section .fi-input-wrp-suffix,
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix,
+.dark .fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-suffix,
+.dark .fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-suffix {
+    border-inline-start: 1px solid rgba(148, 163, 184, 0.18) !important;
+}
+
+/* Botão '+' da ação lateral: contido, sem margens negativas, sem vazamentos */
+.bsi-construction-measurement-section .fi-input-wrp-suffix .fi-icon-btn,
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon-btn,
+.fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-suffix .fi-icon-btn,
+.fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-suffix .fi-icon-btn {
+    margin: 0 !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    min-height: 2rem !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    color: #766c68 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: color 150ms ease, background-color 150ms ease !important;
+}
+
+.dark .bsi-construction-measurement-section .fi-input-wrp-suffix .fi-icon-btn,
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon-btn,
+.dark .fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-suffix .fi-icon-btn,
+.dark .fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-suffix .fi-icon-btn {
+    color: rgba(251, 250, 248, 0.65) !important;
+}
+
+.bsi-construction-measurement-section .fi-input-wrp-suffix .fi-icon-btn:hover,
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon-btn:hover,
+.fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-suffix .fi-icon-btn:hover,
+.fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-suffix .fi-icon-btn:hover {
+    color: #b7832f !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark .bsi-construction-measurement-section .fi-input-wrp-suffix .fi-icon-btn:hover,
+.dark .bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon-btn:hover,
+.dark .fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-suffix .fi-icon-btn:hover,
+.dark .fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-suffix .fi-icon-btn:hover {
+    color: #d4af37 !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.bsi-construction-measurement-section .fi-input-wrp-suffix .fi-icon-btn:focus-visible,
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon-btn:focus-visible,
+.fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-suffix .fi-icon-btn:focus-visible,
+.fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-suffix .fi-icon-btn:focus-visible {
+    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.35) !important;
+    outline: none !important;
+}
+
+/* Ícone '+' proporcional */
+.bsi-construction-measurement-section .fi-input-wrp-suffix .fi-icon-btn svg,
+.bsi-construction-form-page form.fi-sc-form .fi-input-wrp-suffix .fi-icon-btn svg,
+.fi-input-wrp:has(.bsi-field-measurement-company) .fi-input-wrp-suffix .fi-icon-btn svg,
+.fi-input-wrp.bsi-field-measurement-company .fi-input-wrp-suffix .fi-icon-btn svg {
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+}
+
+/* 7. Dropdown Panels dos selects nas seções */
+:not(.dark) .bsi-construction-location-section .fi-dropdown-panel,
+:not(.dark) .bsi-construction-measurement-section .fi-dropdown-panel,
+:not(.dark) .bsi-construction-form-page .fi-dropdown-panel {
+    background-color: #ffffff !important;
+    border-color: #dbd5d3 !important;
+}
+
+.dark .bsi-construction-location-section .fi-dropdown-panel,
+.dark .bsi-construction-measurement-section .fi-dropdown-panel,
+.dark .bsi-construction-form-page .fi-dropdown-panel {
+    background-color: #091b23 !important;
+    border-color: rgba(148, 163, 184, 0.22) !important;
 }
 
 /* ── Fundo: Histórico de Saldo (Relation Manager) ── */

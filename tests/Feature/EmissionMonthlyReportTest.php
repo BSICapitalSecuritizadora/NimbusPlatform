@@ -209,6 +209,20 @@ it('renders the notes content in the report template', function () {
         ->and($html)->toContain('Conteúdo da nota exibido no PDF.');
 });
 
+it('justifies the notes body in the report template', function () {
+    $emission = Emission::factory()->create();
+
+    EmissionMonthlyReportNote::factory()->for($emission)->create([
+        'reference_month' => '2026-05-01',
+        'content' => 'Conteúdo da nota exibido no PDF.',
+    ]);
+
+    $data = app(EmissionMonthlyReportService::class)->build($emission, CarbonImmutable::parse('2026-05-01'));
+    $html = view('pdf.emission-monthly-report', $data)->render();
+
+    expect($html)->toMatch('/\.note-body\s*\{[^}]*text-align:\s*justify[^}]*\}/');
+});
+
 it('renders a friendly empty message in the notes section when there are none', function () {
     $emission = Emission::factory()->create();
 
@@ -906,6 +920,7 @@ it('renders the reports page with the generation form', function () {
         ->assertOk()
         ->assertSee('Geração do relatório institucional mensal das emissões.')
         ->assertSee('Relatório mensal por emissão')
+        ->assertSeeHtml('bsi-reports-section')
         ->assertSee('Competência inicial')
         ->assertSee('Competência final')
         ->assertSee('aria-describedby="report-generation-help"', false)

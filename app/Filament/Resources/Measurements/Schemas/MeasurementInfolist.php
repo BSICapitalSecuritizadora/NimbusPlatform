@@ -4,8 +4,9 @@ namespace App\Filament\Resources\Measurements\Schemas;
 
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
-use App\Models\MeasurementPayment;
+use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\MeasurementReview;
+use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementWorkflow;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -78,6 +79,15 @@ class MeasurementInfolist
 
             Section::make('Pagamentos e Comprovantes')
                 ->schema([
+                    TextEntry::make('documentary_status')->label('Documentação após finalização')->badge()
+                        ->visible(fn (Measurement $record): bool => $record->status === 'finalized')
+                        ->state(fn (Measurement $record): string => app(MeasurementReceiptEvidenceService::class)->documentaryStatus($record))
+                        ->color(fn (string $state): string => match ($state) {
+                            'Correção documental pendente' => 'warning',
+                            'Correção documental rejeitada' => 'danger',
+                            'Correção documental regularizada' => 'success',
+                            default => 'gray',
+                        }),
                     RepeatableEntry::make('payments')
                         ->label('')
                         ->columns(4)
@@ -85,15 +95,28 @@ class MeasurementInfolist
                             TextEntry::make('pay_date')->label('Data')->date('d/m/Y'),
                             TextEntry::make('planSet.construction.development_name')->label('Empreendimento')->placeholder('—'),
                             TextEntry::make('amount')->label('Valor')->money('BRL'),
-                            TextEntry::make('receipt_path')
-                                ->label('Comprovante')
-                                ->state(fn (MeasurementPayment $record): ?string => $record->hasReceipt() ? 'Abrir comprovante' : null)
-                                ->url(fn (MeasurementPayment $record): ?string => $record->hasReceipt()
-                                    ? route('admin.measurements.receipts.download', $record)
-                                    : null)
-                                ->openUrlInNewTab()
-                                ->icon('heroicon-o-arrow-down-tray')
-                                ->placeholder('Pendente'),
+                            TextEntry::make('method')->label('Método')->placeholder('Não informado'),
+                            RepeatableEntry::make('receiptEvidences')
+                                ->label('Comprovantes / Evidências')->columnSpanFull()->columns(3)
+                                ->schema([
+                                    TextEntry::make('version')->label('Versão')
+                                        ->formatStateUsing(fn (MeasurementPaymentReceiptEvidence $record): string => 'v'.$record->version.($record->supersededBy === null ? ' · Atual' : ' · Substituída por v'.$record->supersededBy->version)),
+                                    TextEntry::make('review_status')->label('Decisão documental')->badge()
+                                        ->formatStateUsing(fn (MeasurementPaymentReceiptEvidence $record): string => $record->review_status->label())
+                                        ->color(fn (MeasurementPaymentReceiptEvidence $record): string => $record->review_status->color()),
+                                    TextEntry::make('original_filename')->label('Nome original')->placeholder('Nome original não registrado no fluxo legado'),
+                                    TextEntry::make('uploadedByUser.name')->label('Upload por')->placeholder('Não registrado'),
+                                    TextEntry::make('uploaded_at')->label('Upload em')->dateTime('d/m/Y H:i:s')->placeholder('Não registrado'),
+                                    TextEntry::make('reviewer.name')->label('Conferido por')->placeholder('Sem decisão individual'),
+                                    TextEntry::make('reviewed_at')->label('Decisão em')->dateTime('d/m/Y H:i:s')->placeholder('Sem decisão individual'),
+                                    TextEntry::make('review_notes')->label('Observação')->placeholder('—'),
+                                    TextEntry::make('rejection_reason')->label('Motivo da rejeição')->placeholder('—'),
+                                    TextEntry::make('correction_reason')->label('Motivo da correção / substituição')->placeholder('—'),
+                                    TextEntry::make('sha256')->label('SHA-256')->limit(16)->tooltip(fn (MeasurementPaymentReceiptEvidence $record): ?string => $record->sha256),
+                                    TextEntry::make('download')->label('Arquivo')->state('Abrir comprovante')
+                                        ->url(fn (MeasurementPaymentReceiptEvidence $record): string => route('admin.measurements.receipt-evidences.download', ['payment' => $record->measurement_payment_id, 'evidence' => $record]))
+                                        ->openUrlInNewTab()->icon('heroicon-o-arrow-down-tray'),
+                                ]),
                         ]),
                 ]),
 

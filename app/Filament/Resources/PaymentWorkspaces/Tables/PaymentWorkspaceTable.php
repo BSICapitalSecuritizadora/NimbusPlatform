@@ -299,11 +299,9 @@ class PaymentWorkspaceTable
                         'complete' => $query
                             ->whereHas('payments')
                             ->whereDoesntHave('payments', fn (Builder $payments): Builder => $payments
-                                ->whereNull('receipt_path')
-                                ->orWhere('receipt_path', '')),
+                                ->withoutReceipt()),
                         'pending' => $query->whereHas('payments', fn (Builder $payments): Builder => $payments
-                            ->whereNull('receipt_path')
-                            ->orWhere('receipt_path', '')),
+                            ->withoutReceipt()),
                         'none' => $query->whereDoesntHave('payments'),
                         default => $query,
                     };

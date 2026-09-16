@@ -24,12 +24,22 @@ class OpenBuilderReviewAction
     public static function make(string $name = 'openBuilderReview'): Action
     {
         return Action::make($name)
-            ->label('Enviar para validação da construtora')
+            /**
+             * Com a competência já em validação, o mesmo clique abre a rodada em
+             * andamento -- ou a próxima, se a anterior foi substituída por
+             * recálculo. O rótulo acompanha: "enviar" de novo sugeriria um
+             * segundo envio que não acontece.
+             */
+            ->label(fn (SalesBoardCycle $record): string => $record->status === SalesBoardCycleStatus::BuilderReview
+                ? 'Abrir validação da construtora'
+                : 'Enviar para validação da construtora')
             ->icon('heroicon-o-paper-airplane')
             ->color('primary')
             ->requiresConfirmation()
             ->modalHeading('Abrir a validação da construtora')
-            ->modalDescription('A posição congelada será apresentada à construtora para conferência por seção. Nada do que ela declarar altera a posição.')
+            ->modalDescription(fn (SalesBoardCycle $record): string => $record->status === SalesBoardCycleStatus::BuilderReview
+                ? 'Abre a rodada de validação em andamento. Se a posição foi recalculada, uma nova rodada é aberta sobre a versão vigente.'
+                : 'A posição congelada será apresentada à construtora para conferência por seção. Nada do que ela declarar altera a posição.')
             ->modalSubmitActionLabel('Abrir validação')
             ->visible(fn (SalesBoardCycle $record): bool => SalesBoardCycleResource::canRecalculate()
                 && in_array($record->status, [SalesBoardCycleStatus::Generated, SalesBoardCycleStatus::BuilderReview], true)

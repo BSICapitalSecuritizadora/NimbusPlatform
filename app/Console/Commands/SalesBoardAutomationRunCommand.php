@@ -6,10 +6,10 @@ use App\DTOs\SalesBoards\SalesBoardAutomationTargetCandidate;
 use App\Enums\SalesBoardAutomationRunTrigger;
 use App\Models\SalesBoardAutomationRun;
 use App\Services\SalesBoards\SalesBoardAutomationService;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Config;
 use Throwable;
 
 /**
@@ -21,6 +21,10 @@ use Throwable;
  * e fazer o comando falhar por isso ensinaria o time a ignorar o alarme. Saída
  * diferente de zero é falha técnica do orquestrador -- aí sim alguém precisa
  * olhar.
+ *
+ * Desligado também é `0`. O scheduler continua chamando o comando de hora em
+ * hora, e desligado não é falha: é a automação fazendo exatamente o que foi
+ * decidido -- nada.
  */
 class SalesBoardAutomationRunCommand extends Command
 {
@@ -35,6 +39,17 @@ class SalesBoardAutomationRunCommand extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
         $json = (bool) $this->option('json');
+
+        /**
+         * O interruptor vem antes de tudo -- antes da data forçada, antes do
+         * serviço, antes de qualquer leitura de alvo. Não existe opção que o
+         * contorne: desligado vale para o scheduler e para quem roda à mão.
+         */
+        if (! SalesBoardAutomationConfig::enabled()) {
+            $json ? $this->renderDisabledJson($dryRun) : $this->renderDisabledText();
+
+            return self::SUCCESS;
+        }
 
         try {
             $asOf = $this->asOf($dryRun);
@@ -113,7 +128,7 @@ class SalesBoardAutomationRunCommand extends Command
     {
         $payload = $run->toSummaryArray() + [
             'dry_run' => $dryRun,
-            'automation_enabled' => (bool) Config::get('sales_board.automation.enabled', false),
+            'automation_enabled' => SalesBoardAutomationConfig::enabled(),
         ];
 
         if ($dryRun) {
@@ -130,12 +145,51 @@ class SalesBoardAutomationRunCommand extends Command
         $this->line((string) json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
-    private function renderText(SalesBoardAutomationRun $run, bool $dryRun): void
+    /**
+     * O mesmo formato de sempre, com o estado dizendo o que aconteceu: nada.
+     *
+     * Não há `run_id` porque não há execução -- desligado não registra nem a
+     * própria passagem. Os contadores são zero, e não nulos: zero é o que de
+     * fato foi feito.
+     */
+    private function renderDisabledJson(bool $dryRun): void
     {
-        if (! Config::get('sales_board.automation.enabled', false)) {
-            $this->warn('A automação do Quadro de Vendas está desligada (sales_board.automation.enabled). Nenhum alvo foi processado.');
+        $payload = [
+            'event' => 'sales_board_automation_run',
+            'run_id' => null,
+            'trigger' => $this->trigger()->value,
+            'status' => 'disabled',
+            'as_of' => null,
+            'latest_due_month' => null,
+            'discovered' => 0,
+            'attempted' => 0,
+            'generated' => 0,
+            'existing' => 0,
+            'blocked' => 0,
+            'failed' => 0,
+            'skipped' => 0,
+            'alerts_sent' => 0,
+            'alerts_deduped' => 0,
+            'duration_ms' => 0,
+            'dry_run' => $dryRun,
+            'automation_enabled' => false,
+        ];
+
+        if ($dryRun) {
+            $payload['targets'] = [];
         }
 
+        $this->line((string) json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    private function renderDisabledText(): void
+    {
+        $this->warn('A automação do Quadro de Vendas está desligada (sales_board.automation.enabled). '
+            .'Nada foi executado nem registrado.');
+    }
+
+    private function renderText(SalesBoardAutomationRun $run, bool $dryRun): void
+    {
         $this->info(sprintf(
             '%sData de negócio %s · última competência devida %s',
             $dryRun ? '[prévia] ' : '',

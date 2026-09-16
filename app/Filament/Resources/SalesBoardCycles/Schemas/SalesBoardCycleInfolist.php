@@ -6,6 +6,7 @@ use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardStaleImpact;
 use App\Models\SalesBoardCycle;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardCycleNextAction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -24,10 +25,46 @@ class SalesBoardCycleInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
+            static::nextActionSection(),
             static::identificationSection(),
             static::positionSection(),
             static::versionSection(),
         ]);
+    }
+
+    /**
+     * Onde a competência está e o que vem depois, antes de qualquer número.
+     *
+     * Derivado da situação do ciclo e do impacto de fonte registrado na última
+     * verificação -- nada é apurado ao abrir a tela.
+     */
+    protected static function nextActionSection(): Section
+    {
+        return Section::make('Próxima ação')
+            ->icon('heroicon-o-arrow-right-circle')
+            ->columnSpanFull()
+            ->schema([
+                TextEntry::make('next_action_headline')
+                    ->hiddenLabel()
+                    ->state(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->headline)
+                    ->icon(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->icon)
+                    ->color(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->color)
+                    ->weight('bold')
+                    ->helperText(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->detail),
+
+                TextEntry::make('next_action_source_checked_at')
+                    ->hiddenLabel()
+                    ->state(fn (SalesBoardCycle $record): string => $record->currentBaseline?->last_checked_at === null
+                        ? 'A fonte ainda não foi verificada desde a apuração. Use “Verificar alterações” para conferir agora.'
+                        : sprintf(
+                            'Situação da fonte na última verificação, em %s. Use “Verificar alterações” para conferir agora.',
+                            $record->currentBaseline->last_checked_at->format('d/m/Y \à\s H:i'),
+                        ))
+                    ->color('gray')
+                    ->size('sm')
+                    ->visible(fn (SalesBoardCycle $record): bool => $record->current_baseline_id !== null
+                        && ! in_array($record->status, [SalesBoardCycleStatus::Approved, SalesBoardCycleStatus::Cancelled], true)),
+            ]);
     }
 
     protected static function identificationSection(): Section

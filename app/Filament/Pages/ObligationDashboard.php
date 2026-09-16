@@ -138,6 +138,9 @@ class ObligationDashboard extends Dashboard
                 ->label('Responsável')
                 ->placeholder('Todos')
                 ->searchable()
+                ->extraAttributes([
+                    'class' => 'bsi-responsible-filter',
+                ])
                 ->options(fn (): array => User::query()
                     ->whereIn('id', Obligation::query()
                         ->whereNotNull('responsible_user_id')

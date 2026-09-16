@@ -12,8 +12,8 @@ use App\Models\SalesBoardAutomationTarget;
 use App\Models\SalesBoardBuilderReview;
 use App\Models\SalesBoardCycle;
 use App\Support\BusinessTime;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Config;
 
 /**
  * Os avisos sobre o que está parado esperando uma pessoa.
@@ -238,17 +238,19 @@ class SalesBoardAutomationReminderService
             });
     }
 
+    /**
+     * Limiar ilegível é limiar ausente: `(int) 'abc'` seria `0`, e zero dias
+     * aqui quer dizer "avisar agora" -- o oposto de desligado.
+     */
     private function days(string $key): ?int
     {
-        $value = Config::get('sales_board.automation.reminders.'.$key);
-
-        return blank($value) ? null : max(0, (int) $value);
+        return SalesBoardAutomationConfig::reminderThreshold($key);
     }
 
     private function count(string $key): ?int
     {
-        $value = Config::get('sales_board.automation.reminders.'.$key);
+        $value = SalesBoardAutomationConfig::reminderThreshold($key);
 
-        return blank($value) ? null : max(1, (int) $value);
+        return $value === null ? null : max(1, $value);
     }
 }

@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\SalesBoards\Pages;
 
+use App\Exceptions\SalesBoardRolloutException;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\SalesBoard;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -101,6 +103,30 @@ class CreateSalesBoard extends CreateRecord
      * @param  array<string, mixed>  $data
      */
     protected function handleRecordCreation(array $data): Model
+    {
+        try {
+            return $this->recordPosition($data);
+        } catch (SalesBoardRolloutException $exception) {
+            /**
+             * O guard do observer é quem recusa -- competência automatizada ou
+             * quadro publicado. A tela só troca o erro cru pela explicação que o
+             * domínio já escreveu, e desfaz a transação do formulário.
+             */
+            Notification::make()
+                ->title('Registro manual recusado')
+                ->body($exception->getMessage())
+                ->danger()
+                ->persistent()
+                ->send();
+
+            $this->halt(shouldRollbackDatabaseTransaction: true);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function recordPosition(array $data): Model
     {
         $existingSalesBoard = SalesBoard::query()
             ->where('emission_id', $data['emission_id'] ?? null)

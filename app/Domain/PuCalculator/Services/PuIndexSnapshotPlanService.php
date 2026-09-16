@@ -33,6 +33,7 @@ final class PuIndexSnapshotPlanService
         ?string $seriesCode,
         ?string $sourceReference,
         ?string $indexRateCalendarCode = null,
+        ?string $accrualCalendarCode = null,
     ): array {
         if (! $parameter->indexer_enum->requiresIndexRates()) {
             return [
@@ -49,7 +50,12 @@ final class PuIndexSnapshotPlanService
             ->firstCouponPreIntegralizationRateRequirements($parameter, $indexRateCalendarCode));
 
         for ($curveDate = $curveStartDate; $curveDate->lte($homologationEndDate); $curveDate = $curveDate->addDay()) {
-            $requirement = $this->rateRequirementResolver->resolve($parameter, $curveDate, $indexRateCalendarCode);
+            $requirement = $this->rateRequirementResolver->resolve(
+                $parameter,
+                $curveDate,
+                $indexRateCalendarCode,
+                $accrualCalendarCode,
+            );
 
             if ($requirement->isRequiredForCalculation()) {
                 $requirements->push($requirement);

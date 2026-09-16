@@ -155,6 +155,9 @@ class Dashboard extends BaseDashboard
                                 ->label('Responsável')
                                 ->placeholder('Todos')
                                 ->searchable()
+                                ->extraAttributes([
+                                    'class' => 'bsi-responsible-filter',
+                                ])
                                 ->options(fn (): array => $viewer instanceof User ? $readModel->responsibleOptions($viewer) : []),
                             Select::make('stage')
                                 ->label('Etapa')

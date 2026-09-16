@@ -11,47 +11,101 @@
         $gate = $this->gate();
         $recipients = $this->recipients();
         $canManage = $this->canManage();
+        $isAutomated = $emission->usesAutomatedSalesBoard();
+        $globalEnabled = $this->globalAutomationEnabled();
+        $scopeDrift = $this->hasScopeDrift();
+        $activeHomologation = $isAutomated ? $emission->activeSalesBoardHomologation : null;
+        $pendingHomologation = (! $isAutomated && $homologation !== null && ($homologation->isEditable() || ($homologation->isApproved() && ! $homologation->wasActivated())))
+            ? $homologation
+            : null;
+        $homologationIsOutdated = $homologation !== null && $this->outdatedHomologationId === (int) $homologation->getKey();
     @endphp
 
-    {{-- O modo atual, e o que ele significa. --}}
+    {{-- O modo atual, e o que ele significa. Tudo em texto: a cor só acompanha. --}}
     <x-filament::section>
-        <div class="grid gap-6 md:grid-cols-4">
+        <dl class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Emissão</p>
-                <p class="mt-1 text-sm font-semibold">{{ $emission->name }}</p>
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Emissão</dt>
+                <dd class="mt-1 text-sm font-semibold">{{ $emission->name }}</dd>
             </div>
             <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Modo</p>
-                <p class="mt-1">
-                    <x-filament::badge :color="$emission->sales_board_source->color()">
-                        {{ $emission->sales_board_source->label() }}
-                    </x-filament::badge>
-                </p>
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Modo do Quadro de Vendas</dt>
+                <dd class="mt-1 text-sm font-semibold">{{ $emission->sales_board_source->label() }}</dd>
             </div>
             <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Competência inicial</p>
-                <p class="mt-1 text-sm font-semibold">
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Automação global</dt>
+                <dd class="mt-1 flex items-center gap-2 text-sm font-semibold">
+                    <x-filament::icon
+                        :icon="$globalEnabled ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'"
+                        @class([
+                            'h-5 w-5 shrink-0',
+                            'text-success-600 dark:text-success-400' => $globalEnabled,
+                            'text-danger-600 dark:text-danger-400' => ! $globalEnabled,
+                        ])
+                    />
+                    {{ $globalEnabled ? 'Ligada' : 'Desligada' }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Competência inicial da automação</dt>
+                <dd class="mt-1 text-sm font-semibold">
                     {{ $emission->sales_board_automation_start_reference_month?->format('m/Y') ?? '—' }}
-                </p>
+                </dd>
+            </div>
+            <div class="sm:col-span-2">
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Homologação</dt>
+                <dd class="mt-1 text-sm font-semibold">
+                    @if ($activeHomologation !== null)
+                        Tentativa {{ $activeHomologation->attempt }} · {{ $activeHomologation->status->label() }}
+                        @if ($activeHomologation->activated_at)
+                            · ativada em {{ $activeHomologation->activated_at->format('d/m/Y') }}
+                        @endif
+                    @elseif ($pendingHomologation !== null)
+                        Tentativa {{ $pendingHomologation->attempt }} · {{ $pendingHomologation->status->label() }}
+                    @else
+                        Nenhuma homologação ativa.
+                        @if ($homologation !== null)
+                            <span class="font-normal text-gray-500 dark:text-gray-400">
+                                Última: tentativa {{ $homologation->attempt }} · {{ $homologation->status->label() }}{{ $homologation->wasActivated() ? ' · já usada numa ativação' : '' }}.
+                            </span>
+                        @endif
+                    @endif
+                </dd>
             </div>
             <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Empreendimentos</p>
-                <p class="mt-1 text-sm font-semibold">{{ $emission->constructions()->count() }}</p>
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Escopo</dt>
+                <dd class="mt-1 text-sm font-semibold">
+                    @if (! $isAutomated)
+                        —
+                    @elseif ($scopeDrift)
+                        Alterado desde a homologação · automação suspensa
+                    @else
+                        Íntegro
+                    @endif
+                </dd>
             </div>
+            <div>
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Empreendimentos</dt>
+                <dd class="mt-1 text-sm font-semibold">{{ $emission->constructions()->count() }}</dd>
+            </div>
+        </dl>
+
+        <div class="mt-6">
+            @include('filament.sales-boards.next-action', ['nextAction' => $this->nextAction($homologation, $gate, $scopeDrift)])
         </div>
 
         <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
             {{ $emission->sales_board_source->description() }}
         </p>
 
-        @unless ($this->globalAutomationEnabled())
+        @unless ($globalEnabled)
             <p class="mt-4 rounded-md bg-warning-50 p-3 text-sm text-warning-700 dark:bg-warning-400/10 dark:text-warning-400">
                 A automação global está desligada. Uma Emissão pode ser homologada e ativada, mas
                 <strong>nenhuma competência será processada</strong> enquanto o agendador global estiver desligado.
             </p>
         @endunless
 
-        @if ($this->hasScopeDrift())
+        @if ($scopeDrift)
             <p class="mt-4 rounded-md bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
                 <strong>Automação suspensa por alteração de escopo.</strong>
                 Os empreendimentos da Emissão mudaram desde a homologação vigente. O rollout é por Emissão inteira,
@@ -73,6 +127,7 @@
         <x-filament::section>
             <x-slot name="heading">Nenhuma homologação registrada</x-slot>
             <p class="text-sm text-gray-500 dark:text-gray-400">
+                Nenhuma homologação foi aberta para esta Emissão.
                 Automatizar uma Emissão não é ligar uma chave: antes é preciso comparar a posição do legado com a
                 que o motor novo apura, entender as diferenças, revisar os impactos e definir os responsáveis.
             </p>
@@ -93,6 +148,19 @@
                 comparação contra {{ $homologation->comparisonMonthLabel() }} ·
                 abre validação: {{ $homologation->auto_open_builder_review ? 'sim' : 'não' }}
             </x-slot>
+
+            @if ($homologationIsOutdated)
+                <p class="mb-4 rounded-md bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
+                    <strong>Esta homologação não representa mais o estado atual das fontes.</strong>
+                    A ativação foi recusada. Abra uma nova homologação antes de ativar — a aprovação registrada
+                    continua como está, porque homologação aprovada não se reescreve.
+                </p>
+            @elseif (! $isAutomated && $homologation->isApproved() && ! $homologation->wasActivated())
+                <p class="mb-4 rounded-md bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    A aprovação representa o estado revisado no momento da homologação.
+                    Os dados serão revalidados no momento da ativação.
+                </p>
+            @endif
 
             @if ($homologation->auto_open_builder_review)
                 <p class="mb-4 rounded-md bg-info-50 p-3 text-sm text-info-700 dark:bg-info-400/10 dark:text-info-400">
@@ -158,9 +226,23 @@
                         </div>
 
                         @unless ($row->is_ready)
-                            <p class="mt-3 rounded-md bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
-                                {{ $row->blocker_message }}
-                            </p>
+                            <div class="mt-3 rounded-md bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
+                                <p class="font-medium">A fonte deste empreendimento está incompleta:</p>
+                                <ul class="mt-2 space-y-2">
+                                    @foreach (\App\Support\SalesBoards\SalesBoardIssuePresenter::describe($row->blockerCodes()) as $issue)
+                                        <li>
+                                            {{ $issue['label'] }}
+                                            <span class="font-mono text-xs">({{ $issue['code'] }})</span>
+                                            @if ($issue['hint'])
+                                                <span class="block text-xs">{{ $issue['hint'] }}</span>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                                @if ($row->blocker_message)
+                                    <p class="mt-2 text-xs">Registro técnico: {{ $row->blocker_message }}</p>
+                                @endif
+                            </div>
                         @endunless
 
                         @if ($row->comparison_status === \App\Enums\SalesBoardRolloutComparisonStatus::NoLegacyPosition)
@@ -322,9 +404,17 @@
             </ul>
 
             @if ($canManage)
-                <div class="mt-6 flex flex-wrap gap-3">
+                <div class="mt-6 flex flex-wrap items-center gap-3">
                     {{ $this->approveAction }}
                     {{ $this->rejectAction }}
+
+                    {{-- Aprovar fica oculto enquanto o portão estiver fechado; o motivo aparece no lugar do botão. --}}
+                    @if ($homologation->isEditable() && ! $gate['ready'])
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            <span class="font-medium">Aprovar homologação indisponível:</span>
+                            {{ implode('; ', $this->failedGateChecks($gate)) }}.
+                        </p>
+                    @endif
                 </div>
             @endif
         </x-filament::section>

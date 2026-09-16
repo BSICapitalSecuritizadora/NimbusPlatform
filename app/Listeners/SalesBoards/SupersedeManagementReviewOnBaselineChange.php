@@ -18,6 +18,9 @@ use App\Services\SalesBoards\SalesBoardManagementReviewSupersedingService;
  * O filtro é o resumo da posição, não o id da versão. Uma versão nova com o
  * mesmo quadro não desfaz decisão nenhuma: a Gestão continuaria vendo
  * exatamente as mesmas linhas, com exatamente os mesmos números.
+ *
+ * Registrado só pelo event discovery do Laravel, por morar em `app/Listeners`.
+ * Um `Event::listen()` a mais no provider faria o ouvinte rodar duas vezes.
  */
 class SupersedeManagementReviewOnBaselineChange
 {

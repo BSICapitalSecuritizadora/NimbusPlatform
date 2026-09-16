@@ -18,10 +18,10 @@ use App\Notifications\MeasurementWorkflowNotification;
 use App\Support\Delegations\ResponsibilityAuthorization;
 use App\Support\Delegations\ResponsibilityAuthorizationCapture;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -147,7 +147,7 @@ class MeasurementWorkflow
         User $actor,
         ?ResponsibilityAuthorizationCapture $capture = null,
     ): bool {
-        return $measurement->status === 'approved'
+        return in_array($measurement->status, ['approved', 'awaiting_receipt'], true)
             && (int) $measurement->current_stage === self::STAGE_FINALIZATION
             && $this->authorizes($actor, $measurement, MeasurementResponsibility::Finalizer, $capture);
     }
@@ -275,7 +275,7 @@ class MeasurementWorkflow
                 ])->save();
             } else {
                 $nextStage = self::STAGE_FINALIZATION;
-                $toStatus = $this->allPaymentsHaveReceipts($locked) ? 'approved' : 'awaiting_receipt';
+                $toStatus = app(MeasurementReceiptEvidenceService::class)->allPaymentsApproved($locked) ? 'approved' : 'awaiting_receipt';
 
                 $locked->reviews()->updateOrCreate(
                     ['stage' => self::STAGE_FINALIZATION],
@@ -736,94 +736,19 @@ class MeasurementWorkflow
     public function attachReceipt(
         MeasurementPayment $payment,
         User $actor,
-        string $path,
-        ?string $disk = null,
+        UploadedFile $file,
+        ?int $expectedEvidenceId = null,
+        ?string $correctionReason = null,
         ?int $expectedRevision = null,
-        ?string $expectedStatus = null,
     ): void {
-        $disk ??= DocumentStorageService::privateDisk();
-        $expectedRevision ??= (int) $payment->measurement->workflow_revision;
-        $expectedStatus ??= (string) $payment->measurement->status;
-
-        $this->fileValidation->validateReceipt($path, $disk);
-
-        $checksum = $this->storage->checksum($path, $disk);
-
-        if ($checksum === null) {
-            throw ValidationException::withMessages(['receipt' => 'Não foi possível calcular o SHA-256 do comprovante.']);
-        }
-
-        $result = DB::transaction(function () use ($payment, $actor, $expectedRevision, $expectedStatus, $path, $disk, $checksum): array {
-            $locked = $this->lockMeasurement($payment->measurement);
-            $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
-            $lockedPayment = $locked->payments()->whereKey($payment->getKey())->lockForUpdate()->first();
-
-            if (! $lockedPayment instanceof MeasurementPayment) {
-                throw $this->invalidState($locked, 'O pagamento não pertence a esta medição.');
-            }
-
-            if (! $this->canManageReceipts($locked, $actor)) {
-                $this->throwAuthorizationOrState(
-                    $this->authorization->canManageReceipts($actor, $locked),
-                    $locked,
-                    'Comprovantes não podem ser alterados no estado atual da medição.',
-                );
-            }
-
-            $oldPath = $lockedPayment->receipt_path;
-            $oldDisk = $lockedPayment->resolved_receipt_disk;
-
-            $lockedPayment->forceFill([
-                'receipt_path' => $path,
-                'receipt_disk' => $disk,
-                'receipt_sha256' => $checksum,
-                'receipt_uploaded_by' => $actor->getKey(),
-                'receipt_uploaded_at' => now(),
-            ])->save();
-
-            if (! is_string($lockedPayment->receipt_sha256) || mb_strlen($lockedPayment->receipt_sha256) !== 64) {
-                throw ValidationException::withMessages(['receipt' => 'O SHA-256 do comprovante não pôde ser persistido.']);
-            }
-
-            $becameReady = false;
-
-            if ($locked->reviews()->where('stage', self::STAGE_PAYMENT)->where('status', 'approved')->exists()
-                && $this->allPaymentsHaveReceipts($locked)) {
-                $becameReady = $locked->status !== 'approved';
-                $locked->forceFill([
-                    'status' => 'approved',
-                    'current_stage' => self::STAGE_FINALIZATION,
-                ])->save();
-            }
-
-            $this->audit($locked, $actor, 'measurement_receipt_attached', [
-                'stage' => (int) $locked->current_stage,
-                'payment_id' => $lockedPayment->getKey(),
-                'hash' => $lockedPayment->receipt_sha256,
-                'from_status' => $becameReady ? 'awaiting_receipt' : $locked->status,
-                'to_status' => $locked->status,
-                'responsibility' => 'payment_receipt_uploader_user_id',
-                'expected_responsible_user_id' => $locked->operation->payment_receipt_uploader_user_id,
-            ]);
-
-            $this->advanceRevision($locked);
-
-            return compact('locked', 'becameReady', 'oldPath', 'oldDisk');
-        });
-
-        if (filled($result['oldPath'])
-            && ($result['oldPath'] !== $path || $result['oldDisk'] !== $disk)) {
-            rescue(
-                fn (): bool => Storage::disk($result['oldDisk'])->delete($result['oldPath']),
-                report: true,
-            );
-        }
-
-        if ($result['becameReady']) {
-            $this->notifyUsers($result['locked'], 'ready_to_finalize', [$result['locked']->operation->payment_finalizer_user_id]);
-        }
-
-        $this->notifyUsers($result['locked'], 'receipt_attached', [$result['locked']->operation->payment_manager_user_id]);
+        app(MeasurementReceiptEvidenceService::class)->upload(
+            $payment,
+            $actor,
+            $file,
+            $expectedEvidenceId,
+            $correctionReason,
+            $expectedRevision,
+        );
     }
 
     public function deleteReceipt(
@@ -831,65 +756,12 @@ class MeasurementWorkflow
         User $actor,
         ?int $expectedRevision = null,
         ?string $expectedStatus = null,
-    ): void {
-        $expectedRevision ??= (int) $payment->measurement->workflow_revision;
-        $expectedStatus ??= (string) $payment->measurement->status;
+    ): never {
+        if (! $this->authorization->canManageReceipts($actor, $payment->measurement)) {
+            throw new AuthorizationException;
+        }
 
-        $result = DB::transaction(function () use ($payment, $actor, $expectedRevision, $expectedStatus): array {
-            $locked = $this->lockMeasurement($payment->measurement);
-            $this->assertExpectedState($locked, $expectedRevision, self::STAGE_FINALIZATION, $expectedStatus);
-            $lockedPayment = $locked->payments()->whereKey($payment->getKey())->lockForUpdate()->first();
-
-            if (! $lockedPayment instanceof MeasurementPayment || ! $lockedPayment->hasReceipt()) {
-                throw $this->invalidState($locked, 'O pagamento não possui comprovante para remover.');
-            }
-
-            if (! $this->canManageReceipts($locked, $actor)) {
-                $this->throwAuthorizationOrState(
-                    $this->authorization->canManageReceipts($actor, $locked),
-                    $locked,
-                    'Comprovantes não podem ser removidos no estado atual da medição.',
-                );
-            }
-
-            $path = $lockedPayment->receipt_path;
-            $disk = $lockedPayment->resolved_receipt_disk;
-            $hash = $lockedPayment->receipt_sha256;
-            $fromStatus = $locked->status;
-
-            $lockedPayment->forceFill([
-                'receipt_path' => null,
-                'receipt_disk' => null,
-                'receipt_sha256' => null,
-                'receipt_size' => null,
-                'receipt_mime_type' => null,
-                'receipt_uploaded_by' => null,
-                'receipt_uploaded_at' => null,
-            ])->save();
-
-            if ($locked->status === 'approved') {
-                $locked->forceFill(['status' => 'awaiting_receipt'])->save();
-            }
-
-            $this->audit($locked, $actor, 'measurement_receipt_deleted', [
-                'stage' => (int) $locked->current_stage,
-                'payment_id' => $lockedPayment->getKey(),
-                'hash' => $hash,
-                'from_status' => $fromStatus,
-                'to_status' => $locked->status,
-                'responsibility' => 'payment_receipt_uploader_user_id',
-                'expected_responsible_user_id' => $locked->operation->payment_receipt_uploader_user_id,
-            ]);
-
-            $this->advanceRevision($locked);
-
-            return compact('locked', 'path', 'disk');
-        });
-
-        rescue(
-            fn (): bool => Storage::disk($result['disk'])->delete($result['path']),
-            report: true,
-        );
+        throw new MeasurementWorkflowException('Comprovantes não podem ser excluídos. Envie uma nova versão com justificativa.');
     }
 
     public function finalize(
@@ -914,6 +786,8 @@ class MeasurementWorkflow
                 );
             }
 
+            app(MeasurementReceiptEvidenceService::class)->ensurePaymentsApproved($locked);
+
             $approvedStages = $locked->reviews()
                 ->whereIn('stage', [1, 2, 3, self::STAGE_PAYMENT])
                 ->where('status', 'approved')
@@ -925,10 +799,6 @@ class MeasurementWorkflow
             }
 
             $this->ensureValidPaymentExists($locked);
-
-            if (! $this->allPaymentsHaveReceipts($locked)) {
-                throw $this->invalidState($locked, 'Todos os pagamentos precisam possuir comprovante antes da Finalização.');
-            }
 
             $this->ensureEngineeringCoverageIsIntact($locked);
             $this->ensureStoredFilesAreIntact($locked);
@@ -1159,14 +1029,6 @@ class MeasurementWorkflow
         }
     }
 
-    private function allPaymentsHaveReceipts(Measurement $measurement): bool
-    {
-        return $measurement->payments()->exists()
-            && $measurement->payments()
-                ->where(fn ($payments) => $payments->whereNull('receipt_path')->orWhere('receipt_path', ''))
-                ->doesntExist();
-    }
-
     private function ensureStoredFilesAreIntact(Measurement $measurement): void
     {
         $files = collect();
@@ -1195,19 +1057,18 @@ class MeasurementWorkflow
             ]);
         });
 
-        $measurement->payments()->get()->each(function (MeasurementPayment $payment) use ($files, $measurement): void {
+        $measurement->payments()->with('currentReceiptEvidence')->get()->each(function (MeasurementPayment $payment) use ($measurement): void {
             try {
-                $this->fileValidation->validateStoredReceipt($payment->receipt_path, $payment->resolved_receipt_disk);
-            } catch (ValidationException) {
-                throw $this->invalidState($measurement, "O comprovante #{$payment->getKey()} é inválido ou está ausente.");
-            }
+                $evidence = $payment->currentReceiptEvidence;
 
-            $files->push([
-                'path' => $payment->receipt_path,
-                'disk' => $payment->resolved_receipt_disk,
-                'hash' => $payment->receipt_sha256,
-                'label' => "comprovante #{$payment->getKey()}",
-            ]);
+                if ($evidence === null) {
+                    throw $this->invalidState($measurement, "O pagamento #{$payment->getKey()} não possui evidência atual.");
+                }
+
+                app(MeasurementReceiptEvidenceService::class)->ensureIntegrity($evidence);
+            } catch (ValidationException) {
+                throw $this->invalidState($measurement, "O comprovante #{$payment->getKey()} é inválido, foi alterado ou está ausente.");
+            }
         });
 
         foreach ($files as $file) {

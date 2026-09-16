@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\SalesBoards;
 
 use App\DTOs\SalesBoards\SalesBoardAutomationEligibleTarget;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,7 @@ class ConfiguredSalesBoardAutomationEligibilityProvider implements SalesBoardAut
 {
     public function eligibleTargets(): array
     {
-        if (! Config::get('sales_board.automation.enabled', false)) {
+        if (! SalesBoardAutomationConfig::enabled()) {
             return [];
         }
 

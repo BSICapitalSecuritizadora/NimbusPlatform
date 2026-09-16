@@ -57,7 +57,7 @@ class SalesBoardCycleResource extends Resource
 
     protected static ?string $navigationParentItem = 'Emissões';
 
-    protected static ?int $navigationSort = 12;
+    protected static ?int $navigationSort = 11;
 
     public static function infolist(Schema $schema): Schema
     {

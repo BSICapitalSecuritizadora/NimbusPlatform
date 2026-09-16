@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <x-filament::section>
+    <x-filament::section class="bsi-reports-section">
         <x-slot name="heading">Relatório mensal por emissão</x-slot>
         <x-slot name="description">
             Gere o relatório mensal de uma emissão ou informe uma competência final para consolidar
@@ -11,8 +11,8 @@
                 <label for="emissionId" class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
                     Emissão <span class="text-danger-600 dark:text-danger-400">*</span>
                 </label>
-                <x-filament::input.wrapper>
-                    <x-filament::input.select wire:model.live="emissionId" id="emissionId">
+                <x-filament::input.wrapper class="bsi-emission-select-wrp">
+                    <x-filament::input.select wire:model.live="emissionId" id="emissionId" class="bsi-emission-select">
                         <option value="">Selecione uma emissão...</option>
                         @foreach ($this->emissionOptions() as $id => $label)
                             <option value="{{ $id }}">{{ $label }}</option>

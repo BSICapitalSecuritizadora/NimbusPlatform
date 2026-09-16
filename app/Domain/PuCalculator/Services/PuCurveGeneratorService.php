@@ -17,8 +17,15 @@ class PuCurveGeneratorService
      * índice. Nulo em toda a produção: o calculator então resolve as datas de
      * taxa pelo próprio calendário contratual da curva, como sempre.
      */
-    public function handle(Emission $emission, ?string $indexRateCalendarCode = null): PuCurveGenerationResult
-    {
-        return $this->calculatorFactory->for($emission)->calculate($emission, $indexRateCalendarCode);
+    public function handle(
+        Emission $emission,
+        ?string $indexRateCalendarCode = null,
+        ?string $accrualCalendarCode = null,
+    ): PuCurveGenerationResult {
+        return $this->calculatorFactory->for($emission)->calculate(
+            $emission,
+            $indexRateCalendarCode,
+            $accrualCalendarCode,
+        );
     }
 }

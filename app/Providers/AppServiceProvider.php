@@ -12,10 +12,7 @@ use App\Domain\PuCalculator\Services\DecimalRounder;
 use App\Domain\PuCalculator\Services\IndexRateLookupService;
 use App\Domain\PuCalculator\Services\IndexRateService;
 use App\Domain\PuCalculator\Services\RoundingService;
-use App\Events\SalesBoards\SalesBoardCurrentBaselineChanged;
 use App\Listeners\LogNotificationListener;
-use App\Listeners\SalesBoards\SupersedeBuilderReviewOnBaselineChange;
-use App\Listeners\SalesBoards\SupersedeManagementReviewOnBaselineChange;
 use App\Mail\Transport\MicrosoftGraphTransport;
 use App\Models\ContractInstallment;
 use App\Models\Document;
@@ -138,29 +135,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(
             NotificationFailed::class,
             [LogNotificationListener::class, 'handleFailed']
-        );
-
-        /**
-         * Uma nova versão material do Quadro de Vendas invalida a validação que
-         * a construtora já tinha feito sobre a versão anterior. O recálculo
-         * apenas anuncia a troca; quem decide o que isso significa para a
-         * revisão é a própria frente da revisão.
-         */
-        Event::listen(
-            SalesBoardCurrentBaselineChanged::class,
-            SupersedeBuilderReviewOnBaselineChange::class,
-        );
-
-        /**
-         * E invalida também a análise da Gestão sobre aquela versão. Ouvinte
-         * próprio, e não uma chamada dentro do anterior: as duas respondem à
-         * mesma pergunta -- "estes fatos ainda são os vigentes?" -- mas são
-         * decisões de fases diferentes, e encadeá-las faria a validação da
-         * construtora passar a saber que existe análise da Gestão.
-         */
-        Event::listen(
-            SalesBoardCurrentBaselineChanged::class,
-            SupersedeManagementReviewOnBaselineChange::class,
         );
     }
 

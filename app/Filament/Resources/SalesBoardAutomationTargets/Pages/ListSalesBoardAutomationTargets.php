@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesBoardAutomationTargets\Pages;
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Filament\Resources\SalesBoardAutomationTargets\SalesBoardAutomationTargetResource;
 use App\Models\SalesBoardAutomationRun;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,11 +23,27 @@ class ListSalesBoardAutomationTargets extends ListRecords
     /**
      * O cabeçalho responde a pergunta que antecede todas as outras: o scheduler
      * rodou? Sem ela, uma lista vazia é indistinguível de uma automação morta.
+     *
+     * Desligada, a automação não registra execução nenhuma -- nem a própria
+     * passagem --, e o cabeçalho diz isso antes de tudo: "desligada" e "ligada,
+     * mas sem execução" pedem ações diferentes de quem está olhando.
      */
     public function getSubheading(): ?string
     {
         $run = SalesBoardAutomationRun::query()->latest('started_at')->first();
+        $lastRun = $this->lastRunSummary($run);
 
+        if (! SalesBoardAutomationConfig::enabled()) {
+            return 'Automação desligada no interruptor global: nenhum processamento mensal é executado nem registrado enquanto ela estiver assim. '.$lastRun;
+        }
+
+        return $run === null
+            ? 'Automação global ligada, mas ainda sem execução: nenhuma execução registrada até agora.'
+            : 'Automação global ligada. '.$lastRun;
+    }
+
+    private function lastRunSummary(?SalesBoardAutomationRun $run): string
+    {
         if ($run === null) {
             return 'Nenhuma execução registrada até agora.';
         }

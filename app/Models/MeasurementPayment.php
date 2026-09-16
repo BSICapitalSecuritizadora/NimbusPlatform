@@ -6,9 +6,12 @@ use App\Concerns\DerivesStoredFileMetadata;
 use App\Services\DocumentStorageService;
 use App\Services\MeasurementFileValidationService;
 use Database\Factories\MeasurementPaymentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -43,6 +46,11 @@ class MeasurementPayment extends Model
     protected static function booted(): void
     {
         static::saving(function (self $payment): void {
+            if ($payment->exists && $payment->isDirty(['receipt_path', 'receipt_disk', 'receipt_sha256', 'receipt_size', 'receipt_mime_type', 'receipt_uploaded_by', 'receipt_uploaded_at'])
+                && $payment->receiptEvidences()->exists()) {
+                throw new \LogicException('Os campos de comprovante legado estão preservados. Crie uma nova evidência.');
+            }
+
             if ($payment->isDirty(['receipt_path', 'receipt_disk']) && filled($payment->receipt_path)) {
                 app(MeasurementFileValidationService::class)->validateReceipt(
                     (string) $payment->receipt_path,
@@ -109,7 +117,32 @@ class MeasurementPayment extends Model
 
     public function hasReceipt(): bool
     {
-        return filled($this->receipt_path);
+        return $this->currentReceiptEvidence !== null || filled($this->receipt_path);
+    }
+
+    /** @param Builder<self> $query */
+    public function scopeWithReceipt(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $receipts): Builder => $receipts->whereHas('currentReceiptEvidence')
+            ->orWhere(fn (Builder $legacy): Builder => $legacy->whereDoesntHave('receiptEvidences')
+                ->whereNotNull('receipt_path')->where('receipt_path', '!=', '')));
+    }
+
+    /** @param Builder<self> $query */
+    public function scopeWithoutReceipt(Builder $query): Builder
+    {
+        return $query->whereDoesntHave('receiptEvidences')
+            ->where(fn (Builder $legacy): Builder => $legacy->whereNull('receipt_path')->orWhere('receipt_path', ''));
+    }
+
+    public function receiptEvidences(): HasMany
+    {
+        return $this->hasMany(MeasurementPaymentReceiptEvidence::class)->orderByDesc('version');
+    }
+
+    public function currentReceiptEvidence(): HasOne
+    {
+        return $this->hasOne(MeasurementPaymentReceiptEvidence::class)->ofMany('version', 'max');
     }
 
     public function getResolvedReceiptDiskAttribute(): string

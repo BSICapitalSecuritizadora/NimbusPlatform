@@ -14,6 +14,9 @@ use App\Services\SalesBoards\SalesBoardBuilderReviewSupersedingService;
  * mesmo quadro não desfaz a conferência da construtora, e sair invalidando por
  * troca de ponteiro faria toda correção de origem material custar uma nova ida à
  * construtora sem que nada tivesse mudado para ela.
+ *
+ * Registrado só pelo event discovery do Laravel, por morar em `app/Listeners`.
+ * Um `Event::listen()` a mais no provider faria o ouvinte rodar duas vezes.
  */
 class SupersedeBuilderReviewOnBaselineChange
 {

@@ -7,8 +7,11 @@ use App\Enums\SalesBoardStaleImpact;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\SalesBoardCycle;
 use App\Services\SalesBoards\SalesBoardStaleDetectionService;
+use App\Support\SalesBoards\SalesBoardCycleNextAction;
+use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 /**
  * "Verificar alterações": compara a versão vigente com a fonte de agora.
@@ -35,11 +38,21 @@ class CheckSalesBoardCycleStaleAction
             });
     }
 
+    /**
+     * "Fonte alterada sem impacto" e "alterações materiais" pedem coisas opostas
+     * -- seguir sem recalcular e recalcular --, e a notificação diz qual das duas
+     * vale, em vez de deixar a diferença a cargo da cor.
+     */
     public static function notify(SalesBoardStaleAssessment $assessment): Notification
     {
         $notification = Notification::make()
             ->title($assessment->impact->label())
-            ->body($assessment->message());
+            ->body(match ($assessment->impact) {
+                SalesBoardStaleImpact::None => $assessment->message(),
+                SalesBoardStaleImpact::Blocking => new HtmlString(e(SalesBoardCycleNextAction::staleGuidance($assessment->impact))
+                    .'<br>'.SalesBoardIssuePresenter::toHtml($assessment->readiness->blockingIssueCounts())->toHtml()),
+                default => $assessment->message().' '.SalesBoardCycleNextAction::staleGuidance($assessment->impact),
+            });
 
         return match ($assessment->impact) {
             SalesBoardStaleImpact::None => $notification->success(),

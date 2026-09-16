@@ -19,8 +19,11 @@ class CdiSpreadCurveCalculator implements PuIndexCalculatorInterface
         private readonly PuCurveGenerationService $cdiGenerationService,
     ) {}
 
-    public function calculate(Emission $emission, ?string $indexRateCalendarCode = null): PuCurveGenerationResult
-    {
-        return $this->cdiGenerationService->handle($emission, $indexRateCalendarCode);
+    public function calculate(
+        Emission $emission,
+        ?string $indexRateCalendarCode = null,
+        ?string $accrualCalendarCode = null,
+    ): PuCurveGenerationResult {
+        return $this->cdiGenerationService->handle($emission, $indexRateCalendarCode, $accrualCalendarCode);
     }
 }

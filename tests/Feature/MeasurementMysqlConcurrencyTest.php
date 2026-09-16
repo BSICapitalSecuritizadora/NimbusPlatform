@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 beforeEach(function () {
     if (DB::getDriverName() !== 'mysql') {
@@ -403,21 +404,21 @@ it('serializes finalize against finalize on MySQL', function () {
     foreach ([1, 2, 3, 4] as $stage) {
         $measurement->reviews()->create(['stage' => $stage, 'status' => 'approved', 'reviewer_user_id' => $actor->id]);
     }
-    Storage::disk('local')->put('nimbus_docs/measurements/receipts/mysql.pdf', "%PDF-1.7\nreceipt\n%%EOF");
-    $measurement->payments()->create([
+    $payment = $measurement->payments()->create([
         'operation_id' => $operation->id,
         'plan_set_id' => $planSet->id,
         'pay_date' => '2026-08-25',
         'amount' => 100,
-        'receipt_path' => 'nimbus_docs/measurements/receipts/mysql.pdf',
-        'receipt_disk' => 'local',
     ]);
+    app(MeasurementWorkflow::class)->attachReceipt($payment, $actor, MeasurementReceiptEvidenceScenario::file());
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $actor);
+    $revision = (int) $measurement->fresh()->workflow_revision;
     $instruction = [
         'action' => 'finalize',
         'measurement_id' => $measurement->id,
         'actor_id' => $actor->id,
         'stage' => 5,
-        'revision' => 30,
+        'revision' => $revision,
         'storage_root' => Storage::disk('local')->path(''),
     ];
 
@@ -428,5 +429,5 @@ it('serializes finalize against finalize on MySQL', function () {
 
     expect(collect($results)->where('success', true))->toHaveCount(1)
         ->and($measurement->fresh()->status)->toBe('finalized')
-        ->and($measurement->fresh()->workflow_revision)->toBe(31);
+        ->and($measurement->fresh()->workflow_revision)->toBe($revision + 1);
 })->group('mysql');

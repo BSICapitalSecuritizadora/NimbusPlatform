@@ -2,17 +2,20 @@
 
 namespace App\Filament\Resources\SalesBoardCycles\Actions;
 
+use App\DTOs\SalesBoards\SalesBoardGenerationResult;
 use App\Enums\SalesBoardGenerationOutcome;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\Construction;
 use App\Services\SalesBoards\SalesBoardGenerationService;
 use App\Support\SalesBoards\ReferenceMonthInput;
+use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
+use Illuminate\Support\HtmlString;
 
 /**
  * "Congelar competência": cria o ciclo e a versão 1 de um empreendimento.
@@ -86,13 +89,13 @@ class GenerateSalesBoardCycleAction
                     ->title($result->outcome->label())
                     ->body(match ($result->outcome) {
                         SalesBoardGenerationOutcome::Generated => sprintf(
-                            '%s · %s: versão %s congelada.',
+                            '%s · %s: versão %s congelada. Próximo passo: enviar a posição para a validação da construtora.',
                             (string) $result->constructionName,
                             $result->referenceMonth->format('m/Y'),
                             (string) ($result->baseline?->versionLabel() ?? 'V1'),
                         ),
                         SalesBoardGenerationOutcome::AlreadyExists => 'Esta competência já foi congelada. Refazer a posição é recálculo, que exige motivo.',
-                        SalesBoardGenerationOutcome::Blocked => (string) $result->blockedReason,
+                        SalesBoardGenerationOutcome::Blocked => self::blockedBody($result),
                     });
 
                 match ($result->outcome) {
@@ -103,5 +106,26 @@ class GenerateSalesBoardCycleAction
 
                 $notification->send();
             });
+    }
+
+    /**
+     * A recusa por fonte incompleta lista cada bloqueio com o que ele significa
+     * e onde se corrige, sem esconder o código. As demais recusas já chegam em
+     * linguagem de tela.
+     */
+    private static function blockedBody(SalesBoardGenerationResult $result): string|HtmlString
+    {
+        $counts = $result->readiness?->blockingIssueCounts() ?? [];
+
+        if ($counts === []) {
+            return (string) $result->blockedReason;
+        }
+
+        return new HtmlString(sprintf(
+            '%s · %s: a fonte da competência está incompleta e nada foi congelado.<br>%s',
+            e((string) $result->constructionName),
+            e($result->referenceMonth->format('m/Y')),
+            SalesBoardIssuePresenter::toHtml($counts)->toHtml(),
+        ));
     }
 }

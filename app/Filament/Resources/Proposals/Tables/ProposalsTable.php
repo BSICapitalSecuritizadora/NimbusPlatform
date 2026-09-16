@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
@@ -124,7 +125,10 @@ class ProposalsTable
                     ->label('Representante Comercial')
                     ->relationship('representative', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(fn (Select $field): Select => $field->extraAttributes([
+                        'class' => 'bsi-responsible-filter',
+                    ])),
             ])
             ->actions([
                 ActionGroup::make([

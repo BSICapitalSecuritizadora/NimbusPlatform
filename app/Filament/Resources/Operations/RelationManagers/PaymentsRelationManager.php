@@ -9,6 +9,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentsRelationManager extends RelationManager
 {
@@ -19,6 +20,7 @@ class PaymentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('currentReceiptEvidence'))
             ->recordTitleAttribute('pay_date')
             ->columns([
                 TextColumn::make('pay_date')
@@ -46,10 +48,10 @@ class PaymentsRelationManager extends RelationManager
                 TextColumn::make('method')
                     ->label('Método')
                     ->placeholder('Não informado'),
-                IconColumn::make('receipt_path')
+                IconColumn::make('receipt_evidence')
                     ->label('Comprovante')
                     ->boolean()
-                    ->state(fn ($record): bool => filled($record->receipt_path)),
+                    ->state(fn ($record): bool => $record->hasReceipt()),
             ])
             ->recordActions([
                 Action::make('downloadReceipt')
@@ -57,7 +59,7 @@ class PaymentsRelationManager extends RelationManager
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn ($record): string => route('admin.measurements.receipts.download', $record))
                     ->openUrlInNewTab()
-                    ->visible(fn ($record): bool => filled($record->receipt_path)),
+                    ->visible(fn ($record): bool => $record->hasReceipt()),
             ])
             ->defaultSort('pay_date', 'desc');
     }

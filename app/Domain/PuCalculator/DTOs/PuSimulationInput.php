@@ -26,6 +26,12 @@ final readonly class PuSimulationInput
      *                                              o lag de `BusinessDayLagExact` aponta. NÃO altera o Dia Útil
      *                                              contratual: curva, eventos, DUP/DUT e convenção de pagamento
      *                                              continuam no calendário da baseline. Nulo mantém os dois iguais.
+     * @param  string|null  $accrualCalendarCode  HIPÓTESE de calendário de ACCRUAL da curva.
+     *                                            Decide quais dias da curva contam como Dia Útil: contagem de DU,
+     *                                            DUP/DUT e incidência do fator diário. NÃO altera o calendário
+     *                                            CONTRATUAL: eventos, convenção Following e datas de pagamento
+     *                                            continuam na baseline, e o prêmio pré-integralização também.
+     *                                            Nulo — todo o caminho de produção — preserva o comportamento atual.
      */
     public function __construct(
         public ?CarbonImmutable $firstIntegralizationDate = null,
@@ -34,6 +40,7 @@ final readonly class PuSimulationInput
         public array $overrides = [],
         public ?CarbonImmutable $focusDate = null,
         public ?string $indexRateCalendarCode = null,
+        public ?string $accrualCalendarCode = null,
     ) {}
 
     /**
@@ -43,6 +50,17 @@ final readonly class PuSimulationInput
     public function indexRateCalendarCode(): ?string
     {
         $code = $this->indexRateCalendarCode !== null ? trim($this->indexRateCalendarCode) : '';
+
+        return $code === '' ? null : $code;
+    }
+
+    /**
+     * Código do calendário de accrual, normalizado. Vazio é ausência de
+     * hipótese, nunca calendário inválido.
+     */
+    public function accrualCalendarCode(): ?string
+    {
+        $code = $this->accrualCalendarCode !== null ? trim($this->accrualCalendarCode) : '';
 
         return $code === '' ? null : $code;
     }
@@ -74,6 +92,7 @@ final readonly class PuSimulationInput
             'quantity' => $this->quantity,
             'focus_date' => $this->focusDate?->toDateString(),
             'index_rate_calendar_code' => $this->indexRateCalendarCode(),
+            'accrual_calendar_code' => $this->accrualCalendarCode(),
             'override_fields' => array_keys(array_filter(
                 $this->overrides,
                 fn (?string $value): bool => $value !== null && trim($value) !== '',

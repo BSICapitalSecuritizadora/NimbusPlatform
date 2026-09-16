@@ -86,13 +86,13 @@
         <div class="row justify-content-center">
             <div class="col-lg-10 col-xl-8">
                 <div class="position-relative py-4">
-                    <!-- Vertical Line (Timeline Backbone) -->
-                    <div class="position-absolute start-50 translate-middle-x h-100 d-none d-md-block" style="width: 2px; background: linear-gradient(to bottom, transparent, rgba(0,32,91,0.15) 10%, rgba(212,175,55,0.3) 90%, transparent); left: 50%;"></div>
-                    <!-- Mobile Line -->
-                    <div class="position-absolute start-0 h-100 d-md-none ms-3" style="width: 2px; background: linear-gradient(to bottom, transparent, rgba(0,32,91,0.15) 10%, rgba(212,175,55,0.3) 90%, transparent); left: 12px;"></div>
+                    <!-- Vertical track: single element, first to last marker center -->
+                    <div class="d-none d-md-block timeline-track timeline-track-desktop" aria-hidden="true"></div>
+                    <!-- Mobile track: same axis as the mobile markers -->
+                    <div class="d-md-none timeline-track timeline-track-mobile" aria-hidden="true"></div>
 
                     <!-- 2009 -->
-                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline" style="transition: all 0.4s ease;">
+                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline timeline-row" style="transition: all 0.4s ease;">
                         <div class="col-10 col-md-5 order-2 order-md-1 text-md-end pe-md-5 ps-5 ps-md-3">
                             <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; transition: all 0.3s ease;">
                                 <div class="h3 fw-bold text-brand mb-2" style="font-family: var(--font-heading);">2009</div>
@@ -100,13 +100,13 @@
                                 <p class="text-muted small mb-0">Início das atividades com foco em estruturação de recebíveis imobiliários.</p>
                             </div>
                         </div>
-                        <div class="col-2 col-md-2 order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
-                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
+                        <div class="order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
                                 <div class="rounded-circle bg-white" style="width: 6px; height: 6px;"></div>
                             </div>
                         </div>
                         <div class="d-none d-md-flex col-md-2 order-1 order-md-2 text-center position-relative align-items-center justify-content-center">
-                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
                                 <div class="rounded-circle bg-white" style="width: 10px; height: 10px;"></div>
                             </div>
                         </div>
@@ -114,15 +114,15 @@
                     </div>
 
                     <!-- 2014 -->
-                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline" style="transition: all 0.4s ease;">
+                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline timeline-row" style="transition: all 0.4s ease;">
                         <div class="col-md-5 order-md-1 d-none d-md-block pe-md-5"></div>
-                        <div class="col-2 col-md-2 order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
-                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
+                        <div class="order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
                                 <div class="rounded-circle bg-white" style="width: 6px; height: 6px;"></div>
                             </div>
                         </div>
                         <div class="d-none d-md-flex col-md-2 order-2 order-md-2 text-center position-relative align-items-center justify-content-center">
-                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
                                 <div class="rounded-circle bg-white" style="width: 10px; height: 10px;"></div>
                             </div>
                         </div>
@@ -136,7 +136,7 @@
                     </div>
 
                     <!-- 2018 -->
-                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline" style="transition: all 0.4s ease;">
+                    <div class="row align-items-center mb-5 position-relative hover-scale-timeline timeline-row" style="transition: all 0.4s ease;">
                         <div class="col-10 col-md-5 order-2 order-md-1 text-md-end pe-md-5 ps-5 ps-md-3">
                             <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; transition: all 0.3s ease;">
                                 <div class="h3 fw-bold text-brand mb-2" style="font-family: var(--font-heading);">2018</div>
@@ -144,13 +144,13 @@
                                 <p class="text-muted small mb-0">Primeiras emissões de CRA, diversificando o portfólio para o setor de agronegócio.</p>
                             </div>
                         </div>
-                        <div class="col-2 col-md-2 order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
-                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
+                        <div class="order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot-sm" style="width: 24px; height: 24px; border: 4px solid #fff;">
                                 <div class="rounded-circle bg-white" style="width: 6px; height: 6px;"></div>
                             </div>
                         </div>
                         <div class="d-none d-md-flex col-md-2 order-1 order-md-2 text-center position-relative align-items-center justify-content-center">
-                            <div class="rounded-circle bg-brand d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 40px; height: 40px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease;">
                                 <div class="rounded-circle bg-white" style="width: 10px; height: 10px;"></div>
                             </div>
                         </div>
@@ -158,21 +158,21 @@
                     </div>
 
                     <!-- Hoje -->
-                    <div class="row align-items-center mb-0 position-relative hover-scale-timeline" style="transition: all 0.4s ease;">
+                    <div class="row align-items-center mb-0 position-relative hover-scale-timeline timeline-row" style="transition: all 0.4s ease;">
                         <div class="col-md-5 order-md-1 d-none d-md-block pe-md-5"></div>
-                        <div class="col-2 col-md-2 order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
-                            <div class="rounded-circle bg-gold d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 28px; height: 28px; border: 4px solid #fff;">
+                        <div class="order-1 order-md-2 text-center position-absolute top-50 translate-middle-y d-flex justify-content-center d-md-none" style="left: 0; z-index: 2; width: 48px;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot-sm timeline-dot-sm-active" style="width: 28px; height: 28px; border: 4px solid #fff;">
                                 <div class="rounded-circle bg-white" style="width: 8px; height: 8px;"></div>
                             </div>
                         </div>
                         <div class="d-none d-md-flex col-md-2 order-2 order-md-2 text-center position-relative align-items-center justify-content-center">
-                            <div class="rounded-circle bg-gold d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot" style="width: 48px; height: 48px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease; box-shadow: 0 0 15px rgba(212,175,55,0.3) !important;">
+                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm timeline-dot timeline-dot-active" style="width: 48px; height: 48px; border: 6px solid #fff; z-index: 2; transition: all 0.3s ease; box-shadow: 0 0 15px rgba(212,175,55,0.3) !important;">
                                 <div class="rounded-circle bg-white" style="width: 12px; height: 12px;"></div>
                             </div>
                         </div>
                         <div class="col-10 col-md-5 order-2 order-md-3 ps-5 ps-md-5">
                             <div class="card border-0 shadow-sm p-4 h-100 timeline-card" style="border-radius: 16px; background: linear-gradient(145deg, #ffffff, #fcfaf5); border: 1px solid rgba(212,175,55,0.15) !important; transition: all 0.3s ease;">
-                                <div class="h3 fw-bold text-gold mb-2" style="font-family: var(--font-heading);">Hoje</div>
+                                <div class="h3 fw-bold mb-2 timeline-year-active" style="font-family: var(--font-heading);">Hoje</div>
                                 <h5 class="fw-bold text-dark mb-2">+R$ 1 Bilhão</h5>
                                 <p class="text-muted small mb-0">Marco histórico em volume estruturado e implementação de infraestrutura digital proprietária.</p>
                             </div>
@@ -611,6 +611,51 @@
     }
     .timeline-card {
         position: relative;
+    }
+    /* Vertical track: one element per breakpoint, solid discreet color. */
+    .timeline-track {
+        position: absolute;
+        width: 2px;
+        background: var(--border);
+    }
+    /* Mobile: same x-axis as the markers (12px from the container edge). */
+    .timeline-track-mobile {
+        left: 11px;
+        top: 8.5rem;
+        bottom: 8.5rem;
+    }
+    /* Desktop/tablet: central axis, from the first to the last marker center. */
+    .timeline-track-desktop {
+        left: 50%;
+        transform: translateX(-50%);
+        top: 8.75rem;
+        bottom: 8.75rem;
+    }
+    /* Even rhythm: equal row heights => centered markers are equidistant. */
+    .timeline-row {
+        min-height: 14rem;
+    }
+    @media (min-width: 768px) {
+        .timeline-row {
+            min-height: 14.5rem;
+        }
+    }
+    @media (max-width: 359.98px) {
+        .timeline-row {
+            min-height: 15.5rem;
+        }
+        .timeline-track-mobile {
+            top: 9.25rem;
+            bottom: 9.25rem;
+        }
+    }
+    .timeline-dot, .timeline-dot-sm { background: var(--brand); }
+    .timeline-dot-active, .timeline-dot-sm-active { background: var(--gold); }
+    .timeline-year-active { color: var(--gold); }
+    /* Mobile marker frames ignore row gutters so dots keep their exact diameter. */
+    .hover-scale-timeline > .position-absolute {
+        padding-left: 0;
+        padding-right: 0;
     }
     @media (min-width: 768px) {
         .hover-scale-timeline:nth-child(odd) .timeline-card::after {

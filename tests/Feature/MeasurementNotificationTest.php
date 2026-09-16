@@ -12,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
 
@@ -142,7 +143,7 @@ it('notifies the payment manager to attach receipts when a payment is registered
     );
 });
 
-it('notifies the finalizer when the last receipt is attached', function () {
+it('does not announce readiness to finalize while an uploaded receipt awaits documentary review', function () {
     Notification::fake();
 
     $manager = measurementNotificationActor();
@@ -167,17 +168,16 @@ it('notifies the finalizer when the last receipt is attached', function () {
         'created_by' => $manager->id,
     ]);
 
-    Storage::disk('local')->put('measurements/receipts/r.pdf', '%PDF-1.7 receipt');
-    app(MeasurementWorkflow::class)->attachReceipt($payment, $uploader, 'measurements/receipts/r.pdf', 'local');
+    app(MeasurementWorkflow::class)->attachReceipt($payment, $uploader, MeasurementReceiptEvidenceScenario::file());
 
-    Notification::assertSentTo(
+    Notification::assertNotSentTo(
         $finalizer,
         MeasurementWorkflowNotification::class,
         fn (MeasurementWorkflowNotification $n): bool => $n->event === 'ready_to_finalize',
     );
 });
 
-it('waits for every receipt before notifying the finalizer', function () {
+it('does not announce readiness when another payment still has no evidence', function () {
     Notification::fake();
 
     $finalizer = User::factory()->create();
@@ -196,8 +196,7 @@ it('waits for every receipt before notifying the finalizer', function () {
     $paymentA = $measurement->payments()->create(['operation_id' => $operation->id, 'amount' => 100, 'pay_date' => now()]);
     $measurement->payments()->create(['operation_id' => $operation->id, 'amount' => 200, 'pay_date' => now()]);
 
-    Storage::disk('local')->put('measurements/receipts/a.pdf', '%PDF-1.7 receipt-a');
-    app(MeasurementWorkflow::class)->attachReceipt($paymentA, $uploader, 'measurements/receipts/a.pdf', 'local');
+    app(MeasurementWorkflow::class)->attachReceipt($paymentA, $uploader, MeasurementReceiptEvidenceScenario::file());
 
     Notification::assertNotSentTo($finalizer, MeasurementWorkflowNotification::class);
 });

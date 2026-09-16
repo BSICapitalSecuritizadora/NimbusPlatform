@@ -25,9 +25,10 @@ final class PuIndexRateRequirementResolver
      *
      * Dois calendários distintos convivem aqui, e a distinção é semântica:
      *
-     *  - o calendário CONTRATUAL (`$parameter->calendar_code`) decide se o dia
-     *    da curva é dia útil, isto é, se ele acumula juros. É o Dia Útil do
-     *    instrumento e nunca muda por hipótese de simulação;
+     *  - o calendário de ACCRUAL decide se o dia da curva é dia útil, isto é,
+     *    se ele acumula juros. Por padrão é o CONTRATUAL (`$parameter->calendar_code`);
+     *    `$accrualCalendarCode` só o substitui sob hipótese explícita de simulação,
+     *    e jamais alcança eventos, convenção Following ou datas de pagamento;
      *  - o calendário de OBSERVAÇÃO do índice decide em que dia a taxa foi
      *    divulgada, e portanto para onde o lag de `BusinessDayLagExact` aponta.
      *
@@ -41,12 +42,13 @@ final class PuIndexRateRequirementResolver
         EmissionPuParameter $parameter,
         CarbonImmutable $curveDate,
         ?string $indexRateCalendarCode = null,
+        ?string $accrualCalendarCode = null,
     ): PuIndexRateRequirement {
         $lookupMode = $parameter->index_rate_lookup_mode_enum;
-        $calendarCode = (string) $parameter->calendar_code;
+        $calendarCode = $this->accrualCalendarCode($parameter, $accrualCalendarCode);
         $rateCalendarCode = $this->rateCalendarCode($parameter, $indexRateCalendarCode);
         $businessDayLag = (int) $parameter->index_rate_lag_business_days;
-        // Acúmulo de juros é matéria do contrato: segue o calendário da curva.
+        // Acúmulo de juros segue o calendário de accrual: contratual por padrão.
         $isBusinessDay = $this->businessDayCalendar->isBusinessDay($curveDate, $calendarCode);
 
         $lookupDate = match ($lookupMode) {
@@ -178,6 +180,19 @@ final class PuIndexRateRequirementResolver
         ?string $indexRateCalendarCode,
     ): string {
         $override = $indexRateCalendarCode !== null ? trim($indexRateCalendarCode) : '';
+
+        return $override !== '' ? $override : (string) $parameter->calendar_code;
+    }
+
+    /**
+     * Calendário que decide o Dia Útil de accrual. Nulo — e toda a produção — devolve o contratual,
+     * de modo que a curva permanece byte a byte idêntica enquanto ninguém informar a hipótese.
+     */
+    private function accrualCalendarCode(
+        EmissionPuParameter $parameter,
+        ?string $accrualCalendarCode,
+    ): string {
+        $override = $accrualCalendarCode !== null ? trim($accrualCalendarCode) : '';
 
         return $override !== '' ? $override : (string) $parameter->calendar_code;
     }

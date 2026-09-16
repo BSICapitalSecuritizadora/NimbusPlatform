@@ -9,8 +9,8 @@ use App\Enums\SalesBoardAutomationRunStatus;
 use App\Enums\SalesBoardAutomationRunTrigger;
 use App\Models\SalesBoardAutomationRun;
 use App\Models\SalesBoardAutomationTarget;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -52,6 +52,16 @@ class SalesBoardAutomationService
     ): SalesBoardAutomationRun {
         $businessDate = $asOf?->startOfDay() ?? $this->dueDates->businessDate();
         $now = CarbonImmutable::now();
+
+        /**
+         * Desligado, volta antes de qualquer coisa: sem execução registrada, sem
+         * descoberta, sem alvo, sem lembrete. O que sai é a mesma prévia vazia e
+         * não persistida -- um interruptor que ainda gravasse "só a execução"
+         * seria uma automação rodando devagar, não uma automação desligada.
+         */
+        if (! $this->enabled()) {
+            return $this->previewRun($trigger, $businessDate, $now);
+        }
 
         $this->alerts->reset();
 
@@ -229,7 +239,7 @@ class SalesBoardAutomationService
 
     private function enabled(): bool
     {
-        return (bool) Config::get('sales_board.automation.enabled', false);
+        return SalesBoardAutomationConfig::enabled();
     }
 
     /**

@@ -4,10 +4,10 @@ namespace App\Filament\Resources\SalesBoardRollouts\Pages;
 
 use App\Enums\SalesBoardSource;
 use App\Filament\Resources\SalesBoardRollouts\SalesBoardRolloutResource;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Config;
 
 class ListSalesBoardRollouts extends ListRecords
 {
@@ -27,7 +27,7 @@ class ListSalesBoardRollouts extends ListRecords
      */
     public function getSubheading(): ?string
     {
-        return Config::get('sales_board.automation.enabled', false)
+        return SalesBoardAutomationConfig::enabled()
             ? 'A automação global está ligada: Emissões automatizadas são processadas a cada hora.'
             : 'A automação global está desligada. Emissões podem ser homologadas e ativadas, mas nenhuma competência será processada até que ela seja ligada.';
     }

@@ -24,7 +24,7 @@
     .note-card { border: 1px solid #eee; border-left: 3px solid #a06e28; padding: 8px 12px; margin-bottom: 8px; background: #fcfbf9; }
     .note-head { margin: 0 0 4px; color: #091b23; font-size: 12px; }
     .note-badge { display: inline-block; background: #091b23; color: #fff; font-size: 9px; text-transform: uppercase; letter-spacing: .3px; padding: 1px 6px; border-radius: 8px; margin-right: 6px; }
-    .note-body { margin: 0; font-size: 11px; color: #333; }
+    .note-body { margin: 0; font-size: 11px; color: #333; text-align: justify; }
     .note-meta { margin: 6px 0 0; font-size: 9px; color: #999; }
     .cards { width: 100%; margin-bottom: 8px; }
     .cards td { width: 25%; border: 1px solid #eee; border-top: 3px solid #a06e28; background: #fcfbf9; padding: 8px 10px; vertical-align: top; }

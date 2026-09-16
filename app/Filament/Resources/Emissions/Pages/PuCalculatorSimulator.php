@@ -68,6 +68,14 @@ class PuCalculatorSimulator extends Page
      */
     public ?string $indexRateCalendarCode = null;
 
+    /**
+     * HIPÓTESE de calendário de accrual da curva. Vive só nesta sessão de
+     * Livewire: não é persistida, não altera `EmissionPuParameter` e some no
+     * refresh. Decide apenas Dia Útil, DUP/DUT e fator diário da curva; eventos,
+     * convenção Following e datas de pagamento seguem no calendário contratual.
+     */
+    public ?string $accrualCalendarCode = null;
+
     public bool $hasCalculated = false;
 
     private ?PuSimulationResult $result = null;
@@ -132,6 +140,7 @@ class PuCalculatorSimulator extends Page
             overrides: $this->overrides,
             focusDate: $this->date($this->focusDate),
             indexRateCalendarCode: $this->indexRateCalendarCode,
+            accrualCalendarCode: $this->accrualCalendarCode,
         );
     }
 
@@ -161,6 +170,30 @@ class PuCalculatorSimulator extends Page
     public function indexRateCalendarOptions(): array
     {
         return ['' => 'Mesmo calendário da curva (contratual)'] + BusinessCalendarRegistry::options();
+    }
+
+    /**
+     * Calendários oferecidos como hipótese de accrual da curva.
+     *
+     * A opção vazia é o padrão e significa "o mesmo calendário contratual" --
+     * nenhuma emissão muda de calendário por abrir esta tela.
+     *
+     * @return array<string, string>
+     */
+    public function accrualCalendarOptions(): array
+    {
+        return [
+            '' => 'Mesmo calendário contratual',
+            BusinessCalendarRegistry::BR_FINANCIAL_MARKET => 'Mercado financeiro — FEBRABAN/ANBIMA',
+        ];
+    }
+
+    /** Rótulo da hipótese de accrual, ou null quando não há hipótese. */
+    public function accrualCalendarOverride(): ?string
+    {
+        $code = $this->simulationInput()->accrualCalendarCode();
+
+        return $code === null || $code === $this->curveCalendarCode() ? null : $code;
     }
 
     /**

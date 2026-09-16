@@ -41,7 +41,8 @@ class SalesBoardRolloutActivationService
      * Tudo é relido sob lock: a homologação pode ter sido aprovada horas antes,
      * e nesse intervalo um quadro manual pode ter aparecido na competência
      * inicial, um empreendimento pode ter entrado na Emissão, um destinatário
-     * pode ter sido desativado. Aprovar não é prometer que o mundo ficou parado.
+     * pode ter sido desativado, um contrato pode ter sido corrigido. Aprovar não
+     * é prometer que o mundo ficou parado.
      */
     public function activate(
         Emission $emission,
@@ -208,7 +209,33 @@ class SalesBoardRolloutActivationService
             );
         }
 
+        /**
+         * Destinatários são portão do momento, e não fato revisado: quem recebe
+         * os avisos é relido agora, e trocar uma pessoa não invalida a
+         * homologação -- apenas precisa haver alguém operacional nos dois papéis
+         * no instante em que a automação passa a existir.
+         */
         $this->recipients->assertConfigured($emission);
+
+        /**
+         * A Gestão aprovou um retrato; a ativação só pode usar exatamente esse
+         * retrato. A fonte é observada de novo -- contratos, parcelas, tabelas,
+         * políticas, permutas, a posição legada da competência de comparação --
+         * e o resumo tem de ser o aprovado.
+         *
+         * Observar, e não reavaliar: a homologação aprovada é imutável, e o
+         * caminho para uma fonte que mudou é uma nova tentativa, revisada de
+         * novo, nunca um "refresh" silencioso do que foi aprovado.
+         *
+         * Por último de propósito. É a única reconferência que custa uma
+         * derivação, e as outras recusas são mais específicas quando também se
+         * aplicam.
+         */
+        $observed = $this->assessment->observe($homologation);
+
+        if ($observed->assessmentHash !== (string) $homologation->assessment_hash) {
+            throw SalesBoardRolloutException::homologationStale();
+        }
     }
 
     private function recordEvent(

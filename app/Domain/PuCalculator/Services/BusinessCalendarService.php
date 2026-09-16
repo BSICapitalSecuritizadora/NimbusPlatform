@@ -210,9 +210,15 @@ class BusinessCalendarService implements BusinessDayCalendar
         $startOfYear = CarbonImmutable::create($year, 1, 1, 0, 0, 0);
         $endOfYear = $startOfYear->endOfYear();
 
+        // `whereDate` e não `whereBetween`: a coluna guarda o instante (`2026-12-31 00:00:00`) e, em
+        // SQLite, a comparação é textual — um limite superior de `2026-12-31` descarta o próprio 31/12.
+        // Sob a política weekday-with-exceptions o buraco passava despercebido, porque o fallback de
+        // segunda a sexta respondia pelo dia faltante; num calendário de decisões explícitas ele vira
+        // exceção em tempo de cálculo. O resto do módulo já consulta datas assim.
         BusinessCalendarDate::query()
             ->where('calendar_code', $calendarCode)
-            ->whereBetween('calendar_date', [$startOfYear->toDateString(), $endOfYear->toDateString()])
+            ->whereDate('calendar_date', '>=', $startOfYear->toDateString())
+            ->whereDate('calendar_date', '<=', $endOfYear->toDateString())
             ->get(['calendar_date', 'is_business_day'])
             ->each(function (BusinessCalendarDate $calendarDate) use ($calendarCode): void {
                 if ($calendarDate->calendar_date === null) {

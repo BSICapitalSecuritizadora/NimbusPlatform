@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BusinessHolidays;
 
 use App\Filament\Resources\BusinessHolidays\Pages\CompareBusinessCalendars;
 use App\Filament\Resources\BusinessHolidays\Pages\ListBusinessHolidays;
+use App\Filament\Resources\BusinessHolidays\Pages\ReconcileFinancialMarketCalendar;
 use App\Filament\Resources\BusinessHolidays\Tables\BusinessHolidaysTable;
 use App\Models\BusinessHoliday;
 use BackedEnum;
@@ -69,6 +70,7 @@ class BusinessHolidayResource extends Resource
         return [
             'index' => ListBusinessHolidays::route('/'),
             'compare' => CompareBusinessCalendars::route('/compare'),
+            'reconcile-financial-market' => ReconcileFinancialMarketCalendar::route('/reconcile-financial-market'),
         ];
     }
 }

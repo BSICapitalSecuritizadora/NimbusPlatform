@@ -14,14 +14,14 @@
         <x-filament::section>
             <x-slot name="heading">Nenhuma validação aberta</x-slot>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                Esta competência ainda não foi enviada à construtora. Use a ação
+                Nenhuma validação foi aberta para esta competência. Use a ação
                 <strong>Enviar para validação da construtora</strong> na tela da competência.
             </p>
         </x-filament::section>
     @else
         {{-- Cabeçalho executivo: o que está sendo validado, e o quanto já foi. --}}
         <x-filament::section>
-            <div class="grid gap-6 md:grid-cols-4">
+            <div class="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                 <div>
                     <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Empreendimento</p>
                     <p class="mt-1 text-sm font-semibold">{{ $workspace->constructionName }}</p>
@@ -42,6 +42,14 @@
                         </x-filament::badge>
                     </p>
                 </div>
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Divergências declaradas</p>
+                    <p class="mt-1 text-sm font-semibold">{{ $workspace->divergenceCount() }}</p>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                @include('filament.sales-boards.next-action', ['nextAction' => $this->nextAction($workspace)])
             </div>
 
             <div class="mt-6">

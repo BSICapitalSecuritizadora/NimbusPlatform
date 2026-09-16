@@ -12,6 +12,7 @@ use App\Models\Obligation;
 use App\Services\Obligations\ObligationDashboardData;
 use Filament\Actions\Action;
 use Filament\Actions\ExportAction;
+use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -166,7 +167,10 @@ class ObligationOperationalTableWidget extends TableWidget
                 ->label('Responsável')
                 ->relationship('responsibleUser', 'name')
                 ->searchable()
-                ->preload(),
+                ->preload()
+                ->modifyFormFieldUsing(fn (Select $field): Select => $field->extraAttributes([
+                    'class' => 'bsi-responsible-filter',
+                ])),
             SelectFilter::make('responsible_area')
                 ->label('Área responsável')
                 ->options(fn (): array => collect(Obligation::query()

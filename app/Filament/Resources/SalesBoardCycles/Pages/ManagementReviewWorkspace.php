@@ -4,7 +4,9 @@ namespace App\Filament\Resources\SalesBoardCycles\Pages;
 
 use App\DTOs\SalesBoards\SalesBoardManagementReviewWorkspace as WorkspaceData;
 use App\Enums\SalesBoardApprovalOutcome;
+use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardNonconformityDecision;
+use App\Enums\SalesBoardStaleImpact;
 use App\Exceptions\SalesBoardManagementReviewException;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\SalesBoardCycle;
@@ -15,6 +17,7 @@ use App\Services\SalesBoards\SalesBoardManagementDecisionService;
 use App\Services\SalesBoards\SalesBoardManagementReturnService;
 use App\Services\SalesBoards\SalesBoardManagementReviewWorkspaceBuilder;
 use App\Support\Money\IntegerMoney;
+use App\Support\SalesBoards\SalesBoardCycleNextAction;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Radio;
@@ -78,11 +81,115 @@ class ManagementReviewWorkspace extends Page
         }
 
         return sprintf(
-            '%s · %s · %s',
+            '%s · versão %s da posição · %s',
             $review->attemptLabel(),
             $review->baseline?->versionLabel() ?? '—',
             $review->status->label(),
         );
+    }
+
+    /**
+     * O que falta para a análise andar.
+     *
+     * Lê o portão que o workspace já trouxe -- os mesmos critérios que a
+     * aprovação aplica -- e só escolhe como dizer. Nenhuma regra de aprovação é
+     * refeita aqui: o que impede a publicação é a lista de itens do portão que
+     * não passaram, exatamente como o serviço os descreve.
+     *
+     * @return array{headline: string, detail: string|null, color: string, icon: string, items?: list<string>}
+     */
+    public function nextAction(WorkspaceData $workspace): array
+    {
+        if (! $workspace->isApplicable || ($workspace->status === SalesBoardManagementReviewStatus::Superseded)) {
+            return [
+                'headline' => 'Esta análise se refere a uma versão que não é mais a vigente.',
+                'detail' => 'As decisões registradas continuam consultáveis. Siga pela próxima ação indicada na tela da competência.',
+                'color' => 'gray',
+                'icon' => 'heroicon-o-archive-box',
+            ];
+        }
+
+        return match ($workspace->status) {
+            SalesBoardManagementReviewStatus::Approved => [
+                'headline' => 'Posição aprovada e publicada no Quadro de Vendas.',
+                'detail' => 'O quadro publicado é imutável: não pode ser alterado nem excluído manualmente.',
+                'color' => 'success',
+                'icon' => 'heroicon-o-check-badge',
+            ],
+            SalesBoardManagementReviewStatus::Returned => [
+                'headline' => 'Competência devolvida à construtora.',
+                'detail' => 'Aguardando a nova rodada de validação da construtora.',
+                'color' => 'gray',
+                'icon' => 'heroicon-o-arrow-uturn-left',
+            ],
+            default => $this->openReviewNextAction($workspace),
+        };
+    }
+
+    /**
+     * @return array{headline: string, detail: string|null, color: string, icon: string, items?: list<string>}
+     */
+    private function openReviewNextAction(WorkspaceData $workspace): array
+    {
+        $impact = $workspace->staleImpact();
+
+        if ($impact === SalesBoardStaleImpact::Material) {
+            return [
+                'headline' => 'Recalcule a posição antes de continuar.',
+                'detail' => SalesBoardCycleNextAction::staleGuidance($impact).' O recálculo é feito na tela da competência, e esta análise será substituída por uma nova rodada.',
+                'color' => 'warning',
+                'icon' => 'heroicon-o-arrow-path',
+            ];
+        }
+
+        if ($impact === SalesBoardStaleImpact::Blocking) {
+            return [
+                'headline' => 'Corrija a fonte antes de continuar.',
+                'detail' => SalesBoardCycleNextAction::staleGuidance($impact),
+                'color' => 'danger',
+                'icon' => 'heroicon-o-exclamation-triangle',
+            ];
+        }
+
+        if ($workspace->isReadyToPublish()) {
+            return [
+                'headline' => 'Aprove e publique, ou devolva à construtora.',
+                'detail' => 'Todos os itens do portão estão atendidos.'
+                    .($impact === SalesBoardStaleImpact::SourceOnly ? ' '.SalesBoardCycleNextAction::staleGuidance($impact) : ''),
+                'color' => 'info',
+                'icon' => 'heroicon-o-check-circle',
+            ];
+        }
+
+        $correctionRequired = $workspace->blockingCount() - $workspace->pendingCount();
+
+        return [
+            'headline' => match (true) {
+                $workspace->pendingCount() > 0 => 'Resolva as não conformidades e conclua a análise.',
+                $correctionRequired > 0 => 'Corrija a fonte e recalcule a posição, ou devolva à construtora.',
+                default => 'Publicação bloqueada.',
+            },
+            'detail' => 'O que ainda impede a publicação:',
+            'color' => 'warning',
+            'icon' => 'heroicon-o-scale',
+            'items' => $this->failedGateChecks($workspace),
+        ];
+    }
+
+    /**
+     * Os itens do portão que não passaram, como o serviço os descreve.
+     *
+     * @return list<string>
+     */
+    public function failedGateChecks(WorkspaceData $workspace): array
+    {
+        return collect($workspace->gate['checks'])
+            ->reject(fn (array $check): bool => $check['passed'])
+            ->map(fn (array $check): string => $check['detail'] === null
+                ? $check['label']
+                : $check['label'].' — '.$check['detail'])
+            ->values()
+            ->all();
     }
 
     public function currentReview(): ?SalesBoardManagementReview

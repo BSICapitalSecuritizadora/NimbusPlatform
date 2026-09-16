@@ -14,10 +14,14 @@ use App\Filament\Resources\FundNames\FundNameResource;
 use App\Filament\Resources\Funds\FundResource;
 use App\Filament\Resources\FundTypes\FundTypeResource;
 use App\Filament\Resources\Invitations\InvitationResource;
+use App\Filament\Resources\Negotiations\NegotiationResource;
 use App\Filament\Resources\Nimbus\GeneralDocuments\GeneralDocumentResource;
 use App\Filament\Resources\ProposalRepresentatives\ProposalRepresentativeResource;
 use App\Filament\Resources\Receivables\ReceivableResource;
 use App\Filament\Resources\ReminderLogs\ReminderLogResource;
+use App\Filament\Resources\SalesBoardAutomationTargets\SalesBoardAutomationTargetResource;
+use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
+use App\Filament\Resources\SalesBoardRollouts\SalesBoardRolloutResource;
 use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -112,10 +116,11 @@ it('groups the emission monthly report resources under Emissões', function () {
         ->and(SalesBoardResource::getNavigationParentItem())->toBe('Emissões')
         ->and($children)->toBe([
             'Quadro de Vendas',
-            'Negociações',
-            // O ciclo fica entre a posição publicada e o relatório que a lê: é a
-            // apuração congelada que dá origem a uma e alimenta a outra.
+            // O ciclo vem logo depois da posição publicada e antes do relatório
+            // que a lê: é a apuração congelada que dá origem a uma e alimenta a
+            // outra.
             'Ciclos do Quadro',
+            'Negociações',
             'Relatório Mensal',
             'Notas Explicativas',
             // Automação e rollout fecham o grupo: são as superfícies que
@@ -123,6 +128,43 @@ it('groups the emission monthly report resources under Emissões', function () {
             'Automação do Quadro',
             'Rollout do Quadro',
         ]);
+});
+
+it('gives every sales board resource its own sort among the Emissões children', function () {
+    $emissionChildren = collect([...Filament::getPanel('admin')->getPages(), ...Filament::getPanel('admin')->getResources()])
+        ->filter(fn (string $class): bool => $class::getNavigationGroup() === 'Operações'
+            && $class::getNavigationParentItem() === 'Emissões');
+
+    $salesBoardResources = [
+        SalesBoardResource::class,
+        SalesBoardCycleResource::class,
+        SalesBoardAutomationTargetResource::class,
+        SalesBoardRolloutResource::class,
+    ];
+
+    $collisions = collect($salesBoardResources)
+        ->filter(fn (string $resource): bool => $emissionChildren
+            ->reject(fn (string $class): bool => $class === $resource)
+            ->contains(fn (string $class): bool => $class::getNavigationSort() === $resource::getNavigationSort()))
+        ->values()
+        ->all();
+
+    expect($collisions)->toBe([])
+        // Negociações não é reordenada por esta correção.
+        ->and(NegotiationResource::getNavigationSort())->toBe(12)
+        ->and(collect($salesBoardResources)->map(fn (string $class): ?int => $class::getNavigationSort())->all())
+        ->toBe([10, 11, 15, 16]);
+});
+
+it('keeps the sales board resources visible to a user who only holds the sales board permissions', function () {
+    $this->actingAs(makeNavigationRestrictedUser(['emissions.view', 'sales-boards.view']));
+
+    expect(navigationChildLabels('Operações', 'Emissões'))->toBe([
+        'Quadro de Vendas',
+        'Ciclos do Quadro',
+        'Automação do Quadro',
+        'Rollout do Quadro',
+    ]);
 });
 
 it('groups the construction resources under Obras', function () {

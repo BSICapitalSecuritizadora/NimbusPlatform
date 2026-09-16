@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\MeasurementWorkflowException;
 use App\Models\Measurement;
 use App\Models\MeasurementPlanSet;
 use App\Models\Operation;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
 
@@ -133,33 +135,31 @@ it('keeps payment manager, receipt uploader and finalizer as separate responsibi
         'amount' => 1000,
         'created_by' => $manager->id,
     ]);
-    Storage::disk('local')->put('nimbus_docs/measurements/receipts/separate.pdf', '%PDF-1.7 separate-roles');
 
     foreach ([$manager, $finalizer, $outsider] as $unauthorized) {
         expect(fn () => app(MeasurementWorkflow::class)->attachReceipt(
             $payment,
             $unauthorized,
-            'nimbus_docs/measurements/receipts/separate.pdf',
-            'local',
+            MeasurementReceiptEvidenceScenario::file(),
         ))->toThrow(AuthorizationException::class);
     }
 
     app(MeasurementWorkflow::class)->attachReceipt(
         $payment,
         $uploader,
-        'nimbus_docs/measurements/receipts/separate.pdf',
-        'local',
+        MeasurementReceiptEvidenceScenario::file(),
     );
 
-    expect($payment->fresh()->receipt_uploaded_by)->toBe($uploader->id)
-        ->and($measurement->fresh()->status)->toBe('approved');
+    expect($payment->fresh()->currentReceiptEvidence->uploaded_by)->toBe($uploader->id)
+        ->and($measurement->fresh()->status)->toBe('awaiting_receipt');
 
     expect(fn () => app(MeasurementWorkflow::class)->deleteReceipt($payment->fresh(), $manager))
         ->toThrow(AuthorizationException::class);
 
-    app(MeasurementWorkflow::class)->deleteReceipt($payment->fresh(), $uploader);
+    expect(fn () => app(MeasurementWorkflow::class)->deleteReceipt($payment->fresh(), $uploader))
+        ->toThrow(MeasurementWorkflowException::class);
 
-    expect($payment->fresh()->receipt_path)->toBeNull()
+    expect($payment->fresh()->hasReceipt())->toBeTrue()
         ->and($measurement->fresh()->status)->toBe('awaiting_receipt');
 });
 

@@ -9,6 +9,7 @@ use App\Services\DocumentStorageService;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class BackfillMeasurementFileHashes extends Command
@@ -62,7 +63,7 @@ class BackfillMeasurementFileHashes extends Command
             $limit,
         );
         $this->process(
-            MeasurementPayment::query()->whereNotNull('receipt_path')->whereNull('receipt_sha256'),
+            MeasurementPayment::query()->whereDoesntHave('receiptEvidences')->whereNotNull('receipt_path')->whereNull('receipt_sha256'),
             'receipt_path',
             'resolved_receipt_disk',
             'receipt_sha256',
@@ -131,11 +132,27 @@ class BackfillMeasurementFileHashes extends Command
 
                 if ($execute) {
                     try {
-                        $saved = $record->forceFill([
-                            $hashColumn => $hash,
-                            $mimeColumn => is_string($metadata['mime_type']) ? $metadata['mime_type'] : 'application/octet-stream',
-                            $sizeColumn => is_int($metadata['size_bytes']) ? $metadata['size_bytes'] : 0,
-                        ])->saveQuietly();
+                        $saved = DB::transaction(function () use ($record, $pathColumn, $resolvedDiskAttribute, $path, $disk, $hashColumn, $hash, $mimeColumn, $sizeColumn, $metadata): ?bool {
+                            $locked = $record::query()->whereKey($record->getKey())->lockForUpdate()->firstOrFail();
+
+                            if (($locked instanceof MeasurementPayment && $locked->receiptEvidences()->exists())
+                                || $locked->getAttribute($pathColumn) !== $path
+                                || $locked->getAttribute($resolvedDiskAttribute) !== $disk
+                                || $locked->getAttribute($hashColumn) !== null) {
+                                return null;
+                            }
+
+                            return $locked->forceFill([
+                                $hashColumn => $hash,
+                                $mimeColumn => is_string($metadata['mime_type']) ? $metadata['mime_type'] : 'application/octet-stream',
+                                $sizeColumn => is_int($metadata['size_bytes']) ? $metadata['size_bytes'] : 0,
+                            ])->saveQuietly();
+                        });
+
+                        if ($saved === null) {
+                            continue;
+                        }
+
                         $confirmedHash = $record->fresh()?->getAttribute($hashColumn);
 
                         if (! $saved || ! is_string($confirmedHash) || ! hash_equals($hash, $confirmedHash)) {

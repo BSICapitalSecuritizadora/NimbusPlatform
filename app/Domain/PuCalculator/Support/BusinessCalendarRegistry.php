@@ -19,6 +19,15 @@ final class BusinessCalendarRegistry
     public const BR_NATIONAL_HOLIDAYS = 'BR_NATIONAL_HOLIDAYS';
 
     /**
+     * Calendário financeiro consolidado. A semântica pertence à REGRA financeira — dias úteis aplicáveis
+     * às operações do mercado financeiro, nos termos da Resolução CMN 4.880/2020 — e não à entidade que
+     * publica a lista. ANBIMA e FEBRABAN entram como FONTES de evidência reconciliadas, jamais como
+     * definição. Não é alias de `BR_BANKING_ANBIMA`: uma data só vira decisão aqui após reconciliação
+     * governada, e feriados estaduais/municipais nunca são incorporados.
+     */
+    public const BR_FINANCIAL_MARKET = 'BR_FINANCIAL_MARKET';
+
+    /**
      * @return array<string, array{label:string, meaning:string, legacy:bool, legacy_alias_of:?string, accepts_anbima:bool}>
      */
     public static function definitions(): array
@@ -41,6 +50,13 @@ final class BusinessCalendarRegistry
             self::B3_LISTED_TRADING => [
                 'label' => 'B3 — sessões de negociação',
                 'meaning' => 'Calendário de sessões do mercado listado da B3. Não recebe importações ANBIMA.',
+                'legacy' => false,
+                'legacy_alias_of' => null,
+                'accepts_anbima' => false,
+            ],
+            self::BR_FINANCIAL_MARKET => [
+                'label' => 'Mercado financeiro brasileiro — calendário consolidado',
+                'meaning' => 'Dias úteis aplicáveis às operações do mercado financeiro brasileiro. As decisões são materializadas a partir de fontes financeiras reconhecidas (ANBIMA e FEBRABAN) mediante reconciliação auditável, e não a partir de uma única publicação. Não inclui automaticamente feriados estaduais ou municipais, nem expediente especial de agência (quarta-feira de cinzas, último dia útil do ano).',
                 'legacy' => false,
                 'legacy_alias_of' => null,
                 'accepts_anbima' => false,

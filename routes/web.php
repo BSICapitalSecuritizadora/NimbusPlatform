@@ -234,6 +234,9 @@ Route::middleware(['auth', 'approved', EnsureTwoFactorEnabled::class])->group(fu
     Route::get('/admin/measurements/payments/{payment}/receipt/download', MeasurementReceiptDownloadController::class)
         ->name('admin.measurements.receipts.download')
         ->middleware('throttle:60,1');
+    Route::get('/admin/measurements/payments/{payment}/evidences/{evidence}/download', MeasurementReceiptDownloadController::class)
+        ->name('admin.measurements.receipt-evidences.download')
+        ->middleware('throttle:60,1');
     Route::get('/admin/measurements/cycle-report/export', MeasurementCycleReportExportController::class)
         ->name('admin.measurements.cycle-report.export')
         ->middleware('throttle:10,1');

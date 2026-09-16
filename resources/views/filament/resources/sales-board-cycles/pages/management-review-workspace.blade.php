@@ -15,8 +15,8 @@
         <x-filament::section>
             <x-slot name="heading">Nenhuma análise aberta</x-slot>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                Esta competência ainda não foi aberta para análise da Gestão. Use a ação
-                <strong>Análise da Gestão</strong> na tela da competência.
+                Nenhuma análise da Gestão foi aberta para esta competência. A análise fica disponível depois que a
+                construtora envia a validação; então use a ação <strong>Análise da Gestão</strong> na tela da competência.
             </p>
         </x-filament::section>
     @else
@@ -53,6 +53,27 @@
                         </x-filament::badge>
                     </p>
                 </div>
+            </div>
+
+            <div class="mt-6 grid gap-6 md:grid-cols-3">
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Validação de origem</p>
+                    <p class="mt-1 text-sm font-semibold">
+                        {{ $workspace->builderFullyConfirmed ? 'Confirmada integralmente' : $workspace->builderDivergenceCount.' divergência(s) declarada(s)' }}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Não conformidades</p>
+                    <p class="mt-1 text-sm font-semibold">{{ $workspace->progressLabel() }}</p>
+                </div>
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Pendentes de decisão</p>
+                    <p class="mt-1 text-sm font-semibold">{{ $workspace->pendingCount() }}</p>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                @include('filament.sales-boards.next-action', ['nextAction' => $this->nextAction($workspace)])
             </div>
 
             @if (! $workspace->isApplicable)
@@ -344,9 +365,17 @@
             @endif
 
             {{-- As duas ações decidem a própria visibilidade a partir do portão. --}}
-            <div class="mt-6 flex flex-wrap gap-3">
+            <div class="mt-6 flex flex-wrap items-center gap-3">
                 {{ $this->returnToBuilderAction }}
                 {{ $this->approveAction }}
+
+                {{-- Aprovar fica oculto enquanto o portão estiver fechado; o motivo aparece no lugar do botão. --}}
+                @if ($canDecide && ! $workspace->isReadyToPublish())
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                        <span class="font-medium">Aprovar e publicar indisponível:</span>
+                        {{ implode('; ', $this->failedGateChecks($workspace)) }}.
+                    </p>
+                @endif
             </div>
         </x-filament::section>
 

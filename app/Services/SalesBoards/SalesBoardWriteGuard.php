@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services\SalesBoards;
 
 use App\Exceptions\SalesBoardRolloutException;
+use App\Models\Construction;
 use App\Models\Emission;
 use App\Models\SalesBoard;
 use App\Models\SalesBoardPublication;
 use App\Support\SalesBoards\SalesBoardWriteContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 
 /**
  * Impede que a posição de uma competência automatizada seja escrita à mão.
@@ -80,35 +82,59 @@ class SalesBoardWriteGuard
     /**
      * A competência já pertence ao motor automático?
      *
-     * A checagem é pela Emissão do próprio quadro, e a competência é
-     * normalizada antes de comparar -- o model normaliza no `saving`, mas o
-     * guard roda antes e precisa comparar a mesma coisa.
+     * A competência é normalizada antes de comparar -- o model normaliza no
+     * `saving`, mas o guard roda antes e precisa comparar a mesma coisa.
      */
     private function assertNotAutomatedCompetence(SalesBoard $salesBoard): void
     {
-        $emission = $salesBoard->relationLoaded('emission')
-            ? $salesBoard->emission
-            : Emission::query()->find($salesBoard->emission_id);
-
-        if (! $emission instanceof Emission || ! $emission->usesAutomatedSalesBoard()) {
-            return;
-        }
-
         $referenceMonth = SalesBoard::normalizeReferenceMonth($salesBoard->reference_month);
 
         if ($referenceMonth === null) {
             return;
         }
 
-        if (! $emission->automationCovers(CarbonImmutable::parse($referenceMonth))) {
+        $month = CarbonImmutable::parse($referenceMonth);
+
+        $automated = $this->emissionsClaiming($salesBoard)
+            ->first(fn (Emission $emission): bool => $emission->automationCovers($month));
+
+        if (! $automated instanceof Emission) {
             return;
         }
 
         throw SalesBoardRolloutException::manualWriteBlocked(
-            (string) ($salesBoard->construction?->development_name
-                ?? Emission::query()->find($salesBoard->emission_id)?->name
-                ?? '—'),
-            CarbonImmutable::parse($referenceMonth)->format('m/Y'),
+            (string) ($salesBoard->construction?->development_name ?? $automated->name ?? '—'),
+            $month->format('m/Y'),
         );
+    }
+
+    /**
+     * As Emissões que respondem pela posição deste quadro: a gravada nele e a
+     * atual do empreendimento.
+     *
+     * Costumam ser a mesma -- a tela e a carga inicial gravam a Emissão do
+     * empreendimento --, mas o {@see SalesBoardPositionReader} lê a posição por
+     * empreendimento, sem olhar a Emissão. Um quadro gravado por fora com a
+     * Emissão errada seria lido como a posição de um empreendimento
+     * automatizado, e olhar só a Emissão do quadro deixaria essa escrita passar.
+     *
+     * @return Collection<int, Emission>
+     */
+    private function emissionsClaiming(SalesBoard $salesBoard): Collection
+    {
+        $constructionEmissionId = $salesBoard->construction_id === null
+            ? null
+            : Construction::query()->whereKey($salesBoard->construction_id)->value('emission_id');
+
+        $emissionIds = collect([$salesBoard->emission_id, $constructionEmissionId])
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        return $emissionIds === []
+            ? collect()
+            : Emission::query()->whereKey($emissionIds)->orderBy('id')->get();
     }
 }

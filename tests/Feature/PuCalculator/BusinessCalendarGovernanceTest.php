@@ -30,6 +30,7 @@ it('catalogues the governed calendars while preserving B3 as a non redirected le
         BusinessCalendarRegistry::LEGACY_B3,
         BusinessCalendarRegistry::BR_BANKING_ANBIMA,
         BusinessCalendarRegistry::B3_LISTED_TRADING,
+        BusinessCalendarRegistry::BR_FINANCIAL_MARKET,
         BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
     ])->and($definitions[BusinessCalendarRegistry::LEGACY_B3]['legacy'])->toBeTrue()
         ->and($definitions[BusinessCalendarRegistry::LEGACY_B3]['legacy_alias_of'])->toBe(BusinessCalendarRegistry::BR_BANKING_ANBIMA)
@@ -38,6 +39,24 @@ it('catalogues the governed calendars while preserving B3 as a non redirected le
         ->and($definitions[BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS]['label'])->toBe('Feriados Nacionais — Brasil')
         ->and(BusinessCalendarRegistry::acceptsAnbima(BusinessCalendarRegistry::BR_BANKING_ANBIMA))->toBeTrue()
         ->and(BusinessCalendarRegistry::acceptsAnbima(BusinessCalendarRegistry::B3_LISTED_TRADING))->toBeFalse();
+});
+
+it('governs the consolidated financial market calendar as a reconciled rule, never as a source alias', function () {
+    $definitions = BusinessCalendarRegistry::definitions();
+    $consolidated = $definitions[BusinessCalendarRegistry::BR_FINANCIAL_MARKET];
+
+    expect($consolidated['label'])->toBe('Mercado financeiro brasileiro — calendário consolidado')
+        ->and($consolidated['legacy'])->toBeFalse()
+        // O alias é o que separa este calendário de um apelido de BR_BANKING_ANBIMA: manter
+        // legacy_alias_of nulo é o que obriga a decisão a vir da reconciliação, e não de uma fonte.
+        ->and($consolidated['legacy_alias_of'])->toBeNull()
+        // Recusar importação ANBIMA direta é a outra metade da mesma garantia.
+        ->and($consolidated['accepts_anbima'])->toBeFalse()
+        ->and(BusinessCalendarRegistry::acceptsAnbima(BusinessCalendarRegistry::BR_FINANCIAL_MARKET))->toBeFalse()
+        ->and($consolidated['meaning'])->toContain('reconciliação auditável')
+        ->and($consolidated['meaning'])->toContain('Não inclui automaticamente feriados estaduais ou municipais')
+        ->and(BusinessCalendarRegistry::ensureKnown('br_financial_market'))
+        ->toBe(BusinessCalendarRegistry::BR_FINANCIAL_MARKET);
 });
 
 it('distinguishes missing partial provisional confirmed and stale annual coverage', function () {

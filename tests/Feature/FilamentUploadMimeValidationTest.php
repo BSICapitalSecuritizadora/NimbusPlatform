@@ -102,15 +102,11 @@ function filamentUploadsWithMimeAllowlists(): array
 
     $measurementPage = new ViewMeasurement;
     $measurementPage->record = $measurement;
-    $receiptSchemaMethod = new ReflectionMethod($measurementPage, 'attachReceiptSchema');
-    $receiptSchemaMethod->setAccessible(true);
-    $receiptSchema = Schema::make($measurementPage)
-        ->model($measurement)
-        ->components($receiptSchemaMethod->invoke($measurementPage));
-    $receipts = $receiptSchema->getFlatFields(withHidden: true)['receipts'];
-    $receiptFile = $receipts instanceof Repeater
-        ? $receipts->getChildSchema()->getFlatFields(withHidden: true)['receipt']
-        : null;
+    $receiptActionMethod = new ReflectionMethod($measurementPage, 'attachReceiptAction');
+    $receiptActionMethod->setAccessible(true);
+    $receiptAction = $receiptActionMethod->invoke($measurementPage);
+    $receiptFile = $receiptAction->getSchema(Schema::make($measurementPage)->model($measurement))
+        ?->getFlatFields(withHidden: true)['receipt'] ?? null;
 
     expect($bankLogo)->toBeInstanceOf(FileUpload::class)
         ->and($emissionLogo)->toBeInstanceOf(FileUpload::class)

@@ -113,6 +113,30 @@
                 />
             </div>
 
+            {{-- Calendário de accrual da curva: hipótese, nunca contrato --}}
+            <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/30">
+                <label class="block text-sm font-semibold text-amber-900 dark:text-amber-200" for="accrualCalendarCode">
+                    Calendário de accrual da curva
+                </label>
+                <p class="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                    Override de simulação — não persiste
+                </p>
+                <p class="mt-1 text-xs text-amber-800 dark:text-amber-300">
+                    Decide quais dias da curva contam como Dia Útil nesta simulação: contagem de DU, DUP/DUT e
+                    incidência do fator diário. Não altera a emissão, não vira evidência e não desloca eventos —
+                    pagamentos e convenção Following continuam no calendário contratual.
+                </p>
+                <select
+                    id="accrualCalendarCode"
+                    wire:model.blur="accrualCalendarCode"
+                    class="mt-2 block w-full rounded-lg border-gray-300 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                >
+                    @foreach ($this->accrualCalendarOptions() as $code => $label)
+                        <option value="{{ $code }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- Calendário de observação do índice: hipótese, nunca contrato --}}
             <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/30">
                 <label class="block text-sm font-semibold text-amber-900 dark:text-amber-200" for="indexRateCalendarCode">
@@ -135,12 +159,23 @@
                         <option value="{{ $code }}">{{ $label }}</option>
                     @endforeach
                 </select>
-                <dl class="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                <dl class="mt-3 grid gap-2 text-xs sm:grid-cols-3">
                     <div>
                         <dt class="font-medium text-gray-600 dark:text-gray-400">Calendário da curva</dt>
                         <dd class="text-gray-900 dark:text-gray-100">
                             {{ $this->curveCalendarCode() ?? '—' }}
                             <span class="text-gray-500 dark:text-gray-400">— Contratual</span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="font-medium text-gray-600 dark:text-gray-400">Calendário de accrual</dt>
+                        <dd class="text-gray-900 dark:text-gray-100">
+                            @if ($this->accrualCalendarOverride())
+                                {{ $this->accrualCalendarOverride() }}
+                                <span class="text-amber-700 dark:text-amber-300">— Override de simulação</span>
+                            @else
+                                Mesmo calendário contratual
+                            @endif
                         </dd>
                     </div>
                     <div>

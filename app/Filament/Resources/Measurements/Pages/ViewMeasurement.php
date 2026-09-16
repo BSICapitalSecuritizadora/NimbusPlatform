@@ -4,17 +4,20 @@ namespace App\Filament\Resources\Measurements\Pages;
 
 use App\Concerns\MoneyFormatter;
 use App\DTOs\Measurements\MeasurementFinancialReconciliationLine;
+use App\Enums\MeasurementReceiptReviewStatus;
 use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\MeasurementResource;
 use App\Models\MeasurementPayment;
+use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\MeasurementPlanSet;
 use App\Models\User;
-use App\Services\DocumentStorageService;
 use App\Services\MeasurementFinancialReconciliationService;
+use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementWorkflow;
 use Closure;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -28,8 +31,10 @@ use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\RawJs;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 
@@ -50,7 +55,8 @@ class ViewMeasurement extends ViewRecord
             $this->resumeAction(),
             $this->registerPaymentAction(),
             $this->attachReceiptAction(),
-            $this->deleteReceiptAction(),
+            $this->attachReceiptAction(postFinalization: true),
+            $this->reviewReceiptAction(),
             $this->returnToStageAction(),
             $this->finalizeAction(),
         ];
@@ -494,150 +500,118 @@ class ViewMeasurement extends ViewRecord
         };
     }
 
-    private function attachReceiptAction(): Action
+    private function attachReceiptAction(bool $postFinalization = false): Action
     {
-        return Action::make('attachReceipt')
-            ->label('Enviar Comprovante')
+        return Action::make($postFinalization ? 'correctReceipt' : 'attachReceipt')
+            ->label($postFinalization ? 'Corrigir comprovante' : 'Anexar / substituir comprovante')
             ->icon('heroicon-o-paper-clip')
             ->color('info')
             ->modalWidth('2xl')
-            ->visible(fn (): bool => $this->workflow()->canManageReceipts($this->record, $this->actor()) && $this->pendingReceiptPayments()->isNotEmpty())
-            ->schema(fn (): array => $this->attachReceiptSchema())
-            ->action(function (array $data): void {
-                $this->guarded(function () use ($data): void {
-                    $attached = 0;
-                    $expectedRevision = (int) $data['expected_revision'];
-                    $expectedStatus = (string) $data['expected_status'];
-
-                    foreach ($data['receipts'] ?? [] as $row) {
-                        if (blank($row['receipt'] ?? null)) {
-                            continue;
-                        }
-
-                        $payment = $this->record->payments()->whereKey($row['payment_id'] ?? null)->first();
-
-                        if ($payment instanceof MeasurementPayment) {
-                            $this->workflow()->attachReceipt(
-                                $payment,
-                                $this->actor(),
-                                $row['receipt'],
-                                DocumentStorageService::privateDisk(),
-                                expectedRevision: $expectedRevision,
-                                expectedStatus: $expectedStatus,
-                            );
-                            $attached++;
-                            $this->record->refresh();
-                            $expectedRevision = (int) $this->record->workflow_revision;
-                            $expectedStatus = (string) $this->record->status;
-                        }
-                    }
-
-                    if ($attached === 0) {
-                        Notification::make()->warning()->title('Nenhum comprovante enviado.')->send();
-
-                        return;
-                    }
-
-                    $this->notify($attached > 1 ? "{$attached} comprovantes anexados." : 'Comprovante anexado.');
-                });
-            });
-    }
-
-    /**
-     * @return array<int, Component>
-     */
-    private function attachReceiptSchema(): array
-    {
-        $labels = $this->planSetLabelMap();
-
-        $rows = $this->pendingReceiptPayments()
-            ->map(fn (MeasurementPayment $payment): array => [
-                'payment_id' => $payment->id,
-                'plan_set_id' => $payment->plan_set_id,
-            ])
-            ->all();
-
-        return [
-            Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
-            Hidden::make('expected_status')->default(fn (): string => (string) $this->record->status),
-            Repeater::make('receipts')
-                ->label('Comprovante por pagamento')
-                ->addable(false)
-                ->deletable(false)
-                ->reorderable(false)
-                ->default($rows)
-                ->itemLabel(fn (array $state): ?string => $labels[$state['plan_set_id'] ?? null] ?? null)
-                ->schema([
-                    Hidden::make('payment_id'),
-                    Select::make('plan_set_id')
-                        ->label('Empreendimento')
-                        ->options($labels)
-                        ->disabled()
-                        ->dehydrated(false),
-                    FileUpload::make('receipt')
-                        ->label('Comprovante')
-                        ->disk(DocumentStorageService::privateDisk())
-                        ->directory(DocumentStorageService::PRIVATE_PREFIX.'/measurements/receipts')
-                        ->acceptedFileTypes((array) config('uploads.measurement_receipt.allowed_mimes', []))
-                        ->maxSize((int) config('uploads.measurement_receipt.max_kb', 10240)),
-                ]),
-        ];
-    }
-
-    /**
-     * @return Collection<int, MeasurementPayment>
-     */
-    private function pendingReceiptPayments(): Collection
-    {
-        return $this->record->payments()
-            ->whereNull('receipt_path')
-            ->orderBy('id')
-            ->get();
-    }
-
-    private function deleteReceiptAction(): Action
-    {
-        return Action::make('deleteReceipt')
-            ->label('Remover Comprovante')
-            ->icon('heroicon-o-trash')
-            ->color('danger')
-            ->visible(fn (): bool => $this->workflow()->canManageReceipts($this->record, $this->actor()) && $this->receiptPayments()->isNotEmpty())
+            ->modalDescription($postFinalization
+                ? 'A finalização original será preservada. A nova versão ficará pendente de conferência documental.'
+                : 'O arquivo anterior será preservado. Cada envio cria uma nova versão pendente de conferência.')
+            ->visible(fn (): bool => ($this->record->status === 'finalized') === $postFinalization
+                && app(MeasurementReceiptEvidenceService::class)->canUpload($this->record, $this->actor())
+                && $this->record->payments()->exists())
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),
-                Hidden::make('expected_status')->default(fn (): string => (string) $this->record->status),
+                Hidden::make('expected_evidence_id'),
                 Select::make('payment_id')
                     ->label('Pagamento')
-                    ->options(fn (): array => $this->receiptPayments()
+                    ->options(fn (): array => $this->record->payments()->orderBy('id')->get()
                         ->mapWithKeys(fn (MeasurementPayment $payment): array => [
-                            $payment->getKey() => sprintf('%s — R$ %s', $payment->pay_date?->format('d/m/Y'), number_format((float) $payment->amount, 2, ',', '.')),
-                        ])
-                        ->all())
-                    ->required(),
+                            $payment->getKey() => sprintf('#%d · %s · R$ %s · %s', $payment->getKey(), $payment->pay_date?->format('d/m/Y'), number_format((float) $payment->amount, 2, ',', '.'), $payment->method ?: 'Método não informado'),
+                        ])->all())
+                    ->required()->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        $payment = $this->record->payments()->with('currentReceiptEvidence')->find($state);
+                        $set('expected_evidence_id', $payment?->currentReceiptEvidence?->getKey());
+                    }),
+                FileUpload::make('receipt')
+                    ->label('Comprovante')->required()->storeFiles(false)
+                    ->acceptedFileTypes((array) config('uploads.measurement_receipt.allowed_mimes', []))
+                    ->maxSize((int) config('uploads.measurement_receipt.max_kb', 10240)),
+                Textarea::make('correction_reason')
+                    ->label('Motivo da correção / substituição')
+                    ->required(fn (Get $get): bool => $postFinalization || filled($get('expected_evidence_id')))
+                    ->maxLength(5000)->rows(3),
             ])
-            ->requiresConfirmation()
-            ->action(function (array $data): void {
-                $this->guarded(function () use ($data): void {
-                    $payment = $this->record->payments()->whereKey($data['payment_id'])->firstOrFail();
-                    $this->workflow()->deleteReceipt(
-                        $payment,
-                        $this->actor(),
-                        expectedRevision: (int) $data['expected_revision'],
-                        expectedStatus: (string) $data['expected_status'],
-                    );
-                    $this->notify('Comprovante removido. A medição voltou a aguardar o documento.');
+            ->action(function (array $data) use ($postFinalization): void {
+                $this->guarded(function () use ($data, $postFinalization): void {
+                    $payment = $this->record->payments()->findOrFail($data['payment_id']);
+                    $expectedEvidenceId = filled($data['expected_evidence_id'] ?? null) ? (int) $data['expected_evidence_id'] : null;
+                    $service = app(MeasurementReceiptEvidenceService::class);
+
+                    if ($postFinalization) {
+                        $service->correctFinalizedReceipt($payment, $this->actor(), $data['receipt'], $data['correction_reason'], $expectedEvidenceId);
+                    } else {
+                        $service->upload($payment, $this->actor(), $data['receipt'], $expectedEvidenceId, $data['correction_reason'] ?? null, (int) $data['expected_revision']);
+                    }
+
+                    $this->notify('Nova versão anexada. Aguardando conferência documental do Finalizador.');
                 });
             });
     }
 
-    /**
-     * @return Collection<int, MeasurementPayment>
-     */
-    private function receiptPayments(): Collection
+    private function reviewReceiptAction(): Action
     {
-        return $this->record->payments()
-            ->whereNotNull('receipt_path')
-            ->orderBy('id')
-            ->get();
+        return Action::make('reviewReceipt')
+            ->label('Conferir comprovante')
+            ->icon('heroicon-o-document-check')
+            ->modalWidth('2xl')->requiresConfirmation()
+            ->visible(fn (): bool => app(MeasurementReceiptEvidenceService::class)->canReview($this->record, $this->actor())
+                && $this->pendingReceiptEvidences()->isNotEmpty())
+            ->schema([
+                Select::make('evidence_id')->label('Versão para conferência')->required()->live()
+                    ->options(fn (): array => $this->pendingReceiptEvidences()
+                        ->mapWithKeys(fn (MeasurementPaymentReceiptEvidence $evidence): array => [
+                            $evidence->getKey() => sprintf('Pagamento #%d · v%d · %s', $evidence->measurement_payment_id, $evidence->version, $evidence->original_filename ?? 'Nome original não registrado no fluxo legado'),
+                        ])->all())
+                    ->afterStateUpdated(fn (Set $set) => $set('confirmed', false)),
+                Placeholder::make('evidence_context')->label('Conferência documental')
+                    ->content(function (Get $get): View {
+                        $evidence = $this->pendingReceiptEvidences()->firstWhere('id', (int) $get('evidence_id'));
+
+                        return view('filament.infolists.measurement-receipt-review', compact('evidence'));
+                    }),
+                Select::make('decision')->label('Decisão documental')->required()->live()
+                    ->options(['approved' => 'Aprovar comprovante', 'rejected' => 'Rejeitar comprovante']),
+                Textarea::make('notes')->label('Observação (opcional)')->maxLength(5000)->rows(2),
+                Textarea::make('rejection_reason')->label('Motivo da rejeição')->maxLength(5000)->rows(3)
+                    ->visible(fn (Get $get): bool => $get('decision') === 'rejected')
+                    ->required(fn (Get $get): bool => $get('decision') === 'rejected'),
+                Checkbox::make('confirmed')
+                    ->label('Confirmo que conferi o comprovante correspondente a este pagamento.')
+                    ->accepted()->required(),
+            ])
+            ->action(function (array $data): void {
+                $this->guarded(function () use ($data): void {
+                    $evidence = MeasurementPaymentReceiptEvidence::query()
+                        ->whereHas('payment', fn ($query) => $query->where('measurement_id', $this->record->getKey()))
+                        ->findOrFail($data['evidence_id']);
+                    app(MeasurementReceiptEvidenceService::class)->review(
+                        $evidence,
+                        $this->actor(),
+                        MeasurementReceiptReviewStatus::from($data['decision']),
+                        (bool) $data['confirmed'],
+                        $data['notes'] ?? null,
+                        $data['rejection_reason'] ?? null,
+                    );
+                    $this->notify('Decisão documental registrada para esta versão.');
+                });
+            });
+    }
+
+    /** @return Collection<int, MeasurementPaymentReceiptEvidence> */
+    private function pendingReceiptEvidences(): Collection
+    {
+        return $this->record->payments()->with(['currentReceiptEvidence.uploadedByUser'])->get()
+            ->map(function (MeasurementPayment $payment): ?MeasurementPaymentReceiptEvidence {
+                $evidence = $payment->currentReceiptEvidence;
+                $evidence?->setRelation('payment', $payment);
+
+                return $evidence;
+            })->filter(fn (?MeasurementPaymentReceiptEvidence $evidence): bool => $evidence?->review_status === MeasurementReceiptReviewStatus::Pending)->values();
     }
 
     private function finalizeAction(): Action
@@ -648,7 +622,7 @@ class ViewMeasurement extends ViewRecord
             ->color('success')
             ->requiresConfirmation()
             ->modalHeading('Finalizar medição')
-            ->modalDescription('Após finalizar, a medição não poderá mais ser alterada.')
+            ->modalDescription('A finalização do workflow será preservada. Correções posteriores de comprovantes exigirão nova versão e conferência documental.')
             ->visible(fn (): bool => $this->workflow()->canFinalize($this->record, $this->actor()))
             ->schema([
                 Hidden::make('expected_revision')->default(fn (): int => (int) $this->record->workflow_revision),

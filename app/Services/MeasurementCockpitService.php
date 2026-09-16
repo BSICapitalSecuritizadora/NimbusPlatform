@@ -64,7 +64,6 @@ class MeasurementCockpitService
             ->whereIn('measurement_id', $measurementIds)
             ->selectRaw('COUNT(*) as payment_count')
             ->selectRaw('COALESCE(SUM(amount), 0) as recorded_amount')
-            ->selectRaw("COALESCE(SUM(CASE WHEN receipt_path IS NULL OR receipt_path = '' THEN 1 ELSE 0 END), 0) as pending_receipt_count")
             ->first();
 
         $delegatedQuery = clone $query;
@@ -84,7 +83,7 @@ class MeasurementCockpitService
             'calendar_unavailable' => $slaCounts[MeasurementSlaService::STATUS_CALENDAR_UNAVAILABLE],
             'delegated' => $delegatedQuery->count(),
             'payment_count' => (int) ($paymentSummary?->payment_count ?? 0),
-            'pending_receipt_count' => (int) ($paymentSummary?->pending_receipt_count ?? 0),
+            'pending_receipt_count' => MeasurementPayment::query()->whereIn('measurement_id', $measurementIds)->withoutReceipt()->count(),
             'recorded_amount' => (float) ($paymentSummary?->recorded_amount ?? 0),
         ];
     }

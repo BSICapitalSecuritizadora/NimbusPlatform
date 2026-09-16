@@ -23,6 +23,7 @@ use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
 
@@ -641,9 +642,8 @@ it('does not add reconciliation as a sixth gate for finalization', function () {
     ]);
     $workflow->approve($measurement->fresh(), $scenario['actor']);
 
-    $receiptPath = "nimbus_docs/measurements/receipts/recon-{$measurement->getKey()}.pdf";
-    Storage::disk('local')->put($receiptPath, "%PDF-1.7\nreceipt\n%%EOF");
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], $receiptPath, 'local');
+    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
 
     $workflow->finalize($measurement->fresh(), $scenario['actor']);
 

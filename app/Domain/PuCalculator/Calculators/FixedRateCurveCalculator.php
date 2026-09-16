@@ -35,11 +35,16 @@ class FixedRateCurveCalculator implements PuIndexCalculatorInterface
     ) {}
 
     /**
+     * `$accrualCalendarCode` é a hipótese de calendário de accrual: nula devolve o contratual.
+     *
      * `$indexRateCalendarCode` não se aplica a este indexador -- uma curva prefixada não observa índice algum --,
      * então é aceito apenas para satisfazer o contrato e permanece sem efeito.
      */
-    public function calculate(Emission $emission, ?string $indexRateCalendarCode = null): PuCurveGenerationResult
-    {
+    public function calculate(
+        Emission $emission,
+        ?string $indexRateCalendarCode = null,
+        ?string $accrualCalendarCode = null,
+    ): PuCurveGenerationResult {
         $emission->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
 
         $parameter = $emission->puParameter;
@@ -51,6 +56,12 @@ class FixedRateCurveCalculator implements PuIndexCalculatorInterface
         if ($parameter->annual_rate === null) {
             throw new InvalidArgumentException('A taxa anual (annual_rate) é obrigatória para operações prefixadas.');
         }
+
+        // Nulo devolve o contratual: a produção, que nunca informa a hipótese, permanece idêntica.
+        $accrualCalendarOverride = $accrualCalendarCode !== null ? trim($accrualCalendarCode) : '';
+        $accrualCalendar = $accrualCalendarOverride !== ''
+            ? $accrualCalendarOverride
+            : (string) $parameter->calendar_code;
 
         $startDate = CarbonImmutable::instance($parameter->curve_start_date);
         $endDate = CarbonImmutable::instance($parameter->curve_end_date);
@@ -72,7 +83,7 @@ class FixedRateCurveCalculator implements PuIndexCalculatorInterface
                 $businessDaysSinceReset = 0;
             }
 
-            $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $parameter->calendar_code);
+            $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $accrualCalendar);
             $quantity = $this->eventSupport->quantityForDate($quantityTimeline, $currentDate);
 
             if ($currentDate->equalTo($startDate)) {
@@ -204,7 +215,7 @@ class FixedRateCurveCalculator implements PuIndexCalculatorInterface
                 'calculation_method' => $method->value,
                 'indexer' => $parameter->indexer,
                 'is_business_day' => $isBusinessDay,
-                'calendar_code' => $parameter->calendar_code,
+                'calendar_code' => $accrualCalendar,
                 'annual_rate' => $annualRate,
                 'base_unit_value_raw' => $baseUnitValue,
                 'factor_di_raw' => $oneFactor,

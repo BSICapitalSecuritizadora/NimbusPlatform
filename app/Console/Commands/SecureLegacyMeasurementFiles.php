@@ -6,6 +6,7 @@ use App\Models\Measurement;
 use App\Models\MeasurementAsset;
 use App\Models\MeasurementFileMigration;
 use App\Models\MeasurementPayment;
+use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Services\DocumentStorageService;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
@@ -151,6 +152,7 @@ class SecureLegacyMeasurementFiles extends Command
         $modelClass = $configuration['model'];
 
         $modelClass::query()
+            ->when($modelClass === MeasurementPayment::class, fn (Builder $query): Builder => $query->whereDoesntHave('receiptEvidences'))
             ->whereNotNull($configuration['path'])
             ->where(fn (Builder $legacy): Builder => $legacy
                 ->whereNull($configuration['disk'])
@@ -266,6 +268,10 @@ class SecureLegacyMeasurementFiles extends Command
     ): string {
         $configuration = $this->configurationForJournal($journal);
         $record = $this->recordForJournal($journal, $configuration);
+        if ($record instanceof MeasurementPayment && $record->receiptEvidences()->exists()) {
+            throw new RuntimeException('Comprovante materializado como evidência: migração legada bloqueada para preservar o arquivo.');
+        }
+
         $recordPointsToSource = $this->recordPointsToSource($record, $journal, $configuration);
         $recordPointsToDestination = $this->recordPointsToDestination($record, $journal, $configuration);
 
@@ -454,6 +460,10 @@ class SecureLegacyMeasurementFiles extends Command
             $modelClass = $configuration['model'];
             $locked = $modelClass::query()->whereKey($lockedJournal->migratable_id)->lockForUpdate()->firstOrFail();
 
+            if ($locked instanceof MeasurementPayment && $locked->receiptEvidences()->exists()) {
+                throw new RuntimeException('O comprovante foi materializado como evidência; o DB switch legado foi bloqueado.');
+            }
+
             if (! $this->hasExpectedChecksum(
                 $lockedJournal->destination_path,
                 $lockedJournal->destination_disk,
@@ -564,6 +574,10 @@ class SecureLegacyMeasurementFiles extends Command
 
     private function isLegacySourceStillReferenced(MeasurementFileMigration $journal): bool
     {
+        if ($this->isEvidenceFile($journal->source_disk, $journal->source_path)) {
+            return true;
+        }
+
         foreach (self::FILE_CONFIGURATIONS as $role => $configuration) {
             $modelClass = $configuration['model'];
             $query = $modelClass::query()
@@ -698,6 +712,14 @@ class SecureLegacyMeasurementFiles extends Command
             && hash_equals($journal->source_sha256, $record->getAttribute($configuration['hash']));
     }
 
+    private function isEvidenceFile(string $disk, string $path): bool
+    {
+        return MeasurementPaymentReceiptEvidence::query()->where('storage_path', $path)
+            ->where(fn (Builder $query): Builder => $disk === 'public'
+                ? $query->whereNull('storage_disk')->orWhereIn('storage_disk', ['', 'public'])
+                : $query->where('storage_disk', $disk))->exists();
+    }
+
     private function copyAndVerify(
         string $sourceDisk,
         string $sourcePath,
@@ -707,6 +729,10 @@ class SecureLegacyMeasurementFiles extends Command
         DocumentStorageService $storage,
         bool $allowOverwrite,
     ): bool {
+        if ($this->isEvidenceFile($destinationDisk, $destinationPath)) {
+            throw new RuntimeException('O destino pertence a uma evidência imutável e não pode ser sobrescrito.');
+        }
+
         if ($storage->exists($destinationPath, $destinationDisk)) {
             if ($this->hasExpectedChecksum($destinationPath, $destinationDisk, $expectedHash, $storage)) {
                 return true;
@@ -779,6 +805,10 @@ class SecureLegacyMeasurementFiles extends Command
 
     private function removeRecoveryCopy(MeasurementFileMigration $journal, DocumentStorageService $storage): void
     {
+        if ($this->isEvidenceFile($journal->destination_disk, $journal->recovery_path)) {
+            return;
+        }
+
         if (! $storage->exists($journal->recovery_path, $journal->destination_disk)) {
             return;
         }

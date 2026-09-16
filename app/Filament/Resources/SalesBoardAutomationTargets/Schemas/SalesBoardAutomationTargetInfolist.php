@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesBoardAutomationTargets\Schemas;
 use App\Enums\SalesBoardAutomationSatisfiedVia;
 use App\Enums\SalesBoardAutomationTargetStatus;
 use App\Models\SalesBoardAutomationTarget;
+use App\Support\SalesBoards\SalesBoardIssuePresenter;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -53,6 +54,18 @@ class SalesBoardAutomationTargetInfolist
             Section::make('Motivo da parada')
                 ->visible(fn (SalesBoardAutomationTarget $record): bool => $record->currentReason() !== null)
                 ->schema([
+                    TextEntry::make('blocker_meaning')
+                        ->label('O que impede a apuração')
+                        ->state(fn (SalesBoardAutomationTarget $record): array => array_map(
+                            fn (array $issue): string => $issue['hint'] === null
+                                ? sprintf('%s (%s)', $issue['label'], $issue['code'])
+                                : sprintf('%s (%s) — %s', $issue['label'], $issue['code'], $issue['hint']),
+                            SalesBoardIssuePresenter::describe($record->blockerCodes()),
+                        ))
+                        ->listWithLineBreaks()
+                        ->bulleted()
+                        ->visible(fn (SalesBoardAutomationTarget $record): bool => $record->blockerCodes() !== [])
+                        ->columnSpanFull(),
                     TextEntry::make('last_blocker_codes')
                         ->label('Códigos')
                         ->placeholder('—')

@@ -47,6 +47,20 @@ it('says whether the scheduler has run at all', function () {
         ->assertSee('competência limite 08/2026');
 });
 
+it('says the automation is switched off instead of pretending the scheduler died', function () {
+    Livewire::test(ListSalesBoardAutomationTargets::class)
+        ->assertOk()
+        ->assertSee('Automação desligada')
+        ->assertSee('Nenhuma execução registrada');
+
+    $construction = AutomationFixture::readyConstruction();
+    AutomationFixture::enable([$construction]);
+
+    Livewire::test(ListSalesBoardAutomationTargets::class)
+        ->assertOk()
+        ->assertDontSee('Automação desligada');
+});
+
 it('separates what needs action from what is done', function () {
     $ready = AutomationFixture::readyConstruction('1');
     $blocked = AutomationFixture::blockedConstruction('2');

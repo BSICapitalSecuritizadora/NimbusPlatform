@@ -113,7 +113,12 @@ final class PuSimulationService
         }
 
         $calendarStart = $this->calendarStartDate($parameter, $startDate);
-        $calendar = $this->calendarDiagnostics($parameter, $calendarStart, $endDate);
+        $calendar = $this->calendarDiagnostics(
+            $parameter,
+            $calendarStart,
+            $endDate,
+            $input->accrualCalendarCode(),
+        );
 
         if (! $calendar['resolvable']) {
             return $this->failure(
@@ -150,9 +155,20 @@ final class PuSimulationService
         // simulação continua resolvendo as datas de taxa pelo calendário
         // contratual, exatamente como a produção.
         $indexRateCalendarCode = $input->indexRateCalendarCode();
+        // Hipótese de calendário de ACCRUAL da curva. Nula por padrão: a
+        // simulação continua contando Dia Útil pelo calendário contratual.
+        // Os eventos já foram datados acima, pela convenção de pagamento sobre
+        // o calendário contratual, e não são reprocessados por esta hipótese.
+        $accrualCalendarCode = $input->accrualCalendarCode();
 
         try {
-            $ratePlan = $this->ratePlan($parameter, $startDate, $endDate, $indexRateCalendarCode);
+            $ratePlan = $this->ratePlan(
+                $parameter,
+                $startDate,
+                $endDate,
+                $indexRateCalendarCode,
+                $accrualCalendarCode,
+            );
         } catch (Throwable $exception) {
             // Só se alcança aqui por resolução de calendário fora da janela
             // provada acima ou por prêmio mal configurado. Em nenhum dos casos a
@@ -192,7 +208,13 @@ final class PuSimulationService
         }
 
         try {
-            $rows = $this->runOfficialEngine($emission, $parameter, $events, $indexRateCalendarCode);
+            $rows = $this->runOfficialEngine(
+                $emission,
+                $parameter,
+                $events,
+                $indexRateCalendarCode,
+                $accrualCalendarCode,
+            );
         } catch (Throwable $exception) {
             return new PuSimulationResult(
                 state: PuSimulationState::CalculationFailed,
@@ -243,6 +265,7 @@ final class PuSimulationService
         CarbonImmutable $startDate,
         CarbonImmutable $endDate,
         ?string $indexRateCalendarCode = null,
+        ?string $accrualCalendarCode = null,
     ): array {
         if (! $parameter->indexer_enum->requiresIndexRates()) {
             return ['required_rate_dates' => [], 'missing_rate_dates' => [], 'conflicting_rates' => []];
@@ -257,6 +280,7 @@ final class PuSimulationService
             seriesCode: (string) $source['code'],
             sourceReference: sprintf('%s:%s', $source['source'], $source['code']),
             indexRateCalendarCode: $indexRateCalendarCode,
+            accrualCalendarCode: $accrualCalendarCode,
         );
 
         return [
@@ -303,6 +327,7 @@ final class PuSimulationService
         EmissionPuParameter $parameter,
         array $events,
         ?string $indexRateCalendarCode = null,
+        ?string $accrualCalendarCode = null,
     ): array {
         $scenario = clone $emission;
         $scenario->setRelation('puParameter', $parameter);
@@ -310,7 +335,7 @@ final class PuSimulationService
         $scenario->setRelation('integralizationHistories', new EloquentCollection);
         $this->indexRateLookup->flushCache();
 
-        return $this->curveGenerator->handle($scenario, $indexRateCalendarCode)->rows;
+        return $this->curveGenerator->handle($scenario, $indexRateCalendarCode, $accrualCalendarCode)->rows;
     }
 
     /**
@@ -505,8 +530,11 @@ final class PuSimulationService
         EmissionPuParameter $parameter,
         CarbonImmutable $from,
         CarbonImmutable $to,
+        ?string $accrualCalendarCode = null,
     ): array {
         $calendarCode = (string) $parameter->calendar_code;
+        $accrualOverride = $accrualCalendarCode !== null ? trim($accrualCalendarCode) : '';
+        $accrualCalendar = $accrualOverride !== '' ? $accrualOverride : $calendarCode;
 
         try {
             $summary = $this->calendarCoverage->summary($calendarCode, $from, $to);
@@ -524,10 +552,31 @@ final class PuSimulationService
 
             $this->rateRequirements->resolve($parameter, $from);
             $this->rateRequirements->resolve($parameter, $to);
+
+            // Sob hipótese de accrual, é o calendário de accrual que a engine consulta em cada data.
+            // Provar só o contratual deixaria o usuário escolher um calendário sem cobertura e receber
+            // a exceção crua do meio do cálculo em vez deste diagnóstico.
+            if ($accrualCalendar !== $calendarCode) {
+                $accrualSummary = $this->calendarCoverage->summary($accrualCalendar, $from, $to);
+                $accrualAnnual = $this->calendarCoverage->annualCoverage($accrualCalendar, $from, $to);
+
+                foreach ($this->calendarCoverage->missingDates($accrualCalendar, $from, $to) as $missingDate) {
+                    $this->rateRequirements->resolve(
+                        $parameter,
+                        CarbonImmutable::parse($missingDate)->startOfDay(),
+                        null,
+                        $accrualCalendar,
+                    );
+                }
+
+                $this->rateRequirements->resolve($parameter, $from, null, $accrualCalendar);
+                $this->rateRequirements->resolve($parameter, $to, null, $accrualCalendar);
+            }
         } catch (Throwable $exception) {
             return [
                 'resolvable' => false,
                 'calendar_code' => $calendarCode,
+                'accrual_calendar_code' => $accrualCalendar,
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
                 'reason' => $this->readableFailure($exception),
@@ -546,6 +595,10 @@ final class PuSimulationService
         return [
             'resolvable' => true,
             'calendar_code' => $calendarCode,
+            'accrual_calendar_code' => $accrualCalendar,
+            'accrual_calendar_overridden' => $accrualCalendar !== $calendarCode,
+            'accrual_annual_coverage' => $accrualAnnual ?? [],
+            'accrual_missing_days' => $accrualSummary['missing_count'] ?? 0,
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
             'reason' => 'O calendário resolve todas as datas da janela simulada.',

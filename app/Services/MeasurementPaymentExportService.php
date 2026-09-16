@@ -76,6 +76,7 @@ class MeasurementPaymentExportService
                     'payments.planSet.construction:id,development_name',
                     'payments.createdByUser:id,name',
                     'payments.receiptUploadedByUser:id,name',
+                    'payments.currentReceiptEvidence',
                     'reviews.reviewer:id,name',
                     'pauses:id,measurement_id,stage,paused_at,resumed_at',
                 ])

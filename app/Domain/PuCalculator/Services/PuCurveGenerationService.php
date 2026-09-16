@@ -33,9 +33,18 @@ class PuCurveGenerationService
      * `$indexRateCalendarCode` é o calendário de OBSERVAÇÃO do índice, separado
      * do calendário contratual da curva. Nulo -- todo o caminho de produção --
      * mantém os dois idênticos e o resultado inalterado.
+     *
+     * `$accrualCalendarCode` é o calendário de ACCRUAL: decide quais dias da curva contam Dia Útil, e
+     * portanto a contagem de DU, o DUP/DUT e a incidência do fator diário. Nulo devolve o contratual.
+     * Os eventos NÃO passam por aqui -- eles chegam já datados em `puEvents`, resolvidos pela convenção
+     * de pagamento sobre o calendário contratual --, de modo que a hipótese de accrual não desloca
+     * nenhum pagamento.
      */
-    public function handle(Emission $emission, ?string $indexRateCalendarCode = null): PuCurveGenerationResult
-    {
+    public function handle(
+        Emission $emission,
+        ?string $indexRateCalendarCode = null,
+        ?string $accrualCalendarCode = null,
+    ): PuCurveGenerationResult {
         $emission->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
 
         if ($emission->puParameter === null) {
@@ -43,6 +52,7 @@ class PuCurveGenerationService
         }
 
         $parameter = $emission->puParameter;
+        $accrualCalendar = $this->accrualCalendarCode($parameter, $accrualCalendarCode);
         $startDate = CarbonImmutable::instance($parameter->curve_start_date);
         $endDate = CarbonImmutable::instance($parameter->curve_end_date);
         $eventGroups = $this->groupEventsByDate($emission->puEvents);
@@ -65,12 +75,13 @@ class PuCurveGenerationService
                 $businessDaysSinceReset = 0;
             }
 
-            $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $parameter->calendar_code);
+            $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $accrualCalendar);
             $quantity = $this->quantityForDate($quantityTimeline, $currentDate);
             $rateRequirement = $this->indexRateRequirementResolver->resolve(
                 $parameter,
                 $currentDate,
                 $indexRateCalendarCode,
+                $accrualCalendarCode,
             );
             $rateSnapshot = $rateRequirement->rate;
 
@@ -246,7 +257,7 @@ class PuCurveGenerationService
             $calculationMemory = [
                 'engine_version' => PuAuditLogService::ENGINE_VERSION,
                 'is_business_day' => $isBusinessDay,
-                'calendar_code' => $parameter->calendar_code,
+                'calendar_code' => $accrualCalendar,
                 'index_rate_lookup_mode' => $parameter->index_rate_lookup_mode,
                 'base_unit_value_raw' => $baseUnitValue,
                 'factor_di_raw' => $factorDi,
@@ -320,6 +331,19 @@ class PuCurveGenerationService
      * @param  EloquentCollection<int, EmissionPuEvent>  $events
      * @return array<string, Collection<int, EmissionPuEvent>>
      */
+    /**
+     * Calendário que decide o Dia Útil de accrual. Nulo devolve o contratual, e é por isso que a
+     * produção inteira -- que nunca informa a hipótese -- continua idêntica.
+     */
+    private function accrualCalendarCode(
+        EmissionPuParameter $parameter,
+        ?string $accrualCalendarCode,
+    ): string {
+        $override = $accrualCalendarCode !== null ? trim($accrualCalendarCode) : '';
+
+        return $override !== '' ? $override : (string) $parameter->calendar_code;
+    }
+
     private function groupEventsByDate(EloquentCollection $events): array
     {
         return $events

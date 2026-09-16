@@ -37,7 +37,7 @@ class SalesBoardResource extends Resource
 
     protected static ?string $navigationParentItem = 'Emissões';
 
-    protected static ?int $navigationSort = 11;
+    protected static ?int $navigationSort = 10;
 
     public static function form(Schema $schema): Schema
     {

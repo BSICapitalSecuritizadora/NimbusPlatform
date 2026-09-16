@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
 
@@ -168,13 +169,13 @@ it('executes the formal five-stage workflow without treating payment registratio
         ->and($measurement->fresh()->current_stage)->toBe(5)
         ->and($measurement->fresh()->reviewForStage(4)?->status)->toBe('approved');
 
-    $receiptPath = 'nimbus_docs/measurements/receipts/payment.pdf';
-    Storage::disk('local')->put($receiptPath, '%PDF-1.7 receipt-real-content');
-    $workflow->attachReceipt($payment, $scenario['receipt'], $receiptPath, 'local');
+    $workflow->attachReceipt($payment, $scenario['receipt'], MeasurementReceiptEvidenceScenario::file('payment.pdf', '%PDF-1.7 receipt-real-content'));
 
-    expect($measurement->fresh()->status)->toBe('approved')
-        ->and($payment->fresh()->receipt_uploaded_by)->toBe($scenario['receipt']->id)
-        ->and($payment->fresh()->receipt_sha256)->toBe(hash('sha256', '%PDF-1.7 receipt-real-content'));
+    expect($measurement->fresh()->status)->toBe('awaiting_receipt')
+        ->and($payment->fresh()->currentReceiptEvidence->uploaded_by)->toBe($scenario['receipt']->id)
+        ->and($payment->fresh()->currentReceiptEvidence->sha256)->toBe(hash('sha256', '%PDF-1.7 receipt-real-content'));
+
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['finalizer']);
 
     $workflow->finalize($measurement->fresh(), $scenario['finalizer']);
 

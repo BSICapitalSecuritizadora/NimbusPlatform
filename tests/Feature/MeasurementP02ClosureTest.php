@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
 
@@ -161,9 +162,8 @@ function advanceP02ToReadyForFinalization(array $scenario): void
         'amount' => 1000,
     ]);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
-    $receiptPath = "nimbus_docs/measurements/receipts/p02-{$scenario['measurement']->id}.pdf";
-    putP02Pdf($receiptPath, 'receipt');
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], $receiptPath, 'local');
+    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
 }
 
 it('persists the complete versioned Engineering context and approved evidence', function () {
@@ -372,8 +372,8 @@ it('keeps old Measurements on A B C while new Measurements can approve D and pay
         'amount' => 1000,
     ]);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
-    putP02Pdf('nimbus_docs/measurements/receipts/old-measurement.pdf', 'old-receipt');
-    $workflow->attachReceipt($payment, $scenario['actor'], 'nimbus_docs/measurements/receipts/old-measurement.pdf', 'local');
+    $workflow->attachReceipt($payment, $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
     $workflow->finalize($scenario['measurement']->fresh(), $scenario['actor']);
 
     expect($scenario['measurement']->fresh()->status)->toBe('finalized')

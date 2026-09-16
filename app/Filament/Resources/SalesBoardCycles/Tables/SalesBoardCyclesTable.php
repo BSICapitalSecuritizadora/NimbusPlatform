@@ -7,6 +7,7 @@ use App\Enums\SalesBoardStaleImpact;
 use App\Filament\Resources\SalesBoardCycles\Actions\CheckSalesBoardCycleStaleAction;
 use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\SalesBoardCycle;
+use App\Support\SalesBoards\SalesBoardCycleNextAction;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\Width;
@@ -28,8 +29,8 @@ class SalesBoardCyclesTable
             ->defaultSort('reference_month', 'desc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
-            ->emptyStateHeading('Nenhum ciclo congelado')
-            ->emptyStateDescription('Congele uma competência para registrar o que o Nimbus apurou nela.')
+            ->emptyStateHeading('Nenhum ciclo gerado')
+            ->emptyStateDescription('Nenhuma competência foi congelada ainda, ou nenhuma corresponde aos filtros aplicados. Use “Congelar competência” para apurar a posição de um empreendimento.')
             ->emptyStateIcon('heroicon-o-camera')
             ->columns([
                 TextColumn::make('construction.development_name')
@@ -68,6 +69,14 @@ class SalesBoardCyclesTable
                     ->badge()
                     ->formatStateUsing(fn (SalesBoardCycleStatus $state): string => $state->label())
                     ->color(fn (SalesBoardCycleStatus $state): string => $state->color()),
+
+                TextColumn::make('next_action')
+                    ->label('Próxima ação')
+                    ->state(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->headline)
+                    ->icon(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->icon)
+                    ->color(fn (SalesBoardCycle $record): string => SalesBoardCycleNextAction::for($record)->color)
+                    ->wrap()
+                    ->visibleFrom('md'),
 
                 TextColumn::make('currentBaseline.version')
                     ->label('Versão')

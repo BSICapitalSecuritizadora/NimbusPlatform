@@ -8,8 +8,8 @@ use App\DTOs\SalesBoards\SalesBoardAutomationEligibleTarget;
 use App\Enums\SalesBoardSource;
 use App\Models\Construction;
 use App\Models\Emission;
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -47,7 +47,7 @@ class DatabaseSalesBoardAutomationEligibilityProvider implements SalesBoardAutom
 
     public function eligibleTargets(): array
     {
-        if (! Config::get('sales_board.automation.enabled', false)) {
+        if (! SalesBoardAutomationConfig::enabled()) {
             return [];
         }
 

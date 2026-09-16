@@ -28,6 +28,7 @@ use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\MeasurementReceiptEvidenceScenario;
 
 uses(RefreshDatabase::class);
 
@@ -143,9 +144,8 @@ function advanceP01ToDocumentedFinalization(array $scenario): void
         'plan_set_id' => $scenario['planSets']->first()->id,
     ]);
     $workflow->approve($scenario['measurement']->fresh(), $scenario['actor']);
-    $receiptPath = "nimbus_docs/measurements/receipts/p01-{$scenario['measurement']->id}.pdf";
-    putP01Pdf($receiptPath, suffix: 'receipt');
-    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], $receiptPath, 'local');
+    $workflow->attachReceipt($payment->fresh(), $scenario['actor'], MeasurementReceiptEvidenceScenario::file());
+    MeasurementReceiptEvidenceScenario::approveCurrentReceipt($payment, $scenario['actor']);
 }
 
 it('blocks participant self-assignment and payment responsibility changes without the granular permission', function () {

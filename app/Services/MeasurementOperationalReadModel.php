@@ -40,14 +40,14 @@ class MeasurementOperationalReadModel
                 'payments.planSet.construction:id,development_name',
                 'payments.createdByUser:id,name',
                 'payments.receiptUploadedByUser:id,name',
+                'payments.currentReceiptEvidence',
                 'reviews.reviewer:id,name',
                 'pauses:id,measurement_id,stage,paused_at,resumed_at',
             ])
             ->withCount([
                 'payments',
                 'payments as payments_with_receipt_count' => fn (Builder $payments): Builder => $payments
-                    ->whereNotNull('receipt_path')
-                    ->where('receipt_path', '!=', ''),
+                    ->withReceipt(),
             ])
             ->withSum('payments', 'amount');
     }

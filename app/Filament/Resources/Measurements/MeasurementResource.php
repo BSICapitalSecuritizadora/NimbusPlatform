@@ -61,7 +61,7 @@ class MeasurementResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['operation', 'assets.planSet.construction', 'reviews', 'pauses']);
+        $query = parent::getEloquentQuery()->with(['operation', 'assets.planSet.construction', 'reviews', 'pauses', 'payments.currentReceiptEvidence', 'payments.receiptEvidences.uploadedByUser', 'payments.receiptEvidences.reviewer', 'payments.receiptEvidences.supersededBy']);
         $user = auth()->user();
 
         return $user === null ? $query->whereRaw('1 = 0') : $query->visibleTo($user);

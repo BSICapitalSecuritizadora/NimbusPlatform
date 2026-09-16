@@ -16,7 +16,16 @@ it('catalogues official, legacy and pending calendars with explicit metadata', f
     $catalog = app(BusinessCalendarCatalogService::class);
     $definitions = $catalog->definitions();
 
-    expect(BusinessCalendar::query()->count())->toBe(4)
+    expect(BusinessCalendar::query()->count())->toBe(5)
+        // A quinta entrada é o calendário financeiro consolidado, registrado deliberadamente. Fixar o
+        // conjunto exato de códigos impede tanto que ele desapareça quanto que outro entre sem revisão.
+        ->and(array_keys($definitions))->toEqualCanonicalizing([
+            BusinessCalendarRegistry::LEGACY_B3,
+            BusinessCalendarRegistry::BR_BANKING_ANBIMA,
+            BusinessCalendarRegistry::B3_LISTED_TRADING,
+            BusinessCalendarRegistry::BR_FINANCIAL_MARKET,
+            BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS,
+        ])
         ->and($definitions[BusinessCalendarRegistry::LEGACY_B3])->toMatchArray([
             'legacy' => true,
             'available_for_new_configurations' => false,
@@ -42,6 +51,25 @@ it('catalogues official, legacy and pending calendars with explicit metadata', f
             'materialization_policy' => 'weekday_with_official_exceptions',
             'financial_use_allowed' => false,
             'available_for_new_configurations' => false,
+        ])
+        ->and($definitions[BusinessCalendarRegistry::BR_FINANCIAL_MARKET])->toMatchArray([
+            'label' => 'BR_FINANCIAL_MARKET — Mercado financeiro brasileiro — calendário consolidado',
+            'official' => true,
+            'type' => 'financial_market',
+            'source' => 'Reconciliação ANBIMA × FEBRABAN — Resolução CMN 4.880, de 23.12.2020',
+            'status' => 'review_required',
+            'import_mode' => 'source_reconciliation',
+            // explicit_official_decisions é o que faz uma data sem cobertura levantar exceção em vez de
+            // ser inferida como dia útil de segunda a sexta.
+            'materialization_policy' => 'explicit_official_decisions',
+            'coverage_basis' => 'explicit_dates',
+            'accepts_anbima' => false,
+            'legacy' => false,
+            'homologation' => false,
+            // Nasce sem consumidores: fora das configurações novas até a homologação.
+            'financial_use_allowed' => false,
+            'available_for_new_configurations' => false,
+            'confirmed_years_count' => 0,
         ]);
 });
 
@@ -61,6 +89,7 @@ it('hides HML, legacy and calendars without an approved source from new configur
         ->not->toHaveKey(BusinessCalendarRegistry::LEGACY_B3)
         ->not->toHaveKey(BusinessCalendarRegistry::B3_LISTED_TRADING)
         ->not->toHaveKey(BusinessCalendarRegistry::BR_NATIONAL_HOLIDAYS)
+        ->not->toHaveKey(BusinessCalendarRegistry::BR_FINANCIAL_MARKET)
         ->not->toHaveKey('HML_PU_REFERENCE')
         ->and($legacyOptions)->toHaveKey(BusinessCalendarRegistry::LEGACY_B3);
 });

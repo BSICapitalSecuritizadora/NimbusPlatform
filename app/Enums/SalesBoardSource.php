@@ -34,7 +34,7 @@ enum SalesBoardSource: string
     public function label(): string
     {
         return match ($this) {
-            self::Legacy => 'Manual (legado)',
+            self::Legacy => 'Legado',
             self::Automated => 'Automatizado',
         };
     }

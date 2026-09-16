@@ -148,11 +148,13 @@ class ConstructionForm
     {
         return Section::make('Localização')
             ->description('Endereço principal da obra.')
+            ->extraAttributes(['class' => 'bsi-construction-location-section'])
             ->schema([
                 TextInput::make('city')
                     ->label('Cidade')
                     ->required()
                     ->maxLength(255)
+                    ->extraAttributes(['class' => 'bsi-field-city'])
                     ->columnSpan(['sm' => 2])
                     ->validationMessages([
                         'required' => 'Informe a cidade.',
@@ -162,7 +164,7 @@ class ConstructionForm
                     ->label('Estado')
                     ->options(Construction::STATE_OPTIONS)
                     ->searchable()
-                    ->extraAttributes(['class' => 'fi-fixed-positioning-context'])
+                    ->extraAttributes(['class' => 'fi-fixed-positioning-context bsi-field-state'])
                     ->required()
                     ->columnSpan(['sm' => 1])
                     ->validationMessages([
@@ -241,7 +243,8 @@ class ConstructionForm
     public static function measurementSection(bool $useRelationship = true): Section
     {
         $measurementCompanyField = Select::make('measurement_company_id')
-            ->label('Empresa de medição');
+            ->label('Empresa de medição')
+            ->extraAttributes(['class' => 'fi-fixed-positioning-context bsi-field-measurement-company']);
 
         $measurementCompanyField = $useRelationship
             ? $measurementCompanyField
@@ -260,6 +263,7 @@ class ConstructionForm
 
         return Section::make('Medição')
             ->description('Empresa responsável pelo acompanhamento e medição.')
+            ->extraAttributes(['class' => 'bsi-construction-measurement-section'])
             ->schema([
                 $measurementCompanyField
                     ->preload()
@@ -299,6 +303,7 @@ class ConstructionForm
                     ->label('CNPJ da empresa de medição')
                     ->readOnly()
                     ->helperText('Preenchido automaticamente a partir da empresa de medição selecionada.')
+                    ->extraAttributes(['class' => 'bsi-field-measurement-company-cnpj'])
                     ->dehydrated(false)
                     ->afterStateHydrated(function (TextInput $component): void {
                         $record = $component->getRecord();

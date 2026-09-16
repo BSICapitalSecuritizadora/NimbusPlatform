@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\SalesBoards\Schemas;
 
 use App\Concerns\MoneyFormatter;
+use App\Enums\SalesBoardSource;
+use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Models\Emission;
 use App\Models\SalesBoard;
+use App\Models\SalesBoardPublication;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -20,10 +23,56 @@ class SalesBoardInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
+            static::governancePublicationSection(),
             static::operationDataSection(),
             static::initialPositionSection(),
             static::currentPositionSection(),
         ]);
+    }
+
+    /**
+     * Um quadro publicado pela governança do ciclo mensal é imutável, e a tela
+     * diz isso antes de o operador tentar alterá-lo -- não depois, pela recusa do
+     * guard.
+     */
+    protected static function governancePublicationSection(): Section
+    {
+        return Section::make('Publicado pelo fluxo de governança')
+            ->icon('heroicon-o-lock-closed')
+            ->columnSpanFull()
+            ->visible(fn (SalesBoard $record): bool => static::publication($record) !== null)
+            ->schema([
+                TextEntry::make('governance_immutability')
+                    ->hiddenLabel()
+                    ->state('Este quadro foi publicado pelo fluxo de governança e não pode mais ser alterado ou excluído manualmente.')
+                    ->icon('heroicon-m-lock-closed')
+                    ->weight('bold')
+                    ->helperText('Corrigir a posição publicada não é editar o quadro: a correção acontece na fonte e passa de novo pela validação da construtora e pela análise da Gestão.'),
+
+                TextEntry::make('governance_publication')
+                    ->label('Publicação')
+                    ->state(function (SalesBoard $record): string {
+                        $publication = static::publication($record);
+
+                        return sprintf(
+                            'Publicado em %s por %s, a partir da versão %s do ciclo.',
+                            $publication?->published_at?->format('d/m/Y \à\s H:i') ?? '—',
+                            $publication?->publishedBy?->name ?? '—',
+                            $publication?->baseline?->versionLabel() ?? '—',
+                        );
+                    })
+                    ->url(fn (SalesBoard $record): ?string => ($cycleId = static::publication($record)?->sales_board_cycle_id) === null
+                        ? null
+                        : SalesBoardCycleResource::getUrl('view', ['record' => $cycleId])),
+            ]);
+    }
+
+    protected static function publication(SalesBoard $record): ?SalesBoardPublication
+    {
+        return SalesBoardPublication::query()
+            ->with(['publishedBy', 'baseline'])
+            ->where('sales_board_id', $record->getKey())
+            ->first();
     }
 
     protected static function operationDataSection(): Section
@@ -32,7 +81,7 @@ class SalesBoardInfolist
             ->description('Contexto e identificação da operação securitizada.')
             ->icon('heroicon-o-building-office')
             ->columnSpanFull()
-            ->columns(['default' => 1, 'sm' => 2, 'md' => 3])
+            ->columns(['default' => 1, 'sm' => 2, 'md' => 4])
             ->schema([
                 TextEntry::make('emission.name')
                     ->label('Operação')
@@ -42,6 +91,13 @@ class SalesBoardInfolist
                     ->label('Empreendimento')
                     ->weight('bold')
                     ->icon('heroicon-m-building-office-2'),
+                TextEntry::make('emission.sales_board_source')
+                    ->label('Modo do Quadro de Vendas')
+                    ->formatStateUsing(fn (?SalesBoardSource $state): string => $state?->label() ?? '—')
+                    ->icon('heroicon-m-cog-6-tooth')
+                    ->helperText(fn (SalesBoard $record): ?string => $record->emission?->usesAutomatedSalesBoard()
+                        ? 'Competências a partir de '.($record->emission->sales_board_automation_start_reference_month?->format('m/Y') ?? '—').' são produzidas pelo ciclo mensal e publicadas pela Gestão.'
+                        : 'A posição mensal é registrada manualmente.'),
                 TextEntry::make('emission.status')
                     ->label('Status da Operação')
                     ->badge()

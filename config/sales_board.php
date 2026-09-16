@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\SalesBoards\SalesBoardAutomationConfig;
+
 return [
 
     /*
@@ -19,15 +21,20 @@ return [
     'automation' => [
 
         /*
-        | Interruptor geral. Desligado, o comando executa, não descobre nada e
-        | não escreve nada.
+        | Interruptor geral. Desligado, o comando volta imediatamente: não
+        | descobre nada, não tenta alvo nenhum, não roda lembrete e não registra
+        | nem a própria execução.
         |
         | O default é `false` de propósito: as migrations desta fase podem ser
         | aplicadas muito antes de existir decisão de rollout, e um ambiente que
         | ganhasse a tabela já começaria a gerar competências sem que ninguém
         | tivesse escolhido isso. Habilitar é decisão da Fase G.
+        |
+        | Só liga com `true`, `1`, `yes` ou `on`. Qualquer outro valor -- `off`,
+        | `no`, `2`, um erro de digitação -- é desligado: um interruptor de
+        | segurança falha fechado.
         */
-        'enabled' => env('SALES_BOARD_AUTOMATION_ENABLED', false),
+        'enabled' => SalesBoardAutomationConfig::flag(env('SALES_BOARD_AUTOMATION_ENABLED', false)),
 
         /*
         | Os empreendimentos habilitados, e desde que competência.
@@ -86,15 +93,19 @@ return [
         |
         | Dias civis corridos, não dias úteis: enquanto não existir regra de
         | negócio dizendo o contrário, contar dias úteis seria a mesma invenção.
+        |
+        | Só um inteiro não negativo liga o aviso. Zero vale -- "avisar assim que
+        | a condição existir" --, mas texto, decimal ou negativo desligam: um
+        | limiar ilegível nunca pode virar "avisar agora".
         */
         'reminders' => [
-            'blocked_after_days' => env('SALES_BOARD_AUTOMATION_BLOCKED_REMINDER_DAYS'),
-            'failed_after_attempts' => env('SALES_BOARD_AUTOMATION_FAILED_ESCALATION_ATTEMPTS'),
-            'ready_for_builder_after_days' => env('SALES_BOARD_AUTOMATION_READY_REMINDER_DAYS'),
-            'builder_review_after_days' => env('SALES_BOARD_AUTOMATION_BUILDER_REMINDER_DAYS'),
-            'builder_review_escalation_after_days' => env('SALES_BOARD_AUTOMATION_BUILDER_ESCALATION_DAYS'),
-            'management_review_after_days' => env('SALES_BOARD_AUTOMATION_MANAGEMENT_REMINDER_DAYS'),
-            'management_review_escalation_after_days' => env('SALES_BOARD_AUTOMATION_MANAGEMENT_ESCALATION_DAYS'),
+            'blocked_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_BLOCKED_REMINDER_DAYS')),
+            'failed_after_attempts' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_FAILED_ESCALATION_ATTEMPTS')),
+            'ready_for_builder_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_READY_REMINDER_DAYS')),
+            'builder_review_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_BUILDER_REMINDER_DAYS')),
+            'builder_review_escalation_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_BUILDER_ESCALATION_DAYS')),
+            'management_review_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_MANAGEMENT_REMINDER_DAYS')),
+            'management_review_escalation_after_days' => SalesBoardAutomationConfig::threshold(env('SALES_BOARD_AUTOMATION_MANAGEMENT_ESCALATION_DAYS')),
         ],
     ],
 

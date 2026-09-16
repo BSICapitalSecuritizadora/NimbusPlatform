@@ -128,6 +128,18 @@ class SalesBoardRolloutException extends RuntimeException implements ShouldntRep
             .'Reavalie a homologação antes de continuar.');
     }
 
+    /**
+     * A homologação aprovada deixou de descrever a fonte.
+     *
+     * Diferente de {@see self::assessmentStale()}, que fala com um rascunho: um
+     * rascunho se reavalia; uma homologação aprovada não se reescreve.
+     */
+    public static function homologationStale(): self
+    {
+        return new self('A fonte ou a posição mudou desde a homologação aprovada. '
+            .'Faça uma nova homologação: a ativação só pode usar exatamente o que a Gestão revisou.');
+    }
+
     public static function scopeChanged(): self
     {
         return new self('Os empreendimentos da Emissão mudaram desde a homologação. '

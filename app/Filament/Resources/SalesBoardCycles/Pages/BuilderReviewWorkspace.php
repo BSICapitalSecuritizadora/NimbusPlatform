@@ -6,6 +6,9 @@ use App\DTOs\SalesBoards\BuilderReviewerIdentity;
 use App\DTOs\SalesBoards\SalesBoardBuilderDivergenceInput;
 use App\DTOs\SalesBoards\SalesBoardBuilderReviewWorkspace as WorkspaceData;
 use App\Enums\SalesBoardBuilderDivergenceType;
+use App\Enums\SalesBoardBuilderReviewSection as SectionEnum;
+use App\Enums\SalesBoardBuilderReviewStatus;
+use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardManagementReviewStatus;
 use App\Enums\SalesBoardUnitClassification;
 use App\Exceptions\SalesBoardBuilderReviewException;
@@ -88,11 +91,71 @@ class BuilderReviewWorkspace extends Page
         }
 
         return sprintf(
-            '%s · %s · %s',
+            'Validação da construtora · %s · versão %s da posição · %s',
             $review->attemptLabel(),
             $review->baseline?->versionLabel() ?? '—',
             $review->status->label(),
         );
+    }
+
+    /**
+     * O que falta para esta rodada andar, a partir do que o workspace já trouxe
+     * e da situação do ciclo -- sem consulta nova e sem reproduzir a regra de
+     * envio, que continua sendo do serviço.
+     *
+     * @return array{headline: string, detail: string, color: string, icon: string}
+     */
+    public function nextAction(WorkspaceData $workspace): array
+    {
+        /** @var SalesBoardCycle $cycle */
+        $cycle = $this->getRecord();
+
+        return match ($workspace->status) {
+            SalesBoardBuilderReviewStatus::Draft => $workspace->canSubmit()
+                ? [
+                    'headline' => 'Envie a validação para a análise da Gestão.',
+                    'detail' => 'Todas as seções foram revisadas. O envio é definitivo: correções posteriores exigem uma nova rodada.',
+                    'color' => 'info',
+                    'icon' => 'heroicon-o-paper-airplane',
+                ]
+                : [
+                    'headline' => 'Conclua a revisão da construtora.',
+                    'detail' => sprintf(
+                        'Faltam %d de %d seções: %s. Confirme cada seção ou aponte a divergência; o envio fica disponível quando todas estiverem respondidas.',
+                        count($workspace->pendingSections()),
+                        $workspace->sectionsTotal,
+                        collect($workspace->pendingSections())->map(fn (SectionEnum $section): string => $section->label())->implode(', '),
+                    ),
+                    'color' => 'warning',
+                    'icon' => 'heroicon-o-clipboard-document-check',
+                ],
+            SalesBoardBuilderReviewStatus::Submitted => match ($cycle->status) {
+                SalesBoardCycleStatus::ManagementReview => [
+                    'headline' => 'Aguardando análise da Gestão.',
+                    'detail' => 'A validação foi enviada e não pode mais ser alterada.',
+                    'color' => 'info',
+                    'icon' => 'heroicon-o-scale',
+                ],
+                SalesBoardCycleStatus::Approved => [
+                    'headline' => 'Competência aprovada e publicada pela Gestão.',
+                    'detail' => 'Esta validação sustentou a publicação e permanece registrada como foi enviada.',
+                    'color' => 'success',
+                    'icon' => 'heroicon-o-check-badge',
+                ],
+                default => [
+                    'headline' => 'Esta rodada já foi enviada.',
+                    'detail' => 'A competência voltou à construtora. Na tela da competência, use “Abrir validação da construtora” para a rodada vigente.',
+                    'color' => 'gray',
+                    'icon' => 'heroicon-o-arrow-uturn-left',
+                ],
+            },
+            SalesBoardBuilderReviewStatus::Superseded => [
+                'headline' => 'Esta rodada foi substituída por uma nova versão da posição.',
+                'detail' => 'As declarações continuam registradas. Na tela da competência, use “Abrir validação da construtora” para validar a versão vigente.',
+                'color' => 'gray',
+                'icon' => 'heroicon-o-arrow-path',
+            ],
+        };
     }
 
     public function currentReview(): ?SalesBoardBuilderReview

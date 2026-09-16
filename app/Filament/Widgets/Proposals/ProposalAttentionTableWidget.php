@@ -5,6 +5,7 @@ namespace App\Filament\Widgets\Proposals;
 use App\Enums\ProposalStatus;
 use App\Models\Proposal;
 use App\Support\Proposals\ProposalDashboardData;
+use Filament\Forms\Components\Select;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -122,7 +123,10 @@ class ProposalAttentionTableWidget extends TableWidget
                     ->label('Responsável')
                     ->relationship('representative', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->modifyFormFieldUsing(fn (Select $field): Select => $field->extraAttributes([
+                        'class' => 'bsi-responsible-filter',
+                    ])),
             ]);
     }
 }
