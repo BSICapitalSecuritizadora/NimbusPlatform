@@ -182,11 +182,15 @@ class SalesBoardRolloutException extends RuntimeException implements ShouldntRep
         ));
     }
 
+    /**
+     * Não existe republicação: um ciclo aprovado não é recalculado, e dizer
+     * "corrija a fonte e recalcule" mandaria o operador a um botão desabilitado.
+     */
     public static function publishedBoardIsImmutable(): self
     {
         return new self('Este Quadro de Vendas foi publicado pela governança do ciclo mensal '
             .'e não pode ser alterado nem removido por fora dela. '
-            .'Corrigir a posição significa corrigir a fonte e recalcular.');
+            .'A posição publicada permanece como foi aprovada; correções na fonte passam a valer a partir das próximas competências.');
     }
 
     public static function sourceChangedConcurrently(SalesBoardSource $current): self

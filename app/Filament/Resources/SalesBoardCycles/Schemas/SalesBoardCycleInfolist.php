@@ -4,6 +4,7 @@ namespace App\Filament\Resources\SalesBoardCycles\Schemas;
 
 use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardStaleImpact;
+use App\Models\SalesBoardAutomationTarget;
 use App\Models\SalesBoardCycle;
 use App\Support\Money\IntegerMoney;
 use App\Support\SalesBoards\SalesBoardCycleNextAction;
@@ -107,7 +108,7 @@ class SalesBoardCycleInfolist
 
                 TextEntry::make('createdBy.name')
                     ->label('Congelado por')
-                    ->placeholder('—')
+                    ->placeholder(fn (SalesBoardCycle $record): string => static::withoutUserLabel($record))
                     ->icon('heroicon-m-user'),
             ]);
     }
@@ -167,7 +168,9 @@ class SalesBoardCycleInfolist
 
                 TextEntry::make('currentBaseline.computedBy.name')
                     ->label('Apurada por')
-                    ->placeholder('—'),
+                    ->placeholder(fn (SalesBoardCycle $record): string => ((int) $record->currentBaseline?->version === 1)
+                        ? static::withoutUserLabel($record)
+                        : 'Sem usuário registrado'),
 
                 TextEntry::make('currentBaseline.reason')
                     ->label('Motivo do recálculo')
@@ -209,6 +212,21 @@ class SalesBoardCycleInfolist
                     ->extraAttributes(['class' => 'font-mono'])
                     ->columnSpan(['default' => 1, 'md' => 2]),
             ]);
+    }
+
+    /**
+     * Quem congelou, quando não houve usuário.
+     *
+     * A automação gera o ciclo sem ator, e o traço sozinho parecia dado faltando.
+     * O vínculo com o alvo da automação é o que prova a origem; sem ele, o ciclo
+     * veio de outro processo sem usuário (o comando, por exemplo), e a tela não
+     * atribui à automação o que ela não fez.
+     */
+    protected static function withoutUserLabel(SalesBoardCycle $record): string
+    {
+        return SalesBoardAutomationTarget::query()->where('sales_board_cycle_id', $record->getKey())->exists()
+            ? 'Automação do Quadro'
+            : 'Sem usuário registrado';
     }
 
     protected static function bucket(string $label, string $prefix): TextEntry

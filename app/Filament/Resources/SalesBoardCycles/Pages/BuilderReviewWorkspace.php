@@ -356,6 +356,14 @@ class BuilderReviewWorkspace extends Page
                         $data['overall_comment'] ?? null,
                     );
 
+                    /**
+                     * O envio leva o ciclo à Gestão numa instância do serviço. Sem
+                     * recarregar, a próxima ação desta mesma resposta leria a
+                     * situação anterior e diria que a competência voltou à
+                     * construtora.
+                     */
+                    $this->getRecord()->refresh();
+
                     Notification::make()
                         ->title('Validação enviada')
                         ->body('A competência seguiu para análise da Gestão.')

@@ -587,6 +587,8 @@ class ManageSalesBoardRollout extends Page
                     return;
                 }
 
+                $this->refreshEmission();
+
                 Notification::make()
                     ->title('Automação ativada')
                     ->body($this->globalAutomationEnabled()
@@ -625,9 +627,21 @@ class ManageSalesBoardRollout extends Page
                     app(SalesBoardRolloutActivationService::class)
                         ->returnToLegacy($this->emission(), auth()->user(), (string) $data['reason']);
 
+                    $this->refreshEmission();
+
                     Notification::make()->title('Emissão retornada ao modo legado')->success()->send();
                 });
             });
+    }
+
+    /**
+     * O serviço grava numa instância própria, travada. A da página continua com
+     * o modo de antes, e a resposta desta mesma requisição mostraria "Legado"
+     * logo depois de ativar -- e mandaria abrir uma homologação nova.
+     */
+    protected function refreshEmission(): void
+    {
+        $this->emission()->refresh();
     }
 
     protected function activationPreview(): string

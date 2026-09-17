@@ -86,6 +86,10 @@ class PuCurveEventSupport
     }
 
     /**
+     * Encerramento do período de juros pela linha anterior. O critério é o pagamento UNITÁRIO,
+     * e não o financeiro: a quantidade em carteira não governa o ciclo do cupom, e uma curva sem
+     * timeline de integralização tem quantidade zero em toda data.
+     *
      * @param  list<PuDailyCurveRowData>  $rows
      */
     public function shouldResetAfterPreviousRow(array $rows): bool
@@ -96,7 +100,7 @@ class PuCurveEventSupport
 
         $lastRow = $rows[array_key_last($rows)];
 
-        return $lastRow->hasPayment();
+        return $lastRow->hasUnitPayment();
     }
 
     public function resolveAmortizationUnitValue(

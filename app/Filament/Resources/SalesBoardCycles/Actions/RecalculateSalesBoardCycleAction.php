@@ -72,6 +72,9 @@ class RecalculateSalesBoardCycleAction
                 $sameVersion = (int) $result->previousBaseline->getKey() === (int) $record->current_baseline_id;
                 $blockers = ($result->isBlocked() && $sameVersion) ? $result->readiness->blockingIssueCounts() : [];
 
+                // Versão nova e ciclo devolvido à construtora aparecem já nesta resposta.
+                $record->refresh();
+
                 $notification = Notification::make()
                     ->title($result->outcome->label())
                     ->body($blockers === []

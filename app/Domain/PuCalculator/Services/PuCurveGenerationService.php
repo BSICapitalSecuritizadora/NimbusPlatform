@@ -65,6 +65,15 @@ class PuCurveGenerationService
         $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
         $businessDaysSinceReset = 0;
         $openingPremiumApplied = false;
+        // Âncora do período de juros corrente: a Data de Integralização enquanto não houver
+        // cupom pago, e a última Data de Pagamento a partir dela. É estado derivado do reset --
+        // não participa de nenhuma fórmula, apenas torna o período auditável na memória.
+        $couponPeriodStartDate = $startDate;
+        $lastPaymentDate = null;
+        // Descritivo das casas decimais efetivamente aplicadas em cada estágio. Não participa
+        // de nenhuma conta: existe para que a auditoria de precisão contra uma referência
+        // externa possa ser feita estágio a estágio sem ler o código-fonte.
+        $precisionRules = $this->precisionRules($parameter);
         $rows = [];
 
         for ($currentDate = $startDate; $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
@@ -73,6 +82,8 @@ class PuCurveGenerationService
                 $factorDiAccumulated = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 $businessDaysSinceReset = 0;
+                $lastPaymentDate = $rows[array_key_last($rows)]->date;
+                $couponPeriodStartDate = $lastPaymentDate;
             }
 
             $isBusinessDay = $this->businessDayCalendar->isBusinessDay($currentDate, $accrualCalendar);
@@ -278,6 +289,10 @@ class PuCurveGenerationService
                 'index_rate_value' => $rateSnapshot?->reportedValue(),
                 'dup_interest' => $dupInterest,
                 'dut_interest' => $dutInterest,
+                'precision_rules' => $precisionRules,
+                'coupon_period_start_date' => $couponPeriodStartDate->toDateString(),
+                'coupon_period_end_date' => $currentDate->toDateString(),
+                'last_payment_date' => $lastPaymentDate?->toDateString(),
                 'reset_after_payment' => bccomp($paymentTotalUnitValue, '0', DecimalRounder::UNIT_SCALE) === 1,
                 'first_coupon_pre_integralization_premium_applied' => $openingPremiumAppliedOnCurrentRow,
                 'first_coupon_pre_integralization_premium' => $openingPremiumAppliedOnCurrentRow
@@ -404,6 +419,43 @@ class PuCurveGenerationService
         return $quantity;
     }
 
+    /**
+     * Casas decimais aplicadas em cada estágio da composição do fator, conforme o modo de
+     * busca do índice. Espelha exatamente o que `CdiFactorCompositionService` executa --
+     * nenhuma regra nova é introduzida aqui.
+     *
+     * `null` significa que o estágio NÃO sofre arredondamento intermediário nesse modo, e
+     * segue na escala de cálculo.
+     *
+     * @return array<string, int|string|null>
+     */
+    private function precisionRules(EmissionPuParameter $parameter): array
+    {
+        $mode = $parameter->index_rate_lookup_mode_enum;
+        $roundsDailyAndIndexFactor = $mode === PuIndexRateLookupMode::BusinessDayLagExact;
+        $roundsCombinedFactor = in_array($mode, [
+            PuIndexRateLookupMode::BusinessDayLagExact,
+            PuIndexRateLookupMode::PreviousCalendarDayExact,
+        ], true);
+
+        return [
+            'rounding_mode' => 'half_up_away_from_zero',
+            'daily_index_factor' => $roundsDailyAndIndexFactor ? 8 : null,
+            'accumulated_index_factor' => DecimalRounder::CALCULATION_SCALE,
+            'index_factor_for_combination' => $roundsDailyAndIndexFactor ? 8 : null,
+            'spread_factor' => $roundsDailyAndIndexFactor ? 9 : null,
+            'combined_interest_factor' => $roundsCombinedFactor ? 9 : null,
+            'interest_unit_value' => DecimalRounder::CALCULATION_SCALE,
+        ];
+    }
+
+    /**
+     * O período de juros é encerrado pelo pagamento UNITÁRIO da linha anterior, nunca pelo
+     * financeiro. Uma curva sem timeline de integralização -- simulação e homologação unitária --
+     * tem quantidade zero em toda data, e o financeiro seria zero mesmo no dia do cupom: o
+     * período nunca reiniciaria e a linha seguinte seguiria acumulando Fator DI, Fator Spread e
+     * DUP desde a integralização.
+     */
     private function shouldResetAfterPreviousRow(array $rows): bool
     {
         if ($rows === []) {
@@ -413,7 +465,7 @@ class PuCurveGenerationService
         /** @var PuDailyCurveRowData $lastRow */
         $lastRow = $rows[array_key_last($rows)];
 
-        return $lastRow->hasPayment();
+        return $lastRow->hasUnitPayment();
     }
 
     private function resolveAmortizationUnitValue(

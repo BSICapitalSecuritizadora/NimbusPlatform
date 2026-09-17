@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
@@ -38,6 +39,24 @@ class SalesBoardResource extends Resource
     protected static ?string $navigationParentItem = 'Emissões';
 
     protected static ?int $navigationSort = 10;
+
+    /**
+     * Breadcrumb e títulos mostram a competência como a operação a lê -- `08/2026`
+     * e o empreendimento --, nunca a data crua da coluna.
+     */
+    public static function getRecordTitle(?Model $record): string|Htmlable|null
+    {
+        if (! $record instanceof SalesBoard) {
+            return static::getModelLabel();
+        }
+
+        return collect([
+            SalesBoard::formatReferenceMonthForDisplay($record->reference_month),
+            $record->construction?->development_name,
+        ])
+            ->filter(fn (?string $part): bool => filled($part))
+            ->implode(' · ');
+    }
 
     public static function form(Schema $schema): Schema
     {

@@ -47,7 +47,7 @@ class SalesBoardInfolist
                     ->state('Este quadro foi publicado pelo fluxo de governança e não pode mais ser alterado ou excluído manualmente.')
                     ->icon('heroicon-m-lock-closed')
                     ->weight('bold')
-                    ->helperText('Corrigir a posição publicada não é editar o quadro: a correção acontece na fonte e passa de novo pela validação da construtora e pela análise da Gestão.'),
+                    ->helperText('A posição publicada permanece como foi aprovada. Correções na fonte passam a valer a partir das próximas competências.'),
 
                 TextEntry::make('governance_publication')
                     ->label('Publicação')

@@ -4,17 +4,21 @@ use App\Enums\SalesBoardCycleStatus;
 use App\Enums\SalesBoardRolloutHomologationStatus;
 use App\Enums\SalesBoardSource;
 use App\Enums\SalesBoardStaleImpact;
+use App\Exceptions\SalesBoardRolloutException;
 use App\Filament\Resources\SalesBoardAutomationTargets\Pages\ListSalesBoardAutomationTargets;
 use App\Filament\Resources\SalesBoardCycles\Pages\BuilderReviewWorkspace;
 use App\Filament\Resources\SalesBoardCycles\Pages\ListSalesBoardCycles;
 use App\Filament\Resources\SalesBoardCycles\Pages\ManagementReviewWorkspace;
 use App\Filament\Resources\SalesBoardCycles\Pages\ViewSalesBoardCycle;
+use App\Filament\Resources\SalesBoardCycles\SalesBoardCycleResource;
 use App\Filament\Resources\SalesBoardRollouts\Pages\ListSalesBoardRollouts;
 use App\Filament\Resources\SalesBoardRollouts\Pages\ManageSalesBoardRollout;
 use App\Filament\Resources\SalesBoards\Pages\CreateSalesBoard;
 use App\Filament\Resources\SalesBoards\Pages\ViewSalesBoard;
+use App\Filament\Resources\SalesBoards\SalesBoardResource;
 use App\Models\ContractInstallment;
 use App\Models\SalesBoard;
+use App\Models\SalesBoardAutomationTarget;
 use App\Models\SalesBoardCycle;
 use App\Models\SalesBoardRolloutHomologation;
 use App\Support\SalesBoards\SalesBoardIssuePresenter;
@@ -363,6 +367,192 @@ describe('ações bloqueadas', function () {
             );
 
         $page->assertNotified('Registro manual recusado');
+    });
+});
+
+/**
+ * `assertActionHidden()` confere a lógica da ação, não o HTML: uma ação escrita
+ * direto no Blade é impressa mesmo oculta, como botão inerte. Estes testes olham
+ * o que o operador vê.
+ */
+describe('ações ocultas não aparecem na tela', function () {
+    it('shows only the homologation entry point on a legacy emission without homologation', function () {
+        $scenario = RolloutFixture::emission(1);
+
+        Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+            ->assertActionHidden('activate')
+            ->assertActionHidden('returnToLegacy')
+            ->assertSee('Abrir homologação')
+            ->assertDontSee('Ativar automação')
+            ->assertDontSee('Retornar ao modo legado');
+    });
+
+    it('shows only the return to legacy on an automated emission', function () {
+        RolloutFixture::enableGlobalAutomation();
+        $scenario = RolloutFixture::emission(1);
+        RolloutFixture::legacyBoard($scenario['constructions'][0]);
+        RolloutFixture::activate($scenario['emission'], RolloutFixture::approvedHomologation($scenario['emission']));
+
+        Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+            ->assertSee('Retornar ao modo legado')
+            ->assertDontSee('Abrir homologação')
+            ->assertDontSee('Abrir nova homologação')
+            ->assertDontSee('Ativar automação');
+    });
+
+    it('drops the draft-only actions once the homologation is approved', function () {
+        $scenario = RolloutFixture::emission(1);
+        RolloutFixture::legacyBoard($scenario['constructions'][0]);
+        RolloutFixture::approvedHomologation($scenario['emission']);
+
+        Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+            ->assertSee('Ativar automação')
+            ->assertDontSee('Reavaliar')
+            ->assertDontSee('Marcar impacto sobre Garantias como revisado')
+            ->assertDontSee('Aprovar homologação')
+            ->assertDontSee('Rejeitar homologação');
+    });
+
+    it('shows no approve or return button on a closed management round', function () {
+        $published = guidancePublishedCycle();
+
+        Livewire::test(ManagementReviewWorkspace::class, ['record' => $published['cycle']->getKey()])
+            ->assertOk()
+            ->assertSee('Encerramento desta rodada')
+            ->assertDontSee('Aprovar e publicar')
+            ->assertDontSee('Devolver para a construtora');
+    });
+});
+
+/**
+ * Achados do primeiro teste manual: a resposta da própria ação precisa mostrar o
+ * estado novo, sem depender de recarregar a página.
+ */
+describe('tela atualizada logo depois da ação', function () {
+    it('shows the automated mode in the same response that activates, and legacy in the one that returns', function () {
+        config()->set('sales_board.automation.enabled', false);
+        $scenario = RolloutFixture::emission(1);
+        RolloutFixture::legacyBoard($scenario['constructions'][0]);
+        RolloutFixture::approvedHomologation($scenario['emission']);
+
+        // Depois de uma ação, `assertSeeInOrder()` lê o JSON da resposta, onde acentos
+        // chegam escapados; a ordem é conferida no HTML renderizado.
+        $page = Livewire::test(ManageSalesBoardRollout::class, ['record' => $scenario['emission']->getKey()])
+            ->callAction('activate', data: ['reason' => 'Ativação acordada com a operação.'])
+            ->assertHasNoActionErrors()
+            ->assertSee('A Emissão está configurada para automação, mas o interruptor global está desligado.')
+            ->assertDontSee('Abrir nova homologação');
+
+        expect($page->html())
+            ->toMatch('/Modo do Quadro de Vendas\s*<\/dt>\s*<dd[^>]*>\s*Automatizado/u')
+            ->toMatch('/Competência inicial da automação\s*<\/dt>\s*<dd[^>]*>\s*08\/2026/u');
+
+        $page->callAction('returnToLegacy', data: ['reason' => 'Retorno para revisar o cadastro da operação.'])
+            ->assertHasNoActionErrors()
+            ->assertSee('A última homologação já foi usada numa ativação. Reativar exige uma nova homologação.');
+
+        expect($page->html())->toMatch('/Modo do Quadro de Vendas\s*<\/dt>\s*<dd[^>]*>\s*Legado/u');
+    });
+
+    it('says the competence went to management in the same response that submits the validation', function () {
+        $scenario = BuilderReviewFixture::generatedCycle();
+        $review = BuilderReviewFixture::open($scenario['cycle']);
+        BuilderReviewFixture::confirmAll($review);
+
+        Livewire::test(BuilderReviewWorkspace::class, ['record' => $scenario['cycle']->getKey()])
+            ->callAction('submitReview', data: ['declaration' => true])
+            ->assertHasNoActionErrors()
+            ->assertSee('Aguardando análise da Gestão.')
+            ->assertDontSee('A competência voltou à construtora');
+
+        expect($scenario['cycle']->fresh()->status)->toBe(SalesBoardCycleStatus::ManagementReview);
+    });
+
+    it('shows the material change in the same response that checks the source', function () {
+        $scenario = BuilderReviewFixture::generatedCycle();
+        $scenario['contracts']['financed']->update(['sale_value' => '910000.00']);
+
+        Livewire::test(ViewSalesBoardCycle::class, ['record' => $scenario['cycle']->getKey()])
+            ->assertDontSee('Recalcule a posição antes de continuar.')
+            ->callAction('checkStale')
+            ->assertSee('Recalcule a posição antes de continuar.');
+    });
+
+    it('shows the new version in the same response that recalculates', function () {
+        $scenario = BuilderReviewFixture::generatedCycle();
+        $scenario['contracts']['financed']->update(['sale_value' => '910000.00']);
+
+        Livewire::test(ViewSalesBoardCycle::class, ['record' => $scenario['cycle']->getKey()])
+            ->assertSee('congelada na versão V1')
+            ->callAction('recalculate', data: ['reason' => 'Valor de venda corrigido pela construtora.'])
+            ->assertHasNoActionErrors()
+            ->assertSee('congelada na versão V2')
+            ->assertDontSee('congelada na versão V1');
+    });
+});
+
+describe('ajustes do primeiro teste manual', function () {
+    it('titles cycles and boards by competence and construction, never by the raw date', function () {
+        $cycle = BuilderReviewFixture::generatedCycle()['cycle']->fresh(['construction']);
+        $board = RolloutFixture::legacyBoard(RolloutFixture::emission(1)['constructions'][0])->fresh(['construction']);
+
+        expect(SalesBoardCycleResource::getRecordTitle($cycle))->toBe('07/2026 · '.$cycle->construction->development_name)
+            ->and(SalesBoardResource::getRecordTitle($board))->toBe('07/2026 · '.$board->construction->development_name);
+
+        Livewire::test(ViewSalesBoardCycle::class, ['record' => $cycle->getKey()])
+            ->assertOk()
+            ->assertDontSee('2026-07-01 00:00:00');
+    });
+
+    it('credits the automation for a cycle it generated, and nobody for one without user', function () {
+        $construction = AutomationFixture::readyConstruction();
+        AutomationFixture::enable([$construction]);
+        AutomationFixture::run();
+
+        $automated = SalesBoardCycle::query()->where('construction_id', $construction->id)->sole();
+
+        Livewire::test(ViewSalesBoardCycle::class, ['record' => $automated->getKey()])
+            ->assertSeeInOrder(['Congelado por', 'Automação do Quadro'])
+            ->assertSeeInOrder(['Apurada por', 'Automação do Quadro']);
+
+        $withoutUser = BuilderReviewFixture::generatedCycle()['cycle'];
+
+        Livewire::test(ViewSalesBoardCycle::class, ['record' => $withoutUser->getKey()])
+            ->assertSeeInOrder(['Congelado por', 'Sem usuário registrado'])
+            ->assertDontSee('Automação do Quadro');
+    });
+
+    it('does not send the operator to recalculate a published board', function () {
+        $message = SalesBoardRolloutException::publishedBoardIsImmutable()->getMessage();
+
+        expect($message)->toContain('não pode ser alterado nem removido')
+            ->toContain('correções na fonte passam a valer a partir das próximas competências')
+            ->not->toContain('recalcular');
+    });
+
+    it('shows "stopped since" only for what is actually stopped', function () {
+        $ready = AutomationFixture::readyConstruction('1');
+        $blocked = AutomationFixture::blockedConstruction('2');
+        AutomationFixture::enable([$ready, $blocked]);
+        AutomationFixture::run();
+
+        $satisfied = SalesBoardAutomationTarget::query()->where('construction_id', $ready->id)->sole();
+        $stopped = SalesBoardAutomationTarget::query()->where('construction_id', $blocked->id)->sole();
+
+        expect($satisfied->first_attempt_at)->not->toBeNull();
+
+        Livewire::test(ListSalesBoardAutomationTargets::class)
+            ->set('activeTab', 'todos')
+            ->assertTableColumnStateSet('first_attempt_at', null, $satisfied)
+            ->assertTableColumnStateNotSet('first_attempt_at', null, $stopped);
+    });
+
+    it('does not point to a screen that cannot register the exchange', function () {
+        $hint = SalesBoardIssuePresenter::describe(['EXCHANGE_SOURCE_MISSING'])[0]['hint'];
+
+        expect($hint)->toContain('enquanto a Emissão está em elaboração')
+            ->toContain('leve o caso à Gestão')
+            ->and(SalesBoardIssuePresenter::describe(['SETTLEMENT_UNDETERMINED'])[0]['hint'])->toContain('permuta registrada');
     });
 });
 

@@ -410,7 +410,7 @@ it('compensates failed storage validation or audit and keeps all previous versio
         ->toThrow($failure === 'validation' ? ValidationException::class : RuntimeException::class);
     expect($scenario['payment']->receiptEvidences()->count())->toBe(1)
         ->and(Storage::disk('local')->allFiles('nimbus_docs/measurements/receipts'))->toBe($before);
-});
+})->with(['validation', 'audit']);
 
 it('compensates a caller transaction rollback after a successful upload', function (bool $nested) {
     $scenario = Scenario::open();

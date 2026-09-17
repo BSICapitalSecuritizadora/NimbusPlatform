@@ -69,19 +69,23 @@ final class SalesBoardIssuePresenter
     /**
      * Onde a fonte é corrigida. Nunca "afrouxe a regra": o bloqueio é ausência
      * de dado, e o remédio é cadastrar o dado.
+     *
+     * Quando a tela não oferece o cadastro -- permuta com a operação em curso não
+     * se registra nem se edita por aqui --, a dica diz isso em vez de apontar um
+     * caminho que não existe.
      */
     private static function hint(SalesBoardIssueCode $code): string
     {
         return match ($code) {
             SalesBoardIssueCode::NoConstructionUnits => 'Cadastre as unidades do empreendimento em Obras › Unidades.',
             SalesBoardIssueCode::AmbiguousOccupancy => 'Revise os contratos da unidade: apenas um pode ocupá-la na data da posição.',
-            SalesBoardIssueCode::AmbiguousExchange => 'Revise as permutas da unidade (Unidades › Permutas): apenas uma pode estar vigente na data.',
-            SalesBoardIssueCode::ExchangeOccupancyConflict => 'Confira a permuta vigente e o contrato que ocupa a unidade: os dois não podem valer na mesma data.',
-            SalesBoardIssueCode::ExchangeSourceMissing => 'Registre a permuta que dá origem ao contrato permutado (Unidades › Permutas).',
-            SalesBoardIssueCode::SettlementUndetermined => 'Confira as parcelas do contrato: vencimentos e pagamentos precisam explicar a quitação na data.',
-            SalesBoardIssueCode::UnitValueMissing => 'Registre o valor da unidade vigente na data da posição (Unidades › Histórico de Valores).',
-            SalesBoardIssueCode::SaleUnitValueMissing => 'Registre o valor de referência da unidade vigente na data da venda (Unidades › Histórico de Valores).',
-            SalesBoardIssueCode::SaleDiscountPolicyMissing => 'Cadastre a política de desconto vigente na data da venda (Obras › Política Comercial de Desconto).',
+            SalesBoardIssueCode::AmbiguousExchange => 'A unidade tem mais de uma permuta vigente na data. Permutas não são editadas nem excluídas pela tela: leve o caso à Gestão.',
+            SalesBoardIssueCode::ExchangeOccupancyConflict => 'A permuta vigente aponta para outro contrato que não o que ocupa a unidade. Confira o contrato; se o erro estiver na permuta, leve o caso à Gestão, porque permutas não são editadas pela tela.',
+            SalesBoardIssueCode::ExchangeSourceMissing => 'O contrato está como permutado, mas a unidade não tem permuta registrada. A permuta só é declarada pela tela (Unidades › Permutas) enquanto a Emissão está em elaboração; com a operação em curso, leve o caso à Gestão.',
+            SalesBoardIssueCode::SettlementUndetermined => 'Confira as parcelas do contrato: vencimentos e pagamentos precisam explicar a quitação na data. Se o contrato é de permuta, o que falta é a permuta registrada na unidade.',
+            SalesBoardIssueCode::UnitValueMissing => 'Registre o valor da unidade vigente na data da posição: “Atualizar Valores” em Obras › Unidades (em lote) ou “Atualizar valor” na aba Histórico de Valores da unidade.',
+            SalesBoardIssueCode::SaleUnitValueMissing => 'Registre o valor de referência da unidade vigente na data da venda: “Atualizar Valores” em Obras › Unidades (em lote) ou “Atualizar valor” na aba Histórico de Valores da unidade.',
+            SalesBoardIssueCode::SaleDiscountPolicyMissing => 'Cadastre a política de desconto vigente na data da venda: na obra, aba Política Comercial de Desconto › “Nova política”.',
             SalesBoardIssueCode::UnitConstructionMismatch => 'Corrija o empreendimento do contrato ou da unidade: os dois precisam ser o mesmo.',
             SalesBoardIssueCode::SaleNonConform => 'Não impede a apuração: a venda será analisada pela Gestão.',
         };

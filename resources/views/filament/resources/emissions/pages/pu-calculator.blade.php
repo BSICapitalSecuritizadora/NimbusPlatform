@@ -25,6 +25,19 @@
         $show = fn ($value) => ($value === null || $value === '') ? null : (string) $value;
         $date = fn ($value) => $show($value) ? \Carbon\CarbonImmutable::parse($value)->format('d/m/Y') : null;
 
+        /**
+         * Apresentação pt-BR com 8 casas para valores monetários e para a taxa.
+         * Fatores técnicos seguem com a precisão integral da engine: a auditoria
+         * de precisão desta curva acontece na 8ª e na 9ª casa dos fatores.
+         */
+        $presenter = app(\App\Support\PuCalculator\PuDecimalPresenter::class);
+        $money = fn ($value) => $presenter->money($value);
+        $rate = fn ($value) => $presenter->rate($value);
+        $factor = fn ($value) => $presenter->factor($value);
+
+        /** Campos de parâmetro que são valor monetário e por isso seguem a mesma escala. */
+        $monetaryParameterFields = ['initial_unit_value'];
+
         $fieldLabels = [
             'indexer' => 'Indexador',
             'spread_rate' => 'Spread (% a.a.)',
@@ -266,6 +279,8 @@
                                     <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
                                         @if ($isBoolField)
                                             {{ $resolved === null ? 'Não definido' : (filter_var($resolved, FILTER_VALIDATE_BOOLEAN) ? 'Sim' : 'Não') }}
+                                        @elseif (in_array($field, $monetaryParameterFields, true))
+                                            {{ $money($resolved) ?? 'Não definido' }}
                                         @else
                                             {{ $show($resolved) ?? 'Não definido' }}
                                         @endif
@@ -433,21 +448,21 @@
                         PU na data selecionada
                     </p>
                     <p class="mt-1 break-all font-mono text-xl font-semibold text-success-900 dark:text-success-200">
-                        {{ $detail?->updatedUnitValue ?? '—' }}
+                        {{ $money($detail?->updatedUnitValue) ?? '—' }}
                     </p>
                     <p class="mt-1 text-xs text-success-800 dark:text-success-300">
-                        {{ $date($detail?->date?->toDateString()) ?? '—' }} — precisão integral da engine
+                        {{ $date($detail?->date?->toDateString()) ?? '—' }} — 8 casas; precisão integral preservada na memória
                     </p>
                 </div>
                 <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
                     <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">PU residual</p>
-                    <p class="mt-1 break-all font-mono text-sm text-gray-900 dark:text-gray-100">{{ $detail?->residualUnitValue ?? '—' }}</p>
+                    <p class="mt-1 break-all font-mono text-sm text-gray-900 dark:text-gray-100">{{ $money($detail?->residualUnitValue) ?? '—' }}</p>
                     <p class="mt-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Juros no dia</p>
-                    <p class="mt-1 break-all font-mono text-sm text-gray-900 dark:text-gray-100">{{ $detail?->interestRealUnitValue ?? '—' }}</p>
+                    <p class="mt-1 break-all font-mono text-sm text-gray-900 dark:text-gray-100">{{ $money($detail?->interestRealUnitValue) ?? '—' }}</p>
                 </div>
                 <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
                     <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">CDI utilizado</p>
-                    <p class="mt-1 break-all font-mono text-sm text-gray-900 dark:text-gray-100">{{ $detail?->indexRateValue ?? '—' }}</p>
+                    <p class="mt-1 break-all font-mono text-sm text-gray-900 dark:text-gray-100">{{ $rate($detail?->indexRateValue) ?? '—' }}</p>
                     <p class="mt-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Data da taxa</p>
                     <p class="mt-1 font-mono text-sm text-gray-900 dark:text-gray-100">{{ $date($detail?->indexRateDate?->toDateString()) ?? '—' }}</p>
                 </div>
@@ -463,7 +478,7 @@
                             Posição total (PU × quantidade)
                         </p>
                         <p class="mt-1 break-all font-mono text-sm text-gray-900 dark:text-gray-100">
-                            {{ $result->selectedTotalValue() }}
+                            {{ $money($result->selectedTotalValue()) ?? '—' }}
                         </p>
                     @endif
                 </div>
@@ -492,9 +507,9 @@
                         @endif
                         @if (!empty($result->premium['memory']))
                             <div class="mt-2 grid gap-x-6 gap-y-1 font-mono text-xs text-gray-600 md:grid-cols-3 dark:text-gray-300">
-                                <span>Fator CDI: {{ $result->premium['memory']['factor_di'] ?? '—' }}</span>
-                                <span>Fator spread: {{ $result->premium['memory']['factor_spread'] ?? '—' }}</span>
-                                <span>Prêmio acumulado: {{ $result->premium['memory']['factor'] ?? '—' }}</span>
+                                <span>Fator CDI: {{ $factor($result->premium['memory']['factor_di'] ?? null) ?? '—' }}</span>
+                                <span>Fator spread: {{ $factor($result->premium['memory']['factor_spread'] ?? null) ?? '—' }}</span>
+                                <span>Prêmio acumulado: {{ $factor($result->premium['memory']['factor'] ?? null) ?? '—' }}</span>
                             </div>
                         @endif
                     @else
@@ -590,11 +605,11 @@
                                     <td class="whitespace-nowrap px-3 py-1.5 font-mono text-gray-900 dark:text-gray-100">{{ $row->date->format('d/m/Y') }}</td>
                                     <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ $row->isBusinessDay ? 'Sim' : 'Não' }}</td>
                                     <td class="whitespace-nowrap px-3 py-1.5 font-mono text-gray-700 dark:text-gray-300">{{ $date($row->indexRateDate?->toDateString()) ?? '—' }}</td>
-                                    <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-300">{{ $row->indexRateValue ?? '—' }}</td>
-                                    <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-300">{{ $row->interestRealUnitValue }}</td>
-                                    <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-300">{{ $row->amortizationUnitValue }}</td>
-                                    <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-300">{{ $row->paymentTotalUnitValue }}</td>
-                                    <td class="px-3 py-1.5 text-right font-mono font-semibold text-gray-900 dark:text-gray-100">{{ $row->updatedUnitValue }}</td>
+                                    <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-300">{{ $rate($row->indexRateValue) ?? '—' }}</td>
+                                    <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-300">{{ $money($row->interestRealUnitValue) }}</td>
+                                    <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-300">{{ $money($row->amortizationUnitValue) }}</td>
+                                    <td class="px-3 py-1.5 text-right font-mono text-gray-700 dark:text-gray-300">{{ $money($row->paymentTotalUnitValue) }}</td>
+                                    <td class="px-3 py-1.5 text-right font-mono font-semibold text-gray-900 dark:text-gray-100">{{ $money($row->updatedUnitValue) }}</td>
                                     <td class="px-3 py-1.5 text-right">
                                         <button
                                             type="button"
@@ -648,22 +663,26 @@
                                 'Dia útil' => $detail->isBusinessDay ? 'Sim' : 'Não',
                                 'Calendário' => $memory['calendar_code'] ?? null,
                                 'Modo de busca do índice' => $memory['index_rate_lookup_mode'] ?? null,
-                                'PU base do período' => $detail->unitBaseValue,
+                                'Período do cupom' => $date($memory['coupon_period_start_date'] ?? null)
+                                    ? $date($memory['coupon_period_start_date']) . ' → ' . $date($memory['coupon_period_end_date'] ?? null)
+                                    : null,
+                                'Última Data de Pagamento' => $date($memory['last_payment_date'] ?? null),
+                                'PU base do período' => $money($detail->unitBaseValue),
                                 'DUP (juros)' => $detail->dupInterest,
                                 'DUT (juros)' => $detail->dutInterest,
                                 'Data da taxa CDI utilizada' => $date($detail->indexRateDate?->toDateString()),
-                                'Taxa CDI' => $detail->indexRateValue,
-                                'Fator CDI diário' => $detail->factorDi,
-                                'Fator CDI acumulado' => $detail->factorDiAccumulated,
-                                'Fator spread diário' => $detail->factorSpread,
-                                'Fator spread + CDI' => $detail->factorSpreadDi,
-                                'Juros acumulados no período' => $detail->interestRealUnitValue,
-                                'PU atualizado' => $detail->updatedUnitValue,
-                                'Amortização' => $detail->amortizationUnitValue,
-                                'Proporção de amortização' => $detail->amortizationRatio,
-                                'Pagamento de juros' => $detail->interestPaymentUnitValue,
-                                'Pagamento total' => $detail->paymentTotalUnitValue,
-                                'PU residual' => $detail->residualUnitValue,
+                                'Taxa CDI' => $rate($detail->indexRateValue),
+                                'Fator CDI diário' => $factor($detail->factorDi),
+                                'Fator CDI acumulado' => $factor($detail->factorDiAccumulated),
+                                'Fator spread diário' => $factor($detail->factorSpread),
+                                'Fator spread + CDI' => $factor($detail->factorSpreadDi),
+                                'Juros acumulados no período' => $money($detail->interestRealUnitValue),
+                                'PU atualizado' => $money($detail->updatedUnitValue),
+                                'Amortização' => $money($detail->amortizationUnitValue),
+                                'Proporção de amortização' => $factor($detail->amortizationRatio),
+                                'Pagamento de juros' => $money($detail->interestPaymentUnitValue),
+                                'Pagamento total' => $money($detail->paymentTotalUnitValue),
+                                'PU residual' => $money($detail->residualUnitValue),
                                 'Data original do evento' => $date($detail->eventOriginalDate?->toDateString()),
                                 'Data efetiva do evento' => $date($detail->eventEffectiveDate?->toDateString()),
                                 'Reset após pagamento' => ($memory['reset_after_payment'] ?? false) ? 'Sim' : 'Não',
@@ -680,6 +699,38 @@
                         @endforeach
                     </div>
 
+                    @if (!empty($memory['precision_rules']))
+                        @php $rules = $memory['precision_rules']; @endphp
+                        <div class="mt-3 rounded-lg border border-gray-200 p-3 text-xs dark:border-gray-700">
+                            <p class="font-semibold text-gray-700 dark:text-gray-300">
+                                Precisão aplicada por estágio
+                            </p>
+                            <p class="mt-1 text-gray-500 dark:text-gray-400">
+                                Casas decimais efetivamente arredondadas pela engine em cada etapa.
+                                &ldquo;integral&rdquo; = sem arredondamento intermediário nesta etapa.
+                            </p>
+                            <div class="mt-2 grid gap-x-6 gap-y-1 font-mono text-gray-600 md:grid-cols-2 dark:text-gray-300">
+                                @php
+                                    $ruleLabels = [
+                                        'daily_index_factor' => 'Fator DI diário (1 + TDIk)',
+                                        'accumulated_index_factor' => 'Produtório DI acumulado',
+                                        'index_factor_for_combination' => 'Fator DI antes da combinação',
+                                        'spread_factor' => 'Fator Spread',
+                                        'combined_interest_factor' => 'Fator DI × Fator Spread',
+                                        'interest_unit_value' => 'Juros',
+                                    ];
+                                @endphp
+                                @foreach ($ruleLabels as $ruleKey => $ruleLabel)
+                                    <span>
+                                        {{ $ruleLabel }}:
+                                        <strong>{{ ($rules[$ruleKey] ?? null) === null ? 'integral' : $rules[$ruleKey].' casas' }}</strong>
+                                    </span>
+                                @endforeach
+                                <span>Arredondamento: <strong>{{ $rules['rounding_mode'] ?? '—' }}</strong></span>
+                            </div>
+                        </div>
+                    @endif
+
                     @if (!empty($memory['event_types']))
                         <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
                             Eventos nesta data: <strong>{{ implode(', ', $memory['event_types']) }}</strong>
@@ -692,10 +743,10 @@
                                 Prêmio pré-integralização aplicado nesta data
                             </p>
                             <div class="mt-2 grid gap-x-6 gap-y-1 font-mono text-xs text-primary-800 dark:text-primary-300 md:grid-cols-2">
-                                <span>Fator antes do prêmio: {{ $memory['factor_spread_di_before_first_coupon_premium_raw'] ?? '—' }}</span>
-                                <span>Fator do prêmio: {{ $memory['first_coupon_pre_integralization_premium']['factor'] ?? '—' }}</span>
-                                <span>Fator CDI do prêmio: {{ $memory['first_coupon_pre_integralization_premium']['factor_di'] ?? '—' }}</span>
-                                <span>Fator spread do prêmio: {{ $memory['first_coupon_pre_integralization_premium']['factor_spread'] ?? '—' }}</span>
+                                <span>Fator antes do prêmio: {{ $factor($memory['factor_spread_di_before_first_coupon_premium_raw'] ?? null) ?? '—' }}</span>
+                                <span>Fator do prêmio: {{ $factor($memory['first_coupon_pre_integralization_premium']['factor'] ?? null) ?? '—' }}</span>
+                                <span>Fator CDI do prêmio: {{ $factor($memory['first_coupon_pre_integralization_premium']['factor_di'] ?? null) ?? '—' }}</span>
+                                <span>Fator spread do prêmio: {{ $factor($memory['first_coupon_pre_integralization_premium']['factor_spread'] ?? null) ?? '—' }}</span>
                             </div>
                         </div>
                     @endif

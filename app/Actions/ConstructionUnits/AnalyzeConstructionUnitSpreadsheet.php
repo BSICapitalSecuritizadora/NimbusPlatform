@@ -7,8 +7,10 @@ use App\Models\ConstructionUnit;
 use App\Models\Emission;
 use App\Support\Money\IntegerMoney;
 use Carbon\CarbonImmutable;
+use DateTimeInterface;
 use Illuminate\Support\Str;
 use Spatie\SimpleExcel\SimpleExcelReader;
+use Stringable;
 
 /**
  * Reads an import spreadsheet and classifies every row, without writing
@@ -252,6 +254,20 @@ class AnalyzeConstructionUnitSpreadsheet
         $value = $row[$header] ?? null;
 
         if ($value === null) {
+            return null;
+        }
+
+        /**
+         * Célula formatada como data no Excel volta do leitor como objeto, e não
+         * como texto: converter direto para string quebraria a importação inteira.
+         * O formato brasileiro é o que o resto desta classe já sabe interpretar.
+         */
+        if ($value instanceof DateTimeInterface) {
+            $value = $value->format('d/m/Y');
+        }
+
+        /** Qualquer outro objeto não é dado de planilha: a linha reclama do campo, e não estoura. */
+        if (is_object($value) && ! $value instanceof Stringable) {
             return null;
         }
 

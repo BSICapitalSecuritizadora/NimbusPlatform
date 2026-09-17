@@ -82,8 +82,29 @@ final readonly class PuDailyCurveRowData
         ];
     }
 
+    /**
+     * Pagamento FINANCEIRO da linha: depende da quantidade em carteira na data.
+     */
     public function hasPayment(): bool
     {
         return bccomp($this->paymentTotalValue, '0', 12) === 1;
+    }
+
+    /**
+     * Pagamento UNITÁRIO da linha, independente da posição em carteira.
+     *
+     * É este -- e nunca o financeiro -- que encerra o período de juros. O Termo de
+     * Securitização ancora o Fator DI na última Data de Pagamento dos Juros
+     * Remuneratórios, que é um fato do papel e não da posição: o cupom vence,
+     * e o período recomeça, mesmo que ninguém detenha o título na data.
+     *
+     * A distinção é material porque toda curva sem timeline de integralização
+     * (simulação e homologação unitária alimentam a engine com
+     * `integralizationHistories` vazio) tem quantidade zero em todas as datas, e
+     * portanto `payment_total_value` zero ainda quando o cupom unitário foi pago.
+     */
+    public function hasUnitPayment(): bool
+    {
+        return bccomp($this->paymentTotalUnitValue, '0', 12) === 1;
     }
 }

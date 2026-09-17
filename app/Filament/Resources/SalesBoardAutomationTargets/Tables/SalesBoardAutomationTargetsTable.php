@@ -65,8 +65,10 @@ class SalesBoardAutomationTargetsTable
                     ->placeholder('—')
                     ->wrap(),
 
+                // Competência satisfeita não está parada: a data só aparece para o que exige ação.
                 TextColumn::make('first_attempt_at')
                     ->label('Parado desde')
+                    ->state(fn (SalesBoardAutomationTarget $record): mixed => $record->isSatisfied() ? null : $record->first_attempt_at)
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('—')
                     ->visibleFrom('lg'),

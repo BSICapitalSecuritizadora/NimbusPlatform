@@ -364,19 +364,26 @@
                 </div>
             @endif
 
-            {{-- As duas ações decidem a própria visibilidade a partir do portão. --}}
-            <div class="mt-6 flex flex-wrap items-center gap-3">
-                {{ $this->returnToBuilderAction }}
-                {{ $this->approveAction }}
+            {{--
+                Ação escrita direto no Blade é impressa mesmo quando `visible()` a
+                esconde, como um botão inerte. As condições abaixo são as mesmas das
+                ações e usam o portão que o workspace já trouxe, sem apurá-lo de novo.
+                Rodada encerrada não mostra nenhuma das duas.
+            --}}
+            @if ($canDecide)
+                <div class="mt-6 flex flex-wrap items-center gap-3">
+                    {{ $this->returnToBuilderAction }}
 
-                {{-- Aprovar fica oculto enquanto o portão estiver fechado; o motivo aparece no lugar do botão. --}}
-                @if ($canDecide && ! $workspace->isReadyToPublish())
-                    <p class="text-sm text-gray-600 dark:text-gray-300">
-                        <span class="font-medium">Aprovar e publicar indisponível:</span>
-                        {{ implode('; ', $this->failedGateChecks($workspace)) }}.
-                    </p>
-                @endif
-            </div>
+                    @if ($workspace->isReadyToPublish())
+                        {{ $this->approveAction }}
+                    @else
+                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                            <span class="font-medium">Aprovar e publicar indisponível:</span>
+                            {{ implode('; ', $this->failedGateChecks($workspace)) }}.
+                        </p>
+                    @endif
+                </div>
+            @endif
         </x-filament::section>
 
         {{-- O encerramento, quando já houve um. --}}

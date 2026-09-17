@@ -14,6 +14,10 @@ use App\Services\SalesBoards\UnitValueResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Writer\XLSX\Writer;
 use Spatie\SimpleExcel\SimpleExcelReader;
 use Spatie\SimpleExcel\SimpleExcelWriter;
 
@@ -94,6 +98,46 @@ it('records a first value for a unit that had none', function () {
         ->and($recorded->effective_from->toDateString())->toBe('2026-07-01')
         ->and($recorded->source)->toBe(UnitValueSource::SpreadsheetImport)
         ->and($recorded->reason)->toBe('Reajuste');
+});
+
+/**
+ * Uma planilha salva no Excel guarda a competência como célula de data, e o leitor
+ * devolve um objeto -- não texto. Foi assim que a importação estourou no primeiro
+ * uso real, antes de qualquer linha ser analisada.
+ */
+it('reads a date-formatted cell as the competence instead of failing', function () {
+    [, , $unit] = unitValueFixture();
+
+    $path = temporaryTestFilePath('unit-values-real-date');
+    $headers = UnitValueSpreadsheetColumns::headers();
+    $dateStyle = (new Style)->setFormat('dd/mm/yyyy');
+
+    $writer = new Writer;
+    $writer->openToFile($path);
+    $writer->addRow(Row::fromValues($headers));
+    $writer->addRow(new Row([
+        Cell::fromValue('CRI Alfa'),
+        Cell::fromValue('Residencial Alfa'),
+        Cell::fromValue('01'),
+        Cell::fromValue('101'),
+        Cell::fromValue('1.000.000,00'),
+        Cell::fromValue(new DateTimeImmutable('2026-07-01'), $dateStyle),
+        Cell::fromValue('Tabela de preços'),
+    ]));
+    $writer->close();
+
+    $analysis = app(AnalyzeUnitValueSpreadsheet::class)->handle($path);
+
+    expect($analysis->canImport())->toBeTrue()
+        ->and($analysis->newCount())->toBe(1);
+
+    app(ImportUnitValuesFromSpreadsheet::class)->handle($analysis);
+
+    $recorded = ConstructionUnitValue::sole();
+
+    expect($recorded->construction_unit_id)->toBe($unit->id)
+        ->and($recorded->effective_from->toDateString())->toBe('2026-07-01')
+        ->and($recorded->value)->toBe('1000000.00');
 });
 
 it('classifies a repricing over an existing base value as an update', function () {

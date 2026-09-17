@@ -114,11 +114,18 @@
             </p>
         @endif
 
+        {{--
+            Uma ação escrita direto no Blade é impressa mesmo quando `visible()` a
+            esconde -- o Filament só filtra as ações que ele mesmo posiciona -- e
+            aparece como um botão inerte. Por isso cada uma é conferida aqui.
+        --}}
         @if ($canManage)
             <div class="mt-6 flex flex-wrap gap-3">
-                {{ $this->openHomologationAction }}
-                {{ $this->activateAction }}
-                {{ $this->returnToLegacyAction }}
+                @foreach ([$this->openHomologationAction, $this->activateAction, $this->returnToLegacyAction] as $modeAction)
+                    @if ($modeAction->isVisible())
+                        {{ $modeAction }}
+                    @endif
+                @endforeach
             </div>
         @endif
     </x-filament::section>
@@ -170,11 +177,13 @@
                 </p>
             @endif
 
-            @if ($canManage)
+            @if ($canManage && $homologation->isEditable())
                 <div class="flex flex-wrap gap-3">
-                    {{ $this->reassessAction }}
-                    {{ $this->markGuaranteesReviewedAction }}
-                    {{ $this->markMonthlyReportReviewedAction }}
+                    @foreach ([$this->reassessAction, $this->markGuaranteesReviewedAction, $this->markMonthlyReportReviewedAction] as $draftAction)
+                        @if ($draftAction->isVisible())
+                            {{ $draftAction }}
+                        @endif
+                    @endforeach
                 </div>
             @endif
 
@@ -403,18 +412,25 @@
                 @endforeach
             </ul>
 
-            @if ($canManage)
+            {{--
+                Aprovar e rejeitar só existem no rascunho. A condição usa o portão
+                já lido acima -- a mesma de `visible()` -- para não refazer a
+                leitura viva do portão só para decidir se imprime o botão.
+            --}}
+            @if ($canManage && $homologation->isEditable())
                 <div class="mt-6 flex flex-wrap items-center gap-3">
-                    {{ $this->approveAction }}
+                    @if ($gate['ready'])
+                        {{ $this->approveAction }}
+                    @endif
+
                     {{ $this->rejectAction }}
 
-                    {{-- Aprovar fica oculto enquanto o portão estiver fechado; o motivo aparece no lugar do botão. --}}
-                    @if ($homologation->isEditable() && ! $gate['ready'])
+                    @unless ($gate['ready'])
                         <p class="text-sm text-gray-600 dark:text-gray-300">
                             <span class="font-medium">Aprovar homologação indisponível:</span>
                             {{ implode('; ', $this->failedGateChecks($gate)) }}.
                         </p>
-                    @endif
+                    @endunless
                 </div>
             @endif
         </x-filament::section>
