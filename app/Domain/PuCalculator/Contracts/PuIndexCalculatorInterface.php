@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\PuCalculator\Contracts;
 
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Models\Emission;
 
 interface PuIndexCalculatorInterface
@@ -19,10 +20,16 @@ interface PuIndexCalculatorInterface
      * `$indexRateCalendarCode` é o calendário de observação do índice, usado
      * somente para localizar a data da taxa divulgada. Nulo (o padrão, e todo o
      * caminho de produção) significa "o mesmo calendário contratual da curva".
+     *
+     * `$profile` é o perfil de cálculo. O default é `Contractual` -- a regra documental --, e é o
+     * único perfil que qualquer caminho operacional pode usar. `LegacyCompatibility` existe apenas
+     * para reconciliação na simulação e só é suportado pela engine CDI; os demais calculators
+     * recusam explicitamente em vez de ignorar o pedido em silêncio.
      */
     public function calculate(
         Emission $emission,
         ?string $indexRateCalendarCode = null,
         ?string $accrualCalendarCode = null,
+        PuCalculationProfile $profile = PuCalculationProfile::Contractual,
     ): PuCurveGenerationResult;
 }

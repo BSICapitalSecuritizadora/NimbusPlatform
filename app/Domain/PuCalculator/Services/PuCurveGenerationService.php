@@ -7,6 +7,7 @@ use App\Domain\PuCalculator\DTOs\IndexRateData;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuEventType;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuIndexRateLookupMode;
@@ -27,6 +28,7 @@ class PuCurveGenerationService
         private readonly CdiFactorCompositionService $factorComposition,
         private readonly FirstCouponPreIntegralizationPremiumCalculator $openingPremiumCalculator,
         private readonly DecimalRounder $rounder,
+        private readonly PuPrecisionPolicy $precision,
     ) {}
 
     /**
@@ -39,11 +41,21 @@ class PuCurveGenerationService
      * Os eventos NÃO passam por aqui -- eles chegam já datados em `puEvents`, resolvidos pela convenção
      * de pagamento sobre o calendário contratual --, de modo que a hipótese de accrual não desloca
      * nenhum pagamento.
+     *
+     * `$profile` é o PERFIL DE CÁLCULO. O default -- e todo o caminho operacional, que nunca informa
+     * outro -- é `Contractual`, a regra literal do Termo. `LegacyCompatibility` só é alcançado por
+     * escolha explícita na simulação e altera exclusivamente os estágios comprovadamente
+     * divergentes do sistema anterior: o Fator DI e o Fator Spread entram na combinação sem os
+     * arredondamentos contratuais de 8 e 9 casas, e o prêmio de primeiro cupom não é aplicado.
+     * Calendário, CDI, data do CDI, lag, base, eventos, Following, datas de pagamento, principal,
+     * quantidade, o Fator de Juros em 9 casas e a quantização monetária em 8 casas sem
+     * arredondamento permanecem idênticos nos dois perfis.
      */
     public function handle(
         Emission $emission,
         ?string $indexRateCalendarCode = null,
         ?string $accrualCalendarCode = null,
+        PuCalculationProfile $profile = PuCalculationProfile::Contractual,
     ): PuCurveGenerationResult {
         $emission->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
 
@@ -57,9 +69,22 @@ class PuCurveGenerationService
         $endDate = CarbonImmutable::instance($parameter->curve_end_date);
         $eventGroups = $this->groupEventsByDate($emission->puEvents);
         $quantityTimeline = $this->buildQuantityTimeline($emission->integralizationHistories);
-        $openingPremium = $this->openingPremiumCalculator->calculate($parameter, $indexRateCalendarCode);
+        // O prêmio dos Dias Úteis anteriores à integralização é exigência do Termo. O sistema legado
+        // de referência não o contempla, então ele é parte da metodologia histórica -- e some apenas
+        // quando o perfil legado é escolhido explicitamente.
+        $openingPremium = $profile->appliesFirstCouponPreIntegralizationPremium()
+            ? $this->openingPremiumCalculator->calculate($parameter, $indexRateCalendarCode)
+            : null;
 
-        $baseUnitValue = $this->rounder->normalize((string) $parameter->initial_unit_value, DecimalRounder::CALCULATION_SCALE);
+        // VNb do Termo: 8 casas, sem arredondamento. O VNU configurado entra quantizado, e a partir
+        // daqui todo VNb é ou este valor ou um SDa -- que também já nasce quantizado.
+        $baseUnitValue = $this->precision->unitValue((string) $parameter->initial_unit_value);
+        // VNb ANTES da quantização contratual. Só difere do aplicado quando o VNU configurado
+        // carrega mais de 8 casas; a partir do primeiro reset o VNb é um SDa, que já nasce em 8.
+        $baseUnitValueUnquantized = $this->rounder->normalize(
+            (string) $parameter->initial_unit_value,
+            DecimalRounder::CALCULATION_SCALE,
+        );
         $lastResidualUnitValue = $baseUnitValue;
         $factorDiAccumulated = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
         $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
@@ -73,12 +98,13 @@ class PuCurveGenerationService
         // Descritivo das casas decimais efetivamente aplicadas em cada estágio. Não participa
         // de nenhuma conta: existe para que a auditoria de precisão contra uma referência
         // externa possa ser feita estágio a estágio sem ler o código-fonte.
-        $precisionRules = $this->precisionRules($parameter);
+        $precisionRules = $this->precisionRules($parameter, $profile);
         $rows = [];
 
         for ($currentDate = $startDate; $currentDate->lte($endDate); $currentDate = $currentDate->addDay()) {
             if ($currentDate->isAfter($startDate) && $this->shouldResetAfterPreviousRow($rows)) {
                 $baseUnitValue = $lastResidualUnitValue;
+                $baseUnitValueUnquantized = $lastResidualUnitValue;
                 $factorDiAccumulated = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 $businessDaysSinceReset = 0;
@@ -108,14 +134,25 @@ class PuCurveGenerationService
                 $updatedUnitValue = $baseUnitValue;
                 $dupInterest = 0;
                 $dutInterest = 0;
+                // Estágios intermediários existem apenas para a memória; na linha da
+                // integralização não há produtório, spread nem juros a auditar.
+                $factorDiApplied = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
+                $factorSpreadUnrounded = null;
+                $interestFactor = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
+                $interestUnquantizedUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
             } else {
                 if ($isBusinessDay) {
                     $businessDaysSinceReset++;
-                    $factorSpread = $this->factorComposition->spreadFactor($parameter, $businessDaysSinceReset);
+                    $factorSpread = $this->factorComposition->spreadFactor(
+                        $parameter,
+                        $businessDaysSinceReset,
+                        $profile,
+                    );
                 }
 
                 $factorDi = $this->factorComposition->dailyIndexFactor($parameter, $rateRequirement);
                 $factorDiAccumulated = $this->factorComposition->accumulateIndexFactor(
+                    $parameter,
                     $factorDiAccumulated,
                     $factorDi,
                 );
@@ -124,22 +161,38 @@ class PuCurveGenerationService
                     $factorSpread = $this->rounder->normalize('1', DecimalRounder::CALCULATION_SCALE);
                 }
 
+                // Fator DI efetivamente ENTREGUE à combinação: 8 casas no contratual, produtório
+                // integral no legado. É o único estágio de fator que o perfil altera.
+                $factorDiApplied = $this->factorComposition->indexFactorForCombination(
+                    $parameter,
+                    $factorDiAccumulated,
+                    $profile,
+                );
+                $factorSpreadUnrounded = $this->factorComposition->unroundedSpreadFactor(
+                    $parameter,
+                    $businessDaysSinceReset,
+                );
                 $factorSpreadDi = $this->factorComposition->combinedFactor(
                     $parameter,
                     $factorDiAccumulated,
                     $factorSpread,
+                    $profile,
                 );
-                $interestRealUnitValue = $this->rounder->round(
+                $interestFactor = $this->factorComposition->factorForInterest($parameter, $factorSpreadDi);
+                // J = VNb x (Fator de Juros - 1), e o Termo fixa J em 8 casas SEM arredondamento.
+                // O valor bruto continua disponível na memória, mas quem paga, compõe o PU e forma
+                // o residual é o J QUANTIZADO -- nunca uma versão escondida em escala de cálculo.
+                $interestUnquantizedUnitValue = $this->rounder->round(
                     bcmul(
                         $baseUnitValue,
-                        bcsub($this->factorComposition->factorForInterest($parameter, $factorSpreadDi), '1', DecimalRounder::CALCULATION_SCALE + 4),
+                        bcsub($interestFactor, '1', DecimalRounder::CALCULATION_SCALE + 4),
                         DecimalRounder::CALCULATION_SCALE + 4,
                     ),
                     DecimalRounder::CALCULATION_SCALE,
                 );
-                $updatedUnitValue = $this->rounder->round(
+                $interestRealUnitValue = $this->precision->unitValue($interestUnquantizedUnitValue);
+                $updatedUnitValue = $this->precision->unitValue(
                     bcadd($baseUnitValue, $interestRealUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
-                    DecimalRounder::CALCULATION_SCALE,
                 );
                 $dupInterest = $businessDaysSinceReset;
                 $dutInterest = (int) $parameter->business_day_basis;
@@ -164,24 +217,25 @@ class PuCurveGenerationService
                         $parameter,
                         $this->rounder->round(
                             bcmul(
-                                $this->factorComposition->factorForInterest($parameter, $factorSpreadDi),
+                                $interestFactor,
                                 $openingPremium->factor,
                                 DecimalRounder::CALCULATION_SCALE + 4,
                             ),
                             DecimalRounder::CALCULATION_SCALE,
                         ),
                     );
-                    $interestRealUnitValue = $this->rounder->round(
+                    $interestFactor = $factorSpreadDi;
+                    $interestUnquantizedUnitValue = $this->rounder->round(
                         bcmul(
                             $baseUnitValue,
-                            bcsub($factorSpreadDi, '1', DecimalRounder::CALCULATION_SCALE + 4),
+                            bcsub($interestFactor, '1', DecimalRounder::CALCULATION_SCALE + 4),
                             DecimalRounder::CALCULATION_SCALE + 4,
                         ),
                         DecimalRounder::CALCULATION_SCALE,
                     );
-                    $updatedUnitValue = $this->rounder->round(
+                    $interestRealUnitValue = $this->precision->unitValue($interestUnquantizedUnitValue);
+                    $updatedUnitValue = $this->precision->unitValue(
                         bcadd($baseUnitValue, $interestRealUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
-                        DecimalRounder::CALCULATION_SCALE,
                     );
                     $openingPremiumApplied = true;
                     $openingPremiumAppliedOnCurrentRow = true;
@@ -191,9 +245,8 @@ class PuCurveGenerationService
                     ? $interestRealUnitValue
                     : $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
 
-                $remainingAfterInterest = $this->rounder->round(
+                $remainingAfterInterest = $this->precision->unitValue(
                     bcsub($updatedUnitValue, $interestPaymentUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
-                    DecimalRounder::CALCULATION_SCALE,
                 );
 
                 /** @var EmissionPuEvent $event */
@@ -205,15 +258,16 @@ class PuCurveGenerationService
                     $resolvedAmortization = $this->resolveAmortizationUnitValue(
                         event: $event,
                         baseUnitValue: $baseUnitValue,
-                        remainingResidualUnitValue: $this->rounder->round(
+                        remainingResidualUnitValue: $this->precision->unitValue(
                             bcsub($remainingAfterInterest, $amortizationUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
-                            DecimalRounder::CALCULATION_SCALE,
                         ),
                     );
 
-                    $amortizationUnitValue = $this->rounder->round(
+                    // AMi: 8 casas, sem arredondamento. Cada parcela já vem quantizada de
+                    // `resolveAmortizationUnitValue()`, e a soma de valores de 8 casas continua
+                    // exata em 8 -- a quantização aqui é idempotente e explicita a regra.
+                    $amortizationUnitValue = $this->precision->unitValue(
                         bcadd($amortizationUnitValue, $resolvedAmortization, DecimalRounder::CALCULATION_SCALE + 4),
-                        DecimalRounder::CALCULATION_SCALE,
                     );
 
                     if ($event->amortization_type_enum === PuAmortizationType::Percentage && $event->amortization_value !== null) {
@@ -237,17 +291,17 @@ class PuCurveGenerationService
                 $eventEffectiveDate = $currentDate;
             }
 
-            $paymentTotalUnitValue = $this->rounder->round(
+            $paymentTotalUnitValue = $this->precision->unitValue(
                 bcadd($interestPaymentUnitValue, $amortizationUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
-                DecimalRounder::CALCULATION_SCALE,
             );
-            $residualUnitValue = $this->rounder->round(
+            // SDa: 8 casas, sem arredondamento. É este valor que vira o VNb do período seguinte,
+            // então quantizá-lo aqui é o que impede uma cauda invisível de atravessar o reset.
+            $residualUnitValue = $this->precision->unitValue(
                 bcsub($updatedUnitValue, $paymentTotalUnitValue, DecimalRounder::CALCULATION_SCALE + 4),
-                DecimalRounder::CALCULATION_SCALE,
             );
 
             if (bccomp($residualUnitValue, '0', DecimalRounder::UNIT_SCALE) < 0) {
-                $residualUnitValue = $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE);
+                $residualUnitValue = $this->precision->unitValue('0');
             }
             $totalValue = $this->rounder->round(
                 bcmul($residualUnitValue, $quantity, DecimalRounder::CALCULATION_SCALE + 4),
@@ -270,12 +324,24 @@ class PuCurveGenerationService
                 'is_business_day' => $isBusinessDay,
                 'calendar_code' => $accrualCalendar,
                 'index_rate_lookup_mode' => $parameter->index_rate_lookup_mode,
+                // Perfil de cálculo desta linha. `contractual` é a autoridade do Nimbus; qualquer
+                // outro valor só existe em simulação e nunca alimenta caminho operacional.
+                'calculation_profile' => $profile->value,
+                'calculation_profile_label' => $profile->label(),
+                'calculation_profile_is_operational' => $profile->isOperational(),
                 'base_unit_value_raw' => $baseUnitValue,
+                'base_unit_value_unquantized_raw' => $baseUnitValueUnquantized,
                 'factor_di_raw' => $factorDi,
                 'factor_di_accumulated_raw' => $factorDiAccumulated,
+                // Fator DI efetivamente entregue à combinação com o Spread. No contratual é o
+                // acumulado arredondado em 8; no legado é o próprio acumulado.
+                'factor_di_applied_raw' => $factorDiApplied,
+                'factor_spread_unrounded_raw' => $factorSpreadUnrounded,
                 'factor_spread_raw' => $factorSpread,
                 'factor_spread_di_raw' => $factorSpreadDi,
+                'interest_factor_applied_raw' => $interestFactor,
                 'factor_spread_di_before_first_coupon_premium_raw' => $factorSpreadDiBeforeOpeningPremium,
+                'interest_real_unit_value_unquantized_raw' => $interestUnquantizedUnitValue,
                 'interest_real_unit_value_raw' => $interestRealUnitValue,
                 'updated_unit_value_raw' => $updatedUnitValue,
                 'interest_payment_unit_value_raw' => $interestPaymentUnitValue,
@@ -427,25 +493,52 @@ class PuCurveGenerationService
      * `null` significa que o estágio NÃO sofre arredondamento intermediário nesse modo, e
      * segue na escala de cálculo.
      *
+     * O produtório do Fator DI é o único estágio que não arredonda: ele TRUNCA em 16 casas
+     * após cada multiplicação. `accumulated_index_factor_mode` carrega essa distinção para
+     * que a memória de cálculo não apresente um corte como se fosse arredondamento.
+     *
      * @return array<string, int|string|null>
      */
-    private function precisionRules(EmissionPuParameter $parameter): array
-    {
+    private function precisionRules(
+        EmissionPuParameter $parameter,
+        PuCalculationProfile $profile = PuCalculationProfile::Contractual,
+    ): array {
         $mode = $parameter->index_rate_lookup_mode_enum;
         $roundsDailyAndIndexFactor = $mode === PuIndexRateLookupMode::BusinessDayLagExact;
+        $truncatesAccumulatedIndexFactor = $mode === PuIndexRateLookupMode::BusinessDayLagExact;
+        // O perfil legado leva o produtório integral para a combinação: o estágio existe, mas não
+        // arredonda. A memória precisa dizer isso, e não repetir "8 casas" fora do contratual.
+        $roundsIndexFactorForCombination = $roundsDailyAndIndexFactor
+            && $profile->roundsIndexFactorForCombination();
+        $roundsSpreadFactor = $roundsDailyAndIndexFactor && $profile->roundsSpreadFactor();
         $roundsCombinedFactor = in_array($mode, [
             PuIndexRateLookupMode::BusinessDayLagExact,
             PuIndexRateLookupMode::PreviousCalendarDayExact,
         ], true);
 
         return [
+            'calculation_profile' => $profile->value,
             'rounding_mode' => 'half_up_away_from_zero',
             'daily_index_factor' => $roundsDailyAndIndexFactor ? 8 : null,
-            'accumulated_index_factor' => DecimalRounder::CALCULATION_SCALE,
-            'index_factor_for_combination' => $roundsDailyAndIndexFactor ? 8 : null,
-            'spread_factor' => $roundsDailyAndIndexFactor ? 9 : null,
+            // O produtório NÃO é arredondado: é truncado em 16 casas após cada
+            // multiplicação. `accumulated_index_factor_mode` existe justamente
+            // para que a memória não descreva um corte como arredondamento.
+            'accumulated_index_factor' => $truncatesAccumulatedIndexFactor
+                ? CdiFactorCompositionService::ACCUMULATED_INDEX_FACTOR_TRUNCATION_SCALE
+                : DecimalRounder::CALCULATION_SCALE,
+            'accumulated_index_factor_mode' => $truncatesAccumulatedIndexFactor
+                ? 'truncate_after_each_multiplication'
+                : 'half_up_away_from_zero',
+            'index_factor_for_combination' => $roundsIndexFactorForCombination ? 8 : null,
+            'spread_factor' => $roundsSpreadFactor ? 9 : null,
             'combined_interest_factor' => $roundsCombinedFactor ? 9 : null,
-            'interest_unit_value' => DecimalRounder::CALCULATION_SCALE,
+            // VNb, J, AMi e SDa: 8 casas SEM arredondamento. É corte, não meio-para-cima, e é a
+            // engine que corta -- a apresentação apenas formata a string já quantizada.
+            'unit_base_value' => PuPrecisionPolicy::UNIT_VALUE_SCALE,
+            'interest_unit_value' => PuPrecisionPolicy::UNIT_VALUE_SCALE,
+            'amortization_unit_value' => PuPrecisionPolicy::UNIT_VALUE_SCALE,
+            'residual_unit_value' => PuPrecisionPolicy::UNIT_VALUE_SCALE,
+            'unit_value_quantization' => 'truncate_toward_zero',
         ];
     }
 
@@ -468,25 +561,28 @@ class PuCurveGenerationService
         return $lastRow->hasUnitPayment();
     }
 
+    /**
+     * AMi da linha. O Termo fixa a amortização unitária em 8 casas SEM arredondamento, então toda
+     * origem -- percentual sobre o VNb, valor unitário informado ou residual -- sai daqui já
+     * quantizada. O teto continua sendo o residual disponível, que também é um valor de 8 casas.
+     */
     private function resolveAmortizationUnitValue(
         EmissionPuEvent $event,
         string $baseUnitValue,
         string $remainingResidualUnitValue,
     ): string {
         $resolvedValue = match ($event->amortization_type_enum) {
-            PuAmortizationType::None => $this->rounder->normalize('0', DecimalRounder::CALCULATION_SCALE),
-            PuAmortizationType::Residual => $remainingResidualUnitValue,
-            PuAmortizationType::Percentage => $this->rounder->round(
+            PuAmortizationType::None => $this->precision->unitValue('0'),
+            PuAmortizationType::Residual => $this->precision->unitValue($remainingResidualUnitValue),
+            PuAmortizationType::Percentage => $this->precision->unitValue(
                 bcmul(
                     $baseUnitValue,
                     (string) ($event->amortization_value ?? '0'),
                     DecimalRounder::CALCULATION_SCALE + 4,
                 ),
-                DecimalRounder::CALCULATION_SCALE,
             ),
-            PuAmortizationType::UnitValue => $this->rounder->normalize(
+            PuAmortizationType::UnitValue => $this->precision->unitValue(
                 (string) ($event->amortization_value ?? '0'),
-                DecimalRounder::CALCULATION_SCALE,
             ),
         };
 

@@ -7,6 +7,7 @@ namespace App\Domain\PuCalculator\Calculators;
 use App\Domain\PuCalculator\Contracts\BusinessDayCalendar;
 use App\Domain\PuCalculator\Contracts\PuIndexCalculatorInterface;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\Enums\PuAmortizationType;
 use App\Domain\PuCalculator\Enums\PuEventType;
@@ -44,7 +45,15 @@ class FixedRateCurveCalculator implements PuIndexCalculatorInterface
         Emission $emission,
         ?string $indexRateCalendarCode = null,
         ?string $accrualCalendarCode = null,
+        PuCalculationProfile $profile = PuCalculationProfile::Contractual,
     ): PuCurveGenerationResult {
+        if (! $profile->isContractual()) {
+            throw new InvalidArgumentException(sprintf(
+                'O perfil de cálculo "%s" só existe para a engine CDI. Esta curva é calculada apenas no perfil contratual.',
+                $profile->value,
+            ));
+        }
+
         $emission->loadMissing(['puParameter', 'puEvents', 'integralizationHistories']);
 
         $parameter = $emission->puParameter;

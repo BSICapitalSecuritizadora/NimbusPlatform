@@ -7,6 +7,7 @@ namespace App\Filament\Resources\Emissions\Pages;
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuSimulationInput;
 use App\Domain\PuCalculator\DTOs\PuSimulationResult;
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuSimulationState;
 use App\Domain\PuCalculator\Services\IndexRateSyncService;
@@ -76,6 +77,14 @@ class PuCalculatorSimulator extends Page
      */
     public ?string $accrualCalendarCode = null;
 
+    /**
+     * PERFIL DE CÁLCULO da simulação. Nasce contratual, vive só nesta sessão de
+     * Livewire e não é persistido em lugar nenhum: nem em `EmissionPuParameter`,
+     * nem em curva, candidate, promoção ou homologação. Trocar o perfil não
+     * escreve nada -- apenas muda o que esta tela calcula e exibe.
+     */
+    public string $calculationProfile = 'contractual';
+
     public bool $hasCalculated = false;
 
     private ?PuSimulationResult $result = null;
@@ -141,7 +150,58 @@ class PuCalculatorSimulator extends Page
             focusDate: $this->date($this->focusDate),
             indexRateCalendarCode: $this->indexRateCalendarCode,
             accrualCalendarCode: $this->accrualCalendarCode,
+            calculationProfile: $this->calculationProfile(),
         );
+    }
+
+    /**
+     * Perfil escolhido, resolvido pelo enum. Valor ausente, vazio ou
+     * desconhecido devolve o contratual: o legado exige escolha explícita e
+     * válida, nunca um estado de formulário malformado.
+     */
+    public function calculationProfile(): PuCalculationProfile
+    {
+        return PuCalculationProfile::fromNullable($this->calculationProfile);
+    }
+
+    /**
+     * Perfis oferecidos na tela, com rótulo e descrição.
+     *
+     * @return list<array{value:string, label:string, description:string}>
+     */
+    public function calculationProfileOptions(): array
+    {
+        return array_map(
+            fn (PuCalculationProfile $profile): array => [
+                'value' => $profile->value,
+                'label' => $profile->label(),
+                'description' => $profile->description(),
+            ],
+            PuCalculationProfile::cases(),
+        );
+    }
+
+    /** Aviso do perfil ativo. Nulo no contratual. */
+    public function calculationProfileWarning(): ?string
+    {
+        return $this->calculationProfile()->warning();
+    }
+
+    /** Aviso adicional para a linha do primeiro cupom. Nulo no contratual. */
+    public function calculationProfileFirstCouponWarning(): ?string
+    {
+        return $this->calculationProfile()->firstCouponWarning();
+    }
+
+    /**
+     * Trocar de perfil invalida o resultado exibido: a curva na tela passa a
+     * não corresponder ao perfil selecionado. Nada é gravado -- apenas o
+     * resultado em memória é descartado até um novo cálculo.
+     */
+    public function updatedCalculationProfile(): void
+    {
+        $this->result = null;
+        $this->hasCalculated = false;
     }
 
     /**

@@ -42,6 +42,40 @@ it('truncates decimal values without rounding', function () {
         ->and($rounder->truncate('-1.23459', 4))->toBe('-1.2345');
 });
 
+/**
+ * O produtório do Fator DI depende de TRUNCAR em 16 casas, não de arredondar.
+ * Cada caso abaixo tem a 17ª casa >= 5: se `truncate()` fosse `round()`, a 16ª
+ * casa subiria e o resultado esperado mudaria. As expectativas são strings
+ * literais -- nenhuma é construída com `float`, que nem representaria estes
+ * valores.
+ */
+it('cuts the sixteenth decimal instead of rounding it up', function (
+    string $value,
+    string $truncated,
+    string $rounded,
+) {
+    $rounder = app(RoundingService::class);
+
+    expect($rounder->truncate($value, 16))->toBe($truncated)
+        ->and($rounder->round($value, 16))->toBe($rounded)
+        ->and($truncated)->not->toBe($rounded);
+})->with([
+    'caso do enunciado' => ['1.12345678901234569', '1.1234567890123456', '1.1234567890123457'],
+    'meio exato para cima' => ['1.00000000000000005', '1.0000000000000000', '1.0000000000000001'],
+    'nove na décima sétima' => ['1.00055131064154039', '1.0005513106415403', '1.0005513106415404'],
+    'negativo afasta-se de zero ao arredondar' => ['-1.12345678901234569', '-1.1234567890123456', '-1.1234567890123457'],
+]);
+
+it('keeps truncation exact when the value has fewer than sixteen decimals', function () {
+    $rounder = app(RoundingService::class);
+
+    // Fator diário de 8 casas: truncar em 16 não pode alterar valor nenhum,
+    // apenas preencher a cauda com zeros.
+    expect($rounder->truncate('1.00055131', 16))->toBe('1.0005513100000000')
+        ->and($rounder->truncate('1', 16))->toBe('1.0000000000000000')
+        ->and($rounder->truncate('-0.00000000000000001', 16))->toBe('-0.0000000000000000');
+});
+
 it('uses the configured business calendar and resolves the next business day', function () {
     BusinessCalendarDate::query()->create([
         'calendar_code' => 'B3',

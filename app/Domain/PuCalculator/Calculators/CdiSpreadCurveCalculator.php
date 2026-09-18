@@ -6,6 +6,7 @@ namespace App\Domain\PuCalculator\Calculators;
 
 use App\Domain\PuCalculator\Contracts\PuIndexCalculatorInterface;
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Services\PuCurveGenerationService;
 use App\Models\Emission;
 
@@ -23,7 +24,13 @@ class CdiSpreadCurveCalculator implements PuIndexCalculatorInterface
         Emission $emission,
         ?string $indexRateCalendarCode = null,
         ?string $accrualCalendarCode = null,
+        PuCalculationProfile $profile = PuCalculationProfile::Contractual,
     ): PuCurveGenerationResult {
-        return $this->cdiGenerationService->handle($emission, $indexRateCalendarCode, $accrualCalendarCode);
+        return $this->cdiGenerationService->handle(
+            $emission,
+            $indexRateCalendarCode,
+            $accrualCalendarCode,
+            $profile,
+        );
     }
 }

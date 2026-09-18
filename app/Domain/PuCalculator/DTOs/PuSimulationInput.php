@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\DTOs;
 
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use Carbon\CarbonImmutable;
 
 /**
@@ -32,6 +33,12 @@ final readonly class PuSimulationInput
      *                                            CONTRATUAL: eventos, convenção Following e datas de pagamento
      *                                            continuam na baseline, e o prêmio pré-integralização também.
      *                                            Nulo — todo o caminho de produção — preserva o comportamento atual.
+     * @param  PuCalculationProfile|null  $calculationProfile  PERFIL DE CÁLCULO da simulação.
+     *                                            Nulo é `Contractual`, e é assim em toda chamada que
+     *                                            não escolher explicitamente outro. `LegacyCompatibility`
+     *                                            é exclusivo desta camada: existe para reconciliar com o
+     *                                            sistema anterior e não pode ser persistido, promovido
+     *                                            nem homologado.
      */
     public function __construct(
         public ?CarbonImmutable $firstIntegralizationDate = null,
@@ -41,7 +48,17 @@ final readonly class PuSimulationInput
         public ?CarbonImmutable $focusDate = null,
         public ?string $indexRateCalendarCode = null,
         public ?string $accrualCalendarCode = null,
+        public ?PuCalculationProfile $calculationProfile = null,
     ) {}
+
+    /**
+     * Perfil efetivo desta simulação. Omissão é sempre contratual: nenhuma
+     * chamada existente muda de comportamento por não conhecer o parâmetro.
+     */
+    public function calculationProfile(): PuCalculationProfile
+    {
+        return $this->calculationProfile ?? PuCalculationProfile::default();
+    }
 
     /**
      * Código do calendário de observação, normalizado. Vazio é ausência de
@@ -93,6 +110,7 @@ final readonly class PuSimulationInput
             'focus_date' => $this->focusDate?->toDateString(),
             'index_rate_calendar_code' => $this->indexRateCalendarCode(),
             'accrual_calendar_code' => $this->accrualCalendarCode(),
+            'calculation_profile' => $this->calculationProfile()->value,
             'override_fields' => array_keys(array_filter(
                 $this->overrides,
                 fn (?string $value): bool => $value !== null && trim($value) !== '',

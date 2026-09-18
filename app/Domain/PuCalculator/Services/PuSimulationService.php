@@ -9,6 +9,7 @@ use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuIndexRateRequirement;
 use App\Domain\PuCalculator\DTOs\PuSimulationInput;
 use App\Domain\PuCalculator\DTOs\PuSimulationResult;
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuIndexer;
 use App\Domain\PuCalculator\Enums\PuSimulationState;
 use App\Models\Emission;
@@ -86,6 +87,19 @@ final class PuSimulationService
         $parameter = $resolution['parameter'];
         $startDate = CarbonImmutable::instance($parameter->curve_start_date)->startOfDay();
         $endDate = CarbonImmutable::instance($parameter->curve_end_date)->startOfDay();
+        // Perfil de cálculo da simulação. Omissão é sempre contratual.
+        $profile = $input->calculationProfile();
+
+        if (! $profile->isContractual() && $parameter->indexer_enum !== PuIndexer::Cdi) {
+            return $this->failure(
+                PuSimulationState::MissingInput,
+                'A compatibilidade com o sistema legado foi comprovada apenas para a engine CDI + spread. Selecione o perfil contratual.',
+                $input,
+                $resolution,
+                $startDate,
+                $endDate,
+            );
+        }
 
         if ($endDate->lt($startDate)) {
             return $this->failure(
@@ -214,6 +228,20 @@ final class PuSimulationService
                 $events,
                 $indexRateCalendarCode,
                 $accrualCalendarCode,
+                $profile,
+            );
+            // Reconciliação: o perfil legado sempre carrega a curva contratual ao lado, para que a
+            // divergência seja exibida em vez de substituir silenciosamente a referência oficial.
+            $profileComparison = $profile->isContractual() ? [] : $this->profileComparison(
+                $rows,
+                $this->runOfficialEngine(
+                    $emission,
+                    $parameter,
+                    $events,
+                    $indexRateCalendarCode,
+                    $accrualCalendarCode,
+                    PuCalculationProfile::Contractual,
+                ),
             );
         } catch (Throwable $exception) {
             return new PuSimulationResult(
@@ -251,7 +279,64 @@ final class PuSimulationService
             rows: $rows,
             selectedRow: $selected,
             premium: $this->premiumSummary($parameter, $indexRateCalendarCode),
+            profileComparison: $profileComparison,
         );
+    }
+
+    /**
+     * Comparação linha a linha entre o perfil escolhido e o contratual.
+     *
+     * Existe para NÃO esconder diferença: o que a tela mostra é a divergência medida, nunca um
+     * ajuste. Todas as contas são `bcsub` sobre as strings que as duas execuções da engine
+     * produziram -- nenhuma recomposição de fórmula acontece aqui.
+     *
+     * @param  list<PuDailyCurveRowData>  $rows
+     * @param  list<PuDailyCurveRowData>  $contractualRows
+     * @return array<string, array<string, string|null>>
+     */
+    private function profileComparison(array $rows, array $contractualRows): array
+    {
+        $contractualByDate = [];
+
+        foreach ($contractualRows as $contractualRow) {
+            $contractualByDate[$contractualRow->date->toDateString()] = $contractualRow;
+        }
+
+        $comparison = [];
+
+        foreach ($rows as $row) {
+            $date = $row->date->toDateString();
+            $reference = $contractualByDate[$date] ?? null;
+
+            if (! $reference instanceof PuDailyCurveRowData) {
+                continue;
+            }
+
+            $comparison[$date] = [
+                'interest_contractual' => $reference->interestRealUnitValue,
+                'interest_profile' => $row->interestRealUnitValue,
+                'interest_delta' => $this->delta($row->interestRealUnitValue, $reference->interestRealUnitValue),
+                'payment_contractual' => $reference->paymentTotalUnitValue,
+                'payment_profile' => $row->paymentTotalUnitValue,
+                'payment_delta' => $this->delta($row->paymentTotalUnitValue, $reference->paymentTotalUnitValue),
+                'updated_unit_value_contractual' => $reference->updatedUnitValue,
+                'updated_unit_value_profile' => $row->updatedUnitValue,
+                'updated_unit_value_delta' => $this->delta($row->updatedUnitValue, $reference->updatedUnitValue),
+                'residual_unit_value_contractual' => $reference->residualUnitValue,
+                'residual_unit_value_profile' => $row->residualUnitValue,
+                'residual_unit_value_delta' => $this->delta($row->residualUnitValue, $reference->residualUnitValue),
+                'first_coupon_premium_contractual' => ($reference->calculationMemory['first_coupon_pre_integralization_premium_applied'] ?? false) ? 'sim' : 'não',
+                'first_coupon_premium_profile' => ($row->calculationMemory['first_coupon_pre_integralization_premium_applied'] ?? false) ? 'sim' : 'não',
+            ];
+        }
+
+        return $comparison;
+    }
+
+    /** Diferença perfil - contratual, na escala unitária, sem passar por float. */
+    private function delta(string $profileValue, string $contractualValue): string
+    {
+        return bcsub($profileValue, $contractualValue, DecimalRounder::UNIT_SCALE);
     }
 
     /**
@@ -328,6 +413,7 @@ final class PuSimulationService
         array $events,
         ?string $indexRateCalendarCode = null,
         ?string $accrualCalendarCode = null,
+        PuCalculationProfile $profile = PuCalculationProfile::Contractual,
     ): array {
         $scenario = clone $emission;
         $scenario->setRelation('puParameter', $parameter);
@@ -335,7 +421,12 @@ final class PuSimulationService
         $scenario->setRelation('integralizationHistories', new EloquentCollection);
         $this->indexRateLookup->flushCache();
 
-        return $this->curveGenerator->handle($scenario, $indexRateCalendarCode, $accrualCalendarCode)->rows;
+        return $this->curveGenerator->handle(
+            $scenario,
+            $indexRateCalendarCode,
+            $accrualCalendarCode,
+            $profile,
+        )->rows;
     }
 
     /**

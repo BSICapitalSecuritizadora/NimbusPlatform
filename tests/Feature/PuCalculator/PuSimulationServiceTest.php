@@ -522,9 +522,16 @@ it('keeps every unit curve row unchanged and derives the exact selected position
         quantity: $quantity,
     ));
 
+    /**
+     * O cenário tem um cupom dentro da janela. O PU esperado é um período de juros
+     * depois do reset (1000 × 1,012596825). O valor anterior, 1025,352324, era o
+     * quadrado desse fator: a curva sem quantidade tinha pagamento financeiro zero
+     * no dia do cupom e nunca reiniciava o período -- defeito corrigido ao reiniciar
+     * pelo pagamento unitário (`hasUnitPayment()`).
+     */
     expect($result->state)->toBe(PuSimulationState::Calculated)
         ->and($result->selectedUnitValue())->toBe($withoutQuantity->selectedUnitValue())
-        ->and($result->selectedUnitValue())->toBe('1025.3523240000000000')
+        ->and($result->selectedUnitValue())->toBe('1012.5968250000000000')
         ->and($result->selectedTotalValue())->toBe($expectedTotal)
         ->and($result->rowCount())->toBe($withoutQuantity->rowCount())
         ->and($result->parameters)->toBe($withoutQuantity->parameters)
@@ -539,11 +546,11 @@ it('keeps every unit curve row unchanged and derives the exact selected position
     }
 })->with([
     'no quantity' => [null, null],
-    'one unit' => ['1', '1025.3523240000000000'],
-    '1500 units' => ['1500', '1538028.4860000000000000'],
-    '4000 units' => ['4000', '4101409.2960000000000000'],
-    'fractional quantity' => ['1.25', '1281.6904050000000000'],
-    'round only the total to financial scale' => ['1.000000000000001', '1025.3523240000010254'],
+    'one unit' => ['1', '1012.5968250000000000'],
+    '1500 units' => ['1500', '1518895.2375000000000000'],
+    '4000 units' => ['4000', '4050387.3000000000000000'],
+    'fractional quantity' => ['1.25', '1265.7460312500000000'],
+    'round only the total to financial scale' => ['1.000000000000001', '1012.5968250000010126'],
     'zero quantity' => ['0', '0.0000000000000000'],
     'blank quantity' => ['', null],
 ]);

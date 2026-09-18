@@ -3,7 +3,9 @@
 use App\Domain\PuCalculator\DTOs\PuDailyCurveRowData;
 use App\Domain\PuCalculator\DTOs\PuSimulationInput;
 use App\Domain\PuCalculator\Enums\PuSimulationState;
+use App\Domain\PuCalculator\Services\CdiFactorCompositionService;
 use App\Domain\PuCalculator\Services\DecimalRounder;
+use App\Domain\PuCalculator\Services\PuPrecisionPolicy;
 use App\Domain\PuCalculator\Services\PuSimulationService;
 use App\Support\PuCalculator\PuDecimalPresenter;
 use Carbon\CarbonImmutable;
@@ -199,8 +201,22 @@ it('states the rounding rule of every stage in the calculation memory', function
         ->and($rules['index_factor_for_combination'])->toBe(8)
         ->and($rules['spread_factor'])->toBe(9)
         ->and($rules['combined_interest_factor'])->toBe(9)
-        // O produtório acumulado NÃO sofre truncamento progressivo: segue na
-        // escala de cálculo até o arredondamento final de 8 casas.
-        ->and($rules['accumulated_index_factor'])->toBe(DecimalRounder::CALCULATION_SCALE)
-        ->and($rules['interest_unit_value'])->toBe(DecimalRounder::CALCULATION_SCALE);
+        // O produtório acumulado é TRUNCADO em 16 casas após cada multiplicação,
+        // e só então o Fator DI é arredondado em 8 casas. A memória precisa
+        // declarar as duas coisas: a escala E o fato de ser corte, não
+        // arredondamento -- 'X casas' sozinho descreveria a regra errada.
+        ->and($rules['accumulated_index_factor'])
+        ->toBe(CdiFactorCompositionService::ACCUMULATED_INDEX_FACTOR_TRUNCATION_SCALE)
+        ->and($rules['accumulated_index_factor'])->toBe(16)
+        ->and($rules['accumulated_index_factor_mode'])->toBe('truncate_after_each_multiplication')
+        // VNb, J, AMi e SDa: 8 casas SEM arredondamento. A quantização é da ENGINE,
+        // e a memória precisa dizer que é corte -- 'casas' sozinho descreveria
+        // meio-para-cima, que é a regra dos fatores e não a dos monetários.
+        ->and($rules['unit_base_value'])->toBe(PuPrecisionPolicy::UNIT_VALUE_SCALE)
+        ->and($rules['interest_unit_value'])->toBe(PuPrecisionPolicy::UNIT_VALUE_SCALE)
+        ->and($rules['amortization_unit_value'])->toBe(PuPrecisionPolicy::UNIT_VALUE_SCALE)
+        ->and($rules['residual_unit_value'])->toBe(PuPrecisionPolicy::UNIT_VALUE_SCALE)
+        ->and($rules['interest_unit_value'])->toBe(8)
+        ->and($rules['unit_value_quantization'])->toBe('truncate_toward_zero')
+        ->and($rules['calculation_profile'])->toBe('contractual');
 });

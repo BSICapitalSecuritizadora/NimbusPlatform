@@ -34,6 +34,22 @@
         $money = fn ($value) => $presenter->money($value);
         $rate = fn ($value) => $presenter->rate($value);
         $factor = fn ($value) => $presenter->factor($value);
+        /**
+         * Fator vindo da memória em escala de cálculo (24 casas). Exibido em 16,
+         * a mesma escala dos fatores da linha, para que a auditoria compare
+         * estágios na mesma régua em vez de ler uma cauda de zeros.
+         */
+        $auditFactor = fn ($value) => $show($value)
+            ? $presenter->decimal($value, \App\Domain\PuCalculator\Services\DecimalRounder::FACTOR_SCALE)
+            : null;
+        /**
+         * Valor monetário ANTES da quantização contratual. Vai a 16 casas de
+         * propósito: exibi-lo em 8 esconderia exatamente a cauda que a regra
+         * "8 casas sem arredondamento" corta, e a auditoria não veria o corte.
+         */
+        $auditMoney = fn ($value) => $show($value)
+            ? $presenter->decimal($value, \App\Domain\PuCalculator\Services\DecimalRounder::UNIT_SCALE)
+            : null;
 
         /** Campos de parâmetro que são valor monetário e por isso seguem a mesma escala. */
         $monetaryParameterFields = ['initial_unit_value'];
@@ -109,6 +125,43 @@
         {{-- Formulário de hipóteses --}}
         <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
             <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Parâmetros da simulação</h2>
+
+            {{-- Perfil de cálculo: contratual é a autoridade; o legado é só reconciliação --}}
+            <fieldset class="mt-4 rounded-lg border border-gray-300 p-3 dark:border-gray-600">
+                <legend class="px-1 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    Perfil de cálculo
+                </legend>
+                <div class="space-y-2">
+                    @foreach ($this->calculationProfileOptions() as $profileOption)
+                        <label class="flex items-start gap-2 text-sm">
+                            <input
+                                type="radio"
+                                name="calculationProfile"
+                                value="{{ $profileOption['value'] }}"
+                                wire:model.live="calculationProfile"
+                                class="mt-1 border-gray-300 dark:border-gray-600"
+                            />
+                            <span>
+                                <span class="font-medium text-gray-900 dark:text-gray-100">{{ $profileOption['label'] }}</span>
+                                <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $profileOption['description'] }}</span>
+                            </span>
+                        </label>
+                    @endforeach
+                </div>
+
+                @if ($this->calculationProfileWarning())
+                    <div class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                        <p>{{ $this->calculationProfileWarning() }}</p>
+                        @if ($this->calculationProfileFirstCouponWarning())
+                            <p class="mt-2">{{ $this->calculationProfileFirstCouponWarning() }}</p>
+                        @endif
+                        <p class="mt-2">
+                            Este perfil existe apenas nesta tela: ele não é persistido, não gera candidate,
+                            não promove parâmetro e não vale como homologação.
+                        </p>
+                    </div>
+                @endif
+            </fieldset>
 
             <div class="mt-4 rounded-lg border border-primary-300 bg-primary-50 p-3 dark:border-primary-700 dark:bg-primary-950/30">
                 <label class="block text-sm font-semibold text-primary-900 dark:text-primary-200" for="firstIntegralizationDate">
@@ -667,16 +720,22 @@
                                     ? $date($memory['coupon_period_start_date']) . ' → ' . $date($memory['coupon_period_end_date'] ?? null)
                                     : null,
                                 'Última Data de Pagamento' => $date($memory['last_payment_date'] ?? null),
-                                'PU base do período' => $money($detail->unitBaseValue),
+                                'Perfil de cálculo' => $memory['calculation_profile_label'] ?? null,
+                                'VNb aplicado (PU base do período)' => $money($detail->unitBaseValue),
                                 'DUP (juros)' => $detail->dupInterest,
                                 'DUT (juros)' => $detail->dutInterest,
                                 'Data da taxa CDI utilizada' => $date($detail->indexRateDate?->toDateString()),
                                 'Taxa CDI' => $rate($detail->indexRateValue),
                                 'Fator CDI diário' => $factor($detail->factorDi),
-                                'Fator CDI acumulado' => $factor($detail->factorDiAccumulated),
-                                'Fator spread diário' => $factor($detail->factorSpread),
-                                'Fator spread + CDI' => $factor($detail->factorSpreadDi),
-                                'Juros acumulados no período' => $money($detail->interestRealUnitValue),
+                                'Fator CDI acumulado (bruto)' => $factor($detail->factorDiAccumulated),
+                                'Fator CDI aplicado na combinação' => $auditFactor($memory['factor_di_applied_raw'] ?? null),
+                                'Fator Spread bruto' => $auditFactor($memory['factor_spread_unrounded_raw'] ?? null),
+                                'Fator Spread acumulado' => $factor($detail->factorSpread),
+                                'Produto DI × Spread (bruto)' => $factor($detail->factorSpreadDi),
+                                'Fator de Juros aplicado' => $auditFactor($memory['interest_factor_applied_raw'] ?? null),
+                                'VNb bruto' => $auditMoney($memory['base_unit_value_unquantized_raw'] ?? null),
+                                'Juros bruto' => $auditMoney($memory['interest_real_unit_value_unquantized_raw'] ?? null),
+                                'Juros aplicado (J)' => $money($detail->interestRealUnitValue),
                                 'PU atualizado' => $money($detail->updatedUnitValue),
                                 'Amortização' => $money($detail->amortizationUnitValue),
                                 'Proporção de amortização' => $factor($detail->amortizationRatio),
@@ -706,8 +765,9 @@
                                 Precisão aplicada por estágio
                             </p>
                             <p class="mt-1 text-gray-500 dark:text-gray-400">
-                                Casas decimais efetivamente arredondadas pela engine em cada etapa.
+                                Casas decimais efetivamente aplicadas pela engine em cada etapa.
                                 &ldquo;integral&rdquo; = sem arredondamento intermediário nesta etapa.
+                                O produtório do Fator DI é TRUNCADO (corte, não arredondamento) após cada multiplicação.
                             </p>
                             <div class="mt-2 grid gap-x-6 gap-y-1 font-mono text-gray-600 md:grid-cols-2 dark:text-gray-300">
                                 @php
@@ -717,17 +777,93 @@
                                         'index_factor_for_combination' => 'Fator DI antes da combinação',
                                         'spread_factor' => 'Fator Spread',
                                         'combined_interest_factor' => 'Fator DI × Fator Spread',
-                                        'interest_unit_value' => 'Juros',
                                     ];
+                                    $unitValueLabels = [
+                                        'unit_base_value' => 'VNb',
+                                        'interest_unit_value' => 'J (juros)',
+                                        'amortization_unit_value' => 'AMi (amortização)',
+                                        'residual_unit_value' => 'SDa (saldo devedor)',
+                                    ];
+                                    $truncatesAccumulated = ($rules['accumulated_index_factor_mode'] ?? null) === 'truncate_after_each_multiplication';
                                 @endphp
                                 @foreach ($ruleLabels as $ruleKey => $ruleLabel)
                                     <span>
                                         {{ $ruleLabel }}:
-                                        <strong>{{ ($rules[$ruleKey] ?? null) === null ? 'integral' : $rules[$ruleKey].' casas' }}</strong>
+                                        <strong>
+                                            @if ($ruleKey === 'accumulated_index_factor' && $truncatesAccumulated)
+                                                truncamento progressivo em {{ $rules[$ruleKey] }} casas após cada multiplicação
+                                            @elseif (($rules[$ruleKey] ?? null) === null)
+                                                integral
+                                            @else
+                                                {{ $rules[$ruleKey] }} casas
+                                            @endif
+                                        </strong>
                                     </span>
                                 @endforeach
-                                <span>Arredondamento: <strong>{{ $rules['rounding_mode'] ?? '—' }}</strong></span>
+                                <span>Arredondamento dos fatores: <strong>{{ $rules['rounding_mode'] ?? '—' }}</strong></span>
                             </div>
+
+                            <p class="mt-3 font-semibold text-gray-700 dark:text-gray-300">
+                                Valores monetários — 8 casas SEM arredondamento
+                            </p>
+                            <p class="mt-1 text-gray-500 dark:text-gray-400">
+                                VNb, J, AMi e SDa são TRUNCADOS pela engine. A tela apenas formata a string
+                                já quantizada: ela não decide valor econômico.
+                            </p>
+                            <div class="mt-2 grid gap-x-6 gap-y-1 font-mono text-gray-600 md:grid-cols-2 dark:text-gray-300">
+                                @foreach ($unitValueLabels as $ruleKey => $ruleLabel)
+                                    <span>
+                                        {{ $ruleLabel }}:
+                                        <strong>{{ ($rules[$ruleKey] ?? null) === null ? 'integral' : $rules[$ruleKey].' casas, truncado' }}</strong>
+                                    </span>
+                                @endforeach
+                                <span>Perfil: <strong>{{ $memory['calculation_profile_label'] ?? '—' }}</strong></span>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Reconciliação: contratual x perfil selecionado, sem esconder diferença --}}
+                    @php $comparison = $result?->selectedProfileComparison(); @endphp
+                    @if (!empty($comparison))
+                        <div class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs dark:border-amber-700 dark:bg-amber-950/30">
+                            <p class="font-semibold text-amber-900 dark:text-amber-200">
+                                Contratual × {{ $memory['calculation_profile_label'] ?? 'perfil selecionado' }}
+                            </p>
+                            <p class="mt-1 text-amber-800 dark:text-amber-300">
+                                A referência oficial do Nimbus continua sendo a coluna contratual. A diferença
+                                abaixo é medida, nunca ajustada.
+                            </p>
+                            <table class="mt-2 w-full text-left font-mono text-amber-900 dark:text-amber-200">
+                                <thead>
+                                    <tr class="text-[11px] uppercase tracking-wide">
+                                        <th class="py-1 pr-2 font-semibold">Campo</th>
+                                        <th class="py-1 pr-2 text-right font-semibold">Contratual</th>
+                                        <th class="py-1 pr-2 text-right font-semibold">Perfil</th>
+                                        <th class="py-1 text-right font-semibold">Diferença</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ([
+                                        'Juros (J)' => 'interest',
+                                        'Pagamento' => 'payment',
+                                        'PU atualizado' => 'updated_unit_value',
+                                        'PU residual' => 'residual_unit_value',
+                                    ] as $comparisonLabel => $comparisonKey)
+                                        <tr class="border-t border-amber-200 dark:border-amber-800">
+                                            <td class="py-1 pr-2">{{ $comparisonLabel }}</td>
+                                            <td class="py-1 pr-2 text-right">{{ $money($comparison[$comparisonKey.'_contractual'] ?? null) ?? '—' }}</td>
+                                            <td class="py-1 pr-2 text-right">{{ $money($comparison[$comparisonKey.'_profile'] ?? null) ?? '—' }}</td>
+                                            <td class="py-1 text-right">{{ $money($comparison[$comparisonKey.'_delta'] ?? null) ?? '—' }}</td>
+                                        </tr>
+                                    @endforeach
+                                    <tr class="border-t border-amber-200 dark:border-amber-800">
+                                        <td class="py-1 pr-2">Prêmio do 1º cupom</td>
+                                        <td class="py-1 pr-2 text-right">{{ $comparison['first_coupon_premium_contractual'] ?? '—' }}</td>
+                                        <td class="py-1 pr-2 text-right">{{ $comparison['first_coupon_premium_profile'] ?? '—' }}</td>
+                                        <td class="py-1 text-right">—</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     @endif
 

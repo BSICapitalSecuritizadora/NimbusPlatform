@@ -29,7 +29,18 @@ class PuAuditLogService
 {
     public const LOG_NAME = 'pu-calculation';
 
-    public const ENGINE_VERSION = 'phase1-cdi-v1';
+    /**
+     * Versão do MOTOR CONTRATUAL de PU. Muda sempre que o resultado numérico muda.
+     *
+     * `phase1-cdi-v2` fecha duas alterações reais de algoritmo sobre a `v1`:
+     *  1. o produtório do Fator DI passou a ser truncado progressivamente em 16 casas;
+     *  2. VNb, J, AMi e SDa passaram a ser quantizados em 8 casas SEM arredondamento,
+     *     dentro da engine -- e não mais só na apresentação.
+     *
+     * Fingerprints e homologações gravados sob `v1` ficam STALE de propósito: uma troca
+     * de algoritmo tem de ser detectável pela auditoria, nunca reetiquetada.
+     */
+    public const ENGINE_VERSION = 'phase1-cdi-v2';
 
     private const MAX_STORED_DIFFERENCES = 150;
 

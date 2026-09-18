@@ -3,6 +3,7 @@
 namespace App\Domain\PuCalculator\Services;
 
 use App\Domain\PuCalculator\DTOs\PuCurveGenerationResult;
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Factories\PuCalculatorFactory;
 use App\Models\Emission;
 
@@ -21,11 +22,13 @@ class PuCurveGeneratorService
         Emission $emission,
         ?string $indexRateCalendarCode = null,
         ?string $accrualCalendarCode = null,
+        PuCalculationProfile $profile = PuCalculationProfile::Contractual,
     ): PuCurveGenerationResult {
         return $this->calculatorFactory->for($emission)->calculate(
             $emission,
             $indexRateCalendarCode,
             $accrualCalendarCode,
+            $profile,
         );
     }
 }

@@ -22,7 +22,7 @@ enum PuCalculationMethod: string
     public function engineVersion(): string
     {
         return match ($this) {
-            self::CdiSpread => 'phase1-cdi-v1',
+            self::CdiSpread => 'phase1-cdi-v2',
             self::FixedRate => 'phase3-fixed-v1',
             self::IpcaCorrected => 'phase3-ipca-experimental',
         };

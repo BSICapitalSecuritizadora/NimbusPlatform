@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\DTOs;
 
+use App\Domain\PuCalculator\Enums\PuCalculationProfile;
 use App\Domain\PuCalculator\Enums\PuSimulationState;
 use App\Domain\PuCalculator\Services\DecimalRounder;
 use Carbon\CarbonImmutable;
@@ -30,6 +31,8 @@ final readonly class PuSimulationResult
      * @param  array<string, mixed>  $scheduleDiagnostics
      * @param  list<PuDailyCurveRowData>  $rows
      * @param  array<string, mixed>  $premium
+     * @param  array<string, array<string, string|null>>  $profileComparison  linha a linha, contratual x legado.
+     *                                                    Vazio no perfil contratual, que é a própria referência.
      */
     public function __construct(
         public PuSimulationState $state,
@@ -49,7 +52,31 @@ final readonly class PuSimulationResult
         public array $rows = [],
         public ?PuDailyCurveRowData $selectedRow = null,
         public array $premium = [],
+        public array $profileComparison = [],
     ) {}
+
+    /** Perfil efetivamente usado nesta simulação. */
+    public function calculationProfile(): PuCalculationProfile
+    {
+        return $this->input->calculationProfile();
+    }
+
+    /**
+     * Comparação contratual x legado da data selecionada. Nula quando o perfil
+     * é o contratual -- não há o que reconciliar contra a própria referência.
+     *
+     * @return array<string, string|null>|null
+     */
+    public function selectedProfileComparison(): ?array
+    {
+        $date = $this->selectedRow?->date->toDateString();
+
+        if ($date === null) {
+            return null;
+        }
+
+        return $this->profileComparison[$date] ?? null;
+    }
 
     public function calculated(): bool
     {
@@ -145,6 +172,7 @@ final readonly class PuSimulationResult
             'selected_curve_date' => $this->selectedRow?->date->toDateString(),
             'selected_unit_value' => $this->selectedUnitValue(),
             'premium' => $this->premium,
+            'calculation_profile' => $this->calculationProfile()->value,
         ];
     }
 }

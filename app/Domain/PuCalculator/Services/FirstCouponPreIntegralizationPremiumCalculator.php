@@ -70,6 +70,7 @@ final class FirstCouponPreIntegralizationPremiumCalculator
 
             if ($appliesIndex) {
                 $factorDiAccumulated = $this->factorComposition->accumulateIndexFactor(
+                    $parameter,
                     $factorDiAccumulated,
                     $dailyIndexFactor,
                 );

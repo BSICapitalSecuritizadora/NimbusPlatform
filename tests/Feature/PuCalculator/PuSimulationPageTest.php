@@ -156,7 +156,7 @@ it('calculates and renders the curve rows and the calculation memory', function 
         ->assertSee('Curva diária')
         ->assertSee('Memória de cálculo')
         ->assertSee('Fator CDI diário')
-        ->assertSee('Fator spread + CDI')
+        ->assertSee('Produto DI × Spread (bruto)')
         ->assertSee('DUP (juros)')
         ->assertSee('DUT (juros)')
         ->assertSee('Data da taxa CDI utilizada');
