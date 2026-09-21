@@ -45,6 +45,10 @@ class PuCalculatorSimulator extends Page
 
     protected static ?string $title = 'Calculadora de PU';
 
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-pu-calculator-page',
+    ];
+
     /** Hipóteses do formulário. Vivem só nesta sessão de Livewire. */
     public ?string $firstIntegralizationDate = null;
 

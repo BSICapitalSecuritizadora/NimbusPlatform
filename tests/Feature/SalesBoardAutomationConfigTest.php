@@ -21,16 +21,21 @@ function withSalesBoardAutomationEnv(array $values, Closure $callback): mixed
     $previous = [];
 
     foreach ($values as $key => $value) {
+        $putenv = getenv($key);
+
         $previous[$key] = [
             'env' => array_key_exists($key, $_ENV) ? [$_ENV[$key]] : null,
             'server' => array_key_exists($key, $_SERVER) ? [$_SERVER[$key]] : null,
+            'putenv' => $putenv === false ? null : [$putenv],
         ];
 
         if ($value === null) {
             unset($_ENV[$key], $_SERVER[$key]);
+            putenv($key);
         } else {
             $_ENV[$key] = $value;
             $_SERVER[$key] = $value;
+            putenv($key.'='.$value);
         }
     }
 
@@ -48,6 +53,12 @@ function withSalesBoardAutomationEnv(array $values, Closure $callback): mixed
                 unset($_SERVER[$key]);
             } else {
                 $_SERVER[$key] = $state['server'][0];
+            }
+
+            if ($state['putenv'] === null) {
+                putenv($key);
+            } else {
+                putenv($key.'='.$state['putenv'][0]);
             }
         }
     }

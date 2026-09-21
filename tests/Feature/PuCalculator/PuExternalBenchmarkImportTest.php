@@ -759,7 +759,8 @@ it('audits the benchmark import with hashes and provenance but never a file path
         ->and($properties['from_date'])->toBe('2026-01-02')
         ->and($properties['to_date'])->toBe('2026-01-06')
         ->and(json_encode($properties))->not->toContain(dirname($path))
-        ->and(json_encode($properties))->not->toContain(sys_get_temp_dir());
+        // dirname($path, 2) é a raiz temporária do sistema, pai do diretório por-PID da fixture.
+        ->and(json_encode($properties))->not->toContain(dirname($path, 2));
 });
 
 // ---------------------------------------------------------------------------

@@ -164,7 +164,7 @@ class ConstructionForm
                     ->label('Estado')
                     ->options(Construction::STATE_OPTIONS)
                     ->searchable()
-                    ->extraAttributes(['class' => 'fi-fixed-positioning-context bsi-field-state'])
+                    ->extraAttributes(['class' => 'bsi-field-state'])
                     ->required()
                     ->columnSpan(['sm' => 1])
                     ->validationMessages([
