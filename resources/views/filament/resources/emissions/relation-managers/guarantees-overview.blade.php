@@ -23,17 +23,17 @@
         : number_format($value * 100, 2, ',', '.') . '%';
 
     $statusBadgeClasses = match ($position->coverageStatus->color()) {
-        'success' => 'border-emerald-500/30 bg-emerald-950/60 text-emerald-300',
-        'warning' => 'border-amber-500/30 bg-amber-950/60 text-amber-300',
-        'danger' => 'border-rose-500/30 bg-rose-950/60 text-rose-300',
+        'success' => 'border-emerald-500/40 bg-emerald-950/50 text-emerald-300',
+        'warning' => 'border-amber-500/40 bg-amber-950/50 text-amber-300',
+        'danger' => 'border-rose-500/40 bg-rose-950/60 text-rose-300',
         default => 'border-[#1d4554]/60 bg-[#0c232e] text-slate-300',
     };
 
     $coverageCardClasses = match ($position->coverageStatus->color()) {
-        'success' => 'border-emerald-500/40 bg-gradient-to-b from-[#0e2f3d] to-[#0c2733]',
-        'warning' => 'border-amber-500/40 bg-gradient-to-b from-[#2e2615] to-[#1a1b18]',
-        'danger' => 'border-rose-500/40 bg-gradient-to-b from-[#2e151b] to-[#1a1518]',
-        default => 'border-[#1d4554]/60 bg-[#0c232e]',
+        'success' => 'border-emerald-500/35 bg-[#081a22]',
+        'warning' => 'border-amber-500/35 bg-[#081a22]',
+        'danger' => 'border-rose-500/35 bg-[#081a22]',
+        default => 'border-[#1d4554]/50 bg-[#081a22]',
     };
 
     $isSurplusDeficit = $position->surplusDeficit !== null && $position->surplusDeficit < 0;
@@ -42,93 +42,93 @@
 <div class="mb-6 space-y-4">
     {{-- 1. Resumo Executivo da Competência --}}
     <section class="overflow-hidden rounded-2xl border border-[#1d4554]/60 bg-[#0c232e] shadow-xl shadow-black/20">
-        <div class="flex flex-col gap-3 border-b border-[#1d4554]/40 px-6 py-4 sm:px-8 xl:flex-row xl:items-center xl:justify-between">
-            <div class="space-y-1">
+        <div class="flex flex-col gap-2.5 border-b border-[#1d4554]/40 px-6 py-3.5 sm:px-7 xl:flex-row xl:items-center xl:justify-between">
+            <div class="space-y-0.5">
                 <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Acompanhamento de Garantias</span>
+                    <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#a06e28] font-mono">Acompanhamento de Garantias</span>
                     @if ($isCompetenceClosed)
-                        <span class="inline-flex items-center gap-1 rounded-md bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-300 border border-slate-700">
-                            <x-heroicon-m-lock-closed class="h-3 w-3" />
+                        <span class="inline-flex items-center gap-1 rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-medium text-slate-300 border border-slate-700/60">
+                            <x-heroicon-m-lock-closed class="h-3 w-3 text-slate-400" />
                             Fechada
                         </span>
                     @endif
                 </div>
-                <h3 class="text-xl font-bold text-white tracking-tight">
-                    Competência {{ $position->referenceMonthLabel() }}
+                <h3 class="text-xl font-bold text-[#fbfaf8] tracking-tight">
+                    Garantias · Competência {{ $position->referenceMonthLabel() }}
                 </h3>
+                <p class="text-xs text-slate-400 font-normal">
+                    Garantias constituídas e respectivos valores de acompanhamento.
+                </p>
             </div>
 
             <div class="flex items-center gap-3">
-                <span class="rounded-full border px-3.5 py-1 text-xs font-semibold uppercase tracking-wider {{ $statusBadgeClasses }}">
+                <span class="rounded-md border px-3 py-1 text-xs font-semibold uppercase tracking-wider {{ $statusBadgeClasses }}">
                     {{ $position->coverageStatus->label() }}
                 </span>
             </div>
         </div>
 
         {{-- 4 KPIs Principais --}}
-        <div class="grid gap-3 p-5 sm:p-6 md:grid-cols-2 xl:grid-cols-4">
+        <div class="grid gap-3 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-4">
             {{-- KPI 1: Valor das Garantias --}}
-            <div class="flex flex-col justify-between rounded-xl border border-[#1d4554]/50 bg-[#081a22] p-4 shadow-sm">
+            <div class="flex flex-col justify-between rounded-xl border border-[#1d4554]/45 bg-[#081a22] p-4 shadow-sm">
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Valor das Garantias</span>
-                    <div class="mt-2 text-2xl font-bold tracking-tight text-white font-mono">
+                    <div class="mt-2 text-2xl font-bold tracking-tight text-[#fbfaf8] font-mono tabular-nums">
                         {{ $money($position->totalEligibleValue) }}
                     </div>
                 </div>
-                <p class="mt-3 text-xs text-slate-400 border-t border-[#1d4554]/30 pt-2">
-                    @if ($position->totalGrossValue !== null)
-                        Bruto: <span class="text-slate-200 font-medium font-mono">{{ $money($position->totalGrossValue) }}</span>
-                    @else
-                        Dados ainda não informados
-                    @endif
+                <p class="mt-3 text-xs text-slate-400 border-t border-[#1d4554]/30 pt-2 flex items-center justify-between">
+                    <span>Bruto:</span>
+                    <span class="text-slate-300 font-medium font-mono tabular-nums">
+                        {{ $position->totalGrossValue !== null ? $money($position->totalGrossValue) : '—' }}
+                    </span>
                 </p>
             </div>
 
             {{-- KPI 2: Saldo Devedor --}}
-            <div class="flex flex-col justify-between rounded-xl border border-[#1d4554]/50 bg-[#081a22] p-4 shadow-sm">
+            <div class="flex flex-col justify-between rounded-xl border border-[#1d4554]/45 bg-[#081a22] p-4 shadow-sm">
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Saldo Devedor</span>
-                    <div class="mt-2 text-2xl font-bold tracking-tight text-white font-mono">
+                    <div class="mt-2 text-2xl font-bold tracking-tight text-[#fbfaf8] font-mono tabular-nums">
                         {{ $money($position->outstandingBalance) }}
                     </div>
                 </div>
-                <p class="mt-3 text-xs text-slate-400 border-t border-[#1d4554]/30 pt-2">
-                    @if ($position->outstandingBalance !== null)
-                        Curva de PU da competência
-                    @else
-                        Aguardando curva de PU
-                    @endif
+                <p class="mt-3 text-xs text-slate-400 border-t border-[#1d4554]/30 pt-2 flex items-center justify-between">
+                    <span>Base apurada:</span>
+                    <span class="text-slate-300 font-medium">
+                        {{ $position->outstandingBalance !== null ? 'Curva de PU' : 'Pendente' }}
+                    </span>
                 </p>
             </div>
 
             {{-- KPI 3: Cobertura --}}
-            <div class="flex flex-col justify-between rounded-xl border p-4 shadow-sm relative overflow-hidden {{ $coverageCardClasses }}">
-                <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-white/5 rounded-full pointer-events-none blur-xl"></div>
+            <div class="flex flex-col justify-between rounded-xl border p-4 shadow-sm {{ $coverageCardClasses }}">
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-300">Índice de Cobertura</span>
-                    <div class="mt-2 text-2xl font-bold tracking-tight text-white font-mono">
+                    <div class="mt-2 text-2xl font-bold tracking-tight text-[#fbfaf8] font-mono tabular-nums">
                         {{ $ratio($position->coverageRatio) }}
                     </div>
                 </div>
                 <p class="mt-3 text-xs text-slate-300/90 border-t border-white/10 pt-2 flex items-center justify-between">
                     <span>Mínimo contratual:</span>
-                    <span class="font-semibold text-white font-mono">{{ $ratio($position->requiredRatio) }}</span>
+                    <span class="font-semibold text-white font-mono tabular-nums">{{ $ratio($position->requiredRatio) }}</span>
                 </p>
             </div>
 
             {{-- KPI 4: Excedente / Déficit --}}
-            <div class="flex flex-col justify-between rounded-xl border border-[#1d4554]/50 bg-[#081a22] p-4 shadow-sm">
+            <div class="flex flex-col justify-between rounded-xl border border-[#1d4554]/45 bg-[#081a22] p-4 shadow-sm">
                 <div>
                     <span class="text-[10px] font-bold uppercase tracking-wider {{ $isSurplusDeficit ? 'text-rose-400' : 'text-slate-400' }}">
                         {{ $isSurplusDeficit ? 'Déficit de Cobertura' : 'Excedente de Cobertura' }}
                     </span>
-                    <div class="mt-2 text-2xl font-bold tracking-tight font-mono {{ $isSurplusDeficit ? 'text-rose-400' : 'text-white' }}">
+                    <div class="mt-2 text-2xl font-bold tracking-tight font-mono tabular-nums {{ $isSurplusDeficit ? 'text-rose-400' : 'text-[#fbfaf8]' }}">
                         {{ $position->surplusDeficit === null ? '—' : $money(abs($position->surplusDeficit)) }}
                     </div>
                 </div>
                 <p class="mt-3 text-xs text-slate-400 border-t border-[#1d4554]/30 pt-2 flex items-center justify-between">
                     <span>{{ $position->activeGuaranteesCount }} ativa(s)</span>
-                    <span>Exigido: <strong class="text-slate-200 font-mono">{{ $money($position->totalRequiredValue) }}</strong></span>
+                    <span>Exigido: <strong class="text-slate-200 font-mono tabular-nums">{{ $money($position->totalRequiredValue) }}</strong></span>
                 </p>
             </div>
         </div>
@@ -136,12 +136,12 @@
 
     {{-- 2. Pendências e Alertas (Colapsável) --}}
     @if ($alerts->isNotEmpty())
-        <section x-data="{ open: true }" class="overflow-hidden rounded-2xl border border-amber-500/30 bg-[#0c232e] shadow-lg shadow-black/15">
-            <div class="flex items-center justify-between border-b border-[#1d4554]/40 px-6 py-3.5 sm:px-8 cursor-pointer select-none" @click="open = !open">
+        <section x-data="{ open: true }" class="overflow-hidden rounded-2xl border border-amber-500/25 bg-[#0c232e] shadow-lg shadow-black/15">
+            <div class="flex items-center justify-between border-b border-[#1d4554]/40 px-5 py-3 sm:px-6 cursor-pointer select-none" @click="open = !open">
                 <div class="flex items-center gap-2.5">
-                    <x-heroicon-m-exclamation-triangle class="h-4 w-4 text-amber-400" />
-                    <span class="text-xs font-semibold uppercase tracking-wider text-amber-300">Pendências e Alertas</span>
-                    <span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-300 border border-amber-500/30">
+                    <x-heroicon-m-exclamation-triangle class="h-4 w-4 text-amber-400/90" />
+                    <span class="text-xs font-semibold uppercase tracking-wider text-amber-300/90">Pendências e Alertas</span>
+                    <span class="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-300/90 border border-amber-500/25">
                         {{ $alerts->count() }}
                     </span>
                 </div>
@@ -151,16 +151,16 @@
                 </button>
             </div>
 
-            <ul x-show="open" x-transition class="divide-y divide-[#1d4554]/40">
+            <ul x-show="open" x-transition class="divide-y divide-[#1d4554]/30">
                 @foreach ($alerts as $alert)
                     @php
                         $alertBadgeClasses = match ($alert['severity']) {
-                            'danger' => 'bg-rose-950/60 text-rose-300 border border-rose-500/30',
-                            'warning' => 'bg-amber-950/60 text-amber-300 border border-amber-500/30',
+                            'danger' => 'bg-rose-950/50 text-rose-300 border border-rose-500/30',
+                            'warning' => 'bg-amber-950/40 text-amber-300/90 border border-amber-500/30',
                             default => 'bg-[#081a22] text-slate-300 border border-[#1d4554]/40',
                         };
                     @endphp
-                    <li class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-6 py-3.5 sm:px-8 hover:bg-[#081a22]/50 transition-colors">
+                    <li class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-5 py-3 sm:px-6 hover:bg-[#081a22]/50 transition-colors">
                         <div class="space-y-0.5">
                             <div class="flex items-center gap-2.5">
                                 <span class="rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider {{ $alertBadgeClasses }}">
@@ -175,7 +175,7 @@
             </ul>
         </section>
     @else
-        <div class="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-[#0c232e] px-4 py-2.5 text-xs text-emerald-300">
+        <div class="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-[#0c232e] px-5 py-2.5 text-xs text-emerald-300">
             <x-heroicon-m-check-circle class="h-4 w-4 text-emerald-400" />
             <span>Nenhuma pendência ou inconformidade detectada para esta competência.</span>
         </div>
@@ -183,10 +183,10 @@
 
     {{-- 3. Garantias Detectadas (Aviso) --}}
     @if ($pendingDetections > 0)
-        <section class="rounded-2xl border border-amber-500/30 bg-[#0d2632] px-6 py-4 sm:px-8 shadow-sm">
+        <section class="rounded-2xl border border-amber-500/25 bg-[#0d2632] px-5 py-3.5 sm:px-6 shadow-sm">
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex items-start gap-3">
-                    <x-heroicon-m-document-magnifying-glass class="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                    <x-heroicon-m-document-magnifying-glass class="h-5 w-5 text-amber-400/90 shrink-0 mt-0.5" />
                     <div>
                         <h4 class="text-sm font-semibold text-white">
                             {{ $pendingDetections }} garantia(s) detectada(s) nos documentos
@@ -201,11 +201,11 @@
     @endif
 
     {{-- 4. Posição da Competência (Componentes de Garantia) --}}
-    <section class="overflow-hidden rounded-2xl border border-[#1d4554]/60 bg-[#0c232e] shadow-xl shadow-black/15">
-        <div class="flex flex-col gap-1 border-b border-[#1d4554]/40 px-6 py-4 sm:px-8">
-            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Posição da Competência</span>
+    <section class="overflow-hidden rounded-2xl border border-[#1d4554]/50 bg-[#0c232e] shadow-xl shadow-black/15">
+        <div class="flex flex-col gap-1 border-b border-[#1d4554]/40 px-5 py-3.5 sm:px-6">
+            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-[#a06e28] font-mono">Posição da Competência</span>
             <div class="flex flex-col gap-1 xl:flex-row xl:items-center xl:justify-between">
-                <h3 class="text-base font-semibold text-white">Composição de {{ $position->referenceMonthLabel() }}</h3>
+                <h3 class="text-base font-semibold text-[#fbfaf8]">Composição de {{ $position->referenceMonthLabel() }}</h3>
                 <p class="text-xs text-slate-400">
                     Valores consolidados automaticamente a partir das fontes operacionais e laudos vigentes.
                 </p>
@@ -213,38 +213,38 @@
         </div>
 
         @if ($position->positions->isEmpty())
-            <div class="px-6 py-8 sm:px-8 text-center">
-                <div class="rounded-xl border border-dashed border-[#1d4554]/50 bg-[#081a22] px-4 py-6 text-xs text-slate-400">
+            <div class="px-5 py-6 sm:px-6 text-center">
+                <div class="rounded-xl border border-dashed border-[#1d4554]/45 bg-[#081a22] px-4 py-5 text-xs text-slate-400">
                     Nenhuma garantia cadastrada nesta emissão até o momento.
                 </div>
             </div>
         @else
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-[#1d4554]/40 text-xs">
+                <table class="min-w-full divide-y divide-[#1d4554]/35 text-xs">
                     <thead class="bg-[#081a22]">
-                        <tr class="text-left text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                            <th class="px-4 py-3">Componente</th>
-                            <th class="px-4 py-3">Origem</th>
-                            <th class="px-4 py-3 text-right">Valor Considerado</th>
-                            <th class="px-4 py-3">Atualização</th>
-                            <th class="px-4 py-3">Status</th>
+                        <tr class="text-left text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                            <th class="px-4 py-2.5">Componente</th>
+                            <th class="px-4 py-2.5">Origem</th>
+                            <th class="px-4 py-2.5 text-right">Valor Considerado</th>
+                            <th class="px-4 py-2.5">Atualização</th>
+                            <th class="px-4 py-2.5">Status</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-[#1d4554]/30">
+                    <tbody class="divide-y divide-[#1d4554]/25">
                         @foreach ($position->positions as $row)
-                            <tr class="align-top text-slate-200 hover:bg-[#081a22]/60 transition-colors">
-                                <td class="px-4 py-3.5">
+                            <tr class="align-top text-slate-200 hover:bg-[#081a22]/50 transition-colors">
+                                <td class="px-4 py-3">
                                     <div class="font-semibold text-white">{{ $row->guarantee->display_name }}</div>
                                     <div class="mt-0.5 text-[11px] text-slate-400">
                                         {{ \App\Enums\GuaranteeType::labelFor($row->guarantee->type) }}
                                     </div>
                                 </td>
-                                <td class="px-4 py-3.5 text-slate-300">
+                                <td class="px-4 py-3 text-slate-300">
                                     <span class="inline-flex rounded-md bg-[#081a22] px-2 py-0.5 text-[11px] font-medium border border-[#1d4554]/40">
                                         {{ $row->value->source->label() }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3.5 text-right font-mono">
+                                <td class="px-4 py-3 text-right font-mono tabular-nums">
                                     <div class="font-semibold text-white">{{ $money($row->currentValue()) }}</div>
                                     @if ($row->eligibleValue !== null && $row->eligibilityFactor < 1.0)
                                         <div class="mt-0.5 text-[11px] text-slate-400">
@@ -252,16 +252,16 @@
                                         </div>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3.5 text-slate-300">
+                                <td class="px-4 py-3 text-slate-300">
                                     {{ $row->value->status->label() }}
                                 </td>
-                                <td class="px-4 py-3.5">
+                                <td class="px-4 py-3">
                                     @php
                                         $rowStatusClasses = match ($row->coverageStatus->color()) {
-                                            'success' => 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/30',
-                                            'warning' => 'bg-amber-950/60 text-amber-300 border border-amber-500/30',
-                                            'danger' => 'bg-rose-950/60 text-rose-300 border border-rose-500/30',
-                                            default => 'bg-[#081a22] text-slate-300 border border-[#1d4554]/40',
+                                            'success' => 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/30',
+                                            'warning' => 'bg-amber-950/40 text-amber-300/90 border border-amber-500/30',
+                                            'danger' => 'bg-rose-950/50 text-rose-300 border border-rose-500/30',
+                                            default => 'bg-[#081a22] text-slate-400 border border-[#1d4554]/40',
                                         };
                                     @endphp
                                     <span class="rounded-md px-2.5 py-0.5 text-[11px] font-semibold {{ $rowStatusClasses }}">

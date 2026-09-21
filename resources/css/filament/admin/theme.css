@@ -724,7 +724,125 @@
     box-shadow: 0 2px 8px rgba(183, 131, 47, 0.2);
 }
 
-/* ── Guarantees Table Polish ── */
+/* ── BSI Guarantees Table Refinement ── */
+.dark .bsi-guarantees-table {
+    border: 1px solid rgba(29, 69, 84, 0.4);
+    border-radius: 1rem;
+    overflow: hidden;
+    background-color: #0c232e;
+}
+
+.dark .bsi-guarantees-table .fi-ta-header-toolbar {
+    padding: 0.75rem 1rem !important;
+    gap: 0.75rem !important;
+    background-color: #0c232e !important;
+    border-bottom: 1px solid rgba(29, 69, 84, 0.3) !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-search-field {
+    min-width: 15rem !important;
+    max-width: 20rem !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-search-field .fi-input-wrp {
+    background-color: #081a22 !important;
+    border: 1px solid rgba(29, 69, 84, 0.45) !important;
+    border-radius: 0.5rem !important;
+    min-height: 2.25rem !important;
+    height: 2.25rem !important;
+    box-shadow: none !important;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.dark .bsi-guarantees-table .fi-ta-search-field .fi-input-wrp:focus-within {
+    border-color: rgba(160, 110, 40, 0.6) !important;
+    box-shadow: 0 0 0 1px rgba(160, 110, 40, 0.25) !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-search-field input.fi-input {
+    font-size: 0.8125rem !important;
+    color: #fbfaf8 !important;
+    height: 2.125rem !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-search-field input.fi-input::placeholder {
+    color: rgb(148 163 184 / 0.6) !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-grouping-settings-fields .fi-input-wrp {
+    background-color: #081a22 !important;
+    border: 1px solid rgba(29, 69, 84, 0.5) !important;
+    border-radius: 0.5rem !important;
+    min-height: 2.25rem !important;
+    height: 2.25rem !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-grouping-settings-fields select.fi-select-input {
+    background-color: transparent !important;
+    border: none !important;
+    height: 100% !important;
+    min-height: 2.25rem !important;
+    font-size: 0.8125rem !important;
+    color: #fbfaf8 !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-header-toolbar .fi-btn {
+    border-radius: 0.5rem !important;
+    min-height: 2.25rem !important;
+    height: 2.25rem !important;
+    font-size: 0.8125rem !important;
+}
+
+.dark .bsi-guarantees-table thead.fi-ta-header th {
+    background-color: #081a22 !important;
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+    padding-inline: 1rem !important;
+    font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: rgb(148 163 184 / 0.7) !important;
+    border-bottom: 1px solid rgba(29, 69, 84, 0.35) !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-table td {
+    padding-top: 0.875rem !important;
+    padding-bottom: 0.875rem !important;
+    padding-inline: 1rem !important;
+    border-top: 1px solid rgba(29, 69, 84, 0.25) !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    vertical-align: middle !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-table tr.fi-ta-row {
+    transition: background-color 150ms ease;
+}
+
+.dark .bsi-guarantees-table .fi-ta-table tr.fi-ta-row:hover td {
+    background-color: rgba(18, 49, 59, 0.5) !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-pagination {
+    padding: 0.75rem 1.25rem !important;
+    border-top: 1px solid rgba(29, 69, 84, 0.3) !important;
+    background-color: #081a22 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.dark .bsi-guarantees-table .fi-ta-pagination-records-per-page-select .fi-input-wrp {
+    background-color: #0c232e !important;
+    border: 1px solid rgba(29, 69, 84, 0.45) !important;
+    border-radius: 0.375rem !important;
+    min-height: 1.875rem !important;
+    height: 1.875rem !important;
+}
+
 .dark .fi-ta-table tr.fi-ta-row:hover td {
     background-color: rgba(13, 39, 51, 0.65) !important;
 }
@@ -3124,10 +3242,25 @@ svg.fi-loading-indicator:not([style*="display: inline"]):not([style*="display: b
     max-width: min(26.25rem, calc(100vw - 2rem)) !important;
     height: auto !important;
     max-height: min(20rem, calc(100vh - 2rem)) !important;
-    display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
+}
+
+/* Layout flex ativo apenas quando o painel estiver aberto/visível (style="display: block") */
+.bsi-responsible-filter .fi-dropdown-panel[style*="display: block"],
+.bsi-responsible-filter .fi-select-input .fi-dropdown-panel[style*="display: block"],
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel[style*="display: block"],
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel[style*="display: block"] {
+    display: flex !important;
+}
+
+/* Garantia explícita de fechamento quando o Filament JS define display: none */
+.bsi-responsible-filter .fi-dropdown-panel[style*="display: none"],
+.bsi-responsible-filter .fi-select-input .fi-dropdown-panel[style*="display: none"],
+[wire\:key*="assigned_representative_id"] .fi-dropdown-panel[style*="display: none"],
+[wire\:key*="responsible_user_id"] .fi-dropdown-panel[style*="display: none"] {
+    display: none !important;
 }
 
 .bsi-responsible-filter .fi-dropdown-panel .fi-select-input-search-ctn,
@@ -3485,83 +3618,122 @@ select.fi-select-input option[selected] {
 }
 
 /* ── Filament Table Grouping Selectors ("Agrupar por" & "Ascendente/Descendente") ── */
+.fi-ta-grouping-settings-fields {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+.fi-ta-grouping-settings-fields > label {
+    margin-bottom: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
 .fi-ta-grouping-settings-fields .fi-input-wrp {
     overflow: hidden !important;
     box-sizing: border-box !important;
-    border-radius: 8px !important;
+    border-radius: 0.5rem !important;
     display: inline-flex !important;
     align-items: center !important;
-    transition: border-color 150ms ease, box-shadow 150ms ease !important;
+    height: 2.25rem !important;
+    min-height: 2.25rem !important;
+    padding: 0 !important;
+    transition: border-color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 :not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp {
     background-color: #ffffff !important;
-    border: 1px solid #dbd5d3 !important;
+    border: 1px solid #d5cecb !important;
     box-shadow: 0 1px 2px rgba(9, 27, 35, 0.04) !important;
     --tw-ring-shadow: 0 0 #0000 !important;
 }
 
 :not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp:hover {
-    border-color: #c4bbb8 !important;
+    border-color: #b7832f !important;
+    background-color: #faf9f7 !important;
 }
 
 :not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp:focus-within {
-    border-color: #b7832f !important;
+    border-color: #a06e28 !important;
     box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.2) !important;
     --tw-ring-shadow: 0 0 #0000 !important;
 }
 
 .dark .fi-ta-grouping-settings-fields .fi-input-wrp {
-    background-color: #091b23 !important;
-    border: 1px solid rgba(183, 131, 47, 0.22) !important;
-    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.3) !important;
+    background-color: #081a22 !important;
+    border: 1px solid rgba(29, 69, 84, 0.5) !important;
+    box-shadow: 0 1px 3px rgba(4, 14, 19, 0.25) !important;
     --tw-ring-shadow: 0 0 #0000 !important;
 }
 
 .dark .fi-ta-grouping-settings-fields .fi-input-wrp:hover {
-    border-color: rgba(183, 131, 47, 0.38) !important;
+    border-color: rgba(183, 131, 47, 0.45) !important;
+    background-color: #0c232e !important;
 }
 
 .dark .fi-ta-grouping-settings-fields .fi-input-wrp:focus-within {
-    border-color: #b7832f !important;
-    box-shadow: 0 0 0 2px rgba(183, 131, 47, 0.25) !important;
+    border-color: #a06e28 !important;
+    box-shadow: 0 0 0 2px rgba(160, 110, 40, 0.3) !important;
     --tw-ring-shadow: 0 0 #0000 !important;
 }
 
-/* Prefixo "Agrupar por": remove borda divisória para criar superfície contínua */
+/* Prefixo "Agrupar por": etiqueta secundária com divisória sutil institucional */
 .fi-ta-grouping-settings-fields .fi-input-wrp-prefix {
-    border-inline-end: none !important;
-    border-right: none !important;
     background: transparent !important;
     padding-inline-start: 0.75rem !important;
-    padding-inline-end: 0.125rem !important;
+    padding-inline-end: 0.625rem !important;
     padding-block: 0 !important;
     margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 1.25rem !important;
+    user-select: none !important;
+    flex-shrink: 0 !important;
+}
+
+:not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp-prefix {
+    border-inline-end: 1px solid rgba(219, 213, 211, 0.8) !important;
+}
+
+.dark .fi-ta-grouping-settings-fields .fi-input-wrp-prefix {
+    border-inline-end: 1px solid rgba(29, 69, 84, 0.5) !important;
+}
+
+.dark .fi-ta-grouping-settings-fields .fi-input-wrp:hover .fi-input-wrp-prefix {
+    border-inline-end-color: rgba(183, 131, 47, 0.3) !important;
 }
 
 .fi-ta-grouping-settings-fields .fi-input-wrp-label {
-    font-size: 0.8125rem !important;
+    font-size: 0.75rem !important;
     font-weight: 500 !important;
     white-space: nowrap !important;
-    letter-spacing: normal !important;
-    line-height: 1.5 !important;
+    letter-spacing: 0.02em !important;
+    line-height: 1 !important;
 }
 
 :not(.dark) .fi-ta-grouping-settings-fields .fi-input-wrp-label {
-    color: #5d5653 !important;
+    color: #64748b !important;
 }
 
 .dark .fi-ta-grouping-settings-fields .fi-input-wrp-label {
-    color: rgba(251, 250, 248, 0.65) !important;
+    color: rgba(148, 163, 184, 0.75) !important;
+}
+
+.dark .fi-ta-grouping-settings-fields .fi-input-wrp:hover .fi-input-wrp-label {
+    color: rgba(251, 250, 248, 0.9) !important;
 }
 
 .fi-ta-grouping-settings-fields .fi-input-wrp-content-ctn {
     min-width: 0 !important;
     flex: 1 1 auto !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
     overflow: hidden !important;
 }
 
-/* Elemento <select>: transparente, sem bordas internas, sem pontas vazando */
+/* Elemento <select>: transparente, sem bordas internas, tipografia de destaque (valor primário) */
 .fi-ta-grouping-settings-fields select.fi-select-input {
     background-color: transparent !important;
     border: none !important;
@@ -3572,50 +3744,55 @@ select.fi-select-input option[selected] {
     border-radius: 0 !important;
     margin: 0 !important;
     transform: none !important;
-    height: auto !important;
+    height: 100% !important;
     min-height: 2.25rem !important;
-    line-height: 1.5 !important;
+    line-height: 2.25rem !important;
     font-size: 0.8125rem !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
     cursor: pointer !important;
-    padding-block: 0.375rem !important;
-    padding-inline-start: 0.75rem !important;
+    padding-block: 0 !important;
+    padding-inline-start: 0.625rem !important;
     padding-inline-end: 2rem !important;
-    background-position: right 0.625rem center !important;
+    background-position: right 0.75rem center !important;
     background-repeat: no-repeat !important;
-    background-size: 1.125rem 1.125rem !important;
+    background-size: 0.875rem 0.875rem !important;
+    transition: color 150ms ease !important;
 }
 
 .fi-ta-grouping-settings-fields .fi-input-wrp-prefix + .fi-input-wrp-content-ctn select.fi-select-input,
 .fi-ta-grouping-settings-fields .fi-input-wrp:has(.fi-input-wrp-prefix) select.fi-select-input {
-    padding-inline-start: 0.375rem !important;
+    padding-inline-start: 0.625rem !important;
 }
 
 :not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input {
-    color: #221f1e !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%235d5653' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    color: #0f172a !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
 }
 
 .dark .fi-ta-grouping-settings-fields select.fi-select-input {
     color: #fbfaf8 !important;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239d918d' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23b7832f' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.75' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+}
+
+.dark .fi-ta-grouping-settings-fields .fi-input-wrp:hover select.fi-select-input {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23d4af37' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
 }
 
 :not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input option,
 :not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input optgroup {
     background-color: #ffffff !important;
-    color: #221f1e !important;
+    color: #0f172a !important;
 }
 
 :not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input option:checked,
 :not(.dark) .fi-ta-grouping-settings-fields select.fi-select-input option[selected] {
-    background-color: #efede9 !important;
-    color: #96651f !important;
+    background-color: #f1f5f9 !important;
+    color: #a06e28 !important;
 }
 
 .dark .fi-ta-grouping-settings-fields select.fi-select-input option,
 .dark .fi-ta-grouping-settings-fields select.fi-select-input optgroup {
-    background-color: #091b23 !important;
+    background-color: #081a22 !important;
     color: #fbfaf8 !important;
 }
 
@@ -6854,6 +7031,48 @@ html:not(.dark) .bsi-index-projection-series-list-page tr.fi-ta-row:hover {
         flex-direction: column !important;
         flex: 1 1 auto !important;
         height: 100% !important;
+    }
+}
+
+/* ── Seção: Carga Operacional da Fila Comercial (Alinhamento do Cabeçalho e Ação Gerenciar Fila) ── */
+.bsi-proposal-representative-load-widget > .fi-section {
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+}
+
+.bsi-proposal-representative-load-widget > .fi-section > .fi-section-header {
+    border-top-left-radius: 13px !important;
+    border-top-right-radius: 13px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.75rem 1rem !important;
+}
+
+.bsi-proposal-representative-load-widget .fi-section-header-text-ctn {
+    flex: 1 1 16rem !important;
+    min-width: 0 !important;
+}
+
+.bsi-proposal-representative-load-widget .fi-section-header-after-ctn {
+    display: flex !important;
+    align-items: center !important;
+    align-self: center !important;
+    margin-left: auto !important;
+}
+
+@media (max-width: 639px) {
+    .bsi-proposal-representative-load-widget .fi-section-header-after-ctn {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    .bsi-proposal-representative-load-widget .bsi-manage-queue-btn {
+        width: 100% !important;
+        justify-content: center !important;
     }
 }
 
@@ -14698,5 +14917,326 @@ body.bsi-negotiation-view-page,
         z-index: 45 !important;
     }
 }
+
+/* ── Tela de Medição Executiva (.bsi-measurement-view-page) ── */
+.bsi-measurement-view-page .fi-page {
+    max-width: 1560px !important;
+    margin-inline: auto !important;
+    gap: 1.25rem !important;
+}
+
+/* Faixa de Cabeçalho da Medição */
+.bsi-measurement-view-page .fi-header {
+    padding: clamp(1.25rem, 2vw, 1.75rem) clamp(1.25rem, 2.5vw, 2rem) !important;
+    color: #fbfaf8 !important;
+    background: linear-gradient(135deg, #091b23 0%, #12313b 100%) !important;
+    border: 1px solid rgba(183, 131, 47, 0.22) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 32px rgba(4, 14, 19, 0.3) !important;
+}
+
+.bsi-measurement-view-page .fi-breadcrumbs {
+    margin-bottom: 0.375rem !important;
+}
+
+.bsi-measurement-view-page .fi-breadcrumbs-item-label {
+    color: rgba(251, 250, 248, 0.65) !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+}
+
+.bsi-measurement-view-page .fi-breadcrumbs-item:last-child .fi-breadcrumbs-item-label {
+    color: #ecd9ae !important;
+    font-weight: 600 !important;
+}
+
+.bsi-measurement-view-page .fi-header-heading {
+    color: #fbfaf8 !important;
+    font-size: clamp(1.375rem, 2vw, 1.75rem) !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.025em !important;
+    line-height: 1.25 !important;
+}
+
+.bsi-measurement-header-meta {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.375rem !important;
+    margin-top: 0.375rem !important;
+}
+
+.bsi-measurement-meta-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.375rem 0.625rem !important;
+    font-size: 0.8125rem !important;
+    color: rgba(251, 250, 248, 0.75) !important;
+}
+
+.bsi-measurement-meta-row--primary {
+    gap: 0.5rem 0.75rem !important;
+}
+
+.bsi-measurement-meta-id {
+    color: #fbfaf8 !important;
+    font-weight: 700 !important;
+}
+
+.bsi-measurement-meta-op {
+    background: rgba(251, 250, 248, 0.08) !important;
+    border: 1px solid rgba(251, 250, 248, 0.15) !important;
+    border-radius: 6px !important;
+    padding: 0.125rem 0.5rem !important;
+    color: #fbfaf8 !important;
+    font-weight: 500 !important;
+    font-size: 0.75rem !important;
+}
+
+.bsi-measurement-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    border-radius: 9999px !important;
+    padding: 0.125rem 0.625rem !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    white-space: nowrap !important;
+}
+
+.bsi-measurement-badge--status {
+    border: 1px solid rgba(183, 131, 47, 0.45) !important;
+    background: rgba(183, 131, 47, 0.15) !important;
+    color: #ecd9ae !important;
+}
+
+.bsi-measurement-badge--stage {
+    border: 1px solid rgba(251, 250, 248, 0.2) !important;
+    background: rgba(251, 250, 248, 0.08) !important;
+    color: #fbfaf8 !important;
+}
+
+.bsi-meta-label {
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: rgba(251, 250, 248, 0.55) !important;
+}
+
+.bsi-meta-sep {
+    color: rgba(183, 131, 47, 0.6) !important;
+}
+
+/* Ações do Cabeçalho: Aparência secundária refinada com borda dourada sutil */
+.bsi-measurement-view-page .fi-header-actions .fi-btn {
+    min-height: 2.375rem !important;
+    padding: 0.5rem 0.875rem !important;
+    font-size: 0.8125rem !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    gap: 0.375rem !important;
+    white-space: nowrap !important;
+    transition: all 150ms ease-out !important;
+    background: rgba(9, 27, 35, 0.6) !important;
+    border: 1px solid rgba(183, 131, 47, 0.28) !important;
+    color: #fbfaf8 !important;
+    box-shadow: 0 2px 6px rgba(4, 14, 19, 0.2) !important;
+}
+
+.bsi-measurement-view-page .fi-header-actions .fi-btn .fi-btn-icon {
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+}
+
+.bsi-measurement-view-page .fi-header-actions .fi-btn:hover {
+    background: rgba(183, 131, 47, 0.15) !important;
+    border-color: rgba(183, 131, 47, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(4, 14, 19, 0.3) !important;
+}
+
+.bsi-measurement-view-page .fi-header-actions .fi-btn-color-success,
+.bsi-measurement-view-page .fi-header-actions .fi-btn[data-color="success"] {
+    border-color: rgba(16, 185, 129, 0.4) !important;
+    color: #6ee7b7 !important;
+}
+
+.bsi-measurement-view-page .fi-header-actions .fi-btn-color-success:hover,
+.bsi-measurement-view-page .fi-header-actions .fi-btn[data-color="success"]:hover {
+    background: rgba(16, 185, 129, 0.16) !important;
+    border-color: rgba(16, 185, 129, 0.65) !important;
+    color: #ffffff !important;
+}
+
+.bsi-measurement-view-page .fi-header-actions .fi-btn-color-danger,
+.bsi-measurement-view-page .fi-header-actions .fi-btn[data-color="danger"] {
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    color: #fca5a5 !important;
+}
+
+.bsi-measurement-view-page .fi-header-actions .fi-btn-color-danger:hover,
+.bsi-measurement-view-page .fi-header-actions .fi-btn[data-color="danger"]:hover {
+    background: rgba(239, 68, 68, 0.16) !important;
+    border-color: rgba(239, 68, 68, 0.6) !important;
+    color: #ffffff !important;
+}
+
+.bsi-measurement-view-page .fi-header-actions .fi-btn-color-warning,
+.bsi-measurement-view-page .fi-header-actions .fi-btn[data-color="warning"] {
+    border-color: rgba(245, 158, 11, 0.35) !important;
+    color: #fcd34d !important;
+}
+
+.bsi-measurement-view-page .fi-header-actions .fi-btn-color-warning:hover,
+.bsi-measurement-view-page .fi-header-actions .fi-btn[data-color="warning"]:hover {
+    background: rgba(245, 158, 11, 0.16) !important;
+    border-color: rgba(245, 158, 11, 0.6) !important;
+    color: #ffffff !important;
+}
+
+/* Seções e Cards Institucionais da Medição */
+.bsi-measurement-view-page .fi-section {
+    border-radius: 14px !important;
+    transition: border-color 150ms ease-out !important;
+}
+
+.dark .bsi-measurement-view-page .fi-section {
+    background: #091b23 !important;
+    border: 1px solid rgba(183, 131, 47, 0.16) !important;
+    box-shadow: 0 4px 18px rgba(4, 14, 19, 0.25) !important;
+}
+
+.bsi-measurement-view-page .fi-section-header {
+    padding-block: 0.875rem !important;
+    padding-inline: 1.25rem !important;
+}
+
+.bsi-measurement-view-page .fi-section-header-heading {
+    font-size: 0.9375rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+}
+
+.dark .bsi-measurement-view-page .fi-section-header-heading {
+    color: #fbfaf8 !important;
+}
+
+.bsi-measurement-view-page .fi-section-header-description {
+    font-size: 0.75rem !important;
+    color: #64748b !important;
+    margin-top: 0.125rem !important;
+}
+
+.dark .bsi-measurement-view-page .fi-section-header-description {
+    color: rgba(251, 250, 248, 0.5) !important;
+}
+
+.bsi-measurement-view-page .fi-section-content {
+    padding-block: 0.75rem 1.25rem !important;
+    padding-inline: 1.25rem !important;
+}
+
+/* Infolist Entry Labels e Valores */
+.bsi-measurement-view-page .fi-in-entry {
+    gap-y: 0.25rem !important;
+}
+
+.bsi-measurement-view-page .fi-in-entry-label {
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: #64748b !important;
+}
+
+.dark .bsi-measurement-view-page .fi-in-entry-label {
+    color: rgba(251, 250, 248, 0.5) !important;
+}
+
+.bsi-measurement-view-page .fi-in-text-item {
+    font-size: 0.8125rem !important;
+    color: #0f172a !important;
+    overflow-wrap: break-word !important;
+}
+
+.dark .bsi-measurement-view-page .fi-in-text-item {
+    color: #fbfaf8 !important;
+}
+
+/* Card: Resumo da Medição (.bsi-measurement-summary-section) */
+.bsi-measurement-view-page .bsi-measurement-summary-section .fi-section-content {
+    padding-block: 0.875rem 1rem !important;
+    padding-inline: 1.25rem !important;
+}
+
+.bsi-measurement-view-page .bsi-measurement-summary-section .fi-section-content > .fi-grid,
+.bsi-measurement-view-page .bsi-measurement-summary-section .fi-section-content > .grid {
+    row-gap: 0.875rem !important;
+    column-gap: 1.5rem !important;
+}
+
+.bsi-measurement-view-page .bsi-measurement-summary-section .fi-in-text-item {
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+}
+
+/* Operação: quebra elegante sem truncamento agressivo */
+.bsi-measurement-view-page .bsi-measurement-summary-section .bsi-summary-operation .fi-in-text-item {
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    white-space: normal !important;
+}
+
+/* Badges: altura consistente e alinhamento visual com texto das outras colunas */
+.bsi-measurement-view-page .bsi-measurement-summary-section .fi-badge {
+    margin-top: 0.125rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 0.1875rem 0.625rem !important;
+    font-size: 0.6875rem !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    border-radius: 9999px !important;
+}
+
+/* Enviada por: quebra controlada em até 2 linhas para nomes longos */
+.bsi-measurement-view-page .bsi-measurement-summary-section .bsi-summary-uploader .fi-in-text-item {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    overflow-wrap: break-word !important;
+}
+
+/* Enviada em: preserva data e hora em linha única em desktop/tablet */
+@media (min-width: 640px) {
+    .bsi-measurement-view-page .bsi-measurement-summary-section .bsi-summary-uploaded-at .fi-in-text-item {
+        white-space: nowrap !important;
+    }
+}
+
+/* Responsividade: Tablet e Mobile */
+@media (max-width: 1023px) {
+    .bsi-measurement-view-page .fi-page {
+        gap: 1rem !important;
+    }
+
+    .bsi-measurement-view-page .fi-header {
+        padding: 1.25rem !important;
+    }
+
+    .bsi-measurement-view-page .fi-header-actions {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        margin-top: 0.5rem !important;
+    }
+
+    .bsi-measurement-view-page .fi-section-content {
+        padding-inline: 1rem !important;
+        padding-block: 0.75rem 1rem !important;
+    }
+}
+
 
 

@@ -750,3 +750,96 @@ it('shows the anchor event action instead of manual due date for relative rules'
         ->assertTableActionVisible('record_anchor_event', $series)
         ->assertTableActionHidden('create_on_demand_occurrence', $series);
 });
+
+/**
+ * Regressão: o modal "Competências" renderizava `series-occurrences.blade.php`
+ * sem receber `$calendarAssessments`, resultando em HTTP 500 sempre que a
+ * série tinha ao menos uma ocorrência.
+ */
+it('opens the competencies modal listing the materialized occurrences', function (): void {
+    $this->actingAs(makeAdminUser());
+    [$series, $rule] = createTestObligationSeries();
+
+    Obligation::factory()->for($series->emission)->create([
+        'obligation_series_id' => $series->id,
+        'obligation_series_rule_id' => $rule->id,
+        'competence_date' => '2026-08-01',
+        'generation_source' => Obligation::GENERATION_SOURCE_AUTOMATIC,
+        'due_date' => '2026-09-10',
+        'status' => 'a_vencer',
+    ]);
+
+    $component = Livewire::test(ObligationSeriesRelationManager::class, [
+        'ownerRecord' => $series->emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSuccessful()
+        ->mountTableAction('occurrences', $series)
+        ->assertHasNoErrors();
+
+    $html = $component->instance()->getMountedAction()->getModalContent()->render();
+
+    expect($html)->toContain('Abrir ocorrência')
+        ->and($html)->not->toContain('Nenhuma competência foi materializada para esta recorrência.');
+});
+
+it('opens the competencies modal with an empty state when nothing was materialized', function (): void {
+    $this->actingAs(makeAdminUser());
+    [$series] = createTestObligationSeries();
+
+    $component = Livewire::test(ObligationSeriesRelationManager::class, [
+        'ownerRecord' => $series->emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSuccessful()
+        ->mountTableAction('occurrences', $series)
+        ->assertHasNoErrors();
+
+    $html = $component->instance()->getMountedAction()->getModalContent()->render();
+
+    expect($html)->toContain('Nenhuma competência foi materializada para esta recorrência.');
+});
+
+it('flags occurrences whose calendar revision changed since calculation', function (): void {
+    $this->actingAs(makeAdminUser());
+    [$series, $rule] = createTestObligationSeries();
+
+    BusinessCalendarYear::factory()->create([
+        'calendar_code' => 'B3',
+        'year' => 2026,
+        'revision' => 2,
+        'checksum' => str_repeat('b', 64),
+    ]);
+
+    Obligation::factory()->for($series->emission)->create([
+        'obligation_series_id' => $series->id,
+        'obligation_series_rule_id' => $rule->id,
+        'competence_date' => '2026-08-01',
+        'generation_source' => Obligation::GENERATION_SOURCE_AUTOMATIC,
+        'due_date' => '2026-09-10',
+        'status' => 'a_vencer',
+        'due_date_resolution' => [
+            'rule' => 'Regra contratual registrada na ocorrência.',
+            'calendar_code' => 'B3',
+            'calendar_years' => [[
+                'year' => 2026,
+                'revision' => 1,
+                'checksum' => str_repeat('a', 64),
+                'coverage_status' => 'covered',
+                'governance_status' => 'confirmed',
+            ]],
+        ],
+    ]);
+
+    $component = Livewire::test(ObligationSeriesRelationManager::class, [
+        'ownerRecord' => $series->emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->assertSuccessful()
+        ->mountTableAction('occurrences', $series)
+        ->assertHasNoErrors();
+
+    $html = $component->instance()->getMountedAction()->getModalContent()->render();
+
+    expect($html)->toContain('requer revisão humana');
+});

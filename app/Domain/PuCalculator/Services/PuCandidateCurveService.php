@@ -26,6 +26,7 @@ class PuCandidateCurveService
         private readonly PuCurveGeneratorService $curveGenerator,
         private readonly PuNumericHomologationFingerprintService $fingerprints,
         private readonly IndexRateLookupService $indexRateLookup,
+        private readonly PuOperationalProfileGuard $operationalProfiles,
     ) {}
 
     public function generate(Emission $emission, PuNumericHomologationPlan $plan): PuCandidateCurve
@@ -61,6 +62,10 @@ class PuCandidateCurveService
         $this->indexRateLookup->flushCache();
 
         $rows = $this->curveGenerator->handle($scenario)->rows;
+        // A candidate alimenta homologação, Gate C e promoção: o perfil de reconciliação
+        // com o sistema legado não pode chegar até aqui. Esta chamada não informa perfil,
+        // então cai no contratual -- o portão garante que continue assim.
+        $this->operationalProfiles->assertOperational($rows, 'a curva candidate');
         $first = $rows[0] ?? null;
         $last = $rows === [] ? null : $rows[array_key_last($rows)];
 

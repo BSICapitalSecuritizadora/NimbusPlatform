@@ -13,6 +13,7 @@ class PuCurvePersistenceService
     public function __construct(
         private readonly LegacyProjectionService $legacyProjectionService,
         private readonly PuCurveVersionService $curveVersions,
+        private readonly PuOperationalProfileGuard $operationalProfiles,
     ) {}
 
     public function handle(
@@ -21,6 +22,11 @@ class PuCurvePersistenceService
         bool $syncLegacyProjections = true,
         ?string $calculationVersion = null,
     ): PuCurveGenerationResult {
+        // Curva oficial: só entra linha calculada no perfil contratual. O perfil de
+        // reconciliação com o sistema legado não pode virar dado operacional nem por
+        // engano de um caminho futuro -- a recusa acontece ANTES de abrir a transação.
+        $this->operationalProfiles->assertOperational($result->rows, 'a curva operacional');
+
         $persistedResult = $result;
 
         DB::transaction(function () use ($emission, $result, $syncLegacyProjections, $calculationVersion, &$persistedResult): void {

@@ -4,9 +4,6 @@ namespace App\Filament\Resources\Measurements\Schemas;
 
 use App\Models\Measurement;
 use App\Models\MeasurementAsset;
-use App\Models\MeasurementPaymentReceiptEvidence;
-use App\Models\MeasurementReview;
-use App\Services\MeasurementReceiptEvidenceService;
 use App\Services\MeasurementWorkflow;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -19,23 +16,41 @@ class MeasurementInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Medição')
-                ->columns(3)
+            // 1. Resumo Executivo da Medição (Full Width, grid de 3 colunas no desktop)
+            Section::make('Resumo da Medição')
+                ->extraAttributes(['class' => 'bsi-measurement-summary-section'])
+                ->columnSpanFull()
+                ->columns(['default' => 1, 'md' => 2, 'lg' => 3])
                 ->schema([
-                    TextEntry::make('operation.title')->label('Operação'),
-                    TextEntry::make('reference_month')->label('Competência')->date('m/Y')->placeholder('—'),
+                    TextEntry::make('operation.title')
+                        ->label('Operação')
+                        ->extraAttributes(['class' => 'bsi-summary-operation'])
+                        ->formatStateUsing(fn (Measurement $record): string => $record->operation ? "{$record->operation->code} · {$record->operation->title}" : '—'),
+                    TextEntry::make('reference_month')
+                        ->label('Competência')
+                        ->extraAttributes(['class' => 'bsi-summary-month'])
+                        ->date('m/Y')
+                        ->placeholder('—'),
                     TextEntry::make('status')
                         ->label('Situação')
+                        ->extraAttributes(['class' => 'bsi-summary-status'])
                         ->badge()
                         ->formatStateUsing(fn (string $state): string => Measurement::STATUS_OPTIONS[$state] ?? $state),
                     TextEntry::make('current_stage')
                         ->label('Etapa atual')
+                        ->extraAttributes(['class' => 'bsi-summary-stage'])
                         ->badge()
                         ->state(fn (Measurement $record): string => MeasurementWorkflow::STAGE_LABELS[app(MeasurementWorkflow::class)->unifiedStage($record)] ?? '—')
                         ->color(fn (Measurement $record): string => MeasurementWorkflow::STAGE_COLORS[app(MeasurementWorkflow::class)->unifiedStage($record)] ?? 'gray'),
-                    TextEntry::make('uploadedByUser.name')->label('Enviada por')->placeholder('—'),
-                    TextEntry::make('uploaded_at')->label('Enviada em')->dateTime('d/m/Y H:i')->placeholder('—'),
-                    TextEntry::make('notes')->label('Observações')->placeholder('—')->columnSpanFull(),
+                    TextEntry::make('uploadedByUser.name')
+                        ->label('Enviada por')
+                        ->extraAttributes(['class' => 'bsi-summary-uploader'])
+                        ->placeholder('—'),
+                    TextEntry::make('uploaded_at')
+                        ->label('Enviada em')
+                        ->extraAttributes(['class' => 'bsi-summary-uploaded-at'])
+                        ->dateTime('d/m/Y H:i')
+                        ->placeholder('—'),
                     TextEntry::make('storage_path')
                         ->label('Arquivo principal legado')
                         ->state(fn (Measurement $record): ?string => filled($record->storage_path) ? 'Abrir arquivo' : null)
@@ -44,14 +59,57 @@ class MeasurementInfolist
                             : null)
                         ->openUrlInNewTab()
                         ->icon('heroicon-o-arrow-down-tray')
-                        ->placeholder('—'),
+                        ->placeholder('—')
+                        ->columnSpanFull()
+                        ->visible(fn (Measurement $record): bool => filled($record->storage_path)),
+                    TextEntry::make('notes')
+                        ->label('Observações')
+                        ->placeholder('—')
+                        ->columnSpanFull()
+                        ->visible(fn (Measurement $record): bool => filled($record->notes)),
                 ]),
 
+            // 2. Aprovação por Responsabilidade (Full Width, grid interno de 5 mini-cards lado a lado)
+            Section::make('Aprovação por Responsabilidade')
+                ->description('Responsáveis das etapas no escopo da operação e status de decisão.')
+                ->columnSpanFull()
+                ->schema([
+                    ViewEntry::make('responsibilities')
+                        ->label('')
+                        ->view('filament.infolists.measurement-responsibilities'),
+                ]),
+
+            // 3. Condição e Conciliação Financeira (Full Width)
+            Section::make('Condição e Conciliação Financeira')
+                ->description('Referência financeira desta competência, ancorada no snapshot da Engenharia. A divergência avisa e não bloqueia.')
+                ->columnSpanFull()
+                ->visible(fn (Measurement $record): bool => is_array($record->engineering_snapshot)
+                    && ($record->engineering_snapshot['plan_sets'] ?? []) !== [])
+                ->schema([
+                    ViewEntry::make('financial_reconciliation')
+                        ->label('')
+                        ->view('filament.infolists.measurement-financial-reconciliation'),
+                ]),
+
+            // 4. Pagamentos e Comprovações (Full Width)
+            Section::make('Pagamentos e Comprovações')
+                ->description('Registros de pagamento da competência e histórico de comprovantes.')
+                ->columnSpanFull()
+                ->schema([
+                    ViewEntry::make('payments_list')
+                        ->label('')
+                        ->view('filament.infolists.measurement-payments-list'),
+                ]),
+
+            // 5. Arquivos por Empreendimento (Full Width)
             Section::make('Arquivos por Empreendimento')
+                ->description('Relatórios e laudos vinculados aos empreendimentos.')
+                ->collapsible()
+                ->columnSpanFull()
                 ->schema([
                     RepeatableEntry::make('assets')
                         ->label('')
-                        ->columns(2)
+                        ->columns(['default' => 1, 'sm' => 2, 'lg' => 3])
                         ->schema([
                             TextEntry::make('planSet.construction.development_name')->label('Empreendimento')->placeholder('—'),
                             TextEntry::make('storage_path')
@@ -67,92 +125,26 @@ class MeasurementInfolist
                         ]),
                 ]),
 
-            Section::make('Conciliação Financeira')
-                ->description('Referência financeira desta competência, ancorada no snapshot da Engenharia. A divergência avisa e não bloqueia.')
-                ->visible(fn (Measurement $record): bool => is_array($record->engineering_snapshot)
-                    && ($record->engineering_snapshot['plan_sets'] ?? []) !== [])
-                ->schema([
-                    ViewEntry::make('financial_reconciliation')
-                        ->label('')
-                        ->view('filament.infolists.measurement-financial-reconciliation'),
-                ]),
-
-            Section::make('Pagamentos e Comprovantes')
-                ->schema([
-                    TextEntry::make('documentary_status')->label('Documentação após finalização')->badge()
-                        ->visible(fn (Measurement $record): bool => $record->status === 'finalized')
-                        ->state(fn (Measurement $record): string => app(MeasurementReceiptEvidenceService::class)->documentaryStatus($record))
-                        ->color(fn (string $state): string => match ($state) {
-                            'Correção documental pendente' => 'warning',
-                            'Correção documental rejeitada' => 'danger',
-                            'Correção documental regularizada' => 'success',
-                            default => 'gray',
-                        }),
-                    RepeatableEntry::make('payments')
-                        ->label('')
-                        ->columns(4)
-                        ->schema([
-                            TextEntry::make('pay_date')->label('Data')->date('d/m/Y'),
-                            TextEntry::make('planSet.construction.development_name')->label('Empreendimento')->placeholder('—'),
-                            TextEntry::make('amount')->label('Valor')->money('BRL'),
-                            TextEntry::make('method')->label('Método')->placeholder('Não informado'),
-                            RepeatableEntry::make('receiptEvidences')
-                                ->label('Comprovantes / Evidências')->columnSpanFull()->columns(3)
-                                ->schema([
-                                    TextEntry::make('version')->label('Versão')
-                                        ->formatStateUsing(fn (MeasurementPaymentReceiptEvidence $record): string => 'v'.$record->version.($record->supersededBy === null ? ' · Atual' : ' · Substituída por v'.$record->supersededBy->version)),
-                                    TextEntry::make('review_status')->label('Decisão documental')->badge()
-                                        ->formatStateUsing(fn (MeasurementPaymentReceiptEvidence $record): string => $record->review_status->label())
-                                        ->color(fn (MeasurementPaymentReceiptEvidence $record): string => $record->review_status->color()),
-                                    TextEntry::make('original_filename')->label('Nome original')->placeholder('Nome original não registrado no fluxo legado'),
-                                    TextEntry::make('uploadedByUser.name')->label('Upload por')->placeholder('Não registrado'),
-                                    TextEntry::make('uploaded_at')->label('Upload em')->dateTime('d/m/Y H:i:s')->placeholder('Não registrado'),
-                                    TextEntry::make('reviewer.name')->label('Conferido por')->placeholder('Sem decisão individual'),
-                                    TextEntry::make('reviewed_at')->label('Decisão em')->dateTime('d/m/Y H:i:s')->placeholder('Sem decisão individual'),
-                                    TextEntry::make('review_notes')->label('Observação')->placeholder('—'),
-                                    TextEntry::make('rejection_reason')->label('Motivo da rejeição')->placeholder('—'),
-                                    TextEntry::make('correction_reason')->label('Motivo da correção / substituição')->placeholder('—'),
-                                    TextEntry::make('sha256')->label('SHA-256')->limit(16)->tooltip(fn (MeasurementPaymentReceiptEvidence $record): ?string => $record->sha256),
-                                    TextEntry::make('download')->label('Arquivo')->state('Abrir comprovante')
-                                        ->url(fn (MeasurementPaymentReceiptEvidence $record): string => route('admin.measurements.receipt-evidences.download', ['payment' => $record->measurement_payment_id, 'evidence' => $record]))
-                                        ->openUrlInNewTab()->icon('heroicon-o-arrow-down-tray'),
-                                ]),
-                        ]),
-                ]),
-
+            // 6. Linha do Tempo (Full Width)
             Section::make('Linha do Tempo')
                 ->description('Histórico completo da medição: envio, aprovações, recusas, devoluções, pausas e pagamentos.')
                 ->collapsible()
+                ->columnSpanFull()
                 ->schema([
                     ViewEntry::make('timeline')
                         ->label('')
                         ->view('filament.infolists.measurement-timeline'),
                 ]),
 
-            Section::make('Análises por Etapa')
+            // 7. Atividade por Etapa (Full Width)
+            Section::make('Atividade por Etapa')
+                ->description('Decisões formais registradas pelos responsáveis em cada fase do fluxo.')
+                ->collapsible()
+                ->columnSpanFull()
                 ->schema([
-                    RepeatableEntry::make('reviews')
+                    ViewEntry::make('reviews_table')
                         ->label('')
-                        ->columns(4)
-                        ->schema([
-                            TextEntry::make('stage')
-                                ->label('Etapa')
-                                ->badge()
-                                ->formatStateUsing(fn (int $state): string => MeasurementWorkflow::STAGE_LABELS[$state] ?? (string) $state)
-                                ->color(fn (int $state): string => MeasurementWorkflow::STAGE_COLORS[$state] ?? 'gray'),
-                            TextEntry::make('reviewer.name')->label('Responsável')->placeholder('—'),
-                            TextEntry::make('status')
-                                ->label('Status')
-                                ->badge()
-                                ->formatStateUsing(fn (string $state): string => MeasurementReview::STATUS_OPTIONS[$state] ?? $state)
-                                ->color(fn (string $state): string => match ($state) {
-                                    'approved' => 'success',
-                                    'rejected' => 'danger',
-                                    default => 'gray',
-                                }),
-                            TextEntry::make('reviewed_at')->label('Analisada em')->dateTime('d/m/Y H:i')->placeholder('—'),
-                            TextEntry::make('notes')->label('Comentário')->placeholder('—')->columnSpanFull(),
-                        ]),
+                        ->view('filament.infolists.measurement-reviews-table'),
                 ]),
         ]);
     }

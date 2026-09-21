@@ -138,6 +138,33 @@ it('correctly formats cards for multi-representative, long names, long emails, a
         ->assertSeeHtml('dark:bg-[#091b23]');
 });
 
+it('styles the Gerenciar Fila button as an institutional secondary action integrated into BSI Capital theme', function () {
+    $adminUser = User::factory()->withTwoFactor()->create();
+    $adminUser->assignRole('admin');
+
+    $this->actingAs($adminUser);
+
+    $test = Livewire::test(ProposalRepresentativeLoadChartWidget::class);
+
+    // Verify button has institutional secondary styling classes and avoids generic gray
+    $test->assertSeeHtml('bsi-manage-queue-btn')
+        ->assertSeeHtml('border-[#a06e28]/25')
+        ->assertSeeHtml('bg-[#091b23]/[0.03]')
+        ->assertSeeHtml('text-[#091b23]')
+        ->assertSeeHtml('dark:border-[#a06e28]/35')
+        ->assertSeeHtml('dark:bg-[#091b23]/60')
+        ->assertSeeHtml('dark:text-[#fbfaf8]')
+        ->assertDontSeeHtml('border-gray-300/80')
+        ->assertDontSeeHtml('dark:bg-gray-800/90');
+
+    // Verify theme CSS contains scoped header alignment and responsive rules
+    $css = file_get_contents(resource_path('css/filament/admin/theme.css'));
+    expect($css)
+        ->toContain('.bsi-proposal-representative-load-widget > .fi-section > .fi-section-header')
+        ->toContain('.bsi-proposal-representative-load-widget .fi-section-header-after-ctn')
+        ->toContain('.bsi-proposal-representative-load-widget .bsi-manage-queue-btn');
+});
+
 function createRepresentativeProposal(
     ProposalRepresentative $representative,
     string $status,

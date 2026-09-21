@@ -13,11 +13,11 @@
         <x-slot name="afterHeader">
             <a
                 href="{{ $representativesUrl }}"
-                class="group inline-flex items-center gap-1.5 rounded-lg border border-gray-300/80 bg-white/90 px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs transition-all duration-150 hover:border-[#a06e28]/50 hover:bg-gray-50 hover:text-gray-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a06e28]/40 dark:border-white/10 dark:bg-gray-800/90 dark:text-gray-200 dark:hover:border-[#a06e28]/60 dark:hover:bg-gray-700/80 dark:hover:text-white"
+                class="bsi-manage-queue-btn group inline-flex items-center justify-center gap-2 rounded-lg border border-[#a06e28]/25 bg-[#091b23]/[0.03] px-3.5 py-1.5 text-xs font-medium text-[#091b23] shadow-none transition-colors duration-150 ease-in-out hover:border-[#a06e28]/60 hover:bg-[#a06e28]/[0.08] hover:text-[#7b541e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a06e28]/40 focus-visible:ring-offset-1 focus-visible:ring-offset-[#f8f7f4] dark:border-[#a06e28]/35 dark:bg-[#091b23]/60 dark:text-[#fbfaf8] dark:hover:border-[#d4af37]/60 dark:hover:bg-[#12313b]/80 dark:hover:text-white dark:focus-visible:ring-[#d4af37]/50 dark:focus-visible:ring-offset-[#0a2028]"
                 aria-label="Gerenciar fila comercial e distribuição de representantes"
             >
-                <span>Gerenciar Fila</span>
-                <x-heroicon-m-arrow-top-right-on-square class="size-3.5 shrink-0 text-gray-400 transition-colors group-hover:text-gray-600 dark:text-gray-400 dark:group-hover:text-gray-200" aria-hidden="true" />
+                <span class="tracking-normal">Gerenciar Fila</span>
+                <x-heroicon-m-arrow-top-right-on-square class="size-3.5 shrink-0 text-[#a06e28]/70 transition-colors duration-150 group-hover:text-[#7b541e] dark:text-[#d4af37]/75 dark:group-hover:text-white" aria-hidden="true" />
             </a>
         </x-slot>
 

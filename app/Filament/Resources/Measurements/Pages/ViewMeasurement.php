@@ -8,6 +8,7 @@ use App\Enums\MeasurementReceiptReviewStatus;
 use App\Enums\MeasurementReconciliationStatus;
 use App\Exceptions\MeasurementWorkflowException;
 use App\Filament\Resources\Measurements\MeasurementResource;
+use App\Models\Measurement;
 use App\Models\MeasurementPayment;
 use App\Models\MeasurementPaymentReceiptEvidence;
 use App\Models\MeasurementPlanSet;
@@ -34,6 +35,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Exceptions\Halt;
 use Filament\Support\RawJs;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
@@ -43,6 +45,39 @@ class ViewMeasurement extends ViewRecord
     protected static string $resource = MeasurementResource::class;
 
     protected static ?string $title = 'Medição';
+
+    protected array $extraBodyAttributes = [
+        'class' => 'bsi-cockpit-page bsi-measurement-view-page',
+    ];
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        $id = $this->record->id;
+        $op = $this->record->operation;
+        $opLabel = $op ? "{$op->code} · {$op->title}" : null;
+        $refMonth = $this->record->reference_month ? $this->record->reference_month->format('m/Y') : '—';
+        $statusLabel = Measurement::STATUS_OPTIONS[$this->record->status] ?? (string) $this->record->status;
+        $stageId = $this->stage();
+        $stageLabel = MeasurementWorkflow::STAGE_LABELS[$stageId] ?? '—';
+        $uploadedAt = $this->record->uploaded_at ? $this->record->uploaded_at->format('d/m/Y H:i') : null;
+        $uploader = $this->record->uploadedByUser?->name;
+
+        return new HtmlString(
+            '<div class="bsi-measurement-header-meta">'
+            .'<div class="bsi-measurement-meta-row bsi-measurement-meta-row--primary">'
+            .'<span class="bsi-measurement-meta-id">Medição #'.e($id).'</span>'
+            .($opLabel ? '<span class="bsi-measurement-meta-op" title="'.e($opLabel).'">'.e($opLabel).'</span>' : '')
+            .'<span class="bsi-measurement-badge bsi-measurement-badge--status">'.e($statusLabel).'</span>'
+            .'<span class="bsi-measurement-badge bsi-measurement-badge--stage">Etapa: '.e($stageLabel).'</span>'
+            .'</div>'
+            .'<div class="bsi-measurement-meta-row bsi-measurement-meta-row--secondary">'
+            .'<span><strong class="bsi-meta-label">Competência:</strong> '.e($refMonth).'</span>'
+            .($uploadedAt ? '<span class="bsi-meta-sep" aria-hidden="true">•</span><span><strong class="bsi-meta-label">Enviada em:</strong> '.e($uploadedAt).'</span>' : '')
+            .($uploader ? '<span class="bsi-meta-sep" aria-hidden="true">•</span><span><strong class="bsi-meta-label">Por:</strong> '.e($uploader).'</span>' : '')
+            .'</div>'
+            .'</div>'
+        );
+    }
 
     private const ENGINEERING_STAGE = 1;
 

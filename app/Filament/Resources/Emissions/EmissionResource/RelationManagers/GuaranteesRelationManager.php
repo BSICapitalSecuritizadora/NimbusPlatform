@@ -107,104 +107,153 @@ class GuaranteesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->extraAttributes(['class' => 'bsi-guarantees-table'])
             ->recordTitleAttribute('name')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['construction', 'fund', 'documentReferences', 'pendingDetections']))
             ->columns([
                 TextColumn::make('name')
-                    ->label('Garantia')
-                    ->formatStateUsing(fn (?string $state, Guarantee $record): HtmlString => new HtmlString(
-                        '<div class="flex flex-col py-0.5 min-w-[200px]">
-                            <span class="font-semibold text-sm text-[#fbfaf8] leading-snug hover:text-amber-300 transition-colors">'.e($record->display_name).'</span>
-                            '.($this->guaranteeSubtitle($record) ? '<span class="text-xs text-white/50 leading-tight mt-0.5">'.e($this->guaranteeSubtitle($record)).'</span>' : '').'
-                        </div>'
-                    ))
+                    ->label('Garantia / Identificação')
+                    ->formatStateUsing(function (?string $state, Guarantee $record): HtmlString {
+                        $name = e($record->display_name);
+                        $subtitle = $this->guaranteeSubtitle($record);
+                        $identificationText = $this->formatIdentificationSummary($record->identification);
+                        $docCount = $record->relationLoaded('documentReferences')
+                            ? $record->documentReferences->count()
+                            : $record->documentReferences()->count();
+
+                        $html = '<div class="flex flex-col py-0.5 min-w-[280px] max-w-[500px] space-y-0.5">';
+                        $html .= '<div class="flex items-baseline gap-2 flex-wrap">';
+                        $html .= '<span class="font-semibold text-sm text-[#fbfaf8] leading-snug tracking-tight hover:text-amber-300/90 transition-colors">'.$name.'</span>';
+                        if ($docCount > 0) {
+                            $html .= '<span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[#081a22] text-slate-400 border border-[#1d4554]/40 shrink-0" title="'.$docCount.' documento(s) associado(s)">';
+                            $html .= '<svg class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>';
+                            $html .= $docCount.' doc(s)';
+                            $html .= '</span>';
+                        }
+                        $html .= '</div>';
+
+                        if ($subtitle) {
+                            $html .= '<div class="text-xs text-slate-400 font-normal leading-normal">'.e($subtitle).'</div>';
+                        }
+
+                        if ($identificationText) {
+                            $html .= '<div class="text-[11px] text-slate-400/90 font-mono leading-normal flex items-center gap-1.5 mt-0.5">';
+                            $html .= '<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#1d4554] shrink-0"></span>';
+                            $html .= '<span>'.e($identificationText).'</span>';
+                            $html .= '</div>';
+                        }
+
+                        $html .= '</div>';
+
+                        return new HtmlString($html);
+                    })
                     ->searchable()
                     ->grow()
                     ->tooltip(fn (Guarantee $record): string => $record->display_name),
-                TextColumn::make('identification')
-                    ->label('Identificação')
-                    ->formatStateUsing(fn (mixed $state): string => $this->formatIdentification($state))
-                    ->placeholder('—')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('requirement_basis')
-                    ->label('Regra Contratual')
-                    ->formatStateUsing(fn (Guarantee $record): HtmlString => new HtmlString(
-                        '<span class="text-xs text-white/80 leading-snug line-clamp-2 max-w-[280px] block" title="'.e($this->requirementFullDescription($record)).'">'.
-                        e($this->requirementLabel($record)).
-                        '</span>'
-                    ))
-                    ->placeholder('—')
-                    ->tooltip(fn (Guarantee $record): string => $this->requirementFullDescription($record))
-                    ->toggleable(),
-                TextColumn::make('contracted_value')
-                    ->label('Valor Contratação')
-                    ->formatStateUsing(fn (mixed $state): HtmlString => new HtmlString(
-                        $state === null || $state === ''
-                            ? '<span class="text-white/30 font-normal">—</span>'
-                            : '<span class="text-xs font-medium text-white/75 tabular-nums whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
-                    ))
-                    ->alignEnd()
-                    ->toggleable(),
                 TextColumn::make('current_value')
                     ->label('Valor Atual')
                     ->state(fn (Guarantee $record): ?float => $this->positionFor($record)?->currentValue())
                     ->formatStateUsing(fn (?float $state): HtmlString => new HtmlString(
                         $state === null
-                            ? '<span class="text-white/30 font-normal">—</span>'
-                            : '<span class="text-xs sm:text-sm font-bold text-[#fbfaf8] tabular-nums whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
+                            ? '<span class="text-slate-500 font-normal select-none" title="Sem valor atualizado">—</span>'
+                            : '<span class="text-sm font-bold text-[#fbfaf8] tabular-nums font-mono whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
                     ))
                     ->alignEnd(),
-                TextColumn::make('eligible_value')
-                    ->label('Valor Elegível')
-                    ->state(fn (Guarantee $record): ?float => $this->positionFor($record)?->eligibleValue)
-                    ->formatStateUsing(fn (?float $state): HtmlString => new HtmlString(
-                        $state === null
-                            ? '<span class="text-white/30 font-normal">—</span>'
-                            : '<span class="text-xs font-medium text-white/75 tabular-nums whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
+                TextColumn::make('contracted_value')
+                    ->label('Valor Contratação')
+                    ->formatStateUsing(fn (mixed $state): HtmlString => new HtmlString(
+                        $state === null || $state === ''
+                            ? '<span class="text-slate-500 font-normal select-none">—</span>'
+                            : '<span class="text-xs font-normal text-slate-400 tabular-nums font-mono whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
                     ))
-                    ->alignEnd()
-                    ->toggleable(),
+                    ->alignEnd(),
                 TextColumn::make('coverage')
                     ->label('Cobertura')
                     ->state(fn (Guarantee $record): ?float => $this->positionFor($record)?->coverageRatio)
                     ->formatStateUsing(function (?float $state, Guarantee $record): HtmlString {
                         if ($state === null) {
-                            return new HtmlString('<span class="text-white/30 font-normal">—</span>');
+                            return new HtmlString('<span class="text-slate-500 font-normal select-none">—</span>');
                         }
                         $percent = number_format($state * 100, 2, ',', '.').'%';
                         $statusColor = $this->positionFor($record)?->coverageStatus?->color();
                         $color = match ($statusColor) {
                             'success' => 'text-emerald-400',
-                            'warning' => 'text-amber-400',
+                            'warning' => 'text-amber-400/90',
                             'danger' => 'text-rose-400',
-                            default => 'text-white/80',
+                            default => 'text-slate-300',
                         };
                         $barColor = match ($statusColor) {
                             'success' => 'bg-emerald-400',
-                            'warning' => 'bg-amber-400',
+                            'warning' => 'bg-amber-400/90',
                             'danger' => 'bg-rose-400',
-                            default => 'bg-white/40',
+                            default => 'bg-slate-400',
                         };
                         $fillWidth = min(100, max(0, round($state * 100)));
 
                         return new HtmlString(
                             '<div class="flex flex-col items-end gap-1">
-                                <span class="font-bold text-xs '.$color.' tabular-nums whitespace-nowrap">'.$percent.'</span>
-                                <div class="w-14 h-1 bg-white/10 rounded-full overflow-hidden">
+                                <span class="font-bold text-xs font-mono '.$color.' tabular-nums whitespace-nowrap">'.$percent.'</span>
+                                <div class="w-14 h-1 bg-[#091b23] rounded-full overflow-hidden border border-[#1d4554]/40">
                                     <div class="h-full rounded-full '.$barColor.'" style="width: '.$fillWidth.'%"></div>
                                 </div>
                             </div>'
                         );
                     })
+                    ->alignEnd(),
+                TextColumn::make('legal_status')
+                    ->label('Status')
+                    ->formatStateUsing(function (Guarantee $record): HtmlString {
+                        if (! $record->legal_status) {
+                            return new HtmlString('<span class="text-slate-500 font-normal select-none">—</span>');
+                        }
+
+                        $color = $record->legal_status->color();
+                        $classes = match ($color) {
+                            'success' => 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30',
+                            'info' => 'bg-[#0f2c38] text-cyan-300 border-[#1d4554]/60',
+                            'warning' => 'bg-amber-950/40 text-amber-300/90 border-amber-500/30',
+                            'danger' => 'bg-rose-950/50 text-rose-300 border-rose-500/30',
+                            default => 'bg-[#081a22] text-slate-400 border-[#1d4554]/40',
+                        };
+
+                        return new HtmlString(
+                            '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium tracking-wide border '.$classes.' whitespace-nowrap">'.
+                            e($record->legal_status->label()).
+                            '</span>'
+                        );
+                    }),
+                TextColumn::make('requirement_basis')
+                    ->label('Regra Contratual')
+                    ->formatStateUsing(fn (Guarantee $record): HtmlString => new HtmlString(
+                        '<span class="text-xs text-slate-300/80 leading-snug line-clamp-2 max-w-[260px] block" title="'.e($this->requirementFullDescription($record)).'">'.
+                        e($this->requirementLabel($record)).
+                        '</span>'
+                    ))
+                    ->placeholder('—')
+                    ->tooltip(fn (Guarantee $record): string => $this->requirementFullDescription($record))
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('eligible_value')
+                    ->label('Valor Elegível')
+                    ->state(fn (Guarantee $record): ?float => $this->positionFor($record)?->eligibleValue)
+                    ->formatStateUsing(fn (?float $state): HtmlString => new HtmlString(
+                        $state === null
+                            ? '<span class="text-slate-500 font-normal select-none">—</span>'
+                            : '<span class="text-xs font-normal text-slate-300 tabular-nums font-mono whitespace-nowrap">R$ '.MoneyFormatter::formatCurrencyForDisplay($state).'</span>'
+                    ))
                     ->alignEnd()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('validity_end_date')
                     ->label('Vigência')
                     ->formatStateUsing(fn (mixed $state, Guarantee $record): HtmlString => new HtmlString(
-                        '<span class="text-xs text-white/60 tabular-nums whitespace-nowrap">'.e($this->validityLabel($record)).'</span>'
+                        '<span class="text-xs text-slate-400 tabular-nums whitespace-nowrap">'.e($this->validityLabel($record)).'</span>'
                     ))
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('identification')
+                    ->label('Identificação')
+                    ->formatStateUsing(fn (mixed $state): string => $this->formatIdentification($state))
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('value_source')
                     ->label('Fonte')
                     ->badge()
@@ -218,11 +267,6 @@ class GuaranteesRelationManager extends RelationManager
                     ->color(fn (Guarantee $record): string => $record->documentationStatus()->color())
                     ->tooltip(fn (Guarantee $record): string => $record->documentationStatus()->label())
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('legal_status')
-                    ->label('Status')
-                    ->badge()
-                    ->formatStateUsing(fn (Guarantee $record): string => $record->legal_status?->label() ?? '—')
-                    ->color(fn (Guarantee $record): string => $record->legal_status?->color() ?? 'gray'),
             ])
             ->defaultSort('created_at', 'desc')
             ->searchPlaceholder('Buscar por garantia...')
@@ -391,7 +435,7 @@ class GuaranteesRelationManager extends RelationManager
         return Action::make('inform_value')
             ->label('Informar valor do mês')
             ->icon('heroicon-o-pencil-square')
-            ->color('warning')
+            ->color('gray')
             ->visible(fn (Guarantee $record): bool => $record->resolvedValueSource() === GuaranteeValueSource::Manual)
             ->authorize(fn (): bool => $this->canUpdateValues())
             ->modalHeading('Informar valor da competência')
@@ -495,6 +539,21 @@ class GuaranteesRelationManager extends RelationManager
             ->take(3)
             ->map(fn (mixed $value, string $key): string => sprintf('%s: %s', $this->identificationLabel($key), $value))
             ->implode(' · ');
+    }
+
+    protected function formatIdentificationSummary(mixed $state): ?string
+    {
+        if (! is_array($state) || $state === []) {
+            return null;
+        }
+
+        $formatted = collect($state)
+            ->filter(fn (mixed $value): bool => filled($value))
+            ->take(3)
+            ->map(fn (mixed $value, string $key): string => sprintf('%s: %s', $this->identificationLabel($key), $value))
+            ->implode(' · ');
+
+        return filled($formatted) ? $formatted : null;
     }
 
     protected function identificationLabel(string $key): string

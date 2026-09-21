@@ -6,7 +6,9 @@ use App\Enums\AccessPermission;
 use App\Enums\ObligationFrequency;
 use App\Enums\ObligationSeriesStatus;
 use App\Filament\Resources\Emissions\Schemas\ObligationSeriesFormFields;
+use App\Models\Obligation;
 use App\Models\ObligationSeries;
+use App\Services\Obligations\ObligationCalendarReproducibilityService;
 use App\Services\Obligations\ObligationScheduleCalculator;
 use App\Services\Obligations\ObligationSeriesService;
 use Filament\Actions\Action;
@@ -239,15 +241,24 @@ class ObligationSeriesRelationManager extends RelationManager
                     ->modalWidth(Width::FiveExtraLarge)
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar')
-                    ->modalContent(fn (ObligationSeries $record) => view('filament.obligations.series-occurrences', [
-                        'series' => $record,
-                        'occurrences' => $record->occurrences()
+                    ->modalContent(function (ObligationSeries $record) {
+                        $occurrences = $record->occurrences()
                             ->getQuery()
                             ->reorder('competence_date', 'desc')
                             ->with('responsibleUser')
                             ->withCount('evidences')
-                            ->get(),
-                    ])),
+                            ->get();
+
+                        return view('filament.obligations.series-occurrences', [
+                            'series' => $record,
+                            'occurrences' => $occurrences,
+                            'calendarAssessments' => $occurrences->mapWithKeys(
+                                fn (Obligation $occurrence): array => [
+                                    $occurrence->getKey() => app(ObligationCalendarReproducibilityService::class)->assess($occurrence),
+                                ]
+                            ),
+                        ]);
+                    }),
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Abrir série')

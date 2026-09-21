@@ -408,3 +408,58 @@ it('confirms a candidate produced by the collector, without a contractual rule',
         ->and($guarantee->type)->toBe(GuaranteeType::WorksFund)
         ->and($guarantee->legal_instrument_id)->toBe($instrumentDocument->legal_instrument_id);
 });
+
+/**
+ * Regressão: a action "Analisar documentos existentes" montava o formulário do
+ * modal com `Filament\Schemas\Components\Placeholder`, classe que não existe
+ * no Filament 5 — o clique resultava em HTTP 500 antes de qualquer análise.
+ */
+it('opens the existing documents scan with an empty state when nothing is recognisable', function (): void {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create();
+
+    $document = Document::factory()->create(['title' => 'Apresentacao institucional.pdf', 'category' => 'documentos_operacao']);
+    $emission->documents()->attach($document->id);
+
+    Livewire::test(LegalInstrumentsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->mountTableAction('scan_existing_documents')
+        ->assertHasNoTableActionErrors();
+});
+
+it('creates dossiers from every selected scan suggestion', function (): void {
+    $this->actingAs(makeAdminUser());
+
+    Queue::fake();
+
+    $emission = Emission::factory()->create();
+
+    foreach ([
+        'CRI XYZ_CCB.pdf',
+        'CRI XYZ_1º Aditamento CCB.pdf',
+        'CRI XYZ_AFI.pdf',
+    ] as $title) {
+        $document = Document::factory()->create(['title' => $title, 'category' => 'documentos_operacao']);
+        $emission->documents()->attach($document->id);
+    }
+
+    Livewire::test(LegalInstrumentsRelationManager::class, [
+        'ownerRecord' => $emission,
+        'pageClass' => EditEmission::class,
+    ])
+        ->mountTableAction('scan_existing_documents')
+        ->assertHasNoTableActionErrors()
+        ->setTableActionData([
+            'types' => [LegalInstrumentType::Ccb->value, LegalInstrumentType::RealEstateFiduciaryAlienation->value],
+        ])
+        ->callMountedTableAction()
+        ->assertHasNoTableActionErrors();
+
+    expect($emission->legalInstruments()->count())->toBe(2)
+        ->and(LegalInstrumentDocument::query()->count())->toBe(3);
+
+    Queue::assertPushed(ProcessLegalInstrumentDocumentJob::class, 3);
+});

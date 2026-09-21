@@ -342,3 +342,45 @@ it('reports a pending competence instead of a breach when a manual value is miss
         ->assertSee(GuaranteeCoverageStatus::PendingUpdate->label())
         ->assertDontSee(GuaranteeCoverageStatus::NonCompliant->label());
 });
+
+it('renders guarantees with edge-case configurations such as long names, long identifications, and absent values', function () {
+    $this->actingAs(makeAdminUser());
+
+    $emission = Emission::factory()->create();
+
+    // 1. Short name, present values, active status
+    $shortGuarantee = Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::Surety)
+        ->create([
+            'emission_id' => $emission->id,
+            'name' => 'Fiança',
+            'contracted_value' => 500000.00,
+            'legal_status' => GuaranteeLegalStatus::Active,
+        ]);
+
+    // 2. Long name, long identification, absent current value, pending status
+    $longGuarantee = Guarantee::factory()
+        ->effectiveBetween()
+        ->ofType(GuaranteeType::RealEstateFiduciaryAlienation)
+        ->create([
+            'emission_id' => $emission->id,
+            'name' => 'Alienação Fiduciária de Imóvel Residencial e Comercial Gleba B',
+            'identification' => [
+                'registration_number' => '123.456-R.4',
+                'registry_office' => '2º Cartório de Registro de Imóveis da Comarca da Capital',
+                'city' => 'São Paulo',
+            ],
+            'contracted_value' => 12500000.50,
+            'legal_status' => GuaranteeLegalStatus::PendingRegistration,
+        ]);
+
+    guaranteesRelationManager($emission)
+        ->assertCanSeeTableRecords([$shortGuarantee, $longGuarantee])
+        ->assertSee('Fiança')
+        ->assertSee('Alienação Fiduciária de Imóvel Residencial e Comercial Gleba B')
+        ->assertSee('R$ 500.000,00')
+        ->assertSee('R$ 12.500.000,50')
+        ->assertSee('123.456-R.4')
+        ->assertSee('Pendente de registro');
+});

@@ -122,3 +122,19 @@ it('preserves global dropdown panel identity without leaking into general select
         ->toContain('.fi-dropdown-panel:has(.fi-select-input-options-ctn)')
         ->toContain('z-index: 10050 !important');
 });
+
+it('scopes flex display strictly to visible state so native dismissal works properly', function () {
+    $css = file_get_contents(resource_path('css/filament/admin/theme.css'));
+
+    // The base panel rule must NOT unconditionally force display: flex !important (which would trap dropdown open)
+    expect($css)
+        ->toContain('.bsi-responsible-filter .fi-dropdown-panel[style*="display: block"]')
+        ->toContain('.bsi-responsible-filter .fi-dropdown-panel[style*="display: none"]')
+        ->toContain('display: none !important');
+
+    // Extract the block defining base styles for .bsi-responsible-filter .fi-dropdown-panel
+    preg_match('/\.bsi-responsible-filter \.fi-dropdown-panel,.*?\{(.*?)\}/s', $css, $matches);
+    expect($matches)->not->toBeEmpty();
+    $basePanelRules = $matches[1];
+    expect($basePanelRules)->not->toContain('display: flex');
+});

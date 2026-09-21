@@ -155,9 +155,9 @@ class PuCalculatorSimulator extends Page
     }
 
     /**
-     * Perfil escolhido, resolvido pelo enum. Valor ausente, vazio ou
-     * desconhecido devolve o contratual: o legado exige escolha explícita e
-     * válida, nunca um estado de formulário malformado.
+     * Perfil escolhido, resolvido pelo enum. Ausente ou vazio devolve o
+     * contratual; valor desconhecido é recusado pelo enum, e por isso a
+     * propriedade é saneada em `updatedCalculationProfile()` antes de chegar aqui.
      */
     public function calculationProfile(): PuCalculationProfile
     {
@@ -200,6 +200,17 @@ class PuCalculatorSimulator extends Page
      */
     public function updatedCalculationProfile(): void
     {
+        // Fronteira do formulário: a propriedade é pública e chega do cliente, então um
+        // valor fora do enum é possível por adulteração. O enum falha fechado nesse caso,
+        // e deixar a exceção subir derrubaria a RENDERIZAÇÃO da página -- inclusive a do
+        // perfil contratual, que nada tem a ver com o payload inválido. Aqui o valor
+        // inválido é recusado de forma visível: volta para o contratual (a autoridade) e
+        // registra erro no campo, em vez de calcular como se a escolha tivesse valido.
+        if (PuCalculationProfile::tryFrom($this->calculationProfile) === null) {
+            $this->calculationProfile = PuCalculationProfile::default()->value;
+            $this->addError('calculationProfile', 'Perfil de cálculo inválido. A simulação voltou para o perfil contratual.');
+        }
+
         $this->result = null;
         $this->hasCalculated = false;
     }

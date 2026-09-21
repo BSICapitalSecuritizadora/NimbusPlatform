@@ -107,22 +107,6 @@ final class CdiFactorCompositionService
     }
 
     /**
-     * Fator DI ENTREGUE à combinação com o Fator Spread.
-     *
-     * É o ÚNICO estágio em que os dois perfis divergem, e a divergência é
-     * comprovada contra a planilha de referência (ver `PuLegacyReferenceFixture`):
-     *
-     *  - `Contractual`: o Termo manda considerar o Fator DI com 8 casas, com
-     *    arredondamento, ANTES de combinar. É a autoridade do Nimbus.
-     *  - `LegacyCompatibility`: o sistema legado leva o produtório acumulado
-     *    inteiro (16 casas, já truncado progressivamente) para a combinação e
-     *    só quantiza depois, no Fator de Juros em 9 casas.
-     *
-     * Em 31/08/2026 a diferença é literalmente esta: `1,0077946312497466` contra
-     * `1,00779463`, que separa um Fator de Juros de `1,011296122` de um de
-     * `1,011296121` -- R$ 0,000001 por unidade de PU.
-     */
-    /**
      * Fator Spread BRUTO, antes do arredondamento contratual em 9 casas.
      *
      * Existe exclusivamente para a memória de cálculo poder mostrar o estágio
@@ -144,6 +128,22 @@ final class CdiFactorCompositionService
         );
     }
 
+    /**
+     * Fator DI ENTREGUE à combinação com o Fator Spread.
+     *
+     * É o ÚNICO estágio em que os dois perfis divergem, e a divergência é
+     * comprovada contra a planilha de referência (ver `PuLegacyReferenceFixture`):
+     *
+     *  - `Contractual`: o Termo manda considerar o Fator DI com 8 casas, com
+     *    arredondamento, ANTES de combinar. É a autoridade do Nimbus.
+     *  - `LegacyCompatibility`: o sistema legado leva o produtório acumulado
+     *    inteiro (16 casas, já truncado progressivamente) para a combinação e
+     *    só quantiza depois, no Fator de Juros em 9 casas.
+     *
+     * Em 31/08/2026 a diferença é literalmente esta: `1,0077946312497466` contra
+     * `1,00779463`, que separa um Fator de Juros de `1,011296122` de um de
+     * `1,011296121` -- R$ 0,000001 por unidade de PU.
+     */
     public function indexFactorForCombination(
         EmissionPuParameter $parameter,
         string $indexFactor,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\PuCalculator\Enums;
 
+use InvalidArgumentException;
+
 /**
  * Perfil de cálculo da Calculadora de PU.
  *
@@ -34,9 +36,19 @@ enum PuCalculationProfile: string
     }
 
     /**
-     * Resolve um valor vindo da interface. Ausente, vazio OU desconhecido cai
-     * no contratual: o legado só é alcançado por escolha explícita e válida,
-     * nunca por string malformada.
+     * Resolve um valor vindo da interface.
+     *
+     * Ausente ou vazio é OMISSÃO, e omissão é o contratual -- é o que garante que
+     * nenhum caminho existente mude de comportamento por não informar perfil.
+     *
+     * Valor desconhecido é outra coisa: é um pedido que a engine não sabe atender.
+     * Ele falha FECHADO, com exceção. Tratar `'foo'` como contratual devolveria uma
+     * curva contratual rotulada como se a escolha tivesse sido respeitada, e quem
+     * pediu reconciliação receberia silenciosamente a regra do Termo -- ou o
+     * contrário, se o nome errado fosse de um perfil futuro. Um perfil que não
+     * existe não é resolvido; é recusado.
+     *
+     * @throws InvalidArgumentException
      */
     public static function fromNullable(?string $value): self
     {
@@ -46,7 +58,11 @@ enum PuCalculationProfile: string
             return self::default();
         }
 
-        return self::tryFrom($normalized) ?? self::default();
+        return self::tryFrom($normalized) ?? throw new InvalidArgumentException(sprintf(
+            'Perfil de cálculo de PU desconhecido [%s]. Perfis válidos: %s.',
+            $normalized,
+            implode(', ', array_column(self::cases(), 'value')),
+        ));
     }
 
     public function isContractual(): bool
